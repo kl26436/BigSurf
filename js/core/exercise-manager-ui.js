@@ -25,7 +25,12 @@ export function closeExerciseManager() {
         modal.classList.add('hidden');
     }
 
-    // Return to dashboard (or whatever the last view was)
+    // Hide legacy workout selector if it's showing
+    const workoutSelector = document.getElementById('workout-selector');
+    if (workoutSelector && !workoutSelector.classList.contains('hidden')) {
+        workoutSelector.classList.add('hidden');
+    }
+
     // Check which section should be visible
     const dashboardSection = document.getElementById('dashboard');
     const workoutSection = document.getElementById('active-workout');
