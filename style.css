@@ -2640,22 +2640,22 @@ body {
     height: 315px;
 }
 
-/* Exercise Modal */
+/* Exercise Modal - Full Screen Native Feel */
 .exercise-modal {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.9);
+    background: var(--bg-primary);
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: stretch;
     z-index: 2000;
-    padding: 1rem;
+    padding: 0;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s ease;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
 .exercise-modal.active {
@@ -2664,20 +2664,23 @@ body {
 }
 
 .exercise-modal-content {
-    background: var(--bg-secondary);
-    border-radius: 12px;
+    background: var(--bg-primary);
+    border-radius: 0;
     padding: 1rem;
     width: 100%;
-    max-width: 700px;
-    max-height: 90vh;
+    max-width: none;
+    height: 100%;
+    max-height: none;
     overflow-y: auto;
-    border: 1px solid var(--border);
-    transform: scale(0.9);
-    transition: transform 0.3s ease;
+    border: none;
+    transform: none;
+    transition: none;
+    display: flex;
+    flex-direction: column;
 }
 
 .exercise-modal.active .exercise-modal-content {
-    transform: scale(1);
+    transform: none;
 }
 
 .exercise-unit-toggle {
@@ -4025,28 +4028,31 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
+    background: var(--bg-primary);
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: stretch;
     z-index: 1000;
-    padding: 1rem;
+    padding: 0;
 }
 
 .modal-content {
-    background: var(--bg-secondary);
-    border-radius: 16px;
-    padding: 2rem;
+    background: var(--bg-primary);
+    border-radius: 0;
+    padding: 1rem;
     width: 100%;
-    max-width: 600px;
-    max-height: 80vh;
+    max-width: none;
+    height: 100%;
+    max-height: none;
     overflow-y: auto;
-    border: 1px solid var(--border);
+    border: none;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-content.modal-large {
-    max-width: 900px;
-    max-height: 85vh;
+    max-width: none;
+    max-height: none;
 }
 
 .modal-actions-top {
