@@ -960,7 +960,10 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
     
     exerciseLabel.textContent = `Rest Period - ${exercise.machine}`;
     modalTimer.classList.remove('hidden');
-    
+
+    // Set timer text to black immediately
+    timerDisplay.style.color = '#000000';
+
     let timeLeft = duration;
     let isPaused = false;
     let startTime = Date.now();
@@ -1098,7 +1101,10 @@ function restoreModalRestTimer(exerciseIndex, timerState) {
     // Restore visual state
     exerciseLabel.textContent = timerState.exerciseLabel;
     modalTimer.classList.remove('hidden');
-    
+
+    // Set timer text to black immediately
+    timerDisplay.style.color = '#000000';
+
     let timeLeft = timerState.timeLeft;
     let isPaused = timerState.isPaused;
     let startTime = timerState.startTime || Date.now();

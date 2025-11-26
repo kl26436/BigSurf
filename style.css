@@ -2612,7 +2612,7 @@ body {
 .rest-timer-display {
     font-size: 1.25rem;
     font-weight: bold;
-    color: #000000;
+    color: #000000 !important;
     margin: 0;
     line-height: 1;
 }
@@ -2721,7 +2721,7 @@ body {
 .modal-rest-display {
     font-size: 1.1rem;
     font-weight: bold;
-    color: #000000;
+    color: #000000 !important;
     margin: 0;
     line-height: 1;
 }
