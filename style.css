@@ -2665,8 +2665,8 @@ body {
 
 .exercise-modal-content {
     background: var(--bg-secondary);
-    border-radius: 16px;
-    padding: 2rem;
+    border-radius: 12px;
+    padding: 1rem;
     width: 100%;
     max-width: 700px;
     max-height: 90vh;
@@ -2681,42 +2681,60 @@ body {
 }
 
 .exercise-unit-toggle {
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
     text-align: center;
 }
 
-/* In-Modal Rest Timer */
+/* Compact buttons in exercise modal */
+.exercise-modal .btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.exercise-modal h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+/* In-Modal Rest Timer - Ultra Compact */
 .modal-rest-timer {
     background: linear-gradient(135deg, var(--primary), #20b2aa);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.5rem;
     text-align: center;
-    color: #000000; /* Change this from var(--bg-primary) to black */
+    color: #000000;
 }
 
 .modal-rest-content {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
 }
 
 .modal-rest-exercise {
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: #000000; /* Make sure the exercise label is black */
+    display: none; /* Hide exercise name to save space */
 }
 
 .modal-rest-display {
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     font-weight: bold;
-    color: #000000; /* Make sure the timer display is black */
+    color: #000000;
+    margin: 0;
+    line-height: 1;
 }
 
 .modal-rest-controls {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.3rem;
+}
+
+.modal-rest-controls .btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+    min-width: auto;
 }
 
 .modal-rest-controls .btn {
@@ -2738,23 +2756,24 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
-/* Exercise Table */
+/* Exercise Table - Compact */
 .exercise-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
 }
 
 .exercise-table th {
     background: var(--bg-tertiary);
-    padding: 0.75rem;
+    padding: 0.4rem 0.5rem;
     text-align: left;
     font-weight: 600;
+    font-size: 0.85rem;
     border-bottom: 1px solid var(--border);
 }
 
 .exercise-table td {
-    padding: 0.75rem;
+    padding: 0.4rem 0.5rem;
     border-bottom: 1px solid var(--border);
 }
 
@@ -2763,11 +2782,11 @@ body {
 }
 
 .set-input {
-    width: 90px;
+    width: 70px;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 0.75rem;
+    border-radius: 4px;
+    padding: 0.4rem;
     color: var(--text-primary);
     text-align: center;
     font-size: 16px; /* Prevents zoom on iOS - MUST be 16px or larger */
