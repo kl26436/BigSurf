@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v3.8-fix-notifications-and-filters';
+const CACHE_NAME = 'big-surf-v3.9-fix-exercise-manager-sidebar';
 const STATIC_ASSETS = [
   '/index.html',
   '/style.css',

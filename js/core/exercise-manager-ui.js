@@ -11,6 +11,13 @@ let currentEditingExercise = null;
 // Open exercise manager section
 export function openExerciseManager() {
     console.log('📚 Opening exercise manager section...');
+
+    // Close sidebar first
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+        sidebar.classList.remove('open');
+    }
+
     const section = document.getElementById('exercise-manager-section');
     if (section) {
         // Hide all other sections
