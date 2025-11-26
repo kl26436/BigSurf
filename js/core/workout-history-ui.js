@@ -14,19 +14,23 @@ export async function showWorkoutHistory() {
         return;
     }
 
-    console.log(' Opening workout history with calendar view...');
+    console.log('📅 Opening workout history with calendar view...');
 
-    // Hide other sections
-    const workoutSelector = document.getElementById('workout-selector');
-    const activeWorkout = document.getElementById('active-workout');
-    const workoutManagement = document.getElementById('workout-management');
+    // Hide all sections including dashboard
+    const sections = ['workout-selector', 'active-workout', 'workout-management', 'dashboard', 'stats-section'];
+    sections.forEach(sectionId => {
+        const section = document.getElementById(sectionId);
+        if (section) section.classList.add('hidden');
+    });
+
+    // Show history section
     const historySection = document.getElementById('workout-history-section');
-    
-    if (workoutSelector) workoutSelector.classList.add('hidden');
-    if (activeWorkout) activeWorkout.classList.add('hidden');
-    if (workoutManagement) workoutManagement.classList.add('hidden');
     if (historySection) historySection.classList.remove('hidden');
-    
+
+    // Hide the legacy "Today" header since we're not on workout selector
+    const todayHeader = document.querySelector('.today-header');
+    if (todayHeader) todayHeader.classList.add('hidden');
+
     // Initialize calendar view
     await initializeCalendarView();
 }

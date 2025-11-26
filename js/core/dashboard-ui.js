@@ -23,8 +23,63 @@ export async function showDashboard() {
     // Show dashboard, hide other sections
     dashboardSection.classList.remove('hidden');
 
+    // Check for in-progress workout
+    await checkForInProgressWorkout();
+
     // Load and render dashboard data
     await renderDashboard();
+}
+
+/**
+ * Check if there's an in-progress workout and show resume prompt
+ */
+async function checkForInProgressWorkout() {
+    try {
+        const { AppState } = await import('./app-state.js');
+        const { loadTodaysWorkout } = await import('./data-manager.js');
+
+        const todaysData = await loadTodaysWorkout(AppState);
+
+        if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
+            console.log('🏋️ Found in-progress workout:', todaysData.workoutType);
+
+            // Find the workout plan
+            const workoutPlan = AppState.workoutPlans.find(plan =>
+                plan.day === todaysData.workoutType ||
+                plan.name === todaysData.workoutType ||
+                plan.id === todaysData.workoutType
+            );
+
+            if (!workoutPlan) {
+                console.warn('⚠️ Workout plan not found for:', todaysData.workoutType);
+                return;
+            }
+
+            // Store in-progress workout globally so it can be resumed
+            window.inProgressWorkout = {
+                ...todaysData,
+                originalWorkout: workoutPlan
+            };
+
+            // Show resume banner
+            const card = document.getElementById('resume-workout-banner');
+            const nameElement = document.getElementById('resume-workout-name');
+
+            if (card && nameElement) {
+                nameElement.textContent = todaysData.workoutType;
+                card.classList.remove('hidden');
+            }
+        } else {
+            // Hide resume banner if no workout in progress
+            const card = document.getElementById('resume-workout-banner');
+            if (card) {
+                card.classList.add('hidden');
+            }
+            window.inProgressWorkout = null;
+        }
+    } catch (error) {
+        console.error('❌ Error checking for in-progress workout:', error);
+    }
 }
 
 /**

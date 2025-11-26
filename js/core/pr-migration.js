@@ -59,12 +59,14 @@ export async function migrateOldWorkoutsToPRs() {
                     );
 
                     if (prCheck.isNewPR) {
+                        // Use the workout date (doc.id is YYYY-MM-DD format)
                         await PRTracker.recordPR(
                             exerciseName,
                             set.reps,
                             set.weight,
                             equipment,
-                            workout.location || 'Unknown Location'
+                            workout.location || 'Unknown Location',
+                            doc.id // Pass the workout date
                         );
                         prCount++;
                     }

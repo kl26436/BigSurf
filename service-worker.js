@@ -128,4 +128,74 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+
+  // Schedule a notification after a delay (for rest timer)
+  if (event.data && event.data.type === 'SCHEDULE_NOTIFICATION') {
+    const { title, body, delay, tag, silent } = event.data;
+
+    setTimeout(() => {
+      self.registration.showNotification(title, {
+        body: body,
+        icon: '/BigSurf.png',
+        badge: '/BigSurf.png',
+        vibrate: [200, 100, 200],
+        tag: tag || 'rest-timer',
+        requireInteraction: false,
+        silent: silent !== undefined ? silent : false
+      });
+    }, delay);
+  }
+});
+
+// Push notification event - handle background push notifications
+self.addEventListener('push', (event) => {
+  console.log('📬 Push notification received:', event);
+
+  let data = { title: 'Big Surf', body: 'Notification', icon: '/BigSurf.png' };
+
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || '/BigSurf.png',
+    badge: '/BigSurf.png',
+    vibrate: [200, 100, 200],
+    tag: data.tag || 'bigsurf-notification',
+    requireInteraction: data.requireInteraction || false,
+    silent: data.silent !== undefined ? data.silent : false,
+    data: data.data || {}
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Notification click event - open or focus app
+self.addEventListener('notificationclick', (event) => {
+  console.log('🔔 Notification clicked:', event.notification.tag);
+  event.notification.close();
+
+  // Open or focus the app
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // If app is already open, focus it
+        for (let client of clientList) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // Otherwise, open a new window
+        if (clients.openWindow) {
+          return clients.openWindow('/');
+        }
+      })
+  );
 });

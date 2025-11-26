@@ -234,7 +234,7 @@ export function checkForNewPR(exerciseName, reps, weight, equipment = null) {
 /**
  * Record a new PR
  */
-export async function recordPR(exerciseName, reps, weight, equipment = null, location = null) {
+export async function recordPR(exerciseName, reps, weight, equipment = null, location = null, date = null) {
     if (!equipment) {
         equipment = getExerciseEquipment(exerciseName);
     }
@@ -244,7 +244,11 @@ export async function recordPR(exerciseName, reps, weight, equipment = null, loc
     }
 
     const volume = calculateVolume(reps, weight);
-    const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // Use provided date or default to today
+    if (!date) {
+        date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    }
 
     // Initialize exercise PRs if needed
     if (!prData.exercisePRs[exerciseName]) {

@@ -24,6 +24,21 @@ export function closeExerciseManager() {
     if (modal) {
         modal.classList.add('hidden');
     }
+
+    // Return to dashboard (or whatever the last view was)
+    // Check which section should be visible
+    const dashboardSection = document.getElementById('dashboard');
+    const workoutSection = document.getElementById('active-workout');
+    const historySection = document.getElementById('workout-history-section');
+
+    // If no other section is visible, default to dashboard
+    const anyVisible = dashboardSection && !dashboardSection.classList.contains('hidden') ||
+                      workoutSection && !workoutSection.classList.contains('hidden') ||
+                      historySection && !historySection.classList.contains('hidden');
+
+    if (!anyVisible && dashboardSection) {
+        dashboardSection.classList.remove('hidden');
+    }
 }
 
 // Load exercises from AppState

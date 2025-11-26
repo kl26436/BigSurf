@@ -2,6 +2,7 @@
 // Displays comprehensive stats and PR leaderboard
 
 import { PRTracker } from './pr-tracker.js';
+import { StreakTracker } from './streak-tracker.js';
 
 // ===================================================================
 // STATE
@@ -52,6 +53,10 @@ async function renderStatsView() {
     `;
 
     try {
+        // Load streak stats
+        const streakStats = await StreakTracker.calculateStreaks();
+        const dayFrequency = await StreakTracker.getWorkoutFrequencyByDay();
+
         const prGroups = PRTracker.getAllPRs();
         const locations = PRTracker.getLocations();
 
@@ -98,6 +103,8 @@ async function renderStatsView() {
         const equipmentTypes = [...new Set(allPRs.map(pr => pr.equipment))];
 
         container.innerHTML = `
+            ${renderStreakStats(streakStats)}
+            ${renderFrequencyStats(dayFrequency)}
             ${renderFilters(equipmentTypes, locations)}
             ${renderPRLeaderboard(allPRs)}
         `;
@@ -112,6 +119,129 @@ async function renderStatsView() {
             </div>
         `;
     }
+}
+
+// ===================================================================
+// STREAK & FREQUENCY STATS
+// ===================================================================
+
+function renderStreakStats(stats) {
+    if (!stats) {
+        return '<div style="padding: 1rem;"><p style="color: var(--text-secondary);">No workout data yet</p></div>';
+    }
+
+    return `
+        <div class="stats-overview">
+            <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Workout Streaks</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(255, 99, 71, 0.1);">
+                        <i class="fas fa-fire" style="color: #ff6347;"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-label">Current Streak</div>
+                        <div class="stat-value">${stats.currentStreak} ${stats.currentStreak === 1 ? 'day' : 'days'}</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(255, 215, 0, 0.1);">
+                        <i class="fas fa-trophy" style="color: #ffd700;"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-label">Longest Streak</div>
+                        <div class="stat-value">${stats.longestStreak} ${stats.longestStreak === 1 ? 'day' : 'days'}</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(64, 224, 208, 0.1);">
+                        <i class="fas fa-dumbbell" style="color: #40e0d0;"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-label">Total Workouts</div>
+                        <div class="stat-value">${stats.totalWorkouts}</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(138, 43, 226, 0.1);">
+                        <i class="fas fa-calendar-week" style="color: #8a2be2;"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-label">This Week</div>
+                        <div class="stat-value">${stats.workoutsThisWeek}</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(50, 205, 50, 0.1);">
+                        <i class="fas fa-calendar-alt" style="color: #32cd32;"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-label">This Month</div>
+                        <div class="stat-value">${stats.workoutsThisMonth}</div>
+                    </div>
+                </div>
+
+                ${stats.lastWorkoutDate ? `
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(100, 149, 237, 0.1);">
+                        <i class="fas fa-clock" style="color: #6495ed;"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-label">Last Workout</div>
+                        <div class="stat-value">${formatDate(stats.lastWorkoutDate)}</div>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function renderFrequencyStats(dayFrequency) {
+    if (!dayFrequency || dayFrequency.length === 0) {
+        return '';
+    }
+
+    const maxCount = Math.max(...dayFrequency.map(d => d.count));
+
+    return `
+        <div class="stats-overview">
+            <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Workout Frequency by Day</h2>
+            <div class="frequency-bars">
+                ${dayFrequency.map(({ day, count }) => {
+                    const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                    return `
+                        <div class="frequency-bar-item">
+                            <div class="frequency-day">${day.slice(0, 3)}</div>
+                            <div class="frequency-bar-track">
+                                <div class="frequency-bar-fill" style="width: ${percentage}%;"></div>
+                            </div>
+                            <div class="frequency-count">${count}</div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const dateOnly = date.toISOString().split('T')[0];
+    const todayOnly = today.toISOString().split('T')[0];
+    const yesterdayOnly = yesterday.toISOString().split('T')[0];
+
+    if (dateOnly === todayOnly) return 'Today';
+    if (dateOnly === yesterdayOnly) return 'Yesterday';
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // ===================================================================
@@ -356,23 +486,4 @@ export function clearPRFilters() {
 // ===================================================================
 // HELPERS
 // ===================================================================
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    const today = new Date();
-    const diffTime = Math.abs(today - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-        return 'Today';
-    } else if (diffDays === 1) {
-        return 'Yesterday';
-    } else if (diffDays < 7) {
-        return `${diffDays} days ago`;
-    } else if (diffDays < 30) {
-        const weeks = Math.floor(diffDays / 7);
-        return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
-    } else {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-}
+// (formatDate is defined above in the STREAK & FREQUENCY STATS section)

@@ -1063,14 +1063,21 @@ body {
 .exercise-list {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
+}
+
+/* Auto-collapse completed exercises to save space */
+@media (max-width: 768px) {
+    .exercise-list {
+        gap: 0.5rem;
+    }
 }
 
 .exercise-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.5rem;
+    border-radius: 12px;
+    padding: 1rem;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
@@ -1095,6 +1102,28 @@ body {
 
 .exercise-card.completed::before {
     opacity: 1;
+}
+
+/* Collapsed completed exercises */
+.exercise-card.completed.collapsed {
+    padding: 0.75rem 1rem;
+    max-height: 60px;
+}
+
+.exercise-card.completed.collapsed .exercise-table,
+.exercise-card.completed.collapsed .exercise-actions,
+.exercise-card.completed.collapsed .exercise-notes-section,
+.exercise-card.completed.collapsed .exercise-hint {
+    display: none;
+}
+
+.exercise-card.completed .exercise-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.exercise-card.completed .exercise-header:hover {
+    opacity: 0.8;
 }
 
 .exercise-card.focused {
@@ -5772,6 +5801,105 @@ img[loading="lazy"].loaded {
 .pr-card-meta i {
     color: var(--primary);
     width: 14px;
+}
+
+/* Stats Overview (Streaks & Frequency) */
+.stats-overview {
+    background: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.stat-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-info {
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Frequency Bars */
+.frequency-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.frequency-bar-item {
+    display: grid;
+    grid-template-columns: 60px 1fr 50px;
+    align-items: center;
+    gap: 1rem;
+}
+
+.frequency-day {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: right;
+}
+
+.frequency-bar-track {
+    height: 28px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.frequency-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary) 0%, #36c7b8 100%);
+    border-radius: 6px;
+    transition: width 0.5s ease;
+}
+
+.frequency-count {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
 }
 
 /* Mobile Responsive */

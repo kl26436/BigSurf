@@ -170,10 +170,35 @@ export async function signIn() {
 export async function signOutUser() {
     try {
         await signOut(auth);
-        console.log(' Sign-out successful');
+        console.log('✅ Sign-out successful');
+
+        // Hide all content sections
+        const sections = [
+            'workout-selector',
+            'active-workout',
+            'workout-history-section',
+            'workout-management',
+            'dashboard',
+            'stats-section'
+        ];
+
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section) section.classList.add('hidden');
+        });
+
+        // Show auth section
+        hideUserInfo();
+
+        // Clear app state
+        AppState.currentUser = null;
+        AppState.currentWorkout = null;
+        AppState.savedData = {};
+        window.inProgressWorkout = null;
+
         showNotification('Signed out successfully', 'info');
     } catch (error) {
-        console.error(' Sign-out error:', error);
+        console.error('❌ Sign-out error:', error);
         showNotification('Error signing out', 'error');
     }
 }
@@ -246,6 +271,10 @@ export function setupAuthenticationListener() {
             // Load PR tracking data
             const { PRTracker } = await import('./pr-tracker.js');
             await PRTracker.loadPRData();
+
+            // Initialize background notifications
+            const { initializeNotifications } = await import('./notification-helper.js');
+            await initializeNotifications();
 
             // Validate and refresh user data
             await validateUserData();

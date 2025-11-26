@@ -17,6 +17,8 @@
     }
   ],
   "categories": ["health", "fitness", "sports"],
+  "permissions": ["notifications"],
+  "prefer_related_applications": false,
   "screenshots": [],
   "shortcuts": [
     {

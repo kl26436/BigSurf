@@ -74,11 +74,11 @@ export async function startWorkout(workoutType) {
     
     // Render exercises
     renderExercises();
-    
+
     // Save initial state
     await saveWorkoutData(AppState);
-    
-    showNotification(`Started "${workoutType}" workout!`, 'success');
+
+    // Removed annoying "workout started" notification
 }
 
 export function pauseWorkout() {
@@ -125,20 +125,23 @@ export async function completeWorkout() {
 
 export function cancelWorkout() {
     if (!AppState.currentWorkout) return;
-    
-    if (confirm('Are you sure you want to cancel this workout? Your progress will be lost.')) {
-        AppState.savedData.cancelledAt = new Date().toISOString();
-        saveWorkoutData(AppState);
-        
-        AppState.reset();
-        AppState.clearTimers();
-        
-        // Clear in-progress workout since it's been cancelled
-        window.inProgressWorkout = null;
-        
-        showNotification('Workout cancelled', 'info');
-        showWorkoutSelector();
-    }
+
+    // Remove the annoying confirm popup
+    AppState.savedData.cancelledAt = new Date().toISOString();
+    saveWorkoutData(AppState);
+
+    AppState.reset();
+    AppState.clearTimers();
+
+    // Clear in-progress workout since it's been cancelled
+    window.inProgressWorkout = null;
+
+    showNotification('Workout cancelled', 'info');
+
+    // Navigate to dashboard instead of legacy workout selector
+    import('./navigation.js').then(({ navigateTo }) => {
+        navigateTo('dashboard');
+    });
 }
 
 export function cancelCurrentWorkout() {
@@ -174,11 +177,14 @@ export function continueInProgressWorkout() {
         AppState.workoutStartTime = new Date();
     }
 
-    // Show active workout
-    const workoutSelector = document.getElementById('workout-selector');
-    const activeWorkout = document.getElementById('active-workout');
+    // Hide all other sections and show active workout
+    const sections = ['workout-selector', 'dashboard', 'workout-history-section', 'stats-section'];
+    sections.forEach(sectionId => {
+        const section = document.getElementById(sectionId);
+        if (section) section.classList.add('hidden');
+    });
 
-    if (workoutSelector) workoutSelector.classList.add('hidden');
+    const activeWorkout = document.getElementById('active-workout');
     if (activeWorkout) activeWorkout.classList.remove('hidden');
 
     // Resume timer
@@ -357,6 +363,7 @@ export function createExerciseCard(exercise, index) {
 
     if (isCompleted) {
         card.classList.add('completed');
+        card.classList.add('collapsed'); // Auto-collapse completed exercises
     }
     
     card.innerHTML = `
@@ -390,6 +397,16 @@ export function createExerciseCard(exercise, index) {
             ${generateQuickSetsHtml(exercise, index, unit)}
         </div>
     `;
+
+    // Add click handler for completed exercises to toggle collapse
+    if (isCompleted) {
+        const header = card.querySelector('.exercise-header');
+        if (header) {
+            header.addEventListener('click', () => {
+                card.classList.toggle('collapsed');
+            });
+        }
+    }
 
     return card;
 }
@@ -616,6 +633,9 @@ export async function updateSet(exerciseIndex, setIndex, field, value) {
     }
 }
 
+// Track which sets have already shown PR notifications to avoid duplicates
+const prNotifiedSets = new Set();
+
 // Check if a set is a PR and show visual feedback
 // Returns true if a PR was detected
 async function checkSetForPR(exerciseIndex, setIndex) {
@@ -629,10 +649,21 @@ async function checkSetForPR(exerciseIndex, setIndex) {
 
         if (!set || !set.reps || !set.weight) return false;
 
+        // Create unique key for this set to track if we've already notified
+        const setKey = `${exerciseIndex}-${setIndex}-${set.reps}-${set.weight}`;
+
+        // Skip if we've already notified about this exact set
+        if (prNotifiedSets.has(setKey)) {
+            return false;
+        }
+
         const { PRTracker } = await import('./pr-tracker.js');
         const prCheck = PRTracker.checkForNewPR(exerciseName, set.reps, set.weight, equipment);
 
         if (prCheck.isNewPR) {
+            // Mark this set as notified
+            prNotifiedSets.add(setKey);
+
             // Add PR badge to the set row
             const setRow = document.querySelector(`#exercise-${exerciseIndex} tbody tr:nth-child(${setIndex + 1})`);
             if (setRow && !setRow.querySelector('.pr-badge')) {
@@ -682,9 +713,8 @@ export function addSet(exerciseIndex) {
 
     const setData = AppState.savedData.exercises[exerciseKey].sets[setIndex];
     if (setData.reps && setData.weight) {
-        // Auto-start rest timer
+        // Auto-start rest timer (no notification needed - user can see timer)
         autoStartRestTimer(exerciseIndex, setIndex);
-        showNotification(`Set ${setIndex + 1} recorded! Rest timer started.`, 'success');
     }
 }
 
@@ -938,21 +968,31 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
         if (timeLeft === 0) {
             timerDisplay.textContent = 'Ready!';
             timerDisplay.style.color = 'var(--success)';
-            
-            // Vibration and notification
+
+            // Vibration
             if ('vibrate' in navigator) {
                 navigator.vibrate([200, 100, 200]);
             }
-            
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('Rest complete!', {
-                    body: 'Time for your next set',
-                    icon: '/BigSurf.png'
-                });
-            }
 
-            showNotification('Rest period complete!', 'success');
-            
+            // Use service worker notification for background support
+            import('./notification-helper.js').then(({ showNotification }) => {
+                showNotification('Rest complete!', 'Time for your next set', {
+                    tag: 'rest-timer',
+                    silent: true // No sound - user can see timer at 0:00
+                });
+            }).catch(() => {
+                // Fallback to regular notification if service worker not available
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('Rest complete!', {
+                        body: 'Time for your next set',
+                        icon: '/BigSurf.png',
+                        silent: true
+                    });
+                }
+            });
+
+            // Removed in-app notification - timer shows 0:00 which is clear enough
+
             // *** REMOVED AUTO-HIDE - Timer stays visible until manually dismissed ***
             return;
         }
@@ -1066,21 +1106,31 @@ function restoreModalRestTimer(exerciseIndex, timerState) {
         if (timeLeft === 0) {
             timerDisplay.textContent = 'Ready!';
             timerDisplay.style.color = 'var(--success)';
-            
-            // Vibration and notification
+
+            // Vibration
             if ('vibrate' in navigator) {
                 navigator.vibrate([200, 100, 200]);
             }
-            
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('Rest complete!', {
-                    body: 'Time for your next set',
-                    icon: '/BigSurf.png'
-                });
-            }
 
-            showNotification('Rest period complete!', 'success');
-            
+            // Use service worker notification for background support
+            import('./notification-helper.js').then(({ showNotification }) => {
+                showNotification('Rest complete!', 'Time for your next set', {
+                    tag: 'rest-timer',
+                    silent: true // No sound - user can see timer at 0:00
+                });
+            }).catch(() => {
+                // Fallback to regular notification if service worker not available
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('Rest complete!', {
+                        body: 'Time for your next set',
+                        icon: '/BigSurf.png',
+                        silent: true
+                    });
+                }
+            });
+
+            // Removed in-app notification - timer shows 0:00 which is clear enough
+
             // *** REMOVED AUTO-HIDE - Timer stays visible ***
             return;
         }
