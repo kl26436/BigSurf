@@ -901,13 +901,50 @@ export function setCurrentTemplateCategory(category) {
 // WINDOW FUNCTION ASSIGNMENTS (for HTML onclick handlers)
 // ===================================================================
 
-// Add missing functions referenced in the basic editor
 window.addExerciseToBasicTemplate = function() {
-    console.log('ℹ️ Exercise addition coming soon!');
+    const modal = document.getElementById('basic-template-editor-modal');
+    if (!modal || !modal.templateData) return;
+
+    const exerciseName = prompt('Exercise name:');
+    if (!exerciseName) return;
+
+    const sets = parseInt(prompt('Number of sets:', '3') || '3');
+    const reps = parseInt(prompt('Number of reps:', '10') || '10');
+    const weight = parseFloat(prompt('Weight (lbs):', '50') || '50');
+
+    modal.templateData.exercises.push({
+        name: exerciseName.trim(),
+        sets: sets,
+        reps: reps,
+        weight: weight
+    });
+
+    showBasicTemplateEditor(modal.templateData);
+    console.log(`✅ Added "${exerciseName}" to template`);
 };
 
 window.editBasicExercise = function(index) {
-    console.log(`ℹ️ Edit exercise ${index + 1} coming soon!`);
+    const modal = document.getElementById('basic-template-editor-modal');
+    if (!modal || !modal.templateData || index >= modal.templateData.exercises.length) return;
+
+    const exercise = modal.templateData.exercises[index];
+
+    const newName = prompt('Exercise name:', exercise.name);
+    if (newName === null) return;
+    const newSets = prompt('Number of sets:', exercise.sets);
+    if (newSets === null) return;
+    const newReps = prompt('Number of reps:', exercise.reps);
+    if (newReps === null) return;
+    const newWeight = prompt('Weight (lbs):', exercise.weight);
+    if (newWeight === null) return;
+
+    exercise.name = newName.trim() || exercise.name;
+    exercise.sets = parseInt(newSets) || exercise.sets;
+    exercise.reps = parseInt(newReps) || exercise.reps;
+    exercise.weight = parseFloat(newWeight) || exercise.weight;
+
+    showBasicTemplateEditor(modal.templateData);
+    console.log(`✅ Updated exercise`);
 };
 
 window.removeBasicExercise = function(index) {

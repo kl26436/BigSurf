@@ -578,9 +578,6 @@ setupCalendarClickEvents() {
     }, 100);
 },
 
-// Enhanced modal with corrected duration calculation
-// TEMPORARY DEBUG FUNCTION - Add this to your workout-history.js to debug:
-
 showFixedWorkoutModal(workout) {
     // Use the correct modal elements that actually exist
     const modal = document.getElementById('workout-detail-modal');
