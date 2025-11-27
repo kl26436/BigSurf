@@ -825,9 +825,14 @@ calculateProgress(workout) {
 
             console.log('Repeat workout:', workout);
             this.closeWorkoutDetailModal();
-            
-            // TODO: Implement repeat workout functionality
-            showNotification('Repeat workout functionality coming soon!', 'info');
+
+            // Start a workout using the workout type/name
+            if (typeof window.startWorkout === 'function') {
+                window.startWorkout(workout.workoutType);
+            } else {
+                console.error('❌ startWorkout function not available');
+                alert('Cannot start workout. Please refresh the page.');
+            }
         },
 
         // Helper functions

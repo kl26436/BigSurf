@@ -144,7 +144,7 @@ export function getExerciseLibrary(appState) {
                 case 'manual-workout':
                     console.log(' Using manual-workout case');
                     actionButton = `
-                        <button class="btn btn-primary btn-small" onclick="addToManualWorkoutFromLibrary(${exerciseJson})">
+                        <button class="btn btn-primary btn-small" onclick='addToManualWorkoutFromLibrary("${exerciseJson}")'>
                             <i class="fas fa-plus"></i> Add Exercise
                         </button>
                     `;

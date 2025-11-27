@@ -144,8 +144,14 @@ export function repeatWorkout(workoutId) {
     const confirmMessage = `Start a new workout based on "${workout.workoutType}"?`;
     if (confirm(confirmMessage)) {
         console.log(' Repeating workout:', workoutId);
-        // TODO: Implement actual repeat functionality
-        showNotification('Repeat functionality coming soon', 'info');
+
+        // Start a workout using the workout type/name
+        if (typeof window.startWorkout === 'function') {
+            window.startWorkout(workout.workoutType);
+        } else {
+            console.error('❌ startWorkout function not available');
+            alert('Cannot start workout. Please refresh the page.');
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 // Workout Management UI Functions
 import { FirebaseWorkoutManager } from '../firebase-workout-manager.js';
 import { showNotification } from '../ui-helpers.js';
+import { switchTemplateCategory } from '../template-selection.js';
 
 let workoutManager;
 let currentEditingTemplate = null;
@@ -181,9 +182,25 @@ export async function editTemplate(templateId) {
     }
 }
 
-export function deleteTemplate(templateId) {
+export async function deleteTemplate(templateId) {
+    if (!workoutManager) {
+        console.error('❌ Workout manager not initialized');
+        alert('Cannot delete template: System not ready');
+        return;
+    }
+
     if (confirm('Are you sure you want to delete this template? This cannot be undone.')) {
-        showNotification('Delete template functionality coming soon!', 'info');
+        try {
+            console.log('🗑️ Deleting template:', templateId);
+            await workoutManager.deleteWorkoutTemplate(templateId);
+            console.log('✅ Template deleted successfully');
+
+            // Reload the template list
+            switchTemplateCategory('custom');
+        } catch (error) {
+            console.error('❌ Error deleting template:', error);
+            alert('Error deleting template. Please try again.');
+        }
     }
 }
 
@@ -341,7 +358,35 @@ export function addExerciseToTemplate() {
 }
 
 export function editTemplateExercise(index) {
-    showNotification('Edit exercise functionality coming soon!', 'info');
+    if (!currentEditingTemplate || index >= currentEditingTemplate.exercises.length) {
+        console.error('❌ Invalid exercise index:', index);
+        return;
+    }
+
+    const exercise = currentEditingTemplate.exercises[index];
+
+    // Prompt for new values
+    const newName = prompt('Exercise name:', exercise.name);
+    if (newName === null) return; // User cancelled
+
+    const newSets = prompt('Number of sets:', exercise.sets);
+    if (newSets === null) return;
+
+    const newReps = prompt('Number of reps:', exercise.reps);
+    if (newReps === null) return;
+
+    const newWeight = prompt('Weight (lbs):', exercise.weight);
+    if (newWeight === null) return;
+
+    // Update exercise
+    exercise.name = newName.trim() || exercise.name;
+    exercise.sets = parseInt(newSets) || exercise.sets;
+    exercise.reps = parseInt(newReps) || exercise.reps;
+    exercise.weight = parseFloat(newWeight) || exercise.weight;
+
+    // Re-render
+    renderTemplateExercises();
+    console.log('✅ Exercise updated');
 }
 
 export function removeTemplateExercise(index) {
