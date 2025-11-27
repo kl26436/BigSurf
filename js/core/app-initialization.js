@@ -208,12 +208,11 @@ export async function signOutUser() {
         const resumeBanner = document.getElementById('resume-workout-banner');
         if (resumeBanner) resumeBanner.classList.add('hidden');
 
-        // Hide loading screen and show auth section
-        hideUserInfo();
-
-        // Make sure loading screen is hidden
+        // Show loading screen with sign-in prompt (same as fresh page load)
         const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) loadingScreen.classList.add('hidden');
+        if (loadingScreen) loadingScreen.classList.remove('hidden');
+
+        showSignInPrompt();
 
         // Clear app state completely
         AppState.currentUser = null;
