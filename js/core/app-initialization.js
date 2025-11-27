@@ -156,7 +156,7 @@ export async function signIn() {
 
         const result = await signInWithPopup(auth, signInProvider);
         console.log('✅ Sign-in successful:', result.user.displayName);
-        showNotification(`Welcome, ${result.user.displayName}!`, 'success');
+        // Welcome message removed - loading screen will show "Loading your workouts..." instead
     } catch (error) {
         console.error('❌ Sign-in error:', error);
         console.error('❌ Error code:', error.code);
@@ -207,6 +207,10 @@ export async function signOutUser() {
         // Hide resume workout banner if showing
         const resumeBanner = document.getElementById('resume-workout-banner');
         if (resumeBanner) resumeBanner.classList.add('hidden');
+
+        // Hide the header auth section and show proper loading screen
+        const authSection = document.getElementById('auth-section');
+        if (authSection) authSection.classList.add('hidden');
 
         // Show loading screen with sign-in prompt (same as fresh page load)
         const loadingScreen = document.getElementById('loading-screen');

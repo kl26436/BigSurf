@@ -591,33 +591,37 @@ function renderWorkoutCards(workouts) {
 function createWorkoutCard(workout) {
     const card = document.createElement('div');
     card.className = 'workout-card';
-    card.dataset.category = getWorkoutCategory(workout.day);
-    
+
+    // Use name or day field (some workouts use name, others use day)
+    const workoutName = workout.name || workout.day || 'Unnamed Workout';
+
+    card.dataset.category = getWorkoutCategory(workoutName);
+
     const exerciseCount = workout.exercises?.length || 0;
-    const exerciseNames = workout.exercises?.slice(0, 3).map(ex => 
+    const exerciseNames = workout.exercises?.slice(0, 3).map(ex =>
         getExerciseName(ex)
     ).join(', ') || 'No exercises listed';
     const moreText = exerciseCount > 3 ? ` and ${exerciseCount - 3} more...` : '';
-    
+
     card.innerHTML = `
         <div class="workout-header">
-            <h3>${workout.day}</h3>
-            <span class="workout-category">${getWorkoutCategory(workout.day)}</span>
+            <h3>${workoutName}</h3>
+            <span class="workout-category">${getWorkoutCategory(workoutName)}</span>
         </div>
         <div class="workout-preview">
             <div class="exercise-count">${exerciseCount} exercises</div>
             <div class="exercise-list">${exerciseNames}${moreText}</div>
         </div>
         <div class="workout-actions">
-            <button class="btn btn-primary" onclick="window.startWorkout('${workout.day}')">
+            <button class="btn btn-primary" onclick="window.startWorkout('${workoutName}')">
                 <i class="fas fa-play"></i> Start Workout
             </button>
-            <button class="btn btn-secondary" onclick="previewWorkout('${workout.day}')">
+            <button class="btn btn-secondary" onclick="previewWorkout('${workoutName}')">
                 <i class="fas fa-eye"></i> Preview
             </button>
         </div>
     `;
-    
+
     return card;
 }
 

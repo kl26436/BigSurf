@@ -63,12 +63,14 @@ export async function startWorkout(workoutType) {
     // Hide other sections and show active workout
     const workoutSelector = document.getElementById('workout-selector');
     const activeWorkout = document.getElementById('active-workout');
-    const workoutManagement = document.getElementById('workout-management');
+    const workoutManagementSection = document.getElementById('workout-management-section');
+    const exerciseManagerSection = document.getElementById('exercise-manager-section');
     const historySection = document.getElementById('workout-history-section');
     const dashboard = document.getElementById('dashboard');
 
     if (workoutSelector) workoutSelector.classList.add('hidden');
-    if (workoutManagement) workoutManagement.classList.add('hidden');
+    if (workoutManagementSection) workoutManagementSection.classList.add('hidden');
+    if (exerciseManagerSection) exerciseManagerSection.classList.add('hidden');
     if (historySection) historySection.classList.add('hidden');
     if (dashboard) dashboard.classList.add('hidden');
     if (activeWorkout) activeWorkout.classList.remove('hidden');
@@ -117,14 +119,15 @@ export async function completeWorkout() {
 
     console.log('✅ Workout completed!');
 
-    // Reset state BEFORE showing selector (critical order!)
+    // Reset state BEFORE showing dashboard (critical order!)
     AppState.reset();
 
     // Clear in-progress workout since it's now completed
     window.inProgressWorkout = null;
 
-    // Now show workout selector (after state is cleared)
-    showWorkoutSelector();
+    // Show dashboard after completion
+    const { showDashboard } = await import('./dashboard-ui.js');
+    showDashboard();
 }
 
 export function cancelWorkout() {
