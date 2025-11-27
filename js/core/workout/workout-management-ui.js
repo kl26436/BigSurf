@@ -205,7 +205,15 @@ export async function deleteTemplate(templateId) {
 }
 
 export function useTemplate(templateId) {
-    showNotification('Use template functionality coming soon!', 'info');
+    console.log('🏋️ Using template:', templateId);
+
+    // This is essentially the same as "Use Today" - start a workout with this template
+    if (typeof window.useTemplateFromManagement === 'function') {
+        window.useTemplateFromManagement(templateId, false);
+    } else {
+        console.error('❌ useTemplateFromManagement not available');
+        alert('Cannot start workout. Please try again.');
+    }
 }
 
 function showTemplateEditor() {

@@ -168,8 +168,14 @@ export function deleteWorkout(workoutId) {
     
     if (confirm(confirmMessage)) {
         console.log(' Deleting workout:', workoutId);
-        // TODO: Implement actual delete functionality
-        showNotification('Delete functionality coming soon', 'info');
+
+        // Call the delete method from workout-history
+        if (window.workoutHistory && typeof window.workoutHistory.deleteWorkout === 'function') {
+            window.workoutHistory.deleteWorkout(workoutId);
+        } else {
+            console.error('❌ Delete workout function not available');
+            alert('Cannot delete workout. Please refresh the page.');
+        }
     }
 }
 
