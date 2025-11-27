@@ -2,6 +2,7 @@
 // Handles application startup, authentication, and global setup
 
 import { auth, provider, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, db } from './firebase-config.js';
+import { GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { AppState } from './app-state.js';
 import { showNotification, setTodayDisplay } from './ui-helpers.js';
 import { loadWorkoutPlans } from './data-manager.js'; // ADD loadWorkoutData here
@@ -147,7 +148,13 @@ export async function signIn() {
         console.log('🔐 signIn() function called');
         console.log('💻 Using popup auth (works on mobile when triggered by user click)');
 
-        const result = await signInWithPopup(auth, provider);
+        // Create a provider instance with account selection prompt
+        const signInProvider = new GoogleAuthProvider();
+        signInProvider.setCustomParameters({
+            prompt: 'select_account'
+        });
+
+        const result = await signInWithPopup(auth, signInProvider);
         console.log('✅ Sign-in successful:', result.user.displayName);
         showNotification(`Welcome, ${result.user.displayName}!`, 'success');
     } catch (error) {
@@ -217,7 +224,7 @@ export async function signOutUser() {
         AppState.totalPausedTime = 0;
         window.inProgressWorkout = null;
 
-        showNotification('Signed out successfully', 'info');
+        console.log('✅ User signed out - showing sign-in screen');
     } catch (error) {
         console.error('❌ Sign-out error:', error);
         showNotification('Error signing out', 'error');
