@@ -36,7 +36,7 @@ export async function selectTemplate(templateId, isDefault = false) {
     console.log(`🎯 Selecting template: ${templateId}, isDefault: ${isDefault}`);
     
     if (!AppState.currentUser) {
-        showNotification('Please sign in to start workouts', 'warning');
+        alert('Please sign in to start workouts');
         return;
     }
     
@@ -60,7 +60,7 @@ export async function selectTemplate(templateId, isDefault = false) {
         }
         
         if (!selectedTemplate) {
-            showNotification('Template not found', 'error');
+            console.error('❌ Template not found');
             return;
         }
         
@@ -73,7 +73,7 @@ export async function selectTemplate(templateId, isDefault = false) {
         
     } catch (error) {
         console.error('Error selecting template:', error);
-        showNotification('Error starting workout from template', 'error');
+        alert('Error starting workout from template');
     }
 }
 
@@ -187,29 +187,26 @@ export function useTemplate(templateId) {
 
 export async function useTemplateFromManagement(templateId, isDefault) {
     console.log('🔧 useTemplateFromManagement called:', { templateId, isDefault });
-    
+
     try {
         // Hide management UI first
-        const workoutManagement = document.getElementById('workout-management');
+        const workoutManagement = document.getElementById('workout-management-section');
         if (workoutManagement) {
             workoutManagement.classList.add('hidden');
         }
-        
-        // Show workout selector
-        showWorkoutSelector();
-        
-        // Start workout with template
+
+        // Start workout with template directly (don't show workout selector)
         await selectTemplate(templateId, isDefault);
-        
+
     } catch (error) {
         console.error('Error in useTemplateFromManagement:', error);
-        showNotification('Error starting template', 'error');
+        alert('Error starting template');
     }
 }
 
 export async function copyTemplateToCustom(templateId) {
     if (!AppState.currentUser) {
-        showNotification('Please sign in to copy templates', 'warning');
+        alert('Please sign in to copy templates');
         return;
     }
     
@@ -220,7 +217,7 @@ export async function copyTemplateToCustom(templateId) {
         );
         
         if (!defaultTemplate) {
-            showNotification('Template not found', 'error');
+            console.error('❌ Template not found');
             return;
         }
         
@@ -239,7 +236,7 @@ export async function copyTemplateToCustom(templateId) {
         const workoutManager = new FirebaseWorkoutManager(AppState);
         await workoutManager.saveWorkoutTemplate(customTemplate);
         
-        showNotification(`Template copied as "${customTemplate.name}"`, 'success');
+        console.log(`✅ Template copied as "${customTemplate.name}"`);
         
         // Refresh templates if on custom tab
         if (currentTemplateCategory === 'custom') {
@@ -248,13 +245,13 @@ export async function copyTemplateToCustom(templateId) {
         
     } catch (error) {
         console.error('Error copying template:', error);
-        showNotification('Error copying template', 'error');
+        alert('Error copying template');
     }
 }
 
 export async function deleteCustomTemplate(templateId) {
     if (!AppState.currentUser) {
-        showNotification('Please sign in to delete templates', 'warning');
+        alert('Please sign in to delete templates');
         return;
     }
     
@@ -267,14 +264,14 @@ export async function deleteCustomTemplate(templateId) {
         const workoutManager = new FirebaseWorkoutManager(AppState);
         await workoutManager.deleteWorkoutTemplate(templateId);
         
-        showNotification('Template deleted successfully', 'success');
+        console.log('✅ Template deleted successfully');
         
         // Refresh templates
         loadTemplatesByCategory();
         
     } catch (error) {
         console.error('Error deleting template:', error);
-        showNotification('Error deleting template', 'error');
+        alert('Error deleting template');
     }
 }
 
@@ -425,7 +422,7 @@ export function previewWorkout(workoutType) {
     );
     
     if (!workout) {
-        showNotification('Workout not found', 'error');
+        console.error('❌ Workout not found');
         return;
     }
     
@@ -632,7 +629,7 @@ export async function editTemplate(templateId) {
     console.log('📝 Editing template:', templateId);
     
     if (!AppState.currentUser) {
-        showNotification('Please sign in to edit templates', 'warning');
+        alert('Please sign in to edit templates');
         return;
     }
     
@@ -648,7 +645,7 @@ export async function editTemplate(templateId) {
         template = userTemplates.find(t => t.id === templateId);
         
         if (!template) {
-            showNotification('Template not found', 'error');
+            console.error('❌ Template not found');
             return;
         }
         
@@ -657,7 +654,7 @@ export async function editTemplate(templateId) {
         
     } catch (error) {
         console.error('Error editing template:', error);
-        showNotification('Error loading template for editing', 'error');
+        alert('Error loading template for editing');
     }
 }
 
@@ -800,7 +797,7 @@ export async function saveBasicTemplate() {
     const categorySelect = document.getElementById('basic-template-category');
     
     if (!nameInput?.value.trim()) {
-        showNotification('Please enter a template name', 'warning');
+        alert('Please enter a template name');
         return;
     }
     
@@ -823,11 +820,11 @@ export async function saveBasicTemplate() {
             loadTemplatesByCategory();
         }
         
-        showNotification('Template updated successfully!', 'success');
+        console.log('✅ Template updated successfully!');
         
     } catch (error) {
         console.error('Error saving template:', error);
-        showNotification('Error saving template', 'error');
+        alert('Error saving template');
     }
 }
 
@@ -863,7 +860,7 @@ export function clearTemplateFilters() {
     // Reset to show all templates
     loadTemplatesByCategory();
     
-    showNotification('Filters cleared', 'info');
+    console.log('✅ Filters cleared');
 }
 
 export function refreshTemplates() {
@@ -877,7 +874,7 @@ export function refreshTemplates() {
     // Reload templates
     loadTemplatesByCategory();
     
-    showNotification('Templates refreshed', 'success');
+    console.log('✅ Templates refreshed');
 }
 
 // ===================================================================
@@ -906,11 +903,11 @@ export function setCurrentTemplateCategory(category) {
 
 // Add missing functions referenced in the basic editor
 window.addExerciseToBasicTemplate = function() {
-    showNotification('Exercise addition coming soon!', 'info');
+    console.log('ℹ️ Exercise addition coming soon!');
 };
 
 window.editBasicExercise = function(index) {
-    showNotification(`Edit exercise ${index + 1} coming soon!`, 'info');
+    console.log(`ℹ️ Edit exercise ${index + 1} coming soon!`);
 };
 
 window.removeBasicExercise = function(index) {
@@ -920,6 +917,6 @@ window.removeBasicExercise = function(index) {
     if (confirm('Remove this exercise from the template?')) {
         modal.templateData.exercises.splice(index, 1);
         showBasicTemplateEditor(modal.templateData);
-        showNotification('Exercise removed', 'info');
+        console.log('✅ Exercise removed');
     }
 };
