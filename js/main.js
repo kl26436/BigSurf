@@ -351,10 +351,13 @@ window.showTemplatesByCategory = function(category) {
             transition: all 0.3s ease;
         `;
         
+        // Use name or day field (some workouts use name, others use day)
+        const workoutName = workout.name || workout.day || 'Unnamed Workout';
+
         card.innerHTML = `
-            <h4 style="margin: 0 0 1rem 0; color: #c9d1d9;">${workout.day}</h4>
+            <h4 style="margin: 0 0 1rem 0; color: #c9d1d9;">${workoutName}</h4>
             <p style="margin: 0 0 1rem 0; color: #8b949e;">${workout.exercises?.length || 0} exercises</p>
-            <button onclick="startWorkoutFromModal('${workout.day}')" style="
+            <button onclick="startWorkoutFromModal('${workoutName}')" style="
                 background: #40e0d0;
                 color: #0d1117;
                 border: none;
