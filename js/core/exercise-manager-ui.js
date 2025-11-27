@@ -3,10 +3,12 @@
 
 import { AppState } from './app-state.js';
 import { showNotification } from './ui-helpers.js';
+import { FirebaseWorkoutManager } from './firebase-workout-manager.js';
 
 let allExercises = [];
 let filteredExercises = [];
 let currentEditingExercise = null;
+let workoutManager = null;
 
 // Open exercise manager section
 export function openExerciseManager() {
@@ -50,6 +52,11 @@ export function closeExerciseManager() {
 // Load exercises from AppState
 async function loadExercises() {
     console.log('🔄 Loading exercises from library...');
+
+    // Initialize workout manager if needed
+    if (!workoutManager) {
+        workoutManager = new FirebaseWorkoutManager(AppState);
+    }
 
     if (!AppState.exerciseDatabase || AppState.exerciseDatabase.length === 0) {
         console.log('⚠️ No exercises in database');
@@ -311,15 +318,20 @@ export async function saveExercise(event) {
     }
 
     try {
-        // TODO: Implement actual save to Firebase using FirebaseWorkoutManager
-        console.log(`✅ Exercise "${formData.name}" saved (Firebase integration pending)`);
+        // Save to Firebase using FirebaseWorkoutManager
+        if (!workoutManager) {
+            workoutManager = new FirebaseWorkoutManager(AppState);
+        }
+
+        await workoutManager.saveCustomExercise(formData, false);
+        console.log(`✅ Exercise "${formData.name}" saved successfully`);
 
         closeAddExerciseModal();
         await refreshExerciseLibrary();
 
     } catch (error) {
         console.error('❌ Error saving exercise:', error);
-        alert('Error saving exercise');
+        alert('Error saving exercise: ' + error.message);
     }
 }
 
@@ -339,16 +351,29 @@ export async function deleteExercise(exerciseId) {
 
     if (confirm(confirmMessage)) {
         try {
-            // TODO: Implement actual delete using FirebaseWorkoutManager
-            console.log(`✅ Exercise "${exercise.name}" removed (Firebase integration pending)`);
+            // Initialize workout manager if needed
+            if (!workoutManager) {
+                workoutManager = new FirebaseWorkoutManager(AppState);
+            }
 
-            // Remove from local array for now
-            allExercises = allExercises.filter(ex => ex.id !== exerciseId);
-            filterExerciseLibrary();
+            // Delete from Firebase
+            if (exercise.isCustom) {
+                await workoutManager.deleteCustomExercise(exerciseId);
+                console.log(`✅ Custom exercise "${exercise.name}" deleted`);
+            } else if (exercise.isOverride) {
+                await workoutManager.deleteExerciseOverride(exerciseId);
+                console.log(`✅ Override for "${exercise.name}" removed`);
+            } else {
+                await workoutManager.hideDefaultExercise(exerciseId);
+                console.log(`✅ Default exercise "${exercise.name}" hidden`);
+            }
+
+            // Refresh the exercise library
+            await refreshExerciseLibrary();
 
         } catch (error) {
             console.error('❌ Error deleting exercise:', error);
-            alert('Error processing request');
+            alert('Error processing request: ' + error.message);
         }
     }
 }

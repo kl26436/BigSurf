@@ -218,9 +218,51 @@ export function finishManualWorkout() {
     submitManualWorkout();
 }
 
-export function loadWorkoutTemplate() {
-    // This could load from a template in the future
-    showNotification('Template loading functionality coming soon!', 'info');
+export async function loadWorkoutTemplate() {
+    if (!AppState.currentUser) {
+        alert('Please sign in to load templates');
+        return;
+    }
+
+    // Get available templates
+    const templates = AppState.workoutPlans || [];
+
+    if (templates.length === 0) {
+        alert('No workout templates available');
+        return;
+    }
+
+    // Create a simple selection dialog
+    const templateNames = templates.map((t, i) => `${i + 1}. ${t.name || t.day}`).join('\n');
+    const selection = prompt(`Select a template to load:\n\n${templateNames}\n\nEnter the number:`);
+
+    if (!selection) return; // User cancelled
+
+    const index = parseInt(selection) - 1;
+    if (index < 0 || index >= templates.length) {
+        alert('Invalid selection');
+        return;
+    }
+
+    const template = templates[index];
+
+    // Load exercises from template into manual workout
+    currentManualWorkout.exercises = template.exercises.map(ex => ({
+        name: ex.name || ex.machine,
+        bodyPart: ex.bodyPart || '',
+        equipmentType: ex.equipmentType || '',
+        sets: Array(ex.sets || 3).fill(null).map(() => ({
+            reps: ex.reps || 10,
+            weight: ex.weight || 50,
+            completed: false
+        })),
+        notes: '',
+        manuallyCompleted: false
+    }));
+
+    // Update UI
+    renderManualExerciseList();
+    console.log(`✅ Loaded ${currentManualWorkout.exercises.length} exercises from template "${template.name || template.day}"`);
 }
 
 // ===================================================================

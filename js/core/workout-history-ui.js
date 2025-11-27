@@ -127,8 +127,14 @@ export function resumeWorkout(workoutId) {
     const confirmMessage = `Resume "${workout.workoutType}" from ${new Date(workout.date).toLocaleDateString()}?`;
     if (confirm(confirmMessage)) {
         console.log(' Resuming workout:', workoutId);
-        // TODO: Implement actual resume functionality
-        showNotification('Resume functionality coming soon', 'info');
+
+        // Start a new workout with the same type - the saved data will be loaded automatically
+        if (typeof window.startWorkout === 'function') {
+            window.startWorkout(workout.workoutType);
+        } else {
+            console.error('❌ startWorkout function not available');
+            alert('Cannot resume workout. Please refresh the page.');
+        }
     }
 }
 
@@ -189,8 +195,14 @@ export function retryWorkout(workoutId) {
     }
     
     console.log(' Retrying workout:', workoutId);
-    // TODO: Implement actual retry functionality
-    showNotification('Retry functionality coming soon', 'info');
+
+    // Retry is the same as Repeat - start a new workout with the same type
+    if (typeof window.startWorkout === 'function') {
+        window.startWorkout(workout.workoutType);
+    } else {
+        console.error('❌ startWorkout function not available');
+        alert('Cannot retry workout. Please refresh the page.');
+    }
 }
 
 // ===================================================================
@@ -285,8 +297,20 @@ export function closeWorkoutDetailModal() {
 
 export function clearAllHistoryFilters() {
     console.log(' Clearing all history filters');
-    // TODO: Implement filter clearing
-    showNotification('Filter clearing coming soon', 'info');
+
+    // Clear search input if it exists
+    const searchInput = document.getElementById('history-search');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+
+    // Clear the filter in workout-history module
+    if (window.workoutHistory && typeof window.workoutHistory.filterHistory === 'function') {
+        window.workoutHistory.filterHistory('');
+        console.log('✅ History filters cleared');
+    } else {
+        console.warn('⚠️ Workout history filter function not available');
+    }
 }
 
 // REMOVED: setupHistoryFilters(), applyHistoryFilters(), enhanceWorkoutData(),
