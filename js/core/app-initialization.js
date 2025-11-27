@@ -135,6 +135,7 @@ export function initializeEnhancedWorkoutSelector() {
 // ===================================================================
 
 let signingIn = false; // Prevent multiple simultaneous sign-in attempts
+let manualSignOut = false; // Track manual sign-out to prevent auth listener interference
 
 export async function signIn() {
     // Prevent multiple popups from opening
@@ -196,6 +197,7 @@ export async function signIn() {
 
 export async function signOutUser() {
     try {
+        manualSignOut = true; // Flag to prevent auth listener from interfering
         await signOut(auth);
         console.log('✅ Sign-out successful');
 
@@ -245,9 +247,15 @@ export async function signOutUser() {
         window.inProgressWorkout = null;
 
         console.log('✅ User signed out - showing sign-in screen');
+
+        // Reset flag after a delay to allow auth state change to complete
+        setTimeout(() => {
+            manualSignOut = false;
+        }, 500);
     } catch (error) {
         console.error('❌ Sign-out error:', error);
         showNotification('Error signing out', 'error');
+        manualSignOut = false;
     }
 }
 
@@ -347,6 +355,15 @@ export function setupAuthenticationListener() {
         } else {
             console.log('👤 User signed out');
             AppState.currentUser = null;
+
+            // If this is a manual sign-out, don't run this code (it's already handled)
+            if (manualSignOut) {
+                console.log('ℹ️ Manual sign-out - UI already updated');
+                return;
+            }
+
+            // This runs only for automatic/external sign-outs (session expired, etc.)
+            console.log('ℹ️ Automatic sign-out detected');
 
             // Hide all content sections
             const sections = [
