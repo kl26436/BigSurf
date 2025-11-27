@@ -36,7 +36,7 @@ export async function saveWorkoutData(state) {
     if (state.currentWorkout) {
         const exerciseNames = {};
         state.currentWorkout.exercises.forEach((exercise, index) => {
-            exerciseNames[`exercise_${index}`] = exercise.machine;
+            exerciseNames[`exercise_${index}`] = exercise.machine || exercise.name;
         });
         state.savedData.exerciseNames = exerciseNames;
         
@@ -44,7 +44,7 @@ export async function saveWorkoutData(state) {
         state.savedData.originalWorkout = {
             day: state.currentWorkout.day,
             exercises: state.currentWorkout.exercises.map(ex => ({
-                machine: ex.machine,
+                machine: ex.machine || ex.name,
                 sets: ex.sets,
                 reps: ex.reps,
                 weight: ex.weight,
@@ -515,7 +515,7 @@ export async function migrateWorkoutData(state) {
                     // Add missing fields
                     const exerciseNames = {};
                     workoutPlan.exercises.forEach((exercise, index) => {
-                        exerciseNames[`exercise_${index}`] = exercise.machine;
+                        exerciseNames[`exercise_${index}`] = exercise.machine || exercise.name;
                     });
                     
                     const updatedData = {
