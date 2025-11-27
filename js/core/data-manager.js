@@ -150,9 +150,9 @@ export async function loadWorkoutPlans(state) {
         // Import the Firebase workout manager
         const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(state);
-        
-        // Load workout templates from Firebase
-        state.workoutPlans = await workoutManager.getWorkoutTemplates();
+
+        // Load workout templates from Firebase (includes both default AND custom)
+        state.workoutPlans = await workoutManager.getUserWorkoutTemplates();
         console.log(' Workout plans loaded from Firebase:', state.workoutPlans.length);
         
         // Load exercise database from Firebase

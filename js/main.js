@@ -51,7 +51,7 @@ import {
     addExerciseToTemplate, editTemplateExercise, removeTemplateExercise,
     openExerciseLibrary, closeExerciseLibrary,
     showCreateExerciseForm, closeCreateExerciseModal, createNewExercise,
-    returnToWorkoutsFromManagement
+    returnToWorkoutsFromManagement, editTemplate
 } from './core/workout/workout-management-ui.js';
 
 // Manual workout functionality
@@ -416,6 +416,7 @@ window.showCreateExerciseForm = showCreateExerciseForm;
 window.closeCreateExerciseModal = closeCreateExerciseModal;
 window.createNewExercise = createNewExercise;
 window.returnToWorkoutsFromManagement = returnToWorkoutsFromManagement;
+window.editTemplate = editTemplate;
 
 // Authentication Functions
 window.signIn = signIn;
