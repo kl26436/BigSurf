@@ -315,6 +315,11 @@ export async function saveCurrentTemplate() {
 
         closeTemplateEditor();
         await loadWorkoutTemplates();
+
+        // CRITICAL: Also refresh the template selector UI
+        const { loadTemplatesByCategory } = await import('../template-selection.js');
+        await loadTemplatesByCategory();
+        console.log('✅ Template selector UI refreshed');
     }
 }
 
