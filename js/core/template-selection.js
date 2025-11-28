@@ -235,13 +235,16 @@ export async function copyTemplateToCustom(templateId) {
         const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(AppState);
         await workoutManager.saveWorkoutTemplate(customTemplate);
-        
+
         console.log(`✅ Template copied as "${customTemplate.name}"`);
-        
-        // Refresh templates if on custom tab
-        if (currentTemplateCategory === 'custom') {
-            loadTemplatesByCategory();
-        }
+
+        // CRITICAL: Reload AppState.workoutPlans so new template is available
+        AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
+        console.log('✅ Workout plans reloaded after copy:', AppState.workoutPlans.length);
+
+        // Switch to custom tab to show the newly copied template
+        switchTemplateCategory('custom');
+        console.log('✅ Switched to custom tab to show copied template');
         
     } catch (error) {
         console.error('Error copying template:', error);
