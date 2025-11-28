@@ -211,3 +211,42 @@ localStorage.setItem('debug', 'firebase:*');
 - **Mobile-first**: UI designed for mobile gym use, responsive design
 - **Modal-based UI**: All major features (workout management, exercise library, manual entry) use integrated modals instead of separate pages
 - **No popup windows**: Exercise manager integrated as modal (exercise-manager.html is legacy, not used in production)
+
+## Recent Improvements (v4.2-v4.7, November 2025)
+
+### v4.7: Resume Banner Stats
+- Resume banner now shows actual sets completed (e.g., "12/15 sets") instead of "0/0"
+- Shows time elapsed since workout started (minutes if < 1h, hours otherwise)
+- **File**: [dashboard-ui.js:133-158](js/core/dashboard-ui.js#L133-L158)
+
+### v4.5-v4.6: Smart Abandoned Workout Handling
+- **3-hour timeout**: Resume banner only shows for workouts < 3 hours old
+- **Auto-complete**: Workouts > 3h with exercises done are auto-completed (preserves on original date)
+- **Auto-delete**: Workouts > 3h with no exercises are deleted automatically
+- **Midnight boundary**: Checks both today and yesterday for incomplete workouts
+- **Files**: [dashboard-ui.js:45-142](js/core/dashboard-ui.js#L45-L142)
+
+### v4.4: Template Deep Clone Fix
+- **Critical bug**: Shallow copy `{...workout}` was causing template mutations
+- **Issue**: Deleting sets during workout modified the template itself
+- **Fix**: Deep clone with `JSON.parse(JSON.stringify(workout))` ensures template independence
+- **File**: [workout-core.js:44](js/core/workout-core.js#L44)
+
+### v4.3: Calendar Status Colors
+- **Visual improvement**: Calendar uses color-coded icons instead of text labels
+- **Green**: Completed workouts
+- **Orange**: In-progress workouts
+- **Red X**: Missed workout days
+- **Files**: [workout-history.js:165-167,314,346](js/core/workout-history.js), [style.css:3970-3989](style.css#L3970-L3989)
+
+### v4.2: Cancel Workflow Improvements
+- **Confirmation dialog**: Added before cancelling workouts
+- **History filter**: Cancelled workouts no longer appear in history/calendar
+- **Files**: [workout-core.js:133-152](js/core/workout-core.js#L133-L152), [firebase-workout-manager.js:783](js/core/firebase-workout-manager.js#L783)
+
+### Key Technical Learnings
+
+1. **Deep vs Shallow Copy**: Always use deep clone for nested objects when modifications should not affect source
+2. **Abandoned Workout Detection**: Use `startedAt` timestamp comparison for time-based logic
+3. **Workout Status States**: `completed`, `incomplete`, `cancelled`, `partial` - must check `completedAt` and `cancelledAt` fields
+4. **Calendar Rendering**: Status-based CSS classes enable color coding without text labels

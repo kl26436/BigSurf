@@ -37,28 +37,28 @@ Use this checklist to test Big Surf Workout Tracker on your mobile device before
 - [ ] Custom workout appears in history with correct title
 
 ### During Workout Execution
-- [ ] Can enter sets, reps, and weights
-- [ ] Number keyboard appears for number inputs
-- [ ] Can switch between lbs/kg per exercise
-- [ ] Rest timer works and displays correctly
-- [ ] Can add sets (+ button)
-- [ ] Can delete sets (- button)
-- [ ] Can add notes to exercises
-- [ ] Progress indicator updates correctly
-- [ ] Can pause and resume workout
-- [ ] Can delete exercises from workout
-- [ ] NO success notifications when adding/removing sets
-- [ ] NO notifications when marking exercises complete
-- [ ] Exercise history loads and displays previous performance
+- [x] Can enter sets, reps, and weights ✅ TESTED 2025-11-27
+- [x] Number keyboard appears for number inputs ✅ TESTED 2025-11-27
+- [x] Can switch between lbs/kg per exercise ✅ TESTED 2025-11-27
+- [x] Rest timer works and displays correctly ✅ TESTED 2025-11-27
+- [x] Can add sets (+ button) ✅ TESTED 2025-11-27
+- [x] Can delete sets (- button) ✅ TESTED 2025-11-27
+- [x] Can add notes to exercises ✅ TESTED 2025-11-27
+- [x] Progress indicator updates correctly ✅ TESTED 2025-11-27
+- [x] Can pause and resume workout ✅ TESTED 2025-11-27
+- [x] Can delete exercises from workout ✅ TESTED 2025-11-27
+- [x] NO success notifications when adding/removing sets ✅ TESTED 2025-11-27
+- [x] NO notifications when marking exercises complete ✅ TESTED 2025-11-27
+- [x] Exercise history loads and displays previous performance ✅ TESTED 2025-11-27
 
 ### Completing & Canceling Workouts
-- [ ] Complete button works
-- [ ] Workout saves to Firebase
-- [ ] Appears in workout history immediately
-- [ ] Duration calculated correctly
-- [ ] All data persisted (sets, reps, weights, notes, units)
-- [ ] Can cancel workout mid-session
-- [ ] Cancelled workouts don't appear in history
+- [x] Complete button works ✅ TESTED 2025-11-27
+- [x] Workout saves to Firebase ✅ TESTED 2025-11-27
+- [x] Appears in workout history immediately ✅ TESTED 2025-11-27
+- [x] Duration calculated correctly ✅ TESTED 2025-11-27
+- [x] All data persisted (sets, reps, weights, notes, units) ✅ TESTED 2025-11-27
+- [x] Can cancel workout mid-session ✅ TESTED 2025-11-27
+- [x] Cancelled workouts don't appear in history ✅ TESTED 2025-11-27 (v4.2+)
 
 ### In-Progress Workout Detection
 - [ ] Starting a workout then refreshing shows resume card
@@ -296,38 +296,34 @@ Before announcing to users:
 - [ ] README is up to date
 - [ ] Version number updated (v3.20)
 
-## 🚨 Recent Changes to Test (v3.16-v3.20)
+## 🚨 Recent Changes to Test (v4.2-v4.7)
 
-### v3.16: Custom Workout Fix
-- [ ] Custom workouts start without "undefined field" error
-- [ ] Custom workouts save with correct name
+### v4.2: Cancel Workflow Fix
+- [x] Cancel workout shows confirmation dialog ✅ TESTED 2025-11-27
+- [x] Cancelled workouts don't appear in history ✅ TESTED 2025-11-27
 
-### v3.17: Missing Features Implementation
-- [ ] Delete template works
-- [ ] Edit template exercise works (prompt-based editing)
-- [ ] Repeat workout works
-- [ ] Add exercise to manual workout works
+### v4.3: Calendar Status Colors
+- [x] Completed workouts show as green icons ✅ TESTED 2025-11-27
+- [x] In-progress workouts show as orange icons ✅ TESTED 2025-11-27
+- [ ] Cancelled workouts show as red (filtered out)
+- [x] No text labels on calendar (just colored icons) ✅ TESTED 2025-11-27
+- [ ] Red X for missed workout days
 
-### v3.18: Additional Features
-- [ ] Use template from management works
-- [ ] Delete workout from history works
+### v4.4: Resume & Template Fixes
+- [x] Resume workout button works (not throwing error) ✅ TESTED 2025-11-27
+- [x] Repeat workout uses template (not previous saved data) ✅ TESTED 2025-11-27
+- [x] Deleting sets during workout doesn't affect template ✅ TESTED 2025-11-27
+- [x] Next workout of same type has correct number of sets ✅ TESTED 2025-11-27
 
-### v3.19: Complete Remaining Features
-- [ ] Exercise manager save works (Firebase integration)
-- [ ] Exercise manager delete works (custom, override, hide)
-- [ ] Load template in manual workout works (numbered selection)
-- [ ] Resume workout works
-- [ ] Retry workout works
-- [ ] Clear history filters works
+### v4.5-v4.6: Midnight & Abandoned Workout Handling
+- [x] Resume banner shows for workouts started yesterday ✅ TESTED 2025-11-27
+- [ ] Workouts > 3 hours old auto-complete if exercises done
+- [ ] Workouts > 3 hours old auto-delete if empty
+- [ ] Resume banner doesn't show for workouts > 3h old
 
-### v3.20: Notification Cleanup
-- [ ] NO notifications for routine manual workout operations
-- [ ] NO notifications for exercise library selection
-- [ ] NO notifications for template save/update/delete
-- [ ] NO notifications for exercise CRUD operations
-- [ ] Location notifications STILL appear (user requested)
-- [ ] Error/warning notifications STILL appear (critical feedback)
-- [ ] Workout deletion confirmation STILL appears
+### v4.7: Resume Banner Stats
+- [x] Resume banner shows actual sets completed (not 0/0) ✅ TESTED 2025-11-27
+- [x] Resume banner shows time ago (minutes/hours) ✅ TESTED 2025-11-27
 
 ## 🔍 Console Check
 
