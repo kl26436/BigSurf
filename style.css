@@ -4440,6 +4440,50 @@ body {
     font-style: italic;
 }
 
+/* Day Selector */
+.day-selector {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0;
+}
+
+.day-checkbox {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+
+.day-checkbox input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.day-checkbox span {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.day-checkbox:hover span {
+    border-color: var(--primary);
+    background: var(--bg-tertiary);
+}
+
+.day-checkbox input[type="checkbox"]:checked + span {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--bg-primary);
+    font-weight: 600;
+}
+
 .form-input {
     width: 100%;
     background: var(--bg-tertiary);

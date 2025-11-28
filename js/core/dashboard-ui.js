@@ -490,10 +490,18 @@ async function getSuggestedWorkoutsForToday() {
         const workoutManager = new FirebaseWorkoutManager(AppState);
         const allTemplates = await workoutManager.getUserWorkoutTemplates();
 
-        // Filter to only templates with suggestedDay matching today
-        const suggested = allTemplates.filter(template =>
-            template.suggestedDay === dayOfWeek
-        );
+        // Filter to templates with today in suggestedDays array (or old suggestedDay field for backwards compatibility)
+        const suggested = allTemplates.filter(template => {
+            // Check new array format (suggestedDays)
+            if (template.suggestedDays && Array.isArray(template.suggestedDays)) {
+                return template.suggestedDays.includes(dayOfWeek);
+            }
+            // Backwards compatibility: check old single-day format
+            if (template.suggestedDay) {
+                return template.suggestedDay === dayOfWeek;
+            }
+            return false;
+        });
 
         console.log(`📅 Found ${suggested.length} workouts suggested for ${dayOfWeek}`);
         return suggested;

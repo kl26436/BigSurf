@@ -251,18 +251,38 @@ function showTemplateEditor() {
             </div>
 
             <div class="form-group">
-                <label for="template-day">Suggested Day (Optional)</label>
-                <select id="template-day" class="form-input">
-                    <option value="" ${!currentEditingTemplate.suggestedDay ? 'selected' : ''}>No specific day</option>
-                    <option value="monday" ${currentEditingTemplate.suggestedDay === 'monday' ? 'selected' : ''}>Monday</option>
-                    <option value="tuesday" ${currentEditingTemplate.suggestedDay === 'tuesday' ? 'selected' : ''}>Tuesday</option>
-                    <option value="wednesday" ${currentEditingTemplate.suggestedDay === 'wednesday' ? 'selected' : ''}>Wednesday</option>
-                    <option value="thursday" ${currentEditingTemplate.suggestedDay === 'thursday' ? 'selected' : ''}>Thursday</option>
-                    <option value="friday" ${currentEditingTemplate.suggestedDay === 'friday' ? 'selected' : ''}>Friday</option>
-                    <option value="saturday" ${currentEditingTemplate.suggestedDay === 'saturday' ? 'selected' : ''}>Saturday</option>
-                    <option value="sunday" ${currentEditingTemplate.suggestedDay === 'sunday' ? 'selected' : ''}>Sunday</option>
-                </select>
-                <small class="form-hint">Choose which day of the week this workout is recommended for</small>
+                <label>Suggested Days (Optional)</label>
+                <div class="day-selector">
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="suggested-days" value="monday" ${currentEditingTemplate.suggestedDays?.includes('monday') ? 'checked' : ''}>
+                        <span>Mon</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="suggested-days" value="tuesday" ${currentEditingTemplate.suggestedDays?.includes('tuesday') ? 'checked' : ''}>
+                        <span>Tue</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="suggested-days" value="wednesday" ${currentEditingTemplate.suggestedDays?.includes('wednesday') ? 'checked' : ''}>
+                        <span>Wed</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="suggested-days" value="thursday" ${currentEditingTemplate.suggestedDays?.includes('thursday') ? 'checked' : ''}>
+                        <span>Thu</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="suggested-days" value="friday" ${currentEditingTemplate.suggestedDays?.includes('friday') ? 'checked' : ''}>
+                        <span>Fri</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="suggested-days" value="saturday" ${currentEditingTemplate.suggestedDays?.includes('saturday') ? 'checked' : ''}>
+                        <span>Sat</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="suggested-days" value="sunday" ${currentEditingTemplate.suggestedDays?.includes('sunday') ? 'checked' : ''}>
+                        <span>Sun</span>
+                    </label>
+                </div>
+                <small class="form-hint">Select which days this workout is recommended for (e.g., Tue + Fri for legs)</small>
             </div>
 
             <div class="form-section">
@@ -307,7 +327,10 @@ export async function saveCurrentTemplate() {
 
     const nameInput = document.getElementById('template-name');
     const categorySelect = document.getElementById('template-category');
-    const daySelect = document.getElementById('template-day');
+
+    // Get all checked day checkboxes
+    const dayCheckboxes = document.querySelectorAll('input[name="suggested-days"]:checked');
+    const selectedDays = Array.from(dayCheckboxes).map(cb => cb.value);
 
     if (!nameInput?.value.trim()) {
         showNotification('Please enter a template name', 'warning');
@@ -316,7 +339,7 @@ export async function saveCurrentTemplate() {
 
     currentEditingTemplate.name = nameInput.value.trim();
     currentEditingTemplate.category = categorySelect?.value || 'Other';
-    currentEditingTemplate.suggestedDay = daySelect?.value || null;
+    currentEditingTemplate.suggestedDays = selectedDays.length > 0 ? selectedDays : null;
 
     if (currentEditingTemplate.exercises.length === 0) {
         showNotification('Please add at least one exercise to the template', 'warning');
