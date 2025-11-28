@@ -40,8 +40,8 @@ export async function startWorkout(workoutType) {
         return;
     }
 
-    // Set up workout state
-    AppState.currentWorkout = { ...workout };
+    // Set up workout state - DEEP CLONE to avoid modifying the template
+    AppState.currentWorkout = JSON.parse(JSON.stringify(workout));
     AppState.workoutStartTime = new Date();
     AppState.savedData = {
         workoutType: workoutType,

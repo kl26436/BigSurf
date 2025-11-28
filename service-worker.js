@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v4.3-calendar-status-colors';
+const CACHE_NAME = 'big-surf-v4.4-resume-and-template-fixes';
 const STATIC_ASSETS = [
   '/index.html',
   '/style.css',

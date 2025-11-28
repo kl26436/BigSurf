@@ -466,7 +466,7 @@ export function getWorkoutHistory(appState) {
                     <button class="btn btn-danger" onclick="deleteWorkoutFromCalendar('${date}')">
                         <i class="fas fa-trash"></i> Delete This Workout
                     </button>
-                    <button class="btn btn-secondary" onclick="workoutHistory.repeatWorkout('${date}')">
+                    <button class="btn btn-secondary" onclick="repeatWorkout('${date}')">
                         <i class="fas fa-redo"></i> Repeat Workout
                     </button>
                 </div>
@@ -474,7 +474,7 @@ export function getWorkoutHistory(appState) {
         } else {
             actionButtons = `
                 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                    <button class="btn btn-secondary" onclick="workoutHistory.repeatWorkout('${date}')">
+                    <button class="btn btn-secondary" onclick="repeatWorkout('${date}')">
                         <i class="fas fa-redo"></i> Repeat Workout
                     </button>
                     <button class="btn btn-danger" onclick="deleteWorkoutFromCalendar('${date}')">
@@ -639,7 +639,7 @@ showFixedWorkoutModal(workout) {
     if (workoutStatus === 'incomplete') {
         // In-progress workout - show Resume button
         actionButtons = `
-            <button class="btn btn-primary" onclick="workoutHistory.resumeWorkout('${workout.date}')">
+            <button class="btn btn-primary" onclick="resumeWorkout('${workout.date}')">
                 <i class="fas fa-play"></i> Resume Workout
             </button>
             <button class="btn btn-danger" onclick="deleteWorkoutFromCalendar('${workout.date}')">
@@ -650,13 +650,13 @@ showFixedWorkoutModal(workout) {
             <button class="btn btn-danger" onclick="deleteWorkoutFromCalendar('${workout.date}')">
                 <i class="fas fa-trash"></i> Delete This Workout
             </button>
-            <button class="btn btn-secondary" onclick="workoutHistory.repeatWorkout('${workout.date}')">
+            <button class="btn btn-secondary" onclick="repeatWorkout('${workout.date}')">
                 <i class="fas fa-redo"></i> Repeat Workout
             </button>`;
     } else {
         // Completed workout - show Repeat button
         actionButtons = `
-            <button class="btn btn-secondary" onclick="workoutHistory.repeatWorkout('${workout.date}')">
+            <button class="btn btn-secondary" onclick="repeatWorkout('${workout.date}')">
                 <i class="fas fa-redo"></i> Repeat Workout
             </button>
             <button class="btn btn-danger" onclick="deleteWorkoutFromCalendar('${workout.date}')">
