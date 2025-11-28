@@ -100,8 +100,9 @@ Use this checklist to test Big Surf Workout Tracker on your mobile device before
 ### Workout Management (Templates)
 - [ ] "Manage Workouts" button opens modal
 - [ ] Can switch between default/custom templates
-- [ ] Can **copy default template to custom** (makes editable copy)
-- [ ] Copied template appears in custom templates immediately
+- [x] Can **copy default template to custom** (makes editable copy) ✅ TESTED 2025-11-28 (v4.12+)
+- [x] Copied template appears in custom templates immediately ✅ TESTED 2025-11-28 (v4.12+)
+- [x] Copied template exercises are editable (deep clone) ✅ TESTED 2025-11-28 (v4.13)
 - [ ] Can create new template
 - [ ] Can **edit template** (opens editor)
 - [ ] Can edit template name
@@ -296,9 +297,9 @@ Before announcing to users:
 - [ ] Firebase rules are secure
 - [ ] Backup data exported
 - [ ] README is up to date
-- [ ] Version number updated (v3.20)
+- [ ] Version number updated (v4.13)
 
-## 🚨 Recent Changes to Test (v4.2-v4.7)
+## 🚨 Recent Changes to Test (v4.2-v4.13)
 
 ### v4.2: Cancel Workflow Fix
 - [x] Cancel workout shows confirmation dialog ✅ TESTED 2025-11-27
@@ -336,6 +337,12 @@ Before announcing to users:
 - [x] Custom workout can be started immediately ✅ TESTED 2025-11-28 (v4.9)
 - [x] Exercise names display correctly (not "undefined") ✅ TESTED 2025-11-28 (v4.10)
 - [x] Template selector UI refreshes after creating template ✅ TESTED 2025-11-28 (v4.11)
+
+### v4.12-v4.13: Copy to Custom Feature
+- [x] Copy to Custom saves template to Firebase ✅ TESTED 2025-11-28 (v4.12)
+- [x] Copied template appears in custom templates immediately ✅ TESTED 2025-11-28 (v4.12)
+- [x] Auto-switches to custom tab after copy ✅ TESTED 2025-11-28 (v4.12)
+- [x] Copied exercises are fully editable (deep clone) ✅ TESTED 2025-11-28 (v4.13)
 
 ## 🧪 How to Test Auto-Delete (Empty Workout > 3h)
 
