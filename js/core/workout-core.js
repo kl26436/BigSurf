@@ -245,6 +245,12 @@ export function continueInProgressWorkout() {
     const activeWorkout = document.getElementById('active-workout');
     if (activeWorkout) activeWorkout.classList.remove('hidden');
 
+    // Set workout name in header
+    const workoutNameElement = document.getElementById('current-workout-name');
+    if (workoutNameElement) {
+        workoutNameElement.textContent = window.inProgressWorkout.workoutType;
+    }
+
     // Resume timer
     startWorkoutTimer();
     
