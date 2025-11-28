@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v4.6-3hour-resume-limit';
+const CACHE_NAME = 'big-surf-v4.7-resume-banner-stats';
 const STATIC_ASSETS = [
   '/index.html',
   '/style.css',

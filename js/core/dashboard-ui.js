@@ -124,9 +124,39 @@ async function checkForInProgressWorkout() {
             // Show resume banner
             const card = document.getElementById('resume-workout-banner');
             const nameElement = document.getElementById('resume-workout-name');
+            const setsElement = document.getElementById('resume-sets-completed');
+            const timeElement = document.getElementById('resume-time-ago');
 
             if (card && nameElement) {
                 nameElement.textContent = workoutData.workoutType;
+
+                // Calculate sets completed
+                let completedSets = 0;
+                let totalSets = 0;
+                if (workoutData.exercises) {
+                    Object.values(workoutData.exercises).forEach(exercise => {
+                        if (exercise.sets) {
+                            const exerciseSets = exercise.sets.filter(set => set.reps && set.weight);
+                            completedSets += exerciseSets.length;
+                            totalSets += exercise.sets.length;
+                        }
+                    });
+                }
+
+                if (setsElement) {
+                    setsElement.textContent = `${completedSets}/${totalSets}`;
+                }
+
+                // Calculate time ago
+                if (timeElement) {
+                    const minutesAgo = Math.floor(hoursSinceStart * 60);
+                    if (minutesAgo < 60) {
+                        timeElement.textContent = `${minutesAgo} min ago`;
+                    } else {
+                        timeElement.textContent = `${hoursSinceStart.toFixed(1)}h ago`;
+                    }
+                }
+
                 card.classList.remove('hidden');
                 console.log('✅ Resume banner shown for:', workoutData.workoutType);
             } else {
