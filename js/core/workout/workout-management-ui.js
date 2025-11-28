@@ -250,6 +250,21 @@ function showTemplateEditor() {
                 </select>
             </div>
 
+            <div class="form-group">
+                <label for="template-day">Suggested Day (Optional)</label>
+                <select id="template-day" class="form-input">
+                    <option value="" ${!currentEditingTemplate.suggestedDay ? 'selected' : ''}>No specific day</option>
+                    <option value="monday" ${currentEditingTemplate.suggestedDay === 'monday' ? 'selected' : ''}>Monday</option>
+                    <option value="tuesday" ${currentEditingTemplate.suggestedDay === 'tuesday' ? 'selected' : ''}>Tuesday</option>
+                    <option value="wednesday" ${currentEditingTemplate.suggestedDay === 'wednesday' ? 'selected' : ''}>Wednesday</option>
+                    <option value="thursday" ${currentEditingTemplate.suggestedDay === 'thursday' ? 'selected' : ''}>Thursday</option>
+                    <option value="friday" ${currentEditingTemplate.suggestedDay === 'friday' ? 'selected' : ''}>Friday</option>
+                    <option value="saturday" ${currentEditingTemplate.suggestedDay === 'saturday' ? 'selected' : ''}>Saturday</option>
+                    <option value="sunday" ${currentEditingTemplate.suggestedDay === 'sunday' ? 'selected' : ''}>Sunday</option>
+                </select>
+                <small class="form-hint">Choose which day of the week this workout is recommended for</small>
+            </div>
+
             <div class="form-section">
                 <div class="form-section-header">
                     <h4>Exercises</h4>
@@ -289,23 +304,25 @@ export function closeTemplateEditor() {
 
 export async function saveCurrentTemplate() {
     if (!currentEditingTemplate) return;
-    
+
     const nameInput = document.getElementById('template-name');
     const categorySelect = document.getElementById('template-category');
-    
+    const daySelect = document.getElementById('template-day');
+
     if (!nameInput?.value.trim()) {
         showNotification('Please enter a template name', 'warning');
         return;
     }
-    
+
     currentEditingTemplate.name = nameInput.value.trim();
     currentEditingTemplate.category = categorySelect?.value || 'Other';
-    
+    currentEditingTemplate.suggestedDay = daySelect?.value || null;
+
     if (currentEditingTemplate.exercises.length === 0) {
         showNotification('Please add at least one exercise to the template', 'warning');
         return;
     }
-    
+
     const success = await workoutManager.saveWorkoutTemplate(currentEditingTemplate);
 
     if (success) {

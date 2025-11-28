@@ -89,7 +89,7 @@ import {
 
 // Dashboard functionality
 import {
-    showDashboard, repeatLastWorkout
+    showDashboard, repeatLastWorkout, startSuggestedWorkout
 } from './core/dashboard-ui.js';
 
 // Stats functionality
@@ -274,6 +274,7 @@ window.navigateTo = navigateTo;
 // Dashboard Functions
 window.showDashboard = showDashboard;
 window.repeatLastWorkout = repeatLastWorkout;
+window.startSuggestedWorkout = startSuggestedWorkout;
 
 // Stats Functions
 window.showStats = showStats;

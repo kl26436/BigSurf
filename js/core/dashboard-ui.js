@@ -206,20 +206,23 @@ async function renderDashboard() {
             monthCount,
             recentWorkouts,
             lastWorkout,
-            recentPRs
+            recentPRs,
+            suggestedWorkouts
         ] = await Promise.all([
             StatsTracker.calculateWorkoutStreak(),
             StatsTracker.getWorkoutsThisWeek(),
             StatsTracker.getWorkoutsThisMonth(),
             StatsTracker.getRecentWorkouts(3),
             StatsTracker.getLastWorkout(),
-            StatsTracker.getRecentPRs(5)
+            StatsTracker.getRecentPRs(5),
+            getSuggestedWorkoutsForToday()
         ]);
 
         // Render dashboard
         container.innerHTML = `
             ${renderStatsCards(streak, weekCount, monthCount)}
             ${renderQuickActions(lastWorkout)}
+            ${renderSuggestedWorkouts(suggestedWorkouts)}
             ${renderRecentPRs(recentPRs)}
             ${renderRecentWorkouts(recentWorkouts)}
         `;
@@ -468,4 +471,86 @@ export async function repeatLastWorkout(workoutId) {
             repeatBtn.click();
         }
     }, 500);
+}
+
+// ===================================================================
+// SUGGESTED WORKOUTS FOR TODAY
+// ===================================================================
+
+/**
+ * Get workouts suggested for today's day of the week
+ */
+async function getSuggestedWorkoutsForToday() {
+    const today = new Date();
+    const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+
+    try {
+        // Load all user templates
+        const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+        const workoutManager = new FirebaseWorkoutManager(AppState);
+        const allTemplates = await workoutManager.getUserWorkoutTemplates();
+
+        // Filter to only templates with suggestedDay matching today
+        const suggested = allTemplates.filter(template =>
+            template.suggestedDay === dayOfWeek
+        );
+
+        console.log(`📅 Found ${suggested.length} workouts suggested for ${dayOfWeek}`);
+        return suggested;
+    } catch (error) {
+        console.error('❌ Error loading suggested workouts:', error);
+        return [];
+    }
+}
+
+/**
+ * Render suggested workouts section
+ */
+function renderSuggestedWorkouts(suggestedWorkouts) {
+    if (!suggestedWorkouts || suggestedWorkouts.length === 0) {
+        return ''; // Don't show section if no suggestions
+    }
+
+    const today = new Date();
+    const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+
+    const workoutCards = suggestedWorkouts.map(workout => {
+        const exerciseCount = workout.exercises?.length || 0;
+        const templateId = workout.id || workout.name;
+        const isDefault = workout.isDefault || false;
+
+        return `
+            <div class="suggested-workout-card" onclick="startSuggestedWorkout('${templateId}', ${isDefault})">
+                <div class="suggested-workout-name">${workout.name || workout.day}</div>
+                <div class="suggested-workout-meta">
+                    <span><i class="fas fa-list"></i> ${exerciseCount} exercises</span>
+                    <span class="workout-category">${workout.category || 'Other'}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="dashboard-section suggested-section">
+            <h3 class="section-title">
+                <i class="fas fa-calendar-day"></i> Suggested for ${dayName}
+            </h3>
+            <div class="suggested-workouts-grid">
+                ${workoutCards}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Start a suggested workout
+ */
+export async function startSuggestedWorkout(templateId, isDefault = false) {
+    try {
+        const { selectTemplate } = await import('./template-selection.js');
+        await selectTemplate(templateId, isDefault);
+    } catch (error) {
+        console.error('❌ Error starting suggested workout:', error);
+        showNotification('Error starting workout', 'error');
+    }
 }
