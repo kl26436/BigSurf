@@ -41,11 +41,27 @@ export function closeExerciseManager() {
         section.classList.add('hidden');
     }
 
-    // Show dashboard
-    const dashboard = document.getElementById('dashboard');
-    if (dashboard) {
-        dashboard.classList.remove('hidden');
-        console.log('✅ Dashboard shown');
+    console.log('🔍 Checking editingFromActiveWorkout flag:', window.editingFromActiveWorkout);
+
+    // Check if we came from active workout
+    if (window.editingFromActiveWorkout) {
+        console.log('✅ Flag is true - returning to active workout');
+        // Return to active workout
+        const activeWorkout = document.getElementById('active-workout');
+        if (activeWorkout) {
+            activeWorkout.classList.remove('hidden');
+            console.log('✅ Active workout shown');
+        }
+        // Clear the flag
+        window.editingFromActiveWorkout = false;
+    } else {
+        console.log('ℹ️ Flag is false - showing dashboard');
+        // Show dashboard (normal behavior from exercise library)
+        const dashboard = document.getElementById('dashboard');
+        if (dashboard) {
+            dashboard.classList.remove('hidden');
+            console.log('✅ Dashboard shown');
+        }
     }
 }
 
@@ -259,6 +275,12 @@ export function closeAddExerciseModal() {
     const modal = document.getElementById('add-exercise-modal');
     if (modal) modal.classList.add('hidden');
     currentEditingExercise = null;
+
+    // If we were editing from active workout, close the entire exercise manager
+    if (window.editingFromActiveWorkout) {
+        console.log('🔄 Closing exercise manager and returning to active workout');
+        closeExerciseManager();
+    }
 }
 
 // Edit exercise

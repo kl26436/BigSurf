@@ -20,12 +20,13 @@ import {
     startWorkout, pauseWorkout, completeWorkout, cancelWorkout, cancelCurrentWorkout,
     continueInProgressWorkout, discardInProgressWorkout,
     renderExercises, createExerciseCard, focusExercise,
-    updateSet, addSet, deleteSet, saveExerciseNotes, markExerciseComplete,
+    updateSet, addSet, deleteSet, addSetToExercise, removeSetFromExercise,
+    saveExerciseNotes, markExerciseComplete,
     deleteExerciseFromWorkout, addExerciseToActiveWorkout, confirmExerciseAddToWorkout,
     toggleModalRestTimer, skipModalRestTimer,
     updateWorkoutDuration, startWorkoutTimer,
-    showExerciseVideo, hideExerciseVideo, convertYouTubeUrl,
-    setGlobalUnit, setExerciseUnit,
+    showExerciseVideo, hideExerciseVideo, showExerciseVideoAndToggleButton, hideExerciseVideoAndToggleButton, convertYouTubeUrl,
+    setGlobalUnit, setExerciseUnit, editExerciseDefaults,
     closeExerciseModal, loadExerciseHistory, loadLastWorkoutHint, autoStartRestTimer
 } from './core/workout-core.js';
 
@@ -197,9 +198,12 @@ window.focusExercise = focusExercise;
 window.updateSet = updateSet;
 window.addSet = addSet;
 window.deleteSet = deleteSet;
+window.addSetToExercise = addSetToExercise;
+window.removeSetFromExercise = removeSetFromExercise;
 window.saveExerciseNotes = saveExerciseNotes;
 window.markExerciseComplete = markExerciseComplete;
 window.deleteExerciseFromWorkout = deleteExerciseFromWorkout;
+window.editExerciseDefaults = editExerciseDefaults;
 window.addExerciseToActiveWorkout = addExerciseToActiveWorkout;
 window.confirmExerciseAddToWorkout = confirmExerciseAddToWorkout;
 window.closeExerciseModal = closeExerciseModal;
@@ -215,6 +219,8 @@ window.autoStartRestTimer = autoStartRestTimer;
 // Video Functions
 window.showExerciseVideo = showExerciseVideo;
 window.hideExerciseVideo = hideExerciseVideo;
+window.showExerciseVideoAndToggleButton = showExerciseVideoAndToggleButton;
+window.hideExerciseVideoAndToggleButton = hideExerciseVideoAndToggleButton;
 
 // Unit Management
 window.setGlobalUnit = setGlobalUnit;

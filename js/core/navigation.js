@@ -41,7 +41,8 @@ export function navigateTo(view) {
         'workout-history-section',
         'workout-management',
         'dashboard',
-        'stats-section'
+        'stats-section',
+        'exercise-manager-section'
     ];
 
     sections.forEach(sectionId => {
@@ -53,6 +54,10 @@ export function navigateTo(view) {
     switch (view) {
         case 'dashboard':
             showDashboard();
+            break;
+
+        case 'active-workout':
+            showActiveWorkout();
             break;
 
         case 'start-workout':
@@ -93,6 +98,14 @@ async function showDashboard() {
     const { showDashboard: showDash } = await import('./dashboard-ui.js');
     if (showDash) {
         showDash();
+    }
+}
+
+function showActiveWorkout() {
+    const activeWorkout = document.getElementById('active-workout');
+    if (activeWorkout) {
+        activeWorkout.classList.remove('hidden');
+        console.log('✅ Active workout shown');
     }
 }
 

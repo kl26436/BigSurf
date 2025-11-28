@@ -162,6 +162,9 @@ export function getWorkoutHistory(appState) {
             let status = 'completed';
             if (workout.cancelledAt) {
                 status = 'cancelled';
+            } else if (!workout.completedAt) {
+                // No completedAt means workout is still in progress
+                status = 'incomplete';
             } else if (workout.progress && workout.progress.percentage < 100) {
                 status = 'partial';
             }
@@ -309,9 +312,6 @@ export function getWorkoutHistory(appState) {
             
             if (workout) {
                 html += this.getWorkoutIcon(workout);
-                html += `<div class="workout-status status-${workout.status}">
-                    ${workout.status === 'completed' ? 'Complete' : workout.progress + '%'}
-                </div>`;
             } else if (isCurrentMonth && !isFutureDate && !isBeforeFirstWorkout && !isToday) {
                 // Only show red X for past dates that are AFTER the first workout date
                 html += `<div class="no-workout">
@@ -335,15 +335,15 @@ export function getWorkoutHistory(appState) {
         getWorkoutIcon(workout) {
             const iconMap = {
                 'push': '<i class="fas fa-hand-paper"></i>',
-                'pull': '<i class="fas fa-fist-raised"></i>', 
+                'pull': '<i class="fas fa-fist-raised"></i>',
                 'legs': '<i class="fas fa-walking"></i>',
                 'cardio': '<i class="fas fa-heartbeat"></i>',
                 'core': '<i class="fas fa-heartbeat"></i>',
                 'other': '<i class="fas fa-dumbbell"></i>'
             };
-            
+
             const icon = iconMap[workout.category] || iconMap['other'];
-            return `<div class="workout-icon ${workout.category}">${icon}</div>`;
+            return `<div class="workout-icon ${workout.category} status-${workout.status}">${icon}</div>`;
         },
 
         showWorkoutDetail(date, workoutName) {
@@ -635,7 +635,17 @@ showFixedWorkoutModal(workout) {
     // Create action buttons based on workout status
     const workoutStatus = workout.status || this.getWorkoutStatus(workout);
     let actionButtons = '';
-    if (workoutStatus === 'cancelled' || workoutStatus === 'partial') {
+
+    if (workoutStatus === 'incomplete') {
+        // In-progress workout - show Resume button
+        actionButtons = `
+            <button class="btn btn-primary" onclick="workoutHistory.resumeWorkout('${workout.date}')">
+                <i class="fas fa-play"></i> Resume Workout
+            </button>
+            <button class="btn btn-danger" onclick="deleteWorkoutFromCalendar('${workout.date}')">
+                <i class="fas fa-trash"></i> Delete
+            </button>`;
+    } else if (workoutStatus === 'cancelled' || workoutStatus === 'partial') {
         actionButtons = `
             <button class="btn btn-danger" onclick="deleteWorkoutFromCalendar('${workout.date}')">
                 <i class="fas fa-trash"></i> Delete This Workout
@@ -644,6 +654,7 @@ showFixedWorkoutModal(workout) {
                 <i class="fas fa-redo"></i> Repeat Workout
             </button>`;
     } else {
+        // Completed workout - show Repeat button
         actionButtons = `
             <button class="btn btn-secondary" onclick="workoutHistory.repeatWorkout('${workout.date}')">
                 <i class="fas fa-redo"></i> Repeat Workout

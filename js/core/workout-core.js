@@ -133,7 +133,11 @@ export async function completeWorkout() {
 export function cancelWorkout() {
     if (!AppState.currentWorkout) return;
 
-    // Remove the annoying confirm popup
+    // Confirm cancellation
+    if (!confirm('Cancel this workout? All progress will be saved but marked as cancelled.')) {
+        return; // User chose not to cancel
+    }
+
     AppState.savedData.cancelledAt = new Date().toISOString();
     saveWorkoutData(AppState);
 
@@ -284,25 +288,15 @@ export async function discardInProgressWorkout() {
 export function renderExercises() {
     const container = document.getElementById('exercise-list');
     if (!container || !AppState.currentWorkout) return;
-    
-    container.innerHTML = '';
 
-    // Add single "Add Exercise" button at the top
-    const addExerciseHeader = document.createElement('div');
-    addExerciseHeader.className = 'add-exercise-header';
-    addExerciseHeader.innerHTML = `
-        <button class="btn btn-primary" onclick="addExerciseToActiveWorkout()" title="Add new exercise to workout">
-            <i class="fas fa-plus"></i> Add Exercise
-        </button>
-    `;
-    container.appendChild(addExerciseHeader);
+    container.innerHTML = '';
 
     // Render each exercise card
     AppState.currentWorkout.exercises.forEach((exercise, index) => {
         const card = createExerciseCard(exercise, index);
         container.appendChild(card);
     });
-    
+
     // Show empty state if no exercises
     if (AppState.currentWorkout.exercises.length === 0) {
         container.innerHTML += `
@@ -313,6 +307,16 @@ export function renderExercises() {
             </div>
         `;
     }
+
+    // Add "Add Exercise" button at the bottom
+    const addExerciseFooter = document.createElement('div');
+    addExerciseFooter.className = 'add-exercise-footer';
+    addExerciseFooter.innerHTML = `
+        <button class="btn btn-primary btn-add-exercise" onclick="addExerciseToActiveWorkout()" title="Add new exercise to workout">
+            <i class="fas fa-plus"></i> Add Exercise
+        </button>
+    `;
+    container.appendChild(addExerciseFooter);
     
     updateProgress(AppState);
 }
@@ -360,51 +364,57 @@ export function createExerciseCard(exercise, index) {
 
     const unit = AppState.exerciseUnits[index] || AppState.globalUnit;
     const savedSets = AppState.savedData.exercises?.[`exercise_${index}`]?.sets || [];
-    
+
     // Calculate completion status
     const completedSets = savedSets.filter(set => set && set.reps && set.weight).length;
     const totalSets = exercise.sets || 3;
-    
+
+    // Use the larger of completedSets or totalSets for display to avoid showing 4/3
+    const displayTotal = Math.max(completedSets, totalSets);
+
     // Fix: Exercise is only completed when ALL sets are done
-    const isCompleted = completedSets === totalSets && completedSets > 0;
+    const isCompleted = completedSets >= totalSets && completedSets > 0;
 
     if (isCompleted) {
         card.classList.add('completed');
         card.classList.add('collapsed'); // Auto-collapse completed exercises
     }
     
+    // Calculate progress percentage using displayTotal to avoid >100%
+    const progressPercent = displayTotal > 0 ? Math.min((completedSets / displayTotal) * 100, 100) : 0;
+
     card.innerHTML = `
-        <div class="exercise-header">
-            <div class="exercise-info">
-                <h3 class="exercise-title">${exercise.machine}</h3>
-                <div class="exercise-meta">
-                    ${completedSets}/${totalSets} sets • ${exercise.reps || 10} reps • ${exercise.weight || 50} ${unit}
-                </div>
-                <!-- Add unit toggle for each exercise -->
-                <div class="exercise-unit-toggle-mini">
-                    <button class="unit-btn-mini ${unit === 'lbs' ? 'active' : ''}" onclick="setExerciseUnit(${index}, 'lbs')">lbs</button>
-                    <button class="unit-btn-mini ${unit === 'kg' ? 'active' : ''}" onclick="setExerciseUnit(${index}, 'kg')">kg</button>
-                </div>
-            </div>
-            <div class="exercise-actions">
-                <button class="btn btn-danger btn-small" onclick="deleteExerciseFromWorkout(${index})" title="Delete exercise">
-                    <i class="fas fa-trash"></i>
-                </button>
-                <button class="exercise-focus-btn" onclick="focusExercise(${index})" title="Open exercise details">
-                    <i class="fas fa-expand-alt"></i>
-                </button>
-            </div>
+        <div class="exercise-title-row" onclick="focusExercise(${index})" style="cursor: pointer;">
+            <h3 class="exercise-title">${exercise.machine}</h3>
         </div>
-        <div class="exercise-sets-preview">
-            ${generateQuickSetsHtml(exercise, index, unit)}
+        <div class="exercise-progress-row" onclick="focusExercise(${index})" style="cursor: pointer;">
+            <div class="progress-bar-track">
+                <div class="progress-bar-fill" style="width: ${progressPercent}%"></div>
+            </div>
+            <span class="progress-text">${completedSets}/${displayTotal}</span>
+        </div>
+        <div class="exercise-actions-row">
+            <button class="btn-text" onclick="event.stopPropagation(); editExerciseDefaults('${exercise.machine}')">
+                <i class="fas fa-pencil-alt"></i> Edit
+            </button>
+            <button class="btn-text btn-text-danger" onclick="event.stopPropagation(); deleteExerciseFromWorkout(${index})">
+                <i class="fas fa-trash-alt"></i> Delete
+            </button>
         </div>
     `;
 
     // Add click handler for completed exercises to toggle collapse
     if (isCompleted) {
-        const header = card.querySelector('.exercise-header');
-        if (header) {
-            header.addEventListener('click', () => {
+        const titleRow = card.querySelector('.exercise-title-row');
+        const progressRow = card.querySelector('.exercise-progress-row');
+
+        if (titleRow) {
+            titleRow.addEventListener('click', () => {
+                card.classList.toggle('collapsed');
+            });
+        }
+        if (progressRow) {
+            progressRow.addEventListener('click', () => {
                 card.classList.toggle('collapsed');
             });
         }
@@ -468,8 +478,11 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
                     <i class="fas fa-history"></i> Show Last Workout
                 </button>
                 ${exercise.video ?
-                    `<button class="btn btn-primary btn-small" onclick="showExerciseVideo('${exercise.video}', '${exercise.machine}')">
+                    `<button id="show-video-btn-${exerciseIndex}" class="btn btn-primary btn-small" onclick="showExerciseVideoAndToggleButton('${exercise.video}', '${exercise.machine}', ${exerciseIndex})">
                         <i class="fas fa-play"></i> Form Video
+                    </button>
+                    <button id="hide-video-btn-${exerciseIndex}" class="btn btn-secondary btn-small hidden" onclick="hideExerciseVideoAndToggleButton(${exerciseIndex})">
+                        <i class="fas fa-times"></i> Hide Video
                     </button>` : ''
                 }
             </div>
@@ -542,7 +555,16 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
     html += `
             </tbody>
         </table>
-        
+
+        <div class="set-controls" style="display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0;">
+            <button class="btn btn-secondary btn-small" onclick="removeSetFromExercise(${exerciseIndex})" title="Remove last set">
+                <i class="fas fa-minus"></i> Remove Set
+            </button>
+            <button class="btn btn-primary btn-small" onclick="addSetToExercise(${exerciseIndex})" title="Add new set">
+                <i class="fas fa-plus"></i> Add Set
+            </button>
+        </div>
+
         <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes..."
                   onchange="saveExerciseNotes(${exerciseIndex})">${savedNotes}</textarea>
         
@@ -747,6 +769,57 @@ export function deleteSet(exerciseIndex, setIndex) {
     }
 }
 
+// Add set from exercise modal (refreshes modal instead of full exercise list)
+export function addSetToExercise(exerciseIndex) {
+    if (!AppState.currentWorkout) return;
+
+    // Increment set count in current workout template
+    AppState.currentWorkout.exercises[exerciseIndex].sets =
+        (AppState.currentWorkout.exercises[exerciseIndex].sets || 3) + 1;
+
+    console.log(`✅ Added set to exercise ${exerciseIndex}, now has ${AppState.currentWorkout.exercises[exerciseIndex].sets} sets`);
+
+    // Update the exercise cards in the background
+    renderExercises();
+
+    // Refresh the exercise modal to show new set
+    focusExercise(exerciseIndex);
+}
+
+// Remove last set from exercise modal (refreshes modal instead of full exercise list)
+export function removeSetFromExercise(exerciseIndex) {
+    if (!AppState.currentWorkout) return;
+
+    const currentSets = AppState.currentWorkout.exercises[exerciseIndex].sets || 3;
+
+    // Don't allow removing if only 1 set remains
+    if (currentSets <= 1) {
+        console.log('⚠️ Cannot remove last set');
+        return;
+    }
+
+    // Decrement set count
+    AppState.currentWorkout.exercises[exerciseIndex].sets = currentSets - 1;
+
+    // Remove the last set's saved data if it exists
+    const exerciseKey = `exercise_${exerciseIndex}`;
+    if (AppState.savedData.exercises?.[exerciseKey]?.sets) {
+        const lastSetIndex = currentSets - 1;
+        if (AppState.savedData.exercises[exerciseKey].sets[lastSetIndex]) {
+            AppState.savedData.exercises[exerciseKey].sets.splice(lastSetIndex, 1);
+            saveWorkoutData(AppState);
+        }
+    }
+
+    console.log(`✅ Removed set from exercise ${exerciseIndex}, now has ${currentSets - 1} sets`);
+
+    // Update the exercise cards in the background
+    renderExercises();
+
+    // Refresh the exercise modal to show updated sets
+    focusExercise(exerciseIndex);
+}
+
 export function saveExerciseNotes(exerciseIndex) {
     const notesTextarea = document.getElementById(`exercise-notes-${exerciseIndex}`);
     if (!notesTextarea) return;
@@ -767,32 +840,33 @@ export function saveExerciseNotes(exerciseIndex) {
 export function markExerciseComplete(exerciseIndex) {
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
     const exerciseKey = `exercise_${exerciseIndex}`;
-    
+
     if (!AppState.savedData.exercises[exerciseKey]) {
         AppState.savedData.exercises[exerciseKey] = { sets: [], notes: '' };
     }
-    
-    // Mark all sets as completed with target values
-    const targetSets = exercise.sets || 3;
-    for (let i = 0; i < targetSets; i++) {
-        if (!AppState.savedData.exercises[exerciseKey].sets[i]) {
-            AppState.savedData.exercises[exerciseKey].sets[i] = {};
-        }
-        if (!AppState.savedData.exercises[exerciseKey].sets[i].reps) {
-            AppState.savedData.exercises[exerciseKey].sets[i].reps = exercise.reps || 10;
-        }
-        if (!AppState.savedData.exercises[exerciseKey].sets[i].weight) {
-            AppState.savedData.exercises[exerciseKey].sets[i].weight = exercise.weight || 50;
-        }
-    }
-    
+
+    // Remove empty sets (sets without both reps AND weight)
+    // Only keep sets that have actual data entered
+    const existingSets = AppState.savedData.exercises[exerciseKey].sets || [];
+    AppState.savedData.exercises[exerciseKey].sets = existingSets.filter(set => {
+        // Keep set if it has reps OR weight (or both)
+        return (set.reps && set.reps > 0) || (set.weight && set.weight > 0);
+    });
+
+    const keptSets = AppState.savedData.exercises[exerciseKey].sets.length;
+    console.log(`🧹 Cleaned up empty sets, kept ${keptSets} completed sets`);
+
+    // Update the exercise template to match the actual number of completed sets
+    // This ensures the exercise card shows the correct count and marks as complete
+    exercise.sets = keptSets;
+
     saveWorkoutData(AppState);
     renderExercises();
-    
+
     // Close modal if open
     const modal = document.getElementById('exercise-modal');
     if (modal) modal.classList.add('hidden');
-    
+
     console.log(`✅ ${exercise.machine} marked complete!`);
 }
 
@@ -804,28 +878,37 @@ function markSetComplete(exerciseIndex, setIndex) {
 
 export function deleteExerciseFromWorkout(exerciseIndex) {
     if (!AppState.currentWorkout) return;
-    
+
     const exerciseName = AppState.currentWorkout.exercises[exerciseIndex].machine;
-    
-    if (confirm(`Remove "${exerciseName}" from this workout?`)) {
-        AppState.currentWorkout.exercises.splice(exerciseIndex, 1);
-        
-        // Remove saved data for this exercise and shift remaining exercises
-        if (AppState.savedData.exercises) {
-            delete AppState.savedData.exercises[`exercise_${exerciseIndex}`];
-            
-            // Shift remaining exercise data
-            for (let i = exerciseIndex + 1; i < AppState.currentWorkout.exercises.length + 1; i++) {
-                if (AppState.savedData.exercises[`exercise_${i}`]) {
-                    AppState.savedData.exercises[`exercise_${i - 1}`] = AppState.savedData.exercises[`exercise_${i}`];
-                    delete AppState.savedData.exercises[`exercise_${i}`];
-                }
+
+    // Show confirmation dialog
+    if (!confirm(`Remove ${exerciseName} from workout?`)) {
+        return; // User cancelled
+    }
+
+    console.log(`🗑️ Deleting "${exerciseName}" from workout`);
+
+    // Delete the exercise
+    AppState.currentWorkout.exercises.splice(exerciseIndex, 1);
+
+    // Remove saved data for this exercise and shift remaining exercises
+    if (AppState.savedData.exercises) {
+        delete AppState.savedData.exercises[`exercise_${exerciseIndex}`];
+
+        // Shift remaining exercise data
+        for (let i = exerciseIndex + 1; i < AppState.currentWorkout.exercises.length + 1; i++) {
+            if (AppState.savedData.exercises[`exercise_${i}`]) {
+                AppState.savedData.exercises[`exercise_${i - 1}`] = AppState.savedData.exercises[`exercise_${i}`];
+                delete AppState.savedData.exercises[`exercise_${i}`];
             }
         }
-        
-        saveWorkoutData(AppState);
-        renderExercises();
     }
+
+    saveWorkoutData(AppState);
+    renderExercises();
+
+    // Show notification
+    showNotification(`Removed ${exerciseName}`, 'success');
 }
 
 // ===================================================================
@@ -1302,29 +1385,52 @@ export function convertYouTubeUrl(url) {
 export function showExerciseVideo(videoUrl, exerciseName) {
     const videoSection = document.getElementById('exercise-video-section');
     const iframe = document.getElementById('exercise-video-iframe');
-    
+
     if (!videoSection || !iframe) return;
-    
+
     const embedUrl = convertYouTubeUrl(videoUrl);
-    
+
     // Check if it's a valid URL (not a placeholder)
     if (!embedUrl || embedUrl.includes('example') || embedUrl === videoUrl && !embedUrl.includes('youtube')) {
         console.log('ℹ️ No form video available for this exercise');
         return;
     }
-    
+
     iframe.src = embedUrl;
     videoSection.classList.remove('hidden');
-    
+
     console.log(`📹 Showing form video for ${exerciseName}`);
 }
 
 export function hideExerciseVideo() {
     const videoSection = document.getElementById('exercise-video-section');
     const iframe = document.getElementById('exercise-video-iframe');
-    
+
     if (videoSection) videoSection.classList.add('hidden');
     if (iframe) iframe.src = '';
+}
+
+// Wrapper functions to handle button toggling
+export function showExerciseVideoAndToggleButton(videoUrl, exerciseName, exerciseIndex) {
+    showExerciseVideo(videoUrl, exerciseName);
+
+    // Hide "Form Video" button, show "Hide Video" button
+    const showBtn = document.getElementById(`show-video-btn-${exerciseIndex}`);
+    const hideBtn = document.getElementById(`hide-video-btn-${exerciseIndex}`);
+
+    if (showBtn) showBtn.classList.add('hidden');
+    if (hideBtn) hideBtn.classList.remove('hidden');
+}
+
+export function hideExerciseVideoAndToggleButton(exerciseIndex) {
+    hideExerciseVideo();
+
+    // Show "Form Video" button, hide "Hide Video" button
+    const showBtn = document.getElementById(`show-video-btn-${exerciseIndex}`);
+    const hideBtn = document.getElementById(`hide-video-btn-${exerciseIndex}`);
+
+    if (showBtn) showBtn.classList.remove('hidden');
+    if (hideBtn) hideBtn.classList.add('hidden');
 }
 
 // ===================================================================
@@ -1425,6 +1531,35 @@ export function setExerciseUnit(exerciseIndex, unit) {
 // ===================================================================
 // NAVIGATION HELPERS
 // ===================================================================
+
+export async function editExerciseDefaults(exerciseName) {
+    console.log(`✏️ editExerciseDefaults called for: "${exerciseName}"`);
+
+    // Find the exercise in the database by name
+    const exercise = AppState.exerciseDatabase.find(ex =>
+        (ex.name || ex.machine) === exerciseName
+    );
+
+    if (!exercise) {
+        console.log(`⚠️ Exercise "${exerciseName}" not found in library`);
+        return;
+    }
+
+    // Set flag to indicate we're editing from active workout
+    console.log('🚩 Setting editingFromActiveWorkout flag to true');
+    window.editingFromActiveWorkout = true;
+
+    // Open the exercise manager and edit this exercise
+    const { openExerciseManager, editExercise } = await import('./exercise-manager-ui.js');
+    openExerciseManager();
+
+    // Small delay to let the manager UI load
+    setTimeout(() => {
+        const exerciseId = exercise.id || `ex_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.log(`🔍 Editing exercise ID: ${exerciseId}`);
+        editExercise(exerciseId);
+    }, 100);
+}
 
 export async function showWorkoutSelector() {
     const workoutSelector = document.getElementById('workout-selector');

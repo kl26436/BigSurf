@@ -770,17 +770,21 @@ async getGlobalDefaultTemplates() {
         if (!this.appState.currentUser) {
             return [];
         }
-        
+
         try {
             const workoutsRef = collection(this.db, "users", this.appState.currentUser.uid, "workouts");
             const q = query(workoutsRef, orderBy("date", "desc"));
             const querySnapshot = await getDocs(q);
-            
+
             const workouts = [];
             querySnapshot.forEach((doc) => {
-                workouts.push({ id: doc.id, ...doc.data() });
+                const workoutData = { id: doc.id, ...doc.data() };
+                // Filter out cancelled workouts - they shouldn't appear in history
+                if (!workoutData.cancelledAt) {
+                    workouts.push(workoutData);
+                }
             });
-            
+
             return workouts;
         } catch (error) {
             console.error('❌ Error loading user workouts:', error);
