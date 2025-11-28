@@ -537,6 +537,7 @@ function selectExerciseFromLibrary(exercise) {
     if (currentEditingTemplate) {
         const templateExercise = {
             name: exercise.name || exercise.machine,
+            machine: exercise.machine || exercise.name, // CRITICAL: workout system expects 'machine' field
             bodyPart: exercise.bodyPart,
             equipmentType: exercise.equipmentType,
             sets: exercise.sets || 3,
@@ -544,7 +545,7 @@ function selectExerciseFromLibrary(exercise) {
             weight: exercise.weight || 50,
             video: exercise.video || ''
         };
-        
+
         currentEditingTemplate.exercises.push(templateExercise);
         renderTemplateExercises();
         closeExerciseLibrary();
