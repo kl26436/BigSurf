@@ -299,7 +299,7 @@ Before announcing to users:
 - [ ] README is up to date
 - [ ] Version number updated (v4.13)
 
-## 🚨 Recent Changes to Test (v4.2-v4.13)
+## 🚨 Recent Changes to Test (v4.2-v4.19)
 
 ### v4.2: Cancel Workflow Fix
 - [x] Cancel workout shows confirmation dialog ✅ TESTED 2025-11-27
@@ -343,6 +343,118 @@ Before announcing to users:
 - [x] Copied template appears in custom templates immediately ✅ TESTED 2025-11-28 (v4.12)
 - [x] Auto-switches to custom tab after copy ✅ TESTED 2025-11-28 (v4.12)
 - [x] Copied exercises are fully editable (deep clone) ✅ TESTED 2025-11-28 (v4.13)
+
+### v4.15-v4.19: UX Improvements & Template Overrides (2025-11-28)
+
+**v4.15: In-Progress Workout Warning**
+- [ ] Starting new workout when one is in progress shows confirmation dialog
+- [ ] Dialog warns that current workout will be cancelled
+- [ ] Choosing "Cancel" keeps current workout, doesn't start new one
+- [ ] Choosing "OK" cancels old workout and starts new one
+- [ ] Cancelled workout is marked as cancelled in Firebase
+
+**v4.15: Exercise Library Button Removal**
+- [ ] Exercise Library button removed from Workout Management modal
+- [ ] Exercise Library still accessible from hamburger menu
+- [ ] Exercise Library still accessible from template editor when adding exercises
+
+**v4.15: Full Exercise Lists in Template Cards**
+- [ ] Template cards show ALL exercises (no "and X more...")
+- [ ] Exercise list is scrollable if > 5-6 exercises
+- [ ] Each exercise appears as a separate line item
+- [ ] Hover effect on exercise items
+
+**v4.16: Day Selector for Templates**
+- [ ] Template editor shows "Suggested Days" checkbox section
+- [ ] Can select multiple days (Mon, Tue, Wed, Thu, Fri, Sat, Sun)
+- [ ] Selected days highlighted with teal color
+- [ ] Days save with template to Firebase
+- [ ] Dashboard shows "Suggested for [Day]" section
+- [ ] Only templates assigned to current day appear in suggestions
+- [ ] Clicking suggested workout starts it immediately
+- [ ] If no templates for today, section doesn't appear
+
+**v4.17: Multi-Day Selector**
+- [ ] Can select multiple days for same template (e.g., Tue + Fri)
+- [ ] Template appears in suggestions on ALL selected days
+- [ ] Example: "Legs" with Tue + Fri shows on both Tuesday and Friday
+
+**v4.18: Suggested Title Alignment**
+- [ ] "Suggested for [Day]" title is left-aligned
+- [ ] Title matches alignment of other dashboard sections
+
+**v4.19: Template Override System** (CRITICAL - NEW BEHAVIOR)
+- [ ] ALL templates show Edit button (including defaults)
+- [ ] Default templates show "Hide" button (eye-slash icon)
+- [ ] Custom templates show "Delete" button (trash icon)
+- [ ] Editing default template creates override
+- [ ] Edited default disappears from defaults, appears in custom
+- [ ] Original default is hidden from view
+- [ ] Overridden templates show "Reset" button
+- [ ] Clicking "Reset" restores original default template
+- [ ] Hiding default template removes it from view
+- [ ] Hidden templates can be restored with "Reset"
+- [ ] Deleting custom template removes it permanently
+- [ ] No more "Copy to Custom" button (replaced by Edit)
+
+## 🧪 How to Test Template Override System (v4.19)
+
+This is a major change - test carefully!
+
+### Test 1: Edit Default Template
+1. Go to Workout Management
+2. Find a default template (e.g., "Monday - Push")
+3. Click "Edit"
+4. Change name to "Push Day" (remove "Monday -")
+5. Add suggested days: Mon + Thu
+6. Save
+7. **Expected**:
+   - Template disappears from defaults
+   - Appears as custom template with new name
+   - Shows "Reset" button
+   - Original "Monday - Push" is hidden
+
+### Test 2: Hide Default Template
+1. Find a default template you don't use
+2. Click "Hide" button
+3. Confirm
+4. **Expected**:
+   - Template disappears from list
+   - Can be restored later
+
+### Test 3: Reset to Default
+1. Find an edited default (has "Reset" button)
+2. Click "Reset"
+3. Confirm
+4. **Expected**:
+   - Your changes are lost
+   - Original default template reappears
+   - Template moves back to defaults section
+
+### Test 4: Full Exercise List Display
+1. View any template card with 5+ exercises
+2. **Expected**:
+   - All exercises shown (not truncated)
+   - List is scrollable if long
+   - No "and X more..." text
+
+### Test 5: Multi-Day Suggestions
+1. Create/edit template
+2. Select Tue + Fri for suggested days
+3. Save
+4. Navigate to dashboard on Tuesday
+5. **Expected**: Template appears in "Suggested for Tuesday"
+6. Navigate to dashboard on Friday
+7. **Expected**: Same template appears in "Suggested for Friday"
+
+### Test 6: In-Progress Workout Warning
+1. Start a workout
+2. Try to start a different workout (don't complete first one)
+3. **Expected**: Confirmation dialog appears
+4. Click "Cancel"
+5. **Expected**: Stays on current workout
+6. Try again, click "OK"
+7. **Expected**: Old workout cancelled, new workout starts
 
 ## 🧪 How to Test Auto-Delete (Empty Workout > 3h)
 
