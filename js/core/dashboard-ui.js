@@ -541,7 +541,9 @@ function renderSuggestedWorkouts(suggestedWorkouts) {
     return `
         <div class="dashboard-section suggested-section">
             <h3 class="section-title">
-                <i class="fas fa-calendar-day"></i> Suggested for ${dayName}
+                <span>
+                    <i class="fas fa-calendar-day"></i> Suggested for ${dayName}
+                </span>
             </h3>
             <div class="suggested-workouts-grid">
                 ${workoutCards}
