@@ -701,7 +701,7 @@ async getGlobalDefaultTemplates() {
         try {
             const templateId = templateData.id || templateData.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
             const docRef = doc(this.db, "users", this.appState.currentUser.uid, "workoutTemplates", templateId);
-            
+
             const templateToSave = {
                 ...templateData,
                 id: templateId,
@@ -710,7 +710,14 @@ async getGlobalDefaultTemplates() {
                 isCustom: true,
                 isDefault: false
             };
-            
+
+            // Remove undefined fields (Firebase doesn't allow them)
+            Object.keys(templateToSave).forEach(key => {
+                if (templateToSave[key] === undefined) {
+                    delete templateToSave[key];
+                }
+            });
+
             await setDoc(docRef, templateToSave);
             
             console.log(`✅ Workout template "${templateData.name}" saved`);

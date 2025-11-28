@@ -1,7 +1,7 @@
 // Workout Management UI Functions
+import { AppState } from '../app-state.js';
 import { FirebaseWorkoutManager } from '../firebase-workout-manager.js';
 import { showNotification } from '../ui-helpers.js';
-import { switchTemplateCategory } from '../template-selection.js';
 
 let workoutManager;
 let currentEditingTemplate = null;
@@ -33,9 +33,9 @@ export async function showWorkoutManagement() {
     section.classList.remove('hidden');
     console.log('✅ Workout management section opened');
 
-    // Initialize with default templates category
+    // Load all templates (unified list)
     setTimeout(() => {
-        switchTemplateCategory('default');
+        loadAllTemplates();
     }, 100);
 }
 
@@ -79,9 +79,9 @@ async function loadWorkoutTemplates() {
         if (templates.length === 0) {
             templateList.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-clipboard-list"></i>
-                    <h3>No Custom Templates</h3>
-                    <p>Create your first custom workout template to get started.</p>
+                    <i class="fas fa-dumbbell"></i>
+                    <h3>No Workouts</h3>
+                    <p>Create your first workout to get started.</p>
                 </div>
             `;
             return;
@@ -105,33 +105,90 @@ async function loadWorkoutTemplates() {
     }
 }
 
+// Load all templates in a unified list (both default and custom)
+async function loadAllTemplates() {
+    const container = document.getElementById('all-templates');
+    if (!container) return;
+
+    container.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading templates...</span></div>';
+
+    try {
+        // Load all templates (Firebase manager filters out hidden defaults)
+        const templates = await workoutManager.getUserWorkoutTemplates();
+
+        if (templates.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-dumbbell"></i>
+                    <h3>No Workouts Available</h3>
+                    <p>Create your first workout to get started.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = '';
+        templates.forEach(template => {
+            const card = createTemplateCard(template);
+            container.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error('❌ Error loading templates:', error);
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Error Loading Templates</h3>
+                <p>Please try again later.</p>
+            </div>
+        `;
+    }
+}
+
 function createTemplateCard(template) {
     const card = document.createElement('div');
     card.className = 'template-card';
-    
+
     const exerciseCount = template.exercises?.length || 0;
-    const exercisePreview = template.exercises?.slice(0, 3).map(ex => ex.name).join(', ') || 'No exercises';
-    const moreText = exerciseCount > 3 ? ` and ${exerciseCount - 3} more...` : '';
-    
+    const isDefault = template.isDefault || false;
+
+    // Create full exercise list
+    let exerciseListHTML = '';
+    if (exerciseCount === 0) {
+        exerciseListHTML = '<div class="template-exercise-item">No exercises</div>';
+    } else {
+        exerciseListHTML = template.exercises.map((ex, index) => {
+            const sets = ex.sets || 3;
+            const reps = ex.reps || 10;
+            const weight = ex.weight || 50;
+            return `
+                <div class="template-exercise-item">
+                    <span class="exercise-number">${index + 1}.</span>
+                    <span class="exercise-name">${ex.name || ex.machine}</span>
+                    <span class="exercise-details">${sets}×${reps} @ ${weight}lbs</span>
+                </div>
+            `;
+        }).join('');
+    }
+
     card.innerHTML = `
         <h4>${template.name}</h4>
-        <div class="template-category">${template.category || 'Other'}</div>
-        <div class="template-exercises-preview">
-            ${exerciseCount} exercises: ${exercisePreview}${moreText}
+        <div class="template-exercises-list">
+            ${exerciseListHTML}
         </div>
         <div class="template-actions">
-            <button class="btn btn-primary btn-small" onclick="useTemplate('${template.id}')">
+            <button class="btn btn-primary btn-small" onclick="useTemplate('${template.id}', ${isDefault})">
                 <i class="fas fa-play"></i> Use Today
             </button>
-            <button class="btn btn-secondary btn-small" onclick="editTemplate('${template.id}')">
+            <button class="btn btn-secondary btn-small" onclick="editTemplate('${template.id}', ${isDefault})">
                 <i class="fas fa-edit"></i> Edit
             </button>
-            <button class="btn btn-danger btn-small" onclick="deleteTemplate('${template.id}')">
+            <button class="btn btn-danger btn-small" onclick="deleteTemplate('${template.id}', ${isDefault})">
                 <i class="fas fa-trash"></i> Delete
             </button>
         </div>
     `;
-    
+
     return card;
 }
 
@@ -204,24 +261,34 @@ export async function deleteTemplate(templateId, isDefault = false) {
         return;
     }
 
-    const action = isDefault ? 'hide' : 'delete';
-    const message = isDefault
-        ? 'Hide this template? You can restore it later by clicking "Reset".'
-        : 'Delete this template? This cannot be undone.';
+    // Get template name for the hidden marker
+    let templateName = templateId;
+    if (isDefault) {
+        const { FirebaseWorkoutManager } = await import('../firebase-workout-manager.js');
+        const manager = new FirebaseWorkoutManager(AppState);
+        const allDefaults = await manager.getGlobalDefaultTemplates();
+        const template = allDefaults.find(t => (t.id || t.day) === templateId);
+        if (template) {
+            templateName = template.name || template.day;
+        }
+    }
+
+    const message = 'Delete this template? This cannot be undone.';
 
     if (confirm(message)) {
         try {
             if (isDefault) {
                 // Create a "hidden" marker for this default template
-                console.log('🙈 Hiding default template:', templateId);
+                console.log('🗑️ Deleting default template:', templateId);
                 const hiddenMarker = {
                     id: `hidden_${templateId}`,
+                    name: templateName,
                     overridesDefault: templateId,
                     isHidden: true,
                     hiddenAt: new Date().toISOString()
                 };
                 await workoutManager.saveWorkoutTemplate(hiddenMarker);
-                console.log('✅ Default template hidden');
+                console.log('✅ Default template deleted');
             } else {
                 // Actually delete the custom template
                 console.log('🗑️ Deleting custom template:', templateId);
@@ -231,13 +298,11 @@ export async function deleteTemplate(templateId, isDefault = false) {
 
             // Reload AppState and UI
             AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
-            await loadWorkoutTemplates();
-            const { loadTemplatesByCategory } = await import('../template-selection.js');
-            await loadTemplatesByCategory();
+            await loadAllTemplates();
 
         } catch (error) {
-            console.error(`❌ Error ${action}ing template:`, error);
-            alert(`Error ${action}ing template. Please try again.`);
+            console.error(`❌ Error deleting template:`, error);
+            alert(`Error deleting template. Please try again.`);
         }
     }
 }
@@ -297,11 +362,11 @@ function showTemplateEditor() {
         return;
     }
 
-    // Build the template editor form
+    // Build the workout editor form
     editorContent.innerHTML = `
         <form id="template-editor-form" class="template-editor-form">
             <div class="form-group">
-                <label for="template-name">Template Name *</label>
+                <label for="template-name">Workout Name *</label>
                 <input type="text"
                        id="template-name"
                        class="form-input"
@@ -322,7 +387,7 @@ function showTemplateEditor() {
             </div>
 
             <div class="form-group">
-                <label>Suggested Days (Optional)</label>
+                <label>Assign Days</label>
                 <div class="day-selector">
                     <label class="day-checkbox">
                         <input type="checkbox" name="suggested-days" value="monday" ${currentEditingTemplate.suggestedDays?.includes('monday') ? 'checked' : ''}>
@@ -353,7 +418,6 @@ function showTemplateEditor() {
                         <span>Sun</span>
                     </label>
                 </div>
-                <small class="form-hint">Select which days this workout is recommended for (e.g., Tue + Fri for legs)</small>
             </div>
 
             <div class="form-section">
@@ -404,7 +468,7 @@ export async function saveCurrentTemplate() {
     const selectedDays = Array.from(dayCheckboxes).map(cb => cb.value);
 
     if (!nameInput?.value.trim()) {
-        showNotification('Please enter a template name', 'warning');
+        showNotification('Please enter a workout name', 'warning');
         return;
     }
 
@@ -413,7 +477,7 @@ export async function saveCurrentTemplate() {
     currentEditingTemplate.suggestedDays = selectedDays.length > 0 ? selectedDays : null;
 
     if (currentEditingTemplate.exercises.length === 0) {
-        showNotification('Please add at least one exercise to the template', 'warning');
+        showNotification('Please add at least one exercise to the workout', 'warning');
         return;
     }
 
@@ -425,12 +489,10 @@ export async function saveCurrentTemplate() {
         console.log('✅ Workout plans reloaded after template save:', AppState.workoutPlans.length);
 
         closeTemplateEditor();
-        await loadWorkoutTemplates();
 
-        // CRITICAL: Also refresh the template selector UI
-        const { loadTemplatesByCategory } = await import('../template-selection.js');
-        await loadTemplatesByCategory();
-        console.log('✅ Template selector UI refreshed');
+        // Refresh the unified workout list
+        await loadAllTemplates();
+        console.log('✅ Workout library UI refreshed');
     }
 }
 
@@ -522,7 +584,7 @@ export function removeTemplateExercise(index) {
     
     currentEditingTemplate.exercises.splice(index, 1);
     renderTemplateExercises();
-    showNotification('Exercise removed from template', 'success');
+    showNotification('Exercise removed from workout', 'success');
 }
 
 // Exercise Library functions
@@ -651,8 +713,20 @@ function createLibraryExerciseCard(exercise) {
 function selectExerciseFromLibrary(exercise) {
     // Add to current template
     if (currentEditingTemplate) {
+        const exerciseName = exercise.name || exercise.machine;
+
+        // Check for duplicate exercise names
+        const isDuplicate = currentEditingTemplate.exercises.some(ex =>
+            (ex.name === exerciseName || ex.machine === exerciseName)
+        );
+
+        if (isDuplicate) {
+            showNotification(`"${exerciseName}" is already in this workout`, 'warning');
+            return;
+        }
+
         const templateExercise = {
-            name: exercise.name || exercise.machine,
+            name: exerciseName,
             machine: exercise.machine || exercise.name, // CRITICAL: workout system expects 'machine' field
             bodyPart: exercise.bodyPart,
             equipmentType: exercise.equipmentType,
@@ -665,7 +739,7 @@ function selectExerciseFromLibrary(exercise) {
         currentEditingTemplate.exercises.push(templateExercise);
         renderTemplateExercises();
         closeExerciseLibrary();
-        showNotification(`Added "${templateExercise.name}" to template`, 'success');
+        showNotification(`Added "${templateExercise.name}" to workout`, 'success');
     }
 }
 

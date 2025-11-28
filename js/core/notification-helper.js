@@ -42,19 +42,28 @@ export async function initializeNotifications() {
  * Show immediate notification (works in foreground and background)
  */
 export async function showNotification(title, body, options = {}) {
+    const isSilent = options.silent !== undefined ? options.silent : false;
+
+    // Build notification options (silent notifications can't vibrate)
+    const notificationOptions = {
+        body: body,
+        icon: options.icon || '/BigSurf.png',
+        badge: '/BigSurf.png',
+        tag: options.tag || 'bigsurf',
+        requireInteraction: options.requireInteraction || false,
+        silent: isSilent,
+        ...options
+    };
+
+    // Only add vibrate if not silent
+    if (!isSilent) {
+        notificationOptions.vibrate = options.vibrate || [200, 100, 200];
+    }
+
     // Use service worker notification if available (works in background)
     if (serviceWorkerRegistration) {
         try {
-            await serviceWorkerRegistration.showNotification(title, {
-                body: body,
-                icon: options.icon || '/BigSurf.png',
-                badge: '/BigSurf.png',
-                vibrate: options.vibrate || [200, 100, 200],
-                tag: options.tag || 'bigsurf',
-                requireInteraction: options.requireInteraction || false,
-                silent: options.silent !== undefined ? options.silent : false,
-                ...options
-            });
+            await serviceWorkerRegistration.showNotification(title, notificationOptions);
             console.log('🔔 Service Worker notification shown:', title);
             return true;
         } catch (error) {
@@ -64,13 +73,7 @@ export async function showNotification(title, body, options = {}) {
 
     // Fallback to regular notification (only works when app is open)
     if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, {
-            body: body,
-            icon: options.icon || '/BigSurf.png',
-            vibrate: options.vibrate || [200, 100, 200],
-            silent: options.silent !== undefined ? options.silent : false,
-            ...options
-        });
+        new Notification(title, notificationOptions);
         console.log('🔔 Browser notification shown:', title);
         return true;
     }

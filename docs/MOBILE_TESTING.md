@@ -478,6 +478,65 @@ To test the auto-delete feature for empty abandoned workouts:
    - Check browser console for deletion log
    - Workout should not appear in history/calendar
 
+## 🎯 v4.20-v4.21: Workout Library Improvements (2025-11-28)
+
+### Test 1: Unified Workout Library
+1. Navigate to "Workout Library" in sidebar (renamed from "Manage Templates")
+2. **Expected**: See one unified list with ALL workouts (default + custom)
+3. **Expected**: No "Default Templates" / "My Templates" tabs
+4. **Expected**: No category tag (Custom/Push/Pull) displayed on cards
+
+### Test 2: Delete Button Works on All Templates
+1. Click "Delete" on any default template (e.g., "Chest - Push")
+2. **Expected**: Confirmation dialog: "Delete this template? This cannot be undone."
+3. Confirm deletion
+4. **Expected**: Template disappears from list immediately
+5. Click "Delete" on a custom template
+6. **Expected**: Same behavior - deletes immediately with confirmation
+
+### Test 3: Cancel Dialog Navigation
+1. Start a workout
+2. Try to start a different workout
+3. Click "Cancel" on the warning dialog
+4. **Expected**: Navigate back to dashboard (NOT blank page)
+
+### Test 4: Confirm New Workout with Active One
+1. Start a workout, add at least one set
+2. Try to start a different workout
+3. Click "OK" on the warning dialog
+4. **Expected**: No errors in console
+5. **Expected**: Old workout cancelled, new workout starts successfully
+
+### Test 5: Assign Days Label
+1. Create or edit a workout
+2. **Expected**: Label says "Assign Days" (not "Suggested Days")
+3. **Expected**: No helper text below day selector buttons
+
+### Test 6: Duplicate Exercise Prevention
+1. Create a new workout
+2. Add an exercise (e.g., "Bench Press")
+3. Try to add the same exercise again
+4. **Expected**: Warning notification: "[Exercise] is already in this workout"
+5. **Expected**: Exercise not added twice
+
+### Test 7: Auto-Refresh After Save
+1. Create a new workout with exercises
+2. Click "Save"
+3. **Expected**: Workout list refreshes immediately (no manual refresh needed)
+4. **Expected**: New workout appears in the list
+
+### Test 8: Edit Custom Workout with Days
+1. Edit an existing custom workout
+2. Change the assigned days (check/uncheck boxes)
+3. Click "Save"
+4. **Expected**: No Firebase errors in console
+5. **Expected**: Days saved correctly
+
+### Test 9: Silent Notification Fix
+1. During workout, complete a set to trigger PR notification
+2. Check browser console
+3. **Expected**: No "Silent notifications must not specify vibration patterns" error
+
 ## 🔍 Console Check
 
 Open browser DevTools and check for:

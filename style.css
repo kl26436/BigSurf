@@ -997,6 +997,46 @@ body {
     line-height: 1.4;
 }
 
+.template-exercises-list {
+    margin-bottom: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.template-exercise-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+    margin-bottom: 0.25rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    font-size: 0.875rem;
+}
+
+.template-exercise-item:hover {
+    background: rgba(64, 224, 208, 0.05);
+}
+
+.template-exercise-item .exercise-number {
+    color: var(--text-secondary);
+    font-weight: 600;
+    min-width: 1.5rem;
+}
+
+.template-exercise-item .exercise-name {
+    color: var(--text-primary);
+    flex: 1;
+    font-weight: 500;
+}
+
+.template-exercise-item .exercise-details {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
 .template-preview {
     margin: 1rem 0;
 }

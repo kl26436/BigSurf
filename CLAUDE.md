@@ -244,6 +244,37 @@ localStorage.setItem('debug', 'firebase:*');
 - **History filter**: Cancelled workouts no longer appear in history/calendar
 - **Files**: [workout-core.js:133-152](js/core/workout-core.js#L133-L152), [firebase-workout-manager.js:783](js/core/firebase-workout-manager.js#L783)
 
+## Recent Improvements (v4.20-v4.21, November 2025)
+
+### v4.20: Workout Library UI Overhaul
+- **Unified List**: Removed default/custom template tabs - single unified workout list
+- **Terminology**: Changed "Manage Templates" to "Workout Library", "Template" to "Workout" throughout UI
+- **Simplified Cards**: Removed category tags from template cards
+- **Assign Days**: Renamed "Suggested Days" to "Assign Days" and removed helper text
+- **Files**: [index.html:458-463](index.html#L458-L463), [workout-management-ui.js:107-145](js/core/workout/workout-management-ui.js#L107-L145)
+
+### v4.21: Critical Bug Fixes
+- **Delete Button Fix**: Default templates now deleteable (passes `isDefault` parameter correctly)
+  - **File**: [workout-management-ui.js:155-170](js/core/workout/workout-management-ui.js#L155-L170)
+- **Navigation Fix**: Cancel dialog now navigates to dashboard instead of blank page
+  - **File**: [workout-core.js:33-39](js/core/workout-core.js#L33-L39)
+- **Workout Override Fix**: Fixed error when starting new workout with active one (OK button)
+  - **File**: [workout-core.js:44-49](js/core/workout-core.js#L44-L49)
+- **Duplicate Prevention**: Prevents adding same exercise twice to workout
+  - **File**: [workout-management-ui.js:702-710](js/core/workout/workout-management-ui.js#L702-L710)
+- **Auto-Refresh**: Workout library refreshes immediately after creating/editing
+  - **File**: [workout-management-ui.js:477-479](js/core/workout/workout-management-ui.js#L477-L479)
+- **Firebase Undefined Fix**: Removes undefined fields before saving to Firebase
+  - **File**: [firebase-workout-manager.js:714-719](js/core/firebase-workout-manager.js#L714-L719)
+- **Notification Fix**: Silent notifications no longer try to vibrate (fixes browser error)
+  - **File**: [notification-helper.js:45-61](js/core/notification-helper.js#L45-L61)
+
+### v4.22: UI Improvements
+- **Full Exercise Lists**: Template cards show all exercises with sets/reps/weight details
+  - **File**: [workout-management-ui.js:155-172](js/core/workout/workout-management-ui.js#L155-L172)
+- **Resume Banner Fix**: Resume banner now hidden when starting a workout (was showing for cancelled workout)
+  - **File**: [workout-core.js:54-58,119-121](js/core/workout-core.js#L54-L58)
+
 ### Key Technical Learnings
 
 1. **Deep vs Shallow Copy**: Always use deep clone for nested objects when modifications should not affect source

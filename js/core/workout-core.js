@@ -32,16 +32,30 @@ export async function startWorkout(workoutType) {
 
         if (!confirmed) {
             console.log('❌ User cancelled starting new workout');
+            // Navigate back to dashboard
+            const { navigateTo } = await import('./navigation.js');
+            navigateTo('dashboard');
             return;
         }
 
         // User confirmed - cancel the current workout (mark it as cancelled in Firebase)
         console.log('⚠️ Cancelling in-progress workout to start new one');
-        todaysWorkout.cancelledAt = new Date().toISOString();
-        await saveWorkoutData({ savedData: todaysWorkout, currentUser: AppState.currentUser });
+
+        // Mark the existing workout as cancelled and save
+        AppState.savedData = {
+            ...todaysWorkout,
+            cancelledAt: new Date().toISOString()
+        };
+        await saveWorkoutData(AppState);
 
         // Clear in-progress workout reference
         window.inProgressWorkout = null;
+
+        // Hide the resume banner since we're starting a new workout
+        const resumeBanner = document.getElementById('resume-workout-banner');
+        if (resumeBanner) {
+            resumeBanner.classList.add('hidden');
+        }
     }
 
     // Check if location is set, if not, show location selector
@@ -101,7 +115,11 @@ export async function startWorkout(workoutType) {
     if (historySection) historySection.classList.add('hidden');
     if (dashboard) dashboard.classList.add('hidden');
     if (activeWorkout) activeWorkout.classList.remove('hidden');
-    
+
+    // Hide resume banner when starting a workout
+    const resumeBanner = document.getElementById('resume-workout-banner');
+    if (resumeBanner) resumeBanner.classList.add('hidden');
+
     // Start duration timer
     startWorkoutTimer();
     

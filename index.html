@@ -109,8 +109,8 @@
                 </li>
                 <li>
                     <a href="#" onclick="navigateTo('templates'); return false;">
-                        <i class="fas fa-cog"></i>
-                        <span>Manage Templates</span>
+                        <i class="fas fa-dumbbell"></i>
+                        <span>Workout Library</span>
                     </a>
                 </li>
             </ul>
@@ -430,11 +430,11 @@
                 </div>
             </div>
 
-            <!-- Template Editor Modal -->
+            <!-- Workout Editor Modal -->
             <div id="template-editor-modal" class="modal hidden">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3 id="template-editor-title">Create Template</h3>
+                        <h3 id="template-editor-title">Create Workout</h3>
                         <button class="close-btn" onclick="closeTemplateEditor()">
                             <i class="fas fa-times"></i>
                         </button>
@@ -451,28 +451,14 @@
                     <div class="section-body">
                         <div class="modal-actions-top">
                             <button class="btn btn-primary" onclick="createNewTemplate()">
-                                <i class="fas fa-plus"></i> New Template
+                                <i class="fas fa-plus"></i> New Workout
                             </button>
                         </div>
 
-                        <!-- Template Categories -->
+                        <!-- All Templates (Unified List) -->
                         <div class="template-categories">
-                            <div class="category-tabs">
-                                <button class="category-tab active" data-category="default" onclick="switchTemplateCategory('default')">
-                                    <i class="fas fa-star"></i> Default Templates
-                                </button>
-                                <button class="category-tab" data-category="custom" onclick="switchTemplateCategory('custom')">
-                                    <i class="fas fa-user"></i> My Templates
-                                </button>
-                            </div>
-
-                            <div class="category-content">
-                                <div id="default-templates" class="template-grid">
-                                    <!-- Populated by JavaScript -->
-                                </div>
-                                <div id="custom-templates" class="template-grid hidden">
-                                    <!-- Populated by JavaScript -->
-                                </div>
+                            <div id="all-templates" class="template-grid">
+                                <!-- Populated by JavaScript -->
                             </div>
                         </div>
                     </div>
