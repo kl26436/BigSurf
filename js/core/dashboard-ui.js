@@ -130,15 +130,23 @@ async function checkForInProgressWorkout() {
             if (card && nameElement) {
                 nameElement.textContent = workoutData.workoutType;
 
-                // Calculate sets completed
+                // Calculate sets completed from saved data vs template
                 let completedSets = 0;
                 let totalSets = 0;
+
+                // Get total sets from original workout template
+                if (workoutPlan && workoutPlan.exercises) {
+                    workoutPlan.exercises.forEach(exercise => {
+                        totalSets += exercise.sets || 3; // Default to 3 if not specified
+                    });
+                }
+
+                // Get completed sets from saved data
                 if (workoutData.exercises) {
                     Object.values(workoutData.exercises).forEach(exercise => {
                         if (exercise.sets) {
                             const exerciseSets = exercise.sets.filter(set => set.reps && set.weight);
                             completedSets += exerciseSets.length;
-                            totalSets += exercise.sets.length;
                         }
                     });
                 }

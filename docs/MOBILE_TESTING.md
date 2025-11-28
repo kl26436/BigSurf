@@ -12,13 +12,13 @@ Use this checklist to test Big Surf Workout Tracker on your mobile device before
 ## 📋 Core Functionality Tests
 
 ### Authentication & Sign-In
-- [ ] Google sign-in works smoothly
-- [ ] Welcome notification appears after sign-in
-- [ ] User info displays correctly in header
-- [ ] Sign-out works and shows correct UI state (sign-in button appears)
-- [ ] Account selection prompt appears after sign-out
-- [ ] Persists login after closing browser
-- [ ] Works in incognito mode
+- [x] Google sign-in works smoothly ✅ TESTED 2025-11-27
+- [x] Welcome notification appears after sign-in ✅ TESTED 2025-11-27
+- [x] User info displays correctly in header ✅ TESTED 2025-11-27
+- [x] Sign-out works and shows correct UI state (sign-in button appears) ✅ TESTED 2025-11-27
+- [x] Account selection prompt appears after sign-out ✅ TESTED 2025-11-27
+- [x] Persists login after closing browser ✅ TESTED 2025-11-27
+- [x] Works in incognito mode ✅ TESTED 2025-11-27
 
 ### Starting a Workout from Template
 - [ ] Can view default workout templates
