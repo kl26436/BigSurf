@@ -47,26 +47,45 @@ async function checkForInProgressWorkout() {
         const { AppState } = await import('./app-state.js');
         const { loadTodaysWorkout } = await import('./data-manager.js');
 
-        const todaysData = await loadTodaysWorkout(AppState);
+        // Check today's workout first
+        let workoutData = await loadTodaysWorkout(AppState);
 
-        if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
-            console.log('🏋️ Found in-progress workout:', todaysData.workoutType);
+        // If no incomplete workout today, check yesterday (in case workout started before midnight)
+        if (!workoutData || workoutData.completedAt || workoutData.cancelledAt) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+            const { getDoc, doc, db } = await import('./firebase-config.js');
+            const yesterdayRef = doc(db, "users", AppState.currentUser.uid, "workouts", yesterdayStr);
+            const yesterdaySnap = await getDoc(yesterdayRef);
+
+            if (yesterdaySnap.exists()) {
+                const yesterdayData = { id: yesterdaySnap.id, ...yesterdaySnap.data() };
+                if (!yesterdayData.completedAt && !yesterdayData.cancelledAt) {
+                    workoutData = yesterdayData;
+                }
+            }
+        }
+
+        if (workoutData && !workoutData.completedAt && !workoutData.cancelledAt) {
+            console.log('🏋️ Found in-progress workout:', workoutData.workoutType);
 
             // Find the workout plan
             const workoutPlan = AppState.workoutPlans.find(plan =>
-                plan.day === todaysData.workoutType ||
-                plan.name === todaysData.workoutType ||
-                plan.id === todaysData.workoutType
+                plan.day === workoutData.workoutType ||
+                plan.name === workoutData.workoutType ||
+                plan.id === workoutData.workoutType
             );
 
             if (!workoutPlan) {
-                console.warn('⚠️ Workout plan not found for:', todaysData.workoutType);
+                console.warn('⚠️ Workout plan not found for:', workoutData.workoutType);
                 return;
             }
 
             // Store in-progress workout globally so it can be resumed
             window.inProgressWorkout = {
-                ...todaysData,
+                ...workoutData,
                 originalWorkout: workoutPlan
             };
 
@@ -75,8 +94,11 @@ async function checkForInProgressWorkout() {
             const nameElement = document.getElementById('resume-workout-name');
 
             if (card && nameElement) {
-                nameElement.textContent = todaysData.workoutType;
+                nameElement.textContent = workoutData.workoutType;
                 card.classList.remove('hidden');
+                console.log('✅ Resume banner shown for:', workoutData.workoutType);
+            } else {
+                console.warn('⚠️ Resume banner elements not found:', { card: !!card, nameElement: !!nameElement });
             }
         } else {
             // Hide resume banner if no workout in progress
