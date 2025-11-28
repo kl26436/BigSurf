@@ -317,13 +317,39 @@ Before announcing to users:
 
 ### v4.5-v4.6: Midnight & Abandoned Workout Handling
 - [x] Resume banner shows for workouts started yesterday ✅ TESTED 2025-11-27
-- [ ] Workouts > 3 hours old auto-complete if exercises done
-- [ ] Workouts > 3 hours old auto-delete if empty
-- [ ] Resume banner doesn't show for workouts > 3h old
+- [x] Workouts > 3 hours old auto-complete if exercises done ✅ TESTED 2025-11-28
+- [ ] Workouts > 3 hours old auto-delete if empty (NEEDS TESTING)
+- [x] Resume banner doesn't show for workouts > 3h old ✅ TESTED 2025-11-28
 
 ### v4.7: Resume Banner Stats
 - [x] Resume banner shows actual sets completed (not 0/0) ✅ TESTED 2025-11-27
 - [x] Resume banner shows time ago (minutes/hours) ✅ TESTED 2025-11-27
+
+### v4.8: Sets Counter Accuracy
+- [x] Resume banner shows "X/Y" where Y is template total (not saved total) ✅ TESTED 2025-11-28
+- [x] Example: "8/24 sets" not "8/8 sets" ✅ TESTED 2025-11-28
+
+## 🧪 How to Test Auto-Delete (Empty Workout > 3h)
+
+To test the auto-delete feature for empty abandoned workouts:
+
+1. **Create test workout** (via Firebase Console or app):
+   - Start a workout but don't add any sets
+   - Set `startedAt` to 4+ hours ago
+   - Make sure `completedAt` and `cancelledAt` are null/undefined
+   - Make sure `exercises` object is empty or has no sets with data
+
+2. **Expected behavior**:
+   - Refresh the app
+   - Resume banner should NOT appear
+   - Workout should be automatically deleted from Firebase
+   - Check Firebase Console - document should be gone
+   - Console should log: "🗑️ Deleted abandoned empty workout: [name]"
+
+3. **Verification**:
+   - Check Firebase Console to confirm deletion
+   - Check browser console for deletion log
+   - Workout should not appear in history/calendar
 
 ## 🔍 Console Check
 
