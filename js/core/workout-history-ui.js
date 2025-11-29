@@ -105,55 +105,90 @@ export function viewWorkout(workoutId) {
 
 export function resumeWorkout(workoutId) {
     if (!window.workoutHistory) return;
-    
+
     const workout = window.workoutHistory.getWorkoutDetails(workoutId);
     if (!workout) {
         showNotification('Workout not found', 'error');
         return;
     }
-    
+
+    // Get workout name from formatted object or rawData
+    const workoutName = workout.name || workout.rawData?.workoutType || 'Workout';
+
     // Check if workout can be resumed
     if (workout.status === 'completed') {
         showNotification('Cannot resume a completed workout', 'warning');
         return;
     }
-    
+
     if (workout.status === 'cancelled') {
         showNotification('Cannot resume a cancelled workout', 'warning');
         return;
     }
-    
-    // Confirm and resume
-    const confirmMessage = `Resume "${workout.workoutType}" from ${new Date(workout.date).toLocaleDateString()}?`;
-    if (confirm(confirmMessage)) {
-        console.log(' Resuming workout:', workoutId);
 
-        // Start a new workout with the same type - the saved data will be loaded automatically
-        if (typeof window.startWorkout === 'function') {
-            window.startWorkout(workout.workoutType);
+    // Confirm and resume
+    const workoutDate = workout.rawData?.date || workoutId;
+    const confirmMessage = `Resume "${workoutName}" from ${new Date(workoutDate + 'T12:00:00').toLocaleDateString()}?`;
+    if (confirm(confirmMessage)) {
+        console.log('▶️ Resuming workout:', workoutId);
+
+        // Close the modal first
+        if (window.workoutHistory) {
+            window.workoutHistory.closeWorkoutDetailModal();
+        }
+
+        // Check if this is today's in-progress workout - use continueInProgressWorkout
+        if (window.inProgressWorkout && window.inProgressWorkout.date === workoutDate) {
+            console.log('▶️ Using continueInProgressWorkout for today\'s workout');
+            if (typeof window.continueInProgressWorkout === 'function') {
+                window.continueInProgressWorkout();
+            } else {
+                console.error('❌ continueInProgressWorkout function not available');
+                alert('Cannot resume workout. Please refresh the page.');
+            }
         } else {
-            console.error('❌ startWorkout function not available');
-            alert('Cannot resume workout. Please refresh the page.');
+            // For older workouts, load the workout data and continue it
+            console.log('▶️ Loading older workout to resume');
+            // Set inProgressWorkout from the raw data and then continue
+            if (workout.rawData) {
+                window.inProgressWorkout = workout.rawData;
+                if (typeof window.continueInProgressWorkout === 'function') {
+                    window.continueInProgressWorkout();
+                } else {
+                    console.error('❌ continueInProgressWorkout function not available');
+                    alert('Cannot resume workout. Please refresh the page.');
+                }
+            } else {
+                showNotification('Cannot load workout data', 'error');
+            }
         }
     }
 }
 
 export function repeatWorkout(workoutId) {
     if (!window.workoutHistory) return;
-    
+
     const workout = window.workoutHistory.getWorkoutDetails(workoutId);
     if (!workout) {
         showNotification('Workout not found', 'error');
         return;
     }
-    
-    const confirmMessage = `Start a new workout based on "${workout.workoutType}"?`;
+
+    // Get workout name from formatted object or rawData
+    const workoutName = workout.name || workout.rawData?.workoutType || 'Workout';
+
+    const confirmMessage = `Start a new workout based on "${workoutName}"?`;
     if (confirm(confirmMessage)) {
         console.log(' Repeating workout:', workoutId);
 
+        // Close the modal first
+        if (window.workoutHistory) {
+            window.workoutHistory.closeWorkoutDetailModal();
+        }
+
         // Start a workout using the workout type/name
         if (typeof window.startWorkout === 'function') {
-            window.startWorkout(workout.workoutType);
+            window.startWorkout(workoutName);
         } else {
             console.error('❌ startWorkout function not available');
             alert('Cannot start workout. Please refresh the page.');
@@ -163,42 +198,45 @@ export function repeatWorkout(workoutId) {
 
 export function deleteWorkout(workoutId) {
     if (!window.workoutHistory) return;
-    
+
     const workout = window.workoutHistory.getWorkoutDetails(workoutId);
     if (!workout) {
         showNotification('Workout not found', 'error');
         return;
     }
 
-    const confirmMessage = `Are you sure you want to delete "${workout.workoutType}" from ${new Date(workout.date).toLocaleDateString()}?\n\nThis action cannot be undone.`;
-    
-    if (confirm(confirmMessage)) {
-        console.log(' Deleting workout:', workoutId);
-
-        // Call the delete method from workout-history
-        if (window.workoutHistory && typeof window.workoutHistory.deleteWorkout === 'function') {
-            window.workoutHistory.deleteWorkout(workoutId);
-        } else {
-            console.error('❌ Delete workout function not available');
-            alert('Cannot delete workout. Please refresh the page.');
-        }
+    // Use the global deleteWorkoutFromCalendar function which handles Firebase deletion
+    if (typeof window.deleteWorkoutFromCalendar === 'function') {
+        // Pass the date (workoutId is the date)
+        window.deleteWorkoutFromCalendar(workoutId);
+    } else {
+        console.error('❌ Delete workout function not available');
+        alert('Cannot delete workout. Please refresh the page.');
     }
 }
 
 export function retryWorkout(workoutId) {
     if (!window.workoutHistory) return;
-    
+
     const workout = window.workoutHistory.getWorkoutDetails(workoutId);
     if (!workout) {
         showNotification('Workout not found', 'error');
         return;
     }
-    
+
+    // Get workout name from formatted object or rawData
+    const workoutName = workout.name || workout.rawData?.workoutType || 'Workout';
+
     console.log(' Retrying workout:', workoutId);
+
+    // Close the modal first
+    if (window.workoutHistory) {
+        window.workoutHistory.closeWorkoutDetailModal();
+    }
 
     // Retry is the same as Repeat - start a new workout with the same type
     if (typeof window.startWorkout === 'function') {
-        window.startWorkout(workout.workoutType);
+        window.startWorkout(workoutName);
     } else {
         console.error('❌ startWorkout function not available');
         alert('Cannot retry workout. Please refresh the page.');

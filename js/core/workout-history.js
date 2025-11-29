@@ -540,11 +540,39 @@ export function getWorkoutHistory(appState) {
 
  
         closeWorkoutDetailModal() {
-            const modal = document.getElementById('workoutModal');
-            if (modal) {
-                modal.style.display = 'none';
+            // Try both modal IDs (workoutModal and workout-detail-modal)
+            const modal1 = document.getElementById('workoutModal');
+            const modal2 = document.getElementById('workout-detail-modal');
+
+            if (modal1) {
+                modal1.style.display = 'none';
+            }
+            if (modal2) {
+                modal2.classList.add('hidden');
             }
         },
+
+        // Get workout details by date/id
+        getWorkoutDetails(workoutId) {
+            // workoutId could be a date string (YYYY-MM-DD) or other identifier
+            if (this.calendarWorkouts[workoutId]) {
+                const workout = this.calendarWorkouts[workoutId];
+                // Ensure date field is set
+                workout.date = workout.date || workoutId;
+                return workout;
+            }
+            // Search through calendarWorkouts for matching id
+            for (const date in this.calendarWorkouts) {
+                const workout = this.calendarWorkouts[date];
+                if (workout.id === workoutId || workout.date === workoutId) {
+                    // Ensure date field is set
+                    workout.date = workout.date || date;
+                    return workout;
+                }
+            }
+            return null;
+        },
+
         // Setup calendar day click events
 setupCalendarClickEvents() {
     // Wait a bit for the calendar to render, then add click events
@@ -831,12 +859,15 @@ calculateProgress(workout) {
             const workout = this.calendarWorkouts[date];
             if (!workout) return;
 
-            console.log('Repeat workout:', workout);
+            // Get workout name from formatted object or rawData
+            const workoutName = workout.name || workout.rawData?.workoutType || 'Workout';
+
+            console.log('Repeat workout:', workoutName);
             this.closeWorkoutDetailModal();
 
             // Start a workout using the workout type/name
             if (typeof window.startWorkout === 'function') {
-                window.startWorkout(workout.workoutType);
+                window.startWorkout(workoutName);
             } else {
                 console.error('❌ startWorkout function not available');
                 alert('Cannot start workout. Please refresh the page.');

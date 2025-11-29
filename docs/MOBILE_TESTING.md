@@ -7,7 +7,7 @@ Use this checklist to test Big Surf Workout Tracker on your mobile device before
 - [ ] Deployed to Firebase Hosting (https://bigsurf.fit)
 - [ ] Test on actual phone (not just browser DevTools)
 - [ ] Clear browser cache before testing (hard refresh)
-- [ ] Current version: v3.20-notification-cleanup
+- [ ] Current version: v4.24-ui-improvements
 
 ## 📋 Core Functionality Tests
 
@@ -72,11 +72,10 @@ Use this checklist to test Big Surf Workout Tracker on your mobile device before
 - [x] Past workouts display with correct dates ✅ TESTED 2025-11-28
 - [x] Workout cards show: name, date, duration, exercise count ✅ TESTED 2025-11-28
 - [x] Can view workout details (expandable) ✅ TESTED 2025-11-28
-- [ ] Can **repeat** past workouts (starts new workout with same template) ❌ BUG: getWorkoutDetails error
-- [ ] Can **resume** incomplete workouts (continues in-progress workout) ❌ BUG: getWorkoutDetails error
-- [ ] Can **retry** cancelled workouts (starts new workout) - NOT TESTED
+- [x] Can **repeat** past workouts (starts new workout with same template) ✅ TESTED 2025-11-29 (v4.24)
+- [x] Can **resume** incomplete workouts (continues in-progress workout) ✅ TESTED 2025-11-29 (v4.24)
 - [x] Can delete workouts (with confirmation) ✅ TESTED 2025-11-28
-- [ ] Delete should navigate back to calendar view ❌ BUG: stays on modal
+- [x] Delete closes modal and returns to calendar ✅ TESTED 2025-11-29 (v4.24)
 - [ ] Search/filter works - NOT IMPLEMENTED (future enhancement)
 - [ ] Clear filters button works - NOT IMPLEMENTED (future enhancement)
 
@@ -530,6 +529,47 @@ To test the auto-delete feature for empty abandoned workouts:
 1. During workout, complete a set to trigger PR notification
 2. Check browser console
 3. **Expected**: No "Silent notifications must not specify vibration patterns" error
+
+## 🎯 v4.23-v4.24: Resume & UI Improvements (2025-11-29)
+
+### v4.23: Resume Card Fixes
+- [x] Resume card shows correct workout name (not "Current Workout") ✅ TESTED 2025-11-29
+- [x] "Start Fresh" renamed to "Cancel Workout" ✅ TESTED 2025-11-29
+
+### v4.24: Workout Page UI Improvements
+- [x] Completed exercises show green border (not collapsed) ✅ TESTED 2025-11-29
+- [x] Completed exercises show full content (sets, reps, buttons visible) ✅ TESTED 2025-11-29
+- [x] "Add Exercise" button moved to header (next to Cancel/Finish) ✅ TESTED 2025-11-29
+- [x] Resume button properly resumes workout (doesn't cancel it) ✅ TESTED 2025-11-29
+- [x] Delete/Repeat buttons close modal after confirmation ✅ TESTED 2025-11-29
+
+### Test 1: Completed Exercise Display
+1. Start a workout
+2. Complete all sets for one exercise
+3. **Expected**: Exercise card has green border
+4. **Expected**: Exercise card shows full content (not collapsed)
+5. **Expected**: Edit/Delete buttons still visible
+
+### Test 2: Add Exercise Button Location
+1. Start a workout
+2. **Expected**: "Add Exercise" button visible in header with Cancel/Finish
+3. Click "Add Exercise"
+4. **Expected**: Exercise library opens
+
+### Test 3: Resume Today's Workout
+1. Start a workout, complete some sets
+2. Go to Workout History calendar
+3. Click on today's workout
+4. Click "Resume"
+5. **Expected**: Workout resumes with your sets preserved (no cancel prompt)
+
+### Test 4: Modal Close After Actions
+1. Go to Workout History
+2. Click on any workout
+3. Click "Delete" → Confirm
+4. **Expected**: Modal closes, returns to calendar
+5. Click another workout → Click "Repeat" → Confirm
+6. **Expected**: Modal closes, starts new workout
 
 ## 🔍 Console Check
 

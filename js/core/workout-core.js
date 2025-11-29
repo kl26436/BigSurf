@@ -356,21 +356,11 @@ export function renderExercises() {
             <div class="empty-workout-message">
                 <i class="fas fa-dumbbell"></i>
                 <h3>No exercises in this workout</h3>
-                <p>Add some exercises to get started!</p>
+                <p>Use the "Add Exercise" button above to get started!</p>
             </div>
         `;
     }
 
-    // Add "Add Exercise" button at the bottom
-    const addExerciseFooter = document.createElement('div');
-    addExerciseFooter.className = 'add-exercise-footer';
-    addExerciseFooter.innerHTML = `
-        <button class="btn btn-primary btn-add-exercise" onclick="addExerciseToActiveWorkout()" title="Add new exercise to workout">
-            <i class="fas fa-plus"></i> Add Exercise
-        </button>
-    `;
-    container.appendChild(addExerciseFooter);
-    
     updateProgress(AppState);
 }
 
@@ -430,7 +420,7 @@ export function createExerciseCard(exercise, index) {
 
     if (isCompleted) {
         card.classList.add('completed');
-        card.classList.add('collapsed'); // Auto-collapse completed exercises
+        // Don't collapse - show full exercise with green border indicator
     }
     
     // Calculate progress percentage using displayTotal to avoid >100%
@@ -455,23 +445,6 @@ export function createExerciseCard(exercise, index) {
             </button>
         </div>
     `;
-
-    // Add click handler for completed exercises to toggle collapse
-    if (isCompleted) {
-        const titleRow = card.querySelector('.exercise-title-row');
-        const progressRow = card.querySelector('.exercise-progress-row');
-
-        if (titleRow) {
-            titleRow.addEventListener('click', () => {
-                card.classList.toggle('collapsed');
-            });
-        }
-        if (progressRow) {
-            progressRow.addEventListener('click', () => {
-                card.classList.toggle('collapsed');
-            });
-        }
-    }
 
     return card;
 }

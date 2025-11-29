@@ -275,6 +275,22 @@ localStorage.setItem('debug', 'firebase:*');
 - **Resume Banner Fix**: Resume banner now hidden when starting a workout (was showing for cancelled workout)
   - **File**: [workout-core.js:54-58,119-121](js/core/workout-core.js#L54-L58)
 
+### v4.23: Resume Card Improvements
+- **Workout Name Display**: Resume card now shows actual workout name instead of "Current Workout"
+  - **File**: [workout-core.js:248-252](js/core/workout-core.js#L248-L252)
+- **Button Rename**: "Start Fresh" renamed to "Cancel Workout" for clarity
+  - **File**: [index.html:183-185](index.html#L183-L185)
+
+### v4.24: Workout Page UI Overhaul
+- **No More Collapse**: Completed exercises show full content with green border instead of collapsing
+  - **File**: [workout-core.js:431-434](js/core/workout-core.js#L431-L434), [style.css:1224-1232](style.css#L1224-L1232)
+- **Add Exercise Relocated**: Button moved from bottom of exercise list to header (next to Cancel/Finish)
+  - **File**: [index.html:264-266](index.html#L264-L266), [workout-core.js:353-364](js/core/workout-core.js#L353-L364)
+- **Resume Fix**: Resume button now uses `continueInProgressWorkout()` instead of `startWorkout()` to properly continue workouts
+  - **File**: [workout-history-ui.js:140-165](js/core/workout-history-ui.js#L140-L165)
+- **Modal Close Fix**: Delete/Repeat buttons now properly close modal after confirmation
+  - **File**: [workout-history.js:542-553](js/core/workout-history.js#L542-L553)
+
 ### Key Technical Learnings
 
 1. **Deep vs Shallow Copy**: Always use deep clone for nested objects when modifications should not affect source

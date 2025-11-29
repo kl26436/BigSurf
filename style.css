@@ -1222,39 +1222,13 @@ body {
 }
 
 .exercise-card.completed {
-    opacity: 0.7;
-    order: 999; /* Move to bottom */
+    border: 2px solid var(--success);
+    background: rgba(35, 134, 54, 0.08);
+    order: 999; /* Move completed to bottom */
 }
 
 .exercise-card.completed::before {
     opacity: 1;
-}
-
-/* Collapsed completed exercises */
-.exercise-card.completed.collapsed {
-    padding: 0.5rem 0.75rem;
-    max-height: 50px;
-}
-
-.exercise-card.completed.collapsed .exercise-table,
-.exercise-card.completed.collapsed .exercise-actions,
-.exercise-card.completed.collapsed .exercise-notes-section,
-.exercise-card.completed.collapsed .exercise-hint,
-.exercise-card.completed.collapsed .exercise-sets-preview,
-.exercise-card.completed.collapsed .exercise-meta,
-.exercise-card.completed.collapsed .exercise-progress,
-.exercise-card.completed.collapsed .exercise-progress-bar,
-.exercise-card.completed.collapsed .exercise-unit-toggle-mini {
-    display: none !important;
-}
-
-.exercise-card.completed .exercise-header {
-    cursor: pointer;
-    user-select: none;
-}
-
-.exercise-card.completed .exercise-header:hover {
-    opacity: 0.8;
 }
 
 .exercise-card.focused {
