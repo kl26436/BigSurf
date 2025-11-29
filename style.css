@@ -6631,6 +6631,11 @@ img[loading="lazy"].loaded {
     z-index: 1100 !important;
 }
 
+/* Add Exercise Modal - needs highest z-index to appear over exercise library */
+#add-exercise-modal {
+    z-index: 1200 !important;
+}
+
 /* Manual Workout Modal */
 #add-manual-workout-modal {
     z-index: 1050;
