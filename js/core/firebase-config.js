@@ -5,6 +5,11 @@ import {
 import {
   getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+// Firebase Messaging SDK removed - using Web Push API directly instead
+// See push-notification-manager.js for Web Push implementation
+import {
+  getFunctions, httpsCallable
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -20,6 +25,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const functions = getFunctions(app);
+
+// Firebase Messaging is no longer used - we use Web Push API directly
+// See push-notification-manager.js for the implementation
+export const messaging = null;
 
 // Set auth persistence to LOCAL (survives browser restarts and redirects)
 setPersistence(auth, browserLocalPersistence)
@@ -37,5 +47,6 @@ export const provider = new GoogleAuthProvider();
 // Re-export Firebase functions for easy importing
 export {
   doc, setDoc, getDoc, deleteDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot,
-  onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, setPersistence, browserLocalPersistence
+  onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, setPersistence, browserLocalPersistence,
+  httpsCallable
 };

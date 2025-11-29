@@ -4,6 +4,7 @@
 import { AppState } from './app-state.js';
 import { showNotification, convertWeight, updateProgress } from './ui-helpers.js';
 import { saveWorkoutData, loadExerciseHistory } from './data-manager.js';
+import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from './push-notification-manager.js';
 
 // ===================================================================
 // CORE WORKOUT LIFECYCLE
@@ -1026,15 +1027,15 @@ export function skipModalRestTimer(exerciseIndex) {
 
 function startModalRestTimer(exerciseIndex, duration = 90) {
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
-    
+
     clearModalRestTimer(exerciseIndex);
-    
+
     const modalTimer = document.getElementById(`modal-rest-timer-${exerciseIndex}`);
     const exerciseLabel = modalTimer?.querySelector('.modal-rest-exercise');
     const timerDisplay = modalTimer?.querySelector('.modal-rest-display');
-    
+
     if (!modalTimer || !exerciseLabel || !timerDisplay) return;
-    
+
     exerciseLabel.textContent = `Rest Period - ${exercise.machine}`;
     modalTimer.classList.remove('hidden');
 
@@ -1045,21 +1046,28 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
     let isPaused = false;
     let startTime = Date.now();
     let pausedTime = 0;
-    
+
+    // Schedule server-side push notification for iOS background support
+    // This will send a notification even if the app is backgrounded/locked
+    if (isFCMAvailable()) {
+        scheduleRestNotification(duration, exercise.machine || 'your next set')
+            .catch(() => {}); // Silently fail - local timer still works
+    }
+
     const updateDisplay = () => {
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
         timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
-    
+
     const checkTime = () => {
         if (isPaused) return;
-        
+
         const elapsed = Math.floor((Date.now() - startTime - pausedTime) / 1000);
         timeLeft = Math.max(0, duration - elapsed);
-        
+
         updateDisplay();
-        
+
         if (timeLeft === 0) {
             timerDisplay.textContent = 'Ready!';
             timerDisplay.style.color = 'var(--success)';
@@ -1069,22 +1077,10 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
                 navigator.vibrate([200, 100, 200]);
             }
 
-            // Use service worker notification for background support
-            import('./notification-helper.js').then(({ showNotification }) => {
-                showNotification('Rest complete!', 'Time for your next set', {
-                    tag: 'rest-timer',
-                    silent: true // No sound - user can see timer at 0:00
-                });
-            }).catch(() => {
-                // Fallback to regular notification if service worker not available
-                if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('Rest complete!', {
-                        body: 'Time for your next set',
-                        icon: '/BigSurf.png',
-                        silent: true
-                    });
-                }
-            });
+            // Don't show local notification - server-side push handles it
+            // The push notification is scheduled via Cloud Functions and will arrive
+            // even if the app is backgrounded (on supported devices)
+            // On iOS, the push may only appear when app is foregrounded due to platform limitations
 
             // Removed in-app notification - timer shows 0:00 which is clear enough
 
@@ -1131,9 +1127,12 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
             modalTimer.classList.add('hidden');
             timerDisplay.style.color = '#000000';
             modalTimer.timerData = null;
+
+            // Cancel the server-side scheduled notification
+            cancelRestNotification().catch(() => {});
         }
     };
-    
+
     // Request notification permission if not granted
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
@@ -1143,14 +1142,17 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
 function clearModalRestTimer(exerciseIndex) {
     const modalTimer = document.getElementById(`modal-rest-timer-${exerciseIndex}`);
     if (!modalTimer) return;
-    
+
     if (modalTimer.timerData) {
         if (modalTimer.timerData.animationFrame) {
             cancelAnimationFrame(modalTimer.timerData.animationFrame);
         }
         modalTimer.timerData = null;
+
+        // Cancel the server-side scheduled notification
+        cancelRestNotification().catch(() => {});
     }
-    
+
     modalTimer.classList.add('hidden');
     
     // Reset display
@@ -1208,24 +1210,8 @@ function restoreModalRestTimer(exerciseIndex, timerState) {
                 navigator.vibrate([200, 100, 200]);
             }
 
-            // Use service worker notification for background support
-            import('./notification-helper.js').then(({ showNotification }) => {
-                showNotification('Rest complete!', 'Time for your next set', {
-                    tag: 'rest-timer',
-                    silent: true // No sound - user can see timer at 0:00
-                });
-            }).catch(() => {
-                // Fallback to regular notification if service worker not available
-                if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('Rest complete!', {
-                        body: 'Time for your next set',
-                        icon: '/BigSurf.png',
-                        silent: true
-                    });
-                }
-            });
-
-            // Removed in-app notification - timer shows 0:00 which is clear enough
+            // Don't show local notification - server-side push handles it
+            // The push notification is scheduled via Cloud Functions
 
             // *** REMOVED AUTO-HIDE - Timer stays visible ***
             return;

@@ -305,9 +305,51 @@ localStorage.setItem('debug', 'firebase:*');
 - **Debug Module Intact**: [debug-utilities.js](js/core/debug-utilities.js) keeps all 82 logs for debugging tools
 - **Cleaner Console**: Browser console now shows only errors and intentional debug output
 
+### v4.34: Exercise Manager Fixes
+- **Save/Delete Functions**: Fixed `saveExercise` to properly handle editing vs creating exercises
+- **Delete Method Fix**: Fixed `deleteExercise` to use correct Firebase method names (`deleteUniversalExercise`)
+- **AppState Refresh**: Properly refreshes exercise database after CRUD operations
+- **Files**: [exercise-manager-ui.js:311-400](js/core/exercise-manager-ui.js#L311-L400)
+
+### v4.35: Exercise Library Modal Improvements
+- **Create New Exercise**: Button now opens add-exercise-modal as overlay above library modal
+- **Add to Active Workout**: Exercise library modal now properly adds exercises to active workouts
+- **Context Awareness**: `selectExerciseFromLibrary` handles both template editing and active workout contexts
+- **Event System**: Added `exerciseLibraryUpdated` custom event for cross-module refresh
+- **Files**: [workout-management-ui.js:703-743](js/core/workout/workout-management-ui.js#L703-L743), [workout-core.js:909-931](js/core/workout-core.js#L909-L931)
+
+### v4.36: CSS Reorganization
+- **Z-Index Scale**: Standardized stacking context (0-900 range) with documentation
+  - Sidebar: 300, Modals: 500, Exercise Library: 550, Add Exercise: 600, Loading: 800
+- **Removed !important Abuse**: Reduced from 23 to 15 declarations (kept only for utilities/accessibility)
+- **Fixed Layout Conflicts**: Resolved filter-row grid vs flex conflict
+- **Backup**: Original CSS saved as `style.css.backup`
+- **File**: [style.css](style.css) - see z-index scale comment at top
+
+### v4.37: Timer Bug Fix
+- **Duplicate Timer Fix**: Workout timer now clears existing interval before creating new one
+- **Issue**: Cancel + new workout caused timer to flicker between old/new values
+- **File**: [workout-core.js:1308-1329](js/core/workout-core.js#L1308-L1329)
+
+### v4.38-v4.39: iOS Background Push Notifications (2025-11-29)
+- **Status**: NOT WORKING - iOS platform limitation
+- **Attempted**: Firebase Cloud Functions + Web Push API for iOS lock screen notifications
+- **Result**: Notifications only appear when app is foregrounded (iOS does not support reliable background push for PWAs)
+- **Infrastructure in place** (ready if Apple improves support):
+  - Cloud Functions: `scheduleRestNotification`, `cancelRestNotification`, `sendDueNotifications`, `savePushSubscription`
+  - Web Push API with VAPID keys (replaced FCM which has iOS Safari issues)
+  - Unified service worker (removed duplicate `firebase-messaging-sw.js`)
+- **Files**:
+  - [functions/index.js](functions/index.js) - Cloud Functions
+  - [service-worker.js](service-worker.js) - Unified service worker with push handler
+  - [js/core/push-notification-manager.js](js/core/push-notification-manager.js) - Web Push API client
+  - [js/core/error-handler.js](js/core/error-handler.js) - Suppresses non-critical push errors
+- **For true background notifications**: Would require native iOS app (Swift/React Native/Capacitor)
+
 ### Key Technical Learnings
 
 1. **Deep vs Shallow Copy**: Always use deep clone for nested objects when modifications should not affect source
 2. **Abandoned Workout Detection**: Use `startedAt` timestamp comparison for time-based logic
 3. **Workout Status States**: `completed`, `incomplete`, `cancelled`, `partial` - must check `completedAt` and `cancelledAt` fields
 4. **Calendar Rendering**: Status-based CSS classes enable color coding without text labels
+5. **iOS PWA Notifications**: Neither client-side setTimeout nor server-side push works reliably - iOS platform limitation

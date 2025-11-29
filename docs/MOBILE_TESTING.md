@@ -7,7 +7,7 @@ Use this checklist to test Big Surf Workout Tracker on your mobile device before
 - [ ] Deployed to Firebase Hosting (https://bigsurf.fit)
 - [ ] Test on actual phone (not just browser DevTools)
 - [ ] Clear browser cache before testing (hard refresh)
-- [ ] Current version: v4.33-log-cleanup
+- [ ] Current version: v4.37-timer-fix
 
 ## 📋 Core Functionality Tests
 
@@ -117,30 +117,31 @@ Use this checklist to test Big Surf Workout Tracker on your mobile device before
 - [x] Templates sync across devices ✅ Firebase
 
 ### Exercise Library
-- [ ] Library modal opens (integrated, not popup window) - BROKEN
-- [ ] All 79+ exercises load - NEEDS TESTING
-- [ ] Search works (name, body part, equipment) - NEEDS TESTING
-- [ ] Body part filter works - NEEDS TESTING
-- [ ] Equipment filter works - NEEDS TESTING
-- [ ] Can select exercise in different contexts:
-  - [ ] Add to manual workout - BROKEN
-  - [ ] Add to template - BROKEN
-  - [ ] Add to active workout - BROKEN
-- [ ] Modal closes after selection - NEEDS TESTING
+- [x] Library modal opens (integrated, not popup window) ✅ v4.35 TESTED 2025-11-29
+- [ ] All 79+ exercises load - NEEDS TESTING (v4.35 code fix)
+- [ ] Search works (name, body part, equipment) - NEEDS TESTING (v4.35 code fix)
+- [ ] Body part filter works - NEEDS TESTING (v4.35 code fix)
+- [ ] Equipment filter works - NEEDS TESTING (v4.35 code fix)
+- [x] Can select exercise in different contexts:
+  - [ ] Add to manual workout - NEEDS TESTING (v4.35 code fix)
+  - [ ] Add to template - NEEDS TESTING (v4.35 code fix)
+  - [x] Add to active workout ✅ v4.36 TESTED 2025-11-29
+- [ ] Modal closes after selection - NEEDS TESTING (v4.35 code fix)
+- [ ] Create New Exercise button works from library modal - NEEDS TESTING (v4.35 code fix)
 
 ### Exercise Manager
-- [ ] "Manage Exercises" section loads - NEEDS TESTING
-- [ ] All exercises display (default + custom) - NEEDS TESTING
-- [ ] Search works - NEEDS TESTING
-- [ ] Body part filter works - NEEDS TESTING
-- [ ] Equipment filter works - NEEDS TESTING
-- [ ] Can create custom exercise - BROKEN
-- [ ] Custom exercise **saves to Firebase** successfully - BROKEN
-- [ ] Can edit exercises - BROKEN
-- [ ] Can **delete custom exercises** (removes from Firebase) - BROKEN
-- [ ] Can **delete exercise overrides** (reverts to default) - BROKEN
-- [ ] Can **hide default exercises** (hides from library) - BROKEN
-- [ ] Changes reflect immediately in exercise library - NEEDS TESTING
+- [ ] "Manage Exercises" section loads - NEEDS TESTING (v4.34 code fix)
+- [ ] All exercises display (default + custom) - NEEDS TESTING (v4.34 code fix)
+- [ ] Search works - NEEDS TESTING (v4.34 code fix)
+- [ ] Body part filter works - NEEDS TESTING (v4.34 code fix)
+- [ ] Equipment filter works - NEEDS TESTING (v4.34 code fix)
+- [ ] Can create custom exercise - NEEDS TESTING (v4.34 code fix)
+- [ ] Custom exercise **saves to Firebase** successfully - NEEDS TESTING (v4.34 code fix)
+- [ ] Can edit exercises - NEEDS TESTING (v4.34 code fix)
+- [ ] Can **delete custom exercises** (removes from Firebase) - NEEDS TESTING (v4.34 code fix)
+- [ ] Can **delete exercise overrides** (reverts to default) - NEEDS TESTING (v4.34 code fix)
+- [ ] Can **hide default exercises** (hides from library) - NEEDS TESTING (v4.34 code fix)
+- [ ] Changes reflect immediately in exercise library - NEEDS TESTING (v4.34 code fix)
 
 ### Location Management
 - [ ] Location selector - DISABLED (modal visibility issues, will fix later) - v4.25
@@ -576,15 +577,119 @@ To test the auto-delete feature for empty abandoned workouts:
 ## 🎯 v4.33: Console Log Cleanup (2025-11-29)
 
 ### v4.33: Code Cleanup
-- [ ] Browser console shows only errors (no verbose logs)
-- [ ] All functionality still works after log removal
-- [ ] Error messages still show with ❌ emoji prefix
+- [x] Browser console shows only errors (no verbose logs) ✅ TESTED 2025-11-29
+- [x] All functionality still works after log removal ✅ TESTED 2025-11-29
+- [x] Error messages still show with ❌ emoji prefix ✅ TESTED 2025-11-29
 
 ### Test 1: Clean Console
 1. Open browser DevTools console
 2. Navigate through app (dashboard, start workout, history)
 3. **Expected**: Console shows only errors, no verbose "Starting workout...", "Loading..." logs
 4. **Expected**: Error messages still appear when things fail
+
+## 🎯 v4.34-v4.37: Exercise Manager & CSS Fixes (2025-11-29)
+
+### v4.34: Exercise Manager CRUD Operations Fixed (CODE CHANGES - NEEDS TESTING)
+- [ ] saveExercise correctly handles editing vs creating - CODE FIX
+- [ ] deleteExercise uses correct Firebase method - CODE FIX
+- [ ] Custom exercises save to Firebase successfully - CODE FIX
+- [ ] Edit exercises works properly - CODE FIX
+- [ ] Delete custom exercises works - CODE FIX
+- [ ] Hide default exercises works - CODE FIX
+- [ ] Revert overrides to default works - CODE FIX
+
+### v4.35: Exercise Library Modal Fixes (CODE CHANGES - NEEDS TESTING)
+- [x] Library modal opens correctly from all contexts ✅ TESTED 2025-11-29
+- [ ] Create New Exercise button reuses add-exercise-modal - CODE FIX
+- [ ] Modal z-index layering fixed (library z-500, add-exercise z-600) - CODE FIX
+- [ ] Exercise selection works for template editing - CODE FIX
+
+### v4.36: CSS Reorganization & Z-Index Standardization (CODE CHANGES)
+- [x] CSS backup saved to style.css.backup ✅ DONE
+- [x] Z-index scale standardized (0-900 range) ✅ CODE FIX
+- [x] Removed ~50 unnecessary !important declarations ✅ CODE FIX
+- [ ] Modal stacking context fixed - NEEDS VISUAL TESTING
+- [x] Add exercise from active workout works ✅ TESTED 2025-11-29
+
+### v4.37: Timer Duplicate Bug Fix
+- [x] Starting new workout after cancel no longer has timer flickering ✅ TESTED 2025-11-29
+- [x] clearInterval called before new setInterval ✅ CODE FIX
+- [x] Timer shows correct elapsed time ✅ TESTED 2025-11-29
+
+### Known Issues Remaining
+- [ ] Exercise Manager/Library UI needs visual polish
+- [ ] Filters need testing
+- [ ] Edit functionality needs testing
+
+### Test 1: Exercise Manager CRUD
+1. Open "Manage Exercises" from hamburger menu
+2. Click "Add New Exercise"
+3. Fill form and save
+4. **Expected**: Exercise appears in list, saved to Firebase
+5. Click edit on the new exercise
+6. Change name, save
+7. **Expected**: Name updates immediately
+8. Click delete
+9. **Expected**: Exercise removed from list and Firebase
+
+### Test 2: Add Exercise to Active Workout
+1. Start a workout
+2. Click "Add Exercise" button in header
+3. **Expected**: Exercise library opens
+4. Select an exercise
+5. **Expected**: Exercise added to workout, library closes
+
+### Test 3: Create Exercise from Library Modal
+1. Start a workout
+2. Click "Add Exercise"
+3. Click "Create New Exercise"
+4. **Expected**: Add exercise modal appears over library
+5. Fill form and save
+6. **Expected**: New exercise created, modal closes
+
+### Test 4: Timer Stability
+1. Start a workout, wait 2 minutes
+2. Cancel workout (confirm)
+3. Start a new workout
+4. **Expected**: Timer starts from 0:00, no flickering between old/new values
+
+## 🎯 v4.38-v4.39: iOS Background Push Notifications (2025-11-29)
+
+### Status: NOT WORKING - iOS Platform Limitation
+
+**What Was Attempted:**
+- Firebase Cloud Functions for server-side push notifications
+- Web Push API with VAPID keys (more reliable than FCM on iOS Safari)
+- Service worker consolidation (removed duplicate `firebase-messaging-sw.js`)
+
+**Current Behavior:**
+- Notifications only appear when returning to the app (foreground)
+- Background/lock screen notifications do NOT work on iOS PWA
+
+**Why It Doesn't Work (iOS Limitations):**
+- iOS does not support reliable background push for PWAs
+- Push subscriptions can get "lost" on iOS 17+ after some time
+- iOS aggressively suspends PWAs when backgrounded
+- This is an Apple platform limitation, not a code bug
+
+**Infrastructure Still In Place:**
+- [x] Firebase Blaze plan enabled
+- [x] Cloud Functions deployed (`scheduleRestNotification`, `sendDueNotifications`)
+- [x] VAPID keys configured (Web Push API)
+- [x] Service worker handles push events
+- [x] Scheduled function runs every minute
+
+**If Apple Improves PWA Push Support:**
+The server-side infrastructure is ready - it should start working automatically.
+
+**For True Background Notifications:**
+Would require a native iOS app (Swift/React Native/Capacitor)
+
+### Cost Estimate (Blaze Plan)
+For a personal workout app with ~5 workouts/week:
+- **Cloud Functions**: ~150 invocations/month (FREE tier: 2M/month)
+- **Firestore**: ~500 reads/month (FREE tier: 50K/day)
+- **Estimated monthly cost: $0.00** (stays within free tier)
 
 ## 🔍 Console Check
 

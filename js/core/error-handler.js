@@ -50,6 +50,25 @@ export function initializeErrorHandler() {
  * Handle errors with user-friendly messages
  */
 function handleError(error, userMessage) {
+    // Suppress certain non-critical errors
+    const errorMessage = error?.message || '';
+    const errorCode = error?.code || '';
+
+    // Don't show errors for:
+    // - Push notification failures (not critical)
+    // - Firebase messaging not supported (expected on some browsers)
+    // - Network errors when app is being suspended
+    if (errorMessage.includes('push') ||
+        errorMessage.includes('messaging') ||
+        errorMessage.includes('Messaging') ||
+        errorMessage.includes('getToken') ||
+        errorMessage.includes('subscription') ||
+        errorCode === 'messaging/unsupported-browser' ||
+        errorCode === 'messaging/permission-blocked') {
+        console.warn('⚠️ Suppressed non-critical notification error:', errorMessage);
+        return;
+    }
+
     // Check if we're spamming too many errors
     const now = Date.now();
     const recentErrors = errorLog.filter(time => now - time < ERROR_WINDOW_MS);

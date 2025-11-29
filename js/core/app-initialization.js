@@ -297,6 +297,14 @@ export function setupAuthenticationListener() {
             const { initializeNotifications } = await import('./notification-helper.js');
             await initializeNotifications();
 
+            // Initialize Firebase Cloud Messaging for iOS background/lock screen notifications
+            try {
+                const { initializeFCM } = await import('./push-notification-manager.js');
+                await initializeFCM();
+            } catch (e) {
+                // FCM not available or not configured - local notifications still work
+            }
+
             // Validate and refresh user data
             await validateUserData();
 

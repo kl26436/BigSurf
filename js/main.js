@@ -111,6 +111,11 @@ import {
 // Firebase Workout Manager (for exercise-manager.html)
 import { FirebaseWorkoutManager } from './core/firebase-workout-manager.js';
 
+// Push notification manager for iOS background notifications
+import {
+    initializeFCM, sendTestNotification, isFCMAvailable
+} from './core/push-notification-manager.js';
+
 // ===================================================================
 // CALENDAR NAVIGATION FUNCTIONS (Add to window assignments)
 // ===================================================================
@@ -437,6 +442,11 @@ window.AppState = AppState;
 
 // Firebase Workout Manager (for exercise-manager.html)
 window.FirebaseWorkoutManager = FirebaseWorkoutManager;
+
+// Push notification functions (for iOS background notifications)
+window.initializeFCM = initializeFCM;
+window.sendTestNotification = sendTestNotification;
+window.isFCMAvailable = isFCMAvailable;
 
 // ===================================================================
 // SIMPLE INITIALIZATION - Just call your existing startApplication
