@@ -198,7 +198,7 @@ localStorage.setItem('debug', 'firebase:*');
 
 - Use ES6+ features (arrow functions, destructuring, async/await)
 - All async functions use `async/await`, not raw Promises
-- Console logging with emoji prefixes for visual scanning (🚀 ✅ ❌ ⚠️ 📊)
+- Console.error with emoji prefixes (❌) for error visibility; verbose console.log removed from production
 - Error handling: try/catch with user-facing notifications via `showNotification()`
 - Comments: Explain "why", not "what" - code should be self-documenting
 
@@ -298,6 +298,12 @@ localStorage.setItem('debug', 'firebase:*');
   - **File**: [workout-core.js:84-100](js/core/workout-core.js#L84-L100)
 - **Location Selector**: Temporarily disabled due to modal visibility issues (z-index conflicts)
   - **File**: [workout-core.js:61-77](js/core/workout-core.js#L61-L77) - commented out for now
+
+### v4.33: Console Log Cleanup
+- **Production Code Cleanup**: Removed ~220 verbose `console.log()` statements across 25 files
+- **Error Logs Preserved**: All `console.error()` calls with ❌ emoji prefixes kept for debugging
+- **Debug Module Intact**: [debug-utilities.js](js/core/debug-utilities.js) keeps all 82 logs for debugging tools
+- **Cleaner Console**: Browser console now shows only errors and intentional debug output
 
 ### Key Technical Learnings
 
