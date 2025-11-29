@@ -749,7 +749,6 @@ function selectExerciseFromLibrary(exercise) {
 let creatingFromLibraryModal = false;
 
 export function showCreateExerciseForm() {
-    console.log('showCreateExerciseForm called');
     // Set flag so we know to refresh library modal after save
     creatingFromLibraryModal = true;
 
@@ -758,8 +757,6 @@ export function showCreateExerciseForm() {
     const title = document.getElementById('add-exercise-modal-title');
     const form = document.getElementById('add-exercise-form');
 
-    console.log('Modal found:', !!modal, 'Title found:', !!title, 'Form found:', !!form);
-
     if (title) title.textContent = 'Create New Exercise';
     if (form) form.reset();
 
@@ -767,9 +764,6 @@ export function showCreateExerciseForm() {
         // Increase z-index to appear above exercise library modal
         modal.style.zIndex = '1200';
         modal.classList.remove('hidden');
-        console.log('Modal should now be visible');
-    } else {
-        console.error('❌ add-exercise-modal not found!');
     }
 
     document.getElementById('new-exercise-name')?.focus();

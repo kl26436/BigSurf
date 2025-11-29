@@ -6632,17 +6632,13 @@ img[loading="lazy"].loaded {
 }
 
 /* Add Exercise Modal - needs highest z-index to appear over exercise library */
-#add-exercise-modal {
+#add-exercise-modal:not(.hidden) {
     z-index: 1200 !important;
     background: rgba(0, 0, 0, 0.8) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 20px !important;
-}
-
-#add-exercise-modal.hidden {
-    display: none !important;
 }
 
 #add-exercise-modal .modal-content {
