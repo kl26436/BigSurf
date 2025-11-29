@@ -58,26 +58,45 @@ export async function startWorkout(workoutType) {
         }
     }
 
-    // Check if location is set, if not, show location selector
+    // Location tracking disabled for now - will fix later
+    // TODO: Re-enable location selector once modal visibility issues are resolved
+    /*
     const { PRTracker } = await import('./pr-tracker.js');
     const currentLocation = PRTracker.getCurrentLocation();
+    const locationConfirmedThisSession = sessionStorage.getItem('locationConfirmed');
 
-    if (!currentLocation) {
-        console.log('📍 No location set, showing location selector...');
+    if (!locationConfirmedThisSession) {
+        console.log('📍 No location confirmed this session, showing selector...');
         const { showLocationSelector } = await import('./location-ui.js');
-        showLocationSelector(() => startWorkout(workoutType)); // Retry after location is set
+        showLocationSelector(() => {
+            sessionStorage.setItem('locationConfirmed', 'true');
+            startWorkout(workoutType);
+        });
         return;
     }
+    */
 
-    // Find the workout plan
-    const workout = AppState.workoutPlans.find(plan =>
+    // Find the workout plan (refresh from Firebase if not found in cache)
+    let workout = AppState.workoutPlans.find(plan =>
         plan.day === workoutType || plan.name === workoutType || plan.id === workoutType
     );
+
+    // If not found in cache, try refreshing from Firebase
+    if (!workout) {
+        console.log(`⚠️ Workout "${workoutType}" not in cache, refreshing from Firebase...`);
+        const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+        const workoutManager = new FirebaseWorkoutManager(AppState);
+        AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
+
+        workout = AppState.workoutPlans.find(plan =>
+            plan.day === workoutType || plan.name === workoutType || plan.id === workoutType
+        );
+    }
 
     if (!workout) {
         console.error(`❌ Workout "${workoutType}" not found in workoutPlans`);
         console.log('Available workouts:', AppState.workoutPlans.map(p => p.day || p.name));
-        alert(`Workout "${workoutType}" not found. Please check the console for details.`);
+        showNotification(`Workout "${workoutType}" not found. It may have been deleted.`, 'error');
         return;
     }
 
@@ -89,8 +108,8 @@ export async function startWorkout(workoutType) {
         date: AppState.getTodayDateString(),
         startedAt: new Date().toISOString(),
         exercises: {},
-        version: '2.0',
-        location: currentLocation // Store location with workout
+        version: '2.0'
+        // location: disabled for now
     };
 
     // Initialize exercise units

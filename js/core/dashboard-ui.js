@@ -485,13 +485,19 @@ async function getSuggestedWorkoutsForToday() {
     const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
 
     try {
-        // Load all user templates
+        // Load all user templates (this already filters out hidden templates)
         const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(AppState);
         const allTemplates = await workoutManager.getUserWorkoutTemplates();
 
-        // Filter to templates with today in suggestedDays array (or old suggestedDay field for backwards compatibility)
+        // Filter to templates with today in suggestedDays array
+        // Also ensure we skip any hidden or deleted templates
         const suggested = allTemplates.filter(template => {
+            // Skip hidden templates (double check)
+            if (template.isHidden || template.deleted) {
+                return false;
+            }
+
             // Check new array format (suggestedDays)
             if (template.suggestedDays && Array.isArray(template.suggestedDays)) {
                 return template.suggestedDays.includes(dayOfWeek);

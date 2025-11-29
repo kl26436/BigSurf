@@ -291,6 +291,14 @@ localStorage.setItem('debug', 'firebase:*');
 - **Modal Close Fix**: Delete/Repeat buttons now properly close modal after confirmation
   - **File**: [workout-history.js:542-553](js/core/workout-history.js#L542-L553)
 
+### v4.25: Bug Fixes and Improvements
+- **Suggested Workouts Filter**: Hidden/deleted templates no longer appear in "Suggested for Today" section
+  - **File**: [dashboard-ui.js:493-510](js/core/dashboard-ui.js#L493-L510)
+- **Workout Not Found Handling**: Shows user-friendly notification instead of alert when template is deleted
+  - **File**: [workout-core.js:84-100](js/core/workout-core.js#L84-L100)
+- **Location Selector**: Temporarily disabled due to modal visibility issues (z-index conflicts)
+  - **File**: [workout-core.js:61-77](js/core/workout-core.js#L61-L77) - commented out for now
+
 ### Key Technical Learnings
 
 1. **Deep vs Shallow Copy**: Always use deep clone for nested objects when modifications should not affect source

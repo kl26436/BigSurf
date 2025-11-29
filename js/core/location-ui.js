@@ -16,7 +16,19 @@ let pendingWorkoutCallback = null;
  */
 export function showLocationSelector(onLocationSelected = null) {
     const modal = document.getElementById('location-selector-modal');
-    if (!modal) return;
+    console.log('📍 showLocationSelector - modal found:', !!modal);
+    if (!modal) {
+        console.error('❌ Location selector modal not found in DOM!');
+        // If modal not found, skip location selection and proceed with workout
+        if (onLocationSelected) onLocationSelected();
+        return;
+    }
+
+    // Hide any other modals that might be showing (category selector, etc)
+    const categoryModal = document.getElementById('category-workout-modal');
+    if (categoryModal) {
+        categoryModal.style.display = 'none';
+    }
 
     pendingWorkoutCallback = onLocationSelected;
 
@@ -24,6 +36,7 @@ export function showLocationSelector(onLocationSelected = null) {
     renderSavedLocations();
 
     modal.classList.remove('hidden');
+    console.log('📍 Location selector modal should now be visible');
 }
 
 /**

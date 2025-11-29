@@ -7,7 +7,7 @@ Use this checklist to test Big Surf Workout Tracker on your mobile device before
 - [ ] Deployed to Firebase Hosting (https://bigsurf.fit)
 - [ ] Test on actual phone (not just browser DevTools)
 - [ ] Clear browser cache before testing (hard refresh)
-- [ ] Current version: v4.24-ui-improvements
+- [ ] Current version: v4.25-bug-fixes
 
 ## 📋 Core Functionality Tests
 
@@ -570,6 +570,13 @@ To test the auto-delete feature for empty abandoned workouts:
 4. **Expected**: Modal closes, returns to calendar
 5. Click another workout → Click "Repeat" → Confirm
 6. **Expected**: Modal closes, starts new workout
+
+## 🎯 v4.25: Bug Fixes (2025-11-29)
+
+### v4.25: Template and Startup Fixes
+- [x] Suggested workouts filter out hidden/deleted templates ✅ TESTED 2025-11-29
+- [x] Workout not found error shows user-friendly notification ✅ TESTED 2025-11-29
+- [ ] Location selector - DISABLED (modal visibility issues, will fix later)
 
 ## 🔍 Console Check
 

@@ -4946,6 +4946,11 @@ img[loading="lazy"].loaded {
     display: none !important;
 }
 
+/* Location selector modal - higher z-index to appear above other modals */
+#location-selector-modal {
+    z-index: 2000 !important;
+}
+
 /* Mobile Responsiveness */
 
 
