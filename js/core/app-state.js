@@ -29,7 +29,6 @@ export const AppState = {
   const day = String(now.getDate()).padStart(2, '0');
   
   const dateString = `${year}-${month}-${day}`;
-  console.log('🗓️ getTodayDateString result:', dateString, '(Local time)');
   
   return dateString;
 },
@@ -57,8 +56,6 @@ export const AppState = {
     this.workoutInProgress = false;
     this.addingExerciseToWorkout = false;
     this.insertAfterIndex = null;
-    
-    console.log('AppState reset completed for Bug 20 fix');
   }, // ← ADD THIS COMMA!
   
   clearTimers() {

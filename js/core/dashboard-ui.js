@@ -12,7 +12,6 @@ import { showNotification } from './ui-helpers.js';
  * Show dashboard view
  */
 export async function showDashboard() {
-    console.log('📊 Showing dashboard...');
 
     const dashboardSection = document.getElementById('dashboard');
     if (!dashboardSection) {
@@ -74,7 +73,6 @@ async function checkForInProgressWorkout() {
             const hoursSinceStart = (Date.now() - workoutStart.getTime()) / (1000 * 60 * 60);
 
             if (hoursSinceStart > 3) {
-                console.log(`⏰ Workout too old (${hoursSinceStart.toFixed(1)}h), auto-completing if it has exercises`);
 
                 // Check if workout has any completed exercises
                 const hasCompletedExercises = workoutData.exercises &&
@@ -88,11 +86,9 @@ async function checkForInProgressWorkout() {
                     workoutData.completedAt = new Date().toISOString();
                     workoutData.autoCompleted = true; // Flag for tracking
                     await setDoc(workoutRef, workoutData, { merge: true });
-                    console.log('✅ Auto-completed abandoned workout:', workoutData.workoutType);
                 } else {
                     // No exercises done - delete the empty workout
                     await deleteDoc(workoutRef);
-                    console.log('🗑️ Deleted abandoned empty workout:', workoutData.workoutType);
                 }
 
                 const card = document.getElementById('resume-workout-banner');
@@ -100,8 +96,6 @@ async function checkForInProgressWorkout() {
                 window.inProgressWorkout = null;
                 return;
             }
-
-            console.log('🏋️ Found in-progress workout:', workoutData.workoutType, `(${hoursSinceStart.toFixed(1)}h ago)`);
 
             // Find the workout plan
             const workoutPlan = AppState.workoutPlans.find(plan =>
@@ -166,7 +160,6 @@ async function checkForInProgressWorkout() {
                 }
 
                 card.classList.remove('hidden');
-                console.log('✅ Resume banner shown for:', workoutData.workoutType);
             } else {
                 console.warn('⚠️ Resume banner elements not found:', { card: !!card, nameElement: !!nameElement });
             }
@@ -226,8 +219,6 @@ async function renderDashboard() {
             ${renderRecentPRs(recentPRs)}
             ${renderRecentWorkouts(recentWorkouts)}
         `;
-
-        console.log('✅ Dashboard rendered successfully');
     } catch (error) {
         console.error('❌ Error rendering dashboard:', error);
         container.innerHTML = `
@@ -508,8 +499,6 @@ async function getSuggestedWorkoutsForToday() {
             }
             return false;
         });
-
-        console.log(`📅 Found ${suggested.length} workouts suggested for ${dayOfWeek}`);
         return suggested;
     } catch (error) {
         console.error('❌ Error loading suggested workouts:', error);

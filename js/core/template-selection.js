@@ -33,7 +33,6 @@ export function closeTemplateSelection() {
 }
 
 export async function selectTemplate(templateId, isDefault = false) {
-    console.log(`🎯 Selecting template: ${templateId}, isDefault: ${isDefault}`);
     
     if (!AppState.currentUser) {
         alert('Please sign in to start workouts');
@@ -99,7 +98,6 @@ export function showWorkoutSelector() {
 // ===================================================================
 
 export function switchTemplateCategory(category) {
-    console.log(`🔄 Switching template category to: ${category}`);
     currentTemplateCategory = category;
 
     // Update active tab (supports both .template-category-tab and .category-tab)
@@ -186,7 +184,6 @@ export function useTemplate(templateId) {
 }
 
 export async function useTemplateFromManagement(templateId, isDefault) {
-    console.log('🔧 useTemplateFromManagement called:', { templateId, isDefault });
 
     try {
         // Hide management UI first
@@ -236,15 +233,11 @@ export async function copyTemplateToCustom(templateId) {
         const workoutManager = new FirebaseWorkoutManager(AppState);
         await workoutManager.saveWorkoutTemplate(customTemplate);
 
-        console.log(`✅ Template copied as "${customTemplate.name}"`);
-
         // CRITICAL: Reload AppState.workoutPlans so new template is available
         AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
-        console.log('✅ Workout plans reloaded after copy:', AppState.workoutPlans.length);
 
         // Switch to custom tab to show the newly copied template
         switchTemplateCategory('custom');
-        console.log('✅ Switched to custom tab to show copied template');
         
     } catch (error) {
         console.error('Error copying template:', error);
@@ -266,8 +259,6 @@ export async function deleteCustomTemplate(templateId) {
         const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(AppState);
         await workoutManager.deleteWorkoutTemplate(templateId);
-        
-        console.log('✅ Template deleted successfully');
         
         // Refresh templates
         loadTemplatesByCategory();
@@ -635,7 +626,6 @@ function createWorkoutCard(workout) {
 // ===================================================================
 
 export async function editTemplate(templateId) {
-    console.log('📝 Editing template:', templateId);
     
     if (!AppState.currentUser) {
         alert('Please sign in to edit templates');
@@ -829,8 +819,6 @@ export async function saveBasicTemplate() {
             loadTemplatesByCategory();
         }
         
-        console.log('✅ Template updated successfully!');
-        
     } catch (error) {
         console.error('Error saving template:', error);
         alert('Error saving template');
@@ -868,12 +856,9 @@ export function clearTemplateFilters() {
     
     // Reset to show all templates
     loadTemplatesByCategory();
-    
-    console.log('✅ Filters cleared');
 }
 
 export function refreshTemplates() {
-    console.log('🔄 Refreshing templates...');
     
     // Clear any cached data
     if (AppState.workoutPlans) {
@@ -882,8 +867,6 @@ export function refreshTemplates() {
     
     // Reload templates
     loadTemplatesByCategory();
-    
-    console.log('✅ Templates refreshed');
 }
 
 // ===================================================================
@@ -929,7 +912,6 @@ window.addExerciseToBasicTemplate = function() {
     });
 
     showBasicTemplateEditor(modal.templateData);
-    console.log(`✅ Added "${exerciseName}" to template`);
 };
 
 window.editBasicExercise = function(index) {
@@ -953,7 +935,6 @@ window.editBasicExercise = function(index) {
     exercise.weight = parseFloat(newWeight) || exercise.weight;
 
     showBasicTemplateEditor(modal.templateData);
-    console.log(`✅ Updated exercise`);
 };
 
 window.removeBasicExercise = function(index) {
@@ -963,6 +944,5 @@ window.removeBasicExercise = function(index) {
     if (confirm('Remove this exercise from the template?')) {
         modal.templateData.exercises.splice(index, 1);
         showBasicTemplateEditor(modal.templateData);
-        console.log('✅ Exercise removed');
     }
 };

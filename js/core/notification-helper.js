@@ -7,7 +7,6 @@ let serviceWorkerRegistration = null;
  * Initialize notification system and service worker
  */
 export async function initializeNotifications() {
-    console.log('🔔 Initializing notification system...');
 
     // Check if service workers are supported
     if (!('serviceWorker' in navigator)) {
@@ -19,16 +18,13 @@ export async function initializeNotifications() {
         // Register service worker if not already registered
         if (!navigator.serviceWorker.controller) {
             serviceWorkerRegistration = await navigator.serviceWorker.register('/service-worker.js');
-            console.log('✅ Service Worker registered');
         } else {
             serviceWorkerRegistration = await navigator.serviceWorker.ready;
-            console.log('✅ Service Worker already active');
         }
 
         // Request notification permission
         if ('Notification' in window && Notification.permission === 'default') {
             const permission = await Notification.requestPermission();
-            console.log('🔔 Notification permission:', permission);
         }
 
         return true;
@@ -64,7 +60,6 @@ export async function showNotification(title, body, options = {}) {
     if (serviceWorkerRegistration) {
         try {
             await serviceWorkerRegistration.showNotification(title, notificationOptions);
-            console.log('🔔 Service Worker notification shown:', title);
             return true;
         } catch (error) {
             console.error('❌ Service Worker notification failed:', error);
@@ -74,7 +69,6 @@ export async function showNotification(title, body, options = {}) {
     // Fallback to regular notification (only works when app is open)
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(title, notificationOptions);
-        console.log('🔔 Browser notification shown:', title);
         return true;
     }
 
@@ -101,8 +95,6 @@ export async function scheduleNotification(title, body, delay, options = {}) {
             tag: options.tag || 'bigsurf',
             silent: options.silent !== undefined ? options.silent : false
         });
-
-        console.log(`⏰ Scheduled notification for ${delay}ms: ${title}`);
         return true;
     } catch (error) {
         console.error('❌ Failed to schedule notification:', error);

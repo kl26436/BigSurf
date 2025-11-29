@@ -15,8 +15,6 @@ export async function migrateOldWorkoutsToPRs() {
         return;
     }
 
-    console.log('🔄 Starting PR migration for old workouts...');
-
     try {
         // Get all workouts
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
@@ -32,8 +30,6 @@ export async function migrateOldWorkoutsToPRs() {
             if (!workout.completedAt || !workout.exercises) {
                 continue;
             }
-
-            console.log(`📊 Processing workout: ${workout.workoutType} (${doc.id})`);
 
             // Process each exercise
             for (const exerciseKey in workout.exercises) {
@@ -75,10 +71,6 @@ export async function migrateOldWorkoutsToPRs() {
 
             processedCount++;
         }
-
-        console.log(`✅ Migration complete!`);
-        console.log(`   Processed ${processedCount} workouts`);
-        console.log(`   Found ${prCount} personal records`);
 
         alert(`PR Migration Complete!\n\nProcessed: ${processedCount} workouts\nFound: ${prCount} PRs`);
 

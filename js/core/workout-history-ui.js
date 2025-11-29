@@ -14,8 +14,6 @@ export async function showWorkoutHistory() {
         return;
     }
 
-    console.log('📅 Opening workout history with calendar view...');
-
     // Hide all sections including dashboard
     const sections = ['workout-selector', 'active-workout', 'workout-management', 'dashboard', 'stats-section'];
     sections.forEach(sectionId => {
@@ -36,7 +34,6 @@ export async function showWorkoutHistory() {
 // ===================================================================
 
 async function initializeCalendarView() {
-    console.log(' Initializing calendar view...');
     
     // Make sure workoutHistory is available
     if (!window.workoutHistory) {
@@ -49,8 +46,6 @@ async function initializeCalendarView() {
         // Initialize the calendar with current month
         await window.workoutHistory.initializeCalendar();
         
-        console.log(' Calendar view initialized successfully');
-        
     } catch (error) {
         console.error(' Error initializing calendar:', error);
         showNotification('Error loading calendar view', 'error');
@@ -62,7 +57,6 @@ async function initializeCalendarView() {
 // ===================================================================
 
 export function previousMonth() {
-    console.log(' Previous month clicked');
     
     if (!window.workoutHistory) {
         console.error(' workoutHistory not available');
@@ -73,7 +67,6 @@ export function previousMonth() {
 }
 
 export function nextMonth() {
-    console.log(' Next month clicked');
     
     if (!window.workoutHistory) {
         console.error(' workoutHistory not available');
@@ -130,7 +123,6 @@ export function resumeWorkout(workoutId) {
     const workoutDate = workout.rawData?.date || workoutId;
     const confirmMessage = `Resume "${workoutName}" from ${new Date(workoutDate + 'T12:00:00').toLocaleDateString()}?`;
     if (confirm(confirmMessage)) {
-        console.log('▶️ Resuming workout:', workoutId);
 
         // Close the modal first
         if (window.workoutHistory) {
@@ -139,7 +131,6 @@ export function resumeWorkout(workoutId) {
 
         // Check if this is today's in-progress workout - use continueInProgressWorkout
         if (window.inProgressWorkout && window.inProgressWorkout.date === workoutDate) {
-            console.log('▶️ Using continueInProgressWorkout for today\'s workout');
             if (typeof window.continueInProgressWorkout === 'function') {
                 window.continueInProgressWorkout();
             } else {
@@ -148,7 +139,6 @@ export function resumeWorkout(workoutId) {
             }
         } else {
             // For older workouts, load the workout data and continue it
-            console.log('▶️ Loading older workout to resume');
             // Set inProgressWorkout from the raw data and then continue
             if (workout.rawData) {
                 window.inProgressWorkout = workout.rawData;
@@ -179,7 +169,6 @@ export function repeatWorkout(workoutId) {
 
     const confirmMessage = `Start a new workout based on "${workoutName}"?`;
     if (confirm(confirmMessage)) {
-        console.log(' Repeating workout:', workoutId);
 
         // Close the modal first
         if (window.workoutHistory) {
@@ -226,8 +215,6 @@ export function retryWorkout(workoutId) {
 
     // Get workout name from formatted object or rawData
     const workoutName = workout.name || workout.rawData?.workoutType || 'Workout';
-
-    console.log(' Retrying workout:', workoutId);
 
     // Close the modal first
     if (window.workoutHistory) {
@@ -334,7 +321,6 @@ export function closeWorkoutDetailModal() {
 // ===================================================================
 
 export function clearAllHistoryFilters() {
-    console.log(' Clearing all history filters');
 
     // Clear search input if it exists
     const searchInput = document.getElementById('history-search');
@@ -345,7 +331,6 @@ export function clearAllHistoryFilters() {
     // Clear the filter in workout-history module
     if (window.workoutHistory && typeof window.workoutHistory.filterHistory === 'function') {
         window.workoutHistory.filterHistory('');
-        console.log('✅ History filters cleared');
     } else {
         console.warn('⚠️ Workout history filter function not available');
     }
@@ -359,7 +344,6 @@ export function clearAllHistoryFilters() {
 // ===================================================================
 
 export function setupWorkoutHistoryEventListeners() {
-    console.log(' Setting up workout history event listeners...');
     
     // Set up modal close handlers
     const modal = document.getElementById('workout-detail-modal');
@@ -381,8 +365,6 @@ export function setupWorkoutHistoryEventListeners() {
             }
         }
     });
-    
-    console.log(' Workout history event listeners setup complete');
 }
 
 // ===================================================================
@@ -391,5 +373,3 @@ export function setupWorkoutHistoryEventListeners() {
 
 // Auto-setup event listeners when module loads
 setupWorkoutHistoryEventListeners();
-
-console.log(' Workout History UI module loaded with calendar support');

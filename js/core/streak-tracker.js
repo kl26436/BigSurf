@@ -14,7 +14,6 @@ import { db, doc, setDoc, getDoc, collection, getDocs, query, where } from './fi
  */
 export async function calculateStreaks() {
     if (!AppState.currentUser) {
-        console.log('⚠️ No user logged in');
         return null;
     }
 
@@ -58,7 +57,6 @@ export async function calculateStreaks() {
 
         // Work backwards from today to find current streak
         // Give user until end of today to maintain streak (not midnight)
-        console.log('🔍 Streak Debug - Today:', todayStr, '| Workout dates:', workoutDates);
 
         for (let i = workoutDates.length - 1; i >= 0; i--) {
             // Parse date string explicitly to avoid UTC/timezone issues
@@ -70,21 +68,17 @@ export async function calculateStreaks() {
                 // Check if last workout was today, yesterday, or day before yesterday
                 // This gives you all of today to workout before streak breaks
                 const daysDiff = Math.floor((today - workoutDate) / (1000 * 60 * 60 * 24));
-                console.log(`🔍 Last workout: ${workoutDates[i]} | Days ago: ${daysDiff}`);
 
                 if (daysDiff === 0) {
                     // Worked out today - streak definitely active
-                    console.log('✅ Worked out today - streak active');
                     currentStreak = 1;
                     lastDate = workoutDate;
                 } else if (daysDiff === 1) {
                     // Worked out yesterday - still have today to continue streak
-                    console.log('✅ Worked out yesterday - grace period, streak still active');
                     currentStreak = 1;
                     lastDate = workoutDate;
                 } else {
                     // More than 1 day ago - streak is broken
-                    console.log(`❌ Last workout was ${daysDiff} days ago - streak broken`);
                     break;
                 }
             } else {
@@ -152,8 +146,6 @@ export async function calculateStreaks() {
             workoutsThisMonth,
             lastWorkoutDate: workoutDates[workoutDates.length - 1]
         };
-
-        console.log('📊 Streak stats:', stats);
         return stats;
 
     } catch (error) {

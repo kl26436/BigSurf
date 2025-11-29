@@ -74,8 +74,6 @@ export function hideLoadingScreen() {
 // ===================================================================
 
 export function initializeWorkoutApp() {
-    console.log(' Initializing Big Surf Workout Tracker...');
-
     // Show loading screen immediately
     showLoadingScreen('Initializing...');
 
@@ -99,35 +97,22 @@ export function initializeWorkoutApp() {
 
         // Start connection monitoring
         startConnectionMonitoring(db);
-
-        console.log(' Core modules initialized successfully');
-        
     } catch (error) {
-        console.error(' Error initializing modules:', error);
+        console.error('Error initializing modules:', error);
         showNotification('Error initializing app modules', 'error');
     }
 
     // Set up authentication listener first (this will handle redirect result)
     setupAuthenticationListener();
-
-    console.log(' App initialization completed');
 }
 
 export function initializeEnhancedWorkoutSelector() {
-    console.log(' Initializing enhanced workout selector...');
-    
-    // Set up workout category filters
     setupWorkoutFilters();
-    
-    // Set up workout search
     setupWorkoutSearch();
-    
-    // Load initial workout data
+
     if (AppState.workoutPlans && AppState.workoutPlans.length > 0) {
         renderInitialWorkouts();
     }
-    
-    console.log(' Enhanced workout selector initialized');
 }
 
 // ===================================================================
@@ -140,14 +125,11 @@ let manualSignOut = false; // Track manual sign-out to prevent auth listener int
 export async function signIn() {
     // Prevent multiple popups from opening
     if (signingIn) {
-        console.log('⚠️ Sign-in already in progress, ignoring duplicate request');
         return;
     }
 
     try {
         signingIn = true;
-        console.log('🔐 signIn() function called');
-        console.log('💻 Using popup auth (works on mobile when triggered by user click)');
 
         // Create a provider instance with account selection prompt
         const signInProvider = new GoogleAuthProvider();
@@ -156,7 +138,6 @@ export async function signIn() {
         });
 
         const result = await signInWithPopup(auth, signInProvider);
-        console.log('✅ Sign-in successful:', result.user.displayName);
 
         // Show loading screen with initialization message
         const loadingScreen = document.getElementById('loading-screen');
@@ -176,18 +157,13 @@ export async function signIn() {
         if (signInPrompt) signInPrompt.classList.add('hidden');
         if (loadingSpinner) loadingSpinner.style.display = 'block';
     } catch (error) {
-        console.error('❌ Sign-in error:', error);
-        console.error('❌ Error code:', error.code);
-        console.error('❌ Error message:', error.message);
+        console.error('Sign-in error:', error.code, error.message);
 
         if (error.code === 'auth/popup-closed-by-user') {
             showNotification('Sign-in cancelled', 'info');
         } else if (error.code === 'auth/popup-blocked') {
             showNotification('Popup blocked - please allow popups and try again', 'warning');
-        } else if (error.code === 'auth/cancelled-popup-request') {
-            // Ignore - this happens when multiple sign-in attempts overlap
-            console.log('ℹ️ Duplicate popup request cancelled');
-        } else {
+        } else if (error.code !== 'auth/cancelled-popup-request') {
             showNotification('Sign-in failed. Please try again.', 'error');
         }
     } finally {
@@ -241,7 +217,6 @@ export async function signOutUser() {
 
         // NOW sign out (auth listener will skip UI updates due to flag)
         await signOut(auth);
-        console.log('✅ Sign-out successful');
 
         // Clear app state completely
         AppState.currentUser = null;
@@ -252,14 +227,12 @@ export async function signOutUser() {
         AppState.totalPausedTime = 0;
         window.inProgressWorkout = null;
 
-        console.log('✅ User signed out - showing sign-in screen');
-
         // Reset flag after a delay to allow auth state change to complete
         setTimeout(() => {
             manualSignOut = false;
         }, 500);
     } catch (error) {
-        console.error('❌ Sign-out error:', error);
+        console.error('Sign-out error:', error);
         showNotification('Error signing out', 'error');
         manualSignOut = false;
     }
@@ -278,8 +251,6 @@ export function showUserInfo(user) {
     if (sidebarProfile) sidebarProfile.classList.remove('hidden');
     if (sidebarUserName) sidebarUserName.textContent = user.displayName || 'User';
     if (sidebarUserEmail) sidebarUserEmail.textContent = user.email || '';
-
-    console.log(' User info displayed for:', user.displayName);
 }
 
 export function hideUserInfo() {
@@ -290,37 +261,23 @@ export function hideUserInfo() {
     // Hide sidebar user profile
     const sidebarProfile = document.getElementById('sidebar-user-profile');
     if (sidebarProfile) sidebarProfile.classList.add('hidden');
-
-    console.log(' User info hidden');
 }
 
 export function setupAuthenticationListener() {
-    console.log('🔐 Setting up authentication listener...');
-
     // Handle redirect result (user coming back from Google sign-in)
-    console.log('🔍 Checking for redirect result...');
     getRedirectResult(auth)
         .then((result) => {
-            console.log('🔍 Redirect result received:', result);
-            if (result && result.user) {
-                console.log('✅ Sign-in redirect successful:', result.user.displayName);
-                // Don't show notification here - onAuthStateChanged will handle it
-            } else {
-                console.log('ℹ️ No redirect result (user did not just sign in via redirect)');
-            }
+            // Handled by onAuthStateChanged
         })
         .catch((error) => {
-            console.error('❌ Redirect result error:', error);
-            // Only show error if it's a real error, not a cancellation
             if (error.code && error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-                console.error('❌ Redirect sign-in error:', error);
+                console.error('Redirect sign-in error:', error);
                 showNotification('Sign-in failed. Please try again.', 'error');
             }
         });
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            console.log('👤 User signed in:', user.displayName || user.email);
             AppState.currentUser = user;
 
             // Update UI
@@ -331,7 +288,6 @@ export function setupAuthenticationListener() {
 
             // Load ALL data FIRST (loadWorkoutPlans loads both plans AND exercises)
             await loadWorkoutPlans(AppState);
-            console.log('✅ Data loaded - Plans:', AppState.workoutPlans.length, 'Exercises:', AppState.exerciseDatabase.length);
 
             // Load PR tracking data
             const { PRTracker } = await import('./pr-tracker.js');
@@ -359,17 +315,12 @@ export function setupAuthenticationListener() {
             }, 500);
 
         } else {
-            console.log('👤 User signed out');
             AppState.currentUser = null;
 
             // If this is a manual sign-out, don't run this code (it's already handled)
             if (manualSignOut) {
-                console.log('ℹ️ Manual sign-out - UI already updated');
                 return;
             }
-
-            // This runs only for automatic/external sign-outs (session expired, etc.)
-            console.log('ℹ️ Automatic sign-out detected');
 
             // Hide all content sections
             const sections = [
@@ -406,56 +357,37 @@ export function setupAuthenticationListener() {
 
 export async function validateUserData() {
     if (!AppState.currentUser) return;
-    
-    console.log('🔍 Validating user data...');
-    
+
     try {
-        // Refresh exercise database during validation
         await refreshExerciseDatabase();
-        
-        // Load user's workout templates
+
         const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(AppState);
-        const templates = await workoutManager.getUserWorkoutTemplates();
-        
-        // Check custom exercises
-        const customExercises = AppState.exerciseDatabase.filter(ex => ex.isCustom);
-        
-        console.log(` User data validation: - Templates: ${templates.length} - Custom exercises: ${customExercises.length} - Total exercises: ${AppState.exerciseDatabase.length}`);
-        
-        
+        await workoutManager.getUserWorkoutTemplates();
     } catch (error) {
-        console.error(' Error validating user data:', error);
+        console.error('Error validating user data:', error);
         showNotification('Error loading user data', 'warning');
     }
 }
 
 export async function refreshExerciseDatabase() {
-    console.log(' Refreshing exercise database...');
-    
     try {
         if (AppState.currentUser) {
-            // Load full exercise library with user customizations
             const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
             const workoutManager = new FirebaseWorkoutManager(AppState);
             AppState.exerciseDatabase = await workoutManager.getExerciseLibrary();
         } else {
-            // Load default exercises only
             const exerciseResponse = await fetch('./data/exercises.json');
             if (exerciseResponse.ok) {
                 AppState.exerciseDatabase = await exerciseResponse.json();
             }
         }
-        
-        console.log(` Exercise database refreshed: ${AppState.exerciseDatabase.length} exercises`);
-        
     } catch (error) {
-        console.error(' Error refreshing exercise database:', error);
+        console.error('Error refreshing exercise database:', error);
     }
 }
 
 export function fillTemplateValues() {
-    // Fill in any missing template values with defaults
     if (AppState.workoutPlans) {
         AppState.workoutPlans.forEach(plan => {
             if (plan.exercises) {
@@ -467,8 +399,6 @@ export function fillTemplateValues() {
             }
         });
     }
-    
-    console.log(' Template values filled with defaults');
 }
 
 // ===================================================================
@@ -476,17 +406,11 @@ export function fillTemplateValues() {
 // ===================================================================
 
 async function checkForInProgressWorkoutEnhanced() {
-    console.log(' Checking for in-progress workout...');
-    
     try {
         const { loadTodaysWorkout } = await import('./data-manager.js');
         const todaysData = await loadTodaysWorkout(AppState);
-        
+
         if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
-            console.log(' Found in-progress workout:', todaysData.workoutType);
-            
-            // NOW workout plans will be available!
-            console.log('Available workout plans:', AppState.workoutPlans.length);
             
             // Validate workout plan exists
             const workoutPlan = AppState.workoutPlans.find(plan => 
@@ -496,8 +420,6 @@ async function checkForInProgressWorkoutEnhanced() {
             );
             
             if (!workoutPlan) {
-                console.warn(' Workout plan not found for:', todaysData.workoutType);
-                console.log('Available plans:', AppState.workoutPlans.map(p => p.day || p.name));
                 return;
             }
             
@@ -510,20 +432,15 @@ async function checkForInProgressWorkoutEnhanced() {
             // Show in-progress workout prompt
             showInProgressWorkoutPrompt(todaysData);
             
-        } else {
-            console.log(' No in-progress workout found');
         }
-        
     } catch (error) {
-        console.error(' Error checking for in-progress workout:', error);
+        console.error('Error checking for in-progress workout:', error);
     }
 }
 
 function showInProgressWorkoutPrompt(workoutData) {
     if (window.showingProgressPrompt) return;
     window.showingProgressPrompt = true;
-    
-    console.log(' Showing resume workout card for:', workoutData.workoutType);
     
     // Update card elements
     const card = document.getElementById('resume-workout-banner');
@@ -600,35 +517,20 @@ function showInProgressWorkoutPrompt(workoutData) {
 // ===================================================================
 
 export function setupEventListeners() {
-    console.log(' Setting up global event listeners...');
-    
-    // Wait a bit for DOM to be fully ready
     setTimeout(() => {
         setupSignInListeners();
     }, 500);
-    
-    // Set up other listeners immediately
     setupOtherEventListeners();
 }
 
 function setupSignInListeners() {
-    console.log(' Setting up sign-in listeners...');
-
-    // Set up listeners for ALL sign-in buttons (loading screen + main auth section)
     const signInButtons = document.querySelectorAll('#sign-in-btn, #loading-signin-btn');
-    console.log(` Found ${signInButtons.length} sign-in button(s)`);
 
-    signInButtons.forEach((btn, index) => {
-        console.log(` ${index + 1}. ID: "${btn.id}", Visible: ${!btn.classList.contains('hidden')}`);
-
-        // Remove any existing onclick
+    signInButtons.forEach((btn) => {
         btn.onclick = null;
-
-        // Add click event listener
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log(` Sign-in button #${index + 1} (${btn.id}) clicked`);
 
             if (typeof window.signIn === 'function') {
                 window.signIn();
@@ -638,26 +540,14 @@ function setupSignInListeners() {
         });
     });
 
-    if (signInButtons.length === 0) {
-        console.warn(' No sign-in buttons found');
-    }
-
     // Sign-out button
     const signOutBtn = document.getElementById('sign-out-btn');
     if (signOutBtn) {
-        console.log(' Sign-out button found, adding event listener');
         signOutBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            console.log(' Sign-out button clicked');
             signOutUser();
         });
     }
-    
-    // Debug: Check user info elements
-    const userInfo = document.getElementById('user-info');
-    console.log(' User info element:', { found: !!userInfo, hidden: userInfo?.classList.contains('hidden'),
-        display: userInfo ? window.getComputedStyle(userInfo).display : 'N/A'
-    });
 }
 
 function setupOtherEventListeners() {
@@ -706,13 +596,9 @@ function setupOtherEventListeners() {
             e.target.classList.add('hidden');
         }
     });
-
-    console.log(' Other event listeners setup complete');
 }
 
 export function setupKeyboardShortcuts() {
-    console.log(' Setting up keyboard shortcuts...');
-    
     document.addEventListener('keydown', (e) => {
         // Don't trigger shortcuts when typing in inputs
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
@@ -744,8 +630,6 @@ export function setupKeyboardShortcuts() {
             }
         }
     });
-    
-    console.log(' Keyboard shortcuts setup complete');
 }
 
 // ===================================================================
@@ -805,25 +689,16 @@ function renderInitialWorkouts() {
 // ===================================================================
 
 export function setupGlobalVariables() {
-    // Initialize any global variables that need setup
     window.showingProgressPrompt = false;
     window.historyListenersSetup = false;
-    
-    console.log(' Global variables initialized');
 }
 
 export function initializeModules() {
     try {
-        // Initialize workout management
         initializeWorkoutManagement(AppState);
-        
-        // Set up date display
         setTodayDisplay();
-        
-        console.log(' All modules initialized successfully');
-        
     } catch (error) {
-        console.error(' Error initializing modules:', error);
+        console.error('Error initializing modules:', error);
         showNotification('Some features may not work properly', 'warning');
     }
 }
@@ -833,28 +708,13 @@ export function initializeModules() {
 // ===================================================================
 
 export function startApplication() {
-    console.log(' Starting Big Surf Workout Tracker application...');
-
-    // Register service worker for PWA functionality
     registerServiceWorker();
-
-    // Set up global variables
     setupGlobalVariables();
-
-    // Initialize core app
     initializeWorkoutApp();
-
-    // Set up event listeners
     setupEventListeners();
     setupKeyboardShortcuts();
-
-    // Initialize UI modules
     initializeModules();
-
-    // Initialize enhanced workout selector
     initializeEnhancedWorkoutSelector();
-
-    console.log(' Application started successfully!');
 }
 
 // ===================================================================
@@ -866,26 +726,18 @@ function registerServiceWorker() {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./service-worker.js')
                 .then((registration) => {
-                    console.log(' Service Worker registered:', registration.scope);
-
-                    // Check for updates
                     registration.addEventListener('updatefound', () => {
                         const newWorker = registration.installing;
-                        console.log(' Service Worker update found');
-
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // New service worker available, show update notification
                                 showNotification('App update available! Refresh to update.', 'info');
                             }
                         });
                     });
                 })
                 .catch((error) => {
-                    console.log(' Service Worker registration failed:', error);
+                    console.error('Service Worker registration failed:', error);
                 });
         });
-    } else {
-        console.log(' Service Workers not supported in this browser');
     }
 }

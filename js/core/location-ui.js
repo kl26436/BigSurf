@@ -16,9 +16,7 @@ let pendingWorkoutCallback = null;
  */
 export function showLocationSelector(onLocationSelected = null) {
     const modal = document.getElementById('location-selector-modal');
-    console.log('📍 showLocationSelector - modal found:', !!modal);
     if (!modal) {
-        console.error('❌ Location selector modal not found in DOM!');
         // If modal not found, skip location selection and proceed with workout
         if (onLocationSelected) onLocationSelected();
         return;
@@ -36,7 +34,6 @@ export function showLocationSelector(onLocationSelected = null) {
     renderSavedLocations();
 
     modal.classList.remove('hidden');
-    console.log('📍 Location selector modal should now be visible');
 }
 
 /**

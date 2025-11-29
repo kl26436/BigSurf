@@ -9,12 +9,9 @@ export function getExerciseLibrary(appState) {
 
     return {
         initialize() {
-            console.log('📚 Exercise Library initialized');
+            // Exercise library ready
         },
 
-        // REMOVED: openForSwap() - Replaced by delete + add workflow
-
-        // ADD THE MISSING openForManualWorkout FUNCTION
         async openForManualWorkout() {
             if (!appState.currentUser) {
                 showNotification('Please sign in to add exercises', 'warning');
@@ -22,7 +19,6 @@ export function getExerciseLibrary(appState) {
             }
 
             currentContext = 'manual-workout';
-            console.log(' Context set to:', currentContext);
             
             const modal = document.getElementById('exercise-library-modal');
             const modalTitle = document.querySelector('#exercise-library-modal .modal-title');
@@ -71,32 +67,27 @@ export function getExerciseLibrary(appState) {
             const modal = document.getElementById('exercise-library-modal');
             if (!modal) return;
 
-            console.log(' loadAndShow called with context:', currentContext);
-
             modal.classList.remove('hidden');
             isOpen = true;
 
             try {
                 await this.loadExercises();
                 this.renderExercises();
-                this.setupEventHandlers(); // ← ADD THIS LINE
-                console.log(` Loaded ${filteredExercises.length} exercises for context: ${currentContext}`);
+                this.setupEventHandlers();
             } catch (error) {
                 console.error('Error loading exercises:', error);
                 currentExercises = appState.exerciseDatabase || [];
                 filteredExercises = [...currentExercises];
-                this.setupEventHandlers(); // ← ADD THIS LINE HERE TOO
+                this.setupEventHandlers();
             }
         },
 
         async loadExercises() {
             try {
                 const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
-                const workoutManager = new FirebaseWorkoutManager(appState); // ← Fixed: use lowercase
+                const workoutManager = new FirebaseWorkoutManager(appState);
                 currentExercises = await workoutManager.getExerciseLibrary();
                 filteredExercises = [...currentExercises];
-                
-                console.log(` Loaded ${currentExercises.length} exercises for context: ${currentContext}`);
             } catch (error) {
                 console.error('Error loading exercises:', error);
                 currentExercises = appState.exerciseDatabase || [];
@@ -120,61 +111,89 @@ export function getExerciseLibrary(appState) {
             }
 
             grid.innerHTML = '';
-            filteredExercises.forEach(exercise => {
-                const card = this.createExerciseCard(exercise);
+            filteredExercises.forEach((exercise, index) => {
+                const card = this.createExerciseCard(exercise, index);
                 grid.appendChild(card);
+            });
+
+            // Setup click handlers using event delegation
+            this.setupExerciseButtonHandlers(grid);
+        },
+
+        setupExerciseButtonHandlers(grid) {
+            grid.addEventListener('click', (e) => {
+                const btn = e.target.closest('.exercise-add-btn');
+                if (!btn) return;
+
+                const index = parseInt(btn.dataset.index);
+                const exercise = filteredExercises[index];
+                if (!exercise) return;
+
+                switch (currentContext) {
+                    case 'manual-workout':
+                        if (window.addToManualWorkoutFromLibrary) {
+                            window.addToManualWorkoutFromLibrary(exercise);
+                        }
+                        break;
+                    case 'template':
+                        if (window.addExerciseToTemplateFromLibrary) {
+                            window.addExerciseToTemplateFromLibrary(exercise);
+                        }
+                        break;
+                    case 'workout-add':
+                        if (window.confirmExerciseAddToWorkout) {
+                            window.confirmExerciseAddToWorkout(JSON.stringify(exercise));
+                        }
+                        break;
+                    default:
+                        if (window.selectExerciseGeneric) {
+                            window.selectExerciseGeneric(exercise.name || exercise.machine, JSON.stringify(exercise));
+                        }
+                }
             });
         },
 
-        // FIXED createExerciseCard function (only one version)
-        createExerciseCard(exercise) {
+        // FIXED createExerciseCard function - uses index to avoid JSON escaping issues
+        createExerciseCard(exercise, index) {
             const card = document.createElement('div');
             card.className = 'library-exercise-card';
-            
-            // Debug logging
-            console.log(' Creating exercise card with context:', currentContext);
-            console.log(' Exercise name:', exercise.name || exercise.machine);
-            
-            let actionButton = '';
-            const exerciseJson = JSON.stringify(exercise).replace(/"/g, '&quot;');
-            
-            switch (currentContext) {
-                // REMOVED: 'swap' case - Replaced by delete + add workflow
+            card.dataset.exerciseIndex = index;
 
+            let actionButton = '';
+
+            switch (currentContext) {
                 case 'manual-workout':
-                    console.log(' Using manual-workout case');
                     actionButton = `
-                        <button class="btn btn-primary btn-small" onclick='addToManualWorkoutFromLibrary("${exerciseJson}")'>
+                        <button class="btn btn-primary btn-small exercise-add-btn" data-index="${index}">
                             <i class="fas fa-plus"></i> Add Exercise
                         </button>
                     `;
                     break;
-                    
+
                 case 'template':
                     actionButton = `
-                        <button class="btn btn-primary btn-small" onclick="addExerciseToTemplateFromLibrary(${exerciseJson})">
+                        <button class="btn btn-primary btn-small exercise-add-btn" data-index="${index}">
                             <i class="fas fa-plus"></i> Add to Template
                         </button>
                     `;
                     break;
-                    
+
                 case 'workout-add':
                     actionButton = `
-                        <button class="btn btn-success btn-small" onclick="confirmExerciseAddToWorkout('${exerciseJson}')">
+                        <button class="btn btn-success btn-small exercise-add-btn" data-index="${index}">
                             <i class="fas fa-plus"></i> Add to Workout
                         </button>
                     `;
                     break;
-                    
+
                 default:
-                    console.log(' Using default case, currentContext is:', currentContext);
                     actionButton = `
-                        <button class="btn btn-secondary btn-small" onclick="selectExerciseGeneric('${exercise.name || exercise.machine}', '${exerciseJson}')">
+                        <button class="btn btn-secondary btn-small exercise-add-btn" data-index="${index}">
                             <i class="fas fa-check"></i> Select
                         </button>
                     `;
             }
-            
+
             card.innerHTML = `
                 <h5>${exercise.name || exercise.machine}</h5>
                 <div class="library-exercise-info">
@@ -188,7 +207,7 @@ export function getExerciseLibrary(appState) {
                     ${actionButton}
                 </div>
             `;
-            
+
             return card;
         },
 
@@ -305,16 +324,11 @@ function selectExerciseGeneric(exerciseDataOrName, exerciseJson) {
             throw new Error('Invalid parameters');
         }
         
-        console.log(' Generic exercise selection:', exercise);
-        
         // Close the library modal
         const modal = document.getElementById('exercise-library-modal');
         if (modal) {
             modal.classList.add('hidden');
         }
-        
-        // Show selection feedback
-        console.log(`✅ Selected "${exercise.name || exercise.machine}"`);
         
     } catch (error) {
         console.error('Error in selectExerciseGeneric:', error);

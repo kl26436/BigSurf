@@ -6342,3 +6342,296 @@ img[loading="lazy"].loaded {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ===================================================================
+   MANUAL WORKOUT - NEW DESIGN (v4.26)
+   =================================================================== */
+
+.manual-workout-modal {
+    max-width: 500px;
+}
+
+.manual-workout-source-section {
+    margin: 1.5rem 0;
+}
+
+.manual-workout-source-section .section-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.workout-source-option {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+
+.source-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.source-header:hover {
+    background: var(--bg-tertiary);
+}
+
+.source-header i:first-child {
+    color: var(--primary);
+    width: 20px;
+    text-align: center;
+}
+
+.source-header span {
+    flex: 1;
+    font-weight: 500;
+}
+
+.source-header .toggle-icon {
+    color: var(--text-secondary);
+    transition: transform 0.2s;
+}
+
+.source-content {
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg-tertiary);
+}
+
+.source-content.hidden {
+    display: none;
+}
+
+/* Library Items */
+.manual-library-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.manual-library-item:hover {
+    background: var(--bg-primary);
+    transform: translateX(4px);
+}
+
+.library-item-name {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
+.library-item-name i {
+    color: var(--primary);
+}
+
+.library-item-meta {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-right: 0.5rem;
+}
+
+.manual-library-item > i:last-child {
+    color: var(--text-secondary);
+}
+
+.no-workouts-message {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-secondary);
+}
+
+.library-loading {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-secondary);
+}
+
+/* Step Header */
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.step-info {
+    flex: 1;
+    text-align: center;
+}
+
+.step-info h4 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.step-info p {
+    margin: 0.25rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+/* Exercise Cards in Manual Entry */
+.manual-exercise-card {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.manual-exercise-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.manual-exercise-header h4 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.manual-sets-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.manual-set-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-tertiary);
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.set-label {
+    min-width: 45px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.mini-input {
+    width: 60px;
+    padding: 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.mini-input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.manual-set-row .separator {
+    color: var(--text-secondary);
+}
+
+.manual-set-row .unit {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    min-width: 25px;
+}
+
+.btn-tiny {
+    padding: 0.25rem 0.4rem !important;
+    font-size: 0.7rem !important;
+}
+
+.add-set-btn {
+    margin-top: 0.5rem;
+}
+
+/* Empty State */
+.empty-exercises-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+.empty-exercises-state i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+}
+
+.empty-exercises-state .hint {
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+/* Add Exercise Section */
+.manual-add-exercise-section {
+    text-align: center;
+    padding: 1rem;
+}
+
+/* Final Details */
+.manual-final-details {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.manual-final-details .form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.manual-final-details .form-group {
+    flex: 1;
+    margin-bottom: 0.75rem;
+}
+
+.manual-final-details label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.manual-final-details .form-input {
+    width: 100%;
+}
+
+/* Step Actions */
+.step-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+/* Exercise Library Modal - needs higher z-index to appear over other modals */
+#exercise-library-modal {
+    z-index: 1100 !important;
+}
+
+/* Manual Workout Modal */
+#add-manual-workout-modal {
+    z-index: 1050;
+}

@@ -58,13 +58,13 @@ import {
 // Manual workout functionality
 import {
     showAddManualWorkoutModal, closeAddManualWorkoutModal,
-    proceedToExerciseSelection, backToBasicInfo,
-    submitManualWorkout, finishManualWorkout, loadWorkoutTemplate,
-    addExerciseToManualWorkout, editManualExercise, removeManualExercise,
-    closeManualExerciseEntry, addToManualWorkoutFromLibrary,
-    updateManualSet, updateManualExerciseNotes,
-    addSetToManualExercise, removeSetFromManualExercise, markManualExerciseComplete,
-    renderManualExerciseList, createManualExerciseCard
+    toggleManualWorkoutSource, selectWorkoutForManual, startCustomManualWorkout,
+    backToManualStep1, updateManualSet, addManualSet, removeManualSet,
+    removeManualExercise, openExercisePickerForManual, addExerciseToManualWorkout,
+    addToManualWorkoutFromLibrary, saveManualWorkout,
+    // Legacy exports for backwards compatibility
+    proceedToExerciseSelection, backToBasicInfo, finishManualWorkout,
+    editManualExercise, markManualExerciseComplete, closeManualExerciseEntry
 } from './core/manual-workout.js';
 
 // Exercise manager functionality
@@ -117,47 +117,30 @@ import { FirebaseWorkoutManager } from './core/firebase-workout-manager.js';
 
 // Calendar navigation
 window.previousMonth = function() {
-    console.log(' Previous Month clicked');
     if (window.workoutHistory && typeof window.workoutHistory.previousMonth === 'function') {
         window.workoutHistory.previousMonth();
-    } else {
-        console.warn(' workoutHistory.previousMonth not available');
     }
 };
 
 window.nextMonth = function() {
-    console.log(' Next Month clicked');
     if (window.workoutHistory && typeof window.workoutHistory.nextMonth === 'function') {
         window.workoutHistory.nextMonth();
-    } else {
-        console.warn(' workoutHistory.nextMonth not available');
     }
 };
 
 // Workout detail functions
 window.viewWorkout = function(workoutId) {
-    console.log(' View Workout:', workoutId);
     if (window.workoutHistory && typeof window.workoutHistory.showWorkoutDetail === 'function') {
         window.workoutHistory.showWorkoutDetail(workoutId);
-    } else {
-        console.warn(' workoutHistory.showWorkoutDetail not available');
     }
 };
-
-
 
 // Add workout function
 window.addWorkout = function() {
-    console.log(' Add Workout clicked');
     if (typeof window.showAddManualWorkoutModal === 'function') {
         window.showAddManualWorkoutModal();
-    } else {
-        console.warn(' showAddManualWorkoutModal not available');
-        alert('Add workout functionality coming soon');
     }
 };
-
-console.log(' Calendar navigation functions added to window');
 
 // ===================================================================
 // ASSIGN ALL FUNCTIONS TO WINDOW (your existing assignments)
@@ -229,21 +212,25 @@ window.setExerciseUnit = setExerciseUnit;
 // Manual Workout Functions
 window.showAddManualWorkoutModal = showAddManualWorkoutModal;
 window.closeAddManualWorkoutModal = closeAddManualWorkoutModal;
+window.toggleManualWorkoutSource = toggleManualWorkoutSource;
+window.selectWorkoutForManual = selectWorkoutForManual;
+window.startCustomManualWorkout = startCustomManualWorkout;
+window.backToManualStep1 = backToManualStep1;
+window.updateManualSet = updateManualSet;
+window.addManualSet = addManualSet;
+window.removeManualSet = removeManualSet;
+window.removeManualExercise = removeManualExercise;
+window.openExercisePickerForManual = openExercisePickerForManual;
+window.addExerciseToManualWorkout = addExerciseToManualWorkout;
+window.addToManualWorkoutFromLibrary = addToManualWorkoutFromLibrary;
+window.saveManualWorkout = saveManualWorkout;
+// Legacy stubs
 window.proceedToExerciseSelection = proceedToExerciseSelection;
 window.backToBasicInfo = backToBasicInfo;
-window.submitManualWorkout = submitManualWorkout;
 window.finishManualWorkout = finishManualWorkout;
-window.loadWorkoutTemplate = loadWorkoutTemplate;
-window.addExerciseToManualWorkout = addExerciseToManualWorkout;
 window.editManualExercise = editManualExercise;
-window.removeManualExercise = removeManualExercise;
-window.closeManualExerciseEntry = closeManualExerciseEntry;
-window.addToManualWorkoutFromLibrary = addToManualWorkoutFromLibrary;
-window.updateManualSet = updateManualSet;
-window.updateManualExerciseNotes = updateManualExerciseNotes;
-window.addSetToManualExercise = addSetToManualExercise;
-window.removeSetFromManualExercise = removeSetFromManualExercise;
 window.markManualExerciseComplete = markManualExerciseComplete;
+window.closeManualExerciseEntry = closeManualExerciseEntry;
 
 // Exercise Manager Functions
 window.openExerciseManager = openExerciseManager;
@@ -298,8 +285,6 @@ window.showTemplatesByCategory = function(category) {
         const workoutCategory = (workout.category || workout.type || '').toLowerCase();
         return workoutCategory === category.toLowerCase();
     });
-
-    console.log(`Found ${filteredWorkouts.length} workouts for category "${category}"`, filteredWorkouts);
 
     // Remove any existing modal first
     const existingModal = document.getElementById('template-selection-modal');
@@ -384,8 +369,6 @@ window.showTemplatesByCategory = function(category) {
     content.appendChild(cardsContainer);
     modal.appendChild(content);
     document.body.appendChild(modal);
-    
-    console.log('Modal created and should be visible');
     };
     window.closeTemplateModal = function() {
         const modal = document.getElementById('template-selection-modal');
@@ -460,16 +443,10 @@ window.FirebaseWorkoutManager = FirebaseWorkoutManager;
 // ===================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log(' Starting Big Surf Workout Tracker...');
-    
     try {
-        // Call your existing startApplication function - that's it!
         await startApplication();
-        
-        console.log(' Application started successfully');
-        
     } catch (error) {
-        console.error(' Application startup failed:', error);
+        console.error('Application startup failed:', error);
         
         // Show error to user
         const errorDiv = document.createElement('div');
@@ -482,5 +459,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.appendChild(errorDiv);
     }
 });
-
-console.log(' Main.js loaded - ready to start app');

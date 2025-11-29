@@ -24,7 +24,6 @@ export const auth = getAuth(app);
 // Set auth persistence to LOCAL (survives browser restarts and redirects)
 setPersistence(auth, browserLocalPersistence)
   .then(() => {
-    console.log('✅ Auth persistence set to LOCAL');
   })
   .catch((error) => {
     console.error('❌ Error setting auth persistence:', error);

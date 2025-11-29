@@ -493,106 +493,126 @@
 <div id="add-manual-workout-modal" class="modal hidden">
     <div class="modal-content manual-workout-modal">
         <div class="modal-header">
-            <h3 class="modal-title">Add Past Workout</h3>
+            <h3 class="modal-title">Add Missing Workout</h3>
             <button class="close-btn" onclick="closeAddManualWorkoutModal()">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        
-        <!-- Step 1: Basic Workout Info -->
+
+        <!-- Step 1: Date and Workout Selection -->
         <div id="manual-step-1" class="manual-step">
-            <form id="manual-workout-basic-form">
-                <div class="form-group">
-                    <label for="manual-workout-date">Workout Date *</label>
-                    <input type="date" id="manual-workout-date" class="form-input" required>
-                </div>
+            <div class="form-group">
+                <label for="manual-workout-date">When did you work out? *</label>
+                <input type="date" id="manual-workout-date" class="form-input" required>
+            </div>
 
-                <div class="form-group">
-                    <label for="manual-workout-category">Workout Category *</label>
-                    <select id="manual-workout-category" class="form-input" required>
-                        <option value="">Select a category...</option>
-                        <option value="Push">Push (Chest, Shoulders, Triceps)</option>
-                        <option value="Pull">Pull (Back, Biceps)</option>
-                        <option value="Legs">Legs (Quads, Glutes, Hamstrings)</option>
-                        <option value="Cardio">Cardio & Core</option>
-                        <option value="Other">Other/Mixed</option>
-                    </select>
-                </div>
+            <div class="manual-workout-source-section">
+                <label class="section-label">Choose your workout:</label>
 
-                <div class="form-group">
-                    <label for="manual-workout-name">Workout Name</label>
-                    <input type="text" id="manual-workout-name" class="form-input" 
-                           placeholder="e.g., Chest & Triceps, Upper Body, etc.">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="manual-workout-duration">Duration (minutes)</label>
-                        <input type="number" id="manual-workout-duration" class="form-input" 
-                               placeholder="45" min="1" max="300">
+                <!-- Option: Select from Library -->
+                <div class="workout-source-option" id="source-library-option">
+                    <div class="source-header" onclick="toggleManualWorkoutSource('library')">
+                        <i class="fas fa-list"></i>
+                        <span>Select from Workout Library</span>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
-                    <div class="form-group">
-                        <label for="manual-workout-status">Status</label>
-                        <select id="manual-workout-status" class="form-input">
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                            <option value="partial">Partially Completed</option>
-                        </select>
+                    <div id="manual-library-list" class="source-content hidden">
+                        <div class="library-loading">Loading workouts...</div>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="manual-workout-notes">Workout Notes</label>
-                    <textarea id="manual-workout-notes" class="form-input" rows="3" 
-                              placeholder="How did the workout go? Any notes about performance, feeling, etc."></textarea>
+                <!-- Option: Create Custom -->
+                <div class="workout-source-option" id="source-custom-option">
+                    <div class="source-header" onclick="toggleManualWorkoutSource('custom')">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Create Custom Workout</span>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                    <div id="manual-custom-form" class="source-content hidden">
+                        <div class="form-group">
+                            <label for="manual-workout-name">Workout Name *</label>
+                            <input type="text" id="manual-workout-name" class="form-input"
+                                   placeholder="e.g., Chest & Triceps, Upper Body">
+                        </div>
+                        <div class="form-group">
+                            <label for="manual-workout-category">Category *</label>
+                            <select id="manual-workout-category" class="form-input">
+                                <option value="">Select category...</option>
+                                <option value="Push">Push</option>
+                                <option value="Pull">Pull</option>
+                                <option value="Legs">Legs</option>
+                                <option value="Cardio">Cardio</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="startCustomManualWorkout()">
+                            <i class="fas fa-arrow-right"></i> Continue
+                        </button>
+                    </div>
                 </div>
+            </div>
 
-                <div class="step-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeAddManualWorkoutModal()">
-                        Cancel
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="proceedToExerciseSelection()">
-                        Next: Add Exercises <i class="fas fa-arrow-right"></i>
-                    </button>
-                </div>
-            </form>
+            <div class="step-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeAddManualWorkoutModal()">
+                    Cancel
+                </button>
+            </div>
         </div>
 
-        <!-- Step 2: Exercise Selection and Data Entry -->
+        <!-- Step 2: Enter Exercise Data -->
         <div id="manual-step-2" class="manual-step hidden">
             <div class="step-header">
-                <button class="btn btn-secondary btn-small" onclick="backToBasicInfo()">
+                <button class="btn btn-secondary btn-small" onclick="backToManualStep1()">
                     <i class="fas fa-arrow-left"></i> Back
                 </button>
                 <div class="step-info">
                     <h4 id="manual-workout-title-display">Your Workout</h4>
                     <p id="manual-workout-date-display">Date</p>
                 </div>
-                <button class="btn btn-success" onclick="finishManualWorkout()">
-                    <i class="fas fa-check"></i> Save Workout
+            </div>
+
+            <!-- Exercise List -->
+            <div id="manual-exercises-container" class="manual-exercises-container">
+                <!-- Exercises will be rendered here -->
+            </div>
+
+            <!-- Add Exercise Button (for custom workouts) -->
+            <div id="manual-add-exercise-section" class="manual-add-exercise-section hidden">
+                <button class="btn btn-primary" onclick="openExercisePickerForManual()">
+                    <i class="fas fa-plus"></i> Add Exercise
                 </button>
             </div>
 
-            <!-- Exercise Management -->
-            <div class="manual-exercise-management">
-                <div class="exercise-management-header">
-                    <h4>
-                        <i class="fas fa-dumbbell"></i> 
-                        Exercises (<span id="manual-exercise-count">0</span>)
-                    </h4>
-                    <button class="btn btn-primary btn-small" onclick="addExerciseToManualWorkout()">
-                        <i class="fas fa-plus"></i> Add Exercise
-                    </button>
-                </div>
-
-                <!-- Exercise List -->
-                <div id="manual-exercises-container" class="manual-exercises-container">
-                    <div class="no-exercises-state">
-                        <i class="fas fa-plus-circle"></i>
-                        <h5>No Exercises Added</h5>
-                        <p>Click "Add Exercise" to start building your workout</p>
+            <!-- Step 3: Final Details -->
+            <div class="manual-final-details">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="manual-workout-duration">Duration (min)</label>
+                        <input type="number" id="manual-workout-duration" class="form-input"
+                               placeholder="45" min="1" max="300" value="60">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-workout-status">Status</label>
+                        <select id="manual-workout-status" class="form-input">
+                            <option value="completed">Completed</option>
+                            <option value="partial">Partial</option>
+                        </select>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label for="manual-workout-notes">Notes (optional)</label>
+                    <textarea id="manual-workout-notes" class="form-input" rows="2"
+                              placeholder="Any notes about this workout..."></textarea>
+                </div>
+            </div>
+
+            <div class="step-actions">
+                <button type="button" class="btn btn-secondary" onclick="backToManualStep1()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <button type="button" class="btn btn-success" onclick="saveManualWorkout()">
+                    <i class="fas fa-check"></i> Save Workout
+                </button>
             </div>
         </div>
     </div>

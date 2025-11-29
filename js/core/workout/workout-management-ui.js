@@ -14,7 +14,6 @@ export function initializeWorkoutManagement(appState) {
 
 // Main navigation functions
 export async function showWorkoutManagement() {
-    console.log('🔧 Opening Workout Management section');
 
     const section = document.getElementById('workout-management-section');
     if (!section) {
@@ -31,7 +30,6 @@ export async function showWorkoutManagement() {
 
     // Show workout management section
     section.classList.remove('hidden');
-    console.log('✅ Workout management section opened');
 
     // Load all templates (unified list)
     setTimeout(() => {
@@ -40,19 +38,16 @@ export async function showWorkoutManagement() {
 }
 
 export function closeWorkoutManagement() {
-    console.log('🔧 Closing Workout Management section');
 
     const section = document.getElementById('workout-management-section');
     if (section) {
         section.classList.add('hidden');
-        console.log('✅ Workout management section closed');
     }
 
     // Show dashboard
     const dashboard = document.getElementById('dashboard');
     if (dashboard) {
         dashboard.classList.remove('hidden');
-        console.log('✅ Dashboard shown');
     }
 }
 
@@ -203,7 +198,6 @@ export function createNewTemplate() {
 }
 
 export async function editTemplate(templateId, isDefault = false) {
-    console.log('📝 Loading template for editing:', templateId, 'isDefault:', isDefault);
 
     try {
         // Load all templates including raw defaults
@@ -244,8 +238,6 @@ export async function editTemplate(templateId, isDefault = false) {
             overridesDefault: isDefault ? (template.id || template.day) : template.overridesDefault,
             isEditingDefault: isDefault
         };
-
-        console.log('✅ Template loaded for editing:', currentEditingTemplate);
         showTemplateEditor();
 
     } catch (error) {
@@ -279,7 +271,6 @@ export async function deleteTemplate(templateId, isDefault = false) {
         try {
             if (isDefault) {
                 // Create a "hidden" marker for this default template
-                console.log('🗑️ Deleting default template:', templateId);
                 const hiddenMarker = {
                     id: `hidden_${templateId}`,
                     name: templateName,
@@ -288,12 +279,9 @@ export async function deleteTemplate(templateId, isDefault = false) {
                     hiddenAt: new Date().toISOString()
                 };
                 await workoutManager.saveWorkoutTemplate(hiddenMarker);
-                console.log('✅ Default template deleted');
             } else {
                 // Actually delete the custom template
-                console.log('🗑️ Deleting custom template:', templateId);
                 await workoutManager.deleteWorkoutTemplate(templateId);
-                console.log('✅ Template deleted successfully');
             }
 
             // Reload AppState and UI
@@ -316,7 +304,6 @@ export async function resetToDefault(defaultTemplateId) {
 
     if (confirm('Reset this template to default? Your changes will be lost.')) {
         try {
-            console.log('🔄 Resetting template to default:', defaultTemplateId);
 
             // Find and delete the override/hidden marker
             const templates = await workoutManager.getUserWorkoutTemplates();
@@ -324,7 +311,6 @@ export async function resetToDefault(defaultTemplateId) {
 
             if (override) {
                 await workoutManager.deleteWorkoutTemplate(override.id);
-                console.log('✅ Reset to default complete');
 
                 // Reload AppState and UI
                 AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
@@ -341,7 +327,6 @@ export async function resetToDefault(defaultTemplateId) {
 }
 
 export function useTemplate(templateId) {
-    console.log('🏋️ Using template:', templateId);
 
     // This is essentially the same as "Use Today" - start a workout with this template
     if (typeof window.useTemplateFromManagement === 'function') {
@@ -486,13 +471,11 @@ export async function saveCurrentTemplate() {
     if (success) {
         // Reload AppState.workoutPlans so new template is available for startWorkout()
         AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
-        console.log('✅ Workout plans reloaded after template save:', AppState.workoutPlans.length);
 
         closeTemplateEditor();
 
         // Refresh the unified workout list
         await loadAllTemplates();
-        console.log('✅ Workout library UI refreshed');
     }
 }
 
@@ -576,7 +559,6 @@ export function editTemplateExercise(index) {
 
     // Re-render
     renderTemplateExercises();
-    console.log('✅ Exercise updated');
 }
 
 export function removeTemplateExercise(index) {
@@ -629,8 +611,6 @@ function setupExerciseLibraryListeners() {
         equipmentFilter.parentNode.replaceChild(newEquipmentFilter, equipmentFilter);
         newEquipmentFilter.addEventListener('change', filterExerciseLibrary);
     }
-
-    console.log('✅ Exercise library search and filter listeners set up');
 }
 
 export function closeExerciseLibrary() {
@@ -803,7 +783,6 @@ export async function createNewExercise(event) {
 }
 
 export function returnToWorkoutsFromManagement(appState) {
-    console.log('🔄 BUG-032 FIX: Smart navigation from workout management');
     
     const hasActiveCustomTemplate = checkForActiveCustomTemplate(appState);
     
@@ -812,11 +791,9 @@ export function returnToWorkoutsFromManagement(appState) {
     
     if (hasActiveCustomTemplate) {
         // Custom template active - navigate without popup warning
-        console.log('📋 Active custom template detected - bypassing popup warning');
         showWorkoutSelectorSafe(appState, true);
     } else {
         // No active custom template - normal navigation
-        console.log('✅ Normal navigation - no active custom template');
         showWorkoutSelectorSafe(appState, false);
     }
 }
@@ -892,15 +869,12 @@ async function checkForInProgressWorkout(appState) {
     // Skip if already showing prompt
     if (window.showingProgressPrompt) return;
     
-    console.log('🔍 Checking for in-progress workout...');
-    
     try {
         const { loadTodaysWorkout } = await import('./data-manager.js');
         const todaysData = await loadTodaysWorkout(appState);
         
         // Check if there's an incomplete workout from today
         if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
-            console.log('📋 Found in-progress workout:', todaysData.workoutType);
             
             // Validate workout plan exists
             const workoutPlan = appState.workoutPlans.find(plan => 
@@ -923,7 +897,6 @@ async function checkForInProgressWorkout(appState) {
             // Show the prompt (uses your existing continueInProgressWorkout function)
             showInProgressWorkoutPrompt(todaysData);
         } else {
-            console.log('✅ No in-progress workout found');
         }
         
     } catch (error) {

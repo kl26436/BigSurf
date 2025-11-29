@@ -46,7 +46,6 @@ let prData = {
  */
 export async function loadPRData() {
     if (!AppState.currentUser) {
-        console.log('⚠️ No user logged in, skipping PR data load');
         return null;
     }
 
@@ -56,10 +55,8 @@ export async function loadPRData() {
 
         if (prDoc.exists()) {
             prData = prDoc.data();
-            console.log('✅ PR data loaded:', Object.keys(prData.exercisePRs || {}).length, 'exercises tracked');
             return prData;
         } else {
-            console.log('📊 No PR data found, starting fresh');
             prData = {
                 exercisePRs: {},
                 locations: {},
@@ -88,7 +85,6 @@ export async function savePRData() {
             ...prData,
             lastUpdated: new Date().toISOString()
         });
-        console.log('✅ PR data saved successfully');
         return true;
     } catch (error) {
         console.error('❌ Error saving PR data:', error);
@@ -120,7 +116,6 @@ export async function setCurrentLocation(locationName) {
             lastVisit: new Date().toISOString(),
             visitCount: 1
         };
-        console.log(`🏢 New location added: ${locationName}`);
     } else {
         prData.locations[locationName].lastVisit = new Date().toISOString();
         prData.locations[locationName].visitCount++;
@@ -128,7 +123,6 @@ export async function setCurrentLocation(locationName) {
 
     prData.currentLocation = locationName;
     await savePRData();
-    console.log(`📍 Current location set to: ${locationName}`);
 }
 
 /**
@@ -263,19 +257,16 @@ export async function recordPR(exerciseName, reps, weight, equipment = null, loc
     // Update max weight PR
     if (!equipmentPRs.maxWeight || weight > equipmentPRs.maxWeight.weight) {
         equipmentPRs.maxWeight = { weight, reps, date, location };
-        console.log(`🏆 New max weight PR for ${exerciseName} (${equipment}): ${weight} lbs × ${reps}`);
     }
 
     // Update max reps PR
     if (!equipmentPRs.maxReps || reps > equipmentPRs.maxReps.reps) {
         equipmentPRs.maxReps = { weight, reps, date, location };
-        console.log(`🏆 New max reps PR for ${exerciseName} (${equipment}): ${reps} reps @ ${weight} lbs`);
     }
 
     // Update max volume PR
     if (!equipmentPRs.maxVolume || volume > equipmentPRs.maxVolume.volume) {
         equipmentPRs.maxVolume = { weight, reps, volume, date, location };
-        console.log(`🏆 New max volume PR for ${exerciseName} (${equipment}): ${volume} lbs (${reps} × ${weight})`);
     }
 
     await savePRData();
@@ -288,8 +279,6 @@ export async function processWorkoutForPRs(workoutData) {
     if (!AppState.currentUser || !workoutData.exercises) {
         return;
     }
-
-    console.log('📊 Processing workout for PRs...');
     let newPRCount = 0;
 
     // Iterate through all exercises in the workout
@@ -321,8 +310,6 @@ export async function processWorkoutForPRs(workoutData) {
     // if (newPRCount > 0) {
     //     showNotification(`🏆 ${newPRCount} new PR${newPRCount > 1 ? 's' : ''} achieved!`, 'success');
     // }
-
-    console.log(`✅ PR processing complete. ${newPRCount} new PRs recorded.`);
 }
 
 // ===================================================================

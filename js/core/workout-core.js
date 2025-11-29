@@ -10,8 +10,6 @@ import { saveWorkoutData, loadExerciseHistory } from './data-manager.js';
 // ===================================================================
 
 export async function startWorkout(workoutType) {
-    console.log(`🚀 Starting workout: ${workoutType}`);
-
     if (!AppState.currentUser) {
         alert('Please sign in to start a workout');
         return;
@@ -31,7 +29,6 @@ export async function startWorkout(workoutType) {
         );
 
         if (!confirmed) {
-            console.log('❌ User cancelled starting new workout');
             // Navigate back to dashboard
             const { navigateTo } = await import('./navigation.js');
             navigateTo('dashboard');
@@ -39,8 +36,6 @@ export async function startWorkout(workoutType) {
         }
 
         // User confirmed - cancel the current workout (mark it as cancelled in Firebase)
-        console.log('⚠️ Cancelling in-progress workout to start new one');
-
         // Mark the existing workout as cancelled and save
         AppState.savedData = {
             ...todaysWorkout,
@@ -66,7 +61,6 @@ export async function startWorkout(workoutType) {
     const locationConfirmedThisSession = sessionStorage.getItem('locationConfirmed');
 
     if (!locationConfirmedThisSession) {
-        console.log('📍 No location confirmed this session, showing selector...');
         const { showLocationSelector } = await import('./location-ui.js');
         showLocationSelector(() => {
             sessionStorage.setItem('locationConfirmed', 'true');
@@ -83,7 +77,6 @@ export async function startWorkout(workoutType) {
 
     // If not found in cache, try refreshing from Firebase
     if (!workout) {
-        console.log(`⚠️ Workout "${workoutType}" not in cache, refreshing from Firebase...`);
         const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(AppState);
         AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
@@ -94,8 +87,6 @@ export async function startWorkout(workoutType) {
     }
 
     if (!workout) {
-        console.error(`❌ Workout "${workoutType}" not found in workoutPlans`);
-        console.log('Available workouts:', AppState.workoutPlans.map(p => p.day || p.name));
         showNotification(`Workout "${workoutType}" not found. It may have been deleted.`, 'error');
         return;
     }
@@ -161,7 +152,6 @@ export function pauseWorkout() {
     // Stop timers
     AppState.clearTimers();
 
-    console.log('⏸️ Workout paused');
 }
 
 export async function completeWorkout() {
@@ -181,7 +171,6 @@ export async function completeWorkout() {
     const { PRTracker } = await import('./pr-tracker.js');
     await PRTracker.processWorkoutForPRs(AppState.savedData);
 
-    console.log('✅ Workout completed!');
 
     // Reset state BEFORE showing dashboard (critical order!)
     AppState.reset();
@@ -213,7 +202,6 @@ export function cancelWorkout(skipConfirmation = false) {
     // Clear in-progress workout since it's been cancelled
     window.inProgressWorkout = null;
 
-    console.log('❌ Workout cancelled');
 
     // Navigate to dashboard instead of legacy workout selector
     import('./navigation.js').then(({ navigateTo }) => {
@@ -231,14 +219,12 @@ export function cancelCurrentWorkout() {
 
 export function continueInProgressWorkout() {
     
-    console.log('🔄 Resuming workout:', window.inProgressWorkout.workoutType);
     
     // Hide the resume banner
     const banner = document.getElementById('resume-workout-banner');
     if (banner) banner.classList.add('hidden');
     window.showingProgressPrompt = false;
     if (!window.inProgressWorkout) {
-        console.log('⚠️ No in-progress workout found');
         return;
     }
     
@@ -281,11 +267,9 @@ export function continueInProgressWorkout() {
     // It will be cleared when workout is completed or cancelled
     // window.inProgressWorkout = null;
 
-    console.log('▶️ Workout resumed');
 }
 
 export async function discardInProgressWorkout() {
-    console.log('🗑️ Starting discard process...', window.inProgressWorkout);
     
     
     // Hide the resume banner
@@ -293,7 +277,6 @@ export async function discardInProgressWorkout() {
     if (banner) banner.classList.add('hidden');
     window.showingProgressPrompt = false;
     if (!window.inProgressWorkout) {
-        console.log('ℹ️ No in-progress workout to discard');
         return;
     }
     
@@ -303,7 +286,6 @@ export async function discardInProgressWorkout() {
     );
     
     if (!confirmDiscard) {
-        console.log('ℹ️ User cancelled discard');
         return;
     }
     
@@ -315,24 +297,16 @@ export async function discardInProgressWorkout() {
             userId: AppState.currentUser?.uid
         };
         
-        console.log('📋 Workout to delete:', workoutToDelete);
-        
         // DELETE the workout from Firebase FIRST
         try {
             if (workoutToDelete.userId && workoutToDelete.date) {
-                console.log('🔥 Attempting Firebase deletion...');
-                
                 const { deleteDoc, doc, db } = await import('./firebase-config.js');
-                
+
                 const workoutRef = doc(db, "users", workoutToDelete.userId, "workouts", workoutToDelete.date);
                 await deleteDoc(workoutRef);
-                
-                console.log('✅ SUCCESS: Workout deleted from Firebase:', workoutToDelete.date);
-            } else {
-                console.log('⚠️ Missing userId or date for Firebase deletion:', workoutToDelete);
             }
         } catch (firebaseError) {
-            console.error('âŒ ERROR deleting workout from Firebase:', firebaseError);
+            console.error('Error deleting workout from Firebase', firebaseError);
         }
         
         // Clear in-progress workout state
@@ -344,11 +318,8 @@ export async function discardInProgressWorkout() {
         // Show workout selector
         showWorkoutSelector();
         
-        console.log('✅ In-progress workout discarded');
-        console.log('✅ Discard process completed successfully');
-        
     } catch (error) {
-        console.error('âŒ Error during discard process:', error);
+        console.error('Error during discard process:', error);
         alert('Error discarding workout. Please try again.');
     }
 }
@@ -630,7 +601,6 @@ export { loadExerciseHistory };
 // ===================================================================
 
 export async function updateSet(exerciseIndex, setIndex, field, value) {
-    console.log('🔧 updateSet called:', exerciseIndex, setIndex, field, value);
     
     if (!AppState.currentWorkout || !AppState.savedData.exercises) {
         AppState.savedData.exercises = {};
@@ -666,15 +636,11 @@ export async function updateSet(exerciseIndex, setIndex, field, value) {
                 lbs: weightInLbs,
                 kg: currentUnit === 'kg' ? numValue : Math.round(weightInLbs * 0.453592)
             };
-            
-            console.log(`✅ Weight stored in lbs: ${weightInLbs} (entered as ${numValue} ${currentUnit})`);
         } else {
             AppState.savedData.exercises[exerciseKey].sets[setIndex][field] = numValue;
-            console.log('✅ Set field updated:', field, '=', numValue);
         }
     } else {
         AppState.savedData.exercises[exerciseKey].sets[setIndex][field] = null;
-        console.log('⚠️ Invalid value, set to null');
     }
     
     // Save to Firebase
@@ -685,10 +651,8 @@ export async function updateSet(exerciseIndex, setIndex, field, value) {
     renderExercises();
 
     const setData = AppState.savedData.exercises[exerciseKey].sets[setIndex];
-    console.log('🎯 Checking set data:', setData);
 
     if (setData.reps && setData.weight) {
-        console.log('🚀 Starting timer for set completion');
 
         // Check for PR (returns true if PR was found)
         const isPR = await checkSetForPR(exerciseIndex, setIndex);
@@ -697,7 +661,6 @@ export async function updateSet(exerciseIndex, setIndex, field, value) {
 
         // Only show generic notification if it's not a PR
         if (!isPR) {
-            console.log(`✅ Set ${setIndex + 1} recorded`);
         }
     }
 }
@@ -771,9 +734,6 @@ async function checkSetForPR(exerciseIndex, setIndex) {
                 } else if (prCheck.prType === 'first') {
                     prMessage += `First time doing ${exerciseName}!`;
                 }
-
-                console.log(prMessage);
-                console.log(`🏆 PR detected for ${exerciseName}:`, prCheck);
             }
 
             return true;
@@ -793,7 +753,6 @@ export function addSet(exerciseIndex) {
         (AppState.currentWorkout.exercises[exerciseIndex].sets || 3) + 1;
     
     renderExercises();
-    console.log('✅ Set added');
 
     const setData = AppState.savedData.exercises[exerciseKey].sets[setIndex];
     if (setData.reps && setData.weight) {
@@ -810,7 +769,6 @@ export function deleteSet(exerciseIndex, setIndex) {
         AppState.savedData.exercises[exerciseKey].sets.splice(setIndex, 1);
         saveWorkoutData(AppState);
         renderExercises();
-        console.log('✅ Set deleted');
     }
 }
 
@@ -821,8 +779,6 @@ export function addSetToExercise(exerciseIndex) {
     // Increment set count in current workout template
     AppState.currentWorkout.exercises[exerciseIndex].sets =
         (AppState.currentWorkout.exercises[exerciseIndex].sets || 3) + 1;
-
-    console.log(`✅ Added set to exercise ${exerciseIndex}, now has ${AppState.currentWorkout.exercises[exerciseIndex].sets} sets`);
 
     // Update the exercise cards in the background
     renderExercises();
@@ -839,7 +795,6 @@ export function removeSetFromExercise(exerciseIndex) {
 
     // Don't allow removing if only 1 set remains
     if (currentSets <= 1) {
-        console.log('⚠️ Cannot remove last set');
         return;
     }
 
@@ -855,8 +810,6 @@ export function removeSetFromExercise(exerciseIndex) {
             saveWorkoutData(AppState);
         }
     }
-
-    console.log(`✅ Removed set from exercise ${exerciseIndex}, now has ${currentSets - 1} sets`);
 
     // Update the exercise cards in the background
     renderExercises();
@@ -878,8 +831,6 @@ export function saveExerciseNotes(exerciseIndex) {
     
     AppState.savedData.exercises[exerciseKey].notes = notesTextarea.value;
     saveWorkoutData(AppState);
-    
-    console.log('✅ Notes saved');
 }
 
 export function markExerciseComplete(exerciseIndex) {
@@ -899,7 +850,6 @@ export function markExerciseComplete(exerciseIndex) {
     });
 
     const keptSets = AppState.savedData.exercises[exerciseKey].sets.length;
-    console.log(`🧹 Cleaned up empty sets, kept ${keptSets} completed sets`);
 
     // Update the exercise template to match the actual number of completed sets
     // This ensures the exercise card shows the correct count and marks as complete
@@ -911,8 +861,6 @@ export function markExerciseComplete(exerciseIndex) {
     // Close modal if open
     const modal = document.getElementById('exercise-modal');
     if (modal) modal.classList.add('hidden');
-
-    console.log(`✅ ${exercise.machine} marked complete!`);
 }
 
 function markSetComplete(exerciseIndex, setIndex) {
@@ -930,8 +878,6 @@ export function deleteExerciseFromWorkout(exerciseIndex) {
     if (!confirm(`Remove ${exerciseName} from workout?`)) {
         return; // User cancelled
     }
-
-    console.log(`🗑️ Deleting "${exerciseName}" from workout`);
 
     // Delete the exercise
     AppState.currentWorkout.exercises.splice(exerciseIndex, 1);
@@ -962,7 +908,6 @@ export function deleteExerciseFromWorkout(exerciseIndex) {
 
 export function addExerciseToActiveWorkout() {
     if (!AppState.currentWorkout) {
-        console.log('⚠️ No active workout');
         return;
     }
     
@@ -975,8 +920,6 @@ export function addExerciseToActiveWorkout() {
     if (window.exerciseLibrary && window.exerciseLibrary.openForWorkoutAdd) {
         window.exerciseLibrary.openForWorkoutAdd();
     } else {
-        console.log('📚 Using fallback method to open exercise library');
-        console.log('Exercise library opened');
     }
 }
 
@@ -1072,7 +1015,6 @@ export function skipModalRestTimer(exerciseIndex) {
     if (modalTimer && modalTimer.timerData && modalTimer.timerData.skip) {
         modalTimer.timerData.skip();
     }
-    console.log('⏭️ Rest timer skipped');
 }
 
 function startModalRestTimer(exerciseIndex, duration = 90) {
@@ -1173,8 +1115,6 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
                 pauseBtn.innerHTML = isPaused ? 
                     '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
             }
-            
-            console.log(isPaused ? '⏸️ Timer paused' : '▶️ Timer resumed');
         },
         
         skip: () => {
@@ -1384,22 +1324,14 @@ export function updateWorkoutDuration() {
 }
 
 export function autoStartRestTimer(exerciseIndex, setIndex) {
-    console.log('autoStartRestTimer called for exercise', exerciseIndex, 'set', setIndex);
     
     const modal = document.getElementById('exercise-modal');
     const modalHidden = modal?.classList.contains('hidden');
     const focusedMatch = AppState.focusedExerciseIndex === exerciseIndex;
     
-    console.log('Modal exists:', !!modal);
-    console.log('Modal hidden:', modalHidden);
-    console.log('Focused exercise:', AppState.focusedExerciseIndex, 'Target:', exerciseIndex);
-    console.log('Match:', focusedMatch);
-    
     if (modal && !modalHidden && focusedMatch) {
-        console.log('✅ All conditions met, starting timer');
         startModalRestTimer(exerciseIndex, 90);
     } else {
-        console.log(' Conditions not met for timer start');
     }
 }
 
@@ -1437,14 +1369,11 @@ export function showExerciseVideo(videoUrl, exerciseName) {
 
     // Check if it's a valid URL (not a placeholder)
     if (!embedUrl || embedUrl.includes('example') || embedUrl === videoUrl && !embedUrl.includes('youtube')) {
-        console.log('ℹ️ No form video available for this exercise');
         return;
     }
 
     iframe.src = embedUrl;
     videoSection.classList.remove('hidden');
-
-    console.log(`📹 Showing form video for ${exerciseName}`);
 }
 
 export function hideExerciseVideo() {
@@ -1508,8 +1437,6 @@ export function setGlobalUnit(unit) {
 export function setExerciseUnit(exerciseIndex, unit) {
     if (!AppState.currentWorkout || exerciseIndex >= AppState.currentWorkout.exercises.length) return;
     
-    console.log(`Setting unit for exercise ${exerciseIndex} to ${unit}`);
-    
     // Just change the display unit preference
     AppState.exerciseUnits[exerciseIndex] = unit;
     
@@ -1569,8 +1496,6 @@ export function setExerciseUnit(exerciseIndex, unit) {
     
     // Save unit preference (weights unchanged)
     saveWorkoutData(AppState);
-    
-    console.log(`🔄 Switched to ${unit.toUpperCase()} for this exercise`);
 }
 
 // ===================================================================
@@ -1578,7 +1503,6 @@ export function setExerciseUnit(exerciseIndex, unit) {
 // ===================================================================
 
 export async function editExerciseDefaults(exerciseName) {
-    console.log(`✏️ editExerciseDefaults called for: "${exerciseName}"`);
 
     // Find the exercise in the database by name
     const exercise = AppState.exerciseDatabase.find(ex =>
@@ -1586,12 +1510,10 @@ export async function editExerciseDefaults(exerciseName) {
     );
 
     if (!exercise) {
-        console.log(`⚠️ Exercise "${exerciseName}" not found in library`);
         return;
     }
 
     // Set flag to indicate we're editing from active workout
-    console.log('🚩 Setting editingFromActiveWorkout flag to true');
     window.editingFromActiveWorkout = true;
 
     // Open the exercise manager and edit this exercise
@@ -1601,7 +1523,6 @@ export async function editExerciseDefaults(exerciseName) {
     // Small delay to let the manager UI load
     setTimeout(() => {
         const exerciseId = exercise.id || `ex_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        console.log(`🔍 Editing exercise ID: ${exerciseId}`);
         editExercise(exerciseId);
     }, 100);
 }
@@ -1614,7 +1535,6 @@ export async function showWorkoutSelector() {
     
     // If user has an active workout in progress, show that instead of selector
     if (AppState.currentWorkout && AppState.savedData.workoutType) {
-        console.log('Restoring active workout view');
         if (workoutSelector) workoutSelector.classList.add('hidden');
         if (activeWorkout) activeWorkout.classList.remove('hidden');
         if (workoutManagement) workoutManagement.classList.add('hidden');
@@ -1641,11 +1561,8 @@ async function checkForInProgressWorkout() {
     
     // Skip if user is already in an active workout - they dont need a prompt
     if (AppState.currentWorkout && AppState.savedData.workoutType) {
-        console.log("Already in active workout, no prompt needed");
         return;
     }
-
-    console.log('Checking for in-progress workout...');
     
     try {
         const { loadTodaysWorkout } = await import('./data-manager.js');
@@ -1653,7 +1570,6 @@ async function checkForInProgressWorkout() {
         
         // Check if there's an incomplete workout from today
         if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
-            console.log('Found in-progress workout:', todaysData.workoutType);
             
             // Validate workout plan exists
             const workoutPlan = AppState.workoutPlans.find(plan => 
@@ -1676,11 +1592,10 @@ async function checkForInProgressWorkout() {
             // Show the prompt
             showInProgressWorkoutPrompt(todaysData);
         } else {
-            console.log('✅ No in-progress workout found');
         }
         
     } catch (error) {
-        console.error('âŒ Error checking for in-progress workout:', error);
+        console.error('âŒError checking for in-progress workout:', error);
     }
 }
 

@@ -12,7 +12,6 @@ const ERROR_WINDOW_MS = 5000;
  * Global error handler for uncaught errors
  */
 export function initializeErrorHandler() {
-    console.log('🛡️ Initializing global error handler...');
 
     // Handle uncaught JavaScript errors
     window.addEventListener('error', (event) => {
@@ -39,16 +38,12 @@ export function initializeErrorHandler() {
     });
 
     window.addEventListener('online', () => {
-        console.log('✅ Back online');
         showNotification('Back online! Syncing data...', 'success');
 
         // Trigger data sync if needed
         if (window.AppState?.currentUser) {
-            console.log('🔄 Attempting to sync offline changes...');
         }
     });
-
-    console.log('✅ Global error handler initialized');
 }
 
 /**
@@ -122,7 +117,6 @@ export async function checkFirebaseConnection(db) {
     } catch (error) {
         // Permission denied is expected when not signed in
         if (error.code === 'permission-denied') {
-            console.log('Firebase connection check: Not authenticated (expected before sign-in)');
             return false;
         }
         console.error('Firebase connectivity check failed:', error);

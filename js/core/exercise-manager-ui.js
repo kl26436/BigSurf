@@ -12,7 +12,6 @@ let workoutManager = null;
 
 // Open exercise manager section
 export function openExerciseManager() {
-    console.log('📚 Opening exercise manager section...');
 
     // Close sidebar first
     const sidebar = document.getElementById('sidebar');
@@ -41,33 +40,26 @@ export function closeExerciseManager() {
         section.classList.add('hidden');
     }
 
-    console.log('🔍 Checking editingFromActiveWorkout flag:', window.editingFromActiveWorkout);
-
     // Check if we came from active workout
     if (window.editingFromActiveWorkout) {
-        console.log('✅ Flag is true - returning to active workout');
         // Return to active workout
         const activeWorkout = document.getElementById('active-workout');
         if (activeWorkout) {
             activeWorkout.classList.remove('hidden');
-            console.log('✅ Active workout shown');
         }
         // Clear the flag
         window.editingFromActiveWorkout = false;
     } else {
-        console.log('ℹ️ Flag is false - showing dashboard');
         // Show dashboard (normal behavior from exercise library)
         const dashboard = document.getElementById('dashboard');
         if (dashboard) {
             dashboard.classList.remove('hidden');
-            console.log('✅ Dashboard shown');
         }
     }
 }
 
 // Load exercises from AppState
 async function loadExercises() {
-    console.log('🔄 Loading exercises from library...');
 
     // Initialize workout manager if needed
     if (!workoutManager) {
@@ -75,7 +67,6 @@ async function loadExercises() {
     }
 
     if (!AppState.exerciseDatabase || AppState.exerciseDatabase.length === 0) {
-        console.log('⚠️ No exercises in database');
         allExercises = [];
         filteredExercises = [];
         renderExercises();
@@ -99,8 +90,6 @@ async function loadExercises() {
 
     filteredExercises = [...allExercises];
     renderExercises();
-
-    console.log(`✅ Loaded ${allExercises.length} exercises`);
 }
 
 // Render exercises to grid
@@ -278,7 +267,6 @@ export function closeAddExerciseModal() {
 
     // If we were editing from active workout, close the entire exercise manager
     if (window.editingFromActiveWorkout) {
-        console.log('🔄 Closing exercise manager and returning to active workout');
         closeExerciseManager();
     }
 }
@@ -346,7 +334,6 @@ export async function saveExercise(event) {
         }
 
         await workoutManager.saveCustomExercise(formData, false);
-        console.log(`✅ Exercise "${formData.name}" saved successfully`);
 
         closeAddExerciseModal();
         await refreshExerciseLibrary();
@@ -381,13 +368,10 @@ export async function deleteExercise(exerciseId) {
             // Delete from Firebase
             if (exercise.isCustom) {
                 await workoutManager.deleteCustomExercise(exerciseId);
-                console.log(`✅ Custom exercise "${exercise.name}" deleted`);
             } else if (exercise.isOverride) {
                 await workoutManager.deleteExerciseOverride(exerciseId);
-                console.log(`✅ Override for "${exercise.name}" removed`);
             } else {
                 await workoutManager.hideDefaultExercise(exerciseId);
-                console.log(`✅ Default exercise "${exercise.name}" hidden`);
             }
 
             // Refresh the exercise library

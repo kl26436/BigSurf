@@ -23,7 +23,6 @@ let currentFilters = {
  * Show stats & records view
  */
 export async function showStats() {
-    console.log('📊 Showing stats & records...');
 
     const statsSection = document.getElementById('stats-section');
     if (!statsSection) {
@@ -108,8 +107,6 @@ async function renderStatsView() {
             ${renderFilters(equipmentTypes, locations)}
             ${renderPRLeaderboard(allPRs)}
         `;
-
-        console.log('✅ Stats view rendered');
     } catch (error) {
         console.error('❌ Error rendering stats:', error);
         container.innerHTML = `

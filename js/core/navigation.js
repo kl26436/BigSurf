@@ -1,14 +1,11 @@
 // Navigation Module - core/navigation.js
 // Handles sidebar navigation and view switching
 
-console.log('📱 Navigation module loaded');
-
 // ===================================================================
 // SIDEBAR CONTROLS
 // ===================================================================
 
 export function openSidebar() {
-    console.log('📱 openSidebar called');
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
 
@@ -29,7 +26,6 @@ export function closeSidebar() {
 // ===================================================================
 
 export function navigateTo(view) {
-    console.log(`📱 Navigating to: ${view}`);
 
     // Close sidebar after navigation
     closeSidebar();
@@ -105,7 +101,6 @@ function showActiveWorkout() {
     const activeWorkout = document.getElementById('active-workout');
     if (activeWorkout) {
         activeWorkout.classList.remove('hidden');
-        console.log('✅ Active workout shown');
     }
 }
 
