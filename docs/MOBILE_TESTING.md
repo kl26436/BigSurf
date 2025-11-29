@@ -7,7 +7,7 @@ Use this checklist to test Big Surf Workout Tracker on your mobile device before
 - [ ] Deployed to Firebase Hosting (https://bigsurf.fit)
 - [ ] Test on actual phone (not just browser DevTools)
 - [ ] Clear browser cache before testing (hard refresh)
-- [ ] Current version: v4.25-bug-fixes
+- [ ] Current version: v4.33-log-cleanup
 
 ## 📋 Core Functionality Tests
 
@@ -577,6 +577,19 @@ To test the auto-delete feature for empty abandoned workouts:
 - [x] Suggested workouts filter out hidden/deleted templates ✅ TESTED 2025-11-29
 - [x] Workout not found error shows user-friendly notification ✅ TESTED 2025-11-29
 - [ ] Location selector - DISABLED (modal visibility issues, will fix later)
+
+## 🎯 v4.33: Console Log Cleanup (2025-11-29)
+
+### v4.33: Code Cleanup
+- [ ] Browser console shows only errors (no verbose logs)
+- [ ] All functionality still works after log removal
+- [ ] Error messages still show with ❌ emoji prefix
+
+### Test 1: Clean Console
+1. Open browser DevTools console
+2. Navigate through app (dashboard, start workout, history)
+3. **Expected**: Console shows only errors, no verbose "Starting workout...", "Loading..." logs
+4. **Expected**: Error messages still appear when things fail
 
 ## 🔍 Console Check
 
