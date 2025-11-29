@@ -226,3 +226,144 @@ exports.savePushSubscription = functions.https.onCall(async (data, context) => {
 
     return { success: true };
 });
+
+// ============================================================================
+// NATIVE iOS PUSH NOTIFICATIONS (Capacitor/APNs)
+// ============================================================================
+
+/**
+ * Save device token for native iOS push (APNs)
+ * Called from Capacitor app when registering for push
+ */
+exports.saveDeviceToken = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { token, platform } = data;
+    const userId = context.auth.uid;
+
+    if (!token) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing device token');
+    }
+
+    // Store the device token
+    await db.collection('users').doc(userId).collection('device_tokens').doc('current').set({
+        token: token,
+        platform: platform || 'ios',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`✅ Saved device token for user ${userId} (${platform})`);
+
+    return { success: true };
+});
+
+/**
+ * Schedule a native iOS push notification
+ * Uses Firebase Cloud Messaging to send to APNs
+ */
+exports.scheduleNativeNotification = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { delaySeconds, exerciseName, notificationId, platform } = data;
+    const userId = context.auth.uid;
+
+    if (!delaySeconds || !notificationId) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields');
+    }
+
+    // Get the user's device token
+    const tokenDoc = await db.collection('users').doc(userId)
+        .collection('device_tokens').doc('current').get();
+
+    if (!tokenDoc.exists) {
+        throw new functions.https.HttpsError('failed-precondition', 'No device token found');
+    }
+
+    const { token } = tokenDoc.data();
+
+    // Calculate when to send
+    const sendAt = Date.now() + (delaySeconds * 1000);
+
+    // Store scheduled notification
+    await db.collection('scheduled_notifications').doc(notificationId).set({
+        userId: userId,
+        deviceToken: token,
+        platform: platform || 'ios',
+        sendAt: sendAt,
+        exerciseName: exerciseName || 'your next set',
+        status: 'pending',
+        type: 'native',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`📅 Scheduled native notification ${notificationId}`);
+
+    return { success: true, notificationId: notificationId, sendAt: sendAt };
+});
+
+/**
+ * Modified sendDueNotifications to handle both web push and native iOS
+ */
+exports.sendDueNativeNotifications = functions.pubsub
+    .schedule('every 1 minutes')
+    .onRun(async (context) => {
+        const now = Date.now();
+
+        // Find native notifications that are due
+        const dueNotifications = await db.collection('scheduled_notifications')
+            .where('status', '==', 'pending')
+            .where('type', '==', 'native')
+            .where('sendAt', '<=', now)
+            .get();
+
+        if (dueNotifications.empty) {
+            return null;
+        }
+
+        console.log(`📬 Found ${dueNotifications.size} due native notifications`);
+
+        const promises = [];
+
+        dueNotifications.forEach((doc) => {
+            const notification = doc.data();
+
+            // Send via Firebase Cloud Messaging (works with APNs)
+            const message = {
+                token: notification.deviceToken,
+                notification: {
+                    title: 'Rest Complete! 💪',
+                    body: `Time for ${notification.exerciseName}`
+                },
+                apns: {
+                    payload: {
+                        aps: {
+                            sound: 'default',
+                            badge: 1
+                        }
+                    }
+                }
+            };
+
+            promises.push(
+                admin.messaging().send(message)
+                    .then(() => {
+                        console.log(`✅ Sent native notification: ${doc.id}`);
+                        return doc.ref.update({
+                            status: 'sent',
+                            sentAt: admin.firestore.FieldValue.serverTimestamp()
+                        });
+                    })
+                    .catch((error) => {
+                        console.error(`❌ Failed native notification ${doc.id}:`, error.message);
+                        return doc.ref.update({ status: 'failed', error: error.message });
+                    })
+            );
+        });
+
+        await Promise.all(promises);
+        return null;
+    });
