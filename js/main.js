@@ -81,7 +81,10 @@ import {
     openEditExerciseSection, closeEditExerciseSection, saveExerciseFromSection,
     deleteExerciseFromSection,
     openEquipmentEditor, closeEquipmentEditor, addLocationToEquipmentEditor,
-    removeLocationFromEquipmentEditor, saveEquipmentFromEditor, deleteEquipmentFromEditor
+    removeLocationFromEquipmentEditor, saveEquipmentFromEditor, deleteEquipmentFromEditor,
+    // New category grid functions
+    showCategoryView, selectBodyPartCategory, filterByEquipment,
+    handleExerciseSearch, toggleExerciseListSearch, handleExerciseCardClick
 } from './core/exercise-manager-ui.js';
 
 // Location selector functionality
@@ -284,6 +287,13 @@ window.addLocationToEquipmentEditor = addLocationToEquipmentEditor;
 window.removeLocationFromEquipmentEditor = removeLocationFromEquipmentEditor;
 window.saveEquipmentFromEditor = saveEquipmentFromEditor;
 window.deleteEquipmentFromEditor = deleteEquipmentFromEditor;
+// New category grid functions
+window.showCategoryView = showCategoryView;
+window.selectBodyPartCategory = selectBodyPartCategory;
+window.filterByEquipment = filterByEquipment;
+window.handleExerciseSearch = handleExerciseSearch;
+window.toggleExerciseListSearch = toggleExerciseListSearch;
+window.handleExerciseCardClick = handleExerciseCardClick;
 
 // Location Selector Functions
 window.showLocationSelector = showLocationSelector;

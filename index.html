@@ -135,8 +135,13 @@
         <!-- Sidebar Overlay -->
         <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 
-        <!-- Header -->
-        <header class="header">
+        <!-- Standalone hamburger menu for busy pages (hidden by default, shown via JS) -->
+        <button id="standalone-menu-toggle" class="menu-toggle-standalone" onclick="openSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Header with centered logo (shown on dashboard/history pages) -->
+        <header class="header" id="main-header">
             <button class="menu-toggle" onclick="openSidebar()">
                 <i class="fas fa-bars"></i>
             </button>
@@ -671,64 +676,102 @@
 
 <!-- Exercise Manager Section -->
 <section id="exercise-manager-section" class="content-section hidden">
-    <div class="section-content">
-        <div class="section-body">
-            <div class="modal-actions-top">
-                <button class="btn btn-primary" onclick="showAddExerciseModal()">
-                    <i class="fas fa-plus"></i> Add Exercise
-                </button>
-                <button class="btn btn-secondary" onclick="refreshExerciseLibrary()">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-            </div>
-
-            <!-- Search and Filters -->
-            <div class="search-filters" style="margin-top: 1rem;">
-                <div class="filter-row">
-                    <div class="form-group">
-                        <label for="exercise-search-input">Search Exercises</label>
-                        <input type="text" id="exercise-search-input" class="input-field"
-                               placeholder="Search by name, body part, or equipment..."
-                               oninput="filterExerciseLibrary()">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="exercise-body-part-filter">Body Part</label>
-                        <select id="exercise-body-part-filter" class="input-field" onchange="filterExerciseLibrary()">
-                            <option value="">All Body Parts</option>
-                            <option value="Chest">Chest</option>
-                            <option value="Back">Back</option>
-                            <option value="Legs">Legs</option>
-                            <option value="Shoulders">Shoulders</option>
-                            <option value="Arms">Arms</option>
-                            <option value="Core">Core</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="exercise-equipment-filter">Equipment</label>
-                        <select id="exercise-equipment-filter" class="input-field" onchange="filterExerciseLibrary()">
-                            <option value="">All Equipment</option>
-                            <option value="Machine">Machine</option>
-                            <option value="Cable">Cable</option>
-                            <option value="Dumbbell">Dumbbell</option>
-                            <option value="Barbell">Barbell</option>
-                            <option value="Bodyweight">Bodyweight</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <button class="btn btn-secondary" onclick="clearExerciseFilters()" style="margin-top: 1.65rem;">
-                            <i class="fas fa-times"></i> Clear
-                        </button>
-                    </div>
+    <!-- View 1: Category Grid (Entry Page) -->
+    <div id="exercise-category-view" class="exercise-library-view">
+        <!-- Header with search and add button -->
+        <div class="exercise-library-header">
+            <div class="exercise-search-row">
+                <div class="exercise-search-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="exercise-search-input" class="exercise-search-input"
+                           placeholder="Search exercises"
+                           oninput="handleExerciseSearch()">
                 </div>
+                <button class="btn-add-exercise" onclick="showAddExerciseModal()">
+                    <i class="fas fa-plus"></i> Add
+                </button>
             </div>
+        </div>
 
-            <!-- Exercise Grid -->
-            <div id="exercise-manager-grid" class="exercise-grid" style="margin-top: 1.5rem;">
-                <!-- Exercises will be loaded here -->
+        <!-- Category Grid -->
+        <div class="category-grid">
+            <div class="category-card" onclick="selectBodyPartCategory('Chest')">
+                <i class="fas fa-dumbbell category-icon"></i>
+                <span class="category-name">Chest</span>
             </div>
+            <div class="category-card" onclick="selectBodyPartCategory('Back')">
+                <i class="fas fa-arrows-up-down category-icon"></i>
+                <span class="category-name">Back</span>
+            </div>
+            <div class="category-card" onclick="selectBodyPartCategory('Legs')">
+                <i class="fas fa-person-walking category-icon"></i>
+                <span class="category-name">Legs</span>
+            </div>
+            <div class="category-card" onclick="selectBodyPartCategory('Shoulders')">
+                <i class="fas fa-expand category-icon"></i>
+                <span class="category-name">Shoulders</span>
+            </div>
+            <div class="category-card" onclick="selectBodyPartCategory('Biceps')">
+                <i class="fas fa-hand-fist category-icon"></i>
+                <span class="category-name">Biceps</span>
+            </div>
+            <div class="category-card" onclick="selectBodyPartCategory('Triceps')">
+                <i class="fas fa-hand-point-down category-icon"></i>
+                <span class="category-name">Triceps</span>
+            </div>
+            <div class="category-card" onclick="selectBodyPartCategory('Core')">
+                <i class="fas fa-circle-dot category-icon"></i>
+                <span class="category-name">Core</span>
+            </div>
+            <div class="category-card" onclick="selectBodyPartCategory('Cardio')">
+                <i class="fas fa-heart-pulse category-icon"></i>
+                <span class="category-name">Cardio</span>
+            </div>
+            <div class="category-card" onclick="selectBodyPartCategory('')">
+                <i class="fas fa-border-all category-icon"></i>
+                <span class="category-name">All</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- View 2: Exercise List (After selecting category) -->
+    <div id="exercise-list-view" class="exercise-library-view hidden">
+        <!-- Header with back, title, search, add -->
+        <div class="exercise-list-header">
+            <button class="btn-back-category" onclick="showCategoryView()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2 id="exercise-list-title" class="exercise-list-title">Exercises</h2>
+            <div class="exercise-list-actions">
+                <button class="btn-icon-header" onclick="toggleExerciseListSearch()">
+                    <i class="fas fa-search"></i>
+                </button>
+                <button class="btn-add-exercise-small" onclick="showAddExerciseModal()">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Search bar (hidden by default, toggled) -->
+        <div id="exercise-list-search" class="exercise-list-search hidden">
+            <input type="text" id="exercise-list-search-input" class="exercise-search-input"
+                   placeholder="Search exercises..."
+                   oninput="filterExerciseLibrary()">
+        </div>
+
+        <!-- Equipment Filter Pills -->
+        <div class="equipment-filter-pills">
+            <button class="filter-pill active" data-equipment="" onclick="filterByEquipment('')">All</button>
+            <button class="filter-pill" data-equipment="Dumbbell" onclick="filterByEquipment('Dumbbell')">Dumbbell</button>
+            <button class="filter-pill" data-equipment="Barbell" onclick="filterByEquipment('Barbell')">Barbell</button>
+            <button class="filter-pill" data-equipment="Machine" onclick="filterByEquipment('Machine')">Machine</button>
+            <button class="filter-pill" data-equipment="Cable" onclick="filterByEquipment('Cable')">Cable</button>
+            <button class="filter-pill" data-equipment="Bodyweight" onclick="filterByEquipment('Bodyweight')">Bodyweight</button>
+        </div>
+
+        <!-- Exercise List -->
+        <div id="exercise-manager-grid" class="exercise-list-container">
+            <!-- Exercises will be loaded here -->
         </div>
     </div>
 </section>
@@ -751,8 +794,11 @@
             <!-- Section 1: Exercise Name -->
             <div class="edit-section">
                 <h3 class="edit-section-title">Exercise Name</h3>
-                <input type="text" id="edit-exercise-name" class="edit-input-large" required
-                       placeholder="e.g., Bench Press">
+                <div class="input-with-icon">
+                    <i class="fas fa-dumbbell"></i>
+                    <input type="text" id="edit-exercise-name" class="edit-input-large" required
+                           placeholder="e.g., Bench Press">
+                </div>
             </div>
 
             <!-- Section 2: Exercise Info -->
@@ -805,8 +851,11 @@
             <div class="edit-section">
                 <h3 class="edit-section-title">Default Video</h3>
                 <p class="edit-section-hint">YouTube link for exercise form reference</p>
-                <input type="url" id="edit-exercise-video" class="edit-input-large"
-                       placeholder="https://youtube.com/watch?v=...">
+                <div class="input-with-icon">
+                    <i class="fas fa-video"></i>
+                    <input type="url" id="edit-exercise-video" class="edit-input-large"
+                           placeholder="https://youtube.com/watch?v=...">
+                </div>
             </div>
 
             <!-- Section 4: Your Equipment (Optional) -->
@@ -834,9 +883,18 @@
                 <div class="edit-add-equipment">
                     <h4 class="edit-subsection-title">Add New Equipment</h4>
                     <div class="edit-equipment-form">
-                        <input type="text" id="edit-equipment-name" class="edit-input-full" placeholder="Equipment name (e.g., Life Fitness Chest Press)">
-                        <input type="text" id="edit-equipment-location" class="edit-input-full" placeholder="Location/Gym (e.g., LA Fitness Downtown)">
-                        <input type="url" id="edit-equipment-video" class="edit-input-full" placeholder="Video URL (optional)">
+                        <div class="input-with-icon">
+                            <i class="fas fa-dumbbell"></i>
+                            <input type="text" id="edit-equipment-name" class="edit-input-full" placeholder="Equipment name (e.g., Life Fitness Chest Press)">
+                        </div>
+                        <div class="input-with-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <input type="text" id="edit-equipment-location" class="edit-input-full" placeholder="Location/Gym (e.g., LA Fitness Downtown)">
+                        </div>
+                        <div class="input-with-icon">
+                            <i class="fas fa-video"></i>
+                            <input type="url" id="edit-equipment-video" class="edit-input-full" placeholder="Video URL (optional)">
+                        </div>
                         <button type="button" class="btn-add-equipment" onclick="addEquipmentToList()">
                             <i class="fas fa-plus"></i> Add Equipment
                         </button>
@@ -978,52 +1036,69 @@
     </div>
 </div>
 
-<!-- Equipment Editor Modal -->
-<div id="equipment-editor-modal" class="modal hidden">
-    <div class="modal-content modal-content-small">
-        <div class="modal-header">
-            <h3><i class="fas fa-dumbbell"></i> Edit Equipment</h3>
-            <button type="button" class="close-btn" onclick="closeEquipmentEditor()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="form-group">
-                <label for="equipment-editor-name">Equipment Name</label>
-                <input type="text" id="equipment-editor-name" class="input-field" placeholder="Equipment name">
-            </div>
-
-            <div class="form-group">
-                <label for="equipment-editor-video">Video URL (optional)</label>
-                <input type="text" id="equipment-editor-video" class="input-field" placeholder="YouTube link">
-            </div>
-
-            <div class="form-section">
-                <label>Locations</label>
-                <p class="form-help-text">Gyms where you use this equipment</p>
-                <div id="equipment-editor-locations" class="equipment-locations-list">
-                    <!-- Populated dynamically -->
-                </div>
-                <div class="equipment-add-location">
-                    <input type="text" id="equipment-editor-new-location" class="input-field"
-                           placeholder="Add location (e.g., Planet Fitness)">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="addLocationToEquipmentEditor()">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn btn-danger" onclick="deleteEquipmentFromEditor()">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-                <button type="button" class="btn btn-primary" onclick="saveEquipmentFromEditor()">
-                    <i class="fas fa-check"></i> Save
-                </button>
-            </div>
-        </div>
+<!-- Equipment Editor Section (Full Page) -->
+<section id="equipment-editor-section" class="app-section hidden">
+    <div class="edit-exercise-header">
+        <button class="btn-back" onclick="closeEquipmentEditor()">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2 id="equipment-editor-title">Edit Equipment</h2>
+        <button class="btn-save" onclick="saveEquipmentFromEditor()">
+            <i class="fas fa-check"></i> Save
+        </button>
     </div>
-</div>
+
+    <form id="equipment-editor-form" class="edit-exercise-form">
+        <!-- Section 1: Equipment Name -->
+        <div class="edit-section">
+            <h3 class="edit-section-title">Equipment Name</h3>
+            <div class="input-with-icon">
+                <i class="fas fa-dumbbell"></i>
+                <input type="text" id="equipment-editor-name" class="edit-input-large"
+                       placeholder="e.g., Life Fitness Chest Press">
+            </div>
+        </div>
+
+        <!-- Section 2: Video URL -->
+        <div class="edit-section">
+            <h3 class="edit-section-title">Video URL <span class="optional-tag">(Optional)</span></h3>
+            <p class="edit-section-hint">YouTube link for equipment instructions</p>
+            <div class="input-with-icon">
+                <i class="fas fa-video"></i>
+                <input type="url" id="equipment-editor-video" class="edit-input-large"
+                       placeholder="https://youtube.com/watch?v=...">
+            </div>
+        </div>
+
+        <!-- Section 3: Locations -->
+        <div class="edit-section">
+            <h3 class="edit-section-title">Locations</h3>
+            <p class="edit-section-hint">Gyms where you use this equipment</p>
+
+            <div id="equipment-editor-locations" class="equipment-locations-list">
+                <!-- Populated dynamically -->
+            </div>
+
+            <div class="equipment-add-location-form">
+                <div class="input-with-icon">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <input type="text" id="equipment-editor-new-location" class="edit-input-full"
+                           placeholder="Add location (e.g., Planet Fitness)">
+                </div>
+                <button type="button" class="btn-add-equipment" onclick="addLocationToEquipmentEditor()">
+                    <i class="fas fa-plus"></i> Add Location
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Delete Button -->
+    <div class="edit-delete-container">
+        <button type="button" class="btn-delete-exercise" onclick="deleteEquipmentFromEditor()">
+            <i class="fas fa-trash"></i> Delete Equipment
+        </button>
+    </div>
+</section>
 
 <!-- Template Exercise Edit Modal (for editing exercises in workout templates) -->
 <div id="template-exercise-edit-modal" class="modal hidden">

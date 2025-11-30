@@ -2,7 +2,7 @@
 // Handles the integrated exercise manager modal
 
 import { AppState } from './app-state.js';
-import { showNotification } from './ui-helpers.js';
+import { showNotification, setHeaderMode } from './ui-helpers.js';
 import { FirebaseWorkoutManager } from './firebase-workout-manager.js';
 
 let allExercises = [];
@@ -13,6 +13,23 @@ let selectedEquipmentId = null;
 let selectedEquipmentData = null;
 let editingEquipmentData = null;  // For equipment editor modal
 let editingEquipmentLocations = [];  // Locations being edited
+let currentBodyPartFilter = '';  // Current body part category selected
+let currentEquipmentFilter = '';  // Current equipment filter
+
+// Equipment type to icon mapping
+const equipmentIcons = {
+    'Barbell': 'fa-dumbbell',
+    'Dumbbell': 'fa-dumbbell',
+    'Machine': 'fa-cogs',
+    'Cable': 'fa-link',
+    'Bodyweight': 'fa-person',
+    'default': 'fa-dumbbell'
+};
+
+// Get icon class for equipment type
+function getEquipmentIcon(equipmentType) {
+    return equipmentIcons[equipmentType] || equipmentIcons['default'];
+}
 
 // Open exercise manager section
 export function openExerciseManager() {
@@ -33,8 +50,148 @@ export function openExerciseManager() {
         });
 
         section.classList.remove('hidden');
+
+        // Hide header, show standalone hamburger for exercise manager
+        setHeaderMode(false);
+
+        // Show category view by default
+        showCategoryView();
         loadExercises();
     }
+}
+
+// Show category grid view (entry page)
+export function showCategoryView() {
+    const categoryView = document.getElementById('exercise-category-view');
+    const listView = document.getElementById('exercise-list-view');
+
+    if (categoryView) categoryView.classList.remove('hidden');
+    if (listView) listView.classList.add('hidden');
+
+    // Reset filters
+    currentBodyPartFilter = '';
+    currentEquipmentFilter = '';
+
+    // Clear search
+    const searchInput = document.getElementById('exercise-search-input');
+    if (searchInput) searchInput.value = '';
+}
+
+// Select a body part category and show exercise list
+export function selectBodyPartCategory(bodyPart) {
+    currentBodyPartFilter = bodyPart;
+    currentEquipmentFilter = '';
+
+    // Update title
+    const title = document.getElementById('exercise-list-title');
+    if (title) {
+        title.textContent = bodyPart ? `${bodyPart} Exercises` : 'All Exercises';
+    }
+
+    // Reset equipment filter pills
+    const pills = document.querySelectorAll('.filter-pill');
+    pills.forEach(pill => {
+        pill.classList.toggle('active', pill.dataset.equipment === '');
+    });
+
+    // Show list view
+    const categoryView = document.getElementById('exercise-category-view');
+    const listView = document.getElementById('exercise-list-view');
+
+    if (categoryView) categoryView.classList.add('hidden');
+    if (listView) listView.classList.remove('hidden');
+
+    // Filter and render exercises
+    filterAndRenderExercises();
+}
+
+// Filter by equipment type (from pills)
+export function filterByEquipment(equipmentType) {
+    currentEquipmentFilter = equipmentType;
+
+    // Update pill active states
+    const pills = document.querySelectorAll('.filter-pill');
+    pills.forEach(pill => {
+        pill.classList.toggle('active', pill.dataset.equipment === equipmentType);
+    });
+
+    filterAndRenderExercises();
+}
+
+// Handle search from category view (shows all matching exercises)
+export function handleExerciseSearch() {
+    const searchInput = document.getElementById('exercise-search-input');
+    const searchTerm = searchInput?.value.trim();
+
+    if (searchTerm && searchTerm.length >= 2) {
+        // Switch to list view with search results
+        currentBodyPartFilter = '';
+        currentEquipmentFilter = '';
+
+        const title = document.getElementById('exercise-list-title');
+        if (title) title.textContent = 'Search Results';
+
+        const categoryView = document.getElementById('exercise-category-view');
+        const listView = document.getElementById('exercise-list-view');
+
+        if (categoryView) categoryView.classList.add('hidden');
+        if (listView) listView.classList.remove('hidden');
+
+        filterAndRenderExercises(searchTerm);
+    }
+}
+
+// Toggle search bar in list view
+export function toggleExerciseListSearch() {
+    const searchDiv = document.getElementById('exercise-list-search');
+    const searchInput = document.getElementById('exercise-list-search-input');
+
+    if (searchDiv) {
+        searchDiv.classList.toggle('hidden');
+        if (!searchDiv.classList.contains('hidden') && searchInput) {
+            searchInput.focus();
+        }
+    }
+}
+
+// Filter and render exercises based on current filters
+function filterAndRenderExercises(searchTerm = '') {
+    // Get search term from list view search if not provided
+    if (!searchTerm) {
+        const listSearchInput = document.getElementById('exercise-list-search-input');
+        searchTerm = listSearchInput?.value.toLowerCase() || '';
+    } else {
+        searchTerm = searchTerm.toLowerCase();
+    }
+
+    filteredExercises = allExercises.filter(exercise => {
+        const matchesSearch = !searchTerm ||
+            exercise.name.toLowerCase().includes(searchTerm) ||
+            exercise.bodyPart.toLowerCase().includes(searchTerm) ||
+            exercise.equipmentType.toLowerCase().includes(searchTerm);
+
+        // Handle body part filter - check for Biceps/Triceps mapping to Arms
+        let matchesBodyPart = !currentBodyPartFilter;
+        if (currentBodyPartFilter) {
+            if (currentBodyPartFilter === 'Biceps' || currentBodyPartFilter === 'Triceps') {
+                // Check if exercise body part matches directly or is "Arms"
+                matchesBodyPart = exercise.bodyPart === currentBodyPartFilter ||
+                                  (exercise.bodyPart === 'Arms' && exercise.name.toLowerCase().includes(currentBodyPartFilter.toLowerCase()));
+            } else if (currentBodyPartFilter === 'Arms') {
+                matchesBodyPart = exercise.bodyPart === 'Arms' ||
+                                  exercise.bodyPart === 'Biceps' ||
+                                  exercise.bodyPart === 'Triceps';
+            } else {
+                matchesBodyPart = exercise.bodyPart === currentBodyPartFilter;
+            }
+        }
+
+        const matchesEquipment = !currentEquipmentFilter || exercise.equipmentType === currentEquipmentFilter;
+
+        return matchesSearch && matchesBodyPart && matchesEquipment;
+    });
+
+    renderExercises();
 }
 
 // Close exercise manager section
@@ -98,68 +255,62 @@ async function loadExercises() {
     renderExercises();
 }
 
-// Render exercises to grid
+// Render exercises to grid (new card design)
 function renderExercises() {
     const grid = document.getElementById('exercise-manager-grid');
     if (!grid) return;
 
     if (filteredExercises.length === 0) {
         grid.innerHTML = `
-            <div class="empty-state">
+            <div class="exercise-empty-state">
                 <i class="fas fa-dumbbell"></i>
-                <p>No exercises found matching your criteria.</p>
-                <button class="btn btn-primary" onclick="showAddExerciseModal()" style="margin-top: 1rem;">
-                    <i class="fas fa-plus"></i> Add First Exercise
+                <p>No exercises found</p>
+                <button class="btn-add-exercise" onclick="showAddExerciseModal()">
+                    <i class="fas fa-plus"></i> Add Exercise
                 </button>
             </div>
         `;
         return;
     }
 
-    // Group exercises by body part
-    const groupedExercises = {};
-    filteredExercises.forEach(exercise => {
-        const bodyPart = exercise.bodyPart || 'Other';
-        if (!groupedExercises[bodyPart]) {
-            groupedExercises[bodyPart] = [];
-        }
-        groupedExercises[bodyPart].push(exercise);
-    });
+    // Sort exercises alphabetically by name
+    const sortedExercises = [...filteredExercises].sort((a, b) =>
+        a.name.localeCompare(b.name)
+    );
 
-    // Sort body parts alphabetically
-    const sortedBodyParts = Object.keys(groupedExercises).sort();
-
-    // Render grouped exercises (expanded by default)
-    grid.innerHTML = sortedBodyParts.map(bodyPart => {
-        const exercises = groupedExercises[bodyPart];
-
-        const exerciseRows = exercises.map(exercise => {
-            const badge = exercise.isOverride ?
-                '<span class="exercise-type-badge badge-override">YOUR</span>' :
-                exercise.isCustom ?
-                '<span class="exercise-type-badge badge-custom">CUSTOM</span>' :
-                '';
-
-            return `
-                <div class="exercise-manager-row" data-exercise-id="${exercise.id}">
-                    <span class="exercise-manager-name">${exercise.name}</span>
-                    ${badge}
-                    <div class="exercise-manager-actions">
-                        <button class="btn-icon" onclick="editExercise('${exercise.id}')" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
+    // Render exercise cards (flat list, no grouping in list view)
+    grid.innerHTML = sortedExercises.map(exercise => {
+        const iconClass = getEquipmentIcon(exercise.equipmentType);
 
         return `
-            <div class="exercise-manager-group">
-                <div class="exercise-manager-group-header">${bodyPart} <span class="exercise-count">${exercises.length}</span></div>
-                <div class="exercise-manager-group-items">${exerciseRows}</div>
+            <div class="exercise-card-new" data-exercise-id="${exercise.id}" onclick="handleExerciseCardClick('${exercise.id}')">
+                <div class="exercise-card-icon">
+                    <i class="fas ${iconClass}"></i>
+                </div>
+                <div class="exercise-card-info">
+                    <span class="exercise-card-name">${exercise.name}</span>
+                </div>
+                <button class="exercise-card-edit" onclick="event.stopPropagation(); editExercise('${exercise.id}')" title="Edit">
+                    EDIT
+                </button>
             </div>
         `;
     }).join('');
+}
+
+// Handle exercise card click (for adding to workout)
+export function handleExerciseCardClick(exerciseId) {
+    const exercise = allExercises.find(e => e.id === exerciseId);
+    if (!exercise) return;
+
+    // Check if we're in "add to workout" context
+    if (window.selectExerciseCallback) {
+        // Call the callback with the exercise
+        window.selectExerciseCallback(exercise);
+    } else {
+        // Default behavior: open edit
+        editExercise(exerciseId);
+    }
 }
 
 function getDeleteButton(exercise) {
@@ -916,7 +1067,7 @@ export async function saveExerciseFromSection() {
 // ===================================================================
 
 /**
- * Open equipment editor modal
+ * Open equipment editor section (full page)
  * @param {Object} equipment - Equipment data with id, name, location(s), video
  */
 export function openEquipmentEditor(equipment) {
@@ -942,9 +1093,12 @@ export function openEquipmentEditor(equipment) {
     // Render locations list
     renderEquipmentEditorLocations();
 
-    // Show modal
-    const modal = document.getElementById('equipment-editor-modal');
-    if (modal) modal.classList.remove('hidden');
+    // Hide edit exercise section and show equipment editor section
+    const editExerciseSection = document.getElementById('edit-exercise-section');
+    const equipmentSection = document.getElementById('equipment-editor-section');
+
+    if (editExerciseSection) editExerciseSection.classList.add('hidden');
+    if (equipmentSection) equipmentSection.classList.remove('hidden');
 }
 
 /**
@@ -1092,11 +1246,14 @@ export async function deleteEquipmentFromEditor() {
 }
 
 /**
- * Close equipment editor modal
+ * Close equipment editor section
  */
 export function closeEquipmentEditor() {
-    const modal = document.getElementById('equipment-editor-modal');
-    if (modal) modal.classList.add('hidden');
+    const equipmentSection = document.getElementById('equipment-editor-section');
+    const editExerciseSection = document.getElementById('edit-exercise-section');
+
+    if (equipmentSection) equipmentSection.classList.add('hidden');
+    if (editExerciseSection) editExerciseSection.classList.remove('hidden');
 
     editingEquipmentData = null;
     editingEquipmentLocations = [];

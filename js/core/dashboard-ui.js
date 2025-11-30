@@ -2,7 +2,7 @@
 // Displays dashboard with stats, quick actions, and recent activity
 
 import { StatsTracker } from './stats-tracker.js';
-import { showNotification } from './ui-helpers.js';
+import { showNotification, setHeaderMode } from './ui-helpers.js';
 
 // ===================================================================
 // DASHBOARD DISPLAY
@@ -30,6 +30,9 @@ export async function showDashboard() {
 
     // Show dashboard
     dashboardSection.classList.remove('hidden');
+
+    // Show full header with logo on dashboard
+    setHeaderMode(true);
 
     // Check for in-progress workout
     await checkForInProgressWorkout();

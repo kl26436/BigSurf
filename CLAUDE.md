@@ -400,6 +400,40 @@ localStorage.setItem('debug', 'firebase:*');
   - [index.html](index.html) - Location modals, equipment editor modal
   - [style.css](style.css) - Location indicator, equipment editor styles
 
+### v4.42: UI Redesign - Clean Dark Theme (2025-11-30)
+- **New Design System**: Updated CSS variables to match new teal accent design
+  - Primary: `#1dd3b0` (teal), Success: `#36c46b`, Warning: `#f0c24b`
+  - Background levels: `--bg-primary` through `--bg-elevated`
+  - Shadows: `--shadow-sm`, `--shadow-md`, `--shadow-lg`
+  - Border radius: `--radius: 14px`, `--radius-sm: 10px`
+- **Header Behavior**: Smart header visibility based on page context
+  - Dashboard/History: Full header with centered Big Surf logo + hamburger menu
+  - Active Workout/Workout Library/Exercise Manager: Hidden header, standalone fixed hamburger
+  - New `setHeaderMode(showFullHeader)` function in ui-helpers.js
+- **Workout Library Cards**: Clean elevated design
+  - Rounded 16px cards with shadow elevation
+  - Teal "Use Today" button, neutral Edit/Delete buttons
+  - Exercise list with subtle separators
+  - Removed default/custom badges
+- **Active Workout**: Sticky elevated header
+  - Workout name, timer, sets counter prominently displayed
+  - Exercise cards with 16px rounded corners and elevation
+  - Updated button styling with rounded corners
+- **Exercise Detail Modal**: Clean input design
+  - Pill-shaped unit toggle (lbs/kg)
+  - Rounded input fields (12px radius)
+  - Styled Add/Remove Set buttons
+  - Full-width green "Mark Exercise Complete" button
+- **Files**:
+  - [style.css](style.css) - Complete design system overhaul
+  - [ui-helpers.js](js/core/ui-helpers.js) - `setHeaderMode()` function
+  - [dashboard-ui.js](js/core/dashboard-ui.js) - Header mode on dashboard
+  - [workout-core.js](js/core/workout-core.js) - Header mode on active workout
+  - [workout-management-ui.js](js/core/workout/workout-management-ui.js) - Header mode on workout library
+  - [exercise-manager-ui.js](js/core/exercise-manager-ui.js) - Header mode on exercise manager
+  - [workout-history-ui.js](js/core/workout-history-ui.js) - Header mode on history
+  - [index.html](index.html) - Standalone hamburger button
+
 ### Key Technical Learnings
 
 1. **Deep vs Shallow Copy**: Always use deep clone for nested objects when modifications should not affect source

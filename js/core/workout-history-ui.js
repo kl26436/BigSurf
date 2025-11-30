@@ -2,7 +2,7 @@
 // Handles workout history UI interactions with FULL CALENDAR VIEW
 
 import { AppState } from './app-state.js';
-import { showNotification } from './ui-helpers.js';
+import { showNotification, setHeaderMode } from './ui-helpers.js';
 
 // ===================================================================
 // MAIN HISTORY DISPLAY FUNCTION
@@ -24,6 +24,9 @@ export async function showWorkoutHistory() {
     // Show history section
     const historySection = document.getElementById('workout-history-section');
     if (historySection) historySection.classList.remove('hidden');
+
+    // Show full header with logo on history page
+    setHeaderMode(true);
 
     // Initialize calendar view
     await initializeCalendarView();

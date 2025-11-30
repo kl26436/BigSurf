@@ -1,7 +1,7 @@
 // Workout Management UI Functions
 import { AppState } from '../app-state.js';
 import { FirebaseWorkoutManager } from '../firebase-workout-manager.js';
-import { showNotification } from '../ui-helpers.js';
+import { showNotification, setHeaderMode } from '../ui-helpers.js';
 
 let workoutManager;
 let currentEditingTemplate = null;
@@ -40,6 +40,9 @@ export async function showWorkoutManagement() {
 
     // Show workout management section
     section.classList.remove('hidden');
+
+    // Hide header, show standalone hamburger for workout library
+    setHeaderMode(false);
 
     // Load all templates (unified list)
     setTimeout(() => {

@@ -2,7 +2,7 @@
 // Handles workout session execution, exercise management, and workout lifecycle
 
 import { AppState } from './app-state.js';
-import { showNotification, convertWeight, updateProgress } from './ui-helpers.js';
+import { showNotification, convertWeight, updateProgress, setHeaderMode } from './ui-helpers.js';
 import { saveWorkoutData, loadExerciseHistory } from './data-manager.js';
 import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from './push-notification-manager.js';
 import {
@@ -117,6 +117,9 @@ export async function startWorkout(workoutType) {
     if (historySection) historySection.classList.add('hidden');
     if (dashboard) dashboard.classList.add('hidden');
     if (activeWorkout) activeWorkout.classList.remove('hidden');
+
+    // Hide header, show standalone hamburger for active workout
+    setHeaderMode(false);
 
     // Hide resume banner when starting a workout
     const resumeBanner = document.getElementById('resume-workout-banner');
