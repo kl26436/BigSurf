@@ -582,8 +582,8 @@ export function editTemplateExercise(index) {
                 showNotification('Exercise updated', 'success');
             }
             editingTemplateExerciseIndex = null;
-            window.editingFromTemplateEditor = false;
-            window.templateExerciseEditCallback = null;
+            // Note: Don't clear flags here - closeEditExerciseSection() needs them
+            // to know where to return. It will clear them after navigation.
         };
 
         // Open the full edit section with this exercise's data
