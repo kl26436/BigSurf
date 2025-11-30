@@ -28,7 +28,8 @@ import {
     showExerciseVideo, hideExerciseVideo, showExerciseVideoAndToggleButton, hideExerciseVideoAndToggleButton, convertYouTubeUrl,
     setGlobalUnit, setExerciseUnit, editExerciseDefaults,
     closeExerciseModal, loadExerciseHistory, loadLastWorkoutHint, autoStartRestTimer,
-    changeExerciseEquipment, applyEquipmentChange
+    changeExerciseEquipment, applyEquipmentChange,
+    changeWorkoutLocation, selectWorkoutLocationOption, closeWorkoutLocationSelector, confirmWorkoutLocationChange
 } from './core/workout-core.js';
 
 // Template selection functionality
@@ -78,7 +79,9 @@ import {
     editExercise, saveExercise, deleteExercise, toggleExerciseGroup,
     clearSelectedEquipment, addEquipmentToList,
     openEditExerciseSection, closeEditExerciseSection, saveExerciseFromSection,
-    deleteExerciseFromSection
+    deleteExerciseFromSection,
+    openEquipmentEditor, closeEquipmentEditor, addLocationToEquipmentEditor,
+    removeLocationFromEquipmentEditor, saveEquipmentFromEditor, deleteEquipmentFromEditor
 } from './core/exercise-manager-ui.js';
 
 // Location selector functionality
@@ -87,6 +90,9 @@ import {
     selectSavedLocation, selectNewLocation, skipLocationSelection,
     changeLocation
 } from './core/location-ui.js';
+
+// Location service (GPS-based location detection)
+import { getSessionLocation } from './core/location-service.js';
 
 // Navigation functionality
 import {
@@ -209,6 +215,13 @@ window.loadExerciseHistory = function(exerciseName, exerciseIndex) {
 window.changeExerciseEquipment = changeExerciseEquipment;
 window.applyEquipmentChange = applyEquipmentChange;
 
+// Location management during workout
+window.changeWorkoutLocation = changeWorkoutLocation;
+window.selectWorkoutLocationOption = selectWorkoutLocationOption;
+window.closeWorkoutLocationSelector = closeWorkoutLocationSelector;
+window.confirmWorkoutLocationChange = confirmWorkoutLocationChange;
+window.getSessionLocation = getSessionLocation;
+
 // Timer Functions
 window.toggleModalRestTimer = toggleModalRestTimer;
 window.skipModalRestTimer = skipModalRestTimer;
@@ -265,6 +278,12 @@ window.openEditExerciseSection = openEditExerciseSection;
 window.closeEditExerciseSection = closeEditExerciseSection;
 window.saveExerciseFromSection = saveExerciseFromSection;
 window.deleteExerciseFromSection = deleteExerciseFromSection;
+window.openEquipmentEditor = openEquipmentEditor;
+window.closeEquipmentEditor = closeEquipmentEditor;
+window.addLocationToEquipmentEditor = addLocationToEquipmentEditor;
+window.removeLocationFromEquipmentEditor = removeLocationFromEquipmentEditor;
+window.saveEquipmentFromEditor = saveEquipmentFromEditor;
+window.deleteEquipmentFromEditor = deleteEquipmentFromEditor;
 
 // Location Selector Functions
 window.showLocationSelector = showLocationSelector;

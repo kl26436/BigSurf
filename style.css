@@ -7550,7 +7550,7 @@ img[loading="lazy"].loaded {
     margin-top: 0.15rem;
 }
 
-.edit-equipment-item-delete {
+.edit-equipment-item-edit {
     opacity: 0.3;
     background: none;
     border: none;
@@ -7561,12 +7561,12 @@ img[loading="lazy"].loaded {
     transition: all 0.2s ease;
 }
 
-.edit-equipment-item:hover .edit-equipment-item-delete {
+.edit-equipment-item:hover .edit-equipment-item-edit {
     opacity: 1;
 }
 
-.edit-equipment-item-delete:hover {
-    color: var(--danger);
+.edit-equipment-item-edit:hover {
+    color: var(--primary);
 }
 
 /* Add Equipment Row */
@@ -7650,4 +7650,183 @@ img[loading="lazy"].loaded {
         padding: 0.5rem 1rem;
         font-size: 0.9rem;
     }
+}
+
+/* ============================================================================
+   LOCATION TRACKING STYLES
+   ============================================================================ */
+
+/* Location Indicator in Workout Header */
+.workout-location-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 0.5rem;
+    width: fit-content;
+}
+
+.workout-location-indicator:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.workout-location-indicator i.fa-map-marker-alt {
+    color: var(--primary);
+}
+
+.workout-location-indicator i.fa-lock {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-left: 0.25rem;
+}
+
+#workout-location-name {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Location Prompt Modal */
+#location-prompt-modal .modal-content-small,
+#location-selector-modal .modal-content-small {
+    max-width: 400px;
+    width: 90%;
+}
+
+.location-prompt-text {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+/* Location List (for selector modal) */
+.location-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+}
+
+.location-option {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--bg-tertiary);
+    border: 2px solid transparent;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.location-option:hover {
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+
+.location-option.selected {
+    border-color: var(--primary);
+    background: rgba(0, 230, 230, 0.1);
+}
+
+.location-option i {
+    margin-right: 0.75rem;
+    color: var(--primary);
+}
+
+.location-option-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.location-option-visits {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.location-list-empty {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Equipment Editor Modal - must be above edit-exercise-section (z-index 1000) */
+#equipment-editor-modal {
+    z-index: 1100;
+}
+
+.equipment-locations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.equipment-location-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.equipment-location-item .location-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.equipment-location-item .location-name i {
+    color: var(--primary);
+}
+
+.equipment-location-item .remove-location-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.equipment-location-item .remove-location-btn:hover {
+    color: var(--danger);
+    background: rgba(255, 77, 77, 0.1);
+}
+
+.equipment-add-location {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.equipment-add-location .input-field {
+    flex: 1;
+}
+
+.equipment-add-location .btn-sm {
+    padding: 0.5rem 0.75rem;
+    min-width: auto;
+}
+
+.equipment-locations-empty {
+    text-align: center;
+    padding: 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-style: italic;
 }

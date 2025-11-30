@@ -5,6 +5,11 @@ import { AppState } from './app-state.js';
 import { showNotification, convertWeight, updateProgress } from './ui-helpers.js';
 import { saveWorkoutData, loadExerciseHistory } from './data-manager.js';
 import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from './push-notification-manager.js';
+import {
+    detectLocation, setSessionLocation, getSessionLocation,
+    lockLocation, isLocationLocked, resetLocationState,
+    showLocationPrompt, updateLocationIndicator, getCurrentCoords
+} from './location-service.js';
 
 // ===================================================================
 // CORE WORKOUT LIFECYCLE
@@ -54,22 +59,8 @@ export async function startWorkout(workoutType) {
         }
     }
 
-    // Location tracking disabled for now - will fix later
-    // TODO: Re-enable location selector once modal visibility issues are resolved
-    /*
-    const { PRTracker } = await import('./pr-tracker.js');
-    const currentLocation = PRTracker.getCurrentLocation();
-    const locationConfirmedThisSession = sessionStorage.getItem('locationConfirmed');
-
-    if (!locationConfirmedThisSession) {
-        const { showLocationSelector } = await import('./location-ui.js');
-        showLocationSelector(() => {
-            sessionStorage.setItem('locationConfirmed', 'true');
-            startWorkout(workoutType);
-        });
-        return;
-    }
-    */
+    // Detect location via GPS
+    await initializeWorkoutLocation();
 
     // Find the workout plan (refresh from Firebase if not found in cache)
     let workout = AppState.workoutPlans.find(plan =>
@@ -100,8 +91,8 @@ export async function startWorkout(workoutType) {
         date: AppState.getTodayDateString(),
         startedAt: new Date().toISOString(),
         exercises: {},
-        version: '2.0'
-        // location: disabled for now
+        version: '2.0',
+        location: getSessionLocation() || null
     };
 
     // Initialize exercise units
@@ -136,6 +127,9 @@ export async function startWorkout(workoutType) {
 
     // Render exercises
     renderExercises();
+
+    // Update location indicator
+    updateLocationIndicator(getSessionLocation(), isLocationLocked());
 
     // Initialize window.inProgressWorkout so saveWorkoutData can update it
     // This ensures exercise additions/deletions persist when closing/reopening workout
@@ -676,6 +670,22 @@ export async function updateSet(exerciseIndex, setIndex, field, value) {
     const setData = AppState.savedData.exercises[exerciseKey].sets[setIndex];
 
     if (setData.reps && setData.weight) {
+        // Lock location on first completed set (can't change location after logging sets)
+        if (!isLocationLocked()) {
+            lockLocation();
+            updateLocationIndicator(getSessionLocation(), true);
+
+            // Record when location was locked
+            if (AppState.savedData) {
+                AppState.savedData.locationLockedAt = new Date().toISOString();
+            }
+
+            // Associate current workout location with any equipment used in this workout
+            const sessionLocation = getSessionLocation();
+            if (sessionLocation && AppState.currentWorkout?.exercises) {
+                associateLocationWithWorkoutEquipment(sessionLocation);
+            }
+        }
 
         // Check for PR (returns true if PR was found)
         const isPR = await checkSetForPR(exerciseIndex, setIndex);
@@ -1859,4 +1869,255 @@ export async function loadLastWorkoutHint(exerciseName, exerciseIndex) {
         console.error('Error loading last workout hint:', error);
         hintDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Could not load previous workout`;
     }
+}
+
+// ===================================================================
+// LOCATION MANAGEMENT
+// ===================================================================
+
+/**
+ * Initialize location detection when starting a workout
+ * Checks GPS, matches against saved locations, prompts for new location name if needed
+ */
+async function initializeWorkoutLocation() {
+    try {
+        // Reset any previous location state
+        resetLocationState();
+
+        // Get user's saved locations from Firebase
+        const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+        const workoutManager = new FirebaseWorkoutManager(AppState);
+        const savedLocations = await workoutManager.getUserLocations();
+
+        // Detect current GPS location and match against saved
+        const result = await detectLocation(savedLocations);
+
+        if (result.location) {
+            // Matched a known location
+            setSessionLocation(result.location.name);
+            // Update visit count
+            await workoutManager.updateLocationVisit(result.location.id);
+        } else if (result.isNew && result.coords) {
+            // At a new location - prompt user to name it
+            await promptForNewLocation(result.coords, workoutManager, savedLocations);
+        }
+        // If no GPS available, location stays null (user can set manually)
+
+    } catch (error) {
+        console.error('❌ Error initializing workout location:', error);
+        // Don't block workout start on location errors
+    }
+}
+
+/**
+ * Prompt user to name a new location
+ */
+function promptForNewLocation(coords, workoutManager, savedLocations) {
+    return new Promise((resolve) => {
+        // Populate datalist with existing locations for autocomplete
+        const datalist = document.getElementById('saved-locations-list');
+        if (datalist && savedLocations.length > 0) {
+            datalist.innerHTML = savedLocations
+                .map(loc => `<option value="${loc.name}">`)
+                .join('');
+        }
+
+        showLocationPrompt(
+            // On save
+            async (name) => {
+                try {
+                    // Check if this is an existing location name
+                    const existing = savedLocations.find(loc => loc.name === name);
+
+                    if (existing) {
+                        setSessionLocation(name);
+                        await workoutManager.updateLocationVisit(existing.id);
+                    } else {
+                        // Create new location with GPS coordinates
+                        await workoutManager.saveLocation({
+                            name: name,
+                            latitude: coords.latitude,
+                            longitude: coords.longitude
+                        });
+                        setSessionLocation(name);
+                    }
+
+                    showNotification(`Location set: ${name}`, 'success');
+                } catch (error) {
+                    console.error('❌ Error saving location:', error);
+                }
+                resolve();
+            },
+            // On skip
+            () => {
+                resolve();
+            }
+        );
+    });
+}
+
+/**
+ * Associate the current workout location with all equipment used in the workout
+ * Called when location is locked (first set logged)
+ */
+async function associateLocationWithWorkoutEquipment(locationName) {
+    if (!locationName || !AppState.currentWorkout?.exercises) return;
+
+    try {
+        const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+        const workoutManager = new FirebaseWorkoutManager(AppState);
+
+        // Get all equipment from user's collection
+        const allEquipment = await workoutManager.getUserEquipment();
+        if (!allEquipment || allEquipment.length === 0) return;
+
+        // Loop through exercises in the workout that have equipment
+        for (const exercise of AppState.currentWorkout.exercises) {
+            const equipmentName = exercise.equipment;
+            if (!equipmentName) continue;
+
+            // Find matching equipment by name
+            const matchingEquipment = allEquipment.find(eq => eq.name === equipmentName);
+            if (matchingEquipment && matchingEquipment.id) {
+                // Add the workout's location to this equipment
+                await workoutManager.addLocationToEquipment(matchingEquipment.id, locationName);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error associating location with equipment:', error);
+    }
+}
+
+/**
+ * Change workout location (called when user clicks location indicator)
+ */
+export async function changeWorkoutLocation() {
+    // Don't allow changing if location is locked (first set already logged)
+    if (isLocationLocked()) {
+        showNotification('Location is locked after logging sets', 'warning');
+        return;
+    }
+
+    const modal = document.getElementById('workout-location-selector-modal');
+    const listContainer = document.getElementById('workout-saved-locations-list');
+    const newNameInput = document.getElementById('workout-location-new-name');
+
+    if (!modal || !listContainer) return;
+
+    try {
+        // Load saved locations
+        const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+        const workoutManager = new FirebaseWorkoutManager(AppState);
+        const savedLocations = await workoutManager.getUserLocations();
+
+        // Store for later use
+        window._locationSelectorData = { savedLocations, workoutManager };
+
+        // Populate location list
+        if (savedLocations.length === 0) {
+            listContainer.innerHTML = '<div class="location-list-empty">No saved locations yet</div>';
+        } else {
+            const currentLocation = getSessionLocation();
+            listContainer.innerHTML = savedLocations.map(loc => `
+                <div class="location-option ${loc.name === currentLocation ? 'selected' : ''}"
+                     data-location-id="${loc.id}" data-location-name="${loc.name}"
+                     onclick="selectWorkoutLocationOption(this)">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span class="location-option-name">${loc.name}</span>
+                    <span class="location-option-visits">${loc.visitCount || 0} visits</span>
+                </div>
+            `).join('');
+        }
+
+        // Clear new name input
+        if (newNameInput) newNameInput.value = '';
+
+        // Show modal
+        modal.classList.remove('hidden');
+
+    } catch (error) {
+        console.error('❌ Error loading locations:', error);
+        showNotification('Error loading locations', 'error');
+    }
+}
+
+/**
+ * Select a location from the list (workout location selector)
+ */
+export function selectWorkoutLocationOption(element) {
+    // Remove selected from all
+    document.querySelectorAll('#workout-saved-locations-list .location-option').forEach(el => el.classList.remove('selected'));
+    // Add selected to clicked
+    element.classList.add('selected');
+    // Clear new name input
+    const newNameInput = document.getElementById('workout-location-new-name');
+    if (newNameInput) newNameInput.value = '';
+}
+
+/**
+ * Close workout location selector modal
+ */
+export function closeWorkoutLocationSelector() {
+    const modal = document.getElementById('workout-location-selector-modal');
+    if (modal) modal.classList.add('hidden');
+    window._locationSelectorData = null;
+}
+
+/**
+ * Confirm workout location change
+ */
+export async function confirmWorkoutLocationChange() {
+    const selectedOption = document.querySelector('#workout-saved-locations-list .location-option.selected');
+    const newNameInput = document.getElementById('workout-location-new-name');
+    const newName = newNameInput?.value.trim();
+
+    let locationName = null;
+
+    if (newName) {
+        // User entered a new location name
+        locationName = newName;
+
+        // Save new location to Firebase
+        try {
+            const { workoutManager } = window._locationSelectorData || {};
+            if (workoutManager) {
+                const coords = getCurrentCoords();
+                await workoutManager.saveLocation({
+                    name: newName,
+                    latitude: coords?.latitude || null,
+                    longitude: coords?.longitude || null
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error saving new location:', error);
+        }
+    } else if (selectedOption) {
+        // User selected an existing location
+        locationName = selectedOption.dataset.locationName;
+
+        // Update visit count
+        try {
+            const { workoutManager } = window._locationSelectorData || {};
+            if (workoutManager) {
+                await workoutManager.updateLocationVisit(selectedOption.dataset.locationId);
+            }
+        } catch (error) {
+            console.error('❌ Error updating location visit:', error);
+        }
+    }
+
+    if (locationName) {
+        setSessionLocation(locationName);
+        updateLocationIndicator(locationName, isLocationLocked());
+
+        // Update saved workout data
+        if (AppState.savedData) {
+            AppState.savedData.location = locationName;
+            await saveWorkoutData(AppState);
+        }
+
+        showNotification(`Location set: ${locationName}`, 'success');
+    }
+
+    closeWorkoutLocationSelector();
 }

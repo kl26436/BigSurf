@@ -11,6 +11,8 @@ let currentEditingExercise = null;
 let workoutManager = null;
 let selectedEquipmentId = null;
 let selectedEquipmentData = null;
+let editingEquipmentData = null;  // For equipment editor modal
+let editingEquipmentLocations = [];  // Locations being edited
 
 // Open exercise manager section
 export function openExerciseManager() {
@@ -325,6 +327,15 @@ export function closeEditExerciseSection() {
         // Clear the flags (callback clears these, but do it here too for cancel case)
         window.editingFromTemplateEditor = false;
         window.templateExerciseEditCallback = null;
+    } else if (window.editingFromActiveWorkout) {
+        // Return to active workout - hide exercise manager section first
+        const exerciseManager = document.getElementById('exercise-manager-section');
+        if (exerciseManager) exerciseManager.classList.add('hidden');
+
+        const activeWorkout = document.getElementById('active-workout');
+        if (activeWorkout) activeWorkout.classList.remove('hidden');
+
+        window.editingFromActiveWorkout = false;
     } else {
         // Return to exercise manager (normal behavior)
         const exerciseManager = document.getElementById('exercise-manager-section');
@@ -392,32 +403,50 @@ async function populateEquipmentListForSection(exerciseName = null, preselectedE
             return;
         }
 
-        // Render equipment items
-        listEl.innerHTML = exerciseEquipment.map(eq => `
-            <div class="edit-equipment-item" data-equipment-id="${eq.id}" data-name="${eq.name}" data-location="${eq.location || ''}">
+        // Render equipment items - support both single location and locations array
+        listEl.innerHTML = exerciseEquipment.map(eq => {
+            // Get locations from either array or single field
+            let locationsList = [];
+            if (eq.locations && Array.isArray(eq.locations)) {
+                locationsList = eq.locations;
+            } else if (eq.location) {
+                locationsList = [eq.location];
+            }
+            const locationDisplay = locationsList.length > 0 ? locationsList.join(', ') : '';
+
+            return `
+            <div class="edit-equipment-item" data-equipment-id="${eq.id}" data-name="${eq.name}"
+                 data-location="${locationDisplay}" data-equipment-json='${JSON.stringify(eq).replace(/'/g, "&#39;")}'>
                 <div class="edit-equipment-item-info">
                     <div class="edit-equipment-item-name">${eq.name}</div>
-                    ${eq.location ? `<div class="edit-equipment-item-location">${eq.location}</div>` : ''}
+                    ${locationDisplay ? `<div class="edit-equipment-item-location">${locationDisplay}</div>` : ''}
                 </div>
-                <button type="button" class="edit-equipment-item-delete" data-equipment-id="${eq.id}" title="Delete">
-                    <i class="fas fa-trash"></i>
+                <button type="button" class="edit-equipment-item-edit" data-equipment-id="${eq.id}" title="Edit equipment">
+                    <i class="fas fa-pen"></i>
                 </button>
             </div>
-        `).join('');
+        `}).join('');
 
         // Add click handlers for selection
         listEl.querySelectorAll('.edit-equipment-item').forEach(item => {
             item.addEventListener('click', (e) => {
-                if (e.target.closest('.edit-equipment-item-delete')) return;
+                if (e.target.closest('.edit-equipment-item-edit')) return;
                 selectEquipmentItemForSection(item);
             });
         });
 
-        // Add click handlers for delete buttons
-        listEl.querySelectorAll('.edit-equipment-item-delete').forEach(btn => {
+        // Add click handlers for edit buttons
+        listEl.querySelectorAll('.edit-equipment-item-edit').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                deleteEquipmentItem(btn.dataset.equipmentId);
+                const item = btn.closest('.edit-equipment-item');
+                const equipmentJson = item.dataset.equipmentJson;
+                try {
+                    const equipment = JSON.parse(equipmentJson.replace(/&#39;/g, "'"));
+                    openEquipmentEditor(equipment);
+                } catch (err) {
+                    console.error('Error parsing equipment data:', err);
+                }
             });
         });
 
@@ -527,13 +556,21 @@ export async function addEquipmentToList() {
     const videoInput = document.getElementById('edit-equipment-video');
 
     const equipmentName = nameInput?.value.trim();
-    const locationName = locationInput?.value.trim();
+    let locationName = locationInput?.value.trim();
     const videoUrl = videoInput?.value.trim();
 
     if (!equipmentName) {
         showNotification('Enter an equipment name', 'warning');
         nameInput?.focus();
         return;
+    }
+
+    // Auto-fill location from active workout session if not provided
+    if (!locationName && window.getSessionLocation) {
+        const sessionLocation = window.getSessionLocation();
+        if (sessionLocation) {
+            locationName = sessionLocation;
+        }
     }
 
     // Get the current exercise name
@@ -552,7 +589,15 @@ export async function addEquipmentToList() {
         }
 
         // Save the new equipment AND associate it with this exercise (including video)
-        await workoutManager.getOrCreateEquipment(equipmentName, locationName, exerciseName, videoUrl);
+        const equipment = await workoutManager.getOrCreateEquipment(equipmentName, locationName, exerciseName, videoUrl);
+
+        // If we're in an active workout with a location, also add that location to the equipment
+        if (equipment && equipment.id && window.getSessionLocation) {
+            const sessionLocation = window.getSessionLocation();
+            if (sessionLocation) {
+                await workoutManager.addLocationToEquipment(equipment.id, sessionLocation);
+            }
+        }
 
         // Clear the input fields
         if (nameInput) nameInput.value = '';
@@ -864,4 +909,195 @@ export async function saveExerciseFromSection() {
         console.error('❌ Error saving exercise:', error);
         showNotification('Error saving exercise: ' + error.message, 'error');
     }
+}
+
+// ===================================================================
+// EQUIPMENT EDITOR FUNCTIONS
+// ===================================================================
+
+/**
+ * Open equipment editor modal
+ * @param {Object} equipment - Equipment data with id, name, location(s), video
+ */
+export function openEquipmentEditor(equipment) {
+    if (!equipment || !equipment.id) return;
+
+    editingEquipmentData = equipment;
+
+    // Build locations array from either locations array or single location field
+    editingEquipmentLocations = [];
+    if (equipment.locations && Array.isArray(equipment.locations)) {
+        editingEquipmentLocations = [...equipment.locations];
+    } else if (equipment.location) {
+        editingEquipmentLocations = [equipment.location];
+    }
+
+    // Populate form fields
+    const nameInput = document.getElementById('equipment-editor-name');
+    const videoInput = document.getElementById('equipment-editor-video');
+
+    if (nameInput) nameInput.value = equipment.name || '';
+    if (videoInput) videoInput.value = equipment.video || '';
+
+    // Render locations list
+    renderEquipmentEditorLocations();
+
+    // Show modal
+    const modal = document.getElementById('equipment-editor-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+/**
+ * Render locations list in equipment editor
+ */
+function renderEquipmentEditorLocations() {
+    const container = document.getElementById('equipment-editor-locations');
+    if (!container) return;
+
+    if (editingEquipmentLocations.length === 0) {
+        container.innerHTML = '<div class="equipment-locations-empty">No locations added</div>';
+        return;
+    }
+
+    container.innerHTML = editingEquipmentLocations.map((loc, index) => `
+        <div class="equipment-location-item">
+            <span class="location-name">
+                <i class="fas fa-map-marker-alt"></i>
+                ${loc}
+            </span>
+            <button type="button" class="remove-location-btn" onclick="removeLocationFromEquipmentEditor(${index})" title="Remove location">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+/**
+ * Add location to equipment editor
+ */
+export function addLocationToEquipmentEditor() {
+    const input = document.getElementById('equipment-editor-new-location');
+    const locationName = input?.value.trim();
+
+    if (!locationName) {
+        showNotification('Enter a location name', 'warning');
+        input?.focus();
+        return;
+    }
+
+    // Check for duplicate
+    if (editingEquipmentLocations.includes(locationName)) {
+        showNotification('Location already added', 'warning');
+        return;
+    }
+
+    editingEquipmentLocations.push(locationName);
+    renderEquipmentEditorLocations();
+
+    // Clear input
+    if (input) input.value = '';
+}
+
+/**
+ * Remove location from equipment editor
+ */
+export function removeLocationFromEquipmentEditor(index) {
+    if (index >= 0 && index < editingEquipmentLocations.length) {
+        editingEquipmentLocations.splice(index, 1);
+        renderEquipmentEditorLocations();
+    }
+}
+
+/**
+ * Save equipment from editor
+ */
+export async function saveEquipmentFromEditor() {
+    if (!editingEquipmentData || !editingEquipmentData.id) return;
+
+    const nameInput = document.getElementById('equipment-editor-name');
+    const videoInput = document.getElementById('equipment-editor-video');
+
+    const name = nameInput?.value.trim();
+    const video = videoInput?.value.trim();
+
+    if (!name) {
+        showNotification('Enter equipment name', 'warning');
+        nameInput?.focus();
+        return;
+    }
+
+    try {
+        if (!workoutManager) {
+            workoutManager = new FirebaseWorkoutManager(AppState);
+        }
+
+        // Update the equipment
+        await workoutManager.updateEquipment(editingEquipmentData.id, {
+            name: name,
+            video: video || null,
+            locations: editingEquipmentLocations,
+            location: null  // Clear old single location field
+        });
+
+        showNotification('Equipment saved!', 'success');
+        closeEquipmentEditor();
+
+        // Refresh the equipment list if we're in the exercise edit section
+        if (currentEditingExercise) {
+            const exerciseName = currentEditingExercise.name || currentEditingExercise.machine;
+            await populateEquipmentListForSection(exerciseName);
+        }
+
+    } catch (error) {
+        console.error('❌ Error saving equipment:', error);
+        showNotification('Error saving equipment', 'error');
+    }
+}
+
+/**
+ * Delete equipment from editor
+ */
+export async function deleteEquipmentFromEditor() {
+    if (!editingEquipmentData || !editingEquipmentData.id) return;
+
+    const confirmed = confirm(`Delete "${editingEquipmentData.name}"? This cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+        if (!workoutManager) {
+            workoutManager = new FirebaseWorkoutManager(AppState);
+        }
+
+        await workoutManager.deleteEquipment(editingEquipmentData.id);
+
+        showNotification('Equipment deleted', 'success');
+        closeEquipmentEditor();
+
+        // Clear selection if this was the selected equipment
+        if (selectedEquipmentId === editingEquipmentData.id) {
+            selectedEquipmentId = null;
+            selectedEquipmentData = null;
+        }
+
+        // Refresh the equipment list
+        if (currentEditingExercise) {
+            const exerciseName = currentEditingExercise.name || currentEditingExercise.machine;
+            await populateEquipmentListForSection(exerciseName);
+        }
+
+    } catch (error) {
+        console.error('❌ Error deleting equipment:', error);
+        showNotification('Error deleting equipment', 'error');
+    }
+}
+
+/**
+ * Close equipment editor modal
+ */
+export function closeEquipmentEditor() {
+    const modal = document.getElementById('equipment-editor-modal');
+    if (modal) modal.classList.add('hidden');
+
+    editingEquipmentData = null;
+    editingEquipmentLocations = [];
 }

@@ -947,6 +947,42 @@ async getGlobalDefaultTemplates() {
     }
 
     /**
+     * Update equipment with new data
+     * @param {string} equipmentId - Equipment document ID
+     * @param {Object} updates - Fields to update (name, video, locations, etc.)
+     */
+    async updateEquipment(equipmentId, updates) {
+        if (!this.appState.currentUser || !equipmentId) {
+            throw new Error('Must be signed in to update equipment');
+        }
+
+        try {
+            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "equipment", equipmentId);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) {
+                throw new Error('Equipment not found');
+            }
+
+            const existingData = docSnap.data();
+
+            // Merge updates with existing data
+            const updatedData = {
+                ...existingData,
+                ...updates,
+                lastUsed: new Date().toISOString()
+            };
+
+            await setDoc(docRef, updatedData);
+            return true;
+
+        } catch (error) {
+            console.error('❌ Error updating equipment:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Get or create equipment by name and optional location
      * Returns existing equipment if found, creates new if not
      */
@@ -985,6 +1021,203 @@ async getGlobalDefaultTemplates() {
 
         } catch (error) {
             console.error('❌ Error getting or creating equipment:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Add a location to an equipment's locations array
+     * Equipment can exist at multiple gyms
+     */
+    async addLocationToEquipment(equipmentId, locationName) {
+        if (!this.appState.currentUser || !equipmentId || !locationName) {
+            return;
+        }
+
+        try {
+            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "equipment", equipmentId);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                // Migrate from single location to locations array if needed
+                let locations = data.locations || [];
+                if (data.location && !locations.includes(data.location)) {
+                    locations.push(data.location);
+                }
+                // Add new location if not already present
+                if (!locations.includes(locationName)) {
+                    locations.push(locationName);
+                }
+
+                await setDoc(docRef, {
+                    ...data,
+                    locations: locations,
+                    location: null, // Clear old single location field
+                    lastUsed: new Date().toISOString()
+                });
+            }
+
+        } catch (error) {
+            console.error('❌ Error adding location to equipment:', error);
+        }
+    }
+
+    // ===== LOCATION MANAGEMENT =====
+
+    /**
+     * Save a gym location
+     */
+    async saveLocation(locationData) {
+        if (!this.appState.currentUser) {
+            throw new Error('Must be signed in to save location');
+        }
+
+        try {
+            const locationId = locationData.id ||
+                `location_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "locations", locationId);
+
+            const locationToSave = {
+                id: locationId,
+                name: locationData.name,
+                latitude: locationData.latitude || null,
+                longitude: locationData.longitude || null,
+                radius: locationData.radius || 150, // Default 150 meters
+                createdAt: locationData.createdAt || new Date().toISOString(),
+                lastVisit: new Date().toISOString(),
+                visitCount: (locationData.visitCount || 0) + 1
+            };
+
+            await setDoc(docRef, locationToSave);
+            return { id: locationId, ...locationToSave };
+
+        } catch (error) {
+            console.error('❌ Error saving location:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get all user's saved gym locations
+     */
+    async getUserLocations() {
+        if (!this.appState.currentUser) {
+            return [];
+        }
+
+        try {
+            const locationsRef = collection(this.db, "users", this.appState.currentUser.uid, "locations");
+            const q = query(locationsRef, orderBy("lastVisit", "desc"));
+            const querySnapshot = await getDocs(q);
+
+            const locations = [];
+            querySnapshot.forEach((doc) => {
+                locations.push({ id: doc.id, ...doc.data() });
+            });
+
+            return locations;
+
+        } catch (error) {
+            console.error('❌ Error loading user locations:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Update location's last visit timestamp and increment visit count
+     */
+    async updateLocationVisit(locationId) {
+        if (!this.appState.currentUser || !locationId) {
+            return;
+        }
+
+        try {
+            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "locations", locationId);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                await setDoc(docRef, {
+                    ...data,
+                    lastVisit: new Date().toISOString(),
+                    visitCount: (data.visitCount || 0) + 1
+                });
+            }
+
+        } catch (error) {
+            console.error('❌ Error updating location visit:', error);
+        }
+    }
+
+    /**
+     * Delete a gym location
+     */
+    async deleteLocation(locationId) {
+        if (!this.appState.currentUser) {
+            throw new Error('Must be signed in to delete location');
+        }
+
+        try {
+            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "locations", locationId);
+            await deleteDoc(docRef);
+            return true;
+
+        } catch (error) {
+            console.error('❌ Error deleting location:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Find location by name
+     */
+    async getLocationByName(name) {
+        if (!this.appState.currentUser || !name) {
+            return null;
+        }
+
+        try {
+            const locations = await this.getUserLocations();
+            return locations.find(loc => loc.name === name) || null;
+
+        } catch (error) {
+            console.error('❌ Error finding location by name:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get or create a location by name and coordinates
+     */
+    async getOrCreateLocation(name, coords = null) {
+        if (!this.appState.currentUser || !name) {
+            return null;
+        }
+
+        try {
+            // Check if location already exists
+            const existing = await this.getLocationByName(name);
+
+            if (existing) {
+                // Update visit count
+                await this.updateLocationVisit(existing.id);
+                return existing;
+            }
+
+            // Create new location
+            const newLocation = {
+                name: name,
+                latitude: coords?.latitude || null,
+                longitude: coords?.longitude || null,
+                visitCount: 0
+            };
+
+            return await this.saveLocation(newLocation);
+
+        } catch (error) {
+            console.error('❌ Error getting or creating location:', error);
             return null;
         }
     }

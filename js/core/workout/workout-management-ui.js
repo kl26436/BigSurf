@@ -1092,7 +1092,15 @@ async function finalizeExerciseAddition(equipmentName, equipmentLocation, equipm
     if (equipmentName) {
         try {
             const workoutManager = new FirebaseWorkoutManager(AppState);
-            await workoutManager.getOrCreateEquipment(equipmentName, equipmentLocation, exerciseName, equipmentVideo);
+            const equipment = await workoutManager.getOrCreateEquipment(equipmentName, equipmentLocation, exerciseName, equipmentVideo);
+
+            // Auto-associate equipment with current workout location (if set)
+            if (equipment && window.getSessionLocation) {
+                const currentWorkoutLocation = window.getSessionLocation();
+                if (currentWorkoutLocation && equipment.id) {
+                    await workoutManager.addLocationToEquipment(equipment.id, currentWorkoutLocation);
+                }
+            }
         } catch (error) {
             console.error('Error saving equipment:', error);
         }

@@ -251,6 +251,12 @@
                             <span id="workout-start-time">Started now</span>
                             <span id="workout-duration">0:00</span>
                         </div>
+                        <!-- Location Indicator -->
+                        <div id="workout-location-indicator" class="workout-location-indicator hidden" onclick="changeWorkoutLocation()">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span id="workout-location-name">Unknown Location</span>
+                            <i id="workout-location-lock" class="fas fa-lock" style="display: none;" title="Location locked"></i>
+                        </div>
                     </div>
                     
                     <div class="workout-progress">
@@ -900,6 +906,119 @@
                 </button>
                 <button type="button" class="btn btn-primary" onclick="confirmEquipmentSelection()">
                     <i class="fas fa-check"></i> Select Equipment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Location Prompt Modal (for naming new gym locations) -->
+<div id="location-prompt-modal" class="modal hidden">
+    <div class="modal-content modal-content-small">
+        <div class="modal-header">
+            <h3><i class="fas fa-map-marker-alt"></i> New Location Detected</h3>
+        </div>
+        <div class="modal-body">
+            <p class="location-prompt-text">You're at a new location! What gym is this?</p>
+
+            <div class="form-group">
+                <input type="text" id="new-location-name" class="input-field"
+                       list="saved-locations-list"
+                       placeholder="e.g., Planet Fitness Downtown"
+                       autocomplete="off">
+                <datalist id="saved-locations-list">
+                    <!-- Populated dynamically with saved locations -->
+                </datalist>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" id="skip-location-btn" class="btn btn-secondary">
+                    Skip
+                </button>
+                <button type="button" id="save-location-btn" class="btn btn-primary">
+                    <i class="fas fa-check"></i> Save Location
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Workout Location Selector Modal (for changing location during active workout) -->
+<div id="workout-location-selector-modal" class="modal hidden">
+    <div class="modal-content modal-content-small">
+        <div class="modal-header">
+            <h3><i class="fas fa-map-marker-alt"></i> Change Location</h3>
+            <button class="close-btn" onclick="closeWorkoutLocationSelector()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="workout-saved-locations-list" class="location-list">
+                <!-- Populated dynamically -->
+            </div>
+
+            <div class="form-section-divider">
+                <span>Or add new location</span>
+            </div>
+
+            <div class="form-group">
+                <input type="text" id="workout-location-new-name" class="input-field"
+                       placeholder="Enter new location name">
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeWorkoutLocationSelector()">
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="confirmWorkoutLocationChange()">
+                    <i class="fas fa-check"></i> Set Location
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Equipment Editor Modal -->
+<div id="equipment-editor-modal" class="modal hidden">
+    <div class="modal-content modal-content-small">
+        <div class="modal-header">
+            <h3><i class="fas fa-dumbbell"></i> Edit Equipment</h3>
+            <button type="button" class="close-btn" onclick="closeEquipmentEditor()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="equipment-editor-name">Equipment Name</label>
+                <input type="text" id="equipment-editor-name" class="input-field" placeholder="Equipment name">
+            </div>
+
+            <div class="form-group">
+                <label for="equipment-editor-video">Video URL (optional)</label>
+                <input type="text" id="equipment-editor-video" class="input-field" placeholder="YouTube link">
+            </div>
+
+            <div class="form-section">
+                <label>Locations</label>
+                <p class="form-help-text">Gyms where you use this equipment</p>
+                <div id="equipment-editor-locations" class="equipment-locations-list">
+                    <!-- Populated dynamically -->
+                </div>
+                <div class="equipment-add-location">
+                    <input type="text" id="equipment-editor-new-location" class="input-field"
+                           placeholder="Add location (e.g., Planet Fitness)">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addLocationToEquipmentEditor()">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-danger" onclick="deleteEquipmentFromEditor()">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveEquipmentFromEditor()">
+                    <i class="fas fa-check"></i> Save
                 </button>
             </div>
         </div>

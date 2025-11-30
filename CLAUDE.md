@@ -366,6 +366,40 @@ localStorage.setItem('debug', 'firebase:*');
   - [index.html](index.html) - Equipment picker modal
 - **Test Plan**: See [PLAN-equipment-tracking.md](PLAN-equipment-tracking.md)
 
+### v4.41: Phase 2 GPS Location Detection (2025-11-30)
+- **New Feature**: GPS-based gym location detection and tracking per workout
+- **Location Service**: New module [location-service.js](js/core/location-service.js) for GPS functions
+  - `getCurrentPosition()` - Get GPS coordinates with high accuracy
+  - `calculateDistance()` - Haversine formula for distance calculation
+  - `findNearbyLocation()` - Match coordinates to saved locations (150m radius)
+  - `detectLocation()` - Auto-detect or prompt for new location on workout start
+  - Session state: `setSessionLocation()`, `getSessionLocation()`, `lockLocation()`, `isLocationLocked()`
+- **Firebase Schema**: New `users/{userId}/locations` collection
+  ```javascript
+  { id, name, latitude, longitude, radius, visitCount, lastVisit, createdAt }
+  ```
+- **Equipment Multi-Location Support**: Equipment can now belong to multiple gyms
+  - Migrated from single `location` field to `locations` array
+  - `addLocationToEquipment()` - Add location to equipment's locations array
+  - `updateEquipment()` - General equipment update function
+- **Location Indicator**: Shows in workout header with lock icon after first set
+- **Location Locking**: After first set logged, location cannot be changed
+- **Auto-Associate Equipment**: When first set logged, all equipment in workout gets location added
+- **Equipment Editor Modal**: Click pen icon on equipment to edit name, video, and manage locations
+  - Add/remove locations from equipment
+  - Delete equipment entirely
+  - z-index 1100 (above edit-exercise-section)
+- **Navigation Fixes**:
+  - Editing exercise from active workout now returns to active workout (not exercise manager)
+  - `window.editingFromActiveWorkout` flag for proper navigation
+- **Files**:
+  - [location-service.js](js/core/location-service.js) - NEW - GPS and location management
+  - [firebase-workout-manager.js](js/core/firebase-workout-manager.js) - Location CRUD, equipment updates
+  - [workout-core.js](js/core/workout-core.js) - Location integration, auto-associate equipment
+  - [exercise-manager-ui.js](js/core/exercise-manager-ui.js) - Equipment editor, navigation fix
+  - [index.html](index.html) - Location modals, equipment editor modal
+  - [style.css](style.css) - Location indicator, equipment editor styles
+
 ### Key Technical Learnings
 
 1. **Deep vs Shallow Copy**: Always use deep clone for nested objects when modifications should not affect source
