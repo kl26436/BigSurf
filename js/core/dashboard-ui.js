@@ -3,6 +3,7 @@
 
 import { StatsTracker } from './stats-tracker.js';
 import { showNotification, setHeaderMode } from './ui-helpers.js';
+import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 
 // ===================================================================
 // DASHBOARD DISPLAY
@@ -33,6 +34,10 @@ export async function showDashboard() {
 
     // Show full header with logo on dashboard
     setHeaderMode(true);
+
+    // Show bottom nav and set active tab
+    setBottomNavVisible(true);
+    updateBottomNavActive('dashboard');
 
     // Check for in-progress workout
     await checkForInProgressWorkout();
@@ -183,7 +188,7 @@ async function checkForInProgressWorkout() {
 }
 
 /**
- * Render dashboard content
+ * Render dashboard content - New sleek design
  */
 async function renderDashboard() {
     const container = document.getElementById('dashboard-content');
@@ -191,9 +196,8 @@ async function renderDashboard() {
 
     // Show loading state
     container.innerHTML = `
-        <div style="text-align: center; padding: 2rem;">
+        <div class="dashboard-loading">
             <div class="loading-spinner"></div>
-            <p style="color: var(--text-secondary); margin-top: 1rem;">Loading your stats...</p>
         </div>
     `;
 
@@ -201,37 +205,38 @@ async function renderDashboard() {
         // Load all stats in parallel
         const [
             streak,
-            weekCount,
-            monthCount,
-            recentWorkouts,
-            lastWorkout,
+            weeklyStats,
             recentPRs,
-            suggestedWorkouts
+            suggestedWorkouts,
+            todaysWorkout
         ] = await Promise.all([
             StatsTracker.calculateWorkoutStreak(),
-            StatsTracker.getWorkoutsThisWeek(),
-            StatsTracker.getWorkoutsThisMonth(),
-            StatsTracker.getRecentWorkouts(3),
-            StatsTracker.getLastWorkout(),
-            StatsTracker.getRecentPRs(5),
-            getSuggestedWorkoutsForToday()
+            StatsTracker.getWeeklyStats(),
+            StatsTracker.getRecentPRs(3),
+            getSuggestedWorkoutsForToday(),
+            getTodaysCompletedWorkout()
         ]);
 
-        // Render dashboard
+        const weekCount = weeklyStats.workouts.length;
+        const weeklyGoal = 5;
+
+        // Check which suggested workouts were already done today
+        const completedWorkoutTypes = todaysWorkout ? [todaysWorkout.workoutType] : [];
+
+        // Render new sleek dashboard
         container.innerHTML = `
-            ${renderStatsCards(streak, weekCount, monthCount)}
-            ${renderQuickActions(lastWorkout)}
-            ${renderSuggestedWorkouts(suggestedWorkouts)}
-            ${renderRecentPRs(recentPRs)}
-            ${renderRecentWorkouts(recentWorkouts)}
+            ${renderProgressRingHero(weekCount, weeklyGoal, weeklyStats)}
+            ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes)}
+            ${renderStreakCard(streak)}
+            ${renderRecentPRsNew(recentPRs)}
         `;
     } catch (error) {
         console.error('❌ Error rendering dashboard:', error);
         container.innerHTML = `
-            <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+            <div class="dashboard-error">
+                <i class="fas fa-exclamation-triangle"></i>
                 <p>Error loading dashboard</p>
-                <button class="btn btn-primary" onclick="showDashboard()" style="margin-top: 1rem;">
+                <button class="btn btn-primary" onclick="showDashboard()">
                     <i class="fas fa-redo"></i> Retry
                 </button>
             </div>
@@ -239,133 +244,162 @@ async function renderDashboard() {
     }
 }
 
+/**
+ * Get today's completed workout (if any)
+ */
+async function getTodaysCompletedWorkout() {
+    try {
+        const { AppState } = await import('./app-state.js');
+        const { loadTodaysWorkout } = await import('./data-manager.js');
+        const workout = await loadTodaysWorkout(AppState);
+        return workout && workout.completedAt ? workout : null;
+    } catch {
+        return null;
+    }
+}
+
 // ===================================================================
-// STATS CARDS
+// PROGRESS RING HERO SECTION
 // ===================================================================
 
-function renderStatsCards(streak, weekCount, monthCount) {
+/**
+ * Render the progress ring hero with weekly stats
+ */
+function renderProgressRingHero(weekCount, weeklyGoal, weeklyStats) {
+    const percentage = Math.min((weekCount / weeklyGoal) * 100, 100);
+    const circumference = 2 * Math.PI * 54; // radius = 54
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+    const isComplete = weekCount >= weeklyGoal;
+
     return `
-        <div class="stats-grid">
-            <!-- Workout Streak -->
-            <div class="stat-card ${streak > 0 ? 'stat-card-highlight' : ''}">
-                <div class="stat-icon">
+        <div class="hero-card">
+            <div class="hero-content">
+                <div class="progress-ring-container">
+                    <svg class="progress-ring" width="140" height="140">
+                        <circle
+                            class="progress-ring-bg"
+                            stroke="rgba(64, 224, 208, 0.15)"
+                            stroke-width="10"
+                            fill="transparent"
+                            r="54"
+                            cx="70"
+                            cy="70"
+                        />
+                        <circle
+                            class="progress-ring-progress"
+                            stroke="${isComplete ? '#4ade80' : 'var(--primary)'}"
+                            stroke-width="10"
+                            fill="transparent"
+                            r="54"
+                            cx="70"
+                            cy="70"
+                            stroke-linecap="round"
+                            stroke-dasharray="${circumference}"
+                            stroke-dashoffset="${strokeDashoffset}"
+                            transform="rotate(-90 70 70)"
+                        />
+                    </svg>
+                    <div class="progress-ring-text">
+                        <span class="progress-count">${weekCount}</span>
+                        <span class="progress-goal">/ ${weeklyGoal}</span>
+                    </div>
+                </div>
+                <div class="hero-info">
+                    <h2 class="hero-title">This Week</h2>
+                    <p class="hero-subtitle">${isComplete ? 'Goal achieved!' : `${weeklyGoal - weekCount} more to go`}</p>
+                </div>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <span class="hero-stat-value">${weeklyStats.sets}</span>
+                    <span class="hero-stat-label">Sets</span>
+                </div>
+                <div class="hero-stat-divider"></div>
+                <div class="hero-stat">
+                    <span class="hero-stat-value">${weeklyStats.exercises}</span>
+                    <span class="hero-stat-label">Exercises</span>
+                </div>
+                <div class="hero-stat-divider"></div>
+                <div class="hero-stat">
+                    <span class="hero-stat-value">${weeklyStats.minutes}</span>
+                    <span class="hero-stat-label">Minutes</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ===================================================================
+// STREAK CARD
+// ===================================================================
+
+function renderStreakCard(streak) {
+    if (streak === 0) {
+        return `
+            <div class="dashboard-card streak-card">
+                <div class="card-icon streak-icon-inactive">
                     <i class="fas fa-fire"></i>
                 </div>
-                <div class="stat-content">
-                    <div class="stat-value">${streak}</div>
-                    <div class="stat-label">Day Streak</div>
+                <div class="card-content">
+                    <div class="card-title">Start a Streak</div>
+                    <div class="card-subtitle">Work out today to begin</div>
                 </div>
             </div>
-
-            <!-- This Week -->
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-calendar-week"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value">${weekCount}</div>
-                    <div class="stat-label">This Week</div>
-                </div>
-            </div>
-
-            <!-- This Month -->
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-calendar-alt"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value">${monthCount}</div>
-                    <div class="stat-label">This Month</div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// ===================================================================
-// QUICK ACTIONS
-// ===================================================================
-
-function renderQuickActions(lastWorkout) {
-    const hasLastWorkout = lastWorkout !== null;
+        `;
+    }
 
     return `
-        <div class="dashboard-section">
-            <h3 class="section-title">Quick Start</h3>
-            <div class="quick-actions-grid">
-                <!-- Start New Workout -->
-                <button class="quick-action-btn" onclick="navigateTo('start-workout')">
-                    <i class="fas fa-dumbbell"></i>
-                    <span>Start Workout</span>
-                </button>
-
-                <!-- Repeat Last Workout -->
-                <button class="quick-action-btn ${!hasLastWorkout ? 'disabled' : ''}"
-                        onclick="${hasLastWorkout ? `repeatLastWorkout('${lastWorkout?.id}')` : 'void(0)'}"
-                        ${!hasLastWorkout ? 'disabled' : ''}>
-                    <i class="fas fa-redo"></i>
-                    <span>${hasLastWorkout ? 'Repeat Last' : 'No History'}</span>
-                </button>
-
-                <!-- View History -->
-                <button class="quick-action-btn" onclick="navigateTo('history')">
-                    <i class="fas fa-history"></i>
-                    <span>History</span>
-                </button>
-
-                <!-- Location -->
-                <button class="quick-action-btn" onclick="navigateTo('location')">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>Location</span>
-                </button>
+        <div class="dashboard-card streak-card streak-active">
+            <div class="card-icon streak-icon">
+                <i class="fas fa-fire"></i>
             </div>
+            <div class="card-content">
+                <div class="card-value">${streak}</div>
+                <div class="card-label">Day Streak</div>
+            </div>
+            <div class="streak-flame"></div>
         </div>
     `;
 }
 
 // ===================================================================
-// RECENT PRS
+// RECENT PRS (New sleek design)
 // ===================================================================
 
-function renderRecentPRs(recentPRs) {
+function renderRecentPRsNew(recentPRs) {
     if (recentPRs.length === 0) {
         return `
-            <div class="dashboard-section">
-                <h3 class="section-title">Recent PRs</h3>
-                <div class="empty-state">
-                    <i class="fas fa-trophy" style="font-size: 2rem; opacity: 0.3; margin-bottom: 1rem;"></i>
-                    <p>No personal records yet</p>
-                    <p style="font-size: 0.875rem; color: var(--text-secondary);">Complete workouts to start tracking PRs</p>
+            <div class="dashboard-card prs-card prs-empty">
+                <div class="card-header">
+                    <div class="card-icon trophy-icon">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h3 class="card-title">Recent PRs</h3>
+                </div>
+                <div class="prs-empty-content">
+                    <p>Hit a new max weight (5+ reps) to see it here</p>
                 </div>
             </div>
         `;
     }
 
     const prsList = recentPRs.map(pr => `
-        <div class="pr-item">
-            <div class="pr-icon">
-                <i class="fas fa-trophy"></i>
-            </div>
-            <div class="pr-content">
-                <div class="pr-exercise">${pr.exercise}</div>
-                <div class="pr-details">
-                    <span class="pr-badge">${pr.label}</span>
-                    <span class="pr-value">${pr.value}</span>
-                </div>
-                <div class="pr-meta">
-                    ${pr.equipment} • ${formatDate(pr.date)} ${pr.location ? `• ${pr.location}` : ''}
-                </div>
-            </div>
+        <div class="pr-row">
+            <div class="pr-exercise-name">${pr.exercise}</div>
+            <div class="pr-weight-value">${pr.weight} <span class="pr-unit">lbs</span></div>
+            <div class="pr-reps-badge">${pr.reps} reps</div>
         </div>
     `).join('');
 
     return `
-        <div class="dashboard-section">
-            <h3 class="section-title">
-                Recent PRs
-                <button class="btn-text" onclick="navigateTo('stats')">View All</button>
-            </h3>
-            <div class="pr-list">
+        <div class="dashboard-card prs-card">
+            <div class="card-header">
+                <div class="card-icon trophy-icon">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <h3 class="card-title">Recent PRs</h3>
+            </div>
+            <div class="prs-list">
                 ${prsList}
             </div>
         </div>
@@ -513,9 +547,9 @@ async function getSuggestedWorkoutsForToday() {
 }
 
 /**
- * Render suggested workouts section
+ * Render suggested workouts section (new design with completion status)
  */
-function renderSuggestedWorkouts(suggestedWorkouts) {
+function renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes = []) {
     if (!suggestedWorkouts || suggestedWorkouts.length === 0) {
         return ''; // Don't show section if no suggestions
     }
@@ -524,33 +558,62 @@ function renderSuggestedWorkouts(suggestedWorkouts) {
     const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
 
     const workoutCards = suggestedWorkouts.map(workout => {
-        const exerciseCount = workout.exercises?.length || 0;
+        const workoutName = workout.name || workout.day;
         const templateId = workout.id || workout.name;
         const isDefault = workout.isDefault || false;
+        const isCompleted = completedWorkoutTypes.includes(workoutName);
+        const exerciseCount = workout.exercises?.length || 0;
+
+        if (isCompleted) {
+            return `
+                <div class="suggested-card suggested-completed">
+                    <div class="suggested-completed-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="suggested-info">
+                        <div class="suggested-name">${workoutName}</div>
+                        <div class="suggested-status">Completed today</div>
+                    </div>
+                </div>
+            `;
+        }
 
         return `
-            <div class="suggested-workout-card" onclick="startSuggestedWorkout('${templateId}', ${isDefault})">
-                <div class="suggested-workout-name">${workout.name || workout.day}</div>
-                <div class="suggested-workout-meta">
-                    <span><i class="fas fa-list"></i> ${exerciseCount} exercises</span>
-                    <span class="workout-category">${workout.category || 'Other'}</span>
+            <div class="suggested-card" onclick="startSuggestedWorkout('${templateId}', ${isDefault})">
+                <div class="suggested-icon">
+                    <i class="fas fa-dumbbell"></i>
+                </div>
+                <div class="suggested-info">
+                    <div class="suggested-name">${workoutName}</div>
+                    <div class="suggested-meta">${exerciseCount} exercises</div>
+                </div>
+                <div class="suggested-arrow">
+                    <i class="fas fa-chevron-right"></i>
                 </div>
             </div>
         `;
     }).join('');
 
     return `
-        <div class="dashboard-section suggested-section">
-            <h3 class="section-title">
-                <span>
-                    <i class="fas fa-calendar-day"></i> Suggested for ${dayName}
-                </span>
-            </h3>
-            <div class="suggested-workouts-grid">
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h3 class="section-title-new">
+                    <i class="fas fa-calendar-day"></i>
+                    ${dayName}
+                </h3>
+            </div>
+            <div class="suggested-list">
                 ${workoutCards}
             </div>
         </div>
     `;
+}
+
+/**
+ * Old render function kept for backwards compatibility
+ */
+function renderSuggestedWorkouts(suggestedWorkouts) {
+    return renderSuggestedWorkoutsNew(suggestedWorkouts, []);
 }
 
 /**

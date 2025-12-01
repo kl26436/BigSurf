@@ -434,6 +434,29 @@ localStorage.setItem('debug', 'firebase:*');
   - [workout-history-ui.js](js/core/workout-history-ui.js) - Header mode on history
   - [index.html](index.html) - Standalone hamburger button
 
+### v4.43: Dashboard Overhaul - Sleek Design (2025-11-30)
+- **Progress Ring Hero**: SVG circular progress showing weekly workouts (X/5 goal)
+  - Teal ring fills up as workouts completed, turns green when goal met
+  - "X more to go" or "Goal achieved!" message
+- **Weekly Stats Row**: Shows Sets, Exercises, Minutes completed this week
+  - New `getWeeklyStats()` function in stats-tracker.js
+- **Suggested Workouts**: Lists workouts assigned to today's day of the week
+  - Shows completion status with green checkmark if already done today
+  - Day name header (e.g., "Saturday")
+- **Streak Card**: Fire icon with streak count
+  - Orange gradient when active, muted when no streak
+  - "Start a Streak" message when streak is 0
+- **Recent PRs Card**: Only shows max weight PRs with 5+ reps
+  - Filtered out volume PRs and low-rep PRs
+  - Clean compact design showing exercise, weight, reps
+- **Resume Banner Redesign**: Matches new sleek dashboard style
+  - Gradient background with teal accent
+  - Top gradient bar, rounded buttons
+- **Files**:
+  - [dashboard-ui.js](js/core/dashboard-ui.js) - New render functions for sleek dashboard
+  - [stats-tracker.js](js/core/stats-tracker.js) - `getWeeklyStats()`, filtered PRs to 5+ reps only
+  - [style.css](style.css) - Hero card, progress ring, streak card, PRs card, suggested workouts, resume banner styles
+
 ### Key Technical Learnings
 
 1. **Deep vs Shallow Copy**: Always use deep clone for nested objects when modifications should not affect source
@@ -442,3 +465,4 @@ localStorage.setItem('debug', 'firebase:*');
 4. **Calendar Rendering**: Status-based CSS classes enable color coding without text labels
 5. **iOS PWA Notifications**: Neither client-side setTimeout nor server-side push works reliably - iOS platform limitation
 6. **Cross-Module Callbacks**: Use `window` flags and callbacks for communication between modal systems (e.g., `editingFromTemplateEditor`)
+7. **SVG Progress Rings**: Use stroke-dasharray and stroke-dashoffset with circumference calculation for progress indicators

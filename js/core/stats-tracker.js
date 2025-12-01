@@ -183,11 +183,80 @@ export async function getLastWorkout() {
 }
 
 // ===================================================================
-// RECENT PRS
+// WEEKLY STATS (Sets, Exercises, Minutes)
 // ===================================================================
 
 /**
- * Get recent PRs achieved
+ * Get detailed stats for this week
+ * @returns {Promise<{sets: number, exercises: number, minutes: number, workouts: Array}>}
+ */
+export async function getWeeklyStats() {
+    if (!AppState.currentUser) return { sets: 0, exercises: 0, minutes: 0, workouts: [] };
+
+    try {
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0 = Sunday
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - dayOfWeek);
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+        const q = query(
+            workoutsRef,
+            where('completedAt', '!=', null),
+            where('completedAt', '>=', startOfWeek.toISOString()),
+            orderBy('completedAt', 'desc')
+        );
+
+        const snapshot = await getDocs(q);
+        const workouts = [];
+        let totalSets = 0;
+        let totalExercises = 0;
+        let totalMinutes = 0;
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            workouts.push({
+                id: doc.id,
+                ...data
+            });
+
+            // Count exercises and sets
+            if (data.exercises) {
+                const exerciseCount = Object.keys(data.exercises).length;
+                totalExercises += exerciseCount;
+
+                Object.values(data.exercises).forEach(exercise => {
+                    if (exercise.sets && Array.isArray(exercise.sets)) {
+                        totalSets += exercise.sets.filter(s => s.reps && s.weight).length;
+                    }
+                });
+            }
+
+            // Calculate duration
+            if (data.totalDuration) {
+                totalMinutes += Math.floor(data.totalDuration / 60);
+            }
+        });
+
+        return {
+            sets: totalSets,
+            exercises: totalExercises,
+            minutes: totalMinutes,
+            workouts
+        };
+    } catch (error) {
+        console.error('❌ Error getting weekly stats:', error);
+        return { sets: 0, exercises: 0, minutes: 0, workouts: [] };
+    }
+}
+
+// ===================================================================
+// RECENT PRS (Max Weight with 5+ reps only)
+// ===================================================================
+
+/**
+ * Get recent PRs achieved - only max weight PRs with 5+ reps
  * @param {number} count - Number of PRs to retrieve
  * @returns {Array} Array of recent PRs
  */
@@ -195,45 +264,24 @@ export async function getRecentPRs(count = 5) {
     const { PRTracker } = await import('./pr-tracker.js');
     const allPRs = PRTracker.getAllPRs();
 
-    // Flatten all PRs with dates
+    // Flatten PRs - only include maxWeight PRs with 5+ reps
     const prsWithDates = [];
 
     for (const prGroup of allPRs) {
         const { exercise, equipment, prs } = prGroup;
 
-        if (prs.maxWeight) {
+        // Only include max weight PRs with 5+ reps
+        if (prs.maxWeight && prs.maxWeight.reps >= 5) {
             prsWithDates.push({
                 exercise,
                 equipment,
                 type: 'maxWeight',
-                label: 'Max Weight',
+                label: 'PR',
                 value: `${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}`,
+                weight: prs.maxWeight.weight,
+                reps: prs.maxWeight.reps,
                 date: prs.maxWeight.date,
                 location: prs.maxWeight.location
-            });
-        }
-
-        if (prs.maxReps) {
-            prsWithDates.push({
-                exercise,
-                equipment,
-                type: 'maxReps',
-                label: 'Max Reps',
-                value: `${prs.maxReps.reps} reps @ ${prs.maxReps.weight} lbs`,
-                date: prs.maxReps.date,
-                location: prs.maxReps.location
-            });
-        }
-
-        if (prs.maxVolume) {
-            prsWithDates.push({
-                exercise,
-                equipment,
-                type: 'maxVolume',
-                label: 'Max Volume',
-                value: `${prs.maxVolume.volume} lbs (${prs.maxVolume.reps} × ${prs.maxVolume.weight})`,
-                date: prs.maxVolume.date,
-                location: prs.maxVolume.location
             });
         }
     }
@@ -255,5 +303,6 @@ export const StatsTracker = {
     getWorkoutsThisMonth,
     getRecentWorkouts,
     getLastWorkout,
-    getRecentPRs
+    getRecentPRs,
+    getWeeklyStats
 };
