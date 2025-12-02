@@ -276,6 +276,7 @@ body {
     padding: 1rem;
     position: relative;
     gap: 1rem;
+    background: #0a0f14; /* Match logo background */
 }
 
 .menu-toggle {
@@ -1003,14 +1004,15 @@ body {
 
 /* Template Cards - Clean elevated design */
 .template-card {
-    background: var(--bg-tertiary);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
     border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
     border-radius: 16px;
     padding: 1.25rem;
     cursor: default;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
     transition: all 0.3s ease;
     position: relative;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .template-card:hover {
@@ -1256,15 +1258,16 @@ body {
 
 /* Active Workout Exercise Cards - Clean elevated design */
 .exercise-card {
-    background: var(--bg-tertiary);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
     border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
     border-radius: 16px;
     padding: 1.25rem;
     margin-bottom: 0.75rem;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .exercise-title-row {
@@ -1375,8 +1378,9 @@ body {
 }
 
 .exercise-card.completed {
-    border: 2px solid var(--success);
-    background: rgba(35, 134, 54, 0.12);
+    border: none;
+    border-top: 3px solid #4ade80;
+    background: linear-gradient(135deg, rgba(35, 134, 54, 0.15) 0%, rgba(20, 24, 30, 0.98) 100%);
     order: 999; /* Move completed to bottom */
 }
 
@@ -2050,14 +2054,9 @@ body {
 }
 
 /* Improved exercise card layout */
-.exercise-card {
-    margin-bottom: 1rem;
-    transition: all 0.2s ease;
-}
-
 .exercise-card:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
 }
 
 /* Button sizing consistency */
@@ -2610,11 +2609,12 @@ body {
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-top: none;
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 2px solid rgba(64, 224, 208, 0.5);
     cursor: pointer;
     transition: background 0.15s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .exercise-manager-row:last-child {
@@ -2743,11 +2743,13 @@ body {
     justify-content: center;
     gap: 0.75rem;
     padding: 1.5rem 1rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
     border-radius: 16px;
     cursor: pointer;
-    transition: background 0.2s, border-color 0.2s, transform 0.1s;
+    transition: background 0.2s, transform 0.1s;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
 }
 
 .category-card:hover {
@@ -4084,8 +4086,10 @@ body {
     gap: 1rem;
     margin: 2rem 0;
     padding: 1.5rem;
-    background: var(--bg-tertiary);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
     border-radius: 12px;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
 }
 
 .detail-stat {
@@ -4113,11 +4117,13 @@ body {
 }
 
 .detail-exercise {
-    background: var(--bg-tertiary);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
     padding: 1.5rem;
-    border-radius: 8px;
+    border-radius: 12px;
     margin-bottom: 1rem;
-    border: 1px solid var(--border);
+    border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
 }
 
 .detail-exercise h4 {
@@ -5621,7 +5627,7 @@ img[loading="lazy"].loaded {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1f2e 100%);
+    background: #0a0f14; /* Match logo background */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6466,24 +6472,26 @@ img[loading="lazy"].loaded {
 }
 
 .stat-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
     border-radius: 12px;
     padding: 1.5rem;
     display: flex;
     align-items: center;
     gap: 1rem;
     transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
 }
 
 .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
 }
 
 .stat-card-highlight {
-    border-color: var(--primary);
-    background: linear-gradient(135deg, rgba(64, 224, 208, 0.05), rgba(64, 224, 208, 0.1));
+    border-top-color: var(--primary);
+    background: linear-gradient(135deg, rgba(64, 224, 208, 0.1) 0%, rgba(20, 24, 30, 0.98) 100%);
 }
 
 .stat-icon {
@@ -6566,30 +6574,21 @@ img[loading="lazy"].loaded {
 }
 
 .suggested-workout-card {
-    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-    border: 2px solid var(--primary);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
     border-radius: 12px;
     padding: 1.25rem;
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
-}
-
-.suggested-workout-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
 }
 
 .suggested-workout-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(64, 224, 208, 0.2);
-    border-color: var(--secondary);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
 }
 
 .suggested-workout-name {
@@ -6712,18 +6711,19 @@ img[loading="lazy"].loaded {
 }
 
 .workout-item {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
+    border-radius: 12px;
     padding: 1rem;
     cursor: pointer;
     transition: all 0.2s;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
 }
 
 .workout-item:hover {
-    background: var(--bg-tertiary);
-    border-color: var(--primary);
-    transform: translateX(4px);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
 }
 
 .workout-header {
@@ -6808,23 +6808,14 @@ img[loading="lazy"].loaded {
 
 /* Hero Card with Progress Ring */
 .hero-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
     border-radius: 18px;
     padding: 1.5rem;
     margin-bottom: 1rem;
     position: relative;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
-}
-
-.hero-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    border-top: 3px solid rgba(64, 224, 208, 0.85);
-    opacity: 0.75;
-    pointer-events: none;
 }
 
 .hero-content {
@@ -6919,15 +6910,16 @@ img[loading="lazy"].loaded {
 
 /* Dashboard Cards */
 .dashboard-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
     border-radius: 14px;
     padding: 1.25rem;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 1rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
 }
 
 .card-icon {
@@ -6974,16 +6966,6 @@ img[loading="lazy"].loaded {
     overflow: hidden;
 }
 
-.streak-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    border-top: 3px solid rgba(64, 224, 208, 0.85);
-    opacity: 0.75;
-    pointer-events: none;
-}
-
 .streak-icon-inactive {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-secondary);
@@ -6995,10 +6977,6 @@ img[loading="lazy"].loaded {
 }
 
 .streak-active {
-    border-color: rgba(255, 107, 53, 0.3);
-}
-
-.streak-active::before {
     border-top-color: rgba(255, 107, 53, 0.85);
 }
 
@@ -7053,8 +7031,9 @@ img[loading="lazy"].loaded {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(20, 24, 30, 0.5);
     border-radius: 10px;
+    border-left: 2px solid rgba(64, 224, 208, 0.5);
 }
 
 .pr-exercise-name {
@@ -7123,8 +7102,9 @@ img[loading="lazy"].loaded {
 }
 
 .suggested-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
     border-radius: 14px;
     padding: 1rem;
     display: flex;
@@ -7132,19 +7112,11 @@ img[loading="lazy"].loaded {
     gap: 1rem;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
     position: relative;
 }
 
-.suggested-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    border-top: 3px solid rgba(64, 224, 208, 0.85);
-    opacity: 0.75;
-    pointer-events: none;
-}
+/* border-top styling is now directly on .suggested-card */
 
 .suggested-card:hover {
     border-color: var(--primary);
@@ -7460,21 +7432,7 @@ img[loading="lazy"].loaded {
     gap: 1rem;
 }
 
-.stat-card {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.25rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
+/* Duplicate .stat-card removed - see Stats Grid section above */
 
 .stat-icon {
     width: 50px;
@@ -9247,11 +9205,13 @@ body:not(.no-bottom-nav) .menu-toggle {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
+    border-radius: 12px;
     padding: 1rem;
     transition: all 0.2s;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
 }
 
 .location-management-item:hover {
@@ -9874,13 +9834,16 @@ body:not(.no-bottom-nav) .menu-toggle {
     align-items: center;
     text-align: center;
     padding: 1rem 0.5rem;
-    background: rgba(255, 255, 255, 0.03);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 2px solid rgba(64, 224, 208, 0.5);
     border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
 }
 
 .badge-card.earned {
-    background: rgba(255, 215, 0, 0.08);
-    border: 1px solid rgba(255, 215, 0, 0.2);
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border-top: 2px solid rgba(255, 215, 0, 0.6);
 }
 
 .badge-card.locked {
@@ -10166,11 +10129,12 @@ body:not(.no-bottom-nav) .menu-toggle {
 
 /* Stats Section Card */
 .stats-section-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
+    border: none;
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
     border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
 }
 
 /* Insights Grid - 2x2 layout */
@@ -10181,11 +10145,12 @@ body:not(.no-bottom-nav) .menu-toggle {
 }
 
 .insight-box {
-    background: var(--bg-secondary);
+    background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
     border-radius: 14px;
-    border: 1px solid var(--border-color);
+    border: none;
+    border-top: 2px solid rgba(64, 224, 208, 0.6);
     padding: 12px 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
     min-height: 70px;
 }
 
