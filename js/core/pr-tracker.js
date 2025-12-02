@@ -505,6 +505,77 @@ export async function clearAllPRs() {
 }
 
 /**
+ * Rebuild all PRs from workout history
+ * This reprocesses all workouts to fix incorrect dates/locations
+ */
+export async function rebuildPRsFromHistory() {
+    if (!AppState.currentUser) {
+        console.error('❌ Cannot rebuild PRs - no user logged in');
+        return { success: false, error: 'Not logged in' };
+    }
+
+    try {
+        // Clear existing PRs
+        prData.exercisePRs = {};
+
+        // Load all workouts from Firebase
+        const { collection, getDocs, query, orderBy } = await import('./firebase-config.js');
+        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+        const workoutsQuery = query(workoutsRef, orderBy('date', 'asc'));
+        const snapshot = await getDocs(workoutsQuery);
+
+        let processedCount = 0;
+        let prCount = 0;
+
+        for (const docSnap of snapshot.docs) {
+            const workoutData = docSnap.data();
+
+            // Skip cancelled or incomplete workouts
+            if (!workoutData.completedAt || workoutData.cancelledAt) continue;
+
+            // Skip workouts before cutoff date
+            const workoutDate = workoutData.date;
+            if (!workoutDate || workoutDate < PR_CUTOFF_DATE) continue;
+
+            // Get the workout's location
+            const workoutLocation = workoutData.location || 'Unknown Location';
+
+            // Process each exercise
+            if (workoutData.exercises && workoutData.exerciseNames) {
+                for (const exerciseKey in workoutData.exercises) {
+                    const exerciseData = workoutData.exercises[exerciseKey];
+                    const exerciseName = workoutData.exerciseNames[exerciseKey];
+
+                    if (!exerciseName || !exerciseData.sets) continue;
+
+                    // Get equipment from original workout
+                    const exerciseIndex = exerciseKey.replace('exercise_', '');
+                    const originalExercise = workoutData.originalWorkout?.exercises?.[exerciseIndex];
+                    const equipment = originalExercise?.equipment || 'Unknown Equipment';
+                    const bodyPart = originalExercise?.bodyPart || getExerciseBodyPart(exerciseName);
+
+                    // Process each set
+                    for (const set of exerciseData.sets) {
+                        if (!set.reps || !set.weight) continue;
+
+                        // Record PR with correct date and location
+                        await recordPR(exerciseName, set.reps, set.weight, equipment, workoutLocation, workoutDate, bodyPart);
+                        prCount++;
+                    }
+                }
+            }
+            processedCount++;
+        }
+
+        await savePRData();
+        return { success: true, workoutsProcessed: processedCount, setsProcessed: prCount };
+    } catch (error) {
+        console.error('❌ Error rebuilding PRs:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Get the cutoff date
  */
 export function getPRCutoffDate() {
@@ -532,5 +603,6 @@ export const PRTracker = {
     getRecentPRs,
     getTotalPRCount,
     clearAllPRs,
+    rebuildPRsFromHistory,
     getPRCutoffDate
 };

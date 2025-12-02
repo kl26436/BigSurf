@@ -530,6 +530,23 @@ window.initializeFCM = initializeFCM;
 window.sendTestNotification = sendTestNotification;
 window.isFCMAvailable = isFCMAvailable;
 
+// PR Tracker - expose for debugging and rebuilding
+import { PRTracker } from './core/pr-tracker.js';
+window.PRTracker = PRTracker;
+
+// Debug utility to rebuild PRs from workout history
+window.rebuildPRs = async function() {
+    console.log('Rebuilding PRs from workout history...');
+    const result = await PRTracker.rebuildPRsFromHistory();
+    if (result.success) {
+        console.log(`✅ Rebuilt PRs: ${result.workoutsProcessed} workouts, ${result.setsProcessed} sets processed`);
+        console.log('Refresh the page to see updated PRs');
+    } else {
+        console.error('❌ Failed to rebuild PRs:', result.error);
+    }
+    return result;
+};
+
 // ===================================================================
 // SIMPLE INITIALIZATION - Just call your existing startApplication
 // ===================================================================
