@@ -206,7 +206,8 @@ function escapeHtml(text) {
 
 /**
  * Set a location as current (session location)
- * Also updates the location's GPS coordinates if they're missing and GPS is available
+ * Shows the saved location on the map if it has GPS coords
+ * Only updates GPS coords if the location doesn't have them yet
  */
 export async function setLocationAsCurrent(locationName) {
     setSessionLocation(locationName);
@@ -215,25 +216,49 @@ export async function setLocationAsCurrent(locationName) {
     // Find the location in cache
     const location = cachedLocations.find(loc => loc.name === locationName);
 
-    // If location exists but has no GPS coords, and we have current GPS, update it
-    if (location && (!location.latitude || !location.longitude) && window.currentGPSCoords) {
-        try {
-            const manager = getWorkoutManager();
-            await manager.updateLocation(location.id, {
-                latitude: window.currentGPSCoords.latitude,
-                longitude: window.currentGPSCoords.longitude
-            });
-            // Update cache
-            location.latitude = window.currentGPSCoords.latitude;
-            location.longitude = window.currentGPSCoords.longitude;
-        } catch (error) {
-            console.error('Error updating location GPS coords:', error);
+    if (location) {
+        // If location has saved GPS coords, show them on the map
+        if (location.latitude && location.longitude) {
+            showLocationOnMap(location.latitude, location.longitude, location.name);
+        }
+        // If location has NO GPS coords but we have current GPS, offer to update
+        else if (window.currentGPSCoords) {
+            try {
+                const manager = getWorkoutManager();
+                await manager.updateLocation(location.id, {
+                    latitude: window.currentGPSCoords.latitude,
+                    longitude: window.currentGPSCoords.longitude
+                });
+                // Update cache
+                location.latitude = window.currentGPSCoords.latitude;
+                location.longitude = window.currentGPSCoords.longitude;
+                showLocationOnMap(location.latitude, location.longitude, location.name);
+                showNotification(`GPS saved for ${locationName}`, 'success');
+            } catch (error) {
+                console.error('Error updating location GPS coords:', error);
+            }
         }
     }
 
     showNotification(`Location set to ${locationName}`, 'success');
     renderLocationManagementList();
     updateCurrentLocationDisplay();
+}
+
+/**
+ * Show a specific location on the map
+ */
+function showLocationOnMap(lat, lon, name) {
+    const container = document.getElementById('location-map-container');
+    if (!container) return;
+
+    container.innerHTML = `
+        <iframe
+            src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.01}%2C${lat-0.01}%2C${lon+0.01}%2C${lat+0.01}&layer=mapnik&marker=${lat}%2C${lon}"
+            style="width: 100%; height: 100%; border: none;">
+        </iframe>
+        <div class="map-location-label">${name}</div>
+    `;
 }
 
 /**
