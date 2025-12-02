@@ -202,7 +202,7 @@ export function changeLocation() {
 /**
  * Show the location management page
  */
-export function showLocationManagement() {
+export async function showLocationManagement() {
     // Hide all sections
     const allSections = document.querySelectorAll('.content-section');
     allSections.forEach(section => section.classList.add('hidden'));
@@ -213,13 +213,25 @@ export function showLocationManagement() {
         section.classList.remove('hidden');
     }
 
-    // Clear stale GPS coords - don't show old location on map
+    // Clear stale GPS coords first
     window.currentGPSCoords = null;
 
     // Render the locations list
     renderLocationManagementList();
     updateCurrentLocationDisplay();
-    updateLocationMap();
+    updateLocationMap(); // Shows placeholder initially
+
+    // Auto-detect current GPS location in background
+    try {
+        const { getCurrentPosition } = await import('./location-service.js');
+        const coords = await getCurrentPosition();
+        if (coords) {
+            window.currentGPSCoords = coords;
+            updateLocationMap(); // Update map with current location
+        }
+    } catch (error) {
+        console.error('❌ Error auto-detecting GPS:', error);
+    }
 }
 
 /**
