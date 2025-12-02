@@ -4,7 +4,7 @@
 import { showNotification } from './ui-helpers.js';
 import { AppState } from './app-state.js';
 import { FirebaseWorkoutManager } from './firebase-workout-manager.js';
-import { getSessionLocation, setSessionLocation, getCurrentPosition } from './location-service.js';
+import { getSessionLocation, setSessionLocation, getCurrentPosition, findNearbyLocation } from './location-service.js';
 
 let workoutManager = null;
 let cachedLocations = [];
@@ -53,12 +53,22 @@ export async function showLocationManagement() {
     updateCurrentLocationDisplay();
     updateLocationMap(); // Shows placeholder initially
 
-    // Auto-detect current GPS location in background
+    // Auto-detect current GPS location and match to saved locations
     try {
         const coords = await getCurrentPosition();
         if (coords) {
             window.currentGPSCoords = coords;
             updateLocationMap(); // Update map with current location
+
+            // Try to match GPS to a saved location
+            const matchedLocation = findNearbyLocation(cachedLocations, coords);
+            if (matchedLocation && !currentLocationName) {
+                // Auto-set as current location if not already set
+                currentLocationName = matchedLocation.name;
+                setSessionLocation(matchedLocation.name);
+                updateCurrentLocationDisplay();
+                renderLocationManagementList(); // Re-render to show CURRENT badge
+            }
         }
     } catch (error) {
         console.error('Error auto-detecting GPS:', error);
