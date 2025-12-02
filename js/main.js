@@ -108,7 +108,8 @@ import {
 
 // Dashboard functionality
 import {
-    showDashboard, repeatLastWorkout, startSuggestedWorkout
+    showDashboard, repeatLastWorkout, startSuggestedWorkout,
+    toggleDashboardSection, toggleDashboardPRBodyPart
 } from './core/dashboard-ui.js';
 
 // Stats functionality
@@ -331,6 +332,8 @@ window.updateBottomNavActive = updateBottomNavActive;
 window.showDashboard = showDashboard;
 window.repeatLastWorkout = repeatLastWorkout;
 window.startSuggestedWorkout = startSuggestedWorkout;
+window.toggleDashboardSection = toggleDashboardSection;
+window.toggleDashboardPRBodyPart = toggleDashboardPRBodyPart;
 
 // Stats Functions
 window.showStats = showStats;
