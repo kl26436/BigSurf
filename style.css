@@ -2008,6 +2008,78 @@ body {
     box-shadow: 0 0 0 2px rgba(64, 224, 208, 0.2);
 }
 
+/* Manual Workout Location Section */
+.manual-location-section {
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.manual-location-section .section-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.manual-location-section .section-label i {
+    color: var(--primary);
+}
+
+.manual-location-row select {
+    width: 100%;
+}
+
+/* Manual Exercise Header with Equipment */
+.manual-exercise-header {
+    margin-bottom: 1rem;
+}
+
+.manual-exercise-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.manual-exercise-title-row h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+.manual-exercise-equipment {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.manual-exercise-equipment:hover {
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+.manual-exercise-equipment i:first-child {
+    color: var(--primary);
+}
+
+.manual-exercise-equipment i:last-child {
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
 /* Better Visual Hierarchy */
 .manual-step h3 {
     color: var(--primary);

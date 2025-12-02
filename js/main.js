@@ -66,6 +66,7 @@ import {
     backToManualStep1, updateManualSet, addManualSet, removeManualSet,
     removeManualExercise, openExercisePickerForManual, addExerciseToManualWorkout,
     addToManualWorkoutFromLibrary, saveManualWorkout,
+    openEquipmentPickerForManual, selectEquipmentForManual, closeEquipmentPickerForManual,
     // Legacy exports for backwards compatibility
     proceedToExerciseSelection, backToBasicInfo, finishManualWorkout,
     editManualExercise, markManualExerciseComplete, closeManualExerciseEntry
@@ -262,6 +263,9 @@ window.openExercisePickerForManual = openExercisePickerForManual;
 window.addExerciseToManualWorkout = addExerciseToManualWorkout;
 window.addToManualWorkoutFromLibrary = addToManualWorkoutFromLibrary;
 window.saveManualWorkout = saveManualWorkout;
+window.openEquipmentPickerForManual = openEquipmentPickerForManual;
+window.selectEquipmentForManual = selectEquipmentForManual;
+window.closeEquipmentPickerForManual = closeEquipmentPickerForManual;
 // Legacy stubs
 window.proceedToExerciseSelection = proceedToExerciseSelection;
 window.backToBasicInfo = backToBasicInfo;

@@ -13,10 +13,11 @@ let manualWorkoutState = {
     workoutType: '',      // Name of the workout
     category: '',
     isCustom: false,      // true if creating new custom workout
-    exercises: [],        // Array of exercises with sets
+    exercises: [],        // Array of exercises with sets, equipment
     duration: 60,
     status: 'completed',
     notes: '',
+    location: '',         // Gym location
     sourceTemplateId: null  // If from library, track which template
 };
 
@@ -64,6 +65,7 @@ function resetManualWorkoutState() {
         duration: 60,
         status: 'completed',
         notes: '',
+        location: '',
         sourceTemplateId: null
     };
 
@@ -114,7 +116,39 @@ function showManualStep(step) {
             addExerciseSection.classList.toggle('hidden', !manualWorkoutState.isCustom);
         }
 
+        // Load locations dropdown
+        loadLocationsForManual();
+
         renderManualExercises();
+    }
+}
+
+async function loadLocationsForManual() {
+    const locationSelect = document.getElementById('manual-workout-location');
+    if (!locationSelect) return;
+
+    try {
+        const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+        const workoutManager = new FirebaseWorkoutManager(AppState);
+        const locations = await workoutManager.getLocations();
+
+        // Clear existing options except first placeholder
+        locationSelect.innerHTML = '<option value="">Select gym location...</option>';
+
+        // Add locations
+        locations.forEach(loc => {
+            const option = document.createElement('option');
+            option.value = loc.name;
+            option.textContent = loc.name;
+            locationSelect.appendChild(option);
+        });
+
+        // Restore selection if exists
+        if (manualWorkoutState.location) {
+            locationSelect.value = manualWorkoutState.location;
+        }
+    } catch (error) {
+        console.error('❌ Error loading locations:', error);
     }
 }
 
@@ -269,13 +303,25 @@ function renderManualExercises() {
         return;
     }
 
-    container.innerHTML = manualWorkoutState.exercises.map((exercise, exIndex) => `
+    container.innerHTML = manualWorkoutState.exercises.map((exercise, exIndex) => {
+        const equipmentDisplay = exercise.equipment
+            ? `${exercise.equipment}${exercise.equipmentLocation ? ' @ ' + exercise.equipmentLocation : ''}`
+            : 'No equipment';
+
+        return `
         <div class="manual-exercise-card">
             <div class="manual-exercise-header">
-                <h4>${exercise.name}</h4>
-                <button class="btn btn-danger btn-small" onclick="removeManualExercise(${exIndex})" title="Remove">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <div class="manual-exercise-title-row">
+                    <h4>${exercise.name}</h4>
+                    <button class="btn btn-danger btn-small" onclick="removeManualExercise(${exIndex})" title="Remove">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="manual-exercise-equipment" onclick="openEquipmentPickerForManual(${exIndex})">
+                    <i class="fas fa-cog"></i>
+                    <span>${equipmentDisplay}</span>
+                    <i class="fas fa-pen"></i>
+                </div>
             </div>
             <div class="manual-sets-grid">
                 ${exercise.sets.map((set, setIndex) => `
@@ -299,7 +345,7 @@ function renderManualExercises() {
                 <i class="fas fa-plus"></i> Add Set
             </button>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 export function updateManualSet(exIndex, setIndex, field, value) {
@@ -369,6 +415,8 @@ export function addExerciseToManualWorkout(exerciseData) {
         name: exercise.name || exercise.machine,
         bodyPart: exercise.bodyPart || '',
         equipmentType: exercise.equipmentType || '',
+        equipment: exercise.equipment || null,
+        equipmentLocation: exercise.equipmentLocation || null,
         defaultSets: exercise.sets || 3,
         defaultReps: exercise.reps || 10,
         defaultWeight: exercise.weight || 0,
@@ -424,6 +472,7 @@ export async function saveManualWorkout() {
     manualWorkoutState.duration = parseInt(document.getElementById('manual-workout-duration')?.value) || 60;
     manualWorkoutState.status = document.getElementById('manual-workout-status')?.value || 'completed';
     manualWorkoutState.notes = document.getElementById('manual-workout-notes')?.value || '';
+    manualWorkoutState.location = document.getElementById('manual-workout-location')?.value || '';
 
     try {
         // Build workout data for Firebase
@@ -437,6 +486,7 @@ export async function saveManualWorkout() {
             status: manualWorkoutState.status,
             totalDuration: manualWorkoutState.duration * 60,
             notes: manualWorkoutState.notes,
+            location: manualWorkoutState.location || null,
             exercises: {},
             exerciseNames: {},
             originalWorkout: {
@@ -444,7 +494,9 @@ export async function saveManualWorkout() {
                     name: ex.name,
                     sets: ex.sets.length,
                     reps: ex.defaultReps,
-                    weight: ex.defaultWeight
+                    weight: ex.defaultWeight,
+                    equipment: ex.equipment,
+                    equipmentLocation: ex.equipmentLocation
                 }))
             },
             version: '2.0'
@@ -461,7 +513,9 @@ export async function saveManualWorkout() {
                     originalUnit: 'lbs'
                 })),
                 notes: exercise.notes || '',
-                completed: true
+                completed: true,
+                equipment: exercise.equipment || null,
+                equipmentLocation: exercise.equipmentLocation || null
             };
         });
 
@@ -530,6 +584,78 @@ async function saveAsNewTemplate() {
         console.error('Error saving template:', error);
         showNotification('Error saving template', 'error');
     }
+}
+
+// ===================================================================
+// EQUIPMENT PICKER FOR MANUAL WORKOUT
+// ===================================================================
+
+let manualEquipmentEditIndex = null;
+
+export async function openEquipmentPickerForManual(exerciseIndex) {
+    manualEquipmentEditIndex = exerciseIndex;
+
+    // Get the equipment picker modal
+    const modal = document.getElementById('equipment-picker-modal');
+    if (!modal) {
+        console.error('❌ Equipment picker modal not found');
+        return;
+    }
+
+    // Load available equipment
+    try {
+        const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+        const workoutManager = new FirebaseWorkoutManager(AppState);
+        const equipmentList = await workoutManager.getEquipment();
+
+        const listContainer = document.getElementById('equipment-picker-list');
+        if (listContainer) {
+            if (equipmentList.length === 0) {
+                listContainer.innerHTML = '<p class="empty-state">No equipment saved yet</p>';
+            } else {
+                listContainer.innerHTML = equipmentList.map(eq => `
+                    <div class="equipment-picker-item" onclick="selectEquipmentForManual('${eq.id}', '${(eq.name || '').replace(/'/g, "\\'")}', '${(eq.location || '').replace(/'/g, "\\'")}')">
+                        <i class="fas fa-cog"></i>
+                        <div class="equipment-info">
+                            <span class="equipment-name">${eq.name || 'Unknown'}</span>
+                            ${eq.location ? `<span class="equipment-location">@ ${eq.location}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        modal.classList.remove('hidden');
+    } catch (error) {
+        console.error('❌ Error loading equipment:', error);
+        showNotification('Error loading equipment', 'error');
+    }
+}
+
+export function selectEquipmentForManual(equipmentId, name, location) {
+    if (manualEquipmentEditIndex === null) return;
+
+    const exercise = manualWorkoutState.exercises[manualEquipmentEditIndex];
+    if (exercise) {
+        exercise.equipment = name;
+        exercise.equipmentLocation = location || null;
+    }
+
+    // Close the modal
+    const modal = document.getElementById('equipment-picker-modal');
+    if (modal) modal.classList.add('hidden');
+
+    manualEquipmentEditIndex = null;
+
+    // Re-render to show updated equipment
+    renderManualExercises();
+    showNotification(`Equipment set: ${name}`, 'success');
+}
+
+export function closeEquipmentPickerForManual() {
+    const modal = document.getElementById('equipment-picker-modal');
+    if (modal) modal.classList.add('hidden');
+    manualEquipmentEditIndex = null;
 }
 
 // ===================================================================
