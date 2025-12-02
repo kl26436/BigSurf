@@ -41,42 +41,62 @@ export async function startWorkout(workoutType) {
         return;
     }
 
-    // Check if there's already a workout in progress
+    // Check if there's already a workout for today
     const { loadTodaysWorkout } = await import('./data-manager.js');
     const todaysWorkout = await loadTodaysWorkout(AppState);
 
-    if (todaysWorkout && !todaysWorkout.completedAt && !todaysWorkout.cancelledAt) {
-        // There's already a workout in progress - warn the user
-        const workoutName = todaysWorkout.workoutType || 'Unknown';
-        const confirmed = confirm(
-            `⚠️ You already have a workout in progress: "${workoutName}"\n\n` +
-            `Starting a new workout will cancel your current workout and you'll lose any unsaved progress.\n\n` +
-            `Do you want to continue?`
-        );
+    if (todaysWorkout) {
+        if (todaysWorkout.completedAt && !todaysWorkout.cancelledAt) {
+            // There's already a COMPLETED workout today - warn about overriding
+            const workoutName = todaysWorkout.workoutType || 'Unknown';
+            const confirmed = confirm(
+                `⚠️ You already completed a workout today: "${workoutName}"\n\n` +
+                `Starting a new workout will REPLACE your completed workout data.\n\n` +
+                `Your previous workout progress, PRs from that session, and stats will be overwritten.\n\n` +
+                `Are you sure you want to start a new workout?`
+            );
 
-        if (!confirmed) {
-            // Navigate back to dashboard
-            const { navigateTo } = await import('./navigation.js');
-            navigateTo('dashboard');
-            return;
+            if (!confirmed) {
+                // Navigate back to dashboard
+                const { navigateTo } = await import('./navigation.js');
+                navigateTo('dashboard');
+                return;
+            }
+            // User confirmed - proceed to start new workout (will overwrite completed one)
+        } else if (!todaysWorkout.completedAt && !todaysWorkout.cancelledAt) {
+            // There's an in-progress workout - existing behavior
+            const workoutName = todaysWorkout.workoutType || 'Unknown';
+            const confirmed = confirm(
+                `⚠️ You already have a workout in progress: "${workoutName}"\n\n` +
+                `Starting a new workout will cancel your current workout and you'll lose any unsaved progress.\n\n` +
+                `Do you want to continue?`
+            );
+
+            if (!confirmed) {
+                // Navigate back to dashboard
+                const { navigateTo } = await import('./navigation.js');
+                navigateTo('dashboard');
+                return;
+            }
+
+            // User confirmed - cancel the current workout (mark it as cancelled in Firebase)
+            // Mark the existing workout as cancelled and save
+            AppState.savedData = {
+                ...todaysWorkout,
+                cancelledAt: new Date().toISOString()
+            };
+            await saveWorkoutData(AppState);
+
+            // Clear in-progress workout reference
+            window.inProgressWorkout = null;
+
+            // Hide the resume banner since we're starting a new workout
+            const resumeBanner = document.getElementById('resume-workout-banner');
+            if (resumeBanner) {
+                resumeBanner.classList.add('hidden');
+            }
         }
-
-        // User confirmed - cancel the current workout (mark it as cancelled in Firebase)
-        // Mark the existing workout as cancelled and save
-        AppState.savedData = {
-            ...todaysWorkout,
-            cancelledAt: new Date().toISOString()
-        };
-        await saveWorkoutData(AppState);
-
-        // Clear in-progress workout reference
-        window.inProgressWorkout = null;
-
-        // Hide the resume banner since we're starting a new workout
-        const resumeBanner = document.getElementById('resume-workout-banner');
-        if (resumeBanner) {
-            resumeBanner.classList.add('hidden');
-        }
+        // If cancelled workout exists, proceed without warning
     }
 
     // Detect location via GPS
