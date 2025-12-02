@@ -206,10 +206,31 @@ function escapeHtml(text) {
 
 /**
  * Set a location as current (session location)
+ * Also updates the location's GPS coordinates if they're missing and GPS is available
  */
 export async function setLocationAsCurrent(locationName) {
     setSessionLocation(locationName);
     currentLocationName = locationName;
+
+    // Find the location in cache
+    const location = cachedLocations.find(loc => loc.name === locationName);
+
+    // If location exists but has no GPS coords, and we have current GPS, update it
+    if (location && (!location.latitude || !location.longitude) && window.currentGPSCoords) {
+        try {
+            const manager = getWorkoutManager();
+            await manager.updateLocation(location.id, {
+                latitude: window.currentGPSCoords.latitude,
+                longitude: window.currentGPSCoords.longitude
+            });
+            // Update cache
+            location.latitude = window.currentGPSCoords.latitude;
+            location.longitude = window.currentGPSCoords.longitude;
+        } catch (error) {
+            console.error('Error updating location GPS coords:', error);
+        }
+    }
+
     showNotification(`Location set to ${locationName}`, 'success');
     renderLocationManagementList();
     updateCurrentLocationDisplay();

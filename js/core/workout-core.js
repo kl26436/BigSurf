@@ -1886,6 +1886,20 @@ export async function loadLastWorkoutHint(exerciseName, exerciseIndex) {
  */
 async function initializeWorkoutLocation() {
     try {
+        // Check if session location was already set (e.g., from Manage Locations page)
+        const existingSessionLocation = getSessionLocation();
+        if (existingSessionLocation) {
+            // Already have a location, update visit count and proceed
+            const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+            const workoutManager = new FirebaseWorkoutManager(AppState);
+            const savedLocations = await workoutManager.getUserLocations();
+            const existingLoc = savedLocations.find(loc => loc.name === existingSessionLocation);
+            if (existingLoc) {
+                await workoutManager.updateLocationVisit(existingLoc.id);
+            }
+            return;
+        }
+
         // Reset any previous location state
         resetLocationState();
 
