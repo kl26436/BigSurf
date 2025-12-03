@@ -133,39 +133,81 @@ async function checkForInProgressWorkout() {
             // Show resume banner
             const card = document.getElementById('resume-workout-banner');
             const nameElement = document.getElementById('resume-workout-name');
-            const setsElement = document.getElementById('resume-sets-completed');
             const timeElement = document.getElementById('resume-time-ago');
 
             if (card && nameElement) {
                 nameElement.textContent = workoutData.workoutType;
 
-                // Calculate sets completed from saved data vs template
+                // Calculate sets and exercises completed
                 let completedSets = 0;
                 let totalSets = 0;
+                let completedExercises = 0;
+                let totalExercises = 0;
 
                 // Get total sets from saved originalWorkout (if exercises were added/deleted) or template
                 const exerciseSource = workoutData.originalWorkout?.exercises || (workoutPlan && workoutPlan.exercises);
                 if (exerciseSource) {
+                    totalExercises = exerciseSource.length;
                     exerciseSource.forEach(exercise => {
-                        totalSets += exercise.sets || 3; // Default to 3 if not specified
+                        totalSets += exercise.sets || 3;
                     });
                 }
 
-                // Get completed sets from saved data
+                // Get completed sets and exercises from saved data
                 if (workoutData.exercises) {
                     Object.values(workoutData.exercises).forEach(exercise => {
-                        if (exercise.sets) {
+                        if (exercise.sets && exercise.sets.length > 0) {
                             const exerciseSets = exercise.sets.filter(set => set.reps && set.weight);
                             completedSets += exerciseSets.length;
+                            if (exercise.completed || exerciseSets.length > 0) {
+                                completedExercises++;
+                            }
                         }
                     });
                 }
 
-                if (setsElement) {
-                    setsElement.textContent = `${completedSets}/${totalSets} sets`;
+                // Update progress ring
+                const percentage = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+                const circumference = 2 * Math.PI * 36; // radius = 36
+                const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+                const ringProgress = document.getElementById('resume-ring-progress');
+                const ringCount = document.getElementById('resume-ring-count');
+                const ringTotal = document.getElementById('resume-ring-total');
+
+                if (ringProgress) {
+                    ringProgress.style.strokeDashoffset = strokeDashoffset;
+                }
+                if (ringCount) {
+                    ringCount.textContent = completedSets;
+                }
+                if (ringTotal) {
+                    ringTotal.textContent = `/ ${totalSets}`;
                 }
 
-                // Calculate time ago
+                // Update stat boxes
+                const statSets = document.getElementById('resume-stat-sets');
+                const statExercises = document.getElementById('resume-stat-exercises');
+                const statTime = document.getElementById('resume-stat-time');
+
+                if (statSets) {
+                    statSets.textContent = `${completedSets}/${totalSets}`;
+                }
+                if (statExercises) {
+                    statExercises.textContent = `${completedExercises}/${totalExercises}`;
+                }
+                if (statTime) {
+                    const minutes = Math.floor(hoursSinceStart * 60);
+                    if (minutes < 60) {
+                        statTime.textContent = `${minutes}m`;
+                    } else {
+                        const hours = Math.floor(minutes / 60);
+                        const mins = minutes % 60;
+                        statTime.textContent = `${hours}h ${mins}m`;
+                    }
+                }
+
+                // Calculate time ago for header
                 if (timeElement) {
                     const minutesAgo = Math.floor(hoursSinceStart * 60);
                     if (minutesAgo < 60) {

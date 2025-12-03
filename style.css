@@ -3342,7 +3342,7 @@ body {
 }
 
 /* ===================================================================
-   RESUME WORKOUT CARD - Clean PR-style design
+   RESUME WORKOUT CARD - Weekly Goal style with progress ring
    =================================================================== */
 
 .resume-time-label {
@@ -3350,61 +3350,84 @@ body {
     color: var(--text-secondary);
 }
 
-/* Main clickable card - matches PR item style */
-.resume-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
+/* Main clickable card - matches weekly goal card */
+.resume-goal-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-top: 3px solid var(--primary);
     border-radius: 14px;
-    background: var(--bg-tertiary, #181f28);
-    border: 1px solid var(--border-color, #252f3a);
+    padding: 1rem;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
-.resume-card:hover {
+.resume-goal-card:hover {
     border-color: var(--primary);
-    transform: translateX(4px);
 }
 
-.resume-card-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 14px;
-    background: rgba(29, 211, 176, 0.18);
+.resume-goal-content {
     display: flex;
     align-items: center;
-    justify-content: center;
-    color: var(--primary);
-    font-size: 1.1rem;
+    gap: 1rem;
+}
+
+.resume-progress-ring-wrap {
+    position: relative;
+    width: 80px;
+    height: 80px;
     flex-shrink: 0;
 }
 
-.resume-card-content {
-    flex: 1;
-    min-width: 0;
+.resume-progress-ring {
+    transform: rotate(0deg);
 }
 
-.resume-card-name {
-    font-size: 1rem;
+.resume-stats-grid {
+    display: flex;
+    flex: 1;
+    gap: 0.5rem;
+}
+
+.resume-stat-box {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+.resume-stat-value {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.resume-stat-label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-top: 0.125rem;
+}
+
+.resume-workout-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 0.125rem;
 }
 
-.resume-card-meta {
-    font-size: 0.86rem;
+.resume-workout-title i {
     color: var(--text-secondary);
-}
-
-.resume-card-arrow {
-    color: var(--text-secondary);
-    font-size: 1rem;
     transition: color 0.2s ease, transform 0.2s ease;
 }
 
-.resume-card:hover .resume-card-arrow {
+.resume-goal-card:hover .resume-workout-title i {
     color: var(--primary);
     transform: translateX(2px);
 }

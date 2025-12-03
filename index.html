@@ -176,17 +176,56 @@
                         <span class="stats-section-title">In Progress</span>
                         <span id="resume-time-ago" class="resume-time-label">just now</span>
                     </div>
-                    <div class="resume-card" onclick="continueInProgressWorkout()">
-                        <div class="resume-card-icon">
-                            <i class="fas fa-play-circle"></i>
-                        </div>
-                        <div class="resume-card-content">
-                            <div id="resume-workout-name" class="resume-card-name">Workout</div>
-                            <div class="resume-card-meta">
-                                <span id="resume-sets-completed">0/0 sets</span>
+                    <div class="resume-goal-card" onclick="continueInProgressWorkout()">
+                        <div class="resume-goal-content">
+                            <div class="resume-progress-ring-wrap">
+                                <svg class="resume-progress-ring" width="80" height="80">
+                                    <circle
+                                        class="ring-bg"
+                                        stroke="rgba(64, 224, 208, 0.15)"
+                                        stroke-width="6"
+                                        fill="transparent"
+                                        r="36"
+                                        cx="40"
+                                        cy="40"
+                                    />
+                                    <circle
+                                        id="resume-ring-progress"
+                                        class="ring-progress"
+                                        stroke="var(--primary)"
+                                        stroke-width="6"
+                                        fill="transparent"
+                                        r="36"
+                                        cx="40"
+                                        cy="40"
+                                        stroke-linecap="round"
+                                        stroke-dasharray="226.19"
+                                        stroke-dashoffset="226.19"
+                                        transform="rotate(-90 40 40)"
+                                    />
+                                </svg>
+                                <div class="ring-center-text">
+                                    <span id="resume-ring-count" class="ring-count">0</span>
+                                    <span id="resume-ring-total" class="ring-goal">/ 0</span>
+                                </div>
+                            </div>
+                            <div class="resume-stats-grid">
+                                <div class="resume-stat-box">
+                                    <span id="resume-stat-sets" class="resume-stat-value">0/0</span>
+                                    <span class="resume-stat-label">Sets</span>
+                                </div>
+                                <div class="resume-stat-box">
+                                    <span id="resume-stat-exercises" class="resume-stat-value">0/0</span>
+                                    <span class="resume-stat-label">Exercises</span>
+                                </div>
+                                <div class="resume-stat-box">
+                                    <span id="resume-stat-time" class="resume-stat-value">0:00</span>
+                                    <span class="resume-stat-label">Time</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="resume-card-arrow">
+                        <div class="resume-workout-title">
+                            <span id="resume-workout-name">Workout</span>
                             <i class="fas fa-chevron-right"></i>
                         </div>
                     </div>
