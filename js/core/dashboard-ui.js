@@ -246,12 +246,14 @@ async function renderDashboard() {
         const weekCount = weeklyStats.workouts.length;
         const weeklyGoal = 5;
         const completedWorkoutTypes = todaysWorkout ? [todaysWorkout.workoutType] : [];
+        const inProgressWorkoutType = inProgressWorkout?.workoutType || null;
 
         // Build the unified dashboard with stats page layout
+        // In-progress workout at TOP with its own section
         container.innerHTML = `
+            ${inProgressWorkout ? renderInProgressSection(inProgressWorkout) : ''}
             ${renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats)}
-            ${inProgressWorkout ? renderInProgressWorkoutCard(inProgressWorkout) : ''}
-            ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes)}
+            ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
             ${renderDashboardStreakBoxes(streaks)}
             ${renderDashboardInsightsSection(insights)}
             ${renderDashboardBadgesSection(badges)}
@@ -432,9 +434,9 @@ async function getInProgressWorkoutData() {
 }
 
 /**
- * Render in-progress workout card with progress bar
+ * Render in-progress workout section with header and card
  */
-function renderInProgressWorkoutCard(workout) {
+function renderInProgressSection(workout) {
     const percentage = workout.totalSets > 0
         ? Math.round((workout.completedSets / workout.totalSets) * 100)
         : 0;
@@ -444,10 +446,12 @@ function renderInProgressWorkoutCard(workout) {
         : `${(workout.minutesElapsed / 60).toFixed(1)}h`;
 
     const workoutName = workout.workoutType || 'Workout';
-    const templateId = workout.originalWorkout?.id || workout.workoutType;
-    const isDefault = workout.originalWorkout?.isDefault || false;
 
     return `
+        <div class="stats-section-header">
+            <span class="stats-section-title">In Progress</span>
+        </div>
+
         <div class="in-progress-card" onclick="continueInProgressWorkout()">
             <div class="in-progress-header">
                 <div class="in-progress-icon">
@@ -1134,23 +1138,32 @@ async function getSuggestedWorkoutsForToday() {
 /**
  * Render suggested workouts section (new design with completion status)
  */
-function renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes = []) {
+function renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes = [], inProgressWorkoutType = null) {
     if (!suggestedWorkouts || suggestedWorkouts.length === 0) {
         return ''; // Don't show section if no suggestions
+    }
+
+    // Filter out the in-progress workout (it has its own section)
+    const filteredWorkouts = inProgressWorkoutType
+        ? suggestedWorkouts.filter(w => (w.name || w.day) !== inProgressWorkoutType)
+        : suggestedWorkouts;
+
+    if (filteredWorkouts.length === 0) {
+        return ''; // Don't show section if only workout is in-progress
     }
 
     const today = new Date();
     const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
 
-    // Check if all suggested workouts are completed
-    const allCompleted = suggestedWorkouts.every(workout => {
+    // Check if all remaining suggested workouts are completed
+    const allCompleted = filteredWorkouts.every(workout => {
         const workoutName = workout.name || workout.day;
         return completedWorkoutTypes.includes(workoutName);
     });
 
     // If all workouts are done, show a single congrats banner
-    if (allCompleted && suggestedWorkouts.length > 0) {
-        const completedCount = suggestedWorkouts.length;
+    if (allCompleted && filteredWorkouts.length > 0) {
+        const completedCount = filteredWorkouts.length;
         return `
             <div class="congrats-banner">
                 <div class="congrats-icon">
@@ -1168,7 +1181,7 @@ function renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes = [
         `;
     }
 
-    const workoutCards = suggestedWorkouts.map(workout => {
+    const workoutCards = filteredWorkouts.map(workout => {
         const workoutName = workout.name || workout.day;
         const templateId = workout.id || workout.name;
         const isDefault = workout.isDefault || false;
