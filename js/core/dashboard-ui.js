@@ -10,6 +10,9 @@ import { AppState } from './app-state.js';
 import { FirebaseWorkoutManager } from './firebase-workout-manager.js';
 import { db, collection, query, where, getDocs, orderBy } from './firebase-config.js';
 
+// Timer interval for live rest countdown on dashboard
+let dashboardRestTimerInterval = null;
+
 // ===================================================================
 // DASHBOARD DISPLAY
 // ===================================================================
@@ -196,17 +199,8 @@ async function checkForInProgressWorkout() {
                     }
                 }
                 if (statRest) {
-                    // Check if there's an active rest timer in AppState
-                    if (AppState.activeRestTimer && !AppState.activeRestTimer.completed) {
-                        const { startTime, pausedTime, duration, isPaused } = AppState.activeRestTimer;
-                        const elapsed = isPaused ? 0 : Math.floor((Date.now() - startTime - pausedTime) / 1000);
-                        const timeLeft = Math.max(0, duration - elapsed);
-                        statRest.textContent = `${timeLeft}s`;
-                    } else if (AppState.activeRestTimer?.completed) {
-                        statRest.textContent = 'Go!';
-                    } else {
-                        statRest.textContent = '--';
-                    }
+                    // Start live timer update for rest countdown
+                    startDashboardRestTimer();
                 }
 
                 // Calculate time ago for header
@@ -242,6 +236,57 @@ let dashboardExpandedSections = {
     badges: false,
     prs: false
 };
+
+/**
+ * Start live rest timer updates on dashboard
+ */
+function startDashboardRestTimer() {
+    // Clear any existing interval
+    if (dashboardRestTimerInterval) {
+        clearInterval(dashboardRestTimerInterval);
+    }
+
+    const updateRestDisplay = () => {
+        const statRest = document.getElementById('resume-stat-rest');
+        if (!statRest) {
+            stopDashboardRestTimer();
+            return;
+        }
+
+        if (AppState.activeRestTimer && !AppState.activeRestTimer.completed) {
+            const { startTime, pausedTime, duration, isPaused } = AppState.activeRestTimer;
+            const elapsed = isPaused ? 0 : Math.floor((Date.now() - startTime - pausedTime) / 1000);
+            const timeLeft = Math.max(0, duration - elapsed);
+
+            if (timeLeft > 0) {
+                statRest.textContent = `${timeLeft}s`;
+            } else {
+                statRest.textContent = 'Go!';
+                AppState.activeRestTimer.completed = true;
+            }
+        } else if (AppState.activeRestTimer?.completed) {
+            statRest.textContent = 'Go!';
+        } else {
+            statRest.textContent = '--';
+        }
+    };
+
+    // Update immediately
+    updateRestDisplay();
+
+    // Then update every second
+    dashboardRestTimerInterval = setInterval(updateRestDisplay, 1000);
+}
+
+/**
+ * Stop dashboard rest timer updates
+ */
+function stopDashboardRestTimer() {
+    if (dashboardRestTimerInterval) {
+        clearInterval(dashboardRestTimerInterval);
+        dashboardRestTimerInterval = null;
+    }
+}
 
 /**
  * Render dashboard content - Unified stats page layout

@@ -103,10 +103,10 @@ function showActiveWorkout() {
     if (activeWorkout) {
         activeWorkout.classList.remove('hidden');
     }
-    // Active workout should hide bottom nav and header
-    setBottomNavVisible(false);
+    // Show nav on active workout (only hide when exercise modal is open)
+    setBottomNavVisible(true);
     const { setHeaderMode } = window;
-    if (setHeaderMode) setHeaderMode(false);
+    if (setHeaderMode) setHeaderMode(true);
 }
 
 function showWorkoutSelector() {

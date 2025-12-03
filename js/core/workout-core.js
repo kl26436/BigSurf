@@ -158,11 +158,9 @@ export async function startWorkout(workoutType) {
     if (dashboard) dashboard.classList.add('hidden');
     if (activeWorkout) activeWorkout.classList.remove('hidden');
 
-    // Hide header, show standalone hamburger for active workout
-    setHeaderMode(false);
-
-    // Hide bottom nav during active workout
-    setBottomNavVisible(false);
+    // Show header and nav on active workout (only hide when exercise modal opens)
+    setHeaderMode(true);
+    setBottomNavVisible(true);
 
     // Hide resume banner when starting a workout
     const resumeBanner = document.getElementById('resume-workout-banner');
@@ -323,9 +321,9 @@ export function continueInProgressWorkout() {
     const activeWorkout = document.getElementById('active-workout');
     if (activeWorkout) activeWorkout.classList.remove('hidden');
 
-    // Hide header and bottom nav for active workout
-    setHeaderMode(false);
-    setBottomNavVisible(false);
+    // Show header and nav on active workout (only hide when exercise modal opens)
+    setHeaderMode(true);
+    setBottomNavVisible(true);
 
     // Set workout name in header
     const workoutNameElement = document.getElementById('current-workout-name');
@@ -698,6 +696,18 @@ export function focusExercise(index) {
     }
 
     modal.classList.remove('hidden');
+
+    // Hide nav when exercise modal is open
+    setHeaderMode(false);
+    setBottomNavVisible(false);
+
+    // Restore rest timer from AppState if it exists for this exercise
+    if (AppState.activeRestTimer && AppState.activeRestTimer.exerciseIndex === index) {
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+            restoreTimerFromAppState(index);
+        }, 50);
+    }
 }
 
 export function generateExerciseTable(exercise, exerciseIndex, unit) {
@@ -1244,6 +1254,12 @@ export function closeExerciseModal() {
         modal.classList.add('hidden');
     }
 
+    // Show nav again when exercise modal closes (if still in active workout)
+    if (AppState.currentWorkout) {
+        setHeaderMode(true);
+        setBottomNavVisible(true);
+    }
+
     // Clear any modal rest timers
     if (AppState.focusedExerciseIndex !== null) {
         const modalTimer = document.getElementById(`modal-rest-timer-${AppState.focusedExerciseIndex}`);
@@ -1774,6 +1790,42 @@ function restoreActiveTimerState(exerciseIndex) {
         restoreModalRestTimer(exerciseIndex, activeRestTimer);
         activeRestTimer = null;
     }, 50);
+}
+
+// Restore timer from AppState when re-opening exercise modal after navigation
+function restoreTimerFromAppState(exerciseIndex) {
+    if (!AppState.activeRestTimer || AppState.activeRestTimer.exerciseIndex !== exerciseIndex) {
+        return;
+    }
+
+    const timer = AppState.activeRestTimer;
+    const exercise = AppState.currentWorkout?.exercises[exerciseIndex];
+
+    // Calculate current time left
+    const elapsed = timer.isPaused ? 0 : Math.floor((Date.now() - timer.startTime - timer.pausedTime) / 1000);
+    const timeLeft = Math.max(0, timer.duration - elapsed);
+
+    // Build timer state compatible with restoreModalRestTimer
+    const timerState = {
+        exerciseLabel: `Rest Period - ${exercise?.machine || 'Exercise'}`,
+        timeLeft: timeLeft,
+        isPaused: timer.isPaused,
+        startTime: timer.startTime,
+        pausedTime: timer.pausedTime
+    };
+
+    if (timeLeft > 0 && !timer.completed) {
+        restoreModalRestTimer(exerciseIndex, timerState);
+    } else if (timer.completed || timeLeft === 0) {
+        // Show "Ready!" state
+        const modalTimer = document.getElementById(`modal-rest-timer-${exerciseIndex}`);
+        const timerDisplay = modalTimer?.querySelector('.modal-rest-display');
+        if (modalTimer && timerDisplay) {
+            modalTimer.classList.remove('hidden');
+            timerDisplay.textContent = 'Ready!';
+            timerDisplay.style.color = 'var(--success)';
+        }
+    }
 }
 
 export function startWorkoutTimer() {
