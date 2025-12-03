@@ -199,14 +199,14 @@ function createTemplateCard(template) {
             ${exerciseListHTML}
         </div>
         <div class="template-actions">
-            <button class="btn btn-primary btn-small" onclick="useTemplate('${template.id}', ${isDefault})">
+            <button class="btn btn-primary" onclick="useTemplate('${template.id}', ${isDefault})">
                 <i class="fas fa-play"></i> Use Today
             </button>
-            <button class="btn btn-secondary btn-small" onclick="editTemplate('${template.id}', ${isDefault})">
-                <i class="fas fa-edit"></i> Edit
+            <button class="btn btn-secondary" onclick="editTemplate('${template.id}', ${isDefault})" title="Edit">
+                <i class="fas fa-edit"></i>
             </button>
-            <button class="btn btn-danger btn-small" onclick="deleteTemplate('${template.id}', ${isDefault})">
-                <i class="fas fa-trash"></i> Delete
+            <button class="btn btn-danger" onclick="deleteTemplate('${template.id}', ${isDefault})" title="Delete">
+                <i class="fas fa-trash"></i>
             </button>
         </div>
     `;

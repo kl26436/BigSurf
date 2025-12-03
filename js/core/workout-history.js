@@ -648,10 +648,10 @@ showFixedWorkoutModal(workout) {
             const exerciseName = workout.exerciseNames?.[exerciseKey] || originalExercise.machine || 'Unknown Exercise';
 
             exerciseHTML += `
-                <div class="exercise-detail-item" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-tertiary); border-radius: 8px;">
-                    <h5 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">${exerciseName}</h5>
+                <div class="exercise-detail-item">
+                    <h5>${exerciseName}</h5>
                     ${this.generateSetsHTML(exerciseData?.sets || [])}
-                    ${exerciseData?.notes ? `<p style="margin-top: 0.5rem; font-style: italic; color: var(--text-secondary);">Notes: ${exerciseData.notes}</p>` : ''}
+                    ${exerciseData?.notes ? `<p class="exercise-notes">Notes: ${exerciseData.notes}</p>` : ''}
                 </div>
             `;
         });
@@ -706,8 +706,8 @@ showFixedWorkoutModal(workout) {
             <h3>${workout.workoutType} - ${displayDate}</h3>
         </div>
 
-        <div class="workout-detail-summary" style="margin-bottom: 2rem;">
-            <div class="workout-meta" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+        <div class="workout-detail-summary">
+            <div class="workout-meta">
                 <div><strong>Status:</strong> ${workoutStatus}</div>
                 <div><strong>Duration:</strong> ${formattedDuration}</div>
                 <div><strong>Progress:</strong> ${this.calculateProgress(workout)}%</div>
@@ -719,9 +719,8 @@ showFixedWorkoutModal(workout) {
             ${exerciseHTML}
         </div>
 
-        <div class="modal-actions" style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <div class="modal-actions">
             ${actionButtons}
-            <button class="btn btn-secondary" onclick="closeWorkoutDetailModal()">Close</button>
         </div>
     `;
     
@@ -732,13 +731,13 @@ showFixedWorkoutModal(workout) {
 
 generateSetsHTML(sets) {
     if (!sets || sets.length === 0) {
-        return '<p style="color: var(--text-secondary);">No sets recorded</p>';
+        return '<p class="no-sets-text">No sets recorded</p>';
     }
-    
-    let html = '<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">';
+
+    let html = '<div class="sets-list">';
     sets.forEach((set, index) => {
         if (set && (set.reps || set.weight)) {
-            html += `<span style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.9rem;">Set ${index + 1}: ${set.reps || 0} × ${set.weight || 0} lbs</span>`;
+            html += `<span class="set-badge">Set ${index + 1}: ${set.reps || 0} × ${set.weight || 0} lbs</span>`;
         }
     });
     html += '</div>';

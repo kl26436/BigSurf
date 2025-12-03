@@ -101,6 +101,9 @@ import {
 // Location service (GPS-based location detection)
 import { getSessionLocation } from './core/location-service.js';
 
+// UI helpers
+import { showStandaloneMenu } from './core/ui-helpers.js';
+
 // Navigation functionality
 import {
     openSidebar, closeSidebar, navigateTo,
@@ -333,6 +336,7 @@ window.toggleMoreMenu = toggleMoreMenu;
 window.closeMoreMenu = closeMoreMenu;
 window.setBottomNavVisible = setBottomNavVisible;
 window.updateBottomNavActive = updateBottomNavActive;
+window.showStandaloneMenu = showStandaloneMenu;
 
 // Dashboard Functions
 window.showDashboard = showDashboard;
@@ -411,37 +415,31 @@ window.showTemplatesByCategory = function(category) {
     
     // Create cards container
     const cardsContainer = document.createElement('div');
-    cardsContainer.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;';
-    
+    cardsContainer.className = 'template-grid';
+
     // Add workout cards
     filteredWorkouts.forEach(workout => {
         const card = document.createElement('div');
-        card.style.cssText = `
-            background: #21262d;
-            border: 1px solid #30363d;
-            border-radius: 12px;
-            padding: 1.5rem;
-            transition: all 0.3s ease;
-        `;
-        
+        card.className = 'workout-card';
+
         // Use name or day field (some workouts use name, others use day)
         const workoutName = workout.name || workout.day || 'Unnamed Workout';
+        const exerciseCount = workout.exercises?.length || 0;
 
         card.innerHTML = `
-            <h4 style="margin: 0 0 1rem 0; color: #c9d1d9;">${workoutName}</h4>
-            <p style="margin: 0 0 1rem 0; color: #8b949e;">${workout.exercises?.length || 0} exercises</p>
-            <button onclick="startWorkoutFromModal('${workoutName}')" style="
-                background: #40e0d0;
-                color: #0d1117;
-                border: none;
-                padding: 0.75rem 1.5rem;
-                border-radius: 8px;
-                cursor: pointer;
-                font-weight: 600;
-                width: 100%;
-            ">Start Workout</button>
+            <div class="workout-header">
+                <h3>${workoutName}</h3>
+            </div>
+            <div class="workout-preview">
+                <div class="exercise-count">${exerciseCount} exercises</div>
+            </div>
+            <div class="workout-actions">
+                <button class="btn btn-primary" onclick="startWorkoutFromModal('${workoutName}')">
+                    <i class="fas fa-play"></i> Start Workout
+                </button>
+            </div>
         `;
-        
+
         cardsContainer.appendChild(card);
     });
     

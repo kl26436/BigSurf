@@ -37,7 +37,7 @@
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style-new.css">
 </head>
 <body>
     <!-- Loading Screen -->
@@ -319,34 +319,51 @@
 
             <!-- Active Workout -->
             <section id="active-workout" class="content-section hidden">
-                <!-- Workout Header -->
-                <div class="current-workout-header">
-                    <div class="workout-info">
+                <!-- Workout Header - Hero Card Style -->
+                <div class="active-workout-hero">
+                    <!-- Top Row: Name + Timer -->
+                    <div class="workout-hero-top">
                         <h2 id="current-workout-name">Current Workout</h2>
-                        <div class="workout-meta">
-                            <span id="workout-start-time">Started now</span>
+                        <div class="workout-timer-badge">
+                            <i class="fas fa-clock"></i>
                             <span id="workout-duration">0:00</span>
                         </div>
-                        <!-- Location Indicator -->
-                        <div id="workout-location-indicator" class="workout-location-indicator hidden" onclick="changeWorkoutLocation()">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span id="workout-location-name">Unknown Location</span>
-                            <i id="workout-location-lock" class="fas fa-lock" style="display: none;" title="Location locked"></i>
+                    </div>
+
+                    <!-- Location Indicator -->
+                    <div id="workout-location-indicator" class="workout-location-indicator hidden" onclick="changeWorkoutLocation()">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span id="workout-location-name">Unknown Location</span>
+                        <i id="workout-location-lock" class="fas fa-lock" style="display: none;" title="Location locked"></i>
+                    </div>
+
+                    <!-- Stats Row -->
+                    <div class="workout-hero-stats">
+                        <div class="workout-stat">
+                            <span class="workout-stat-value" id="workout-progress-display">0/16</span>
+                            <span class="workout-stat-label">Sets</span>
+                        </div>
+                        <div class="workout-stat-divider"></div>
+                        <div class="workout-stat">
+                            <span class="workout-stat-value" id="workout-exercises-count">0/4</span>
+                            <span class="workout-stat-label">Exercises</span>
+                        </div>
+                        <div class="workout-stat-divider"></div>
+                        <div class="workout-stat" id="workout-rest-stat">
+                            <span class="workout-stat-value" id="workout-rest-timer">--</span>
+                            <span class="workout-stat-label">Rest</span>
                         </div>
                     </div>
-                    
-                    <div class="workout-progress">
-                        <span id="workout-progress-display">0/16 sets</span>
-                    </div>
-                    
-                    <div class="workout-actions">
-                        <button class="btn btn-secondary" onclick="cancelWorkout()">
+
+                    <!-- Action Buttons -->
+                    <div class="workout-hero-actions">
+                        <button class="btn-workout-action btn-cancel" onclick="cancelWorkout()">
                             <i class="fas fa-times"></i> Cancel
                         </button>
-                        <button class="btn btn-primary" onclick="addExerciseToActiveWorkout()">
-                            <i class="fas fa-plus"></i> Add Exercise
+                        <button class="btn-workout-action btn-add" onclick="addExerciseToActiveWorkout()">
+                            <i class="fas fa-plus"></i> Add
                         </button>
-                        <button class="btn btn-success" onclick="completeWorkout()">
+                        <button class="btn-workout-action btn-finish" onclick="completeWorkout()">
                             <i class="fas fa-check"></i> Finish
                         </button>
                     </div>
@@ -361,9 +378,12 @@
 
             <!-- Workout History -->
             <section id="workout-history-section" class="content-section hidden">
-              
-            <!-- Calendar Header -->
+                <!-- Calendar Header -->
                 <div class="calendar-header">
+                    <div class="calendar-title">
+                        <h1><i class="fas fa-calendar"></i> Workout Calendar</h1>
+                    </div>
+
                     <div class="month-navigation">
                         <button class="nav-button" onclick="previousMonth()">
                             <i class="fas fa-chevron-left"></i>
@@ -373,22 +393,9 @@
                             <i class="fas fa-chevron-right"></i>
                         </button>
                     </div>
-                    
-                    <div class="calendar-title">
-                        <h1><i class="fas fa-calendar"></i> Workout Calendar</h1>
-                    </div>
-                    
-                    <div class="header-actions">
-                        <button class="btn" onclick="navigateTo('dashboard')">
-                            <i class="fas fa-arrow-left"></i> Back
-                        </button>
-                        <button class="btn btn-primary" onclick="showAddManualWorkoutModal()">
-                            <i class="fas fa-plus"></i> Add Workout
-                        </button>
-                    </div>
                 </div>
-                
-                 <!-- Calendar -->
+
+                <!-- Calendar -->
                 <div class="calendar-container">
                     <div class="calendar-weekdays">
                         <div class="weekday">Sun</div>
@@ -401,6 +408,33 @@
                     </div>
                     <div class="calendar-grid" id="calendar-grid">
                         <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Add Workout Button (below calendar) -->
+                <div class="calendar-actions">
+                    <button class="btn btn-primary" onclick="showAddManualWorkoutModal()">
+                        <i class="fas fa-plus"></i> Add Workout
+                    </button>
+                </div>
+            </section>
+
+            <!-- Workout Management Section (Full Page, not a modal) -->
+            <section id="workout-management-section" class="content-section hidden">
+                <div class="section-content">
+                    <div class="section-header-row">
+                        <h2 class="section-title"><i class="fas fa-dumbbell"></i> Workout Library</h2>
+                        <button class="btn btn-primary" onclick="createNewTemplate()">
+                            <i class="fas fa-plus"></i> New
+                        </button>
+                    </div>
+                    <div class="section-body">
+                        <!-- All Templates (Unified List) -->
+                        <div class="template-categories">
+                            <div id="all-templates" class="template-grid">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -526,26 +560,6 @@
                     </div>
                     <div class="modal-body" id="template-editor-content">
                         <!-- Populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Workout Management Section -->
-            <section id="workout-management-section" class="content-section hidden">
-                <div class="section-content">
-                    <div class="section-body">
-                        <div class="modal-actions-top">
-                            <button class="btn btn-primary" onclick="createNewTemplate()">
-                                <i class="fas fa-plus"></i> New Workout
-                            </button>
-                        </div>
-
-                        <!-- All Templates (Unified List) -->
-                        <div class="template-categories">
-                            <div id="all-templates" class="template-grid">
-                                <!-- Populated by JavaScript -->
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -758,6 +772,14 @@
 
 <!-- Exercise Manager Section -->
 <section id="exercise-manager-section" class="content-section hidden">
+    <!-- Section Header -->
+    <div class="section-header-row">
+        <h2 class="section-title"><i class="fas fa-dumbbell"></i> Exercise Library</h2>
+        <button class="btn btn-primary" onclick="showAddExerciseModal()">
+            <i class="fas fa-plus"></i> New
+        </button>
+    </div>
+
     <!-- View 1: Category Grid (Entry Page) -->
     <div id="exercise-category-view" class="exercise-library-view">
         <!-- Header with search only -->
@@ -845,12 +867,6 @@
             <!-- Exercises will be loaded here -->
         </div>
 
-        <!-- Add Exercise Button (bottom) -->
-        <div class="exercise-list-footer">
-            <button class="btn-add-exercise-bottom" onclick="showAddExerciseModal()">
-                <i class="fas fa-plus"></i> Add New Exercise
-            </button>
-        </div>
     </div>
 </section>
 

@@ -1,400 +1,143 @@
 /* ============================================================================
-   BIG SURF WORKOUT TRACKER - DESIGN SYSTEM v5.0
+   BIG SURF WORKOUT TRACKER - STYLES
    ============================================================================
-
-   This file uses a consolidated design system with:
-   - Unified theme tokens (Section 1)
-   - Reusable component patterns (Section 2)
-   - Feature-specific styles (Sections 3+)
-
-   Z-INDEX SCALE:
-   Base: 0, Dropdowns: 100, Sticky: 200, Sidebar: 300,
-   Overlay: 400, Modal: 500, Modal-High: 600, Toast: 700, Loading: 800, Critical: 900
-
+   
+   TABLE OF CONTENTS:
+   1. CSS Variables & Reset ............... Theme colors, global resets
+   2. Layout & Structure .................. Header, containers, sections
+   3. Components .......................... Buttons, cards, badges, tabs
+   4. Workout Features .................... Exercise cards, sets, timers
+   5. History & Calendar .................. Workout history, calendar grid
+   6. Modals & Overlays ................... Modal dialogs, popups
+   7. Forms & Inputs ...................... Input fields, selects, forms
+   8. Animations & Loading ................ Keyframes, skeletons, spinners
+   9. Utilities ........................... Hidden, helpers, misc
+   10. Media Queries ...................... Responsive breakpoints
+   
    ============================================================================ */
 
 
 /* ============================================================================
-   1. DESIGN TOKENS
+   Z-INDEX SCALE (Standardized Stacking Context)
+   ============================================================================
+   Base:        0     - Default stacking
+   Dropdowns:   100   - Dropdown menus, tooltips
+   Sticky:      200   - Sticky elements, fixed headers
+   Sidebar:     300   - Navigation sidebar
+   Overlay:     400   - Backdrop overlays
+   Modal:       500   - Standard modals
+   Modal-High:  600   - Modals that appear over other modals
+   Toast:       700   - Notifications, toasts
+   Loading:     800   - Loading screens
+   Critical:    900   - Critical UI (errors, confirmations)
+   ============================================================================ */
+
+
+/* ============================================================================
+   1. CSS VARIABLES & RESET
    ============================================================================ */
 
 :root {
-    /* Brand + Accents */
+    /* Teal accent - Big Surf design system */
     --primary: #1dd3b0;
-    --primary-600: #12bfa1;
-    --primary-700: #0fa48a;
-    /* Legacy aliases */
-    --primary-dark: var(--primary-600);
-    --primary-hover: var(--primary-700);
+    --primary-dark: #12bfa1;
+    --primary-hover: #0fa48a;
 
-    /* Status Colors */
-    --success: #36c46b;
-    --danger: #e35d6a;
-    --warning: #f0c24b;
+    /* Dark backgrounds with subtle elevation */
+    --bg-primary: #0d1117;
+    --bg-secondary: #11161d;
+    --bg-tertiary: #161b22;
+    --bg-elevated: #1a2028;
 
-    /* Backgrounds (elevation hierarchy) */
-    --bg-app: #0d1117;
-    --bg-surface: #10151d;
-    --bg-card: #141a22;
-    --bg-card-hi: #181f28;
-    /* Legacy aliases */
-    --bg-primary: var(--bg-app);
-    --bg-secondary: var(--bg-surface);
-    --bg-tertiary: var(--bg-card);
-    --bg-elevated: var(--bg-card-hi);
-
-    /* Text */
-    --text-strong: #e6edf3;
-    --text-main: #c0c7d0;
+    /* Borders and text */
+    --border: #26303a;
+    --text-primary: #e6edf3;
+    --text-secondary: #c0c7d0;
     --text-muted: #8b949e;
-    /* Legacy aliases */
-    --text-primary: var(--text-strong);
-    --text-secondary: var(--text-main);
 
-    /* Borders */
-    --border: #252f3a;
-    --border-subtle: rgba(255, 255, 255, 0.05);
-    --border-accent: rgba(29, 211, 176, 0.85);
-
-    /* Border Radius */
-    --radius-lg: 18px;
-    --radius-md: 14px;
-    --radius-sm: 10px;
-    --radius-pill: 999px;
-    /* Legacy aliases */
-    --radius: var(--radius-md);
+    /* Status colors */
+    --success: #36c46b;
+    --warning: #f0c24b;
+    --danger: #e35d6a;
 
     /* Shadows */
-    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.45);
-    --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.55);
-    --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.7);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.35);
+    --shadow-md: 0 6px 18px rgba(0,0,0,0.35);
+    --shadow-lg: 0 12px 30px rgba(0,0,0,0.35);
 
-    /* Spacing */
-    --space-xs: 6px;
-    --space-sm: 10px;
-    --space-md: 14px;
-    --space-lg: 18px;
-    --space-xl: 24px;
-
-    /* Sizing */
-    --tap-target: 44px;
-
-    /* Typography */
-    --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* Border radius */
+    --radius: 14px;
+    --radius-sm: 10px;
 }
-
-
-/* ============================================================================
-   2. GLOBAL RESET & BASE STYLES
-   ============================================================================ */
-
-*,
-*::before,
-*::after {
+* {
     box-sizing: border-box;
-}
-
-html, body {
     margin: 0;
     padding: 0;
-    min-height: 100%;
 }
-
 body {
-    background: radial-gradient(circle at top, #111827 0%, var(--bg-app) 60%);
-    color: var(--text-strong);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1f2e 100%);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
 }
-
-/* App Shell */
-.app-shell {
-    max-width: 420px;
-    margin: 0 auto;
-    padding: var(--space-lg) var(--space-lg) 32px;
-}
-
-/* Text Utilities */
-.text-muted { color: var(--text-muted); }
-.text-main { color: var(--text-main); }
-.text-strong { color: var(--text-strong); }
-.text-primary { color: var(--primary); }
-.text-success { color: var(--success); }
-.text-danger { color: var(--danger); }
-
-/* Spacing Utilities */
-.mt-sm { margin-top: var(--space-sm); }
-.mt-md { margin-top: var(--space-md); }
-.mt-lg { margin-top: var(--space-lg); }
-.mb-sm { margin-bottom: var(--space-sm); }
-.mb-md { margin-bottom: var(--space-md); }
-.mb-lg { margin-bottom: var(--space-lg); }
-
-/* Display Utilities */
-.hidden { display: none !important; }
-.flex { display: flex; }
-.flex-center { display: flex; align-items: center; justify-content: center; }
-.gap-sm { gap: var(--space-sm); }
-.gap-md { gap: var(--space-md); }
-
 
 /* ============================================================================
-   3. BUTTON SYSTEM
+   1.5. BASE COMPONENT PATTERNS
    ============================================================================ */
 
-.btn {
-    min-height: var(--tap-target);
-    padding: 0 var(--space-md);
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--border-subtle);
-    background: var(--bg-card-hi);
-    color: var(--text-strong);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-weight: 600;
-    font-size: 0.92rem;
-    cursor: pointer;
-    transition: background 0.16s ease, transform 0.12s ease, box-shadow 0.16s ease, border-color 0.16s ease;
-}
-
-.btn:active {
-    transform: translateY(1px);
-}
-
-.btn--primary,
-.btn-primary {
-    background: linear-gradient(180deg, var(--primary), var(--primary-600));
-    color: #02100e;
-    border-color: transparent;
-    box-shadow: 0 12px 26px rgba(5, 200, 160, 0.35);
-}
-
-.btn--primary:hover,
-.btn-primary:hover {
-    filter: brightness(1.04);
-}
-
-.btn--secondary,
-.btn-secondary {
-    background: var(--bg-card-hi);
-    border-color: var(--border);
-    color: var(--text-main);
-}
-
-.btn--secondary:hover,
-.btn-secondary:hover {
-    border-color: var(--primary);
-}
-
-.btn--success,
-.btn-success {
-    background: linear-gradient(180deg, var(--success), #2aa85a);
-    color: #03150a;
-    border-color: transparent;
-}
-
-.btn--ghost {
-    background: transparent;
-    border-color: transparent;
-    color: var(--text-main);
-}
-
-.btn--ghost:hover {
-    color: var(--primary);
-}
-
-.btn--danger,
-.btn-danger {
-    background: var(--danger);
-    color: white;
-    border-color: transparent;
-}
-
-.btn--danger-outline {
-    background: transparent;
-    border-color: var(--border);
-    color: var(--text-main);
-}
-
-.btn--danger-outline:hover {
-    border-color: var(--danger);
-    color: var(--danger);
-}
-
-/* Text-only buttons */
-.btn-text {
-    background: transparent;
-    border: none;
-    padding: var(--space-xs) var(--space-sm);
-    min-height: auto;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    cursor: pointer;
-}
-
-.btn-text:hover {
-    color: var(--text-strong);
-}
-
-.btn-text-primary { color: var(--primary); }
-.btn-text-primary:hover { color: var(--primary-600); }
-.btn-text-danger { color: var(--danger); }
-.btn-text-danger:hover { filter: brightness(1.2); }
-
-/* Full-width button */
-.btn-full {
-    width: 100%;
-}
-
-
-/* ============================================================================
-   4. CARD SYSTEM
-   ============================================================================ */
-
-.card {
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
-    padding: var(--space-md) var(--space-lg);
-}
-
-.card--elevated,
+/* Elevated Card - Base pattern for all cards with dark gradient + teal accent
+   Usage: Add .card-elevated to any card container, optionally with modifiers:
+   - .card-elevated--accent-top: Adds teal top border accent
+   - .card-elevated--clickable: Adds hover states for interactive cards
+   - .card-elevated--completed: Green accent for completed items
+*/
 .card-elevated {
     background: linear-gradient(135deg, rgba(30, 35, 42, 0.95) 0%, rgba(20, 24, 30, 0.98) 100%);
     border: none;
-    box-shadow: var(--shadow-md);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+    transition: all 0.2s ease;
 }
 
-.card--accent-top,
 .card-elevated--accent-top {
-    position: relative;
-    border-top: 3px solid var(--border-accent);
+    border-top: 3px solid rgba(64, 224, 208, 0.85);
 }
 
-.card--clickable,
 .card-elevated--clickable {
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.card--clickable:hover,
 .card-elevated--clickable:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
 }
 
-.card--clickable:active,
-.card-elevated--clickable:active {
-    transform: scale(0.98);
-}
-
-.card--completed,
 .card-elevated--completed {
     border-top: 3px solid var(--success);
     background: linear-gradient(135deg, rgba(35, 134, 54, 0.15) 0%, rgba(20, 24, 30, 0.98) 100%);
 }
 
-/* Card Header */
-.card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-sm);
-    margin-bottom: var(--space-sm);
-}
-
-.card-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-strong);
-}
-
-.card-subtitle {
-    font-size: 0.875rem;
-    color: var(--text-muted);
-}
-
-
-/* ============================================================================
-   5. STAT BOX SYSTEM
-   ============================================================================ */
-
+/* Stat Box - Consistent styling for stat display boxes */
 .stat-box {
     text-align: center;
     padding: 0.75rem 0.5rem;
     background: rgba(255, 255, 255, 0.03);
     border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .stat-box__value {
     display: block;
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--text-strong);
+    color: var(--text-primary);
 }
 
 .stat-box__label {
     display: block;
     font-size: 0.7rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-top: 0.125rem;
-}
-
-/* Stats Grid */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-sm);
-}
-
-/* Stats Row with Dividers */
-.stats-row {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: var(--space-md) 0;
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.stats-row__divider {
-    width: 1px;
-    height: 32px;
-    background: var(--border-subtle);
-}
-
-
-/* ============================================================================
-   6. SECTION HEADERS
-   ============================================================================ */
-
-.section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: var(--space-lg) 2px var(--space-sm);
-}
-
-.section-header__title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--text-strong);
-}
-
-.section-header__link {
-    font-size: 0.9rem;
-    color: var(--primary);
-    cursor: pointer;
-}
-
-.section-header__link:hover {
-    text-decoration: underline;
 }
 
 /* ============================================================================
@@ -1898,11 +1641,65 @@ body {
     transform: scale(1.1);
 }
 
-/* Button size modifier */
+/* Buttons */
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), #20b2aa);
+    color: var(--bg-primary);
+    border: none;
+}
+
+.btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.btn-danger {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.btn-danger:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: rgba(227, 93, 106, 0.1);
+}
+
 .btn-small {
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
-    min-height: 36px;
+    border-radius: 10px;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 /* Template Editor Section */
@@ -3484,6 +3281,21 @@ body {
     color: var(--text-secondary);
     margin-bottom: 1.5rem;
 }
+
+/* Compact Exercise Cards - Removed (was duplicate) */
+/* .exercise-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border);
+    transition: background 0.2s;
+}
+
+.exercise-card:hover {
+    background: rgba(64, 224, 208, 0.05);
+} */
 
 .exercise-card.custom {
     border-left: 3px solid var(--success);
@@ -6127,6 +5939,11 @@ img[loading="lazy"].loaded {
     animation: fadeOut 0.3s ease forwards;
 }
 
+/* Hidden */
+.hidden {
+    display: none !important;
+}
+
 /* Location selector modal - higher z-index to appear above other modals */
 #location-selector-modal {
     z-index: 600;
@@ -7856,6 +7673,8 @@ img[loading="lazy"].loaded {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 1rem;
 }
+
+/* Duplicate .stat-card removed - see Stats Grid section above */
 
 .stat-icon {
     width: 50px;

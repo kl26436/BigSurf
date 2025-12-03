@@ -2,7 +2,7 @@
 // Handles workout session execution, exercise management, and workout lifecycle
 
 import { AppState } from './app-state.js';
-import { showNotification, convertWeight, updateProgress, setHeaderMode } from './ui-helpers.js';
+import { showNotification, convertWeight, updateProgress, setHeaderMode, stopActiveWorkoutRestTimer } from './ui-helpers.js';
 import { setBottomNavVisible } from './navigation.js';
 import { saveWorkoutData, loadExerciseHistory } from './data-manager.js';
 import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from './push-notification-manager.js';
@@ -203,8 +203,9 @@ export function pauseWorkout() {
 export async function completeWorkout() {
     if (!AppState.currentWorkout) return;
 
-    // Stop duration timer
+    // Stop duration timer and rest timer display
     AppState.clearTimers();
+    stopActiveWorkoutRestTimer();
 
     const isEditingHistorical = window.editingHistoricalWorkout === true;
 
@@ -265,6 +266,7 @@ export function cancelWorkout(skipConfirmation = false) {
 
     AppState.reset();
     AppState.clearTimers();
+    stopActiveWorkoutRestTimer();
 
     // Clear in-progress workout since it's been cancelled
     window.inProgressWorkout = null;
@@ -461,9 +463,10 @@ export async function editHistoricalWorkout(dateStr) {
         workoutNameElement.textContent = `${workoutData.workoutType} (Editing)`;
     }
 
-    // Hide header and nav for workout view
+    // Hide header and nav for workout view, show standalone hamburger
     setHeaderMode(false);
     setBottomNavVisible(false);
+    if (window.showStandaloneMenu) window.showStandaloneMenu(true);
 
     // Display static duration (don't start a live timer when editing)
     displayStaticDuration(workoutData.totalDuration);
@@ -697,7 +700,7 @@ export function focusExercise(index) {
 
     modal.classList.remove('hidden');
 
-    // Hide nav when exercise modal is open
+    // Hide nav when exercise modal is open (no hamburger needed - has X to close)
     setHeaderMode(false);
     setBottomNavVisible(false);
 
@@ -2068,6 +2071,9 @@ export async function editExerciseDefaults(exerciseName) {
     if (!exercise) {
         return;
     }
+
+    // Close the exercise modal first
+    closeExerciseModal();
 
     // Set flag to indicate we're editing from active workout
     window.editingFromActiveWorkout = true;
