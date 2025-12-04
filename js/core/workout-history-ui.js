@@ -104,6 +104,11 @@ export function viewWorkout(workoutId) {
     showWorkoutDetailModal(workout);
 }
 
+// Schema v3.0: Alias for resumeWorkout that accepts docId
+export function resumeWorkoutById(docId) {
+    resumeWorkout(docId);
+}
+
 export function resumeWorkout(workoutId) {
     if (!window.workoutHistory) return;
 
@@ -321,6 +326,7 @@ export function closeWorkoutDetailModal() {
     const modal = document.getElementById('workout-detail-modal');
     if (modal) {
         modal.classList.add('hidden');
+        modal.style.display = 'none';  // Clear inline style set by showFixedWorkoutModal
     }
 }
 

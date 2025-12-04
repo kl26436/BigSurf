@@ -2621,6 +2621,80 @@ input[type="number"] { -moz-appearance: textfield; }
   margin-top: 2px;
 }
 
+/* Schema v3.0: Multiple workouts per day - count badge */
+.workout-count-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--primary);
+  color: var(--bg-app);
+  font-size: 0.6rem;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.calendar-day .workout-icon { position: relative; }
+
+/* Schema v3.0: Workout picker for multiple workouts */
+.workout-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+}
+.workout-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.workout-picker-item:hover {
+  background: var(--bg-card-hi);
+  border-color: var(--primary);
+}
+.workout-picker-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  background: rgba(29, 211, 176, 0.12);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.workout-picker-icon.push { background: rgba(244, 67, 54, 0.12); color: #f44336; }
+.workout-picker-icon.pull { background: rgba(33, 150, 243, 0.12); color: #2196f3; }
+.workout-picker-icon.legs { background: rgba(255, 152, 0, 0.12); color: #ff9800; }
+.workout-picker-icon.cardio { background: rgba(156, 39, 176, 0.12); color: #9c27b0; }
+.workout-picker-info {
+  flex: 1;
+  min-width: 0;
+}
+.workout-picker-name {
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 4px;
+}
+.workout-picker-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ===========================================
    23. EXERCISE MANAGER & LIBRARY
    =========================================== */
@@ -3788,31 +3862,40 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 /* ===========================================
-   35. REST TIMER MODAL
+   35. REST TIMER IN EXERCISE MODAL
    =========================================== */
+.modal-rest-timer {
+  background: var(--bg-card-hi);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin: 12px 0;
+}
 .modal-rest-content {
   text-align: center;
-  padding: 20px;
 }
 .modal-rest-exercise {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 16px;
-  color: var(--text-strong);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--text-muted);
 }
 .modal-rest-display {
-  font-size: 3rem;
+  font-size: 2.5rem;
   font-weight: 700;
   color: var(--primary);
-  margin: 20px 0;
+  margin: 8px 0;
 }
 .modal-rest-controls {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   justify-content: center;
-  margin-top: 20px;
+  margin-top: 8px;
 }
-.modal-rest-timer { padding: 24px; }
+.modal-rest-controls .btn {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+}
 
 /* ===========================================
    36. CONGRATS BANNER

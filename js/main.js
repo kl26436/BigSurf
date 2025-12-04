@@ -43,7 +43,7 @@ import {
 
 // Workout history UI functionality
 import {
-    showWorkoutHistory, viewWorkout, resumeWorkout, repeatWorkout,
+    showWorkoutHistory, viewWorkout, resumeWorkout, resumeWorkoutById, repeatWorkout,
     deleteWorkout, retryWorkout, clearAllHistoryFilters
 } from './core/workout-history-ui.js';
 
@@ -370,9 +370,23 @@ window.useTemplateFromManagement = useTemplateFromManagement;
 window.copyTemplateToCustom = copyTemplateToCustom;
 window.deleteCustomTemplate = deleteCustomTemplate;
 window.showTemplatesByCategory = function(category) {
+    // Helper to derive category from workout name
+    function getWorkoutCategory(dayName) {
+        if (!dayName) return 'other';
+        const dayLower = dayName.toLowerCase();
+        if (dayLower.includes('push') || dayLower.includes('chest')) return 'push';
+        if (dayLower.includes('pull') || dayLower.includes('back')) return 'pull';
+        if (dayLower.includes('leg') || dayLower.includes('lower')) return 'legs';
+        if (dayLower.includes('cardio') || dayLower.includes('core')) return 'cardio';
+        return 'other';
+    }
+
     // Filter workouts by category
     const filteredWorkouts = window.AppState.workoutPlans.filter(workout => {
-        const workoutCategory = (workout.category || workout.type || '').toLowerCase();
+        // Check explicit category field first, then derive from name
+        const workoutCategory = workout.category?.toLowerCase() ||
+            workout.type?.toLowerCase() ||
+            getWorkoutCategory(workout.day || workout.name || '');
         return workoutCategory === category.toLowerCase();
     });
 
@@ -469,6 +483,7 @@ window.closeTemplateSelection = function() {
 window.showWorkoutHistory = showWorkoutHistory;
 window.viewWorkout = viewWorkout;
 window.resumeWorkout = resumeWorkout;
+window.resumeWorkoutById = resumeWorkoutById;  // Schema v3.0: accepts docId
 window.repeatWorkout = repeatWorkout;
 window.deleteWorkout = deleteWorkout;
 window.retryWorkout = retryWorkout;

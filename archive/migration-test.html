@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout Migration Test</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { color: #1dd3b0; margin-bottom: 10px; }
+        h2 { color: #8b949e; font-size: 1rem; font-weight: normal; margin-top: 0; }
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #f0f6fc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status { padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; }
+        .status-waiting { background: #30363d; }
+        .status-success { background: #238636; }
+        .status-error { background: #da3633; }
+        .status-warning { background: #9e6a03; }
+        button {
+            background: #1dd3b0;
+            color: #0d1117;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover { background: #3cdfbe; }
+        button:disabled { background: #30363d; color: #8b949e; cursor: not-allowed; }
+        button.danger { background: #da3633; color: white; }
+        button.danger:hover { background: #f85149; }
+        button.secondary { background: #30363d; color: #c9d1d9; }
+        button.secondary:hover { background: #484f58; }
+        #log {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .log-info { color: #58a6ff; }
+        .log-success { color: #3fb950; }
+        .log-warning { color: #d29922; }
+        .log-error { color: #f85149; }
+        #userInfo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        #userInfo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .hidden { display: none !important; }
+        .warning-box {
+            background: rgba(158, 106, 3, 0.2);
+            border: 1px solid #9e6a03;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .warning-box strong { color: #d29922; }
+    </style>
+</head>
+<body>
+    <h1>🔄 Multi-Workout Migration Tool</h1>
+    <h2>Migrate from single workout per day to multiple workouts per day</h2>
+
+    <!-- Auth Card -->
+    <div class="card" id="authCard">
+        <h3>🔐 Authentication</h3>
+        <div id="signedOut">
+            <p>Sign in with your Google account to access your workout data.</p>
+            <button id="signInBtn">Sign In with Google</button>
+        </div>
+        <div id="signedIn" class="hidden">
+            <div id="userInfo">
+                <img id="userPhoto" src="" alt="User">
+                <div>
+                    <strong id="userName"></strong><br>
+                    <small id="userEmail"></small>
+                </div>
+            </div>
+            <button id="signOutBtn" class="secondary">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- Analysis Card -->
+    <div class="card" id="analysisCard">
+        <h3>📊 Step 1: Analyze Current Data <span class="status status-waiting" id="analysisStatus">Waiting</span></h3>
+        <p>First, let's see what workouts you have and whether they need migration.</p>
+        <button id="analyzeBtn" disabled>Analyze Workouts</button>
+        <div id="analysisResults" class="hidden" style="margin-top: 15px;"></div>
+    </div>
+
+    <!-- Migration Card -->
+    <div class="card" id="migrationCard">
+        <h3>🔄 Step 2: Run Migration <span class="status status-waiting" id="migrationStatus">Waiting</span></h3>
+        <div class="warning-box">
+            <strong>⚠️ Important:</strong> Always run a dry run first to see what will change.
+            The actual migration creates NEW documents and marks old ones as migrated (doesn't delete them).
+        </div>
+        <button id="dryRunBtn" disabled>Dry Run (Safe Preview)</button>
+        <button id="migrateBtn" disabled class="danger">Run Actual Migration</button>
+    </div>
+
+    <!-- Verification Card -->
+    <div class="card" id="verificationCard">
+        <h3>✅ Step 3: Verify & Cleanup <span class="status status-waiting" id="verificationStatus">Waiting</span></h3>
+        <p>After migration, verify everything works correctly in the app before cleaning up old documents.</p>
+        <button id="verifyBtn" disabled class="secondary">Re-Analyze Data</button>
+        <button id="cleanupDryRunBtn" disabled class="secondary">Cleanup Dry Run</button>
+        <button id="cleanupBtn" disabled class="danger">Delete Old Documents</button>
+    </div>
+
+    <!-- Rollback Card -->
+    <div class="card" id="rollbackCard">
+        <h3>⏪ Emergency Rollback</h3>
+        <p>If something goes wrong, you can undo the migration (only works before cleanup).</p>
+        <button id="rollbackDryRunBtn" disabled class="secondary">Rollback Dry Run</button>
+        <button id="rollbackBtn" disabled class="danger">Execute Rollback</button>
+    </div>
+
+    <!-- Log Output -->
+    <div class="card">
+        <h3>📝 Console Log</h3>
+        <div id="log"></div>
+        <button onclick="document.getElementById('log').innerHTML = ''" class="secondary" style="margin-top: 10px;">Clear Log</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase config (same as main app)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAbzL4bGY026Z-oWiWcYLfDgkmmgAfUY3k",
+            authDomain: "workout-tracker-b94b6.firebaseapp.com",
+            projectId: "workout-tracker-b94b6",
+            storageBucket: "workout-tracker-b94b6.appspot.com",
+            messagingSenderId: "111958991290",
+            appId: "1:111958991290:web:23e1014ab2ba27df6ebd83"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        let currentUser = null;
+
+        // Logging helper
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = `log-${type}`;
+            logEl.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        // Update status badge
+        function setStatus(elementId, status, text) {
+            const el = document.getElementById(elementId);
+            el.className = `status status-${status}`;
+            el.textContent = text;
+        }
+
+        // Check if document ID is old schema (date format)
+        function isOldSchemaDoc(docId) {
+            return /^\d{4}-\d{2}-\d{2}$/.test(docId);
+        }
+
+        // Generate unique workout ID
+        function generateWorkoutId(date) {
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(2, 8);
+            return `${date}_${timestamp}_${random}`;
+        }
+
+        // Auth state handling
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('signedOut').classList.add('hidden');
+                document.getElementById('signedIn').classList.remove('hidden');
+                document.getElementById('userName').textContent = user.displayName;
+                document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('userPhoto').src = user.photoURL || '';
+
+                // Enable buttons
+                document.getElementById('analyzeBtn').disabled = false;
+                log(`Signed in as ${user.displayName} (${user.uid})`, 'success');
+            } else {
+                document.getElementById('signedOut').classList.remove('hidden');
+                document.getElementById('signedIn').classList.add('hidden');
+
+                // Disable all action buttons
+                document.querySelectorAll('button:not(#signInBtn)').forEach(btn => btn.disabled = true);
+                document.getElementById('signInBtn').disabled = false;
+            }
+        });
+
+        // Sign in
+        document.getElementById('signInBtn').addEventListener('click', async () => {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                log(`Sign in error: ${error.message}`, 'error');
+            }
+        });
+
+        // Sign out
+        document.getElementById('signOutBtn').addEventListener('click', async () => {
+            await signOut(auth);
+            log('Signed out', 'info');
+        });
+
+        // Analyze workouts
+        async function analyzeWorkouts() {
+            if (!currentUser) return null;
+
+            log('Analyzing workout data...', 'info');
+            setStatus('analysisStatus', 'warning', 'Running...');
+
+            const workoutsRef = collection(db, "users", currentUser.uid, "workouts");
+            const q = query(workoutsRef, orderBy("date", "desc"));
+            const snapshot = await getDocs(q);
+
+            const analysis = {
+                total: 0,
+                oldSchema: [],
+                newSchema: [],
+                needsMigration: false
+            };
+
+            snapshot.forEach((docSnap) => {
+                analysis.total++;
+                const data = docSnap.data();
+
+                if (isOldSchemaDoc(docSnap.id)) {
+                    analysis.oldSchema.push({
+                        id: docSnap.id,
+                        date: data.date,
+                        workoutType: data.workoutType,
+                        completedAt: data.completedAt,
+                        migrated: data.migrated || false
+                    });
+                } else {
+                    analysis.newSchema.push({
+                        id: docSnap.id,
+                        date: data.date,
+                        workoutType: data.workoutType,
+                        completedAt: data.completedAt
+                    });
+                }
+            });
+
+            analysis.needsMigration = analysis.oldSchema.some(w => !w.migrated);
+
+            // Display results
+            log(`Total workouts: ${analysis.total}`, 'info');
+            log(`Old schema (date as ID): ${analysis.oldSchema.length}`, analysis.oldSchema.length > 0 ? 'warning' : 'success');
+            log(`New schema (unique ID): ${analysis.newSchema.length}`, 'success');
+            log(`Needs migration: ${analysis.needsMigration}`, analysis.needsMigration ? 'warning' : 'success');
+
+            if (analysis.oldSchema.length > 0) {
+                log('\nOld schema workouts:', 'info');
+                analysis.oldSchema.forEach(w => {
+                    const status = w.migrated ? '✅ migrated' : '⏳ needs migration';
+                    log(`  ${w.id}: ${w.workoutType} (${status})`, w.migrated ? 'success' : 'warning');
+                });
+            }
+
+            // Update UI
+            const resultsEl = document.getElementById('analysisResults');
+            resultsEl.classList.remove('hidden');
+            resultsEl.innerHTML = `
+                <strong>Results:</strong><br>
+                Total: ${analysis.total} workouts<br>
+                Old schema: ${analysis.oldSchema.length}<br>
+                New schema: ${analysis.newSchema.length}<br>
+                Needs migration: ${analysis.needsMigration ? 'Yes' : 'No'}
+            `;
+
+            setStatus('analysisStatus', analysis.needsMigration ? 'warning' : 'success',
+                      analysis.needsMigration ? 'Needs Migration' : 'Up to Date');
+
+            // Enable migration buttons if needed
+            if (analysis.needsMigration) {
+                document.getElementById('dryRunBtn').disabled = false;
+                document.getElementById('migrateBtn').disabled = false;
+            }
+            document.getElementById('verifyBtn').disabled = false;
+            document.getElementById('cleanupDryRunBtn').disabled = false;
+            document.getElementById('cleanupBtn').disabled = false;
+            document.getElementById('rollbackDryRunBtn').disabled = false;
+            document.getElementById('rollbackBtn').disabled = false;
+
+            return analysis;
+        }
+
+        // Migration function
+        async function migrateWorkouts(dryRun = true) {
+            if (!currentUser) return;
+
+            log(`\n${dryRun ? '[DRY RUN] ' : ''}Starting migration...`, 'info');
+            setStatus('migrationStatus', 'warning', 'Running...');
+
+            const workoutsRef = collection(db, "users", currentUser.uid, "workouts");
+            const snapshot = await getDocs(workoutsRef);
+
+            let migrated = 0, skipped = 0, errors = 0;
+
+            for (const docSnap of snapshot.docs) {
+                if (!isOldSchemaDoc(docSnap.id)) continue;
+
+                const data = docSnap.data();
+
+                if (data.migrated) {
+                    log(`  Skipping ${docSnap.id} - already migrated`, 'info');
+                    skipped++;
+                    continue;
+                }
+
+                try {
+                    const newId = generateWorkoutId(data.date);
+                    const migratedData = {
+                        ...data,
+                        originalId: docSnap.id,
+                        migratedAt: new Date().toISOString(),
+                        schemaVersion: '3.0'
+                    };
+
+                    if (dryRun) {
+                        log(`  Would migrate: ${docSnap.id} → ${newId}`, 'info');
+                    } else {
+                        // Create new document
+                        await setDoc(doc(db, "users", currentUser.uid, "workouts", newId), migratedData);
+
+                        // Mark old as migrated
+                        await setDoc(doc(db, "users", currentUser.uid, "workouts", docSnap.id), {
+                            ...data,
+                            migrated: true,
+                            migratedTo: newId,
+                            migratedAt: new Date().toISOString()
+                        });
+
+                        log(`  ✅ Migrated: ${docSnap.id} → ${newId}`, 'success');
+                    }
+                    migrated++;
+                } catch (error) {
+                    log(`  ❌ Error migrating ${docSnap.id}: ${error.message}`, 'error');
+                    errors++;
+                }
+            }
+
+            log(`\n${dryRun ? '[DRY RUN] ' : ''}Migration complete:`, 'info');
+            log(`  Migrated: ${migrated}`, 'success');
+            log(`  Skipped: ${skipped}`, 'info');
+            log(`  Errors: ${errors}`, errors > 0 ? 'error' : 'info');
+
+            setStatus('migrationStatus', errors > 0 ? 'error' : 'success',
+                      dryRun ? 'Dry Run Complete' : 'Migration Complete');
+        }
+
+        // Cleanup function
+        async function cleanupOldWorkouts(dryRun = true) {
+            if (!currentUser) return;
+
+            log(`\n${dryRun ? '[DRY RUN] ' : ''}Starting cleanup...`, 'info');
+
+            const workoutsRef = collection(db, "users", currentUser.uid, "workouts");
+            const snapshot = await getDocs(workoutsRef);
+
+            let deleted = 0, skipped = 0;
+
+            for (const docSnap of snapshot.docs) {
+                if (!isOldSchemaDoc(docSnap.id)) continue;
+
+                const data = docSnap.data();
+
+                if (data.migrated && data.migratedTo) {
+                    if (dryRun) {
+                        log(`  Would delete: ${docSnap.id}`, 'info');
+                    } else {
+                        await deleteDoc(doc(db, "users", currentUser.uid, "workouts", docSnap.id));
+                        log(`  🗑️ Deleted: ${docSnap.id}`, 'success');
+                    }
+                    deleted++;
+                } else {
+                    log(`  Skipping: ${docSnap.id} - not migrated`, 'warning');
+                    skipped++;
+                }
+            }
+
+            log(`\nCleanup ${dryRun ? '(dry run) ' : ''}complete: ${deleted} deleted, ${skipped} skipped`, 'info');
+            setStatus('verificationStatus', 'success', 'Cleanup Complete');
+        }
+
+        // Rollback function
+        async function rollbackMigration(dryRun = true) {
+            if (!currentUser) return;
+
+            log(`\n${dryRun ? '[DRY RUN] ' : ''}Starting rollback...`, 'warning');
+
+            const workoutsRef = collection(db, "users", currentUser.uid, "workouts");
+            const snapshot = await getDocs(workoutsRef);
+
+            let restored = 0, deletedNew = 0;
+
+            for (const docSnap of snapshot.docs) {
+                const data = docSnap.data();
+
+                // Restore old documents
+                if (isOldSchemaDoc(docSnap.id) && data.migrated) {
+                    if (dryRun) {
+                        log(`  Would restore: ${docSnap.id}`, 'info');
+                    } else {
+                        const { migrated, migratedTo, migratedAt, ...originalData } = data;
+                        await setDoc(doc(db, "users", currentUser.uid, "workouts", docSnap.id), originalData);
+                        log(`  ✅ Restored: ${docSnap.id}`, 'success');
+                    }
+                    restored++;
+                }
+
+                // Delete new migrated documents
+                if (!isOldSchemaDoc(docSnap.id) && data.originalId) {
+                    if (dryRun) {
+                        log(`  Would delete new: ${docSnap.id}`, 'info');
+                    } else {
+                        await deleteDoc(doc(db, "users", currentUser.uid, "workouts", docSnap.id));
+                        log(`  🗑️ Deleted: ${docSnap.id}`, 'success');
+                    }
+                    deletedNew++;
+                }
+            }
+
+            log(`\nRollback ${dryRun ? '(dry run) ' : ''}complete: ${restored} restored, ${deletedNew} deleted`, 'info');
+        }
+
+        // Button handlers
+        document.getElementById('analyzeBtn').addEventListener('click', analyzeWorkouts);
+        document.getElementById('dryRunBtn').addEventListener('click', () => migrateWorkouts(true));
+        document.getElementById('migrateBtn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to run the actual migration? This will modify your Firebase data.')) {
+                migrateWorkouts(false);
+            }
+        });
+        document.getElementById('verifyBtn').addEventListener('click', analyzeWorkouts);
+        document.getElementById('cleanupDryRunBtn').addEventListener('click', () => cleanupOldWorkouts(true));
+        document.getElementById('cleanupBtn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to delete the old workout documents? This cannot be undone!')) {
+                cleanupOldWorkouts(false);
+            }
+        });
+        document.getElementById('rollbackDryRunBtn').addEventListener('click', () => rollbackMigration(true));
+        document.getElementById('rollbackBtn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to rollback the migration?')) {
+                rollbackMigration(false);
+            }
+        });
+
+        log('Migration tool loaded. Sign in to get started.', 'info');
+    </script>
+</body>
+</html>

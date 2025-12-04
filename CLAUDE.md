@@ -494,6 +494,33 @@ localStorage.setItem('debug', 'firebase:*');
   - [location-ui.js](js/core/location-ui.js) - Modal-based location adding
   - [main.js](js/main.js) - Template selection modal, new exports
 
+### v4.45: Schema v3.0 - Multiple Workouts Per Day (2025-12-03)
+- **New Schema**: Workouts now use unique document IDs instead of date as document ID
+  - Old schema: `workouts/{YYYY-MM-DD}` - limited to one workout per day
+  - New schema: `workouts/{date}_{timestamp}_{random}` - unlimited workouts per day
+  - Date stored as `date` field in document for querying
+- **Automatic Migration**: On login, old schema docs are migrated silently
+  - [schema-migration.js](js/core/schema-migration.js) - Migration module
+  - `checkAndMigrateOnLogin()` runs in background, doesn't block login
+  - Adds `version: '3.0'`, `migratedAt`, `migratedFrom` fields
+- **Data Manager Updates**: All functions now use docId instead of date
+  - `generateWorkoutId(date)` - Creates unique ID format
+  - `loadWorkoutsByDate()` - Returns array of workouts for a date
+  - `loadWorkoutById()` - Load by unique document ID
+  - `deleteWorkoutById()` - Delete by unique document ID
+- **Calendar UI**: Shows count badge when multiple workouts on same day
+  - Workout picker modal for selecting which workout to view
+  - `showWorkoutPickerModal()`, `selectWorkoutFromPicker()` functions
+- **History Modal Fixes**: Fixed modal not reopening after close
+  - Inline `display: flex` now properly cleared when closing
+  - Both `workoutModal` and `workout-detail-modal` handle inline styles
+- **Files**:
+  - [schema-migration.js](js/core/schema-migration.js) - NEW - Automatic migration
+  - [data-manager.js](js/core/data-manager.js) - Schema v3.0 save/load functions
+  - [workout-history.js](js/core/workout-history.js) - Calendar workout arrays, picker modal
+  - [workout-history-ui.js](js/core/workout-history-ui.js) - Modal close fixes
+  - [app-initialization.js](js/core/app-initialization.js) - Migration on login
+
 ### Key Technical Learnings
 
 1. **Deep vs Shallow Copy**: Always use deep clone for nested objects when modifications should not affect source
@@ -504,3 +531,4 @@ localStorage.setItem('debug', 'firebase:*');
 6. **Cross-Module Callbacks**: Use `window` flags and callbacks for communication between modal systems (e.g., `editingFromTemplateEditor`)
 7. **SVG Progress Rings**: Use stroke-dasharray and stroke-dashoffset with circumference calculation for progress indicators
 8. **Standardized Page Layout**: Full-page overlay sections share common CSS (fixed positioning, padding, z-index) for consistency
+9. **Modal Inline Styles**: When setting `display: flex` inline, must clear it with `display: none` on close (CSS classes alone insufficient)

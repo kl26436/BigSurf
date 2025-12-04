@@ -1,10 +1,30 @@
 // Enhanced Data Manager - core/data-manager.js
-import { db, doc, setDoc, getDoc, collection, query, orderBy, limit, getDocs } from './firebase-config.js';
+// Schema v3.0: Multiple workouts per day support
+// - Old schema: document ID = date (YYYY-MM-DD), one workout per day
+// - New schema: document ID = unique ID, date stored as field, multiple workouts per day
+import { db, doc, setDoc, getDoc, collection, query, orderBy, limit, getDocs, where, deleteDoc } from './firebase-config.js';
 import { showNotification, convertWeight } from './ui-helpers.js';
+
+/**
+ * Generate a unique workout ID
+ * Format: {date}_{timestamp}_{random}
+ */
+function generateWorkoutId(date) {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    return `${date}_${timestamp}_${random}`;
+}
+
+/**
+ * Check if a document ID uses the old schema (date as ID)
+ */
+function isOldSchemaDoc(docId) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(docId);
+}
 
 export async function saveWorkoutData(state) {
     if (!state.currentUser) return;
-    
+
     // Ensure proper date handling to prevent timezone issues
     let saveDate = state.savedData.date || state.getTodayDateString();
 
@@ -22,10 +42,10 @@ export async function saveWorkoutData(state) {
     } else {
         saveDate = state.getTodayDateString();
     }
-    
+
     state.savedData.date = saveDate;
     state.savedData.exerciseUnits = state.exerciseUnits;
-    
+
     // CRITICAL: Store exercise names and workout structure for proper history display
     if (state.currentWorkout) {
         const exerciseNames = {};
@@ -33,7 +53,7 @@ export async function saveWorkoutData(state) {
             exerciseNames[`exercise_${index}`] = exercise.machine || exercise.name;
         });
         state.savedData.exerciseNames = exerciseNames;
-        
+
         // Store the complete workout structure for reconstruction
         state.savedData.originalWorkout = {
             day: state.currentWorkout.day || state.currentWorkout.name,
@@ -47,11 +67,11 @@ export async function saveWorkoutData(state) {
                 equipmentLocation: ex.equipmentLocation || null
             }))
         };
-        
+
         // Store total exercise count for progress tracking
         state.savedData.totalExercises = state.currentWorkout.exercises.length;
     }
-    
+
     // Convert weights to pounds for storage - FIXED to prevent corruption
     const normalizedData = { ...state.savedData };
     if (normalizedData.exercises) {
@@ -59,7 +79,7 @@ export async function saveWorkoutData(state) {
             const exerciseData = normalizedData.exercises[exerciseKey];
             const exerciseIndex = parseInt(exerciseKey.split('_')[1]);
             const currentUnit = state.exerciseUnits[exerciseIndex] || state.globalUnit;
-            
+
             if (exerciseData.sets) {
                 exerciseData.sets = exerciseData.sets.map(set => {
                     return {
@@ -70,13 +90,24 @@ export async function saveWorkoutData(state) {
             }
         });
     }
-    
+
     try {
-        const docRef = doc(db, "users", state.currentUser.uid, "workouts", saveDate);
+        // Schema v3.0: Use unique IDs for documents instead of date
+        // Check if we're updating an existing workout (has workoutId) or creating new
+        let workoutId = state.savedData.workoutId;
+
+        if (!workoutId) {
+            // New workout - generate unique ID
+            workoutId = generateWorkoutId(saveDate);
+            state.savedData.workoutId = workoutId;
+        }
+
+        const docRef = doc(db, "users", state.currentUser.uid, "workouts", workoutId);
         const savedDoc = {
             ...normalizedData,
+            workoutId: workoutId,  // Store ID in document for reference
             lastUpdated: new Date().toISOString(),
-            version: '2.0'
+            version: '3.0'  // New schema version
         };
         await setDoc(docRef, savedDoc);
 
@@ -102,35 +133,44 @@ export async function loadTodaysWorkout(state) {
 
     const today = state.getTodayDateString();
     try {
-        const docRef = doc(db, "users", state.currentUser.uid, "workouts", today);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
+        // Schema v3.0: Query by date field instead of document ID
+        // This finds incomplete workouts for today
+        const workoutsRef = collection(db, "users", state.currentUser.uid, "workouts");
+        const q = query(workoutsRef, where("date", "==", today));
+        const snapshot = await getDocs(q);
+
+        let incompleteWorkout = null;
+
+        snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            // Only load if it's actually today's workout AND not completed
+            // Find an incomplete workout for today
             if (data.workoutType &&
                 data.workoutType !== 'none' &&
-                data.date === today &&
                 !data.completedAt &&
                 !data.cancelledAt) {
-                // Validate that the workout plan still exists
-                const workoutPlan = state.workoutPlans?.find(w => 
-                    w.day === data.workoutType || 
-                    w.name === data.workoutType || 
-                    w.id === data.workoutType ||
-                    w.title === data.workoutType
-                );
-                if (!workoutPlan) {
-                    return data; // Still return data to allow loading even if plan isn't found
-                }
-                                
-                return data; // Return data to be handled by workout manager
-            } else {
-                return null; // No valid workout to load
+                // Add document ID for reference
+                incompleteWorkout = { ...data, docId: docSnap.id };
             }
-        } else {
-            return null; // No workout exists
+        });
+
+        // Fallback: Check old schema (document ID = date) for backwards compatibility
+        if (!incompleteWorkout) {
+            const oldDocRef = doc(db, "users", state.currentUser.uid, "workouts", today);
+            const oldDocSnap = await getDoc(oldDocRef);
+
+            if (oldDocSnap.exists()) {
+                const data = oldDocSnap.data();
+                if (data.workoutType &&
+                    data.workoutType !== 'none' &&
+                    data.date === today &&
+                    !data.completedAt &&
+                    !data.cancelledAt) {
+                    incompleteWorkout = { ...data, docId: today };
+                }
+            }
         }
+
+        return incompleteWorkout;
     } catch (error) {
         console.error('Error loading today\'s workout:', error);
         return null;
@@ -138,25 +178,104 @@ export async function loadTodaysWorkout(state) {
 }
 
 /**
- * Load a workout by specific date (for editing historical workouts)
+ * Load all workouts for a specific date (supports multiple workouts per day)
+ * @param {Object} state - AppState
+ * @param {string} dateStr - Date string in YYYY-MM-DD format
+ * @returns {Array} - Array of workout data objects (empty if none found)
+ */
+export async function loadWorkoutsByDate(state, dateStr) {
+    if (!state.currentUser) return [];
+
+    try {
+        const workouts = [];
+
+        // Schema v3.0: Query by date field
+        const workoutsRef = collection(db, "users", state.currentUser.uid, "workouts");
+        const q = query(workoutsRef, where("date", "==", dateStr));
+        const snapshot = await getDocs(q);
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            workouts.push({ ...data, docId: docSnap.id });
+        });
+
+        // Fallback: Check old schema (document ID = date) for backwards compatibility
+        // Only if we didn't find any workouts with the new schema
+        if (workouts.length === 0) {
+            const oldDocRef = doc(db, "users", state.currentUser.uid, "workouts", dateStr);
+            const oldDocSnap = await getDoc(oldDocRef);
+
+            if (oldDocSnap.exists()) {
+                const data = oldDocSnap.data();
+                workouts.push({ ...data, docId: dateStr });
+            }
+        }
+
+        // Sort by startedAt (most recent first) if available
+        workouts.sort((a, b) => {
+            const timeA = a.startedAt ? new Date(a.startedAt).getTime() : 0;
+            const timeB = b.startedAt ? new Date(b.startedAt).getTime() : 0;
+            return timeB - timeA;
+        });
+
+        return workouts;
+    } catch (error) {
+        console.error('Error loading workouts by date:', error);
+        return [];
+    }
+}
+
+/**
+ * Load a single workout by specific date (legacy function for backwards compatibility)
+ * Returns the first/most recent workout for that date
  * @param {Object} state - AppState
  * @param {string} dateStr - Date string in YYYY-MM-DD format
  * @returns {Object|null} - Workout data or null if not found
  */
 export async function loadWorkoutByDate(state, dateStr) {
-    if (!state.currentUser) return null;
+    const workouts = await loadWorkoutsByDate(state, dateStr);
+    return workouts.length > 0 ? workouts[0] : null;
+}
+
+/**
+ * Load a workout by its unique document ID
+ * @param {Object} state - AppState
+ * @param {string} workoutId - The unique workout document ID
+ * @returns {Object|null} - Workout data or null if not found
+ */
+export async function loadWorkoutById(state, workoutId) {
+    if (!state.currentUser || !workoutId) return null;
 
     try {
-        const docRef = doc(db, "users", state.currentUser.uid, "workouts", dateStr);
+        const docRef = doc(db, "users", state.currentUser.uid, "workouts", workoutId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            return docSnap.data();
+            return { ...docSnap.data(), docId: docSnap.id };
         }
         return null;
     } catch (error) {
-        console.error('Error loading workout by date:', error);
+        console.error('Error loading workout by ID:', error);
         return null;
+    }
+}
+
+/**
+ * Delete a workout by its document ID
+ * @param {Object} state - AppState
+ * @param {string} workoutId - The workout document ID to delete
+ * @returns {boolean} - Success status
+ */
+export async function deleteWorkoutById(state, workoutId) {
+    if (!state.currentUser || !workoutId) return false;
+
+    try {
+        const docRef = doc(db, "users", state.currentUser.uid, "workouts", workoutId);
+        await deleteDoc(docRef);
+        return true;
+    } catch (error) {
+        console.error('Error deleting workout:', error);
+        return false;
     }
 }
 
@@ -421,22 +540,26 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
 // Enhanced function to load workout history for display
 export async function loadWorkoutHistory(state, limitCount = 50) {
     if (!state.currentUser) return [];
-    
+
     try {
         const workoutsRef = collection(db, "users", state.currentUser.uid, "workouts");
         const q = query(workoutsRef, orderBy("lastUpdated", "desc"), limit(limitCount));
         const querySnapshot = await getDocs(q);
-        
+
         const workouts = [];
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+
             // Enhanced workout data with proper exercise names
+            // docId is the canonical reference for all operations
             const workout = {
-                id: doc.id,
+                id: docSnap.id,           // Legacy reference
+                docId: docSnap.id,        // Canonical document ID for all operations
+                workoutId: data.workoutId || docSnap.id,  // Schema v3.0 ID or fallback to doc ID
                 date: data.date,
                 workoutType: data.workoutType,
                 startTime: data.startTime,
+                startedAt: data.startedAt,
                 completedAt: data.completedAt,
                 cancelledAt: data.cancelledAt,
                 totalDuration: data.totalDuration,

@@ -66,20 +66,22 @@ async function checkForInProgressWorkout() {
         let workoutData = await loadTodaysWorkout(AppState);
 
         // If no incomplete workout today, check yesterday (in case workout started before midnight)
+        // Schema v3.0: Use loadWorkoutsByDate which handles both old and new schemas
         if (!workoutData || workoutData.completedAt || workoutData.cancelledAt) {
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-            const { getDoc, doc, db } = await import('./firebase-config.js');
-            const yesterdayRef = doc(db, "users", AppState.currentUser.uid, "workouts", yesterdayStr);
-            const yesterdaySnap = await getDoc(yesterdayRef);
+            const { loadWorkoutsByDate } = await import('./data-manager.js');
+            const yesterdayWorkouts = await loadWorkoutsByDate(AppState, yesterdayStr);
 
-            if (yesterdaySnap.exists()) {
-                const yesterdayData = { id: yesterdaySnap.id, ...yesterdaySnap.data() };
-                if (!yesterdayData.completedAt && !yesterdayData.cancelledAt) {
-                    workoutData = yesterdayData;
-                }
+            // Find any incomplete workout from yesterday
+            const incompleteYesterday = yesterdayWorkouts.find(w =>
+                !w.completedAt && !w.cancelledAt
+            );
+
+            if (incompleteYesterday) {
+                workoutData = incompleteYesterday;
             }
         }
 
@@ -95,7 +97,9 @@ async function checkForInProgressWorkout() {
                     Object.values(workoutData.exercises).some(ex => ex.completed || (ex.sets && ex.sets.length > 0));
 
                 const { setDoc, doc, db, deleteDoc } = await import('./firebase-config.js');
-                const workoutRef = doc(db, "users", AppState.currentUser.uid, "workouts", workoutData.date);
+                // Schema v3.0: Use docId if available, fall back to date for old schema
+                const docId = workoutData.docId || workoutData.workoutId || workoutData.date;
+                const workoutRef = doc(db, "users", AppState.currentUser.uid, "workouts", docId);
 
                 if (hasCompletedExercises) {
                     // Auto-complete the workout with its original start date
