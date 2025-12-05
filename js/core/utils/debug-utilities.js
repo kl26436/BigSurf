@@ -73,32 +73,34 @@ export async function debugWeeklyStats() {
         startOfWeek.setDate(today.getDate() - dayOfWeek);
         startOfWeek.setHours(0, 0, 0, 0);
 
+        const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
+
         console.log('🔍 WEEKLY STATS DEBUG:');
         console.log('Today:', today.toISOString().split('T')[0], '(' + today.toLocaleDateString('en-US', {weekday: 'long'}) + ')');
-        console.log('Start of week:', startOfWeek.toISOString().split('T')[0], '(' + startOfWeek.toLocaleDateString('en-US', {weekday: 'long'}) + ')');
-        console.log('Query filter: completedAt >=', startOfWeek.toISOString());
+        console.log('Start of week:', startOfWeekStr, '(' + startOfWeek.toLocaleDateString('en-US', {weekday: 'long'}) + ')');
+        console.log('Query filter: date >=', startOfWeekStr);
 
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+        // Query by date field (workout date), not completedAt
         const q = query(
             workoutsRef,
-            where('completedAt', '!=', null),
-            where('completedAt', '>=', startOfWeek.toISOString()),
-            orderBy('completedAt', 'desc')
+            where('date', '>=', startOfWeekStr),
+            orderBy('date', 'desc')
         );
 
         const snapshot = await getDocs(q);
         const workoutDays = new Set();
 
-        console.log('\n📋 Workouts found:');
+        console.log('\n📋 Workouts found (date >= ' + startOfWeekStr + '):');
         snapshot.forEach(doc => {
             const data = doc.data();
-            const cancelled = data.cancelledAt ? '❌ CANCELLED' : '✓';
-            console.log(`  ${cancelled} Date: ${data.date}, CompletedAt: ${data.completedAt?.substring(0,10)}, Type: ${data.workoutType}`);
+            const completed = data.completedAt ? '✓' : '⏳ INCOMPLETE';
+            const cancelled = data.cancelledAt ? ' ❌ CANCELLED' : '';
+            console.log(`  ${completed}${cancelled} Date: ${data.date}, Type: ${data.workoutType}`);
 
-            if (!data.cancelledAt) {
-                if (data.date) {
-                    workoutDays.add(data.date);
-                }
+            // Only count completed, non-cancelled workouts
+            if (data.completedAt && !data.cancelledAt && data.date) {
+                workoutDays.add(data.date);
             }
         });
 

@@ -200,12 +200,15 @@ export async function getWeeklyStats() {
         startOfWeek.setDate(today.getDate() - dayOfWeek);
         startOfWeek.setHours(0, 0, 0, 0);
 
+        const startOfWeekStr = startOfWeek.toISOString().split('T')[0]; // YYYY-MM-DD
+
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+        // Query by date field (when workout occurred), not completedAt (when it was saved)
+        // This ensures edited historical workouts count on their actual date
         const q = query(
             workoutsRef,
-            where('completedAt', '!=', null),
-            where('completedAt', '>=', startOfWeek.toISOString()),
-            orderBy('completedAt', 'desc')
+            where('date', '>=', startOfWeekStr),
+            orderBy('date', 'desc')
         );
 
         const snapshot = await getDocs(q);
@@ -217,6 +220,9 @@ export async function getWeeklyStats() {
 
         snapshot.forEach(doc => {
             const data = doc.data();
+
+            // Skip workouts without completedAt (not finished)
+            if (!data.completedAt) return;
 
             // Skip cancelled workouts
             if (data.cancelledAt) return;
@@ -242,14 +248,8 @@ export async function getWeeklyStats() {
             });
 
             // Track unique workout days (use date string for deduplication)
-            // A completed workout counts as a workout day, regardless of sets logged
             if (data.date) {
                 workoutDays.add(data.date);
-            } else if (data.completedAt) {
-                // Fallback: extract date from completedAt timestamp
-                const completedDate = new Date(data.completedAt);
-                const dateStr = completedDate.toISOString().split('T')[0];
-                workoutDays.add(dateStr);
             }
 
             totalSets += workoutSets;
