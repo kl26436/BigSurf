@@ -745,6 +745,7 @@
         let selectedExercises = new Map(); // Map of "docId|exerciseKey" -> exercise data
         let equipmentByExercise = {}; // Map: exerciseName -> Set of equipment names
         let allEquipmentLocations = new Set(); // All equipment locations used
+        let savedGymLocations = new Set(); // Gym locations from locations collection (preserved across loadWorkouts)
         let exerciseLibrary = {}; // Map: exerciseName -> exercise data from library
         let savedEquipment = []; // Equipment from equipment collection
 
@@ -794,9 +795,11 @@
                 const locationsRef = collection(db, 'users', currentUser.uid, 'locations');
                 const locSnapshot = await getDocs(locationsRef);
 
+                savedGymLocations = new Set(); // Reset and reload
                 locSnapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     if (data.name) {
+                        savedGymLocations.add(data.name);
                         allEquipmentLocations.add(data.name);
                     }
                 });
@@ -859,7 +862,7 @@
                 locations = new Set();
                 exerciseNames = new Set();
                 equipmentByExercise = {};
-                allEquipmentLocations = new Set();
+                allEquipmentLocations = new Set(savedGymLocations); // Start with gym locations
 
                 // Pre-populate equipment from exercise library
                 Object.entries(exerciseLibrary).forEach(([name, data]) => {

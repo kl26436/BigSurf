@@ -925,16 +925,24 @@ export { loadExerciseHistory };
 // ===================================================================
 
 export async function updateSet(exerciseIndex, setIndex, field, value) {
-    
+
     if (!AppState.currentWorkout || !AppState.savedData.exercises) {
         AppState.savedData.exercises = {};
     }
-    
+
     const exerciseKey = `exercise_${exerciseIndex}`;
     if (!AppState.savedData.exercises[exerciseKey]) {
-        AppState.savedData.exercises[exerciseKey] = { sets: [], notes: '' };
+        // Include exercise name and equipment info when initializing
+        const currentExercise = AppState.currentWorkout?.exercises?.[exerciseIndex];
+        AppState.savedData.exercises[exerciseKey] = {
+            sets: [],
+            notes: '',
+            name: currentExercise?.machine || currentExercise?.name || null,
+            equipment: currentExercise?.equipment || null,
+            equipmentLocation: currentExercise?.equipmentLocation || null
+        };
     }
-    
+
     if (!AppState.savedData.exercises[exerciseKey].sets[setIndex]) {
         AppState.savedData.exercises[exerciseKey].sets[setIndex] = {};
     }
@@ -1173,14 +1181,21 @@ export function removeSetFromExercise(exerciseIndex) {
 export function saveExerciseNotes(exerciseIndex) {
     const notesTextarea = document.getElementById(`exercise-notes-${exerciseIndex}`);
     if (!notesTextarea) return;
-    
+
     if (!AppState.savedData.exercises) AppState.savedData.exercises = {};
-    
+
     const exerciseKey = `exercise_${exerciseIndex}`;
     if (!AppState.savedData.exercises[exerciseKey]) {
-        AppState.savedData.exercises[exerciseKey] = { sets: [], notes: '' };
+        const currentExercise = AppState.currentWorkout?.exercises?.[exerciseIndex];
+        AppState.savedData.exercises[exerciseKey] = {
+            sets: [],
+            notes: '',
+            name: currentExercise?.machine || currentExercise?.name || null,
+            equipment: currentExercise?.equipment || null,
+            equipmentLocation: currentExercise?.equipmentLocation || null
+        };
     }
-    
+
     AppState.savedData.exercises[exerciseKey].notes = notesTextarea.value;
     saveWorkoutData(AppState);
 }
@@ -1190,7 +1205,13 @@ export function markExerciseComplete(exerciseIndex) {
     const exerciseKey = `exercise_${exerciseIndex}`;
 
     if (!AppState.savedData.exercises[exerciseKey]) {
-        AppState.savedData.exercises[exerciseKey] = { sets: [], notes: '' };
+        AppState.savedData.exercises[exerciseKey] = {
+            sets: [],
+            notes: '',
+            name: exercise?.machine || exercise?.name || null,
+            equipment: exercise?.equipment || null,
+            equipmentLocation: exercise?.equipmentLocation || null
+        };
     }
 
     // Remove empty sets (sets without both reps AND weight)
@@ -1489,6 +1510,13 @@ export async function applyEquipmentChange(equipmentName, equipmentLocation, equ
     // Update the exercise with new equipment
     exercise.equipment = equipmentName || null;
     exercise.equipmentLocation = equipmentLocation || null;
+
+    // Also update in savedData.exercises if it exists
+    const exerciseKey = `exercise_${exerciseIndex}`;
+    if (AppState.savedData?.exercises?.[exerciseKey]) {
+        AppState.savedData.exercises[exerciseKey].equipment = equipmentName || null;
+        AppState.savedData.exercises[exerciseKey].equipmentLocation = equipmentLocation || null;
+    }
 
     // Save equipment to Firebase if it's new (include video)
     if (equipmentName) {
