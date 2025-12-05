@@ -1343,7 +1343,7 @@ export async function createNewExercise(event) {
         }
 
         creatingFromLibraryModal = false;
-        showNotification(`Created "${name}"`, 'success');
+        // Silent success - exercise appears immediately in library
     }
 }
 

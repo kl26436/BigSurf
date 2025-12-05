@@ -142,11 +142,6 @@
         <!-- Sidebar Overlay -->
         <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 
-        <!-- Standalone hamburger menu for busy pages (hidden by default, shown via JS) -->
-        <button id="standalone-menu-toggle" class="menu-toggle-standalone" onclick="openSidebar()">
-            <i class="fas fa-bars"></i>
-        </button>
-
         <!-- Header with centered logo (shown on dashboard/history pages) -->
         <header class="header" id="main-header">
             <button class="menu-toggle" onclick="openSidebar()">
@@ -300,7 +295,10 @@
             <section id="active-workout" class="content-section hidden">
                 <!-- Section Header (consistent with other pages) -->
                 <div class="section-header-row">
-                    <h2 class="section-title"><i class="fas fa-dumbbell"></i> Active Workout</h2>
+                    <h2 id="active-workout-title" class="section-title"><i class="fas fa-dumbbell"></i> Active Workout</h2>
+                    <button id="edit-workout-close-btn" class="close-btn hidden" onclick="discardEditedWorkout()" title="Close without saving">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
 
                 <!-- Workout Header - Hero Card Style -->
@@ -540,6 +538,85 @@
                         <div id="exercise-library-grid" class="exercise-library-grid">
                             <!-- Exercises will be populated here by JavaScript -->
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add/Create Exercise Modal -->
+            <div id="add-exercise-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="add-exercise-modal-title">Create New Exercise</h3>
+                        <button class="close-btn" onclick="closeCreateExerciseModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="add-exercise-form" onsubmit="createNewExercise(event)">
+                            <div class="form-group">
+                                <label for="new-exercise-name">Exercise Name *</label>
+                                <input type="text" id="new-exercise-name" class="form-input"
+                                       placeholder="e.g., Incline Dumbbell Press" required>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="new-exercise-body-part">Body Part</label>
+                                    <select id="new-exercise-body-part" class="form-input">
+                                        <option value="Chest">Chest</option>
+                                        <option value="Back">Back</option>
+                                        <option value="Shoulders">Shoulders</option>
+                                        <option value="Arms">Arms</option>
+                                        <option value="Legs">Legs</option>
+                                        <option value="Core">Core</option>
+                                        <option value="Calves">Calves</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-exercise-equipment">Equipment Type</label>
+                                    <select id="new-exercise-equipment" class="form-input">
+                                        <option value="Machine">Machine</option>
+                                        <option value="Dumbbell">Dumbbell</option>
+                                        <option value="Barbell">Barbell</option>
+                                        <option value="Cable">Cable</option>
+                                        <option value="Bodyweight">Bodyweight</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="new-exercise-sets">Default Sets</label>
+                                    <input type="number" id="new-exercise-sets" class="form-input"
+                                           value="3" min="1" max="10">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-exercise-reps">Default Reps</label>
+                                    <input type="number" id="new-exercise-reps" class="form-input"
+                                           value="10" min="1" max="50">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-exercise-weight">Default Weight</label>
+                                    <input type="number" id="new-exercise-weight" class="form-input"
+                                           value="50" min="0">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="new-exercise-video">Video URL (optional)</label>
+                                <input type="url" id="new-exercise-video" class="form-input"
+                                       placeholder="https://youtube.com/...">
+                            </div>
+
+                            <div class="modal-actions">
+                                <button type="button" class="btn btn-secondary" onclick="closeCreateExerciseModal()">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Create Exercise
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

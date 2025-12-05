@@ -482,10 +482,19 @@ export async function editHistoricalWorkout(dateStr) {
         workoutNameElement.textContent = `${workoutData.workoutType} (Editing)`;
     }
 
-    // Hide header and nav for workout view, show standalone hamburger
+    // Update section title to "Edit Workout"
+    const sectionTitle = document.getElementById('active-workout-title');
+    if (sectionTitle) {
+        sectionTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Workout';
+    }
+
+    // Show close button for edit mode (X in top right)
+    const closeBtn = document.getElementById('edit-workout-close-btn');
+    if (closeBtn) closeBtn.classList.remove('hidden');
+
+    // Hide header and nav for workout view (no hamburger needed - has X to close)
     setHeaderMode(false);
     setBottomNavVisible(false);
-    if (window.showStandaloneMenu) window.showStandaloneMenu(true);
 
     // Display static duration (don't start a live timer when editing)
     displayStaticDuration(workoutData.totalDuration);
@@ -508,6 +517,8 @@ export async function editHistoricalWorkout(dateStr) {
 function updateWorkoutButtonsForEditMode(isEditing) {
     const cancelBtn = document.querySelector('.btn-workout-action.btn-cancel');
     const finishBtn = document.querySelector('.btn-workout-action.btn-finish');
+    const sectionTitle = document.getElementById('active-workout-title');
+    const closeBtn = document.getElementById('edit-workout-close-btn');
 
     if (isEditing) {
         // Edit mode: Cancel = discard edits, Finish = save changes
@@ -518,6 +529,7 @@ function updateWorkoutButtonsForEditMode(isEditing) {
         if (finishBtn) {
             finishBtn.innerHTML = '<i class="fas fa-check"></i> Save';
         }
+        // Edit mode title and close button handled in enterWorkoutEditMode
     } else {
         // Normal mode: Cancel = cancel workout, Finish = complete workout
         if (cancelBtn) {
@@ -527,6 +539,12 @@ function updateWorkoutButtonsForEditMode(isEditing) {
         if (finishBtn) {
             finishBtn.innerHTML = '<i class="fas fa-check"></i> Finish';
         }
+        // Reset section title to "Active Workout"
+        if (sectionTitle) {
+            sectionTitle.innerHTML = '<i class="fas fa-dumbbell"></i> Active Workout';
+        }
+        // Hide close button
+        if (closeBtn) closeBtn.classList.add('hidden');
     }
 }
 

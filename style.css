@@ -937,9 +937,7 @@ h1, h2, h3 { letter-spacing: -0.01em; }
   border: 1px solid rgba(255,255,255,0.05);
   padding: 16px;
   margin-bottom: 16px;
-  position: sticky;
-  top: 0;
-  z-index: 50;
+  /* Removed sticky positioning - was causing iOS scrolling issues */
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
@@ -2130,25 +2128,6 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 8px;
 }
 .sidebar-sign-out-btn:hover { color: var(--danger); }
-
-/* Standalone menu toggle */
-.menu-toggle-standalone {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 350;
-  width: var(--tap);
-  height: var(--tap);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-strong);
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
 
 /* Loading screen */
 .loading-screen {

@@ -175,31 +175,17 @@ export function stopActiveWorkoutRestTimer() {
 /**
  * Manage header visibility based on active section
  * Shows full header with logo on dashboard/history, hides on other pages
- * Standalone hamburger is only shown when bottom nav is also hidden
  * @param {boolean} showFullHeader - true for dashboard/history, false for other pages
  */
 export function setHeaderMode(showFullHeader) {
     const mainHeader = document.getElementById('main-header');
-    const standaloneMenu = document.getElementById('standalone-menu-toggle');
 
     if (showFullHeader) {
         // Show full header with logo
         if (mainHeader) mainHeader.style.display = 'flex';
-        if (standaloneMenu) standaloneMenu.style.display = 'none';
     } else {
-        // Hide header - standalone hamburger only shown if nav also hidden
-        // (handled by setBottomNavVisible)
+        // Hide header
         if (mainHeader) mainHeader.style.display = 'none';
-        if (standaloneMenu) standaloneMenu.style.display = 'none';
     }
 }
 
-/**
- * Show standalone hamburger (only when both header AND nav are hidden)
- */
-export function showStandaloneMenu(show) {
-    const standaloneMenu = document.getElementById('standalone-menu-toggle');
-    if (standaloneMenu) {
-        standaloneMenu.style.display = show ? 'flex' : 'none';
-    }
-}

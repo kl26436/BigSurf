@@ -434,7 +434,7 @@ export function addExerciseToManualWorkout(exerciseData) {
     }
 
     renderManualExercises();
-    showNotification(`Added ${exercise.name || exercise.machine}`, 'success');
+    // Silent success - exercise appears immediately in list
 }
 
 // Alias for backwards compatibility
@@ -658,7 +658,7 @@ export function selectEquipmentForManual(equipmentId, name, location) {
 
     // Re-render to show updated equipment
     renderManualExercises();
-    showNotification(`Equipment set: ${name}`, 'success');
+    // Silent success - equipment appears immediately on exercise card
 }
 
 export function closeEquipmentPickerForManual() {

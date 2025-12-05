@@ -104,7 +104,7 @@ import {
 import { getSessionLocation } from './core/features/location-service.js';
 
 // UI helpers
-import { showStandaloneMenu, setHeaderMode } from './core/ui/ui-helpers.js';
+import { setHeaderMode } from './core/ui/ui-helpers.js';
 
 // Navigation functionality
 import {
@@ -343,7 +343,6 @@ window.toggleMoreMenu = toggleMoreMenu;
 window.closeMoreMenu = closeMoreMenu;
 window.setBottomNavVisible = setBottomNavVisible;
 window.updateBottomNavActive = updateBottomNavActive;
-window.showStandaloneMenu = showStandaloneMenu;
 window.setHeaderMode = setHeaderMode;
 
 // Dashboard Functions

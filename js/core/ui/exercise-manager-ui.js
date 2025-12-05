@@ -897,7 +897,7 @@ export async function saveExercise(event) {
             await workoutManager.getOrCreateEquipment(equipmentName, locationName, formData.name);
         }
 
-        showNotification(isEditing ? 'Exercise updated!' : 'Exercise created!', 'success');
+        // Silent success - UI updates are self-evident
         closeAddExerciseModal();
 
         // Refresh AppState exercise database
@@ -1089,7 +1089,7 @@ export async function saveExerciseFromSection() {
             await workoutManager.getOrCreateEquipment(equipmentName, locationName, formData.name);
         }
 
-        showNotification(isEditing ? 'Exercise updated!' : 'Exercise created!', 'success');
+        // Silent success - UI updates are self-evident
 
         // Store old name before refresh to update active workout
         const oldName = currentEditingExercise?.name || currentEditingExercise?.machine;
