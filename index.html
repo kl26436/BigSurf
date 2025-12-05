@@ -1218,7 +1218,9 @@
                 <div class="input-with-icon">
                     <i class="fas fa-map-marker-alt"></i>
                     <input type="text" id="equipment-editor-new-location" class="edit-input-full"
-                           placeholder="Add location (e.g., Planet Fitness)">
+                           placeholder="Add location (e.g., Planet Fitness)"
+                           list="equipment-editor-location-list">
+                    <datalist id="equipment-editor-location-list"></datalist>
                 </div>
                 <button type="button" class="btn-add-equipment" onclick="addLocationToEquipmentEditor()">
                     <i class="fas fa-plus"></i> Add Location
@@ -1387,7 +1389,7 @@
     <script>
         (async function() {
             if ('serviceWorker' in navigator) {
-                const REQUIRED_VERSION = 'v4.51';
+                const REQUIRED_VERSION = 'v4.52';
                 const regs = await navigator.serviceWorker.getRegistrations();
                 for (const reg of regs) {
                     // Check if cache is outdated

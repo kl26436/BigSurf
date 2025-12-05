@@ -1139,7 +1139,7 @@ export async function saveExerciseFromSection() {
  * Open equipment editor section (full page)
  * @param {Object} equipment - Equipment data with id, name, location(s), video
  */
-export function openEquipmentEditor(equipment) {
+export async function openEquipmentEditor(equipment) {
     if (!equipment || !equipment.id) return;
 
     editingEquipmentData = equipment;
@@ -1162,12 +1162,53 @@ export function openEquipmentEditor(equipment) {
     // Render locations list
     renderEquipmentEditorLocations();
 
+    // Populate location datalist with saved gym locations
+    await populateEquipmentEditorLocationDatalist();
+
     // Hide edit exercise section and show equipment editor section
     const editExerciseSection = document.getElementById('edit-exercise-section');
     const equipmentSection = document.getElementById('equipment-editor-section');
 
     if (editExerciseSection) editExerciseSection.classList.add('hidden');
     if (equipmentSection) equipmentSection.classList.remove('hidden');
+}
+
+/**
+ * Populate location datalist in equipment editor with saved gym locations
+ */
+async function populateEquipmentEditorLocationDatalist() {
+    const datalist = document.getElementById('equipment-editor-location-list');
+    if (!datalist) return;
+
+    try {
+        // Get all user locations from Firebase
+        const locations = await workoutManager.getUserLocations();
+
+        // Also get locations from all equipment
+        const allEquipment = await workoutManager.getUserEquipment();
+        const equipmentLocations = new Set();
+        allEquipment.forEach(eq => {
+            if (eq.location) equipmentLocations.add(eq.location);
+            if (eq.locations && Array.isArray(eq.locations)) {
+                eq.locations.forEach(loc => equipmentLocations.add(loc));
+            }
+        });
+
+        // Combine gym locations and equipment locations
+        const allLocations = new Set([
+            ...locations.map(loc => loc.name),
+            ...equipmentLocations
+        ]);
+
+        // Populate datalist
+        datalist.innerHTML = Array.from(allLocations)
+            .sort()
+            .map(name => `<option value="${name}">`)
+            .join('');
+    } catch (error) {
+        console.error('❌ Error loading locations for equipment editor datalist:', error);
+        datalist.innerHTML = '';
+    }
 }
 
 /**
