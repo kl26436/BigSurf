@@ -533,6 +533,47 @@
             margin-left: 32px;
             margin-bottom: 8px;
         }
+
+        /* Select with input for add new */
+        .select-with-input {
+            position: relative;
+            width: 100%;
+        }
+
+        .select-with-input select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-strong);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .select-with-input select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .select-with-input .new-value-input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--primary);
+            background: var(--bg-card);
+            color: var(--text-strong);
+            font-size: 0.9rem;
+        }
+
+        .select-with-input .new-value-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(29,211,176,0.2);
+        }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -683,6 +724,8 @@
         let locations = new Set();
         let exerciseNames = new Set();
         let selectedExercises = new Map(); // Map of "docId|exerciseKey" -> exercise data
+        let equipmentByExercise = {}; // Map: exerciseName -> Set of equipment names
+        let allEquipmentLocations = new Set(); // All equipment locations used
 
         // Auth state
         onAuthStateChanged(auth, (user) => {
@@ -733,6 +776,8 @@
                 allWorkouts = [];
                 locations = new Set();
                 exerciseNames = new Set();
+                equipmentByExercise = {};
+                allEquipmentLocations = new Set();
 
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
@@ -754,6 +799,7 @@
 
                             // Get equipment from multiple sources
                             const equipment = ex.equipment || originalEx?.equipment || null;
+                            const equipLoc = ex.equipmentLocation || originalEx?.equipmentLocation || null;
 
                             if (!equipment && ex.sets?.length > 0) {
                                 missingEquipment = true;
@@ -761,11 +807,24 @@
 
                             exerciseNames.add(name);
 
+                            // Track equipment per exercise
+                            if (!equipmentByExercise[name]) {
+                                equipmentByExercise[name] = new Set();
+                            }
+                            if (equipment) {
+                                equipmentByExercise[name].add(equipment);
+                            }
+
+                            // Track all equipment locations
+                            if (equipLoc) {
+                                allEquipmentLocations.add(equipLoc);
+                            }
+
                             exercises.push({
                                 key,
                                 name: name,
                                 equipment: equipment,
-                                equipmentLocation: ex.equipmentLocation || originalEx?.equipmentLocation || null,
+                                equipmentLocation: equipLoc,
                                 sets: ex.sets?.length || 0,
                                 notes: ex.notes || originalEx?.notes || null
                             });
@@ -936,6 +995,10 @@
             // Sort by date descending
             exerciseInstances.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
+            // Get equipment options for this exercise
+            const equipOptions = equipmentByExercise[exerciseName] ? [...equipmentByExercise[exerciseName]].sort() : [];
+            const locOptions = [...allEquipmentLocations].sort();
+
             listEl.innerHTML = `
                 <div class="exercise-filter-header">
                     <h3><i class="fas fa-dumbbell"></i> ${exerciseName}</h3>
@@ -958,17 +1021,11 @@
                         <div class="instance-fields">
                             <div class="exercise-field">
                                 <label>Equipment</label>
-                                <input type="text"
-                                    value="${ex.equipment || ''}"
-                                    placeholder="Enter equipment..."
-                                    onchange="updateExerciseField('${ex.docId}', '${ex.key}', 'equipment', this.value)">
+                                ${renderEquipmentSelect(ex.docId, ex.key, ex.equipment, equipOptions)}
                             </div>
                             <div class="exercise-field">
                                 <label>Equipment Location</label>
-                                <input type="text"
-                                    value="${ex.equipmentLocation || ''}"
-                                    placeholder="Enter location..."
-                                    onchange="updateExerciseField('${ex.docId}', '${ex.key}', 'equipmentLocation', this.value)">
+                                ${renderLocationSelect(ex.docId, ex.key, ex.equipmentLocation, locOptions)}
                             </div>
                             <div class="exercise-field sets-field">
                                 <label>Sets</label>
@@ -981,9 +1038,132 @@
             `;
         }
 
+        // Generate equipment dropdown with existing options + add new
+        function renderEquipmentSelect(docId, key, currentValue, options) {
+            const uniqueId = `equip_${docId}_${key}`.replace(/[^a-zA-Z0-9]/g, '_');
+            const hasCustomValue = currentValue && !options.includes(currentValue);
+
+            return `
+                <div class="select-with-input" id="${uniqueId}_container">
+                    <select onchange="handleEquipmentSelect('${docId}', '${key}', this.value, '${uniqueId}')">
+                        <option value="">-- Select --</option>
+                        ${options.map(opt => `<option value="${escapeAttr(opt)}" ${opt === currentValue ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+                        ${hasCustomValue ? `<option value="${escapeAttr(currentValue)}" selected>${escapeHtml(currentValue)}</option>` : ''}
+                        <option value="__NEW__">+ Add new...</option>
+                    </select>
+                    <input type="text"
+                        class="new-value-input hidden"
+                        id="${uniqueId}_input"
+                        placeholder="Enter new equipment..."
+                        onblur="saveNewEquipment('${docId}', '${key}', this.value, '${uniqueId}')"
+                        onkeydown="if(event.key==='Enter'){this.blur()}">
+                </div>
+            `;
+        }
+
+        // Generate location dropdown with existing options + add new
+        function renderLocationSelect(docId, key, currentValue, options) {
+            const uniqueId = `loc_${docId}_${key}`.replace(/[^a-zA-Z0-9]/g, '_');
+            const hasCustomValue = currentValue && !options.includes(currentValue);
+
+            return `
+                <div class="select-with-input" id="${uniqueId}_container">
+                    <select onchange="handleLocationSelect('${docId}', '${key}', this.value, '${uniqueId}')">
+                        <option value="">-- Select --</option>
+                        ${options.map(opt => `<option value="${escapeAttr(opt)}" ${opt === currentValue ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+                        ${hasCustomValue ? `<option value="${escapeAttr(currentValue)}" selected>${escapeHtml(currentValue)}</option>` : ''}
+                        <option value="__NEW__">+ Add new...</option>
+                    </select>
+                    <input type="text"
+                        class="new-value-input hidden"
+                        id="${uniqueId}_input"
+                        placeholder="Enter new location..."
+                        onblur="saveNewLocation('${docId}', '${key}', this.value, '${uniqueId}')"
+                        onkeydown="if(event.key==='Enter'){this.blur()}">
+                </div>
+            `;
+        }
+
+        function escapeAttr(str) {
+            return (str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // Handle equipment dropdown change
+        window.handleEquipmentSelect = (docId, key, value, uniqueId) => {
+            if (value === '__NEW__') {
+                // Show input field
+                const input = document.getElementById(`${uniqueId}_input`);
+                const select = document.querySelector(`#${uniqueId}_container select`);
+                if (input) {
+                    input.classList.remove('hidden');
+                    select.classList.add('hidden');
+                    input.focus();
+                }
+            } else if (value) {
+                updateExerciseField(docId, key, 'equipment', value);
+            }
+        };
+
+        // Handle location dropdown change
+        window.handleLocationSelect = (docId, key, value, uniqueId) => {
+            if (value === '__NEW__') {
+                // Show input field
+                const input = document.getElementById(`${uniqueId}_input`);
+                const select = document.querySelector(`#${uniqueId}_container select`);
+                if (input) {
+                    input.classList.remove('hidden');
+                    select.classList.add('hidden');
+                    input.focus();
+                }
+            } else if (value) {
+                updateExerciseField(docId, key, 'equipmentLocation', value);
+            }
+        };
+
+        // Save new equipment value
+        window.saveNewEquipment = async (docId, key, value, uniqueId) => {
+            if (value && value.trim()) {
+                await updateExerciseField(docId, key, 'equipment', value.trim());
+                // Refresh to update dropdowns with new value
+                renderWorkouts();
+            } else {
+                // Reset to dropdown
+                const input = document.getElementById(`${uniqueId}_input`);
+                const select = document.querySelector(`#${uniqueId}_container select`);
+                if (input && select) {
+                    input.classList.add('hidden');
+                    select.classList.remove('hidden');
+                    select.value = '';
+                }
+            }
+        };
+
+        // Save new location value
+        window.saveNewLocation = async (docId, key, value, uniqueId) => {
+            if (value && value.trim()) {
+                await updateExerciseField(docId, key, 'equipmentLocation', value.trim());
+                // Refresh to update dropdowns with new value
+                renderWorkouts();
+            } else {
+                // Reset to dropdown
+                const input = document.getElementById(`${uniqueId}_input`);
+                const select = document.querySelector(`#${uniqueId}_container select`);
+                if (input && select) {
+                    input.classList.add('hidden');
+                    select.classList.remove('hidden');
+                    select.value = '';
+                }
+            }
+        };
+
         function renderExerciseItem(w, ex) {
             const selKey = `${w.docId}|${ex.key}`;
             const isSelected = selectedExercises.has(selKey);
+
+            // Get equipment options for this specific exercise
+            const equipOptions = equipmentByExercise[ex.name] ? [...equipmentByExercise[ex.name]].sort() : [];
+            const locOptions = [...allEquipmentLocations].sort();
+
             return `
                 <div class="exercise-item ${isSelected ? 'selected' : ''}" data-sel-key="${selKey}">
                     <input type="checkbox"
@@ -993,17 +1173,11 @@
                     <div class="exercise-name">${ex.name} ${ex.sets > 0 ? `(${ex.sets} sets)` : ''}</div>
                     <div class="exercise-field">
                         <label>Equipment</label>
-                        <input type="text"
-                            value="${ex.equipment || ''}"
-                            placeholder="Enter equipment..."
-                            onchange="updateExerciseField('${w.docId}', '${ex.key}', 'equipment', this.value)">
+                        ${renderEquipmentSelect(w.docId, ex.key, ex.equipment, equipOptions)}
                     </div>
                     <div class="exercise-field">
                         <label>Equipment Location</label>
-                        <input type="text"
-                            value="${ex.equipmentLocation || ''}"
-                            placeholder="Enter location..."
-                            onchange="updateExerciseField('${w.docId}', '${ex.key}', 'equipmentLocation', this.value)">
+                        ${renderLocationSelect(w.docId, ex.key, ex.equipmentLocation, locOptions)}
                     </div>
                 </div>
                 ${ex.notes ? `<div class="exercise-notes"><i class="fas fa-sticky-note"></i> ${escapeHtml(ex.notes)}</div>` : ''}
