@@ -131,6 +131,23 @@
 
         .stat {
             text-align: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .stat.clickable {
+            cursor: pointer;
+        }
+
+        .stat.clickable:hover {
+            background: var(--bg-card-hi);
+            transform: translateY(-2px);
+        }
+
+        .stat.active {
+            background: rgba(29,211,176,0.15);
+            border: 1px solid var(--primary);
         }
 
         .stat-value {
@@ -597,15 +614,15 @@
         <div id="main-content" style="display: none;">
             <!-- Stats Bar -->
             <div class="stats-bar">
-                <div class="stat">
+                <div class="stat clickable" onclick="filterByStatus('')" title="Show all workouts">
                     <div class="stat-value" id="total-workouts">0</div>
                     <div class="stat-label">Total Workouts</div>
                 </div>
-                <div class="stat">
+                <div class="stat clickable" onclick="filterByStatus('missing-location')" title="Click to filter">
                     <div class="stat-value" id="missing-location">0</div>
                     <div class="stat-label">Missing Location</div>
                 </div>
-                <div class="stat">
+                <div class="stat clickable" onclick="filterByStatus('missing-equipment')" title="Click to filter">
                     <div class="stat-value" id="missing-equipment">0</div>
                     <div class="stat-label">Missing Equipment</div>
                 </div>
@@ -626,7 +643,9 @@
                 </select>
                 <select id="status-filter">
                     <option value="">All Status</option>
-                    <option value="incomplete">Incomplete Only</option>
+                    <option value="missing-equipment">Missing Equipment</option>
+                    <option value="missing-location">Missing Location</option>
+                    <option value="incomplete">Any Incomplete</option>
                     <option value="complete">Complete Only</option>
                 </select>
                 <button class="btn btn-secondary" onclick="loadWorkouts()">
@@ -1009,6 +1028,8 @@
                 if (locationFilter && w.location !== locationFilter) return false;
 
                 // Status filter
+                if (statusFilter === 'missing-equipment' && !w.missingEquipment) return false;
+                if (statusFilter === 'missing-location' && !w.missingLocation) return false;
                 if (statusFilter === 'incomplete' && !w.missingLocation && !w.missingEquipment) return false;
                 if (statusFilter === 'complete' && (w.missingLocation || w.missingEquipment)) return false;
 
@@ -1490,11 +1511,42 @@
             }
         };
 
+        // Filter by clicking on stats
+        window.filterByStatus = (status) => {
+            const statusFilter = document.getElementById('status-filter');
+            statusFilter.value = status;
+
+            // Clear exercise filter when clicking stats
+            document.getElementById('exercise-filter').value = '';
+
+            // Update active state on stat cards
+            document.querySelectorAll('.stat.clickable').forEach(el => el.classList.remove('active'));
+            if (status) {
+                const statMap = {
+                    'missing-location': 'missing-location',
+                    'missing-equipment': 'missing-equipment'
+                };
+                const statEl = document.querySelector(`.stat[onclick*="${status}"]`);
+                if (statEl) statEl.classList.add('active');
+            }
+
+            renderWorkouts();
+        };
+
         // Search/filter handlers
         document.getElementById('search-input').addEventListener('input', renderWorkouts);
         document.getElementById('exercise-filter').addEventListener('change', renderWorkouts);
         document.getElementById('location-filter').addEventListener('change', renderWorkouts);
-        document.getElementById('status-filter').addEventListener('change', renderWorkouts);
+        document.getElementById('status-filter').addEventListener('change', () => {
+            // Clear active state when manually changing filter
+            document.querySelectorAll('.stat.clickable').forEach(el => el.classList.remove('active'));
+            const status = document.getElementById('status-filter').value;
+            if (status === 'missing-location' || status === 'missing-equipment') {
+                const statEl = document.querySelector(`.stat[onclick*="${status}"]`);
+                if (statEl) statEl.classList.add('active');
+            }
+            renderWorkouts();
+        });
 
         // Toast notification
         function showToast(message, isError = false) {

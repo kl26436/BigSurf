@@ -423,6 +423,12 @@ export async function addNewLocationFromManagement() {
     }
 }
 
+// State for add location modal
+let selectedLocationCoords = null;
+let currentLocationMethod = 'gps';
+let addLocationMap = null;
+let addLocationMarker = null;
+
 /**
  * Open the Add Location modal
  */
@@ -436,6 +442,226 @@ export function detectAndAddLocation() {
             input.value = '';
             setTimeout(() => input.focus(), 100);
         }
+
+        // Reset state
+        selectedLocationCoords = null;
+        currentLocationMethod = 'gps';
+
+        // Reset method tabs
+        switchLocationMethod('gps');
+
+        // Start GPS detection
+        detectGPSForModal();
+    }
+}
+
+/**
+ * Switch between location input methods
+ */
+export function switchLocationMethod(method) {
+    currentLocationMethod = method;
+
+    // Update tab states
+    document.querySelectorAll('.method-tab').forEach(tab => tab.classList.remove('active'));
+    const activeTab = document.getElementById(`method-${method}-tab`);
+    if (activeTab) activeTab.classList.add('active');
+
+    // Show/hide content
+    document.querySelectorAll('.location-method-content').forEach(el => el.classList.add('hidden'));
+    const content = document.getElementById(`location-method-${method}`);
+    if (content) content.classList.remove('hidden');
+
+    // Initialize map if switching to map method
+    if (method === 'map') {
+        initAddLocationMap();
+    }
+
+    // Clear address results when switching
+    if (method !== 'address') {
+        const results = document.getElementById('address-search-results');
+        if (results) results.innerHTML = '';
+    }
+}
+
+/**
+ * Detect GPS for the add location modal
+ */
+async function detectGPSForModal() {
+    const statusBox = document.getElementById('add-location-gps-status');
+    if (!statusBox) return;
+
+    statusBox.className = 'gps-status-box';
+    statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Detecting your location...</span>';
+
+    try {
+        const coords = await getCurrentPosition();
+        if (coords) {
+            selectedLocationCoords = coords;
+            statusBox.className = 'gps-status-box success';
+            statusBox.innerHTML = `<i class="fas fa-check-circle"></i><span>Location detected! (${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)})</span>`;
+            updateSelectedCoordsDisplay();
+        } else {
+            statusBox.className = 'gps-status-box error';
+            statusBox.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>Could not detect location. Try another method.</span>';
+        }
+    } catch (error) {
+        statusBox.className = 'gps-status-box error';
+        statusBox.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>Location access denied. Try another method.</span>';
+    }
+}
+
+/**
+ * Search for an address using geocoding
+ */
+export async function searchLocationAddress() {
+    const input = document.getElementById('location-address-search');
+    const resultsContainer = document.getElementById('address-search-results');
+    const query = input?.value?.trim();
+
+    if (!query) {
+        showNotification('Please enter an address to search', 'warning');
+        return;
+    }
+
+    resultsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+
+    try {
+        // Use Nominatim (OpenStreetMap) for free geocoding
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`, {
+            headers: { 'Accept-Language': 'en' }
+        });
+        const results = await response.json();
+
+        if (results.length === 0) {
+            resultsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No results found. Try a different search.</div>';
+            return;
+        }
+
+        resultsContainer.innerHTML = results.map((result, idx) => `
+            <div class="address-result-item" onclick="selectAddressResult(${idx}, ${result.lat}, ${result.lon}, '${escapeHtml(result.display_name).replace(/'/g, "\\'")}')">
+                <div class="address-result-name">${escapeHtml(result.display_name.split(',')[0])}</div>
+                <div class="address-result-address">${escapeHtml(result.display_name)}</div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Address search error:', error);
+        resultsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--danger);">Search failed. Please try again.</div>';
+    }
+}
+
+/**
+ * Select an address from search results
+ */
+export function selectAddressResult(idx, lat, lon, displayName) {
+    selectedLocationCoords = { latitude: parseFloat(lat), longitude: parseFloat(lon) };
+
+    // Update visual selection
+    document.querySelectorAll('.address-result-item').forEach((el, i) => {
+        el.classList.toggle('selected', i === idx);
+    });
+
+    updateSelectedCoordsDisplay();
+}
+
+/**
+ * Initialize the map for pin drop
+ */
+function initAddLocationMap() {
+    const container = document.getElementById('add-location-map-container');
+    if (!container) return;
+
+    // Use Leaflet if available, otherwise show a simpler interface
+    if (typeof L !== 'undefined') {
+        // Initialize Leaflet map
+        if (addLocationMap) {
+            addLocationMap.remove();
+        }
+
+        // Default to user's GPS or a default location
+        const defaultLat = selectedLocationCoords?.latitude || window.currentGPSCoords?.latitude || 34.0522;
+        const defaultLon = selectedLocationCoords?.longitude || window.currentGPSCoords?.longitude || -118.2437;
+
+        container.innerHTML = '';
+        addLocationMap = L.map(container).setView([defaultLat, defaultLon], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(addLocationMap);
+
+        // Add draggable marker
+        addLocationMarker = L.marker([defaultLat, defaultLon], { draggable: true }).addTo(addLocationMap);
+
+        addLocationMarker.on('dragend', function(e) {
+            const pos = e.target.getLatLng();
+            selectedLocationCoords = { latitude: pos.lat, longitude: pos.lng };
+            updateSelectedCoordsDisplay();
+            updatePinCoords(pos.lat, pos.lng);
+        });
+
+        // Click on map to move marker
+        addLocationMap.on('click', function(e) {
+            addLocationMarker.setLatLng(e.latlng);
+            selectedLocationCoords = { latitude: e.latlng.lat, longitude: e.latlng.lng };
+            updateSelectedCoordsDisplay();
+            updatePinCoords(e.latlng.lat, e.latlng.lng);
+        });
+
+        updatePinCoords(defaultLat, defaultLon);
+        if (!selectedLocationCoords) {
+            selectedLocationCoords = { latitude: defaultLat, longitude: defaultLon };
+            updateSelectedCoordsDisplay();
+        }
+    } else {
+        // Fallback: Show coordinate input fields
+        container.innerHTML = `
+            <div style="padding: 20px; text-align: center;">
+                <p style="color: var(--text-muted); margin-bottom: 16px;">Enter coordinates manually:</p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <input type="number" id="manual-lat" placeholder="Latitude" step="0.00001" style="width: 120px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-strong);">
+                    <input type="number" id="manual-lon" placeholder="Longitude" step="0.00001" style="width: 120px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-strong);">
+                    <button onclick="applyManualCoords()" class="btn btn-secondary" style="padding: 8px 12px;">Set</button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Apply manually entered coordinates
+ */
+export function applyManualCoords() {
+    const lat = parseFloat(document.getElementById('manual-lat')?.value);
+    const lon = parseFloat(document.getElementById('manual-lon')?.value);
+
+    if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+        selectedLocationCoords = { latitude: lat, longitude: lon };
+        updateSelectedCoordsDisplay();
+        showNotification('Coordinates set!', 'success');
+    } else {
+        showNotification('Invalid coordinates', 'warning');
+    }
+}
+
+/**
+ * Update pin coordinates display
+ */
+function updatePinCoords(lat, lon) {
+    const el = document.getElementById('pin-coordinates');
+    if (el) {
+        el.textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    }
+}
+
+/**
+ * Update the selected coordinates display
+ */
+function updateSelectedCoordsDisplay() {
+    const display = document.getElementById('selected-coords-display');
+    const text = document.getElementById('selected-coords-text');
+
+    if (display && text && selectedLocationCoords) {
+        display.classList.remove('hidden');
+        text.textContent = `${selectedLocationCoords.latitude.toFixed(5)}, ${selectedLocationCoords.longitude.toFixed(5)}`;
     }
 }
 
@@ -447,6 +673,15 @@ export function closeAddLocationModal() {
     if (modal) {
         modal.classList.add('hidden');
     }
+
+    // Clean up map
+    if (addLocationMap) {
+        addLocationMap.remove();
+        addLocationMap = null;
+        addLocationMarker = null;
+    }
+
+    selectedLocationCoords = null;
 }
 
 /**
@@ -467,12 +702,16 @@ export async function saveNewLocationFromModal() {
         return;
     }
 
-    try {
-        const coords = await getCurrentPosition();
+    // Use selected coords from any method, or try GPS as fallback
+    let coords = selectedLocationCoords;
+    if (!coords && currentLocationMethod === 'gps') {
+        coords = await getCurrentPosition();
+    }
 
+    try {
         // Save location with or without GPS
         const manager = getWorkoutManager();
-        await manager.saveUserLocation({
+        await manager.saveLocation({
             name: locationName,
             latitude: coords?.latitude || null,
             longitude: coords?.longitude || null,

@@ -42,10 +42,13 @@
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
 
     <!-- Chart.js for progress tracking -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Leaflet for maps -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <!-- Loading Screen -->
@@ -638,7 +641,7 @@
 
             <!-- Add Location Modal -->
             <div id="add-location-modal" class="modal hidden">
-                <div class="modal-content modal-small">
+                <div class="modal-content modal-medium">
                     <div class="modal-header">
                         <h3>Add New Location</h3>
                         <button class="close-btn" onclick="closeAddLocationModal()">
@@ -646,11 +649,67 @@
                         </button>
                     </div>
                     <div class="modal-body">
-                        <p class="modal-description">Enter a name for your current location. GPS coordinates will be saved automatically.</p>
+                        <!-- Location Name -->
                         <div class="form-group">
+                            <label>Location Name</label>
                             <input type="text" id="add-location-name-input" class="form-input"
                                    placeholder="e.g., LA Fitness Downtown" autocomplete="off">
                         </div>
+
+                        <!-- Location Method Tabs -->
+                        <div class="location-method-tabs">
+                            <button class="method-tab active" onclick="switchLocationMethod('gps')" id="method-gps-tab">
+                                <i class="fas fa-crosshairs"></i> Use Current GPS
+                            </button>
+                            <button class="method-tab" onclick="switchLocationMethod('address')" id="method-address-tab">
+                                <i class="fas fa-search"></i> Search Address
+                            </button>
+                            <button class="method-tab" onclick="switchLocationMethod('map')" id="method-map-tab">
+                                <i class="fas fa-map-pin"></i> Pin on Map
+                            </button>
+                        </div>
+
+                        <!-- GPS Method -->
+                        <div id="location-method-gps" class="location-method-content">
+                            <div class="gps-status-box" id="add-location-gps-status">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span>Detecting your location...</span>
+                            </div>
+                        </div>
+
+                        <!-- Address Search Method -->
+                        <div id="location-method-address" class="location-method-content hidden">
+                            <div class="form-group">
+                                <label>Search Address</label>
+                                <div class="search-input-wrapper">
+                                    <input type="text" id="location-address-search" class="form-input"
+                                           placeholder="Enter address, city, or place name..." autocomplete="off">
+                                    <button class="search-btn" onclick="searchLocationAddress()">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="address-search-results" class="address-results"></div>
+                        </div>
+
+                        <!-- Map Pin Method -->
+                        <div id="location-method-map" class="location-method-content hidden">
+                            <p class="method-description">Drag the pin or tap on the map to set location</p>
+                            <div id="add-location-map-container" class="add-location-map">
+                                <div class="map-placeholder">
+                                    <i class="fas fa-map-marked-alt"></i>
+                                    <span>Map will load here</span>
+                                </div>
+                            </div>
+                            <div id="pin-coordinates" class="pin-coords"></div>
+                        </div>
+
+                        <!-- Selected Coordinates Display -->
+                        <div id="selected-coords-display" class="selected-coords hidden">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span id="selected-coords-text">No location selected</span>
+                        </div>
+
                         <div class="modal-actions">
                             <button class="btn btn-secondary" onclick="closeAddLocationModal()">Cancel</button>
                             <button class="btn btn-primary" onclick="saveNewLocationFromModal()">

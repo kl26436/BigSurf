@@ -97,7 +97,8 @@ import {
     showLocationManagement, closeLocationManagement,
     setLocationAsCurrent, addNewLocationFromManagement, detectAndAddLocation,
     closeAddLocationModal, saveNewLocationFromModal,
-    editLocationName, deleteLocation, showLocationOnMapById
+    editLocationName, deleteLocation, showLocationOnMapById,
+    switchLocationMethod, searchLocationAddress, selectAddressResult, applyManualCoords
 } from './core/features/location-ui.js';
 
 // Location service (GPS-based location detection)
@@ -335,6 +336,10 @@ window.closeAddLocationModal = closeAddLocationModal;
 window.saveNewLocationFromModal = saveNewLocationFromModal;
 window.editLocationName = editLocationName;
 window.deleteLocation = deleteLocation;
+window.switchLocationMethod = switchLocationMethod;
+window.searchLocationAddress = searchLocationAddress;
+window.selectAddressResult = selectAddressResult;
+window.applyManualCoords = applyManualCoords;
 
 // Navigation Functions
 window.openSidebar = openSidebar;

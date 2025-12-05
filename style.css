@@ -2415,6 +2415,12 @@ input[type="number"] { -moz-appearance: textfield; }
   border-radius: var(--radius-lg);
   border: 1px solid rgba(255,255,255,0.04);
 }
+.modal-medium {
+  max-width: 500px;
+  margin: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255,255,255,0.04);
+}
 .modal-description {
   color: var(--text-muted);
   font-size: 0.9rem;
@@ -3393,6 +3399,149 @@ input[type="number"] { -moz-appearance: textfield; }
   font-size: 1rem;
 }
 .input-field:focus { outline: none; border-color: var(--primary); }
+
+/* Add Location Modal Enhancements */
+.location-method-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.method-tab {
+  flex: 1;
+  min-width: 100px;
+  padding: 10px 12px;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.method-tab:hover {
+  border-color: var(--primary);
+  color: var(--text-strong);
+}
+.method-tab.active {
+  background: rgba(29,211,176,0.15);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.location-method-content {
+  min-height: 120px;
+}
+.gps-status-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-card-hi);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+}
+.gps-status-box.success {
+  background: rgba(29,211,176,0.1);
+  color: var(--primary);
+}
+.gps-status-box.error {
+  background: rgba(255,107,107,0.1);
+  color: var(--danger);
+}
+.search-input-wrapper {
+  display: flex;
+  gap: 8px;
+}
+.search-input-wrapper .form-input {
+  flex: 1;
+}
+.search-btn {
+  width: 44px;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #000;
+  cursor: pointer;
+}
+.search-btn:hover {
+  opacity: 0.9;
+}
+.address-results {
+  margin-top: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.address-result-item {
+  padding: 12px;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.address-result-item:hover {
+  border-color: var(--primary);
+}
+.address-result-item.selected {
+  border-color: var(--primary);
+  background: rgba(29,211,176,0.1);
+}
+.address-result-name {
+  font-weight: 500;
+  color: var(--text-strong);
+}
+.address-result-address {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.method-description {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.add-location-map {
+  height: 200px;
+  background: var(--bg-card-hi);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
+}
+.map-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+}
+.map-placeholder i {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+.pin-coords {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 8px;
+}
+.selected-coords {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(29,211,176,0.1);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  margin-top: 16px;
+  color: var(--primary);
+  font-size: 0.9rem;
+}
 
 /* ===========================================
    28. EQUIPMENT PICKER
