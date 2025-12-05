@@ -683,7 +683,8 @@
                                 <label>Search Address</label>
                                 <div class="search-input-wrapper">
                                     <input type="text" id="location-address-search" class="form-input"
-                                           placeholder="Enter address, city, or place name..." autocomplete="off">
+                                           placeholder="Enter address, city, or place name..." autocomplete="off"
+                                           onkeydown="if(event.key==='Enter'){event.preventDefault();searchLocationAddress();}">
                                     <button class="search-btn" onclick="searchLocationAddress()">
                                         <i class="fas fa-search"></i>
                                     </button>

@@ -527,12 +527,23 @@ export async function searchLocationAddress() {
 
     try {
         // Use Nominatim (OpenStreetMap) for free geocoding
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`, {
-            headers: { 'Accept-Language': 'en' }
-        });
-        const results = await response.json();
+        // Note: Don't set custom headers - they cause CORS issues in browsers
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`);
 
-        if (results.length === 0) {
+        // Check if response is OK
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        let results;
+        try {
+            results = await response.json();
+        } catch (parseError) {
+            console.error('Invalid JSON response from Nominatim');
+            throw new Error('Invalid response from geocoding service');
+        }
+
+        if (!Array.isArray(results) || results.length === 0) {
             resultsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No results found. Try a different search.</div>';
             return;
         }
@@ -545,7 +556,10 @@ export async function searchLocationAddress() {
         `).join('');
     } catch (error) {
         console.error('Address search error:', error);
-        resultsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--danger);">Search failed. Please try again.</div>';
+        resultsContainer.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--danger);">
+            <p>Search failed. Please try again.</p>
+            <p style="font-size: 0.8rem; margin-top: 8px; opacity: 0.7;">Tip: Try a more specific address or city name</p>
+        </div>`;
     }
 }
 
