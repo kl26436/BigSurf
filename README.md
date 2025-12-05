@@ -1,30 +1,29 @@
-# 🏄 Big Surf Workout Tracker
+# Big Surf Workout Tracker
 
-A modern, client-side workout tracking web application with Firebase backend. Track your gym sessions, manage exercises, and monitor progress with an intuitive interface designed for mobile use.
+A mobile-first workout tracking web application with Firebase backend. Track your gym sessions, manage exercises and equipment, monitor progress with an intuitive interface designed for use at the gym.
 
-![Version](https://img.shields.io/badge/version-2.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+**[https://bigsurf.fit](https://bigsurf.fit)** - Try it now with your Google account
 
-## 🌐 Live Demo
+## Features
 
-**[https://bigsurf.fit](https://bigsurf.fit)** - Try it now with your Google account!
+- **Google Authentication** - Secure sign-in with Google accounts
+- **Real-time Workout Tracking** - Track sets, reps, and weights as you work out
+- **Multiple Workouts Per Day** - Log morning cardio and evening lifting separately
+- **Exercise Library** - 79+ pre-loaded exercises with form videos
+- **Custom Exercises** - Create and manage your own exercises
+- **Equipment Tracking** - Track which machine/equipment you used for accurate progress comparisons
+- **Location Management** - GPS-based gym detection, auto-associate equipment with locations
+- **Workout History** - Calendar view with detailed workout logs
+- **Progress Tracking** - View exercise history and personal records
+- **Template-Based Workouts** - Pre-built workout templates for different muscle groups
+- **Manual Entry** - Add past workouts retroactively
+- **Unit Toggle** - Switch between lbs/kg per exercise
+- **Rest Timers** - Automatic rest timer between sets
+- **Weekly Goals** - Visual progress ring showing workout frequency
+- **Streak Tracking** - Track consecutive workout days
+- **Mobile-First Design** - Optimized for gym use on your phone
 
-## ✨ Features
-
-- **🔐 Google Authentication** - Secure sign-in with Google accounts
-- **💪 Real-time Workout Tracking** - Track sets, reps, and weights as you work out
-- **📚 Exercise Library** - 79+ pre-loaded exercises with form videos
-- **📋 Custom Exercises** - Create and manage your own exercises
-- **📅 Workout History** - Calendar view with detailed workout logs
-- **📊 Progress Tracking** - View exercise history and personal records
-- **🎯 Template-Based Workouts** - Pre-built workout templates for different muscle groups
-- **✏️ Manual Entry** - Add past workouts retroactively
-- **🔄 Unit Toggle** - Switch between lbs/kg per exercise
-- **⏱️ Rest Timers** - Automatic rest timer between sets
-- **📱 Mobile-First Design** - Optimized for gym use on your phone
-- **🌐 Offline Detection** - Graceful handling of network issues
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -44,7 +43,7 @@ A modern, client-side workout tracking web application with Firebase backend. Tr
    - Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
    - Enable Google Authentication
    - Create a Firestore database
-   - Copy your Firebase config to `js/core/firebase-config.js`
+   - Copy your Firebase config to `js/core/data/firebase-config.js`
 
 3. **Set up Firestore Security Rules**
    ```javascript
@@ -76,8 +75,6 @@ A modern, client-side workout tracking web application with Firebase backend. Tr
 
    # Or using Node.js
    npx serve
-
-   # Or just open index.html in your browser
    ```
 
 5. **Open in browser**
@@ -85,199 +82,116 @@ A modern, client-side workout tracking web application with Firebase backend. Tr
    http://localhost:8000
    ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-BigSurf-B/
-├── index.html                      # Main application page
-├── style.css                       # Global styles
-├── CLAUDE.md                       # Development guidelines for AI assistants
-├── data/                           # Default data files
-│   ├── exercises.json              # Default exercise database
-│   └── workouts.json               # Default workout templates
-├── docs/                           # Documentation
-│   ├── DEPLOYMENT.md               # Firebase deployment guide
-│   └── MOBILE_TESTING.md           # Mobile & PWA testing guide
-├── js/
-│   ├── main.js                     # Entry point & window exports
-│   └── core/
-│       ├── app-initialization.js   # App startup & auth
-│       ├── app-state.js            # Global state management
-│       ├── workout-core.js         # Workout session logic
-│       ├── data-manager.js         # Firestore operations
-│       ├── firebase-workout-manager.js # Advanced Firebase ops
-│       ├── firebase-config.js      # Firebase SDK initialization
-│       ├── exercise-library.js     # Exercise database management
-│       ├── exercise-manager-ui.js  # Exercise library manager modal
-│       ├── template-selection.js   # Workout template picker
-│       ├── workout-history-ui.js   # History & calendar view
-│       ├── manual-workout.js       # Manual workout entry
-│       ├── ui-helpers.js           # Shared UI utilities
-│       ├── error-handler.js        # Global error handling
-│       ├── debug-utilities.js      # Debugging tools
-│       └── workout/
-│           └── workout-management-ui.js  # Template editor
-└── legacy/                         # Deprecated files (not used in production)
-    └── exercise-manager.html       # Old popup-based exercise manager
+BigSurf/
+├── index.html                    # Main application page
+├── style.css                     # Global styles
+├── service-worker.js             # PWA service worker
+├── CLAUDE.md                     # Development guidelines
+├── data/
+│   ├── exercises.json            # Default exercise database
+│   └── workouts.json             # Default workout templates
+├── docs/
+│   ├── DEPLOYMENT.md             # Firebase deployment guide
+│   └── MOBILE_TESTING.md         # Mobile & PWA testing guide
+└── js/
+    ├── main.js                   # Entry point & window exports
+    └── core/
+        ├── app-initialization.js # App startup & auth
+        ├── data/                 # Data layer
+        │   ├── firebase-config.js
+        │   ├── firebase-workout-manager.js
+        │   ├── data-manager.js
+        │   ├── exercise-library.js
+        │   └── schema-migration.js
+        ├── features/             # Feature modules
+        │   ├── location-service.js
+        │   ├── location-ui.js
+        │   ├── manual-workout.js
+        │   ├── pr-tracker.js
+        │   ├── stats-tracker.js
+        │   └── streak-tracker.js
+        ├── ui/                   # UI components
+        │   ├── dashboard-ui.js
+        │   ├── exercise-manager-ui.js
+        │   ├── navigation.js
+        │   ├── stats-ui.js
+        │   ├── template-selection.js
+        │   ├── ui-helpers.js
+        │   └── workout-history-ui.js
+        ├── utils/                # Utilities
+        │   ├── app-state.js
+        │   ├── debug-utilities.js
+        │   ├── error-handler.js
+        │   └── notification-helper.js
+        └── workout/              # Workout logic
+            ├── workout-core.js
+            ├── workout-history.js
+            └── workout-management-ui.js
 ```
 
-## 🎯 Usage
+## Usage
 
 ### Starting a Workout
 
 1. Sign in with your Google account
-2. Select a workout template from the home screen
-3. Click "Start Workout"
-4. Track your sets, reps, and weights in real-time
-5. Complete the workout to save to history
+2. Select a workout template from the dashboard or Start Workout page
+3. Track your sets, reps, and weights in real-time
+4. Complete the workout to save to history
 
-### Adding Custom Exercises
+### Managing Equipment
 
-1. Click the settings button
-2. Navigate to "Manage Workouts"
-3. Open the exercise library
-4. Click "Add Exercise"
-5. Fill in exercise details and save
+1. When starting an exercise, you can select equipment/machine used
+2. Equipment is associated with your gym location automatically
+3. View and manage equipment from the Exercise Manager
 
 ### Viewing History
 
-1. Click "Workout History" from the home screen
-2. Browse calendar view or filter by date
-3. Click any workout to view detailed stats
-4. Options to repeat, resume, or delete workouts
+1. Tap "History" in the bottom navigation
+2. Browse calendar view - dates with workouts are highlighted
+3. Tap any date to view workout details
+4. Multiple workouts per day are supported with a picker modal
 
-### Manual Entry
-
-1. Click "Add Manual Workout" from history
-2. Select a template or create custom
-3. Fill in date and exercise data
-4. Submit to add to history
-
-## 🔧 Configuration
-
-### Firebase Setup
-
-Edit `js/core/firebase-config.js`:
-```javascript
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_ID",
-  appId: "YOUR_APP_ID"
-};
-```
-
-### Default Unit
-
-Edit `js/core/app-state.js` to change default weight unit:
-```javascript
-globalUnit: 'lbs'  // or 'kg'
-```
-
-## 📊 Data Model
-
-### Firestore Collections
-
-- **`users/{userId}/workouts/{date}`** - User workout sessions
-- **`users/{userId}/templates/{templateId}`** - Custom workout templates
-- **`users/{userId}/customExercises/{exerciseId}`** - User-created exercises
-- **`users/{userId}/exerciseOverrides/{exerciseId}`** - Modified default exercises
-- **`exercises/{exerciseId}`** - Global exercise library (read-only)
-- **`workouts/{workoutId}`** - Global workout templates (read-only)
-
-### Workout Document Structure
-
-```javascript
-{
-  workoutType: "Chest – Push",
-  date: "2025-01-24",
-  startedAt: "2025-01-24T10:00:00.000Z",
-  completedAt: "2025-01-24T11:30:00.000Z",
-  totalDuration: 5400,
-  exercises: {
-    exercise_0: {
-      sets: [
-        { reps: 10, weight: 135, originalUnit: "lbs" },
-        { reps: 8, weight: 145, originalUnit: "lbs" }
-      ],
-      notes: "Felt strong today",
-      completed: true
-    }
-  },
-  version: "2.0"
-}
-```
-
-## 🛠️ Development
-
-### Tech Stack
+## Tech Stack
 
 - **Frontend**: Vanilla JavaScript (ES6 Modules), HTML5, CSS3
 - **Backend**: Firebase (Firestore + Authentication)
 - **No Build Process**: Direct ES6 module imports
 - **CDN**: Firebase SDK 10.7.1, Font Awesome 6.0.0
 
-### Code Style
+## Data Model
 
-- ES6+ features (arrow functions, async/await, destructuring)
-- Modular architecture with clear separation of concerns
-- Console logging with emoji prefixes for visual clarity
-- Comprehensive error handling with user-friendly messages
-- JSDoc-style comments for complex functions
+### Firestore Collections
 
-### Adding New Features
+- `users/{userId}/workouts/{docId}` - Workout sessions (Schema v3.0)
+- `users/{userId}/templates/{templateId}` - Custom workout templates
+- `users/{userId}/exercises/{exerciseId}` - User-created exercises
+- `users/{userId}/equipment` - Saved equipment with locations
+- `users/{userId}/locations` - Saved gym locations with GPS
+- `exercises/{exerciseId}` - Global exercise library (read-only)
+- `workouts/{workoutId}` - Global workout templates (read-only)
 
-1. Create module in `js/core/`
-2. Export functions
-3. Import in `js/main.js`
-4. Assign to `window` object for HTML onclick handlers
-5. Update CLAUDE.md with implementation details
-
-### Debug Tools
+## Debug Tools
 
 Access via browser console:
 ```javascript
 // Run all health checks
 window.runAllDebugChecks()
 
-// Check Firebase workout dates
-window.debugFirebaseWorkoutDates()
+// Debug weekly stats
+window.debugWeeklyStats()
 
 // View app state
 console.log(window.AppState)
 ```
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**"Permission Denied" errors**
-- Check Firebase Security Rules
-- Ensure you're signed in
-- Verify user UID matches rules
-
-**Exercises not loading**
-- Check network connection
-- Verify Firebase config
-- Check browser console for errors
-
-**Workouts not saving**
-- Ensure date format is correct (YYYY-MM-DD)
-- Check Firestore quotas
-- Verify security rules allow writes
-
-**Offline mode**
-- App shows offline notification
-- Changes sync when reconnected
-- Some features require internet
-
-## 📝 License
+## License
 
 MIT License - feel free to use this project for personal or commercial purposes.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! Please:
 1. Fork the repository
@@ -286,30 +200,6 @@ Contributions welcome! Please:
 4. Test thoroughly
 5. Submit a pull request
 
-## 📧 Support
-
-Found a bug? Have a feature request?
-- Open an issue on GitHub
-- Check existing issues first
-- Provide detailed reproduction steps
-
-## 🎉 Credits
-
-- Exercise database curated from various fitness resources
-- Form videos linked from YouTube fitness channels
-- Built with ❤️ for gym enthusiasts
-
-## 🗺️ Roadmap
-
-- [ ] Progressive Web App (PWA) support
-- [ ] Workout analytics and charts
-- [ ] Social features (share workouts)
-- [ ] Exercise form tips and cues
-- [ ] Custom rest timer durations
-- [ ] Export workout data
-- [ ] Dark mode toggle
-- [ ] Multi-language support
-
 ---
 
-**Version 2.0** - Modern architecture with improved modularity and error handling
+**Version 1.0.0** - Initial public release

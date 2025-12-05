@@ -4,26 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Big Surf Workout Tracker** is a client-side web application for tracking gym workouts with Firebase backend. The app features:
+**Big Surf Workout Tracker** is a mobile-first web application for tracking gym workouts with Firebase backend. Key features:
 - Firebase authentication (Google sign-in)
 - Real-time workout tracking with sets, reps, and weights
+- Multiple workouts per day support (Schema v3.0)
+- Equipment and location tracking per exercise
 - Exercise library management with custom exercises
 - Workout history with calendar view
 - Template-based workout planning
-- Manual workout entry for past workouts
+- Weekly progress tracking with goals and streaks
 
 ## Tech Stack
 
 - **Frontend**: Vanilla JavaScript (ES6 modules), HTML5, CSS3
 - **Backend**: Firebase (Firestore for data, Firebase Auth for authentication)
 - **No build process**: Direct ES6 module imports in browser
-- **CDN**: Firebase SDK loaded via CDN (10.7.1), Font Awesome 6.0.0
+- **CDN**: Firebase SDK 10.7.1, Font Awesome 6.0.0
 
 ## Application Architecture
 
 ### Core State Management
 
-The application uses a centralized state object (`AppState`) located in [js/core/app-state.js](js/core/app-state.js):
+The application uses a centralized state object (`AppState`) located in [js/core/utils/app-state.js](js/core/utils/app-state.js):
 - All global state lives in `AppState` object
 - No external state management library
 - Direct property mutation pattern
@@ -33,29 +35,42 @@ The application uses a centralized state object (`AppState`) located in [js/core
 
 The codebase is organized into functional modules under `js/core/`:
 
-**Initialization & Auth:**
-- [app-initialization.js](js/core/app-initialization.js) - Application startup, authentication setup, global event listeners
-- [firebase-config.js](js/core/firebase-config.js) - Firebase SDK initialization and configuration
-
-**Core Workout Logic:**
-- [workout-core.js](js/core/workout-core.js) - Workout session execution (start, pause, complete, cancel), exercise management, rest timers, set tracking
-- [data-manager.js](js/core/data-manager.js) - All Firestore data operations (save/load workouts, exercise history)
-- [firebase-workout-manager.js](js/core/firebase-workout-manager.js) - Advanced Firebase operations (templates, custom exercises, user overrides)
-
-**UI Modules:**
-- [template-selection.js](js/core/template-selection.js) - Workout template selection UI and filtering
-- [workout-history-ui.js](js/core/workout-history-ui.js) - Calendar view and workout history display
-- [workout/workout-management-ui.js](js/core/workout/workout-management-ui.js) - Template editor and workout management (modal)
-- [exercise-manager-ui.js](js/core/exercise-manager-ui.js) - Exercise library manager UI (integrated modal, search, filter, CRUD operations)
-- [manual-workout.js](js/core/manual-workout.js) - Manual workout entry form for adding past workouts
-- [ui-helpers.js](js/core/ui-helpers.js) - Shared UI utilities (notifications, weight conversions, progress updates)
-
-**Data:**
-- [exercise-library.js](js/core/exercise-library.js) - Exercise database management and search
-- [workout-history.js](js/core/workout-history.js) - Workout history data operations
-
-**Entry Point:**
-- [main.js](js/main.js) - Imports all modules, assigns functions to `window` object for HTML onclick handlers, initializes app on DOMContentLoaded
+```
+js/
+├── main.js                     # Entry point, window exports, init
+└── core/
+    ├── app-initialization.js   # App startup, auth, event listeners
+    ├── data/                   # Data layer
+    │   ├── firebase-config.js      # Firebase SDK init
+    │   ├── firebase-workout-manager.js  # Templates, exercises, equipment, locations
+    │   ├── data-manager.js         # Workout save/load operations
+    │   ├── exercise-library.js     # Exercise database
+    │   └── schema-migration.js     # v2 to v3 migration
+    ├── features/               # Feature modules
+    │   ├── location-service.js     # GPS detection, location matching
+    │   ├── location-ui.js          # Location management UI
+    │   ├── manual-workout.js       # Manual workout entry
+    │   ├── pr-tracker.js           # Personal record detection
+    │   ├── stats-tracker.js        # Weekly stats, progress
+    │   └── streak-tracker.js       # Streak calculation
+    ├── ui/                     # UI components
+    │   ├── dashboard-ui.js         # Dashboard rendering
+    │   ├── exercise-manager-ui.js  # Exercise library modal
+    │   ├── navigation.js           # Bottom nav, routing
+    │   ├── stats-ui.js             # Stats page
+    │   ├── template-selection.js   # Workout picker
+    │   ├── ui-helpers.js           # Notifications, conversions
+    │   └── workout-history-ui.js   # History modal
+    ├── utils/                  # Utilities
+    │   ├── app-state.js            # Global state object
+    │   ├── debug-utilities.js      # Debug functions
+    │   ├── error-handler.js        # Error handling
+    │   └── notification-helper.js  # UI notifications
+    └── workout/                # Workout logic
+        ├── workout-core.js         # Session execution
+        ├── workout-history.js      # Calendar, history data
+        └── workout-management-ui.js # Template editor
+```
 
 ### Function Exposure Pattern
 
@@ -63,25 +78,26 @@ Since the app uses inline `onclick` handlers in HTML, all interactive functions 
 
 ```javascript
 // Example pattern in main.js
-import { startWorkout } from './core/workout-core.js';
+import { startWorkout } from './core/workout/workout-core.js';
 window.startWorkout = startWorkout;
 ```
 
-When adding new UI functions that are called from HTML, you must:
+When adding new UI functions that are called from HTML:
 1. Export the function from its module
 2. Import it in [main.js](js/main.js)
 3. Assign it to `window` object
 
 ## Firebase Data Model
 
-### Collections Structure
+### Collections Structure (Schema v3.0)
 
 ```
 users/{userId}/
-  ├── workouts/{date}          # Workout sessions (date as document ID: "YYYY-MM-DD")
+  ├── workouts/{docId}         # Workout sessions (unique ID per workout)
   ├── templates/{templateId}   # Custom workout templates
   ├── exercises/{exerciseId}   # Custom exercises created by user
-  └── exercise_overrides/      # User modifications to default exercises
+  ├── equipment/{equipmentId}  # Saved equipment with locations
+  └── locations/{locationId}   # Saved gym locations with GPS
 ```
 
 ### Workout Document Structure
@@ -91,11 +107,14 @@ users/{userId}/
   workoutType: "Chest – Push",           // Template name
   date: "2025-01-15",                    // YYYY-MM-DD format
   startedAt: "2025-01-15T10:30:00.000Z", // ISO timestamp
-  completedAt: "2025-01-15T11:45:00.000Z", // ISO timestamp (null if incomplete)
+  completedAt: "2025-01-15T11:45:00.000Z", // null if incomplete
   cancelledAt: null,                     // ISO timestamp if cancelled
   totalDuration: 4500,                   // seconds
+  location: "Downtown Gym",              // GPS-detected location
   exercises: {
     exercise_0: {
+      name: "Bench Press",
+      equipment: "Hammer Strength Flat",
       sets: [
         { reps: 10, weight: 135, originalUnit: "lbs" },
         { reps: 8, weight: 145, originalUnit: "lbs" }
@@ -104,17 +123,7 @@ users/{userId}/
       completed: true
     }
   },
-  exerciseNames: {
-    exercise_0: "Bench Press"
-  },
-  exerciseUnits: {
-    0: "lbs"
-  },
-  originalWorkout: {
-    day: "Chest – Push",
-    exercises: [/* original template data */]
-  },
-  version: "2.0",
+  version: "3.0",
   lastUpdated: "2025-01-15T11:45:00.000Z"
 }
 ```
@@ -124,8 +133,8 @@ users/{userId}/
 **Critical**: The app has strict date handling requirements to prevent timezone bugs:
 - All workout dates stored as `YYYY-MM-DD` strings (no timestamps)
 - Use `AppState.getTodayDateString()` to get current date in local timezone
-- Firestore document IDs use date strings, not timestamps
-- See [data-manager.js](js/core/data-manager.js) lines 8-30 for date validation logic
+- Document IDs use unique format: `{date}_{timestamp}_{random}`
+- Query by `date` field, not `completedAt` (which changes on edit)
 
 ## Key Development Patterns
 
@@ -135,37 +144,38 @@ The app supports both lbs and kg with per-exercise unit tracking:
 - `AppState.globalUnit` - Default unit for new exercises
 - `AppState.exerciseUnits` - Map of exercise index to unit preference
 - All weights stored in Firestore with `originalUnit` field
-- Use `convertWeight()` from [ui-helpers.js](js/core/ui-helpers.js) for conversions
+- Use `convertWeight()` from [ui-helpers.js](js/core/ui/ui-helpers.js) for conversions
 
-### Exercise History Lookup
+### Equipment & Location Tracking
 
-Exercise history uses fuzzy matching across workouts:
-- Searches by exercise name across all workout templates
-- See [data-manager.js:loadExerciseHistory](js/core/data-manager.js#L192) for implementation
-- Handles renamed/moved exercises between templates
+- Equipment can belong to multiple locations (array field)
+- Location auto-detected via GPS on workout start (150m radius matching)
+- Location locks after first set is logged
+- Equipment auto-associated with location when first set logged
 
 ### Modal Management
 
-All modals are defined in [index.html](index.html) and toggled via CSS classes:
+All modals defined in [index.html](index.html) and toggled via CSS classes:
 - Add/remove `hidden` class to show/hide
-- Close on backdrop click and ESC key (handled in [app-initialization.js](js/core/app-initialization.js))
-- Modal functions named with pattern: `show*Modal()`, `close*Modal()`
+- Close on backdrop click and ESC key
+- Modal functions: `show*Modal()`, `close*Modal()`
+- Z-index scale: Sidebar 300, Modals 500, Exercise Library 550, Add Exercise 600
 
 ### In-Progress Workout Detection
 
-On app load, the system checks for incomplete workouts:
-- See [app-initialization.js:checkForInProgressWorkoutEnhanced](js/core/app-initialization.js#L232)
-- Shows resume card if workout exists for today without `completedAt` or `cancelledAt`
-- User can continue or discard
+On app load, checks for incomplete workouts:
+- 3-hour timeout: Resume banner only shows for workouts < 3 hours old
+- Auto-complete: Workouts > 3h with exercises done are auto-completed
+- Auto-delete: Workouts > 3h with no exercises are deleted
 
 ## Common Development Tasks
 
 ### Adding a New Exercise Field
 
 1. Update exercise objects in `AppState.exerciseDatabase`
-2. Modify Firestore save logic in [data-manager.js:saveWorkoutData](js/core/data-manager.js#L5)
-3. Update UI rendering in [workout-core.js:createExerciseCard](js/core/workout-core.js)
-4. Update manual workout form in [manual-workout.js](js/core/manual-workout.js)
+2. Modify save logic in [data-manager.js](js/core/data/data-manager.js)
+3. Update UI in [workout-core.js](js/core/workout/workout-core.js)
+4. Update manual workout form in [manual-workout.js](js/core/features/manual-workout.js)
 
 ### Adding a New Workout Section
 
@@ -176,359 +186,41 @@ On app load, the system checks for incomplete workouts:
 
 ### Modifying Firebase Schema
 
-1. Update save functions in [data-manager.js](js/core/data-manager.js)
+1. Update save functions in [data-manager.js](js/core/data/data-manager.js)
 2. Increment `version` field in workout documents
-3. Add migration logic in `migrateWorkoutData()` if needed
-4. Update TypeScript-style JSDoc comments for data structures
+3. Add migration logic in [schema-migration.js](js/core/data/schema-migration.js)
 
 ## Debugging
 
-Debug utilities available in [debug-utilities.js](js/core/debug-utilities.js):
-- `window.runAllDebugChecks()` - Run comprehensive health check
-- `window.debugFirebaseWorkoutDates()` - Check workout date consistency
-- `window.AppState` - Access full application state in console
-
-Enable Firebase debug logging:
+Debug utilities in [debug-utilities.js](js/core/utils/debug-utilities.js):
 ```javascript
-// In browser console
-localStorage.setItem('debug', 'firebase:*');
+window.runAllDebugChecks()    // Comprehensive health check
+window.debugWeeklyStats()     // Check weekly workout counting
+window.debugFirebaseWorkoutDates()  // Workout date consistency
+console.log(window.AppState)  // Full app state
 ```
 
 ## Code Style Guidelines
 
 - Use ES6+ features (arrow functions, destructuring, async/await)
 - All async functions use `async/await`, not raw Promises
-- Console.error with emoji prefixes (❌) for error visibility; verbose console.log removed from production
-- Error handling: try/catch with user-facing notifications via `showNotification()`
-- Comments: Explain "why", not "what" - code should be self-documenting
+- `console.error()` with emoji prefixes (❌) for visibility
+- Error handling: try/catch with `showNotification()` for user feedback
+- Comments: Explain "why", not "what"
 
 ## Important Notes
 
 - **No bundler/transpiler**: All code must be ES6 module compatible
-- **Firebase SDK version**: Locked to 10.7.1 (CDN import in [firebase-config.js](js/core/firebase-config.js))
-- **Authentication required**: Most features require user to be signed in
+- **Firebase SDK version**: Locked to 10.7.1
+- **Authentication required**: Most features require signed-in user
 - **Local storage not used**: All state in memory or Firebase
-- **Mobile-first**: UI designed for mobile gym use, responsive design
-- **Modal-based UI**: All major features (workout management, exercise library, manual entry) use integrated modals instead of separate pages
-- **No popup windows**: Exercise manager integrated as modal (exercise-manager.html is legacy, not used in production)
+- **Mobile-first**: UI designed for phone use at the gym
+- **Modal-based UI**: Features use integrated modals, not separate pages
 
-## Recent Improvements (v4.2-v4.7, November 2025)
+## Key Technical Patterns
 
-### v4.7: Resume Banner Stats
-- Resume banner now shows actual sets completed (e.g., "12/15 sets") instead of "0/0"
-- Shows time elapsed since workout started (minutes if < 1h, hours otherwise)
-- **File**: [dashboard-ui.js:133-158](js/core/dashboard-ui.js#L133-L158)
-
-### v4.5-v4.6: Smart Abandoned Workout Handling
-- **3-hour timeout**: Resume banner only shows for workouts < 3 hours old
-- **Auto-complete**: Workouts > 3h with exercises done are auto-completed (preserves on original date)
-- **Auto-delete**: Workouts > 3h with no exercises are deleted automatically
-- **Midnight boundary**: Checks both today and yesterday for incomplete workouts
-- **Files**: [dashboard-ui.js:45-142](js/core/dashboard-ui.js#L45-L142)
-
-### v4.4: Template Deep Clone Fix
-- **Critical bug**: Shallow copy `{...workout}` was causing template mutations
-- **Issue**: Deleting sets during workout modified the template itself
-- **Fix**: Deep clone with `JSON.parse(JSON.stringify(workout))` ensures template independence
-- **File**: [workout-core.js:44](js/core/workout-core.js#L44)
-
-### v4.3: Calendar Status Colors
-- **Visual improvement**: Calendar uses color-coded icons instead of text labels
-- **Green**: Completed workouts
-- **Orange**: In-progress workouts
-- **Red X**: Missed workout days
-- **Files**: [workout-history.js:165-167,314,346](js/core/workout-history.js), [style.css:3970-3989](style.css#L3970-L3989)
-
-### v4.2: Cancel Workflow Improvements
-- **Confirmation dialog**: Added before cancelling workouts
-- **History filter**: Cancelled workouts no longer appear in history/calendar
-- **Files**: [workout-core.js:133-152](js/core/workout-core.js#L133-L152), [firebase-workout-manager.js:783](js/core/firebase-workout-manager.js#L783)
-
-## Recent Improvements (v4.20-v4.21, November 2025)
-
-### v4.20: Workout Library UI Overhaul
-- **Unified List**: Removed default/custom template tabs - single unified workout list
-- **Terminology**: Changed "Manage Templates" to "Workout Library", "Template" to "Workout" throughout UI
-- **Simplified Cards**: Removed category tags from template cards
-- **Assign Days**: Renamed "Suggested Days" to "Assign Days" and removed helper text
-- **Files**: [index.html:458-463](index.html#L458-L463), [workout-management-ui.js:107-145](js/core/workout/workout-management-ui.js#L107-L145)
-
-### v4.21: Critical Bug Fixes
-- **Delete Button Fix**: Default templates now deleteable (passes `isDefault` parameter correctly)
-  - **File**: [workout-management-ui.js:155-170](js/core/workout/workout-management-ui.js#L155-L170)
-- **Navigation Fix**: Cancel dialog now navigates to dashboard instead of blank page
-  - **File**: [workout-core.js:33-39](js/core/workout-core.js#L33-L39)
-- **Workout Override Fix**: Fixed error when starting new workout with active one (OK button)
-  - **File**: [workout-core.js:44-49](js/core/workout-core.js#L44-L49)
-- **Duplicate Prevention**: Prevents adding same exercise twice to workout
-  - **File**: [workout-management-ui.js:702-710](js/core/workout/workout-management-ui.js#L702-L710)
-- **Auto-Refresh**: Workout library refreshes immediately after creating/editing
-  - **File**: [workout-management-ui.js:477-479](js/core/workout/workout-management-ui.js#L477-L479)
-- **Firebase Undefined Fix**: Removes undefined fields before saving to Firebase
-  - **File**: [firebase-workout-manager.js:714-719](js/core/firebase-workout-manager.js#L714-L719)
-- **Notification Fix**: Silent notifications no longer try to vibrate (fixes browser error)
-  - **File**: [notification-helper.js:45-61](js/core/notification-helper.js#L45-L61)
-
-### v4.22: UI Improvements
-- **Full Exercise Lists**: Template cards show all exercises with sets/reps/weight details
-  - **File**: [workout-management-ui.js:155-172](js/core/workout/workout-management-ui.js#L155-L172)
-- **Resume Banner Fix**: Resume banner now hidden when starting a workout (was showing for cancelled workout)
-  - **File**: [workout-core.js:54-58,119-121](js/core/workout-core.js#L54-L58)
-
-### v4.23: Resume Card Improvements
-- **Workout Name Display**: Resume card now shows actual workout name instead of "Current Workout"
-  - **File**: [workout-core.js:248-252](js/core/workout-core.js#L248-L252)
-- **Button Rename**: "Start Fresh" renamed to "Cancel Workout" for clarity
-  - **File**: [index.html:183-185](index.html#L183-L185)
-
-### v4.24: Workout Page UI Overhaul
-- **No More Collapse**: Completed exercises show full content with green border instead of collapsing
-  - **File**: [workout-core.js:431-434](js/core/workout-core.js#L431-L434), [style.css:1224-1232](style.css#L1224-L1232)
-- **Add Exercise Relocated**: Button moved from bottom of exercise list to header (next to Cancel/Finish)
-  - **File**: [index.html:264-266](index.html#L264-L266), [workout-core.js:353-364](js/core/workout-core.js#L353-L364)
-- **Resume Fix**: Resume button now uses `continueInProgressWorkout()` instead of `startWorkout()` to properly continue workouts
-  - **File**: [workout-history-ui.js:140-165](js/core/workout-history-ui.js#L140-L165)
-- **Modal Close Fix**: Delete/Repeat buttons now properly close modal after confirmation
-  - **File**: [workout-history.js:542-553](js/core/workout-history.js#L542-L553)
-
-### v4.25: Bug Fixes and Improvements
-- **Suggested Workouts Filter**: Hidden/deleted templates no longer appear in "Suggested for Today" section
-  - **File**: [dashboard-ui.js:493-510](js/core/dashboard-ui.js#L493-L510)
-- **Workout Not Found Handling**: Shows user-friendly notification instead of alert when template is deleted
-  - **File**: [workout-core.js:84-100](js/core/workout-core.js#L84-L100)
-- **Location Selector**: Temporarily disabled due to modal visibility issues (z-index conflicts)
-  - **File**: [workout-core.js:61-77](js/core/workout-core.js#L61-L77) - commented out for now
-
-### v4.33: Console Log Cleanup
-- **Production Code Cleanup**: Removed ~220 verbose `console.log()` statements across 25 files
-- **Error Logs Preserved**: All `console.error()` calls with ❌ emoji prefixes kept for debugging
-- **Debug Module Intact**: [debug-utilities.js](js/core/debug-utilities.js) keeps all 82 logs for debugging tools
-- **Cleaner Console**: Browser console now shows only errors and intentional debug output
-
-### v4.34: Exercise Manager Fixes
-- **Save/Delete Functions**: Fixed `saveExercise` to properly handle editing vs creating exercises
-- **Delete Method Fix**: Fixed `deleteExercise` to use correct Firebase method names (`deleteUniversalExercise`)
-- **AppState Refresh**: Properly refreshes exercise database after CRUD operations
-- **Files**: [exercise-manager-ui.js:311-400](js/core/exercise-manager-ui.js#L311-L400)
-
-### v4.35: Exercise Library Modal Improvements
-- **Create New Exercise**: Button now opens add-exercise-modal as overlay above library modal
-- **Add to Active Workout**: Exercise library modal now properly adds exercises to active workouts
-- **Context Awareness**: `selectExerciseFromLibrary` handles both template editing and active workout contexts
-- **Event System**: Added `exerciseLibraryUpdated` custom event for cross-module refresh
-- **Files**: [workout-management-ui.js:703-743](js/core/workout/workout-management-ui.js#L703-L743), [workout-core.js:909-931](js/core/workout-core.js#L909-L931)
-
-### v4.36: CSS Reorganization
-- **Z-Index Scale**: Standardized stacking context (0-900 range) with documentation
-  - Sidebar: 300, Modals: 500, Exercise Library: 550, Add Exercise: 600, Loading: 800
-- **Removed !important Abuse**: Reduced from 23 to 15 declarations (kept only for utilities/accessibility)
-- **Fixed Layout Conflicts**: Resolved filter-row grid vs flex conflict
-- **Backup**: Original CSS saved as `style.css.backup`
-- **File**: [style.css](style.css) - see z-index scale comment at top
-
-### v4.37: Timer Bug Fix
-- **Duplicate Timer Fix**: Workout timer now clears existing interval before creating new one
-- **Issue**: Cancel + new workout caused timer to flicker between old/new values
-- **File**: [workout-core.js:1308-1329](js/core/workout-core.js#L1308-L1329)
-
-### v4.38-v4.39: iOS Background Push Notifications (2025-11-29)
-- **Status**: NOT WORKING - iOS platform limitation
-- **Attempted**: Firebase Cloud Functions + Web Push API for iOS lock screen notifications
-- **Result**: Notifications only appear when app is foregrounded (iOS does not support reliable background push for PWAs)
-- **Infrastructure in place** (ready if Apple improves support):
-  - Cloud Functions: `scheduleRestNotification`, `cancelRestNotification`, `sendDueNotifications`, `savePushSubscription`
-  - Web Push API with VAPID keys (replaced FCM which has iOS Safari issues)
-  - Unified service worker (removed duplicate `firebase-messaging-sw.js`)
-- **Files**:
-  - [functions/index.js](functions/index.js) - Cloud Functions
-  - [service-worker.js](service-worker.js) - Unified service worker with push handler
-  - [js/core/push-notification-manager.js](js/core/push-notification-manager.js) - Web Push API client
-  - [js/core/error-handler.js](js/core/error-handler.js) - Suppresses non-critical push errors
-- **For true background notifications**: Would require native iOS app (Swift/React Native/Capacitor)
-
-### v4.40: Phase 1 Equipment Tracking (2025-11-30)
-- **New Feature**: Equipment/machine tracking per exercise for accurate progress comparisons
-- **Firebase Schema**: New `users/{userId}/equipment` collection for saved equipment
-- **Exercise Fields**: Added `equipment` and `equipmentLocation` fields to exercises
-- **Equipment Picker Modal**: When adding exercises to workouts, prompts for equipment selection
-- **Equipment Display**: Shows equipment tags on exercise cards and template listings
-- **Change Equipment During Workout**: Tap exercise title to change equipment mid-workout
-- **Template Exercise Editing**: Edit button in workout editor opens full Exercise Manager edit section
-  - Uses callback pattern (`window.templateExerciseEditCallback`) for cross-module communication
-  - Returns to template editor after save instead of exercise manager
-- **Duplicate Prevention**: Adding same exercise twice to active workout shows warning
-- **Form Button Fix**: Template editor buttons use `type="button"` to prevent form submission
-- **Files**:
-  - [firebase-workout-manager.js](js/core/firebase-workout-manager.js) - Equipment CRUD functions
-  - [workout-management-ui.js](js/core/workout/workout-management-ui.js) - Equipment picker, template exercise editing
-  - [exercise-manager-ui.js](js/core/exercise-manager-ui.js) - Template exercise edit callback handling
-  - [workout-core.js](js/core/workout-core.js) - Equipment display, change equipment during workout
-  - [index.html](index.html) - Equipment picker modal
-- **Test Plan**: See [PLAN-equipment-tracking.md](PLAN-equipment-tracking.md)
-
-### v4.41: Phase 2 GPS Location Detection (2025-11-30)
-- **New Feature**: GPS-based gym location detection and tracking per workout
-- **Location Service**: New module [location-service.js](js/core/location-service.js) for GPS functions
-  - `getCurrentPosition()` - Get GPS coordinates with high accuracy
-  - `calculateDistance()` - Haversine formula for distance calculation
-  - `findNearbyLocation()` - Match coordinates to saved locations (150m radius)
-  - `detectLocation()` - Auto-detect or prompt for new location on workout start
-  - Session state: `setSessionLocation()`, `getSessionLocation()`, `lockLocation()`, `isLocationLocked()`
-- **Firebase Schema**: New `users/{userId}/locations` collection
-  ```javascript
-  { id, name, latitude, longitude, radius, visitCount, lastVisit, createdAt }
-  ```
-- **Equipment Multi-Location Support**: Equipment can now belong to multiple gyms
-  - Migrated from single `location` field to `locations` array
-  - `addLocationToEquipment()` - Add location to equipment's locations array
-  - `updateEquipment()` - General equipment update function
-- **Location Indicator**: Shows in workout header with lock icon after first set
-- **Location Locking**: After first set logged, location cannot be changed
-- **Auto-Associate Equipment**: When first set logged, all equipment in workout gets location added
-- **Equipment Editor Modal**: Click pen icon on equipment to edit name, video, and manage locations
-  - Add/remove locations from equipment
-  - Delete equipment entirely
-  - z-index 1100 (above edit-exercise-section)
-- **Navigation Fixes**:
-  - Editing exercise from active workout now returns to active workout (not exercise manager)
-  - `window.editingFromActiveWorkout` flag for proper navigation
-- **Files**:
-  - [location-service.js](js/core/location-service.js) - NEW - GPS and location management
-  - [firebase-workout-manager.js](js/core/firebase-workout-manager.js) - Location CRUD, equipment updates
-  - [workout-core.js](js/core/workout-core.js) - Location integration, auto-associate equipment
-  - [exercise-manager-ui.js](js/core/exercise-manager-ui.js) - Equipment editor, navigation fix
-  - [index.html](index.html) - Location modals, equipment editor modal
-  - [style.css](style.css) - Location indicator, equipment editor styles
-
-### v4.42: UI Redesign - Clean Dark Theme (2025-11-30)
-- **New Design System**: Updated CSS variables to match new teal accent design
-  - Primary: `#1dd3b0` (teal), Success: `#36c46b`, Warning: `#f0c24b`
-  - Background levels: `--bg-primary` through `--bg-elevated`
-  - Shadows: `--shadow-sm`, `--shadow-md`, `--shadow-lg`
-  - Border radius: `--radius: 14px`, `--radius-sm: 10px`
-- **Header Behavior**: Smart header visibility based on page context
-  - Dashboard/History: Full header with centered Big Surf logo + hamburger menu
-  - Active Workout/Workout Library/Exercise Manager: Hidden header, standalone fixed hamburger
-  - New `setHeaderMode(showFullHeader)` function in ui-helpers.js
-- **Workout Library Cards**: Clean elevated design
-  - Rounded 16px cards with shadow elevation
-  - Teal "Use Today" button, neutral Edit/Delete buttons
-  - Exercise list with subtle separators
-  - Removed default/custom badges
-- **Active Workout**: Sticky elevated header
-  - Workout name, timer, sets counter prominently displayed
-  - Exercise cards with 16px rounded corners and elevation
-  - Updated button styling with rounded corners
-- **Exercise Detail Modal**: Clean input design
-  - Pill-shaped unit toggle (lbs/kg)
-  - Rounded input fields (12px radius)
-  - Styled Add/Remove Set buttons
-  - Full-width green "Mark Exercise Complete" button
-- **Files**:
-  - [style.css](style.css) - Complete design system overhaul
-  - [ui-helpers.js](js/core/ui-helpers.js) - `setHeaderMode()` function
-  - [dashboard-ui.js](js/core/dashboard-ui.js) - Header mode on dashboard
-  - [workout-core.js](js/core/workout-core.js) - Header mode on active workout
-  - [workout-management-ui.js](js/core/workout/workout-management-ui.js) - Header mode on workout library
-  - [exercise-manager-ui.js](js/core/exercise-manager-ui.js) - Header mode on exercise manager
-  - [workout-history-ui.js](js/core/workout-history-ui.js) - Header mode on history
-  - [index.html](index.html) - Standalone hamburger button
-
-### v4.43: Dashboard Overhaul - Sleek Design (2025-11-30)
-- **Progress Ring Hero**: SVG circular progress showing weekly workouts (X/5 goal)
-  - Teal ring fills up as workouts completed, turns green when goal met
-  - "X more to go" or "Goal achieved!" message
-- **Weekly Stats Row**: Shows Sets, Exercises, Minutes completed this week
-  - New `getWeeklyStats()` function in stats-tracker.js
-- **Suggested Workouts**: Lists workouts assigned to today's day of the week
-  - Shows completion status with green checkmark if already done today
-  - Day name header (e.g., "Saturday")
-- **Streak Card**: Fire icon with streak count
-  - Orange gradient when active, muted when no streak
-  - "Start a Streak" message when streak is 0
-- **Recent PRs Card**: Only shows max weight PRs with 5+ reps
-  - Filtered out volume PRs and low-rep PRs
-  - Clean compact design showing exercise, weight, reps
-- **Resume Banner Redesign**: Matches new sleek dashboard style
-  - Gradient background with teal accent
-  - Top gradient bar, rounded buttons
-- **Files**:
-  - [dashboard-ui.js](js/core/dashboard-ui.js) - New render functions for sleek dashboard
-  - [stats-tracker.js](js/core/stats-tracker.js) - `getWeeklyStats()`, filtered PRs to 5+ reps only
-  - [style.css](style.css) - Hero card, progress ring, streak card, PRs card, suggested workouts, resume banner styles
-
-### v4.44: UI Standardization & Polish (2025-12-03)
-- **Standardized Page Headers**: All full-page sections now use consistent `.section-header-row` with icon + title + action button
-  - History: `fa-calendar-alt` + "Add Missing" button
-  - Locations: `fa-map-marker-alt` + "New" button
-  - Workout Library: `fa-clipboard-list` + "New" button
-  - Exercise Library: `fa-dumbbell` + "New" button
-  - Start Workout: `fa-play-circle` + "New" button
-- **Full-Page Overlay Sections**: Consolidated CSS for 6 overlay sections with standardized layout
-  - `padding: 16px`, `bottom: 70px` for nav, documented z-index hierarchy
-  - Sections: `#workout-history-section`, `#workout-selector`, `#location-management-section`, `#workout-management-section`, `#exercise-manager-section`, `#edit-exercise-section`
-- **Workout Library Redesign**: Category grid (like Exercise Library) + list view with workout cards
-  - Same icons as Start Workout page (push/pull/legs/cardio/other)
-  - `selectWorkoutCategory()`, `showWorkoutCategoryView()`, `handleWorkoutSearch()` functions
-- **Template Selection Modal**: Redesigned to match Workout Library style
-  - Uses `.workout-list-item` cards instead of inline styles
-  - Shows exercise summary and category icons
-- **Add Location Modal**: Proper modal UI instead of browser `prompt()`
-  - Clean form with input field and Cancel/Add buttons
-  - `detectAndAddLocation()`, `closeAddLocationModal()`, `saveNewLocationFromModal()` functions
-- **Edit Historical Workout**: Improved button labels and behavior
-  - "Cancel" → "Discard" (exits without saving, doesn't delete)
-  - "Finish" → "Save" (saves changes)
-  - `discardEditedWorkout()` function, `updateWorkoutButtonsForEditMode()` helper
-- **Removed Unnecessary Notifications**: Cleaned up popup spam
-  - No notification when entering edit mode
-  - No notification when selecting location on Locations page
-  - No confirmation when discarding edits
-- **Bottom Nav Touch Targets**: Increased padding and min-height for better mobile usability
-  - `env(safe-area-inset-bottom)` for iOS safe area
-- **Files**:
-  - [style-new.css](style-new.css) - Consolidated overlay section styles, modal styles
-  - [index.html](index.html) - Standardized headers, add-location-modal
-  - [workout-core.js](js/core/workout-core.js) - Edit mode buttons, discardEditedWorkout
-  - [workout-management-ui.js](js/core/workout/workout-management-ui.js) - Category navigation
-  - [location-ui.js](js/core/location-ui.js) - Modal-based location adding
-  - [main.js](js/main.js) - Template selection modal, new exports
-
-### v4.45: Schema v3.0 - Multiple Workouts Per Day (2025-12-03)
-- **New Schema**: Workouts now use unique document IDs instead of date as document ID
-  - Old schema: `workouts/{YYYY-MM-DD}` - limited to one workout per day
-  - New schema: `workouts/{date}_{timestamp}_{random}` - unlimited workouts per day
-  - Date stored as `date` field in document for querying
-- **Automatic Migration**: On login, old schema docs are migrated silently
-  - [schema-migration.js](js/core/schema-migration.js) - Migration module
-  - `checkAndMigrateOnLogin()` runs in background, doesn't block login
-  - Adds `version: '3.0'`, `migratedAt`, `migratedFrom` fields
-- **Data Manager Updates**: All functions now use docId instead of date
-  - `generateWorkoutId(date)` - Creates unique ID format
-  - `loadWorkoutsByDate()` - Returns array of workouts for a date
-  - `loadWorkoutById()` - Load by unique document ID
-  - `deleteWorkoutById()` - Delete by unique document ID
-- **Calendar UI**: Shows count badge when multiple workouts on same day
-  - Workout picker modal for selecting which workout to view
-  - `showWorkoutPickerModal()`, `selectWorkoutFromPicker()` functions
-- **History Modal Fixes**: Fixed modal not reopening after close
-  - Inline `display: flex` now properly cleared when closing
-  - Both `workoutModal` and `workout-detail-modal` handle inline styles
-- **Files**:
-  - [schema-migration.js](js/core/schema-migration.js) - NEW - Automatic migration
-  - [data-manager.js](js/core/data-manager.js) - Schema v3.0 save/load functions
-  - [workout-history.js](js/core/workout-history.js) - Calendar workout arrays, picker modal
-  - [workout-history-ui.js](js/core/workout-history-ui.js) - Modal close fixes
-  - [app-initialization.js](js/core/app-initialization.js) - Migration on login
-
-### Key Technical Learnings
-
-1. **Deep vs Shallow Copy**: Always use deep clone for nested objects when modifications should not affect source
-2. **Abandoned Workout Detection**: Use `startedAt` timestamp comparison for time-based logic
-3. **Workout Status States**: `completed`, `incomplete`, `cancelled`, `partial` - must check `completedAt` and `cancelledAt` fields
-4. **Calendar Rendering**: Status-based CSS classes enable color coding without text labels
-5. **iOS PWA Notifications**: Neither client-side setTimeout nor server-side push works reliably - iOS platform limitation
-6. **Cross-Module Callbacks**: Use `window` flags and callbacks for communication between modal systems (e.g., `editingFromTemplateEditor`)
-7. **SVG Progress Rings**: Use stroke-dasharray and stroke-dashoffset with circumference calculation for progress indicators
-8. **Standardized Page Layout**: Full-page overlay sections share common CSS (fixed positioning, padding, z-index) for consistency
-9. **Modal Inline Styles**: When setting `display: flex` inline, must clear it with `display: none` on close (CSS classes alone insufficient)
+1. **Deep Clone for Templates**: Use `JSON.parse(JSON.stringify())` to prevent template mutation
+2. **Cross-Module Callbacks**: Use `window` flags for modal communication
+3. **Query by Date Field**: Use `date` not `completedAt` for workout queries (edited workouts update `completedAt`)
+4. **Unique Day Counting**: Use Set to count workout days, not total workouts
+5. **SVG Progress Rings**: stroke-dasharray/offset for circular progress indicators
