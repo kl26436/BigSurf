@@ -129,7 +129,7 @@ import { migrateOldWorkoutsToPRs } from './core/features/pr-migration.js';
 
 // Debug utilities
 import {
-    debugManualWorkoutDate, debugFirebaseWorkoutDates,
+    debugManualWorkoutDate, debugFirebaseWorkoutDates, debugWeeklyStats,
     forceCheckHistoryData, testHistoryFilters,
     fixWorkoutHistoryReference, emergencyFixFilters,
     debounce, setupErrorLogging, runAllDebugChecks
@@ -538,6 +538,7 @@ window.hideLoadingScreen = hideLoadingScreen;
 // Debug Functions
 window.debugManualWorkoutDate = debugManualWorkoutDate;
 window.debugFirebaseWorkoutDates = debugFirebaseWorkoutDates;
+window.debugWeeklyStats = debugWeeklyStats;
 window.forceCheckHistoryData = forceCheckHistoryData;
 window.testHistoryFilters = testHistoryFilters;
 window.fixWorkoutHistoryReference = fixWorkoutHistoryReference;

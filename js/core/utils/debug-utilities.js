@@ -40,21 +40,73 @@ export async function debugFirebaseWorkoutDates() {
         console.log('❌ No user signed in');
         return;
     }
-    
+
     try {
         const { db, collection, getDocs } = await import('../data/firebase-config.js');
-        
+
         const workoutsRef = collection(db, "users", AppState.currentUser.uid, "workouts");
         const querySnapshot = await getDocs(workoutsRef);
-        
+
         console.log('🔍 FIREBASE WORKOUT DATES DEBUG:');
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             console.log(`Document ID: ${doc.id}, Data date: ${data.date}, Workout: ${data.workoutType}`);
         });
-        
+
     } catch (error) {
         console.error('Error debugging Firebase dates:', error);
+    }
+}
+
+export async function debugWeeklyStats() {
+    if (!AppState.currentUser) {
+        console.log('❌ No user signed in');
+        return;
+    }
+
+    try {
+        const { db, collection, getDocs, query, where, orderBy } = await import('../data/firebase-config.js');
+
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - dayOfWeek);
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        console.log('🔍 WEEKLY STATS DEBUG:');
+        console.log('Today:', today.toISOString().split('T')[0], '(' + today.toLocaleDateString('en-US', {weekday: 'long'}) + ')');
+        console.log('Start of week:', startOfWeek.toISOString().split('T')[0], '(' + startOfWeek.toLocaleDateString('en-US', {weekday: 'long'}) + ')');
+        console.log('Query filter: completedAt >=', startOfWeek.toISOString());
+
+        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+        const q = query(
+            workoutsRef,
+            where('completedAt', '!=', null),
+            where('completedAt', '>=', startOfWeek.toISOString()),
+            orderBy('completedAt', 'desc')
+        );
+
+        const snapshot = await getDocs(q);
+        const workoutDays = new Set();
+
+        console.log('\n📋 Workouts found:');
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const cancelled = data.cancelledAt ? '❌ CANCELLED' : '✓';
+            console.log(`  ${cancelled} Date: ${data.date}, CompletedAt: ${data.completedAt?.substring(0,10)}, Type: ${data.workoutType}`);
+
+            if (!data.cancelledAt) {
+                if (data.date) {
+                    workoutDays.add(data.date);
+                }
+            }
+        });
+
+        console.log('\n📊 Unique workout days:', Array.from(workoutDays).sort());
+        console.log('Total unique days:', workoutDays.size);
+
+    } catch (error) {
+        console.error('Error debugging weekly stats:', error);
     }
 }
 
