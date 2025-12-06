@@ -448,19 +448,6 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             const equipment = exercise?.equipment || 'Unknown Equipment';
             const prs = PRTracker.getExercisePRs(exerciseName, equipment);
 
-            let historyHTML = `
-                <div class="exercise-history-content" style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; margin-top: 1rem;">`;
-
-            // Show PR if available (only max weight with 5+ reps counts as a real PR)
-            if (prs && prs.maxWeight && prs.maxWeight.reps >= 5) {
-                historyHTML += `
-                    <div style="margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: rgba(64, 224, 208, 0.1); border-left: 3px solid var(--primary); border-radius: 4px; display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fas fa-trophy" style="color: var(--primary);"></i>
-                        <span style="color: var(--primary); font-weight: 600;">PR:</span>
-                        <span>${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}</span>
-                    </div>`;
-            }
-
             // Show match info (equipment/location context)
             const histEquipment = lastExerciseData.equipment;
             const histLocation = lastWorkout.location;
@@ -469,14 +456,20 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
                 const parts = [];
                 if (histEquipment) parts.push(histEquipment);
                 if (histLocation) parts.push(histLocation);
-                matchInfo = ` <span style="font-size: 0.75rem; color: var(--text-muted);">@ ${parts.join(' - ')}</span>`;
+                matchInfo = ` @ ${parts.join(' - ')}`;
             }
 
-            historyHTML += `
-                    <div style="margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-secondary);">
-                        <strong>Last (${displayDate}):</strong>${matchInfo}
+            // Build PR text if available (only max weight with 5+ reps counts)
+            const prText = (prs && prs.maxWeight && prs.maxWeight.reps >= 5)
+                ? `<span style="color: var(--primary); margin-left: 0.5rem;">| PR: ${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}</span>`
+                : '';
+
+            let historyHTML = `
+                <div class="exercise-history-content" style="background: var(--bg-tertiary); padding: 0.75rem; border-radius: 8px; margin-top: 0.75rem;">
+                    <div style="margin-bottom: 0.4rem; font-size: 0.85rem; color: var(--text-secondary);">
+                        <strong>Last (${displayDate}):</strong><span style="font-size: 0.75rem; color: var(--text-muted);">${matchInfo}</span>${prText}
                     </div>
-                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
             `;
             
             lastExerciseData.sets.forEach((set, index) => {
