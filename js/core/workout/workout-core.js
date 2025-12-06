@@ -1231,9 +1231,8 @@ export function markExerciseComplete(exerciseIndex) {
     saveWorkoutData(AppState);
     renderExercises();
 
-    // Close modal if open
-    const modal = document.getElementById('exercise-modal');
-    if (modal) modal.classList.add('hidden');
+    // Close modal properly (this also shows bottom nav)
+    closeExerciseModal();
 }
 
 function markSetComplete(exerciseIndex, setIndex) {

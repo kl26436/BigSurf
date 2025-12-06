@@ -1488,3 +1488,328 @@ export async function migrateEquipmentToExercises() {
         throw error;
     }
 }
+
+// ===================================================================
+// RECALCULATE STREAKS AND PRs
+// ===================================================================
+
+/**
+ * Recalculate streak stats from workout history
+ * Displays current streak, longest streak, and workout counts
+ */
+export async function recalculateStreaks() {
+    if (!AppState.currentUser) {
+        console.log('❌ No user signed in');
+        return null;
+    }
+
+    console.log('📊 Recalculating streak statistics...\n');
+
+    try {
+        const { StreakTracker } = await import('../features/streak-tracker.js');
+        const stats = await StreakTracker.calculateStreaks();
+
+        if (!stats) {
+            console.log('❌ Failed to calculate streaks');
+            return null;
+        }
+
+        console.log('=== STREAK STATISTICS ===\n');
+        console.log(`🔥 Current Streak: ${stats.currentStreak} day(s)`);
+        console.log(`🏆 Longest Streak: ${stats.longestStreak} day(s)`);
+        console.log(`📅 Last Workout: ${stats.lastWorkoutDate || 'Never'}`);
+        console.log(`\n📈 This Week: ${stats.workoutsThisWeek} workout(s)`);
+        console.log(`📈 This Month: ${stats.workoutsThisMonth} workout(s)`);
+        console.log(`📊 Total Workouts: ${stats.totalWorkouts}`);
+
+        // Get frequency by day
+        const dayFreq = await StreakTracker.getWorkoutFrequencyByDay();
+        console.log('\n=== WORKOUTS BY DAY ===');
+        dayFreq.forEach(d => {
+            const bar = '█'.repeat(Math.min(d.count, 20));
+            console.log(`${d.day.padEnd(10)} ${bar} ${d.count}`);
+        });
+
+        showNotification(`Current streak: ${stats.currentStreak} days`, 'success');
+        return stats;
+
+    } catch (error) {
+        console.error('❌ Error calculating streaks:', error);
+        showNotification('Error calculating streaks', 'error');
+        throw error;
+    }
+}
+
+/**
+ * Rebuild all PRs from workout history
+ * Clears existing PRs and reprocesses all workouts
+ */
+export async function rebuildAllPRs() {
+    if (!AppState.currentUser) {
+        console.log('❌ No user signed in');
+        return null;
+    }
+
+    const confirm = window.confirm(
+        'This will clear all existing PRs and rebuild them from workout history.\n\n' +
+        'All workouts from July 2025 onwards will be included.\n\n' +
+        'Continue?'
+    );
+
+    if (!confirm) {
+        console.log('Cancelled');
+        return null;
+    }
+
+    console.log('🏋️ Rebuilding all PRs from workout history...\n');
+
+    try {
+        const { PRTracker } = await import('../features/pr-tracker.js');
+
+        // Load current PR data first
+        await PRTracker.loadPRData();
+
+        // Rebuild from history
+        const result = await PRTracker.rebuildPRsFromHistory();
+
+        if (result.success) {
+            console.log('\n=== PR REBUILD COMPLETE ===');
+            console.log(`✅ Workouts processed: ${result.workoutsProcessed}`);
+            console.log(`✅ Sets analyzed: ${result.setsProcessed}`);
+
+            // Show PR summary
+            const allPRs = PRTracker.getAllPRs();
+            console.log(`\n📊 Total exercises with PRs: ${allPRs.length}`);
+
+            // Group by body part
+            const prsByBodyPart = PRTracker.getPRsByBodyPart();
+            console.log('\n=== PRs BY BODY PART ===');
+            for (const [bodyPart, exercises] of Object.entries(prsByBodyPart)) {
+                const count = Object.keys(exercises).length;
+                console.log(`${bodyPart}: ${count} exercise(s)`);
+            }
+
+            // Show recent PRs
+            const recentPRs = PRTracker.getRecentPRs(5);
+            if (recentPRs.length > 0) {
+                console.log('\n=== RECENT PRs ===');
+                recentPRs.forEach(pr => {
+                    console.log(`🏆 ${pr.exercise} (${pr.equipment}): ${pr.weight} lbs × ${pr.reps} on ${pr.date}`);
+                });
+            }
+
+            showNotification(`Rebuilt ${allPRs.length} exercise PRs from ${result.workoutsProcessed} workouts`, 'success');
+        } else {
+            console.error('❌ PR rebuild failed:', result.error);
+            showNotification('PR rebuild failed', 'error');
+        }
+
+        return result;
+
+    } catch (error) {
+        console.error('❌ Error rebuilding PRs:', error);
+        showNotification('Error rebuilding PRs', 'error');
+        throw error;
+    }
+}
+
+/**
+ * Recalculate ALL stats - streaks and PRs
+ * Use this after equipment/location updates are complete
+ */
+export async function recalculateAllStats() {
+    if (!AppState.currentUser) {
+        console.log('❌ No user signed in');
+        return null;
+    }
+
+    console.log('🔄 RECALCULATING ALL STATISTICS\n');
+    console.log('='.repeat(50));
+
+    try {
+        // Step 1: Recalculate streaks
+        console.log('\n📊 Step 1: Recalculating streaks...');
+        const streakStats = await recalculateStreaks();
+
+        // Step 2: Rebuild PRs
+        console.log('\n🏋️ Step 2: Rebuilding PRs...');
+        const prResult = await rebuildAllPRs();
+
+        console.log('\n' + '='.repeat(50));
+        console.log('✅ ALL STATS RECALCULATED');
+        console.log('='.repeat(50));
+
+        return {
+            streaks: streakStats,
+            prs: prResult
+        };
+
+    } catch (error) {
+        console.error('❌ Error recalculating stats:', error);
+        throw error;
+    }
+}
+
+/**
+ * Show current PR summary without rebuilding
+ */
+export async function showPRSummary() {
+    if (!AppState.currentUser) {
+        console.log('❌ No user signed in');
+        return null;
+    }
+
+    console.log('📊 Loading PR summary...\n');
+
+    try {
+        const { PRTracker } = await import('../features/pr-tracker.js');
+        await PRTracker.loadPRData();
+
+        const allPRs = PRTracker.getAllPRs();
+        const prsByBodyPart = PRTracker.getPRsByBodyPart();
+        const cutoffDate = PRTracker.getPRCutoffDate();
+
+        console.log('=== PR SUMMARY ===');
+        console.log(`Cutoff date: ${cutoffDate} (PRs before this are ignored)\n`);
+
+        console.log(`Total exercises with PRs: ${allPRs.length}\n`);
+
+        // Show by body part
+        console.log('=== BY BODY PART ===');
+        for (const [bodyPart, exercises] of Object.entries(prsByBodyPart)) {
+            console.log(`\n📋 ${bodyPart.toUpperCase()}`);
+            for (const [exerciseName, equipmentData] of Object.entries(exercises)) {
+                for (const [equipment, prs] of Object.entries(equipmentData)) {
+                    if (prs.maxWeight) {
+                        console.log(`   ${exerciseName} (${equipment}): ${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}`);
+                    }
+                }
+            }
+        }
+
+        // Show recent PRs
+        const recentPRs = PRTracker.getRecentPRs(10);
+        if (recentPRs.length > 0) {
+            console.log('\n=== 10 MOST RECENT PRs ===');
+            recentPRs.forEach((pr, i) => {
+                console.log(`${i + 1}. ${pr.date} - ${pr.exercise} (${pr.equipment}): ${pr.weight} lbs × ${pr.reps}`);
+            });
+        }
+
+        return { total: allPRs.length, byBodyPart: prsByBodyPart, recent: recentPRs };
+
+    } catch (error) {
+        console.error('❌ Error loading PR summary:', error);
+        throw error;
+    }
+}
+
+/**
+ * Rename an exercise across all workout history
+ * Updates exerciseNames, exercises.exercise_X.name, and originalWorkout.exercises[].machine
+ */
+export async function renameExercise(oldName, newName) {
+    if (!AppState.currentUser) {
+        console.log('❌ No user signed in');
+        return { updated: 0 };
+    }
+
+    const confirm = window.confirm(
+        `This will rename all instances of:\n\n` +
+        `"${oldName}"\n\nto:\n\n"${newName}"\n\n` +
+        `across all workout history.\n\nContinue?`
+    );
+
+    if (!confirm) {
+        console.log('Cancelled');
+        return { updated: 0 };
+    }
+
+    console.log(`🔄 Renaming "${oldName}" to "${newName}"...\n`);
+
+    try {
+        const { db, collection, getDocs, doc, updateDoc } = await import('../data/firebase-config.js');
+        const uid = AppState.currentUser.uid;
+
+        const workoutsRef = collection(db, "users", uid, "workouts");
+        const snapshot = await getDocs(workoutsRef);
+
+        let updateCount = 0;
+        let exerciseCount = 0;
+        const oldNameLower = oldName.toLowerCase();
+
+        for (const docSnap of snapshot.docs) {
+            const data = docSnap.data();
+            let needsUpdate = false;
+            const updates = {};
+
+            // Check exerciseNames object
+            if (data.exerciseNames) {
+                for (const [key, exName] of Object.entries(data.exerciseNames)) {
+                    if (exName?.toLowerCase() === oldNameLower) {
+                        updates[`exerciseNames.${key}`] = newName;
+                        needsUpdate = true;
+                        exerciseCount++;
+                    }
+                }
+            }
+
+            // Check exercises object (where sets are stored)
+            if (data.exercises) {
+                for (const [key, ex] of Object.entries(data.exercises)) {
+                    if (ex.name?.toLowerCase() === oldNameLower) {
+                        updates[`exercises.${key}.name`] = newName;
+                        needsUpdate = true;
+                    }
+                }
+            }
+
+            // Check originalWorkout.exercises (template data)
+            if (data.originalWorkout?.exercises) {
+                let originalNeedsUpdate = false;
+                const updatedExercises = data.originalWorkout.exercises.map(ex => {
+                    if (!ex) return ex; // Skip null/undefined entries
+                    const machineMatch = ex.machine && ex.machine.toLowerCase() === oldNameLower;
+                    const nameMatch = ex.name && ex.name.toLowerCase() === oldNameLower;
+                    if (machineMatch || nameMatch) {
+                        originalNeedsUpdate = true;
+                        needsUpdate = true;
+                        const updated = { ...ex };
+                        if (machineMatch) updated.machine = newName;
+                        if (nameMatch) updated.name = newName;
+                        return updated;
+                    }
+                    return ex;
+                });
+
+                if (originalNeedsUpdate) {
+                    updates['originalWorkout.exercises'] = updatedExercises;
+                }
+            }
+
+            if (needsUpdate) {
+                const docRef = doc(db, "users", uid, "workouts", docSnap.id);
+                await updateDoc(docRef, updates);
+                updateCount++;
+                console.log(`  ✓ Updated: ${data.date} - ${data.workoutType}`);
+            }
+        }
+
+        console.log(`\n✅ Rename complete!`);
+        console.log(`   Workouts updated: ${updateCount}`);
+        console.log(`   Exercise instances renamed: ${exerciseCount}`);
+
+        if (updateCount > 0) {
+            showNotification(`Renamed ${exerciseCount} exercises in ${updateCount} workouts`, 'success');
+        } else {
+            showNotification(`No exercises found matching "${oldName}"`, 'info');
+        }
+
+        return { updated: updateCount, exercises: exerciseCount };
+
+    } catch (error) {
+        console.error('❌ Error renaming exercise:', error);
+        showNotification('Error renaming exercise', 'error');
+        throw error;
+    }
+}

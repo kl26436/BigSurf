@@ -221,6 +221,8 @@ export function closeExerciseManager() {
         if (activeWorkout) {
             activeWorkout.classList.remove('hidden');
         }
+        // Show bottom nav again
+        setBottomNavVisible(true);
         // Clear the flag
         window.editingFromActiveWorkout = false;
     } else {
@@ -229,6 +231,7 @@ export function closeExerciseManager() {
         if (dashboard) {
             dashboard.classList.remove('hidden');
         }
+        setBottomNavVisible(true);
     }
 }
 
@@ -491,6 +494,9 @@ export function closeEditExerciseSection() {
 
         const activeWorkout = document.getElementById('active-workout');
         if (activeWorkout) activeWorkout.classList.remove('hidden');
+
+        // Show bottom nav again
+        setBottomNavVisible(true);
 
         window.editingFromActiveWorkout = false;
     } else {

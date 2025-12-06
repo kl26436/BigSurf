@@ -23,13 +23,16 @@ export async function calculateStreaks() {
         const snapshot = await getDocs(workoutsRef);
 
         // Extract and sort workout dates
-        const workoutDates = [];
-        for (const doc of snapshot.docs) {
-            const workout = doc.data();
-            if (workout.completedAt) {
-                workoutDates.push(doc.id); // doc.id is YYYY-MM-DD format
+        // Use workout.date field (not doc.id which may have timestamp suffix in Schema v3.0)
+        const workoutDatesSet = new Set(); // Use Set to dedupe multiple workouts per day
+        for (const docSnap of snapshot.docs) {
+            const workout = docSnap.data();
+            if (workout.completedAt && workout.date) {
+                // workout.date is YYYY-MM-DD format
+                workoutDatesSet.add(workout.date);
             }
         }
+        const workoutDates = [...workoutDatesSet];
 
         // Sort dates chronologically
         workoutDates.sort();
@@ -170,11 +173,12 @@ export async function getWorkoutFrequencyByDay() {
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayCounts = [0, 0, 0, 0, 0, 0, 0];
 
-        for (const doc of snapshot.docs) {
-            const workout = doc.data();
-            if (workout.completedAt) {
+        for (const docSnap of snapshot.docs) {
+            const workout = docSnap.data();
+            if (workout.completedAt && workout.date) {
                 // Parse date string explicitly to avoid UTC/timezone issues
-                const [year, month, day] = doc.id.split('-').map(Number);
+                // Use workout.date field (not doc.id which may have timestamp suffix)
+                const [year, month, day] = workout.date.split('-').map(Number);
                 const date = new Date(year, month - 1, day);
                 const dayIndex = date.getDay();
                 dayCounts[dayIndex]++;
@@ -214,11 +218,12 @@ export async function getWorkoutFrequencyByMonth() {
             monthCounts[key] = 0;
         }
 
-        for (const doc of snapshot.docs) {
-            const workout = doc.data();
-            if (workout.completedAt) {
+        for (const docSnap of snapshot.docs) {
+            const workout = docSnap.data();
+            if (workout.completedAt && workout.date) {
                 // Parse date string explicitly to avoid UTC/timezone issues
-                const [year, month, day] = doc.id.split('-').map(Number);
+                // Use workout.date field (not doc.id which may have timestamp suffix)
+                const [year, month, day] = workout.date.split('-').map(Number);
                 const date = new Date(year, month - 1, day);
                 const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 if (monthCounts.hasOwnProperty(key)) {

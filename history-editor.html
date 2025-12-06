@@ -622,8 +622,8 @@
                     <div class="stat-value" id="missing-location">0</div>
                     <div class="stat-label">Missing Location</div>
                 </div>
-                <div class="stat clickable" onclick="filterByStatus('missing-equipment')" title="Click to filter">
-                    <div class="stat-value" id="missing-equipment">0</div>
+                <div class="stat clickable" onclick="filterByStatus('missing-equipment-exercises')" title="Click to filter - shows individual exercises">
+                    <div class="stat-value" id="missing-equipment-exercises">0</div>
                     <div class="stat-label">Missing Equipment</div>
                 </div>
                 <div class="stat">
@@ -643,7 +643,8 @@
                 </select>
                 <select id="status-filter">
                     <option value="">All Status</option>
-                    <option value="missing-equipment">Missing Equipment</option>
+                    <option value="missing-equipment">Missing Equipment (Workouts)</option>
+                    <option value="missing-equipment-exercises">Missing Equipment (Exercises)</option>
                     <option value="missing-location">Missing Location</option>
                     <option value="incomplete">Any Incomplete</option>
                     <option value="complete">Complete Only</option>
@@ -720,8 +721,11 @@
             getDocs,
             doc,
             updateDoc,
+            setDoc,
+            getDoc,
             query,
-            orderBy
+            orderBy,
+            where
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         // Firebase config - must match firebase-config.js
@@ -974,10 +978,24 @@
         };
 
         function updateStats() {
+            const missingLocCount = allWorkouts.filter(w => w.missingLocation).length;
+
+            // Count individual exercises missing equipment
+            let missingEquipExercisesCount = 0;
+            allWorkouts.forEach(w => {
+                w.exercises.forEach(ex => {
+                    if (ex.sets > 0 && (!ex.equipment || ex.equipment.trim() === '')) {
+                        missingEquipExercisesCount++;
+                    }
+                });
+            });
+
             document.getElementById('total-workouts').textContent = allWorkouts.length;
-            document.getElementById('missing-location').textContent = allWorkouts.filter(w => w.missingLocation).length;
-            document.getElementById('missing-equipment').textContent = allWorkouts.filter(w => w.missingEquipment).length;
+            document.getElementById('missing-location').textContent = missingLocCount;
+            document.getElementById('missing-equipment-exercises').textContent = missingEquipExercisesCount;
             document.getElementById('unique-exercises').textContent = exerciseNames.size;
+
+            console.log(`Stats updated: ${missingEquipExercisesCount} exercises missing equipment, ${missingLocCount} workouts missing location`);
         }
 
         function populateFilters() {
@@ -1010,8 +1028,18 @@
             const locationFilter = document.getElementById('location-filter').value;
             const statusFilter = document.getElementById('status-filter').value;
 
+            console.log(`renderWorkouts called - exerciseFilter="${exerciseFilter}", statusFilter="${statusFilter}", locationFilter="${locationFilter}"`);
+
+            // If filtering by "Missing Equipment (Exercises)", show flat list of all exercises missing equipment
+            if (statusFilter === 'missing-equipment-exercises') {
+                console.log('Rendering missing equipment exercises list');
+                renderMissingEquipmentExercises(searchTerm, locationFilter);
+                return;
+            }
+
             // If filtering by exercise, show flat list of just those exercises
             if (exerciseFilter) {
+                console.log('Rendering exercise list view (exercise filter active)');
                 renderExerciseList(exerciseFilter, searchTerm, locationFilter);
                 return;
             }
@@ -1031,13 +1059,22 @@
                 if (locationFilter && w.location !== locationFilter) return false;
 
                 // Status filter
-                if (statusFilter === 'missing-equipment' && !w.missingEquipment) return false;
+                if (statusFilter === 'missing-equipment') {
+                    if (!w.missingEquipment) {
+                        return false;
+                    }
+                }
                 if (statusFilter === 'missing-location' && !w.missingLocation) return false;
                 if (statusFilter === 'incomplete' && !w.missingLocation && !w.missingEquipment) return false;
                 if (statusFilter === 'complete' && (w.missingLocation || w.missingEquipment)) return false;
 
                 return true;
             });
+
+            console.log(`Filtered workouts: ${filtered.length} of ${allWorkouts.length} (statusFilter=${statusFilter})`);
+            if (statusFilter === 'missing-equipment') {
+                console.log('Workouts with missingEquipment=true:', allWorkouts.filter(w => w.missingEquipment).map(w => w.date).join(', '));
+            }
 
             if (filtered.length === 0) {
                 listEl.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>No workouts found</p></div>';
@@ -1149,6 +1186,96 @@
                             <div class="exercise-field sets-field">
                                 <label>Sets</label>
                                 <span>${ex.sets || 0}</span>
+                            </div>
+                        </div>
+                        ${ex.notes ? `<div class="instance-notes"><i class="fas fa-sticky-note"></i> ${escapeHtml(ex.notes)}</div>` : ''}
+                    </div>
+                `}).join('')}
+            `;
+        }
+
+        // Render flat list of ALL exercises missing equipment
+        function renderMissingEquipmentExercises(searchTerm, locationFilter) {
+            const listEl = document.getElementById('workout-list');
+
+            // Collect all exercises missing equipment across all workouts
+            const missingExercises = [];
+
+            allWorkouts.forEach(w => {
+                // Apply location filter
+                if (locationFilter && w.location !== locationFilter) return;
+
+                w.exercises.forEach(ex => {
+                    // Only include exercises with sets but no equipment
+                    if (ex.sets > 0 && (!ex.equipment || ex.equipment.trim() === '')) {
+                        // Apply search filter
+                        if (searchTerm) {
+                            const matchesSearch =
+                                ex.name?.toLowerCase().includes(searchTerm) ||
+                                ex.notes?.toLowerCase().includes(searchTerm) ||
+                                w.location?.toLowerCase().includes(searchTerm) ||
+                                w.workoutType?.toLowerCase().includes(searchTerm);
+                            if (!matchesSearch) return;
+                        }
+
+                        missingExercises.push({
+                            ...ex,
+                            docId: w.docId,
+                            date: w.date,
+                            workoutType: w.workoutType,
+                            workoutLocation: w.location
+                        });
+                    }
+                });
+            });
+
+            console.log(`Found ${missingExercises.length} exercises missing equipment`);
+
+            if (missingExercises.length === 0) {
+                listEl.innerHTML = '<div class="empty-state"><i class="fas fa-check-circle" style="color: var(--success);"></i><p>All exercises have equipment assigned!</p></div>';
+                return;
+            }
+
+            // Sort by date descending
+            missingExercises.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+            // Get all equipment options and locations for dropdowns
+            const locOptions = [...allEquipmentLocations].sort();
+
+            listEl.innerHTML = `
+                <div class="exercise-filter-header">
+                    <h3><i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i> Exercises Missing Equipment</h3>
+                    <span class="exercise-count">${missingExercises.length} exercises need equipment</span>
+                </div>
+                ${missingExercises.map(ex => {
+                    const selKey = `${ex.docId}|${ex.key}`;
+                    const isSelected = selectedExercises.has(selKey);
+                    // Get equipment options for this specific exercise name
+                    const equipOptions = equipmentByExercise[ex.name] ? [...equipmentByExercise[ex.name]].sort() : [];
+
+                    return `
+                    <div class="exercise-instance ${isSelected ? 'selected' : ''}" data-sel-key="${selKey}">
+                        <div class="instance-header">
+                            <input type="checkbox"
+                                class="exercise-checkbox"
+                                ${isSelected ? 'checked' : ''}
+                                onchange="toggleExerciseSelection('${ex.docId}', '${ex.key}', '${ex.name.replace(/'/g, "\\'")}', this.checked)">
+                            <div class="instance-date">${formatDate(ex.date)}</div>
+                            <div class="instance-workout">${ex.workoutType || 'Workout'}</div>
+                            <div class="instance-location">${ex.workoutLocation || '(no location)'}</div>
+                        </div>
+                        <div class="instance-fields">
+                            <div class="exercise-field">
+                                <label>Exercise</label>
+                                <span style="font-weight: 600; color: var(--text-strong);">${escapeHtml(ex.name)}</span>
+                            </div>
+                            <div class="exercise-field">
+                                <label>Equipment</label>
+                                ${renderEquipmentSelect(ex.docId, ex.key, ex.equipment, equipOptions)}
+                            </div>
+                            <div class="exercise-field">
+                                <label>Equipment Location</label>
+                                ${renderLocationSelect(ex.docId, ex.key, ex.equipmentLocation, locOptions)}
                             </div>
                         </div>
                         ${ex.notes ? `<div class="instance-notes"><i class="fas fa-sticky-note"></i> ${escapeHtml(ex.notes)}</div>` : ''}
@@ -1412,6 +1539,10 @@
                 }
 
                 updateStats();
+
+                // Re-render to update the filtered view
+                renderWorkouts();
+
                 showToast('Saved!');
             } catch (error) {
                 console.error('Error updating:', error);
@@ -1419,26 +1550,129 @@
             }
         };
 
+        // Save equipment to equipment collection (so main app can see it)
+        async function saveEquipmentToCollection(equipmentName, exerciseName, locationName) {
+            if (!equipmentName || !currentUser) return;
+
+            try {
+                // Check if equipment already exists with this name
+                const equipmentRef = collection(db, 'users', currentUser.uid, 'equipment');
+                const q = query(equipmentRef, where('name', '==', equipmentName));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    // Create new equipment entry
+                    const equipmentId = `equipment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    const docRef = doc(db, 'users', currentUser.uid, 'equipment', equipmentId);
+                    await setDoc(docRef, {
+                        id: equipmentId,
+                        name: equipmentName,
+                        exerciseTypes: exerciseName ? [exerciseName] : [],
+                        locations: locationName ? [locationName] : [],
+                        createdAt: new Date().toISOString(),
+                        lastUsed: new Date().toISOString()
+                    });
+                    console.log(`✅ Created new equipment: ${equipmentName}`);
+                } else {
+                    // Update existing equipment - add exercise type and location if not already present
+                    const existingDoc = snapshot.docs[0];
+                    const existingData = existingDoc.data();
+                    const exerciseTypes = existingData.exerciseTypes || [];
+                    const locations = existingData.locations || [];
+
+                    let needsUpdate = false;
+                    if (exerciseName && !exerciseTypes.includes(exerciseName)) {
+                        exerciseTypes.push(exerciseName);
+                        needsUpdate = true;
+                    }
+                    if (locationName && !locations.includes(locationName)) {
+                        locations.push(locationName);
+                        needsUpdate = true;
+                    }
+
+                    if (needsUpdate) {
+                        await updateDoc(existingDoc.ref, {
+                            exerciseTypes: exerciseTypes,
+                            locations: locations,
+                            lastUsed: new Date().toISOString()
+                        });
+                        console.log(`✅ Updated equipment: ${equipmentName}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Error saving equipment to collection:', error);
+            }
+        }
+
         // Update exercise field
         window.updateExerciseField = async (docId, exerciseKey, field, value) => {
+            console.log(`updateExerciseField called: docId=${docId}, key=${exerciseKey}, field=${field}, value=${value}`);
+
             try {
                 const docRef = doc(db, 'users', currentUser.uid, 'workouts', docId);
                 const updates = {
                     [`exercises.${exerciseKey}.${field}`]: value
                 };
                 await updateDoc(docRef, updates);
+                console.log('Firebase update successful');
 
                 // Update local data
                 const workout = allWorkouts.find(w => w.docId === docId);
+                let exerciseName = null;
+                let equipmentLocation = null;
+
                 if (workout) {
+                    console.log(`Found workout: ${workout.date}, ${workout.workoutType}`);
                     const exercise = workout.exercises.find(ex => ex.key === exerciseKey);
                     if (exercise) {
+                        console.log(`Found exercise: ${exercise.name}, current equipment: ${exercise.equipment}`);
                         exercise[field] = value;
+                        console.log(`Updated exercise.${field} to: ${value}`);
+                        exerciseName = exercise.name;
+                        equipmentLocation = exercise.equipmentLocation;
+
+                        // Track new equipment/location in dropdowns
+                        if (field === 'equipment' && value) {
+                            if (!equipmentByExercise[exercise.name]) {
+                                equipmentByExercise[exercise.name] = new Set();
+                            }
+                            equipmentByExercise[exercise.name].add(value);
+                        }
+                        if (field === 'equipmentLocation' && value) {
+                            allEquipmentLocations.add(value);
+                        }
                     }
-                    workout.missingEquipment = workout.exercises.some(ex => !ex.equipment && ex.sets > 0);
+
+                    // Recalculate missing equipment flag - check all exercises
+                    console.log('Checking all exercises for missing equipment:');
+                    workout.exercises.forEach((ex, i) => {
+                        const hasEquipment = ex.equipment && ex.equipment.trim() !== '';
+                        const hasSets = ex.sets > 0;
+                        console.log(`  ${i}: ${ex.name} - equipment="${ex.equipment}", sets=${ex.sets}, missing=${!hasEquipment && hasSets}`);
+                    });
+
+                    const stillMissing = workout.exercises.some(ex => {
+                        const hasEquipment = ex.equipment && ex.equipment.trim() !== '';
+                        const hasSets = ex.sets > 0;
+                        return !hasEquipment && hasSets;
+                    });
+                    const oldMissing = workout.missingEquipment;
+                    workout.missingEquipment = stillMissing;
+                    console.log(`Workout ${workout.date}: missingEquipment changed from ${oldMissing} to ${stillMissing}`);
+                } else {
+                    console.log(`WARNING: Could not find workout with docId=${docId}`);
+                }
+
+                // Save equipment to equipment collection so main app can see it
+                if (field === 'equipment' && value) {
+                    await saveEquipmentToCollection(value, exerciseName, equipmentLocation);
                 }
 
                 updateStats();
+
+                // Re-render to update the filtered view (removes from filter if no longer matches)
+                renderWorkouts();
+
                 showToast('Saved!');
             } catch (error) {
                 console.error('Error updating:', error);
@@ -1505,6 +1739,9 @@
                     }
                 }
 
+                // Save equipment to equipment collection so main app can see it
+                await saveEquipmentToCollection(newEquipment, exerciseName, newLocation);
+
                 showToast(`Updated ${updateCount} workouts!`);
                 loadWorkouts();
 
@@ -1525,10 +1762,6 @@
             // Update active state on stat cards
             document.querySelectorAll('.stat.clickable').forEach(el => el.classList.remove('active'));
             if (status) {
-                const statMap = {
-                    'missing-location': 'missing-location',
-                    'missing-equipment': 'missing-equipment'
-                };
                 const statEl = document.querySelector(`.stat[onclick*="${status}"]`);
                 if (statEl) statEl.classList.add('active');
             }
@@ -1544,7 +1777,7 @@
             // Clear active state when manually changing filter
             document.querySelectorAll('.stat.clickable').forEach(el => el.classList.remove('active'));
             const status = document.getElementById('status-filter').value;
-            if (status === 'missing-location' || status === 'missing-equipment') {
+            if (status === 'missing-location' || status === 'missing-equipment-exercises') {
                 const statEl = document.querySelector(`.stat[onclick*="${status}"]`);
                 if (statEl) statEl.classList.add('active');
             }

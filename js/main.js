@@ -137,7 +137,8 @@ import {
     debounce, setupErrorLogging, runAllDebugChecks,
     cleanupDuplicateExercises, scanDuplicateExercises, mergeDuplicateExercises,
     getWorkoutHistoryForEditing, updateWorkoutLocation, updateExerciseEquipment,
-    bulkUpdateEquipment, listAllEquipment, findIncompleteWorkouts, migrateEquipmentToExercises
+    bulkUpdateEquipment, listAllEquipment, findIncompleteWorkouts, migrateEquipmentToExercises,
+    recalculateStreaks, rebuildAllPRs, recalculateAllStats, showPRSummary, renameExercise
 } from './core/utils/debug-utilities.js';
 
 // Firebase Workout Manager (for exercise-manager.html)
@@ -569,6 +570,13 @@ window.bulkUpdateEquipment = bulkUpdateEquipment;
 window.listAllEquipment = listAllEquipment;
 window.findIncompleteWorkouts = findIncompleteWorkouts;
 window.migrateEquipmentToExercises = migrateEquipmentToExercises;
+
+// Streak and PR recalculation utilities
+window.recalculateStreaks = recalculateStreaks;
+window.rebuildAllPRs = rebuildAllPRs;
+window.recalculateAllStats = recalculateAllStats;
+window.showPRSummary = showPRSummary;
+window.renameExercise = renameExercise;
 
 // State access (for debugging)
 window.AppState = AppState;

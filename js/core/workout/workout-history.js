@@ -52,13 +52,18 @@ export function getWorkoutHistory(appState) {
 
         // Core data loading
         async loadHistory() {
-            if (!appState.currentUser) return;
+            console.log('🔄 loadHistory called...');
+            if (!appState.currentUser) {
+                console.log('❌ loadHistory: No user');
+                return;
+            }
 
             try {
                 const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
                 const workoutManager = new FirebaseWorkoutManager(appState);
-                
+
                 this.currentHistory = await workoutManager.getUserWorkouts();
+                console.log(`📊 loadHistory: Loaded ${this.currentHistory.length} workouts`);
                 this.filteredHistory = [...this.currentHistory];
 
                 // Find the earliest workout date
@@ -87,11 +92,13 @@ export function getWorkoutHistory(appState) {
         },
 
         async loadCalendarWorkouts() {
+            console.log('🔄 loadCalendarWorkouts called...');
             if (!appState.currentUser) return;
 
             try {
                 const year = this.currentCalendarDate.getFullYear();
                 const month = this.currentCalendarDate.getMonth();
+                console.log(`📅 Loading workouts for ${year}-${month + 1}, currentHistory has ${this.currentHistory.length} workouts`);
 
                 // Clear existing calendar workouts
                 // Schema v3.0: Store ARRAY of workouts per date to support multiple workouts per day
@@ -240,6 +247,7 @@ export function getWorkoutHistory(appState) {
     },
 
       generateCalendarGrid() {
+    console.log(`🔄 generateCalendarGrid called, calendarWorkouts has ${Object.keys(this.calendarWorkouts).length} dates`);
     // Enhanced element finding with fallback creation
     let calendarGrid = document.getElementById('calendarGrid');
     
@@ -1102,39 +1110,68 @@ calculateProgress(workout) {
 }
 
 // Schema v3.0: Delete workout by document ID (works with both old and new schema)
-    window.deleteWorkoutById = async function(docId) {
-        if (!window.workoutHistory) return;
+console.log('🗑️ Registering deleteWorkoutById on window...');
+window.deleteWorkoutById = async function(docId) {
+    console.log('🗑️ deleteWorkoutById called with:', docId);
 
-        // Find the workout in history to get its date for display
-        const workout = window.workoutHistory.currentHistory.find(w =>
-            w.docId === docId || w.id === docId || w.date === docId
-        );
+    if (!window.workoutHistory) {
+        console.error('❌ workoutHistory not initialized');
+        return;
+    }
 
-        const displayDate = workout?.date
-            ? new Date(workout.date + 'T12:00:00').toLocaleDateString()
-            : 'this date';
+    // Find the workout in history to get its date for display
+    const workout = window.workoutHistory.currentHistory.find(w =>
+        w.docId === docId || w.id === docId || w.date === docId
+    );
 
-        if (confirm(`Delete workout from ${displayDate}? This cannot be undone.`)) {
-            try {
-                const { deleteDoc, doc, db } = await import('../data/firebase-config.js');
-                const { AppState } = await import('../utils/app-state.js');
-                await deleteDoc(doc(db, "users", AppState.currentUser.uid, "workouts", docId));
+    const displayDate = workout?.date
+        ? new Date(workout.date + 'T12:00:00').toLocaleDateString()
+        : 'this date';
 
-                // Refresh calendar
-                await window.workoutHistory.loadHistory();
-                await window.workoutHistory.loadCalendarWorkouts();
-                window.workoutHistory.generateCalendarGrid();
-                window.workoutHistory.closeWorkoutDetailModal();
+    if (confirm(`Delete workout from ${displayDate}? This cannot be undone.`)) {
+        try {
+            console.log(`🗑️ Deleting workout: ${docId}`);
+            const { deleteDoc, doc, db } = await import('../data/firebase-config.js');
+            const { AppState } = await import('../utils/app-state.js');
 
-                showNotification('Workout deleted successfully', 'success');
-            } catch (error) {
-                console.error('Error deleting workout:', error);
-                showNotification('Failed to delete workout', 'error');
+            if (!AppState.currentUser?.uid) {
+                console.error('❌ No user logged in');
+                showNotification('You must be logged in to delete workouts', 'error');
+                return;
             }
-        }
-    };
 
-    // Legacy function - redirects to deleteWorkoutById
-    window.deleteWorkoutFromCalendar = async function(dateOrDocId) {
-        await window.deleteWorkoutById(dateOrDocId);
-    };
+            console.log(`🗑️ Calling deleteDoc for users/${AppState.currentUser.uid}/workouts/${docId}`);
+            await deleteDoc(doc(db, "users", AppState.currentUser.uid, "workouts", docId));
+            console.log('✅ Firebase delete successful');
+
+            // Close the modal first so user sees immediate feedback
+            window.workoutHistory.closeWorkoutDetailModal();
+
+            // Remove from local arrays immediately (Firestore cache may not refresh instantly)
+            const beforeCount = window.workoutHistory.currentHistory.length;
+            window.workoutHistory.currentHistory = window.workoutHistory.currentHistory.filter(w =>
+                w.id !== docId && w.docId !== docId
+            );
+            window.workoutHistory.filteredHistory = window.workoutHistory.filteredHistory.filter(w =>
+                w.id !== docId && w.docId !== docId
+            );
+            console.log(`🗑️ Removed from local arrays: ${beforeCount} -> ${window.workoutHistory.currentHistory.length}`);
+
+            // Refresh calendar display with updated local data
+            console.log('🔄 Refreshing calendar display...');
+            await window.workoutHistory.loadCalendarWorkouts();
+            window.workoutHistory.generateCalendarGrid();
+            console.log('✅ Calendar refreshed');
+
+            showNotification('Workout deleted successfully', 'success');
+        } catch (error) {
+            console.error('❌ Error deleting workout:', error);
+            showNotification('Failed to delete workout: ' + error.message, 'error');
+        }
+    }
+};
+
+// Legacy function - redirects to deleteWorkoutById
+window.deleteWorkoutFromCalendar = async function(dateOrDocId) {
+    await window.deleteWorkoutById(dateOrDocId);
+};

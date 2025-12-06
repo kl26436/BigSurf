@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
-  getFirestore, doc, setDoc, getDoc, deleteDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot
+  getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import {
   getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, setPersistence, browserLocalPersistence
@@ -46,7 +46,7 @@ export const provider = new GoogleAuthProvider();
 
 // Re-export Firebase functions for easy importing
 export {
-  doc, setDoc, getDoc, deleteDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot,
+  doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot,
   onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, setPersistence, browserLocalPersistence,
   httpsCallable
 };
