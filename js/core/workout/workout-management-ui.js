@@ -398,7 +398,7 @@ export async function deleteTemplate(templateId, isDefault = false) {
 
             // Reload AppState and UI
             AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
-            await loadAllTemplates();
+            await loadAllTemplatesInBackground();
 
         } catch (error) {
             console.error(`❌ Error deleting template:`, error);
@@ -587,7 +587,7 @@ export async function saveCurrentTemplate() {
         closeTemplateEditor();
 
         // Refresh the unified workout list
-        await loadAllTemplates();
+        await loadAllTemplatesInBackground();
     }
 }
 
