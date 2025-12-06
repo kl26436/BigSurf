@@ -773,8 +773,9 @@ selectWorkoutFromPicker(date, index) {
     if (!workouts || !workouts[index]) return;
 
     const workout = workouts[index];
+    // Find by exact ID match first (workout.docId was set from workout.id in formatWorkoutForCalendar)
     const fullWorkout = this.currentHistory.find(w =>
-        w.date === date && (w.docId === workout.docId || w.id === workout.docId)
+        w.id === workout.docId || w.docId === workout.docId
     );
 
     if (fullWorkout) {

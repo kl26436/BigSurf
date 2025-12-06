@@ -216,9 +216,17 @@ export async function completeWorkout() {
         if (!AppState.savedData.completedAt) {
             AppState.savedData.completedAt = new Date().toISOString();
         }
-        // Preserve original duration - use stored value or keep existing
-        if (window.editingWorkoutOriginalDuration) {
+        // Preserve original duration - use stored value, existing value, or calculate
+        if (window.editingWorkoutOriginalDuration && window.editingWorkoutOriginalDuration > 0) {
             AppState.savedData.totalDuration = window.editingWorkoutOriginalDuration;
+        } else if (!AppState.savedData.totalDuration || AppState.savedData.totalDuration <= 0) {
+            // Fallback: calculate from timestamps or default to 1 hour
+            if (AppState.savedData.startedAt && AppState.savedData.completedAt) {
+                const durationMs = new Date(AppState.savedData.completedAt) - new Date(AppState.savedData.startedAt);
+                AppState.savedData.totalDuration = Math.floor(durationMs / 1000);
+            } else {
+                AppState.savedData.totalDuration = 3600; // Default 1 hour
+            }
         }
     } else {
         // New workout - calculate duration normally
@@ -373,15 +381,25 @@ export function continueInProgressWorkout() {
  * Edit a historical workout - loads it into the active workout UI
  * @param {string} dateStr - The date of the workout to edit (YYYY-MM-DD)
  */
-export async function editHistoricalWorkout(dateStr) {
+export async function editHistoricalWorkout(docIdOrDate) {
     if (!AppState.currentUser) {
         alert('Please sign in to edit workouts');
         return;
     }
 
     // Load the workout data from Firebase
-    const { loadWorkoutByDate } = await import('../data/data-manager.js');
-    const workoutData = await loadWorkoutByDate(AppState, dateStr);
+    // Support both docId (new schema: 2025-12-05_timestamp_random) and date (old schema: 2025-12-05)
+    const { loadWorkoutByDate, loadWorkoutById } = await import('../data/data-manager.js');
+
+    let workoutData;
+    // Check if it's a docId (contains underscore with timestamp) or a plain date
+    if (docIdOrDate.includes('_')) {
+        // New schema - load by document ID
+        workoutData = await loadWorkoutById(AppState, docIdOrDate);
+    } else {
+        // Old schema - load by date
+        workoutData = await loadWorkoutByDate(AppState, docIdOrDate);
+    }
 
     if (!workoutData) {
         showNotification('Could not load workout data', 'error');
@@ -395,7 +413,8 @@ export async function editHistoricalWorkout(dateStr) {
 
     // Set flag to indicate we're editing a historical workout
     window.editingHistoricalWorkout = true;
-    window.editingWorkoutDate = dateStr;
+    // Use the actual date from workout data (not the docId)
+    window.editingWorkoutDate = workoutData.date || docIdOrDate;
 
     // Reconstruct the workout structure for the active workout UI
     // Use originalWorkout if available, otherwise reconstruct from exercises
@@ -442,9 +461,10 @@ export async function editHistoricalWorkout(dateStr) {
     };
 
     // Restore saved data (sets, reps, weights, notes)
+    // Use the actual date from workoutData, not the docId
     AppState.savedData = {
         ...workoutData,
-        date: dateStr // Ensure we save back to the same date
+        date: workoutData.date // Preserve original date
     };
 
     // Restore exercise units
@@ -461,7 +481,17 @@ export async function editHistoricalWorkout(dateStr) {
     // resetLocationState is not needed since we're editing, not starting fresh
 
     // Store the original duration - DON'T recalculate when editing
-    window.editingWorkoutOriginalDuration = workoutData.totalDuration || null;
+    // If no duration stored, calculate from timestamps or use a reasonable default
+    if (workoutData.totalDuration && workoutData.totalDuration > 0) {
+        window.editingWorkoutOriginalDuration = workoutData.totalDuration;
+    } else if (workoutData.startedAt && workoutData.completedAt) {
+        // Calculate from timestamps (result in seconds)
+        const durationMs = new Date(workoutData.completedAt) - new Date(workoutData.startedAt);
+        window.editingWorkoutOriginalDuration = Math.floor(durationMs / 1000);
+    } else {
+        // Default to 1 hour if no duration info available
+        window.editingWorkoutOriginalDuration = 3600;
+    }
 
     // DON'T set workoutStartTime - we'll use the stored duration instead
     AppState.workoutStartTime = null;
