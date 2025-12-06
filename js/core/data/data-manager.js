@@ -451,30 +451,13 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             let historyHTML = `
                 <div class="exercise-history-content" style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; margin-top: 1rem;">`;
 
-            // Show PRs if available
-            if (prs) {
+            // Show PR if available (only max weight with 5+ reps counts as a real PR)
+            if (prs && prs.maxWeight && prs.maxWeight.reps >= 5) {
                 historyHTML += `
-                    <div style="margin-bottom: 1rem; padding: 0.75rem; background: rgba(64, 224, 208, 0.1); border-left: 3px solid var(--primary); border-radius: 4px;">
-                        <h5 style="margin: 0 0 0.5rem 0; color: var(--primary); display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-trophy"></i> Personal Records (${equipment})
-                        </h5>
-                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.875rem;">`;
-
-                if (prs.maxWeight) {
-                    historyHTML += `
-                        <div><strong>Max Weight:</strong> ${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}</div>`;
-                }
-                if (prs.maxReps) {
-                    historyHTML += `
-                        <div><strong>Max Reps:</strong> ${prs.maxReps.reps} @ ${prs.maxReps.weight} lbs</div>`;
-                }
-                if (prs.maxVolume) {
-                    historyHTML += `
-                        <div><strong>Max Volume:</strong> ${prs.maxVolume.volume} lbs</div>`;
-                }
-
-                historyHTML += `
-                        </div>
+                    <div style="margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: rgba(64, 224, 208, 0.1); border-left: 3px solid var(--primary); border-radius: 4px; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-trophy" style="color: var(--primary);"></i>
+                        <span style="color: var(--primary); font-weight: 600;">PR:</span>
+                        <span>${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}</span>
                     </div>`;
             }
 
@@ -490,7 +473,9 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             }
 
             historyHTML += `
-                    <h5 style="margin: 0 0 0.5rem 0; color: var(--text-secondary);">Last Workout (${displayDate}):${matchInfo}</h5>
+                    <div style="margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-secondary);">
+                        <strong>Last (${displayDate}):</strong>${matchInfo}
+                    </div>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             `;
             
