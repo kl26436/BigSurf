@@ -503,7 +503,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
                     }
                     
                     historyHTML += `
-                        <div style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
+                        <div style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">
                             Set ${index + 1}: ${set.reps} × ${displayWeight} ${unit}
                         </div>
                     `;
