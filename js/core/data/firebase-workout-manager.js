@@ -1008,7 +1008,8 @@ async getGlobalDefaultTemplates() {
 
     /**
      * Get or create equipment by name and optional location
-     * Returns existing equipment if found, creates new if not
+     * Returns existing equipment if found (by name only), creates new if not
+     * Equipment can have multiple locations, so we match by name only
      */
     async getOrCreateEquipment(equipmentName, location = null, exerciseName = null, videoUrl = null) {
         if (!this.appState.currentUser || !equipmentName) {
@@ -1018,13 +1019,16 @@ async getGlobalDefaultTemplates() {
         try {
             const allEquipment = await this.getUserEquipment();
 
-            // Look for existing equipment with same name and location
+            // Look for existing equipment with same name (case-insensitive)
             const existing = allEquipment.find(eq =>
-                eq.name === equipmentName &&
-                (eq.location === location || (!eq.location && !location))
+                eq.name?.toLowerCase() === equipmentName.toLowerCase()
             );
 
             if (existing) {
+                // Add location if provided and not already present
+                if (location) {
+                    await this.addLocationToEquipment(existing.id, location);
+                }
                 // Update usage if exercise name provided
                 if (exerciseName) {
                     await this.updateEquipmentUsage(existing.id, exerciseName);
@@ -1035,7 +1039,8 @@ async getGlobalDefaultTemplates() {
             // Create new equipment
             const newEquipment = {
                 name: equipmentName,
-                location: location,
+                locations: location ? [location] : [],
+                location: null, // Use locations array instead
                 exerciseTypes: exerciseName ? [exerciseName] : [],
                 video: videoUrl || null
             };

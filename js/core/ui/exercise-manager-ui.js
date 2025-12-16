@@ -1151,7 +1151,11 @@ export async function saveExerciseFromSection() {
  * @param {Object} equipment - Equipment data with id, name, location(s), video
  */
 export async function openEquipmentEditor(equipment) {
-    if (!equipment || !equipment.id) return;
+    if (!equipment || !equipment.id) {
+        console.error('❌ openEquipmentEditor: Invalid equipment data', equipment);
+        showNotification('Cannot edit this equipment', 'error');
+        return;
+    }
 
     editingEquipmentData = equipment;
 
@@ -1333,9 +1337,16 @@ export async function saveEquipmentFromEditor() {
  * Delete equipment from editor
  */
 export async function deleteEquipmentFromEditor() {
-    if (!editingEquipmentData || !editingEquipmentData.id) return;
+    if (!editingEquipmentData || !editingEquipmentData.id) {
+        showNotification('No equipment selected to delete', 'warning');
+        return;
+    }
 
-    const confirmed = confirm(`Delete "${editingEquipmentData.name}"? This cannot be undone.`);
+    // Store data before any async operations that might clear it
+    const equipmentId = editingEquipmentData.id;
+    const equipmentName = editingEquipmentData.name;
+
+    const confirmed = confirm(`Delete "${equipmentName}"? This cannot be undone.`);
     if (!confirmed) return;
 
     try {
@@ -1343,16 +1354,16 @@ export async function deleteEquipmentFromEditor() {
             workoutManager = new FirebaseWorkoutManager(AppState);
         }
 
-        await workoutManager.deleteEquipment(editingEquipmentData.id);
-
-        // Removed notification - action is self-evident
-        closeEquipmentEditor();
+        await workoutManager.deleteEquipment(equipmentId);
 
         // Clear selection if this was the selected equipment
-        if (selectedEquipmentId === editingEquipmentData.id) {
+        if (selectedEquipmentId === equipmentId) {
             selectedEquipmentId = null;
             selectedEquipmentData = null;
         }
+
+        // Close the editor (this clears editingEquipmentData)
+        closeEquipmentEditor();
 
         // Refresh the equipment list
         if (currentEditingExercise) {
