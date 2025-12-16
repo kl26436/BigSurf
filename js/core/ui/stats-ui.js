@@ -4,7 +4,8 @@
 import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { ExerciseProgress } from '../features/exercise-progress.js';
-import { setBottomNavVisible, navigateTo } from './navigation.js';
+import { setBottomNavVisible, navigateTo, updateBottomNavActive } from './navigation.js';
+import { setHeaderMode } from './ui-helpers.js';
 import { AppState } from '../utils/app-state.js';
 
 // ===================================================================
@@ -33,8 +34,21 @@ export async function showStats() {
         return;
     }
 
+    // Hide all other sections first
+    const sections = ['dashboard', 'workout-selector', 'active-workout', 'workout-history-section',
+                      'workout-management-section', 'exercise-manager-section', 'location-management-section'];
+    sections.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+
+    // Hide main header (Progress page has its own header with back button)
+    setHeaderMode(false);
+
     statsSection.classList.remove('hidden');
     setBottomNavVisible(true);
+    updateBottomNavActive('stats');
+
     await renderProgressView();
 }
 
@@ -53,6 +67,8 @@ export function closeStats() {
         currentChart = null;
     }
 
+    // Restore main header when returning to dashboard
+    setHeaderMode(true);
     setBottomNavVisible(true);
     navigateTo('dashboard');
 }
