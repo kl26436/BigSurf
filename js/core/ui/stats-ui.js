@@ -42,7 +42,7 @@ export async function showStats() {
         if (el) el.classList.add('hidden');
     });
 
-    // Hide main header (Progress page has its own header with back button)
+    // Hide main header (page uses section-header-row like Exercise Library)
     setHeaderMode(false);
 
     statsSection.classList.remove('hidden');
@@ -116,13 +116,9 @@ async function renderProgressView() {
 
         container.innerHTML = `
             <div class="progress-page">
-                <!-- Header -->
-                <div class="progress-header">
-                    <button class="btn-back" onclick="closeStats()">
-                        <i class="fas fa-arrow-left"></i>
-                    </button>
-                    <h2>Progress</h2>
-                    <div style="width: 40px;"></div>
+                <!-- Section Header (consistent with other pages) -->
+                <div class="section-header-row">
+                    <h2 class="section-title"><i class="fas fa-chart-line"></i> Progress</h2>
                 </div>
 
                 <!-- Summary Cards -->
