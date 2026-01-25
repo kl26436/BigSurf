@@ -607,6 +607,17 @@ window.rebuildPRs = async function() {
 };
 
 // ===================================================================
+// ===================================================================
+// ONE-TIME FIX UTILITY
+// ===================================================================
+
+// Import and expose the template fix utility
+import { fixTemplateExercises } from './core/utils/fix-template-exercises.js';
+window.fixTemplateExercises = fixTemplateExercises;
+
+console.log('🔧 Template fix utility loaded. Run window.fixTemplateExercises() to normalize template exercises.');
+
+// ===================================================================
 // SIMPLE INITIALIZATION - Just call your existing startApplication
 // ===================================================================
 
@@ -615,7 +626,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await startApplication();
     } catch (error) {
         console.error('Application startup failed:', error);
-        
+
         // Show error to user
         const errorDiv = document.createElement('div');
         errorDiv.style.cssText = `
