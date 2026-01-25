@@ -195,12 +195,12 @@ window.discardInProgressWorkout = discardInProgressWorkout;
 window.discardEditedWorkout = discardEditedWorkout;
 window.editHistoricalWorkout = editHistoricalWorkout;
 window.startWorkoutFromModal = function(workoutName) {
-    // Close the modal
+    // Close the modal (hide it, don't remove it from DOM)
     const modal = document.getElementById('template-selection-modal');
     if (modal) {
-        modal.remove();
+        modal.classList.add('hidden');
     }
-    
+
     // Try different ways to call startWorkout
     if (window.startWorkout) {
         window.startWorkout(workoutName);
