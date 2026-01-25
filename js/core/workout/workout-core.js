@@ -745,9 +745,12 @@ export function createExerciseCard(exercise, index) {
         }
     }
 
+    // Get exercise name with fallback
+    const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+
     card.innerHTML = `
         <div class="exercise-title-row" onclick="focusExercise(${index})" style="cursor: pointer;">
-            <h3 class="exercise-title">${exercise.machine}</h3>
+            <h3 class="exercise-title">${exerciseName}</h3>
             ${equipmentDisplay ? `<div class="exercise-equipment-tag">${equipmentDisplay}</div>` : ''}
         </div>
         <div class="exercise-progress-row" onclick="focusExercise(${index})" style="cursor: pointer;">
@@ -785,7 +788,8 @@ export function focusExercise(index) {
         ? `${exercise.equipment}${exercise.equipmentLocation ? ' @ ' + exercise.equipmentLocation : ''}`
         : null;
 
-    title.innerHTML = `${exercise.machine} <a href="#" class="exercise-edit-icon" onclick="event.preventDefault(); editExerciseDefaults('${exercise.machine.replace(/'/g, "\\'")}')"><i class="fas fa-pen"></i></a><br><span class="modal-equipment-subtitle">${equipmentText || 'No equipment'} <a href="#" class="equipment-change-icon" onclick="event.preventDefault(); changeExerciseEquipment(${index})"><i class="fas fa-sync-alt"></i></a></span>`;
+    const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+    title.innerHTML = `${exerciseName} <a href="#" class="exercise-edit-icon" onclick="event.preventDefault(); editExerciseDefaults('${exerciseName.replace(/'/g, "\\'")}')"><i class="fas fa-pen"></i></a><br><span class="modal-equipment-subtitle">${equipmentText || 'No equipment'} <a href="#" class="equipment-change-icon" onclick="event.preventDefault(); changeExerciseEquipment(${index})"><i class="fas fa-sync-alt"></i></a></span>`;
     
     // Define currentUnit FIRST
     const currentUnit = AppState.exerciseUnits[index] || AppState.globalUnit;
@@ -830,15 +834,16 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
         savedSets.push({ reps: '', weight: '' });
     }
 
+    const modalExerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
     let html = `
         <!-- Exercise History Reference -->
         <div class="exercise-history-section">
             <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
-                <button class="btn btn-secondary btn-small" onclick="loadExerciseHistory('${exercise.machine}', ${exerciseIndex})">
+                <button class="btn btn-secondary btn-small" onclick="loadExerciseHistory('${modalExerciseName}', ${exerciseIndex})">
                     <i class="fas fa-history"></i> Show Last Workout
                 </button>
                 ${exercise.video ?
-                    `<button id="show-video-btn-${exerciseIndex}" class="btn btn-primary btn-small" onclick="showExerciseVideoAndToggleButton('${exercise.video}', '${exercise.machine}', ${exerciseIndex})">
+                    `<button id="show-video-btn-${exerciseIndex}" class="btn btn-primary btn-small" onclick="showExerciseVideoAndToggleButton('${exercise.video}', '${modalExerciseName}', ${exerciseIndex})">
                         <i class="fas fa-play"></i> Form Video
                     </button>
                     <button id="hide-video-btn-${exerciseIndex}" class="btn btn-secondary btn-small hidden" onclick="hideExerciseVideoAndToggleButton(${exerciseIndex})">
@@ -1041,7 +1046,7 @@ const prNotifiedSets = new Set();
 async function checkSetForPR(exerciseIndex, setIndex) {
     try {
         const exercise = AppState.currentWorkout.exercises[exerciseIndex];
-        const exerciseName = exercise.machine;
+        const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
         const equipment = exercise.equipment || 'Unknown Equipment';
 
         const exerciseKey = `exercise_${exerciseIndex}`;
@@ -1336,7 +1341,7 @@ export function confirmExerciseAddToWorkout(exerciseData) {
         return false;
     }
 
-    const exerciseName = exercise.name || exercise.machine;
+    const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
 
     // Check for duplicate exercise in current workout
     const isDuplicate = AppState.currentWorkout.exercises.some(ex =>
@@ -1424,7 +1429,7 @@ export async function changeExerciseEquipment(exerciseIndex) {
     if (!AppState.currentWorkout) return;
 
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
-    const exerciseName = exercise.machine;
+    const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
 
     // Store the index for the callback
     pendingEquipmentChangeIndex = exerciseIndex;
@@ -1524,7 +1529,7 @@ export async function applyEquipmentChange(equipmentName, equipmentLocation, equ
 
     const exerciseIndex = pendingEquipmentChangeIndex;
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
-    const exerciseName = exercise.machine;
+    const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
 
     // Update the exercise with new equipment
     exercise.equipment = equipmentName || null;
@@ -1611,7 +1616,8 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
 
     if (!modalTimer || !exerciseLabel || !timerDisplay) return;
 
-    exerciseLabel.textContent = `Rest Period - ${exercise.machine}`;
+    const restExerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+    exerciseLabel.textContent = `Rest Period - ${restExerciseName}`;
     modalTimer.classList.remove('hidden');
 
     // Set timer text to primary color (teal)
@@ -1625,7 +1631,8 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
     // Schedule server-side push notification for iOS background support
     // This will send a notification even if the app is backgrounded/locked
     if (isFCMAvailable()) {
-        scheduleRestNotification(duration, exercise.machine || 'your next set')
+        const notifExerciseName = exercise.name || exercise.machine || exercise.exercise || 'your next set';
+        scheduleRestNotification(duration, notifExerciseName)
             .catch(() => {}); // Silently fail - local timer still works
     }
 
@@ -1728,9 +1735,10 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
     };
 
     // Store timer state in AppState for dashboard display
+    const timerExerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
     AppState.activeRestTimer = {
         exerciseIndex,
-        exerciseName: exercise.machine,
+        exerciseName: timerExerciseName,
         duration,
         startTime,
         pausedTime,
