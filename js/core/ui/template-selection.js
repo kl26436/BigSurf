@@ -307,10 +307,12 @@ export function createTemplateCard(template, isDefault = false) {
     const card = document.createElement('div');
     card.className = 'template-card';
 
-    const exerciseCount = template.exercises?.length || 0;
+    // Handle both array and object exercise structures
+    const exercisesArray = normalizeExercisesToArray(template.exercises);
+    const exerciseCount = exercisesArray.length;
 
     // Build full exercise list as bullet points
-    const exerciseList = template.exercises?.map(ex =>
+    const exerciseList = exercisesArray.map(ex =>
         `<li>${getExerciseName(ex)}</li>`
     ).join('') || '<li>No exercises</li>';
 
@@ -400,12 +402,13 @@ export function searchTemplates(query) {
     const filteredTemplates = templates.filter(template => {
         const name = (template.name || template.day || '').toLowerCase();
         const category = getWorkoutCategory(template.day || template.name).toLowerCase();
-        const exercises = template.exercises?.map(ex => 
+        const exercisesArray = normalizeExercisesToArray(template.exercises);
+        const exercises = exercisesArray.map(ex =>
             getExerciseName(ex).toLowerCase()
-        ).join(' ') || '';
-        
-        return name.includes(searchTerm) || 
-               category.includes(searchTerm) || 
+        ).join(' ');
+
+        return name.includes(searchTerm) ||
+               category.includes(searchTerm) ||
                exercises.includes(searchTerm);
     });
     
@@ -496,9 +499,10 @@ function createWorkoutPreviewModal() {
 }
 
 function generateWorkoutPreviewHtml(workout) {
-    const exerciseCount = workout.exercises?.length || 0;
+    const exercisesArray = normalizeExercisesToArray(workout.exercises);
+    const exerciseCount = exercisesArray.length;
     const estimatedDuration = calculateEstimatedDuration(workout);
-    
+
     let html = `
         <div class="workout-preview-info">
             <div class="preview-stats">
@@ -519,10 +523,10 @@ function generateWorkoutPreviewHtml(workout) {
         <div class="workout-exercises-preview">
             <h4>Exercises in this workout:</h4>
     `;
-    
-    if (workout.exercises && workout.exercises.length > 0) {
+
+    if (exercisesArray.length > 0) {
         html += '<div class="exercises-preview-list">';
-        workout.exercises.forEach((exercise, index) => {
+        exercisesArray.forEach((exercise, index) => {
             const exerciseName = getExerciseName(exercise);
             html += `
                 <div class="exercise-preview-item">
@@ -541,20 +545,21 @@ function generateWorkoutPreviewHtml(workout) {
     } else {
         html += '<p>No exercises defined for this workout.</p>';
     }
-    
+
     html += '</div>';
     return html;
 }
 
 function calculateEstimatedDuration(workout) {
-    if (!workout.exercises) return 30;
-    
+    const exercisesArray = normalizeExercisesToArray(workout.exercises);
+    if (exercisesArray.length === 0) return 30;
+
     // Estimate 2-3 minutes per set + rest time
     let totalSets = 0;
-    workout.exercises.forEach(exercise => {
+    exercisesArray.forEach(exercise => {
         totalSets += exercise.sets || 3;
     });
-    
+
     // 2.5 minutes per set (includes exercise time + rest)
     return Math.round(totalSets * 2.5);
 }
@@ -598,8 +603,9 @@ function createWorkoutCard(workout) {
 
     card.dataset.category = getWorkoutCategory(workoutName);
 
-    const exerciseCount = workout.exercises?.length || 0;
-    const exerciseNames = workout.exercises?.slice(0, 3).map(ex =>
+    const exercisesArray = normalizeExercisesToArray(workout.exercises);
+    const exerciseCount = exercisesArray.length;
+    const exerciseNames = exercisesArray.slice(0, 3).map(ex =>
         getExerciseName(ex)
     ).join(', ') || 'No exercises listed';
     const moreText = exerciseCount > 3 ? ` and ${exerciseCount - 3} more...` : '';
@@ -847,6 +853,28 @@ export function getWorkoutCategory(workoutName) {
 function getExerciseName(exercise) {
     if (!exercise) return 'Unknown Exercise';
     return exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+}
+
+/**
+ * Normalize exercises to array format
+ * Handles both array format: [{...}, {...}]
+ * and object format: {exercise_0: {...}, exercise_1: {...}}
+ */
+function normalizeExercisesToArray(exercises) {
+    if (!exercises) return [];
+
+    // If already an array, return as-is
+    if (Array.isArray(exercises)) {
+        return exercises;
+    }
+
+    // If it's an object (e.g., {exercise_0: {...}, exercise_1: {...}}), convert to array
+    if (typeof exercises === 'object') {
+        const keys = Object.keys(exercises).sort(); // Sort to maintain order
+        return keys.map(key => exercises[key]).filter(ex => ex); // Filter out null/undefined
+    }
+
+    return [];
 }
 
 // ===================================================================

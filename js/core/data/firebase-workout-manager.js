@@ -513,17 +513,27 @@ export class FirebaseWorkoutManager {
 
 async getGlobalDefaultTemplates() {
     try {
-        
+
         // Load from your existing 'workouts' collection
         const globalDefaultsRef = collection(this.db, "workouts");
         const querySnapshot = await getDocs(globalDefaultsRef);
-        
+
         const globalDefaults = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            globalDefaults.push({ 
-                id: doc.id, 
+
+            // Normalize exercises to array format
+            let exercises = data.exercises || [];
+            if (!Array.isArray(exercises) && typeof exercises === 'object') {
+                // Convert object format {exercise_0: {...}, exercise_1: {...}} to array
+                const keys = Object.keys(exercises).sort();
+                exercises = keys.map(key => exercises[key]).filter(ex => ex);
+            }
+
+            globalDefaults.push({
+                id: doc.id,
                 ...data,
+                exercises: exercises, // Use normalized exercises array
                 // Ensure consistent naming
                 name: data.day || data.name || doc.id,
                 isDefault: true,
@@ -531,16 +541,16 @@ async getGlobalDefaultTemplates() {
                 source: 'global-firebase'
             });
         });
-        
+
         if (globalDefaults.length === 0) {
             console.warn('⚠️ No global default templates found in workouts collection.');
         }
-        
+
         return globalDefaults;
-        
+
     } catch (error) {
         console.error('❌ Error loading global default templates:', error);
-        
+
         // Return empty array - no JSON fallback
         return [];
     }
@@ -637,9 +647,18 @@ async getGlobalDefaultTemplates() {
                         return;
                     }
 
+                    // Normalize exercises to array format
+                    let exercises = data.exercises || [];
+                    if (!Array.isArray(exercises) && typeof exercises === 'object') {
+                        // Convert object format {exercise_0: {...}, exercise_1: {...}} to array
+                        const keys = Object.keys(exercises).sort();
+                        exercises = keys.map(key => exercises[key]).filter(ex => ex);
+                    }
+
                     customTemplates.push({
                         id: doc.id,
                         ...data,
+                        exercises: exercises, // Use normalized exercises array
                         isCustom: true,
                         isDefault: false,
                         source: 'user-firebase'

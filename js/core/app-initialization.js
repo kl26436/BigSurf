@@ -434,7 +434,7 @@ export async function validateUserData() {
 
         const { FirebaseWorkoutManager } = await import('./data/firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(AppState);
-        await workoutManager.getUserWorkoutTemplates();
+        AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
     } catch (error) {
         console.error('Error validating user data:', error);
         showNotification('Error loading user data', 'warning');

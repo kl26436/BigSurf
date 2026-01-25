@@ -238,7 +238,9 @@ function createTemplateCard(template) {
     const card = document.createElement('div');
     card.className = 'workout-list-item';
 
-    const exerciseCount = template.exercises?.length || 0;
+    // Handle both array and object exercise structures
+    const exercisesArray = normalizeExercisesToArray(template.exercises);
+    const exerciseCount = exercisesArray.length;
     const isDefault = template.isDefault || false;
 
     // Get category icon
@@ -247,7 +249,7 @@ function createTemplateCard(template) {
     // Create exercise summary (just names, comma separated)
     let exerciseSummary = 'No exercises';
     if (exerciseCount > 0) {
-        const names = template.exercises.slice(0, 4).map(ex => ex.name || ex.machine);
+        const names = exercisesArray.slice(0, 4).map(ex => ex.name || ex.machine);
         exerciseSummary = names.join(', ');
         if (exerciseCount > 4) {
             exerciseSummary += ` +${exerciseCount - 4} more`;
@@ -297,6 +299,28 @@ function getCategoryIcon(category) {
         'arms': 'fas fa-fist-raised'
     };
     return icons[cat] || 'fas fa-dumbbell';
+}
+
+/**
+ * Normalize exercises to array format
+ * Handles both array format: [{...}, {...}]
+ * and object format: {exercise_0: {...}, exercise_1: {...}}
+ */
+function normalizeExercisesToArray(exercises) {
+    if (!exercises) return [];
+
+    // If already an array, return as-is
+    if (Array.isArray(exercises)) {
+        return exercises;
+    }
+
+    // If it's an object (e.g., {exercise_0: {...}, exercise_1: {...}}), convert to array
+    if (typeof exercises === 'object') {
+        const keys = Object.keys(exercises).sort(); // Sort to maintain order
+        return keys.map(key => exercises[key]).filter(ex => ex); // Filter out null/undefined
+    }
+
+    return [];
 }
 
 export function createNewTemplate() {
