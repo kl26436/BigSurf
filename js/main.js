@@ -442,12 +442,23 @@ window.showTemplatesByCategory = function(category) {
     } else {
         filteredWorkouts.forEach(workout => {
             const workoutName = workout.name || workout.day || 'Unnamed Workout';
-            const exerciseCount = workout.exercises?.length || 0;
+
+            // Normalize exercises to array format
+            let exercisesArray = [];
+            if (workout.exercises) {
+                if (Array.isArray(workout.exercises)) {
+                    exercisesArray = workout.exercises;
+                } else if (typeof workout.exercises === 'object') {
+                    const keys = Object.keys(workout.exercises).sort();
+                    exercisesArray = keys.map(key => workout.exercises[key]).filter(ex => ex);
+                }
+            }
+            const exerciseCount = exercisesArray.length;
 
             // Create exercise summary
             let exerciseSummary = 'No exercises';
             if (exerciseCount > 0) {
-                const names = workout.exercises.slice(0, 3).map(ex => ex.name || ex.machine);
+                const names = exercisesArray.slice(0, 3).map(ex => ex.name || ex.machine);
                 exerciseSummary = names.join(', ');
                 if (exerciseCount > 3) {
                     exerciseSummary += ` +${exerciseCount - 3} more`;
