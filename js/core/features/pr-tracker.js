@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { db, doc, setDoc, getDoc } from '../data/firebase-config.js';
+import { getDateString } from '../utils/date-helpers.js';
 
 // ===================================================================
 // PR CUTOFF DATE - Only count PRs from this date onwards
@@ -39,7 +40,7 @@ const PR_CUTOFF_DATE = '2025-07-01';
 let prData = {
     exercisePRs: {},
     locations: {},
-    currentLocation: null
+    currentLocation: null,
 };
 
 // ===================================================================
@@ -65,7 +66,7 @@ export async function loadPRData() {
             prData = {
                 exercisePRs: {},
                 locations: {},
-                currentLocation: null
+                currentLocation: null,
             };
             return prData;
         }
@@ -88,7 +89,7 @@ export async function savePRData() {
         const prDocRef = doc(db, 'users', AppState.currentUser.uid, 'stats', 'personalRecords');
         await setDoc(prDocRef, {
             ...prData,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
         });
         return true;
     } catch (error) {
@@ -119,7 +120,7 @@ export async function setCurrentLocation(locationName) {
         prData.locations[locationName] = {
             name: locationName,
             lastVisit: new Date().toISOString(),
-            visitCount: 1
+            visitCount: 1,
         };
     } else {
         prData.locations[locationName].lastVisit = new Date().toISOString();
@@ -164,7 +165,7 @@ function calculateVolume(reps, weight) {
  */
 function getExerciseEquipment(exerciseName) {
     // Look up exercise in exercise database
-    const exercise = AppState.exerciseDatabase?.find(ex => ex.name === exerciseName);
+    const exercise = AppState.exerciseDatabase?.find((ex) => ex.name === exerciseName);
     return exercise?.equipment || 'Unknown Equipment';
 }
 
@@ -173,7 +174,7 @@ function getExerciseEquipment(exerciseName) {
  */
 function getExerciseBodyPart(exerciseName) {
     // Look up exercise in exercise database
-    const exercise = AppState.exerciseDatabase?.find(ex => ex.name === exerciseName);
+    const exercise = AppState.exerciseDatabase?.find((ex) => ex.name === exerciseName);
     return exercise?.bodyPart || 'Other';
 }
 
@@ -241,7 +242,15 @@ export function checkForNewPR(exerciseName, reps, weight, equipment = null) {
 /**
  * Record a new PR
  */
-export async function recordPR(exerciseName, reps, weight, equipment = null, location = null, date = null, bodyPart = null) {
+export async function recordPR(
+    exerciseName,
+    reps,
+    weight,
+    equipment = null,
+    location = null,
+    date = null,
+    bodyPart = null
+) {
     if (!equipment) {
         equipment = getExerciseEquipment(exerciseName);
     }
@@ -259,7 +268,7 @@ export async function recordPR(exerciseName, reps, weight, equipment = null, loc
 
     // Use provided date or default to today
     if (!date) {
-        date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        date = getDateString(new Date());
     }
 
     // Check cutoff date - only record PRs from cutoff date onwards
@@ -270,7 +279,7 @@ export async function recordPR(exerciseName, reps, weight, equipment = null, loc
     // Initialize exercise PRs if needed
     if (!prData.exercisePRs[exerciseName]) {
         prData.exercisePRs[exerciseName] = {
-            bodyPart: bodyPart
+            bodyPart: bodyPart,
         };
     } else {
         // Update body part if it changed
@@ -310,7 +319,7 @@ export async function processWorkoutForPRs(workoutData) {
     }
 
     // Get the workout date
-    const workoutDate = workoutData.date || new Date().toISOString().split('T')[0];
+    const workoutDate = workoutData.date || getDateString(new Date());
 
     // Check cutoff date - don't process workouts before cutoff
     if (workoutDate < PR_CUTOFF_DATE) {
@@ -402,7 +411,7 @@ export function getAllPRs() {
                 exercise: exerciseName,
                 equipment: equipment,
                 bodyPart: bodyPart,
-                prs: prs
+                prs: prs,
             });
         }
     }
@@ -466,7 +475,7 @@ export function getRecentPRs(count = 5) {
                     weight: prs.maxWeight.weight,
                     reps: prs.maxWeight.reps,
                     date: prs.maxWeight.date,
-                    location: prs.maxWeight.location
+                    location: prs.maxWeight.location,
                 });
             }
         }
@@ -559,7 +568,15 @@ export async function rebuildPRsFromHistory() {
                         if (!set.reps || !set.weight) continue;
 
                         // Record PR with correct date and location
-                        await recordPR(exerciseName, set.reps, set.weight, equipment, workoutLocation, workoutDate, bodyPart);
+                        await recordPR(
+                            exerciseName,
+                            set.reps,
+                            set.weight,
+                            equipment,
+                            workoutLocation,
+                            workoutDate,
+                            bodyPart
+                        );
                         prCount++;
                     }
                 }
@@ -604,5 +621,5 @@ export const PRTracker = {
     getTotalPRCount,
     clearAllPRs,
     rebuildPRsFromHistory,
-    getPRCutoffDate
+    getPRCutoffDate,
 };

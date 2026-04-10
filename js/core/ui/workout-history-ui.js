@@ -17,7 +17,7 @@ export async function showWorkoutHistory() {
 
     // Hide all sections including dashboard
     const sections = ['workout-selector', 'active-workout', 'workout-management', 'dashboard', 'stats-section'];
-    sections.forEach(sectionId => {
+    sections.forEach((sectionId) => {
         const section = document.getElementById(sectionId);
         if (section) section.classList.add('hidden');
     });
@@ -42,18 +42,16 @@ export async function showWorkoutHistory() {
 // ===================================================================
 
 async function initializeCalendarView() {
-    
     // Make sure workoutHistory is available
     if (!window.workoutHistory) {
         console.error(' workoutHistory not available');
         showNotification('Workout history not available', 'error');
         return;
     }
-    
+
     try {
         // Initialize the calendar with current month
         await window.workoutHistory.initializeCalendar();
-        
     } catch (error) {
         console.error(' Error initializing calendar:', error);
         showNotification('Error loading calendar view', 'error');
@@ -65,22 +63,20 @@ async function initializeCalendarView() {
 // ===================================================================
 
 export function previousMonth() {
-    
     if (!window.workoutHistory) {
         console.error(' workoutHistory not available');
         return;
     }
-    
+
     window.workoutHistory.previousMonth();
 }
 
 export function nextMonth() {
-    
     if (!window.workoutHistory) {
         console.error(' workoutHistory not available');
         return;
     }
-    
+
     window.workoutHistory.nextMonth();
 }
 
@@ -93,13 +89,13 @@ export function viewWorkout(workoutId) {
         console.error(' workoutHistory not available');
         return;
     }
-    
+
     const workout = window.workoutHistory.getWorkoutDetails(workoutId);
     if (!workout) {
         showNotification('Workout not found', 'error');
         return;
     }
-    
+
     // Show workout details
     showWorkoutDetailModal(workout);
 }
@@ -136,7 +132,6 @@ export function resumeWorkout(workoutId) {
     const workoutDate = workout.rawData?.date || workoutId;
     const confirmMessage = `Resume "${workoutName}" from ${new Date(workoutDate + 'T12:00:00').toLocaleDateString()}?`;
     if (confirm(confirmMessage)) {
-
         // Close the modal first
         if (window.workoutHistory) {
             window.workoutHistory.closeWorkoutDetailModal();
@@ -182,7 +177,6 @@ export function repeatWorkout(workoutId) {
 
     const confirmMessage = `Start a new workout based on "${workoutName}"?`;
     if (confirm(confirmMessage)) {
-
         // Close the modal first
         if (window.workoutHistory) {
             window.workoutHistory.closeWorkoutDetailModal();
@@ -251,40 +245,52 @@ function showWorkoutDetailModal(workout) {
     const modal = document.getElementById('workout-detail-modal');
     const title = document.getElementById('workout-detail-title');
     const content = document.getElementById('workout-detail-content');
-    
+
     if (!modal || !title || !content) {
         console.error(' Workout detail modal elements not found');
         return;
     }
-    
+
     // Set modal title
     title.textContent = `${workout.workoutType} - ${new Date(workout.date).toLocaleDateString()}`;
-    
+
     // Build modal content
     let exerciseHTML = '';
     if (workout.exercises && workout.exercises.length > 0) {
-        exerciseHTML = workout.exercises.map(exercise => `
+        exerciseHTML = workout.exercises
+            .map(
+                (exercise) => `
             <div class="exercise-summary">
                 <h4>${exercise.name}</h4>
                 <div class="exercise-sets">
-                    ${exercise.sets.map((set, index) => `
+                    ${exercise.sets
+                        .map(
+                            (set, index) => `
                         <span class="set-summary">Set ${index + 1}: ${set.reps} reps @ ${set.weight}lbs</span>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
             </div>
-        `).join('');
+        `
+            )
+            .join('');
     } else {
         exerciseHTML = '<p>No exercise details available</p>';
     }
-    
+
     // Build action buttons
     const actionButtons = `
         <div class="modal-actions" style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
-            ${workout.status !== 'completed' ? `
+            ${
+                workout.status !== 'completed'
+                    ? `
                 <button class="btn btn-primary" onclick="resumeWorkout('${workout.id}')">
                     <i class="fas fa-play"></i> Resume
                 </button>
-            ` : ''}
+            `
+                    : ''
+            }
             <button class="btn btn-secondary" onclick="repeatWorkout('${workout.id}')">
                 <i class="fas fa-redo"></i> Repeat
             </button>
@@ -293,7 +299,7 @@ function showWorkoutDetailModal(workout) {
             </button>
         </div>
     `;
-    
+
     // Set modal content
     content.innerHTML = `
         <div class="workout-detail-summary">
@@ -317,7 +323,7 @@ function showWorkoutDetailModal(workout) {
         
         ${actionButtons}
     `;
-    
+
     // Show modal
     modal.classList.remove('hidden');
 }
@@ -326,7 +332,7 @@ export function closeWorkoutDetailModal() {
     const modal = document.getElementById('workout-detail-modal');
     if (modal) {
         modal.classList.add('hidden');
-        modal.style.display = 'none';  // Clear inline style set by showFixedWorkoutModal
+        modal.style.display = 'none'; // Clear inline style set by showFixedWorkoutModal
     }
 }
 
@@ -335,7 +341,6 @@ export function closeWorkoutDetailModal() {
 // ===================================================================
 
 export function clearAllHistoryFilters() {
-
     // Clear search input if it exists
     const searchInput = document.getElementById('history-search');
     if (searchInput) {
@@ -358,7 +363,6 @@ export function clearAllHistoryFilters() {
 // ===================================================================
 
 export function setupWorkoutHistoryEventListeners() {
-    
     // Set up modal close handlers
     const modal = document.getElementById('workout-detail-modal');
     if (modal) {
@@ -369,7 +373,7 @@ export function setupWorkoutHistoryEventListeners() {
             }
         });
     }
-    
+
     // Set up ESC key handler for modals
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {

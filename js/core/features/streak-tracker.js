@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { db, doc, setDoc, getDoc, collection, getDocs, query, where } from '../data/firebase-config.js';
+import { getDateString } from '../utils/date-helpers.js';
 
 // ===================================================================
 // STREAK CALCULATION
@@ -44,14 +45,14 @@ export async function calculateStreaks() {
                 totalWorkouts: 0,
                 workoutsThisWeek: 0,
                 workoutsThisMonth: 0,
-                lastWorkoutDate: null
+                lastWorkoutDate: null,
             };
         }
 
         // Calculate current streak (consecutive days with workouts)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const todayStr = today.toISOString().split('T')[0];
+        const todayStr = getDateString(today);
 
         let currentStreak = 0;
         let longestStreak = 0;
@@ -133,13 +134,13 @@ export async function calculateStreaks() {
         // Calculate workouts this week
         const weekAgo = new Date(today);
         weekAgo.setDate(weekAgo.getDate() - 7);
-        const weekAgoStr = weekAgo.toISOString().split('T')[0];
-        const workoutsThisWeek = workoutDates.filter(date => date >= weekAgoStr).length;
+        const weekAgoStr = getDateString(weekAgo);
+        const workoutsThisWeek = workoutDates.filter((date) => date >= weekAgoStr).length;
 
         // Calculate workouts this month
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        const monthStartStr = monthStart.toISOString().split('T')[0];
-        const workoutsThisMonth = workoutDates.filter(date => date >= monthStartStr).length;
+        const monthStartStr = getDateString(monthStart);
+        const workoutsThisMonth = workoutDates.filter((date) => date >= monthStartStr).length;
 
         const stats = {
             currentStreak,
@@ -147,10 +148,9 @@ export async function calculateStreaks() {
             totalWorkouts: workoutDates.length,
             workoutsThisWeek,
             workoutsThisMonth,
-            lastWorkoutDate: workoutDates[workoutDates.length - 1]
+            lastWorkoutDate: workoutDates[workoutDates.length - 1],
         };
         return stats;
-
     } catch (error) {
         console.error('❌ Error calculating streaks:', error);
         return null;
@@ -187,9 +187,8 @@ export async function getWorkoutFrequencyByDay() {
 
         return dayNames.map((day, index) => ({
             day,
-            count: dayCounts[index]
+            count: dayCounts[index],
         }));
-
     } catch (error) {
         console.error('❌ Error calculating frequency:', error);
         return [];
@@ -226,7 +225,7 @@ export async function getWorkoutFrequencyByMonth() {
                 const [year, month, day] = workout.date.split('-').map(Number);
                 const date = new Date(year, month - 1, day);
                 const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                if (monthCounts.hasOwnProperty(key)) {
+                if (Object.hasOwn(monthCounts, key)) {
                     monthCounts[key]++;
                 }
             }
@@ -234,9 +233,8 @@ export async function getWorkoutFrequencyByMonth() {
 
         return Object.entries(monthCounts).map(([month, count]) => ({
             month,
-            count
+            count,
         }));
-
     } catch (error) {
         console.error('❌ Error calculating monthly frequency:', error);
         return [];
@@ -250,5 +248,5 @@ export async function getWorkoutFrequencyByMonth() {
 export const StreakTracker = {
     calculateStreaks,
     getWorkoutFrequencyByDay,
-    getWorkoutFrequencyByMonth
+    getWorkoutFrequencyByMonth,
 };

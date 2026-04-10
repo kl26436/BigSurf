@@ -35,9 +35,16 @@ export async function showStats() {
     }
 
     // Hide all other sections first
-    const sections = ['dashboard', 'workout-selector', 'active-workout', 'workout-history-section',
-                      'workout-management-section', 'exercise-manager-section', 'location-management-section'];
-    sections.forEach(id => {
+    const sections = [
+        'dashboard',
+        'workout-selector',
+        'active-workout',
+        'workout-history-section',
+        'workout-management-section',
+        'exercise-manager-section',
+        'location-management-section',
+    ];
+    sections.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
@@ -131,12 +138,16 @@ async function renderProgressView() {
                 <div class="progress-chart-section">
                     <!-- Time Range Picker -->
                     <div class="time-range-picker">
-                        ${['1M', '3M', '6M', '1Y', 'ALL'].map(range => `
+                        ${['1M', '3M', '6M', '1Y', 'ALL']
+                            .map(
+                                (range) => `
                             <button class="time-range-btn ${selectedTimeRange === range ? 'active' : ''}"
                                     onclick="setProgressTimeRange('${range}')">
                                 ${range}
                             </button>
-                        `).join('')}
+                        `
+                            )
+                            .join('')}
                     </div>
 
                     <!-- Chart Container -->
@@ -180,12 +191,7 @@ async function renderProgressView() {
         }
 
         // Render additional sections
-        await Promise.all([
-            renderBodyPartDistribution(),
-            renderHeatMapCalendar(),
-            renderPRTimeline()
-        ]);
-
+        await Promise.all([renderBodyPartDistribution(), renderHeatMapCalendar(), renderPRTimeline()]);
     } catch (error) {
         console.error('Error rendering progress view:', error);
         container.innerHTML = `
@@ -255,63 +261,82 @@ function renderExerciseSelector() {
 
     // Category icons
     const categoryIcons = {
-        'Push': 'fa-hand-paper',
-        'Pull': 'fa-fist-raised',
-        'Legs': 'fa-running',
-        'Core': 'fa-child',
-        'Other': 'fa-dumbbell'
+        Push: 'fa-hand-paper',
+        Pull: 'fa-fist-raised',
+        Legs: 'fa-running',
+        Core: 'fa-child',
+        Other: 'fa-dumbbell',
     };
 
     // Get exercises for selected category
     const exercises = selectedCategory ? Object.keys(exerciseHierarchy[selectedCategory] || {}) : [];
 
     // Get equipment for selected exercise
-    const equipmentList = (selectedCategory && selectedExercise)
-        ? (exerciseHierarchy[selectedCategory]?.[selectedExercise] || [])
-        : [];
+    const equipmentList =
+        selectedCategory && selectedExercise ? exerciseHierarchy[selectedCategory]?.[selectedExercise] || [] : [];
 
     return `
         <div class="exercise-selector-hierarchy">
             <!-- Category Pills -->
             <div class="category-pills">
-                ${Object.keys(exerciseHierarchy).map(cat => `
+                ${Object.keys(exerciseHierarchy)
+                    .map(
+                        (cat) => `
                     <button class="category-pill ${selectedCategory === cat ? 'active' : ''}"
                             onclick="selectProgressCategory('${cat}')">
                         <i class="fas ${categoryIcons[cat] || 'fa-dumbbell'}"></i>
                         ${cat}
                     </button>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </div>
 
             <!-- Exercise Dropdown -->
-            ${exercises.length > 0 ? `
+            ${
+                exercises.length > 0
+                    ? `
                 <div class="exercise-row">
                     <div class="exercise-dropdown">
                         <label class="selector-label">Exercise</label>
                         <select id="exercise-select" class="exercise-select" onchange="selectProgressExerciseName(this.value)">
-                            ${exercises.map(ex => `
+                            ${exercises
+                                .map(
+                                    (ex) => `
                                 <option value="${ex}" ${selectedExercise === ex ? 'selected' : ''}>${ex}</option>
-                            `).join('')}
+                            `
+                                )
+                                .join('')}
                         </select>
                     </div>
                 </div>
-            ` : ''}
+            `
+                    : ''
+            }
 
             <!-- Equipment Pills -->
-            ${equipmentList.length > 0 ? `
+            ${
+                equipmentList.length > 0
+                    ? `
                 <div class="equipment-section">
                     <label class="selector-label">Equipment</label>
                     <div class="equipment-pills">
-                        ${equipmentList.map(eq => `
+                        ${equipmentList
+                            .map(
+                                (eq) => `
                             <button class="equipment-pill ${selectedExerciseKey === eq.key ? 'active' : ''}"
                                     onclick="selectProgressExercise('${eq.key}')">
                                 ${eq.equipment || 'Default'}
                                 <span class="equipment-count">${eq.sessionCount}</span>
                             </button>
-                        `).join('')}
+                        `
+                            )
+                            .join('')}
                     </div>
                 </div>
-            ` : ''}
+            `
+                    : ''
+            }
         </div>
     `;
 }
@@ -347,26 +372,28 @@ async function renderExerciseChart(exerciseKey, timeRange) {
         type: 'line',
         data: {
             labels: chartData.labels,
-            datasets: [{
-                label: 'Max Weight (lbs)',
-                data: chartData.data,
-                borderColor: '#1dd3b0',
-                backgroundColor: 'rgba(29, 211, 176, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.3,
-                pointRadius: 4,
-                pointBackgroundColor: '#1dd3b0',
-                pointBorderColor: '#1dd3b0',
-                pointHoverRadius: 6
-            }]
+            datasets: [
+                {
+                    label: 'Max Weight (lbs)',
+                    data: chartData.data,
+                    borderColor: '#1dd3b0',
+                    backgroundColor: 'rgba(29, 211, 176, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#1dd3b0',
+                    pointBorderColor: '#1dd3b0',
+                    pointHoverRadius: 6,
+                },
+            ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    display: false
+                    display: false,
                 },
                 tooltip: {
                     backgroundColor: 'rgba(20, 25, 35, 0.95)',
@@ -377,51 +404,51 @@ async function renderExerciseChart(exerciseKey, timeRange) {
                     padding: 12,
                     displayColors: false,
                     callbacks: {
-                        title: function(context) {
+                        title: function (context) {
                             const idx = context[0].dataIndex;
                             return chartData.tooltips[idx]?.date || '';
                         },
-                        label: function(context) {
+                        label: function (context) {
                             const idx = context.dataIndex;
                             const tip = chartData.tooltips[idx];
                             return [
                                 `Weight: ${tip.weight} lbs`,
                                 `Reps: ${tip.reps}`,
-                                tip.location ? `Location: ${tip.location}` : ''
+                                tip.location ? `Location: ${tip.location}` : '',
                             ].filter(Boolean);
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             scales: {
                 x: {
                     grid: {
-                        color: 'rgba(255,255,255,0.05)'
+                        color: 'rgba(255,255,255,0.05)',
                     },
                     ticks: {
                         color: '#7a8a9e',
                         maxRotation: 45,
-                        minRotation: 0
-                    }
+                        minRotation: 0,
+                    },
                 },
                 y: {
                     grid: {
-                        color: 'rgba(255,255,255,0.05)'
+                        color: 'rgba(255,255,255,0.05)',
                     },
                     ticks: {
                         color: '#7a8a9e',
-                        callback: function(value) {
+                        callback: function (value) {
                             return value + ' lbs';
-                        }
+                        },
                     },
-                    beginAtZero: false
-                }
+                    beginAtZero: false,
+                },
             },
             interaction: {
                 intersect: false,
-                mode: 'index'
-            }
-        }
+                mode: 'index',
+            },
+        },
     });
 
     // Render stats summary
@@ -511,20 +538,28 @@ async function renderSessionHistory(exerciseKey, timeRange) {
                 <span class="history-count">${progressData.sessions.length} total</span>
             </div>
             <div class="history-list">
-                ${sessions.map(session => `
+                ${sessions
+                    .map(
+                        (session) => `
                     <div class="history-item">
                         <div class="history-date">${formatDate(session.date)}</div>
                         <div class="history-details">
                             <span class="history-weight">${session.maxWeight} lbs</span>
                             <span class="history-reps">× ${session.maxReps}</span>
                         </div>
-                        ${session.location && session.location !== 'Unknown' ? `
+                        ${
+                            session.location && session.location !== 'Unknown'
+                                ? `
                             <div class="history-location">
                                 <i class="fas fa-map-marker-alt"></i> ${session.location}
                             </div>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                     </div>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </div>
         </div>
     `;
@@ -584,7 +619,7 @@ export async function selectProgressExercise(key) {
     selectedExerciseKey = key;
 
     // Update equipment pill states
-    document.querySelectorAll('.equipment-pill').forEach(pill => {
+    document.querySelectorAll('.equipment-pill').forEach((pill) => {
         pill.classList.toggle('active', pill.onclick.toString().includes(key));
     });
 
@@ -616,7 +651,7 @@ export async function setProgressTimeRange(range) {
     selectedTimeRange = range;
 
     // Update button states
-    document.querySelectorAll('.time-range-btn').forEach(btn => {
+    document.querySelectorAll('.time-range-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.textContent.trim() === range);
     });
 
@@ -655,13 +690,17 @@ async function renderBodyPartDistribution() {
                     <canvas id="body-part-chart"></canvas>
                 </div>
                 <div class="body-part-legend">
-                    ${distribution.labels.map((label, i) => `
+                    ${distribution.labels
+                        .map(
+                            (label, i) => `
                         <div class="legend-item">
                             <span class="legend-color" style="background: ${distribution.colors[i]}"></span>
                             <span class="legend-label">${label}</span>
                             <span class="legend-value">${distribution.percentages[i]}%</span>
                         </div>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
             </div>
         </div>
@@ -680,12 +719,14 @@ async function renderBodyPartDistribution() {
         type: 'doughnut',
         data: {
             labels: distribution.labels,
-            datasets: [{
-                data: distribution.data,
-                backgroundColor: distribution.colors,
-                borderColor: 'rgba(0,0,0,0.3)',
-                borderWidth: 2
-            }]
+            datasets: [
+                {
+                    data: distribution.data,
+                    backgroundColor: distribution.colors,
+                    borderColor: 'rgba(0,0,0,0.3)',
+                    borderWidth: 2,
+                },
+            ],
         },
         options: {
             responsive: true,
@@ -693,7 +734,7 @@ async function renderBodyPartDistribution() {
             cutout: '65%',
             plugins: {
                 legend: {
-                    display: false
+                    display: false,
                 },
                 tooltip: {
                     backgroundColor: 'rgba(20, 25, 35, 0.95)',
@@ -701,15 +742,15 @@ async function renderBodyPartDistribution() {
                     bodyColor: '#b8c5d6',
                     padding: 12,
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const vol = context.raw;
-                            const formatted = vol >= 1000 ? `${(vol/1000).toFixed(1)}k` : vol;
+                            const formatted = vol >= 1000 ? `${(vol / 1000).toFixed(1)}k` : vol;
                             return `${formatted} lbs total`;
-                        }
-                    }
-                }
-            }
-        }
+                        },
+                    },
+                },
+            },
+        },
     });
 }
 
@@ -739,18 +780,26 @@ async function renderHeatMapCalendar() {
             </div>
             <div class="heat-map-container">
                 <div class="heat-map-days">
-                    ${dayLabels.map(d => `<div class="heat-map-day-label">${d}</div>`).join('')}
+                    ${dayLabels.map((d) => `<div class="heat-map-day-label">${d}</div>`).join('')}
                 </div>
                 <div class="heat-map-grid">
-                    ${heatMapData.weeks.map(week => `
+                    ${heatMapData.weeks
+                        .map(
+                            (week) => `
                         <div class="heat-map-week">
-                            ${week.map(day => `
+                            ${week
+                                .map(
+                                    (day) => `
                                 <div class="heat-map-cell intensity-${day.intensity} ${day.isToday ? 'today' : ''} ${day.isFuture ? 'future' : ''}"
                                      title="${day.date}: ${day.sets} sets">
                                 </div>
-                            `).join('')}
+                            `
+                                )
+                                .join('')}
                         </div>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
             </div>
             <div class="heat-map-legend">
@@ -797,7 +846,9 @@ async function renderPRTimeline() {
                 <h3><i class="fas fa-trophy"></i> PR Timeline</h3>
             </div>
             <div class="pr-timeline">
-                ${timeline.map((pr, i) => `
+                ${timeline
+                    .map(
+                        (pr, i) => `
                     <div class="pr-timeline-item ${i === 0 ? 'latest' : ''}">
                         <div class="pr-timeline-marker">
                             <i class="fas fa-star"></i>
@@ -808,13 +859,19 @@ async function renderPRTimeline() {
                             <div class="pr-timeline-details">
                                 <span class="pr-timeline-weight">${pr.weight} lbs</span>
                                 <span class="pr-timeline-reps">× ${pr.reps}</span>
-                                ${pr.equipment && pr.equipment !== 'Unknown' ? `
+                                ${
+                                    pr.equipment && pr.equipment !== 'Unknown'
+                                        ? `
                                     <span class="pr-timeline-equipment">${pr.equipment}</span>
-                                ` : ''}
+                                `
+                                        : ''
+                                }
                             </div>
                         </div>
                     </div>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </div>
         </div>
     `;
@@ -830,7 +887,7 @@ function formatDate(dateStr) {
     return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
-        year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+        year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined,
     });
 }
 
@@ -846,7 +903,7 @@ function formatDateRelative(dateStr) {
 
     return date.toLocaleDateString('en-US', {
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
     });
 }
 

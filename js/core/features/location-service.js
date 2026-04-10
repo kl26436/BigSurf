@@ -30,7 +30,7 @@ export function getCurrentPosition() {
                 const coords = {
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
-                    accuracy: position.coords.accuracy
+                    accuracy: position.coords.accuracy,
                 };
                 currentLocation = coords;
                 resolve(coords);
@@ -42,7 +42,7 @@ export function getCurrentPosition() {
             {
                 enableHighAccuracy: true,
                 timeout: 10000,
-                maximumAge: 60000 // Cache for 1 minute
+                maximumAge: 60000, // Cache for 1 minute
             }
         );
     });
@@ -62,8 +62,7 @@ export function calculateDistance(lat1, lon1, lat2, lon2) {
     const dLon = toRadians(lon2 - lon1);
     const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
 }
@@ -84,19 +83,16 @@ export function findNearbyLocation(savedLocations, coords, minRadius = null) {
     for (const location of savedLocations) {
         if (!location.latitude || !location.longitude) continue;
 
-        const distance = calculateDistance(
-            coords.latitude,
-            coords.longitude,
-            location.latitude,
-            location.longitude
-        );
+        const distance = calculateDistance(coords.latitude, coords.longitude, location.latitude, location.longitude);
 
         // Use the larger of: location's saved radius, default radius, or provided minimum radius
         const locationRadius = location.radius || DEFAULT_LOCATION_RADIUS;
         const radius = minRadius ? Math.max(locationRadius, minRadius) : locationRadius;
         const isMatch = distance <= radius;
 
-        console.log(`📍 ${location.name}: ${Math.round(distance)}m away (radius: ${radius}m) - ${isMatch ? 'MATCH' : 'too far'}`);
+        console.log(
+            `📍 ${location.name}: ${Math.round(distance)}m away (radius: ${radius}m) - ${isMatch ? 'MATCH' : 'too far'}`
+        );
 
         if (isMatch) {
             return location;
@@ -126,7 +122,7 @@ export async function detectLocation(savedLocations) {
         return {
             location: matchedLocation,
             isNew: false,
-            coords
+            coords,
         };
     }
 
@@ -134,7 +130,7 @@ export async function detectLocation(savedLocations) {
     return {
         location: null,
         isNew: true,
-        coords
+        coords,
     };
 }
 
@@ -299,5 +295,5 @@ export default {
     resetLocationState,
     showLocationPrompt,
     closeLocationPrompt,
-    updateLocationIndicator
+    updateLocationIndicator,
 };

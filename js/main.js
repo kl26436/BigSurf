@@ -10,171 +10,290 @@ import { startApplication } from './core/app-initialization.js';
 
 // Authentication functions
 import {
-    signIn, signOutUser, showUserInfo, hideUserInfo,
-    setupEventListeners, setupKeyboardShortcuts,
-    showLoadingScreen, updateLoadingMessage, showSignInPrompt, hideLoadingScreen
+    signIn,
+    signOutUser,
+    showUserInfo,
+    hideUserInfo,
+    setupEventListeners,
+    setupKeyboardShortcuts,
+    showLoadingScreen,
+    updateLoadingMessage,
+    showSignInPrompt,
+    hideLoadingScreen,
 } from './core/app-initialization.js';
 
 // Workout core functionality
 import {
-    startWorkout, pauseWorkout, completeWorkout, cancelWorkout, cancelCurrentWorkout,
-    continueInProgressWorkout, discardInProgressWorkout, discardEditedWorkout, editHistoricalWorkout,
-    renderExercises, createExerciseCard, focusExercise,
-    updateSet, addSet, deleteSet, addSetToExercise, removeSetFromExercise,
-    saveExerciseNotes, markExerciseComplete,
-    deleteExerciseFromWorkout, addExerciseToActiveWorkout, confirmExerciseAddToWorkout,
-    toggleModalRestTimer, skipModalRestTimer,
-    updateWorkoutDuration, startWorkoutTimer,
-    showExerciseVideo, hideExerciseVideo, showExerciseVideoAndToggleButton, hideExerciseVideoAndToggleButton, convertYouTubeUrl,
-    setGlobalUnit, setExerciseUnit, editExerciseDefaults,
-    closeExerciseModal, loadExerciseHistory, loadLastWorkoutHint, autoStartRestTimer,
-    changeExerciseEquipment, applyEquipmentChange,
-    changeWorkoutLocation, selectWorkoutLocationOption, closeWorkoutLocationSelector, confirmWorkoutLocationChange
+    startWorkout,
+    pauseWorkout,
+    completeWorkout,
+    cancelWorkout,
+    cancelCurrentWorkout,
+    continueInProgressWorkout,
+    discardInProgressWorkout,
+    discardEditedWorkout,
+    editHistoricalWorkout,
+    renderExercises,
+    createExerciseCard,
+    focusExercise,
+    updateSet,
+    addSet,
+    deleteSet,
+    addSetToExercise,
+    removeSetFromExercise,
+    saveExerciseNotes,
+    markExerciseComplete,
+    deleteExerciseFromWorkout,
+    addExerciseToActiveWorkout,
+    confirmExerciseAddToWorkout,
+    toggleModalRestTimer,
+    skipModalRestTimer,
+    updateWorkoutDuration,
+    startWorkoutTimer,
+    showExerciseVideo,
+    hideExerciseVideo,
+    showExerciseVideoAndToggleButton,
+    hideExerciseVideoAndToggleButton,
+    convertYouTubeUrl,
+    setGlobalUnit,
+    setExerciseUnit,
+    editExerciseDefaults,
+    closeExerciseModal,
+    loadExerciseHistory,
+    loadLastWorkoutHint,
+    autoStartRestTimer,
+    changeExerciseEquipment,
+    applyEquipmentChange,
+    changeWorkoutLocation,
+    selectWorkoutLocationOption,
+    closeWorkoutLocationSelector,
+    confirmWorkoutLocationChange,
 } from './core/workout/workout-core.js';
 
 // Template selection functionality
 import {
-    showTemplateSelection, closeTemplateSelection, selectTemplate,
-    showWorkoutSelector, switchTemplateCategory, loadTemplatesByCategory,
-    useTemplate, useTemplateFromManagement, copyTemplateToCustom, deleteCustomTemplate,
-    renderTemplateCards, createTemplateCard, filterTemplates, searchTemplates,
-    getWorkoutCategory
+    showTemplateSelection,
+    closeTemplateSelection,
+    selectTemplate,
+    showWorkoutSelector,
+    switchTemplateCategory,
+    loadTemplatesByCategory,
+    useTemplate,
+    useTemplateFromManagement,
+    copyTemplateToCustom,
+    deleteCustomTemplate,
+    renderTemplateCards,
+    createTemplateCard,
+    filterTemplates,
+    searchTemplates,
+    getWorkoutCategory,
 } from './core/ui/template-selection.js';
 
 // Workout history UI functionality
 import {
-    showWorkoutHistory, viewWorkout, resumeWorkout, resumeWorkoutById, repeatWorkout,
-    deleteWorkout, retryWorkout, clearAllHistoryFilters
+    showWorkoutHistory,
+    viewWorkout,
+    resumeWorkout,
+    resumeWorkoutById,
+    repeatWorkout,
+    deleteWorkout,
+    retryWorkout,
+    clearAllHistoryFilters,
 } from './core/ui/workout-history-ui.js';
 
 // Workout management UI
 import {
-    initializeWorkoutManagement, showWorkoutManagement, closeWorkoutManagement, hideWorkoutManagement,
-    createNewTemplate, closeTemplateEditor, saveCurrentTemplate,
-    addExerciseToTemplate, editTemplateExercise, removeTemplateExercise,
-    openExerciseLibrary, closeExerciseLibrary,
-    showCreateExerciseForm, closeCreateExerciseModal, createNewExercise,
-    returnToWorkoutsFromManagement, editTemplate, deleteTemplate, resetToDefault,
-    closeEquipmentPicker, skipEquipmentSelection, confirmEquipmentSelection, addEquipmentFromPicker,
-    closeTemplateExerciseEdit, saveTemplateExerciseEdit,
-    selectWorkoutCategory, showWorkoutCategoryView, handleWorkoutSearch
+    initializeWorkoutManagement,
+    showWorkoutManagement,
+    closeWorkoutManagement,
+    hideWorkoutManagement,
+    createNewTemplate,
+    closeTemplateEditor,
+    saveCurrentTemplate,
+    addExerciseToTemplate,
+    editTemplateExercise,
+    removeTemplateExercise,
+    openExerciseLibrary,
+    closeExerciseLibrary,
+    showCreateExerciseForm,
+    closeCreateExerciseModal,
+    createNewExercise,
+    returnToWorkoutsFromManagement,
+    editTemplate,
+    deleteTemplate,
+    resetToDefault,
+    closeEquipmentPicker,
+    skipEquipmentSelection,
+    confirmEquipmentSelection,
+    addEquipmentFromPicker,
+    closeTemplateExerciseEdit,
+    saveTemplateExerciseEdit,
+    selectWorkoutCategory,
+    showWorkoutCategoryView,
+    handleWorkoutSearch,
 } from './core/workout/workout-management-ui.js';
 
 // Manual workout functionality
 import {
-    showAddManualWorkoutModal, closeAddManualWorkoutModal,
-    toggleManualWorkoutSource, selectWorkoutForManual, startCustomManualWorkout,
-    backToManualStep1, updateManualSet, addManualSet, removeManualSet,
-    removeManualExercise, openExercisePickerForManual, addExerciseToManualWorkout,
-    addToManualWorkoutFromLibrary, saveManualWorkout,
-    openEquipmentPickerForManual, selectEquipmentForManual, closeEquipmentPickerForManual,
+    showAddManualWorkoutModal,
+    closeAddManualWorkoutModal,
+    toggleManualWorkoutSource,
+    selectWorkoutForManual,
+    startCustomManualWorkout,
+    backToManualStep1,
+    updateManualSet,
+    addManualSet,
+    removeManualSet,
+    removeManualExercise,
+    openExercisePickerForManual,
+    addExerciseToManualWorkout,
+    addToManualWorkoutFromLibrary,
+    saveManualWorkout,
+    openEquipmentPickerForManual,
+    selectEquipmentForManual,
+    closeEquipmentPickerForManual,
     // Legacy exports for backwards compatibility
-    proceedToExerciseSelection, backToBasicInfo, finishManualWorkout,
-    editManualExercise, markManualExerciseComplete, closeManualExerciseEntry
+    proceedToExerciseSelection,
+    backToBasicInfo,
+    finishManualWorkout,
+    editManualExercise,
+    markManualExerciseComplete,
+    closeManualExerciseEntry,
 } from './core/features/manual-workout.js';
 
 // Exercise manager functionality
 import {
-    openExerciseManager, closeExerciseManager,
-    filterExerciseLibrary, clearExerciseFilters, refreshExerciseLibrary,
-    showAddExerciseModal, closeAddExerciseModal,
-    editExercise, saveExercise, deleteExercise, toggleExerciseGroup,
-    clearSelectedEquipment, addEquipmentToList,
-    openEditExerciseSection, closeEditExerciseSection, saveExerciseFromSection,
+    openExerciseManager,
+    closeExerciseManager,
+    filterExerciseLibrary,
+    clearExerciseFilters,
+    refreshExerciseLibrary,
+    showAddExerciseModal,
+    closeAddExerciseModal,
+    editExercise,
+    saveExercise,
+    deleteExercise,
+    toggleExerciseGroup,
+    clearSelectedEquipment,
+    addEquipmentToList,
+    openEditExerciseSection,
+    closeEditExerciseSection,
+    saveExerciseFromSection,
     deleteExerciseFromSection,
-    openEquipmentEditor, closeEquipmentEditor, addLocationToEquipmentEditor,
-    removeLocationFromEquipmentEditor, saveEquipmentFromEditor, deleteEquipmentFromEditor,
+    openEquipmentEditor,
+    closeEquipmentEditor,
+    addLocationToEquipmentEditor,
+    removeLocationFromEquipmentEditor,
+    saveEquipmentFromEditor,
+    deleteEquipmentFromEditor,
     // New category grid functions
-    showCategoryView, selectBodyPartCategory, filterByEquipment,
-    handleExerciseSearch, toggleExerciseListSearch, handleExerciseCardClick
+    showCategoryView,
+    selectBodyPartCategory,
+    filterByEquipment,
+    handleExerciseSearch,
+    toggleExerciseListSearch,
+    handleExerciseCardClick,
 } from './core/ui/exercise-manager-ui.js';
 
 // Location selector functionality
 import {
-    showLocationSelector, closeLocationSelector,
-    selectSavedLocation, selectNewLocation, skipLocationSelection,
+    showLocationSelector,
+    closeLocationSelector,
+    selectSavedLocation,
+    selectNewLocation,
+    skipLocationSelection,
     changeLocation,
-    showLocationManagement, closeLocationManagement,
-    setLocationAsCurrent, addNewLocationFromManagement, detectAndAddLocation,
-    closeAddLocationModal, saveNewLocationFromModal,
-    editLocationName, deleteLocation, showLocationOnMapById,
-    switchLocationMethod, searchLocationAddress, selectAddressResult, applyManualCoords
+    showLocationManagement,
+    closeLocationManagement,
+    setLocationAsCurrent,
+    addNewLocationFromManagement,
+    detectAndAddLocation,
+    closeAddLocationModal,
+    saveNewLocationFromModal,
+    editLocationName,
+    deleteLocation,
+    showLocationOnMapById,
+    switchLocationMethod,
+    searchLocationAddress,
+    selectAddressResult,
+    applyManualCoords,
 } from './core/features/location-ui.js';
 
 // Location service (GPS-based location detection)
 import { getSessionLocation } from './core/features/location-service.js';
 
 // UI helpers
-import { setHeaderMode } from './core/ui/ui-helpers.js';
+import { setHeaderMode, escapeHtml, escapeAttr } from './core/ui/ui-helpers.js';
 
 // Navigation functionality
 import {
-    openSidebar, closeSidebar, navigateTo,
-    bottomNavTo, toggleMoreMenu, closeMoreMenu, setBottomNavVisible, updateBottomNavActive
+    openSidebar,
+    closeSidebar,
+    navigateTo,
+    bottomNavTo,
+    toggleMoreMenu,
+    closeMoreMenu,
+    setBottomNavVisible,
+    updateBottomNavActive,
 } from './core/ui/navigation.js';
 
 // Dashboard functionality
 import {
-    showDashboard, repeatLastWorkout, startSuggestedWorkout,
-    toggleDashboardSection, toggleDashboardPRBodyPart
+    showDashboard,
+    repeatLastWorkout,
+    startSuggestedWorkout,
+    toggleDashboardSection,
+    toggleDashboardPRBodyPart,
 } from './core/ui/dashboard-ui.js';
 
 // Stats functionality
 import {
-    showStats, closeStats, toggleStatsSection, togglePRBodyPart,
-    filterPRs, clearPRFilters, selectProgressExercise, setProgressTimeRange,
-    selectProgressCategory, selectProgressExerciseName
+    showStats,
+    closeStats,
+    toggleStatsSection,
+    togglePRBodyPart,
+    filterPRs,
+    clearPRFilters,
+    selectProgressExercise,
+    setProgressTimeRange,
+    selectProgressCategory,
+    selectProgressExerciseName,
 } from './core/ui/stats-ui.js';
 
-// PR Migration (one-time utility)
-import { migrateOldWorkoutsToPRs } from './core/features/pr-migration.js';
-
-// Debug utilities
-import {
-    debugManualWorkoutDate, debugFirebaseWorkoutDates, debugWeeklyStats,
-    forceCheckHistoryData, testHistoryFilters,
-    fixWorkoutHistoryReference, emergencyFixFilters,
-    debounce, setupErrorLogging, runAllDebugChecks,
-    cleanupDuplicateExercises, scanDuplicateExercises, mergeDuplicateExercises,
-    getWorkoutHistoryForEditing, updateWorkoutLocation, updateExerciseEquipment,
-    bulkUpdateEquipment, listAllEquipment, findIncompleteWorkouts, migrateEquipmentToExercises,
-    recalculateStreaks, rebuildAllPRs, recalculateAllStats, showPRSummary, renameExercise
-} from './core/utils/debug-utilities.js';
+// Debug utilities — loaded on demand with ?debug URL param
 
 // Firebase Workout Manager (for exercise-manager.html)
 import { FirebaseWorkoutManager } from './core/data/firebase-workout-manager.js';
 
 // Push notification manager for iOS background notifications
-import {
-    initializeFCM, sendTestNotification, isFCMAvailable
-} from './core/utils/push-notification-manager.js';
+import { initializeFCM, sendTestNotification, isFCMAvailable } from './core/utils/push-notification-manager.js';
 
 // ===================================================================
 // CALENDAR NAVIGATION FUNCTIONS (Add to window assignments)
 // ===================================================================
 
 // Calendar navigation
-window.previousMonth = function() {
+window.previousMonth = function () {
     if (window.workoutHistory && typeof window.workoutHistory.previousMonth === 'function') {
         window.workoutHistory.previousMonth();
     }
 };
 
-window.nextMonth = function() {
+window.nextMonth = function () {
     if (window.workoutHistory && typeof window.workoutHistory.nextMonth === 'function') {
         window.workoutHistory.nextMonth();
     }
 };
 
 // Workout detail functions
-window.viewWorkout = function(workoutId) {
+window.viewWorkout = function (workoutId) {
     if (window.workoutHistory && typeof window.workoutHistory.showWorkoutDetail === 'function') {
         window.workoutHistory.showWorkoutDetail(workoutId);
     }
 };
 
 // Add workout function
-window.addWorkout = function() {
+window.addWorkout = function () {
     if (typeof window.showAddManualWorkoutModal === 'function') {
         window.showAddManualWorkoutModal();
     }
@@ -194,7 +313,7 @@ window.continueInProgressWorkout = continueInProgressWorkout;
 window.discardInProgressWorkout = discardInProgressWorkout;
 window.discardEditedWorkout = discardEditedWorkout;
 window.editHistoricalWorkout = editHistoricalWorkout;
-window.startWorkoutFromModal = function(workoutName) {
+window.startWorkoutFromModal = function (workoutName) {
     // Close the modal (hide it, don't remove it from DOM)
     const modal = document.getElementById('template-selection-modal');
     if (modal) {
@@ -208,7 +327,7 @@ window.startWorkoutFromModal = function(workoutName) {
         startWorkout(workoutName);
     } else {
         // Import and call the function dynamically
-        import('./core/workout/workout-core.js').then(module => {
+        import('./core/workout/workout-core.js').then((module) => {
             if (module.startWorkout) {
                 module.startWorkout(workoutName);
             }
@@ -230,7 +349,7 @@ window.editExerciseDefaults = editExerciseDefaults;
 window.addExerciseToActiveWorkout = addExerciseToActiveWorkout;
 window.confirmExerciseAddToWorkout = confirmExerciseAddToWorkout;
 window.closeExerciseModal = closeExerciseModal;
-window.loadExerciseHistory = function(exerciseName, exerciseIndex) {
+window.loadExerciseHistory = function (exerciseName, exerciseIndex) {
     loadExerciseHistory(exerciseName, exerciseIndex, AppState);
 };
 
@@ -352,6 +471,8 @@ window.closeMoreMenu = closeMoreMenu;
 window.setBottomNavVisible = setBottomNavVisible;
 window.updateBottomNavActive = updateBottomNavActive;
 window.setHeaderMode = setHeaderMode;
+window.escapeHtml = escapeHtml;
+window.escapeAttr = escapeAttr;
 
 // Dashboard Functions
 window.showDashboard = showDashboard;
@@ -383,7 +504,7 @@ window.useTemplate = useTemplate;
 window.useTemplateFromManagement = useTemplateFromManagement;
 window.copyTemplateToCustom = copyTemplateToCustom;
 window.deleteCustomTemplate = deleteCustomTemplate;
-window.showTemplatesByCategory = function(category) {
+window.showTemplatesByCategory = function (category) {
     // Helper to derive category from workout name
     function getWorkoutCategory(dayName) {
         if (!dayName) return 'other';
@@ -396,9 +517,10 @@ window.showTemplatesByCategory = function(category) {
     }
 
     // Filter workouts by category
-    const filteredWorkouts = window.AppState.workoutPlans.filter(workout => {
+    const filteredWorkouts = window.AppState.workoutPlans.filter((workout) => {
         // Check explicit category field first, then derive from name
-        const workoutCategory = workout.category?.toLowerCase() ||
+        const workoutCategory =
+            workout.category?.toLowerCase() ||
             workout.type?.toLowerCase() ||
             getWorkoutCategory(workout.day || workout.name || '');
         return workoutCategory === category.toLowerCase();
@@ -406,11 +528,11 @@ window.showTemplatesByCategory = function(category) {
 
     // Get category icon
     const categoryIcons = {
-        'push': 'fas fa-hand-paper',
-        'pull': 'fas fa-fist-raised',
-        'legs': 'fas fa-running',
-        'cardio': 'fas fa-heartbeat',
-        'other': 'fas fa-dumbbell'
+        push: 'fas fa-hand-paper',
+        pull: 'fas fa-fist-raised',
+        legs: 'fas fa-running',
+        cardio: 'fas fa-heartbeat',
+        other: 'fas fa-dumbbell',
     };
     const categoryIcon = categoryIcons[category.toLowerCase()] || 'fas fa-dumbbell';
 
@@ -440,7 +562,7 @@ window.showTemplatesByCategory = function(category) {
             </div>
         `;
     } else {
-        filteredWorkouts.forEach(workout => {
+        filteredWorkouts.forEach((workout) => {
             const workoutName = workout.name || workout.day || 'Unnamed Workout';
 
             // Normalize exercises to array format
@@ -450,7 +572,7 @@ window.showTemplatesByCategory = function(category) {
                     exercisesArray = workout.exercises;
                 } else if (typeof workout.exercises === 'object') {
                     const keys = Object.keys(workout.exercises).sort();
-                    exercisesArray = keys.map(key => workout.exercises[key]).filter(ex => ex);
+                    exercisesArray = keys.map((key) => workout.exercises[key]).filter((ex) => ex);
                 }
             }
             const exerciseCount = exercisesArray.length;
@@ -458,7 +580,7 @@ window.showTemplatesByCategory = function(category) {
             // Create exercise summary
             let exerciseSummary = 'No exercises';
             if (exerciseCount > 0) {
-                const names = exercisesArray.slice(0, 3).map(ex => ex.name || ex.machine);
+                const names = exercisesArray.slice(0, 3).map((ex) => ex.name || ex.machine);
                 exerciseSummary = names.join(', ');
                 if (exerciseCount > 3) {
                     exerciseSummary += ` +${exerciseCount - 3} more`;
@@ -472,11 +594,11 @@ window.showTemplatesByCategory = function(category) {
                     <i class="${categoryIcon}"></i>
                 </div>
                 <div class="workout-item-content">
-                    <div class="workout-item-name">${workoutName}</div>
+                    <div class="workout-item-name">${escapeHtml(workoutName)}</div>
                     <div class="workout-item-meta">${exerciseCount} exercises</div>
-                    <div class="workout-item-exercises">${exerciseSummary}</div>
+                    <div class="workout-item-exercises">${escapeHtml(exerciseSummary)}</div>
                 </div>
-                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); startWorkoutFromModal('${workoutName.replace(/'/g, "\\'")}')">
+                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); startWorkoutFromModal('${escapeAttr(workoutName)}')">
                     <i class="fas fa-play"></i> Start
                 </button>
             `;
@@ -493,14 +615,14 @@ window.showTemplatesByCategory = function(category) {
     modal.classList.remove('hidden');
 };
 
-window.closeTemplateModal = function() {
+window.closeTemplateModal = function () {
     const modal = document.getElementById('template-selection-modal');
     if (modal) {
         modal.classList.add('hidden');
     }
 };
 
-window.closeTemplateSelection = function() {
+window.closeTemplateSelection = function () {
     closeTemplateModal();
 };
 
@@ -508,12 +630,12 @@ window.closeTemplateSelection = function() {
 window.showWorkoutHistory = showWorkoutHistory;
 window.viewWorkout = viewWorkout;
 window.resumeWorkout = resumeWorkout;
-window.resumeWorkoutById = resumeWorkoutById;  // Schema v3.0: accepts docId
+window.resumeWorkoutById = resumeWorkoutById; // Schema v3.0: accepts docId
 window.repeatWorkout = repeatWorkout;
 window.deleteWorkout = deleteWorkout;
 window.retryWorkout = retryWorkout;
 window.clearAllHistoryFilters = clearAllHistoryFilters;
-window.closeWorkoutDetailModal = function() {
+window.closeWorkoutDetailModal = function () {
     const modal = document.getElementById('workout-detail-modal');
     if (modal) {
         modal.classList.add('hidden');
@@ -560,34 +682,25 @@ window.updateLoadingMessage = updateLoadingMessage;
 window.showSignInPrompt = showSignInPrompt;
 window.hideLoadingScreen = hideLoadingScreen;
 
-// Debug Functions
-window.debugManualWorkoutDate = debugManualWorkoutDate;
-window.debugFirebaseWorkoutDates = debugFirebaseWorkoutDates;
-window.debugWeeklyStats = debugWeeklyStats;
-window.forceCheckHistoryData = forceCheckHistoryData;
-window.testHistoryFilters = testHistoryFilters;
-window.fixWorkoutHistoryReference = fixWorkoutHistoryReference;
-window.emergencyFixFilters = emergencyFixFilters;
-window.runAllDebugChecks = runAllDebugChecks;
-window.cleanupDuplicateExercises = cleanupDuplicateExercises;
-window.scanDuplicateExercises = scanDuplicateExercises;
-window.mergeDuplicateExercises = mergeDuplicateExercises;
-
-// Workout history editor utilities
-window.getWorkoutHistoryForEditing = getWorkoutHistoryForEditing;
-window.updateWorkoutLocation = updateWorkoutLocation;
-window.updateExerciseEquipment = updateExerciseEquipment;
-window.bulkUpdateEquipment = bulkUpdateEquipment;
-window.listAllEquipment = listAllEquipment;
-window.findIncompleteWorkouts = findIncompleteWorkouts;
-window.migrateEquipmentToExercises = migrateEquipmentToExercises;
-
-// Streak and PR recalculation utilities
-window.recalculateStreaks = recalculateStreaks;
-window.rebuildAllPRs = rebuildAllPRs;
-window.recalculateAllStats = recalculateAllStats;
-window.showPRSummary = showPRSummary;
-window.renameExercise = renameExercise;
+// Debug Functions — lazy-loaded only when ?debug is in URL
+if (new URL(window.location).searchParams.has('debug')) {
+    Promise.all([
+        import('./core/utils/debug-utilities.js'),
+        import('./core/features/pr-migration.js'),
+        import('./core/utils/fix-template-exercises.js'),
+    ]).then(([debugMod, prMigMod, fixMod]) => {
+        Object.keys(debugMod).forEach((key) => {
+            window[key] = debugMod[key];
+        });
+        Object.keys(prMigMod).forEach((key) => {
+            window[key] = prMigMod[key];
+        });
+        Object.keys(fixMod).forEach((key) => {
+            window[key] = fixMod[key];
+        });
+        console.log('🔧 Debug + migration utilities loaded');
+    });
+}
 
 // State access (for debugging)
 window.AppState = AppState;
@@ -605,7 +718,7 @@ import { PRTracker } from './core/features/pr-tracker.js';
 window.PRTracker = PRTracker;
 
 // Debug utility to rebuild PRs from workout history
-window.rebuildPRs = async function() {
+window.rebuildPRs = async function () {
     console.log('Rebuilding PRs from workout history...');
     const result = await PRTracker.rebuildPRsFromHistory();
     if (result.success) {
@@ -622,11 +735,8 @@ window.rebuildPRs = async function() {
 // ONE-TIME FIX UTILITY
 // ===================================================================
 
-// Import and expose the template fix utility
-import { fixTemplateExercises } from './core/utils/fix-template-exercises.js';
-window.fixTemplateExercises = fixTemplateExercises;
-
-console.log('🔧 Template fix utility loaded. Run window.fixTemplateExercises() to normalize template exercises.');
+// One-time migration utilities — lazy-loaded only with ?debug
+// Run: window.fixTemplateExercises() or window.migrateOldWorkoutsToPRs()
 
 // ===================================================================
 // SIMPLE INITIALIZATION - Just call your existing startApplication

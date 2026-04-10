@@ -26,7 +26,6 @@ export function closeSidebar() {
 // ===================================================================
 
 export function navigateTo(view) {
-
     // Close sidebar after navigation
     closeSidebar();
 
@@ -39,10 +38,10 @@ export function navigateTo(view) {
         'dashboard',
         'stats-section',
         'exercise-manager-section',
-        'location-management-section'
+        'location-management-section',
     ];
 
-    sections.forEach(sectionId => {
+    sections.forEach((sectionId) => {
         const section = document.getElementById(sectionId);
         if (section) section.classList.add('hidden');
     });
@@ -194,7 +193,7 @@ export function updateBottomNavActive(tab) {
     const bottomNav = document.getElementById('bottom-nav');
     if (!bottomNav) return;
 
-    bottomNav.querySelectorAll('.bottom-nav-item').forEach(item => {
+    bottomNav.querySelectorAll('.bottom-nav-item').forEach((item) => {
         if (item.dataset.tab === tab) {
             item.classList.add('active');
             item.setAttribute('aria-current', 'page');

@@ -1,10 +1,19 @@
 // App Initialization Module - core/app-initialization.js
 // Handles application startup, authentication, and global setup
 
-import { auth, provider, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, db } from './data/firebase-config.js';
+import {
+    auth,
+    provider,
+    onAuthStateChanged,
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
+    signOut,
+    db,
+} from './data/firebase-config.js';
 import { GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { AppState } from './utils/app-state.js';
-import { showNotification, setTodayDisplay } from './ui/ui-helpers.js';
+import { showNotification, setTodayDisplay, initModalScrollLock } from './ui/ui-helpers.js';
 import { loadWorkoutPlans } from './data/data-manager.js'; // ADD loadWorkoutData here
 import { getExerciseLibrary } from './data/exercise-library.js';
 import { getWorkoutHistory } from './workout/workout-history.js';
@@ -111,6 +120,9 @@ export function initializeWorkoutApp() {
     // Initialize global error handling FIRST
     initializeErrorHandler();
 
+    // Lock body scroll when modals are open (iOS fix)
+    initModalScrollLock();
+
     try {
         updateLoadingMessage('Loading exercise library...');
 
@@ -165,7 +177,7 @@ export async function signIn() {
         // Create a provider instance with account selection prompt
         const signInProvider = new GoogleAuthProvider();
         signInProvider.setCustomParameters({
-            prompt: 'select_account'
+            prompt: 'select_account',
         });
 
         const result = await signInWithPopup(auth, signInProvider);
@@ -224,10 +236,10 @@ export async function signOutUser() {
             'workout-management-section',
             'exercise-manager-section',
             'dashboard',
-            'stats-section'
+            'stats-section',
         ];
 
-        sections.forEach(sectionId => {
+        sections.forEach((sectionId) => {
             const section = document.getElementById(sectionId);
             if (section) section.classList.add('hidden');
         });
@@ -311,7 +323,11 @@ export function setupAuthenticationListener() {
             // Handled by onAuthStateChanged
         })
         .catch((error) => {
-            if (error.code && error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+            if (
+                error.code &&
+                error.code !== 'auth/popup-closed-by-user' &&
+                error.code !== 'auth/cancelled-popup-request'
+            ) {
                 console.error('Redirect sign-in error:', error);
                 showNotification('Sign-in failed. Please try again.', 'error');
             }
@@ -384,7 +400,6 @@ export function setupAuthenticationListener() {
                     }
                 }
             }, 500);
-
         } else {
             AppState.currentUser = null;
 
@@ -401,10 +416,10 @@ export function setupAuthenticationListener() {
                 'workout-management-section',
                 'exercise-manager-section',
                 'dashboard',
-                'stats-section'
+                'stats-section',
             ];
 
-            sections.forEach(sectionId => {
+            sections.forEach((sectionId) => {
                 const section = document.getElementById(sectionId);
                 if (section) section.classList.add('hidden');
             });
@@ -460,9 +475,9 @@ export async function refreshExerciseDatabase() {
 
 export function fillTemplateValues() {
     if (AppState.workoutPlans) {
-        AppState.workoutPlans.forEach(plan => {
+        AppState.workoutPlans.forEach((plan) => {
             if (plan.exercises) {
-                plan.exercises.forEach(exercise => {
+                plan.exercises.forEach((exercise) => {
                     exercise.sets = exercise.sets || 3;
                     exercise.reps = exercise.reps || 10;
                     exercise.weight = exercise.weight || 50;
@@ -482,28 +497,27 @@ async function checkForInProgressWorkoutEnhanced() {
         const todaysData = await loadTodaysWorkout(AppState);
 
         if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
-            
             // Validate workout plan exists
-            const workoutPlan = AppState.workoutPlans.find(plan => 
-                plan.day === todaysData.workoutType || 
-                plan.name === todaysData.workoutType ||
-                plan.id === todaysData.workoutType
+            const workoutPlan = AppState.workoutPlans.find(
+                (plan) =>
+                    plan.day === todaysData.workoutType ||
+                    plan.name === todaysData.workoutType ||
+                    plan.id === todaysData.workoutType
             );
-            
+
             if (!workoutPlan) {
                 return;
             }
-            
+
             // Store in-progress workout globally
             // Use todaysData.originalWorkout if it exists (contains modified exercise list)
             window.inProgressWorkout = {
                 ...todaysData,
-                originalWorkout: todaysData.originalWorkout || workoutPlan
+                originalWorkout: todaysData.originalWorkout || workoutPlan,
             };
-            
+
             // Show in-progress workout prompt
             showInProgressWorkoutPrompt(todaysData);
-            
         }
     } catch (error) {
         console.error('Error checking for in-progress workout:', error);
@@ -513,25 +527,25 @@ async function checkForInProgressWorkoutEnhanced() {
 function showInProgressWorkoutPrompt(workoutData) {
     if (window.showingProgressPrompt) return;
     window.showingProgressPrompt = true;
-    
+
     // Update card elements
     const card = document.getElementById('resume-workout-banner');
     const nameElement = document.getElementById('resume-workout-name');
     const setsElement = document.getElementById('resume-sets-completed');
     const timeElement = document.getElementById('resume-time-ago');
-    
+
     if (card && nameElement) {
         // Set workout name
         nameElement.textContent = workoutData.workoutType;
-        
+
         // Calculate sets completed
         let completedSets = 0;
         let totalSets = 0;
         if (workoutData.exercises) {
-            Object.keys(workoutData.exercises).forEach(key => {
+            Object.keys(workoutData.exercises).forEach((key) => {
                 const exercise = workoutData.exercises[key];
                 if (exercise && exercise.sets) {
-                    exercise.sets.forEach(set => {
+                    exercise.sets.forEach((set) => {
                         totalSets++;
                         if (set.reps && set.weight) completedSets++;
                     });
@@ -567,7 +581,7 @@ function showInProgressWorkoutPrompt(workoutData) {
 
         // Show the card
         card.classList.remove('hidden');
-        
+
         // Scroll to top so card is visible
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -575,14 +589,14 @@ function showInProgressWorkoutPrompt(workoutData) {
         console.warn('Resume card elements not found, using fallback confirm dialog');
         const workoutDate = new Date(workoutData.date).toLocaleDateString();
         const message = `You have an in-progress "${workoutData.workoutType}" workout from ${workoutDate}.\n\nWould you like to continue where you left off?`;
-        
+
         setTimeout(() => {
             if (confirm(message)) {
-                import('./workout/workout-core.js').then(module => {
+                import('./workout/workout-core.js').then((module) => {
                     module.continueInProgressWorkout();
                 });
             } else {
-                import('./workout/workout-core.js').then(module => {
+                import('./workout/workout-core.js').then((module) => {
                     module.discardInProgressWorkout();
                 });
             }
@@ -635,13 +649,13 @@ function setupOtherEventListeners() {
     if (globalUnitToggle) {
         globalUnitToggle.addEventListener('click', (e) => {
             if (e.target.classList.contains('unit-btn')) {
-                import('./workout/workout-core.js').then(module => {
+                import('./workout/workout-core.js').then((module) => {
                     module.setGlobalUnit(e.target.dataset.unit);
                 });
             }
         });
     }
-    
+
     // Close modal buttons
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('close-modal') || e.target.closest('.close-modal')) {
@@ -651,14 +665,14 @@ function setupOtherEventListeners() {
             }
         }
     });
-    
+
     // Close modal on backdrop click
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('modal')) {
             e.target.classList.add('hidden');
         }
     });
-    
+
     // ESC key to close modals
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -683,23 +697,22 @@ export function setupKeyboardShortcuts() {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             return;
         }
-        
+
         // Ctrl/Cmd + K for search
         if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
             e.preventDefault();
-            const searchInput = document.getElementById('workout-search') || 
-                              document.getElementById('exercise-search');
+            const searchInput = document.getElementById('workout-search') || document.getElementById('exercise-search');
             if (searchInput) {
                 searchInput.focus();
             }
         }
-        
+
         // Space to pause/resume timer
         if (e.key === ' ' && AppState.globalRestTimer) {
             e.preventDefault();
             // Toggle timer pause (would need to implement pause functionality)
         }
-        
+
         // ESC to close any open modals
         if (e.key === 'Escape') {
             const activeModal = document.querySelector('.modal:not(.hidden)');
@@ -717,7 +730,7 @@ export function setupKeyboardShortcuts() {
 
 function setupWorkoutFilters() {
     const filterButtons = document.querySelectorAll('.workout-filter-btn');
-    filterButtons.forEach(btn => {
+    filterButtons.forEach((btn) => {
         btn.addEventListener('click', (e) => {
             const category = e.target.dataset.category;
             filterWorkoutsByCategory(category);
@@ -734,12 +747,12 @@ function setupWorkoutSearch() {
 
 function filterWorkoutsByCategory(category) {
     // Update active filter
-    document.querySelectorAll('.workout-filter-btn').forEach(btn => {
+    document.querySelectorAll('.workout-filter-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.category === category);
     });
-    
+
     // Import and use template selection module
-    import('./ui/template-selection.js').then(module => {
+    import('./ui/template-selection.js').then((module) => {
         module.filterTemplates(category);
     });
 }
@@ -750,7 +763,7 @@ function debounceWorkoutSearch(event) {
         const query = event.target.value;
 
         // Import and use template selection module
-        import('./ui/template-selection.js').then(module => {
+        import('./ui/template-selection.js').then((module) => {
             module.searchTemplates(query);
         });
     }, 300);
@@ -758,7 +771,7 @@ function debounceWorkoutSearch(event) {
 
 function renderInitialWorkouts() {
     // Import and use template selection module
-    import('./ui/template-selection.js').then(module => {
+    import('./ui/template-selection.js').then((module) => {
         module.loadTemplatesByCategory();
     });
 }
@@ -803,7 +816,8 @@ export function startApplication() {
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./service-worker.js')
+            navigator.serviceWorker
+                .register('./service-worker.js')
                 .then((registration) => {
                     registration.addEventListener('updatefound', () => {
                         const newWorker = registration.installing;

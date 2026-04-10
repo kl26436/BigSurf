@@ -7,7 +7,6 @@ let serviceWorkerRegistration = null;
  * Initialize notification system and service worker
  */
 export async function initializeNotifications() {
-
     // Check if service workers are supported
     if (!('serviceWorker' in navigator)) {
         console.warn('⚠️ Service Workers not supported');
@@ -48,7 +47,7 @@ export async function showNotification(title, body, options = {}) {
         tag: options.tag || 'bigsurf',
         requireInteraction: options.requireInteraction || false,
         silent: isSilent,
-        ...options
+        ...options,
     };
 
     // Only add vibrate if not silent
@@ -93,7 +92,7 @@ export async function scheduleNotification(title, body, delay, options = {}) {
             body: body,
             delay: delay,
             tag: options.tag || 'bigsurf',
-            silent: options.silent !== undefined ? options.silent : false
+            silent: options.silent !== undefined ? options.silent : false,
         });
         return true;
     } catch (error) {

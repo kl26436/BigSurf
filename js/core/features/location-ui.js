@@ -1,7 +1,7 @@
 // Location UI Module - core/location-ui.js
 // Handles location management UI - uses Firebase locations
 
-import { showNotification } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
 import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { getSessionLocation, setSessionLocation, getCurrentPosition, findNearbyLocation } from './location-service.js';
@@ -44,7 +44,7 @@ function getWorkoutManager() {
 export async function showLocationManagement() {
     // Hide all sections
     const allSections = document.querySelectorAll('.content-section');
-    allSections.forEach(section => section.classList.add('hidden'));
+    allSections.forEach((section) => section.classList.add('hidden'));
 
     // Show location management section
     const section = document.getElementById('location-management-section');
@@ -161,27 +161,28 @@ function renderLocationManagementList() {
         return;
     }
 
-    container.innerHTML = cachedLocations.map(location => {
-        const isCurrent = location.name === currentLocationName;
-        const lastVisit = formatLocationDate(location.lastVisit);
-        const hasGPS = location.latitude && location.longitude;
+    container.innerHTML = cachedLocations
+        .map((location) => {
+            const isCurrent = location.name === currentLocationName;
+            const lastVisit = formatLocationDate(location.lastVisit);
+            const hasGPS = location.latitude && location.longitude;
 
-        // Show city/state if available, otherwise GPS status
-        let gpsDisplay;
-        if (hasGPS && location.cityState) {
-            // Has GPS and city/state - show the city/state
-            gpsDisplay = `<span class="location-city-state"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(location.cityState)}</span>`;
-        } else if (hasGPS) {
-            // Has GPS but no city/state yet - show "GPS Saved" and fetch city/state
-            gpsDisplay = `<span class="location-gps-info" id="gps-info-${location.id}"><i class="fas fa-check-circle"></i> GPS Saved</span>`;
-            // Fetch city/state in background and save it
-            fetchAndSaveCityState(location);
-        } else {
-            // No GPS
-            gpsDisplay = '<span class="location-no-gps"><i class="fas fa-map-marker-alt"></i> No GPS</span>';
-        }
+            // Show city/state if available, otherwise GPS status
+            let gpsDisplay;
+            if (hasGPS && location.cityState) {
+                // Has GPS and city/state - show the city/state
+                gpsDisplay = `<span class="location-city-state"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(location.cityState)}</span>`;
+            } else if (hasGPS) {
+                // Has GPS but no city/state yet - show "GPS Saved" and fetch city/state
+                gpsDisplay = `<span class="location-gps-info" id="gps-info-${location.id}"><i class="fas fa-check-circle"></i> GPS Saved</span>`;
+                // Fetch city/state in background and save it
+                fetchAndSaveCityState(location);
+            } else {
+                // No GPS
+                gpsDisplay = '<span class="location-no-gps"><i class="fas fa-map-marker-alt"></i> No GPS</span>';
+            }
 
-        return `
+            return `
             <div class="location-management-item ${isCurrent ? 'active' : ''}">
                 <div class="location-item-info" onclick="showLocationOnMapById('${escapeHtml(location.id)}')">
                     <div class="location-item-icon">
@@ -210,8 +211,8 @@ function renderLocationManagementList() {
                 </div>
             </div>
         `;
-    }).join('');
-
+        })
+        .join('');
 }
 
 /**
@@ -232,16 +233,6 @@ function formatLocationDate(isoString) {
     } else {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
-}
-
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 /**
@@ -271,7 +262,7 @@ async function fetchAndSaveCityState(location) {
  * Used when user taps a location just to see it on the map
  */
 export function showLocationOnMapById(locationId) {
-    const location = cachedLocations.find(loc => loc.id === locationId);
+    const location = cachedLocations.find((loc) => loc.id === locationId);
     if (!location) return;
 
     if (location.latitude && location.longitude) {
@@ -291,7 +282,7 @@ export async function setLocationAsCurrent(locationName) {
     currentLocationName = locationName;
 
     // Find the location in cache
-    const location = cachedLocations.find(loc => loc.name === locationName);
+    const location = cachedLocations.find((loc) => loc.name === locationName);
 
     if (location) {
         // If location has saved GPS coords, show them on the map
@@ -304,7 +295,7 @@ export async function setLocationAsCurrent(locationName) {
                 const manager = getWorkoutManager();
                 await manager.updateLocation(location.id, {
                     latitude: window.currentGPSCoords.latitude,
-                    longitude: window.currentGPSCoords.longitude
+                    longitude: window.currentGPSCoords.longitude,
                 });
                 // Update cache
                 location.latitude = window.currentGPSCoords.latitude;
@@ -324,7 +315,7 @@ export async function setLocationAsCurrent(locationName) {
  * Update GPS for an existing location (re-save current position)
  */
 export async function updateLocationGPS(locationId) {
-    const location = cachedLocations.find(loc => loc.id === locationId);
+    const location = cachedLocations.find((loc) => loc.id === locationId);
     if (!location) return;
 
     if (!window.currentGPSCoords) {
@@ -342,7 +333,7 @@ export async function updateLocationGPS(locationId) {
         await manager.updateLocation(locationId, {
             latitude: window.currentGPSCoords.latitude,
             longitude: window.currentGPSCoords.longitude,
-            radius: null // Reset to use default radius
+            radius: null, // Reset to use default radius
         });
 
         // Update cache
@@ -368,7 +359,7 @@ function showLocationOnMap(lat, lon, name) {
 
     container.innerHTML = `
         <iframe
-            src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.01}%2C${lat-0.01}%2C${lon+0.01}%2C${lat+0.01}&layer=mapnik&marker=${lat}%2C${lon}"
+            src="https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.01}%2C${lat - 0.01}%2C${lon + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lon}"
             style="width: 100%; height: 100%; border: none;">
         </iframe>
         <div class="map-location-label">${name}</div>
@@ -390,7 +381,7 @@ export async function addNewLocationFromManagement() {
     }
 
     // Check if location already exists
-    if (cachedLocations.some(loc => loc.name.toLowerCase() === locationName.toLowerCase())) {
+    if (cachedLocations.some((loc) => loc.name.toLowerCase() === locationName.toLowerCase())) {
         showNotification('Location already exists', 'warning');
         return;
     }
@@ -403,7 +394,7 @@ export async function addNewLocationFromManagement() {
         await manager.saveLocation({
             name: locationName,
             latitude: coords?.latitude || null,
-            longitude: coords?.longitude || null
+            longitude: coords?.longitude || null,
         });
 
         // Set as current location
@@ -462,12 +453,12 @@ export function switchLocationMethod(method) {
     currentLocationMethod = method;
 
     // Update tab states
-    document.querySelectorAll('.method-tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.method-tab').forEach((tab) => tab.classList.remove('active'));
     const activeTab = document.getElementById(`method-${method}-tab`);
     if (activeTab) activeTab.classList.add('active');
 
     // Show/hide content
-    document.querySelectorAll('.location-method-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.location-method-content').forEach((el) => el.classList.add('hidden'));
     const content = document.getElementById(`location-method-${method}`);
     if (content) content.classList.remove('hidden');
 
@@ -502,11 +493,13 @@ async function detectGPSForModal() {
             updateSelectedCoordsDisplay();
         } else {
             statusBox.className = 'gps-status-box error';
-            statusBox.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>Could not detect location. Try another method.</span>';
+            statusBox.innerHTML =
+                '<i class="fas fa-exclamation-circle"></i><span>Could not detect location. Try another method.</span>';
         }
     } catch (error) {
         statusBox.className = 'gps-status-box error';
-        statusBox.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>Location access denied. Try another method.</span>';
+        statusBox.innerHTML =
+            '<i class="fas fa-exclamation-circle"></i><span>Location access denied. Try another method.</span>';
     }
 }
 
@@ -523,7 +516,8 @@ export async function searchLocationAddress() {
         return;
     }
 
-    resultsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+    resultsContainer.innerHTML =
+        '<div style="text-align: center; padding: 20px; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
 
     try {
         // Use Firebase Cloud Function to bypass CORS restrictions
@@ -532,16 +526,21 @@ export async function searchLocationAddress() {
         const results = response.data.results || [];
 
         if (!Array.isArray(results) || results.length === 0) {
-            resultsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No results found. Try a different search.</div>';
+            resultsContainer.innerHTML =
+                '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No results found. Try a different search.</div>';
             return;
         }
 
-        resultsContainer.innerHTML = results.map((result, idx) => `
-            <div class="address-result-item" onclick="selectAddressResult(${idx}, ${result.lat}, ${result.lon}, '${escapeHtml(result.display_name).replace(/'/g, "\\'")}')">
+        resultsContainer.innerHTML = results
+            .map(
+                (result, idx) => `
+            <div class="address-result-item" onclick="selectAddressResult(${idx}, ${result.lat}, ${result.lon}, '${escapeAttr(result.display_name)}')">
                 <div class="address-result-name">${escapeHtml(result.display_name.split(',')[0])}</div>
                 <div class="address-result-address">${escapeHtml(result.display_name)}</div>
             </div>
-        `).join('');
+        `
+            )
+            .join('');
     } catch (error) {
         console.error('Address search error:', error);
         resultsContainer.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--danger);">
@@ -587,13 +586,13 @@ function initAddLocationMap() {
         addLocationMap = L.map(container).setView([defaultLat, defaultLon], 15);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
+            attribution: '&copy; OpenStreetMap',
         }).addTo(addLocationMap);
 
         // Add draggable marker
         addLocationMarker = L.marker([defaultLat, defaultLon], { draggable: true }).addTo(addLocationMap);
 
-        addLocationMarker.on('dragend', function(e) {
+        addLocationMarker.on('dragend', function (e) {
             const pos = e.target.getLatLng();
             selectedLocationCoords = { latitude: pos.lat, longitude: pos.lng };
             updateSelectedCoordsDisplay();
@@ -601,7 +600,7 @@ function initAddLocationMap() {
         });
 
         // Click on map to move marker
-        addLocationMap.on('click', function(e) {
+        addLocationMap.on('click', function (e) {
             addLocationMarker.setLatLng(e.latlng);
             selectedLocationCoords = { latitude: e.latlng.lat, longitude: e.latlng.lng };
             updateSelectedCoordsDisplay();
@@ -619,8 +618,8 @@ function initAddLocationMap() {
             <div style="padding: 20px; text-align: center;">
                 <p style="color: var(--text-muted); margin-bottom: 16px;">Enter coordinates manually:</p>
                 <div style="display: flex; gap: 10px; justify-content: center;">
-                    <input type="number" id="manual-lat" placeholder="Latitude" step="0.00001" style="width: 120px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-strong);">
-                    <input type="number" id="manual-lon" placeholder="Longitude" step="0.00001" style="width: 120px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-strong);">
+                    <input type="number" id="manual-lat" placeholder="Latitude" step="0.00001" inputmode="decimal" style="width: 120px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-strong);">
+                    <input type="number" id="manual-lon" placeholder="Longitude" step="0.00001" inputmode="decimal" style="width: 120px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-strong);">
                     <button onclick="applyManualCoords()" class="btn btn-secondary" style="padding: 8px 12px;">Set</button>
                 </div>
             </div>
@@ -699,7 +698,7 @@ export async function saveNewLocationFromModal() {
     }
 
     // Check if name already exists
-    if (cachedLocations.some(loc => loc.name.toLowerCase() === locationName.toLowerCase())) {
+    if (cachedLocations.some((loc) => loc.name.toLowerCase() === locationName.toLowerCase())) {
         showNotification('A location with that name already exists', 'warning');
         return;
     }
@@ -718,7 +717,7 @@ export async function saveNewLocationFromModal() {
             latitude: coords?.latitude || null,
             longitude: coords?.longitude || null,
             radius: 150,
-            visitCount: 0
+            visitCount: 0,
         });
 
         // Close modal and refresh list
@@ -737,7 +736,7 @@ export async function saveNewLocationFromModal() {
  * Edit a location name
  */
 export async function editLocationName(locationId) {
-    const location = cachedLocations.find(loc => loc.id === locationId);
+    const location = cachedLocations.find((loc) => loc.id === locationId);
     if (!location) return;
 
     const newName = prompt(`Rename "${location.name}" to:`, location.name);
@@ -747,7 +746,9 @@ export async function editLocationName(locationId) {
     }
 
     // Check if new name already exists
-    if (cachedLocations.some(loc => loc.name.toLowerCase() === newName.trim().toLowerCase() && loc.id !== locationId)) {
+    if (
+        cachedLocations.some((loc) => loc.name.toLowerCase() === newName.trim().toLowerCase() && loc.id !== locationId)
+    ) {
         showNotification('A location with that name already exists', 'warning');
         return;
     }
@@ -778,7 +779,7 @@ export async function editLocationName(locationId) {
  * Delete a location
  */
 export async function deleteLocation(locationId) {
-    const location = cachedLocations.find(loc => loc.id === locationId);
+    const location = cachedLocations.find((loc) => loc.id === locationId);
     if (!location) return;
 
     if (location.name === currentLocationName) {
@@ -820,7 +821,7 @@ function updateLocationMap() {
 
         container.innerHTML = `
             <iframe
-                src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.01}%2C${lat-0.01}%2C${lon+0.01}%2C${lat+0.01}&layer=mapnik&marker=${lat}%2C${lon}"
+                src="https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.01}%2C${lat - 0.01}%2C${lon + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lon}"
                 style="width: 100%; height: 100%; border: none;">
             </iframe>
         `;

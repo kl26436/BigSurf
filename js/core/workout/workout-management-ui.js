@@ -28,7 +28,6 @@ export function initializeWorkoutManagement(appState) {
 
 // Main navigation functions
 export async function showWorkoutManagement() {
-
     const section = document.getElementById('workout-management-section');
     if (!section) {
         console.error('❌ Workout management section not found');
@@ -36,8 +35,16 @@ export async function showWorkoutManagement() {
     }
 
     // Hide all other sections
-    const sections = ['dashboard', 'workout-selector', 'active-workout', 'workout-history-section', 'stats-section', 'exercise-manager-section', 'location-management-section'];
-    sections.forEach(id => {
+    const sections = [
+        'dashboard',
+        'workout-selector',
+        'active-workout',
+        'workout-history-section',
+        'stats-section',
+        'exercise-manager-section',
+        'location-management-section',
+    ];
+    sections.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
@@ -59,7 +66,6 @@ export async function showWorkoutManagement() {
 }
 
 export function closeWorkoutManagement() {
-
     const section = document.getElementById('workout-management-section');
     if (section) {
         section.classList.add('hidden');
@@ -75,10 +81,10 @@ export function closeWorkoutManagement() {
 export function hideWorkoutManagement() {
     const workoutManagement = document.getElementById('workout-management');
     const templateEditor = document.getElementById('template-editor');
-    
+
     if (workoutManagement) workoutManagement.classList.add('hidden');
     if (templateEditor) templateEditor.classList.add('hidden');
-    
+
     currentEditingTemplate = null;
 }
 
@@ -86,12 +92,12 @@ export function hideWorkoutManagement() {
 async function loadWorkoutTemplates() {
     const templateList = document.getElementById('template-list');
     if (!templateList) return;
-    
+
     templateList.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading templates...</span></div>';
-    
+
     try {
         const templates = await workoutManager.getUserWorkoutTemplates();
-        
+
         if (templates.length === 0) {
             templateList.innerHTML = `
                 <div class="empty-state">
@@ -102,13 +108,12 @@ async function loadWorkoutTemplates() {
             `;
             return;
         }
-        
+
         templateList.innerHTML = '';
-        templates.forEach(template => {
+        templates.forEach((template) => {
             const card = createTemplateCard(template);
             templateList.appendChild(card);
         });
-        
     } catch (error) {
         console.error('❌ Error loading templates:', error);
         templateList.innerHTML = `
@@ -175,9 +180,10 @@ export function handleWorkoutSearch() {
             const container = document.getElementById('all-templates');
             if (!container) return;
 
-            const filtered = allWorkoutTemplates.filter(t =>
-                t.name?.toLowerCase().includes(query) ||
-                t.exercises?.some(ex => (ex.name || ex.machine || '').toLowerCase().includes(query))
+            const filtered = allWorkoutTemplates.filter(
+                (t) =>
+                    t.name?.toLowerCase().includes(query) ||
+                    t.exercises?.some((ex) => (ex.name || ex.machine || '').toLowerCase().includes(query))
             );
 
             renderFilteredWorkouts(filtered, `Search: "${query}"`);
@@ -193,11 +199,10 @@ function renderWorkoutList(category) {
     // Filter templates by category
     let filtered = allWorkoutTemplates;
     if (category) {
-        filtered = allWorkoutTemplates.filter(t => {
+        filtered = allWorkoutTemplates.filter((t) => {
             const templateCategory = (t.category || t.type || 'other').toLowerCase();
             const searchCategory = category.toLowerCase();
-            return templateCategory.includes(searchCategory) ||
-                   t.name?.toLowerCase().includes(searchCategory);
+            return templateCategory.includes(searchCategory) || t.name?.toLowerCase().includes(searchCategory);
         });
     }
 
@@ -227,7 +232,7 @@ function renderFilteredWorkouts(templates, titleOverride = null) {
     }
 
     container.innerHTML = '';
-    templates.forEach(template => {
+    templates.forEach((template) => {
         const card = createTemplateCard(template);
         container.appendChild(card);
     });
@@ -249,7 +254,7 @@ function createTemplateCard(template) {
     // Create exercise summary (just names, comma separated)
     let exerciseSummary = 'No exercises';
     if (exerciseCount > 0) {
-        const names = exercisesArray.slice(0, 4).map(ex => ex.name || ex.machine);
+        const names = exercisesArray.slice(0, 4).map((ex) => ex.name || ex.machine);
         exerciseSummary = names.join(', ');
         if (exerciseCount > 4) {
             exerciseSummary += ` +${exerciseCount - 4} more`;
@@ -282,21 +287,21 @@ function createTemplateCard(template) {
 function getCategoryIcon(category) {
     const cat = (category || '').toLowerCase();
     const icons = {
-        'push': 'fas fa-hand-paper',
-        'pull': 'fas fa-fist-raised',
-        'legs': 'fas fa-running',
-        'leg': 'fas fa-running',
-        'cardio': 'fas fa-heartbeat',
-        'core': 'fas fa-heartbeat',
-        'other': 'fas fa-dumbbell',
+        push: 'fas fa-hand-paper',
+        pull: 'fas fa-fist-raised',
+        legs: 'fas fa-running',
+        leg: 'fas fa-running',
+        cardio: 'fas fa-heartbeat',
+        core: 'fas fa-heartbeat',
+        other: 'fas fa-dumbbell',
         'full body': 'fas fa-dumbbell',
-        'fullbody': 'fas fa-dumbbell',
-        'upper': 'fas fa-hand-paper',
-        'lower': 'fas fa-running',
-        'chest': 'fas fa-hand-paper',
-        'back': 'fas fa-fist-raised',
-        'shoulders': 'fas fa-hand-paper',
-        'arms': 'fas fa-fist-raised'
+        fullbody: 'fas fa-dumbbell',
+        upper: 'fas fa-hand-paper',
+        lower: 'fas fa-running',
+        chest: 'fas fa-hand-paper',
+        back: 'fas fa-fist-raised',
+        shoulders: 'fas fa-hand-paper',
+        arms: 'fas fa-fist-raised',
     };
     return icons[cat] || 'fas fa-dumbbell';
 }
@@ -317,7 +322,7 @@ function normalizeExercisesToArray(exercises) {
     // If it's an object (e.g., {exercise_0: {...}, exercise_1: {...}}), convert to array
     if (typeof exercises === 'object') {
         const keys = Object.keys(exercises).sort(); // Sort to maintain order
-        return keys.map(key => exercises[key]).filter(ex => ex); // Filter out null/undefined
+        return keys.map((key) => exercises[key]).filter((ex) => ex); // Filter out null/undefined
     }
 
     return [];
@@ -327,14 +332,13 @@ export function createNewTemplate() {
     currentEditingTemplate = {
         name: '',
         category: 'Other',
-        exercises: []
+        exercises: [],
     };
-    
+
     showTemplateEditor();
 }
 
 export async function editTemplate(templateId, isDefault = false) {
-
     try {
         // Load all templates including raw defaults
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
@@ -345,7 +349,7 @@ export async function editTemplate(templateId, isDefault = false) {
         if (isDefault) {
             // Load the default template directly
             const allDefaults = await manager.getGlobalDefaultTemplates();
-            template = allDefaults.find(t => (t.id || t.day) === templateId);
+            template = allDefaults.find((t) => (t.id || t.day) === templateId);
 
             if (!template) {
                 console.error('❌ Default template not found:', templateId);
@@ -355,7 +359,7 @@ export async function editTemplate(templateId, isDefault = false) {
         } else {
             // Load from user templates
             const templates = await manager.getUserWorkoutTemplates();
-            template = templates.find(t => t.id === templateId);
+            template = templates.find((t) => t.id === templateId);
 
             if (!template) {
                 console.error('❌ Template not found:', templateId);
@@ -371,11 +375,10 @@ export async function editTemplate(templateId, isDefault = false) {
             category: template.category || template.type || 'other',
             exercises: JSON.parse(JSON.stringify(template.exercises || [])),
             suggestedDays: template.suggestedDays || [],
-            overridesDefault: isDefault ? (template.id || template.day) : template.overridesDefault,
-            isEditingDefault: isDefault
+            overridesDefault: isDefault ? template.id || template.day : template.overridesDefault,
+            isEditingDefault: isDefault,
         };
         showTemplateEditor();
-
     } catch (error) {
         console.error('❌ Error loading template for editing:', error);
         alert('Error loading template for editing');
@@ -395,7 +398,7 @@ export async function deleteTemplate(templateId, isDefault = false) {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const manager = new FirebaseWorkoutManager(AppState);
         const allDefaults = await manager.getGlobalDefaultTemplates();
-        const template = allDefaults.find(t => (t.id || t.day) === templateId);
+        const template = allDefaults.find((t) => (t.id || t.day) === templateId);
         if (template) {
             templateName = template.name || template.day;
         }
@@ -412,7 +415,7 @@ export async function deleteTemplate(templateId, isDefault = false) {
                     name: templateName,
                     overridesDefault: templateId,
                     isHidden: true,
-                    hiddenAt: new Date().toISOString()
+                    hiddenAt: new Date().toISOString(),
                 };
                 await workoutManager.saveWorkoutTemplate(hiddenMarker);
             } else {
@@ -423,7 +426,6 @@ export async function deleteTemplate(templateId, isDefault = false) {
             // Reload AppState and UI
             AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
             await loadAllTemplatesInBackground();
-
         } catch (error) {
             console.error(`❌ Error deleting template:`, error);
             alert(`Error deleting template. Please try again.`);
@@ -440,10 +442,9 @@ export async function resetToDefault(defaultTemplateId) {
 
     if (confirm('Reset this template to default? Your changes will be lost.')) {
         try {
-
             // Find and delete the override/hidden marker
             const templates = await workoutManager.getUserWorkoutTemplates();
-            const override = templates.find(t => t.overridesDefault === defaultTemplateId);
+            const override = templates.find((t) => t.overridesDefault === defaultTemplateId);
 
             if (override) {
                 await workoutManager.deleteWorkoutTemplate(override.id);
@@ -454,7 +455,6 @@ export async function resetToDefault(defaultTemplateId) {
                 const { loadTemplatesByCategory } = await import('../ui/template-selection.js');
                 await loadTemplatesByCategory();
             }
-
         } catch (error) {
             console.error('❌ Error resetting template:', error);
             alert('Error resetting template. Please try again.');
@@ -463,7 +463,6 @@ export async function resetToDefault(defaultTemplateId) {
 }
 
 export function useTemplate(templateId) {
-
     // This is essentially the same as "Use Today" - start a workout with this template
     if (typeof window.useTemplateFromManagement === 'function') {
         window.useTemplateFromManagement(templateId, false);
@@ -586,7 +585,7 @@ export async function saveCurrentTemplate() {
 
     // Get all checked day checkboxes
     const dayCheckboxes = document.querySelectorAll('input[name="suggested-days"]:checked');
-    const selectedDays = Array.from(dayCheckboxes).map(cb => cb.value);
+    const selectedDays = Array.from(dayCheckboxes).map((cb) => cb.value);
 
     if (!nameInput?.value.trim()) {
         showNotification('Please enter a workout name', 'warning');
@@ -618,7 +617,7 @@ export async function saveCurrentTemplate() {
 function renderTemplateExercises() {
     const container = document.getElementById('template-exercises');
     if (!container) return;
-    
+
     if (currentEditingTemplate.exercises.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -628,7 +627,7 @@ function renderTemplateExercises() {
         `;
         return;
     }
-    
+
     container.innerHTML = '';
     currentEditingTemplate.exercises.forEach((exercise, index) => {
         const item = createTemplateExerciseItem(exercise, index);
@@ -639,7 +638,7 @@ function renderTemplateExercises() {
 function createTemplateExerciseItem(exercise, index) {
     const item = document.createElement('div');
     item.className = 'template-exercise-item';
-    
+
     item.innerHTML = `
         <div class="exercise-info">
             <h5>${exercise.name}</h5>
@@ -658,7 +657,7 @@ function createTemplateExerciseItem(exercise, index) {
             </button>
         </div>
     `;
-    
+
     return item;
 }
 
@@ -707,7 +706,7 @@ export function editTemplateExercise(index) {
         window.openEditExerciseSection({
             ...exercise,
             name: exercise.name || exercise.machine,
-            isTemplateExercise: true
+            isTemplateExercise: true,
         });
     } else {
         // Fallback to simple modal if edit section not available
@@ -780,7 +779,7 @@ export function saveTemplateExerciseEdit() {
 
 export function removeTemplateExercise(index) {
     if (!currentEditingTemplate) return;
-    
+
     currentEditingTemplate.exercises.splice(index, 1);
     renderTemplateExercises();
     // Removed notification - UI update is self-evident
@@ -859,11 +858,11 @@ export function filterExerciseLibrary() {
     const searchQuery = document.getElementById('exercise-library-search')?.value || '';
     const bodyPartFilter = document.getElementById('body-part-filter')?.value || '';
     const equipmentFilter = document.getElementById('equipment-filter')?.value || '';
-    
+
     const filters = {};
     if (bodyPartFilter) filters.bodyPart = bodyPartFilter;
     if (equipmentFilter) filters.equipment = equipmentFilter;
-    
+
     filteredExercises = workoutManager.searchExercises(exerciseLibrary, searchQuery, filters);
     renderExerciseLibrary();
 }
@@ -885,7 +884,7 @@ function renderExerciseLibrary() {
 
     // Group exercises by body part
     const grouped = {};
-    filteredExercises.forEach(exercise => {
+    filteredExercises.forEach((exercise) => {
         const bodyPart = exercise.bodyPart || 'General';
         if (!grouped[bodyPart]) {
             grouped[bodyPart] = [];
@@ -897,30 +896,32 @@ function renderExerciseLibrary() {
     const sortedBodyParts = Object.keys(grouped).sort();
 
     // Render grouped exercises
-    grid.innerHTML = sortedBodyParts.map(bodyPart => {
-        const exercises = grouped[bodyPart];
-        const exerciseCards = exercises.map(exercise => {
-            const exerciseName = exercise.name || exercise.machine;
-            return `<div class="library-exercise-card" data-exercise-id="${exercise.id || exerciseName}">
+    grid.innerHTML = sortedBodyParts
+        .map((bodyPart) => {
+            const exercises = grouped[bodyPart];
+            const exerciseCards = exercises
+                .map((exercise) => {
+                    const exerciseName = exercise.name || exercise.machine;
+                    return `<div class="library-exercise-card" data-exercise-id="${exercise.id || exerciseName}">
                 <span class="library-exercise-name">${exerciseName}</span>
             </div>`;
-        }).join('');
+                })
+                .join('');
 
-        return `
+            return `
             <div class="library-group">
                 <div class="library-group-header">${bodyPart}</div>
                 <div class="library-group-items">${exerciseCards}</div>
             </div>
         `;
-    }).join('');
+        })
+        .join('');
 
     // Add click handlers
-    grid.querySelectorAll('.library-exercise-card').forEach(card => {
+    grid.querySelectorAll('.library-exercise-card').forEach((card) => {
         card.addEventListener('click', () => {
             const exerciseId = card.dataset.exerciseId;
-            const exercise = filteredExercises.find(ex =>
-                (ex.id || ex.name || ex.machine) === exerciseId
-            );
+            const exercise = filteredExercises.find((ex) => (ex.id || ex.name || ex.machine) === exerciseId);
             if (exercise) selectExerciseFromLibrary(exercise);
         });
     });
@@ -959,8 +960,8 @@ function selectExerciseFromLibrary(exercise) {
     // Add to current template (editing mode)
     if (currentEditingTemplate) {
         // Check for duplicate exercise names
-        const isDuplicate = currentEditingTemplate.exercises.some(ex =>
-            (ex.name === exerciseName || ex.machine === exerciseName)
+        const isDuplicate = currentEditingTemplate.exercises.some(
+            (ex) => ex.name === exerciseName || ex.machine === exerciseName
         );
 
         if (isDuplicate) {
@@ -998,7 +999,9 @@ async function showEquipmentPicker(exercise, isActiveWorkout) {
         // Render equipment options
         if (listEl) {
             if (exerciseEquipment.length > 0) {
-                listEl.innerHTML = exerciseEquipment.map(eq => `
+                listEl.innerHTML = exerciseEquipment
+                    .map(
+                        (eq) => `
                     <div class="equipment-option" data-equipment-id="${eq.id}" data-equipment-name="${eq.name}" data-equipment-location="${eq.location || ''}">
                         <div class="equipment-option-radio"></div>
                         <div class="equipment-option-details">
@@ -1006,12 +1009,14 @@ async function showEquipmentPicker(exercise, isActiveWorkout) {
                             ${eq.location ? `<div class="equipment-option-location">${eq.location}</div>` : ''}
                         </div>
                     </div>
-                `).join('');
+                `
+                    )
+                    .join('');
 
                 // Add click handlers for selection
-                listEl.querySelectorAll('.equipment-option').forEach(option => {
+                listEl.querySelectorAll('.equipment-option').forEach((option) => {
                     option.addEventListener('click', () => {
-                        listEl.querySelectorAll('.equipment-option').forEach(o => o.classList.remove('selected'));
+                        listEl.querySelectorAll('.equipment-option').forEach((o) => o.classList.remove('selected'));
                         option.classList.add('selected');
                         // Clear the new equipment inputs when selecting existing
                         if (newNameInput) newNameInput.value = '';
@@ -1028,22 +1033,22 @@ async function showEquipmentPicker(exercise, isActiveWorkout) {
         const locationDatalist = document.getElementById('equipment-picker-location-suggestions');
 
         if (equipmentDatalist) {
-            const equipmentNames = [...new Set(allEquipment.map(eq => eq.name))];
-            equipmentDatalist.innerHTML = equipmentNames.map(name => `<option value="${name}">`).join('');
+            const equipmentNames = [...new Set(allEquipment.map((eq) => eq.name))];
+            equipmentDatalist.innerHTML = equipmentNames.map((name) => `<option value="${name}">`).join('');
         }
 
         if (locationDatalist) {
             // Get locations from equipment AND from saved gym locations
-            const equipmentLocations = allEquipment.filter(eq => eq.location).map(eq => eq.location);
+            const equipmentLocations = allEquipment.filter((eq) => eq.location).map((eq) => eq.location);
             let savedGymLocations = [];
             try {
                 savedGymLocations = await workoutManager.getUserLocations();
-                savedGymLocations = savedGymLocations.map(loc => loc.name);
+                savedGymLocations = savedGymLocations.map((loc) => loc.name);
             } catch (e) {
                 // Ignore errors fetching gym locations
             }
             const allLocations = [...new Set([...equipmentLocations, ...savedGymLocations])];
-            locationDatalist.innerHTML = allLocations.map(loc => `<option value="${loc}">`).join('');
+            locationDatalist.innerHTML = allLocations.map((loc) => `<option value="${loc}">`).join('');
         }
     } catch (error) {
         console.error('Error loading equipment:', error);
@@ -1130,7 +1135,9 @@ export async function addEquipmentFromPicker() {
         const listEl = document.getElementById('equipment-picker-list');
 
         if (listEl && exerciseEquipment.length > 0) {
-            listEl.innerHTML = exerciseEquipment.map(eq => `
+            listEl.innerHTML = exerciseEquipment
+                .map(
+                    (eq) => `
                 <div class="equipment-option ${eq.name === equipmentName ? 'selected' : ''}"
                      data-equipment-id="${eq.id}"
                      data-equipment-name="${eq.name}"
@@ -1141,12 +1148,14 @@ export async function addEquipmentFromPicker() {
                         ${eq.location ? `<div class="equipment-option-location">${eq.location}</div>` : ''}
                     </div>
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
 
             // Re-add click handlers
-            listEl.querySelectorAll('.equipment-option').forEach(option => {
+            listEl.querySelectorAll('.equipment-option').forEach((option) => {
                 option.addEventListener('click', () => {
-                    listEl.querySelectorAll('.equipment-option').forEach(o => o.classList.remove('selected'));
+                    listEl.querySelectorAll('.equipment-option').forEach((o) => o.classList.remove('selected'));
                     option.classList.add('selected');
                     if (nameInput) nameInput.value = '';
                     if (locationInput) locationInput.value = '';
@@ -1155,7 +1164,6 @@ export async function addEquipmentFromPicker() {
         }
 
         // Silent success - equipment appears in list immediately
-
     } catch (error) {
         console.error('Error adding equipment:', error);
         showNotification('Error adding equipment', 'error');
@@ -1230,7 +1238,12 @@ async function finalizeExerciseAddition(equipmentName, equipmentLocation, equipm
     if (equipmentName) {
         try {
             const workoutManager = new FirebaseWorkoutManager(AppState);
-            const equipment = await workoutManager.getOrCreateEquipment(equipmentName, equipmentLocation, exerciseName, equipmentVideo);
+            const equipment = await workoutManager.getOrCreateEquipment(
+                equipmentName,
+                equipmentLocation,
+                exerciseName,
+                equipmentVideo
+            );
 
             // Auto-associate equipment with current workout location (if set)
             if (equipment && window.getSessionLocation) {
@@ -1249,7 +1262,7 @@ async function finalizeExerciseAddition(equipmentName, equipmentLocation, equipm
         const exerciseWithEquipment = {
             ...exercise,
             equipment: equipmentName,
-            equipmentLocation: equipmentLocation
+            equipmentLocation: equipmentLocation,
         };
         window.confirmExerciseAddToWorkout(exerciseWithEquipment);
         closeExerciseLibrary();
@@ -1271,7 +1284,7 @@ async function finalizeExerciseAddition(equipmentName, equipmentLocation, equipm
             sets: exercise.sets || 3,
             reps: exercise.reps || 10,
             weight: exercise.weight || 50,
-            video: exercise.video || ''
+            video: exercise.video || '',
         };
 
         currentEditingTemplate.exercises.push(templateExercise);
@@ -1343,7 +1356,7 @@ export async function createNewExercise(event) {
         sets,
         reps,
         weight,
-        video
+        video,
     };
 
     const success = await workoutManager.createExercise(exerciseData);
@@ -1372,12 +1385,11 @@ export async function createNewExercise(event) {
 }
 
 export function returnToWorkoutsFromManagement(appState) {
-    
     const hasActiveCustomTemplate = checkForActiveCustomTemplate(appState);
-    
+
     // Hide management UI first
     hideWorkoutManagement();
-    
+
     if (hasActiveCustomTemplate) {
         // Custom template active - navigate without popup warning
         showWorkoutSelectorSafe(appState, true);
@@ -1392,23 +1404,19 @@ function checkForActiveCustomTemplate(appState) {
     if (!appState.currentWorkout || !appState.savedData.workoutType) {
         return false;
     }
-    
+
     // Check if current workoutType is NOT in default workout plans
-    const isDefaultWorkout = appState.workoutPlans.some(plan => 
-        plan.day === appState.savedData.workoutType
-    );
-    
+    const isDefaultWorkout = appState.workoutPlans.some((plan) => plan.day === appState.savedData.workoutType);
+
     return !isDefaultWorkout; // If not default, it's likely a custom template
 }
 
 // Safe wrapper for showWorkoutSelector that respects navigation context
 function showWorkoutSelectorSafe(appState, fromNavigation = false) {
     // Only show warning popup if NOT from navigation and has real progress
-    const shouldShowWarning = !fromNavigation && 
-                             appState.hasWorkoutProgress() && 
-                             appState.currentWorkout && 
-                             appState.savedData.workoutType;
-    
+    const shouldShowWarning =
+        !fromNavigation && appState.hasWorkoutProgress() && appState.currentWorkout && appState.savedData.workoutType;
+
     if (shouldShowWarning) {
         const confirmChange = confirm(
             'You have progress on your current workout. Changing will save your progress but return you to workout selection. Continue?'
@@ -1418,11 +1426,11 @@ function showWorkoutSelectorSafe(appState, fromNavigation = false) {
             showWorkoutManagement();
             return;
         }
-        
+
         // Save progress before switching
         saveWorkoutData(appState);
     }
-    
+
     // Perform navigation
     navigateToWorkoutSelector(fromNavigation, appState);
 }
@@ -1434,17 +1442,17 @@ async function navigateToWorkoutSelector(fromNavigation, appState) {
     const workoutManagement = document.getElementById('workout-management');
     const historySection = document.getElementById('workout-history-section');
     const templateEditor = document.getElementById('template-editor-section');
-    
+
     // Show/hide appropriate sections
     if (workoutSelector) workoutSelector.classList.remove('hidden');
     if (activeWorkout) activeWorkout.classList.add('hidden');
     if (workoutManagement) workoutManagement.classList.add('hidden');
     if (historySection) historySection.classList.add('hidden');
     if (templateEditor) templateEditor.classList.add('hidden');
-    
+
     // Clear timers
     appState.clearTimers();
-    
+
     // Preserve currentWorkout when returning from navigation
     if (!fromNavigation) {
         appState.currentWorkout = null;
@@ -1456,38 +1464,37 @@ async function navigateToWorkoutSelector(fromNavigation, appState) {
 async function checkForInProgressWorkout(appState) {
     // Skip if already showing prompt
     if (window.showingProgressPrompt) return;
-    
+
     try {
         const { loadTodaysWorkout } = await import('../data/data-manager.js');
         const todaysData = await loadTodaysWorkout(appState);
-        
+
         // Check if there's an incomplete workout from today
         if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
-            
             // Validate workout plan exists
-            const workoutPlan = appState.workoutPlans.find(plan => 
-                plan.day === todaysData.workoutType || 
-                plan.name === todaysData.workoutType ||
-                plan.id === todaysData.workoutType
+            const workoutPlan = appState.workoutPlans.find(
+                (plan) =>
+                    plan.day === todaysData.workoutType ||
+                    plan.name === todaysData.workoutType ||
+                    plan.id === todaysData.workoutType
             );
-            
+
             if (!workoutPlan) {
                 console.warn('⚠️ Workout plan not found for:', todaysData.workoutType);
                 return;
             }
-            
+
             // Store in-progress workout globally
             // Use todaysData.originalWorkout if it exists (contains modified exercise list)
             window.inProgressWorkout = {
                 ...todaysData,
-                originalWorkout: todaysData.originalWorkout || workoutPlan
+                originalWorkout: todaysData.originalWorkout || workoutPlan,
             };
-            
+
             // Show the prompt (uses your existing continueInProgressWorkout function)
             showInProgressWorkoutPrompt(todaysData);
         } else {
         }
-        
     } catch (error) {
         console.error('❌ Error checking for in-progress workout:', error);
     }
@@ -1500,19 +1507,19 @@ async function checkForInProgressWorkout(appState) {
 function showInProgressWorkoutPrompt(workoutData) {
     if (window.showingProgressPrompt) return;
     window.showingProgressPrompt = true;
-    
+
     const workoutDate = new Date(workoutData.date).toLocaleDateString();
     const message = `You have an in-progress "${workoutData.workoutType}" workout from ${workoutDate}.\n\nWould you like to continue where you left off?`;
-    
+
     setTimeout(() => {
         if (confirm(message)) {
             // Use your existing continue function
-            import('./workout-core.js').then(module => {
+            import('./workout-core.js').then((module) => {
                 module.continueInProgressWorkout();
             });
         } else {
             // Use your existing discard function
-            import('./workout-core.js').then(module => {
+            import('./workout-core.js').then((module) => {
                 module.discardInProgressWorkout();
             });
         }

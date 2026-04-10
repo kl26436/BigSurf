@@ -21,7 +21,7 @@ export async function fixTemplateExercises() {
 
         // Fix global default templates
         console.log('📋 Checking global templates in /workouts collection...');
-        const globalRef = collection(db, "workouts");
+        const globalRef = collection(db, 'workouts');
         const globalSnapshot = await getDocs(globalRef);
 
         for (const docSnapshot of globalSnapshot.docs) {
@@ -32,13 +32,13 @@ export async function fixTemplateExercises() {
 
                 // Convert object to array
                 const keys = Object.keys(data.exercises).sort();
-                const exercisesArray = keys.map(key => data.exercises[key]).filter(ex => ex);
+                const exercisesArray = keys.map((key) => data.exercises[key]).filter((ex) => ex);
 
                 // Update in Firebase
-                const docRef = doc(db, "workouts", docSnapshot.id);
+                const docRef = doc(db, 'workouts', docSnapshot.id);
                 await setDoc(docRef, {
                     ...data,
-                    exercises: exercisesArray
+                    exercises: exercisesArray,
                 });
 
                 fixedCount++;
@@ -48,7 +48,7 @@ export async function fixTemplateExercises() {
 
         // Fix user custom templates
         console.log('📋 Checking user templates...');
-        const userRef = collection(db, "users", AppState.currentUser.uid, "workoutTemplates");
+        const userRef = collection(db, 'users', AppState.currentUser.uid, 'workoutTemplates');
         const userSnapshot = await getDocs(userRef);
 
         for (const docSnapshot of userSnapshot.docs) {
@@ -59,13 +59,13 @@ export async function fixTemplateExercises() {
 
                 // Convert object to array
                 const keys = Object.keys(data.exercises).sort();
-                const exercisesArray = keys.map(key => data.exercises[key]).filter(ex => ex);
+                const exercisesArray = keys.map((key) => data.exercises[key]).filter((ex) => ex);
 
                 // Update in Firebase
-                const docRef = doc(db, "users", AppState.currentUser.uid, "workoutTemplates", docSnapshot.id);
+                const docRef = doc(db, 'users', AppState.currentUser.uid, 'workoutTemplates', docSnapshot.id);
                 await setDoc(docRef, {
                     ...data,
-                    exercises: exercisesArray
+                    exercises: exercisesArray,
                 });
 
                 fixedCount++;
@@ -83,7 +83,6 @@ export async function fixTemplateExercises() {
         console.log('✅ Templates reloaded. Please refresh the page.');
 
         return { fixedCount };
-
     } catch (error) {
         console.error('❌ Error fixing template exercises:', error);
         throw error;

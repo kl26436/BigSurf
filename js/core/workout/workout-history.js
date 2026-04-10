@@ -1,10 +1,11 @@
 // Clean Workout History Module with Calendar View - core/workout-history.js
 import { showNotification } from '../ui/ui-helpers.js';
+import { getDateString } from '../utils/date-helpers.js';
 
 export function getWorkoutHistory(appState) {
     let currentHistory = [];
     let filteredHistory = [];
-    
+
     // Calendar-specific state
     let currentCalendarDate = new Date();
     let calendarWorkouts = {};
@@ -69,15 +70,14 @@ export function getWorkoutHistory(appState) {
                 // Find the earliest workout date
                 if (this.currentHistory.length > 0) {
                     const dates = this.currentHistory
-                        .map(workout => workout.date)
-                        .filter(date => date) // Remove null/undefined dates
+                        .map((workout) => workout.date)
+                        .filter((date) => date) // Remove null/undefined dates
                         .sort();
-                    
+
                     if (dates.length > 0) {
                         this.firstWorkoutDate = dates[0];
                     }
                 }
-
             } catch (error) {
                 console.error('❌ Error loading workout history:', error);
                 showNotification('Error loading workout history', 'error');
@@ -98,13 +98,15 @@ export function getWorkoutHistory(appState) {
             try {
                 const year = this.currentCalendarDate.getFullYear();
                 const month = this.currentCalendarDate.getMonth();
-                console.log(`📅 Loading workouts for ${year}-${month + 1}, currentHistory has ${this.currentHistory.length} workouts`);
+                console.log(
+                    `📅 Loading workouts for ${year}-${month + 1}, currentHistory has ${this.currentHistory.length} workouts`
+                );
 
                 // Clear existing calendar workouts
                 // Schema v3.0: Store ARRAY of workouts per date to support multiple workouts per day
                 this.calendarWorkouts = {};
 
-                this.currentHistory.forEach(workout => {
+                this.currentHistory.forEach((workout) => {
                     if (!workout.date) {
                         console.warn('Workout missing date:', workout);
                         return;
@@ -117,7 +119,11 @@ export function getWorkoutHistory(appState) {
                         const dateParts = workout.date.split('-');
                         if (dateParts.length === 3) {
                             // Create date in local timezone to avoid offset issues
-                            workoutDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+                            workoutDate = new Date(
+                                parseInt(dateParts[0]),
+                                parseInt(dateParts[1]) - 1,
+                                parseInt(dateParts[2])
+                            );
                         } else {
                             // Fallback to regular parsing
                             workoutDate = new Date(workout.date);
@@ -130,7 +136,7 @@ export function getWorkoutHistory(appState) {
                     // Check if this workout is in the current calendar month
                     if (workoutDate.getFullYear() === year && workoutDate.getMonth() === month) {
                         // Use the original date string as the key to avoid timezone conversion
-                        const dateKey = workout.date.split('T')[0]; // Remove time component if present
+                        const dateKey = getDateString(workout.date);
                         const formattedWorkout = this.formatWorkoutForCalendar(workout);
 
                         // Schema v3.0: Store as array to support multiple workouts per day
@@ -142,14 +148,13 @@ export function getWorkoutHistory(appState) {
                 });
 
                 // Sort workouts by start time within each day (most recent first)
-                Object.keys(this.calendarWorkouts).forEach(dateKey => {
+                Object.keys(this.calendarWorkouts).forEach((dateKey) => {
                     this.calendarWorkouts[dateKey].sort((a, b) => {
                         const timeA = a.rawData?.startedAt ? new Date(a.rawData.startedAt).getTime() : 0;
                         const timeB = b.rawData?.startedAt ? new Date(b.rawData.startedAt).getTime() : 0;
                         return timeB - timeA; // Most recent first
                     });
                 });
-
             } catch (error) {
                 console.error('❌ Error loading calendar workouts:', error);
             }
@@ -159,17 +164,27 @@ export function getWorkoutHistory(appState) {
             // Determine workout category
             let category = 'other';
             const workoutType = workout.workoutType?.toLowerCase() || '';
-            
-            if (workoutType.includes('push') || workoutType.includes('chest') || workoutType.includes('shoulder') || workoutType.includes('tricep')) {
+
+            if (
+                workoutType.includes('push') ||
+                workoutType.includes('chest') ||
+                workoutType.includes('shoulder') ||
+                workoutType.includes('tricep')
+            ) {
                 category = 'push';
             } else if (workoutType.includes('pull') || workoutType.includes('back') || workoutType.includes('bicep')) {
                 category = 'pull';
-            } else if (workoutType.includes('leg') || workoutType.includes('quad') || workoutType.includes('glute') || workoutType.includes('hamstring')) {
+            } else if (
+                workoutType.includes('leg') ||
+                workoutType.includes('quad') ||
+                workoutType.includes('glute') ||
+                workoutType.includes('hamstring')
+            ) {
                 category = 'legs';
             } else if (workoutType.includes('cardio') || workoutType.includes('core')) {
                 category = 'cardio';
             }
-            
+
             // Determine status
             let status = 'completed';
             if (workout.cancelledAt) {
@@ -180,14 +195,14 @@ export function getWorkoutHistory(appState) {
             } else if (workout.progress && workout.progress.percentage < 100) {
                 status = 'partial';
             }
-            
+
             // FIX: Duration calculation - handle both minutes and milliseconds
             const duration = this.formatDuration(this.getWorkoutDuration(workout)) || 'Quick session';
-            
+
             // Convert exercise data
             const exercises = [];
             if (workout.exercises && workout.exerciseNames) {
-                Object.keys(workout.exercises).forEach(exerciseKey => {
+                Object.keys(workout.exercises).forEach((exerciseKey) => {
                     const exerciseData = workout.exercises[exerciseKey];
                     const exerciseName = workout.exerciseNames[exerciseKey] || exerciseKey;
 
@@ -198,14 +213,14 @@ export function getWorkoutHistory(appState) {
                     if (exerciseData && exerciseData.sets) {
                         exercises.push({
                             name: exerciseName,
-                            sets: exerciseData.sets.filter(set => set && (set.reps || set.weight)),
+                            sets: exerciseData.sets.filter((set) => set && (set.reps || set.weight)),
                             notes: exerciseData.notes || '',
-                            video: video
+                            video: video,
                         });
                     }
                 });
             }
-            
+
             return {
                 name: workout.workoutType || 'Workout',
                 category: category,
@@ -215,7 +230,7 @@ export function getWorkoutHistory(appState) {
                 exercises: exercises,
                 rawData: workout,
                 // Schema v3.0: Include docId for operations (delete, edit, etc.)
-                docId: workout.docId || workout.id || workout.date
+                docId: workout.docId || workout.id || workout.date,
             };
         },
 
@@ -228,120 +243,122 @@ export function getWorkoutHistory(appState) {
             this.currentCalendarDate.setMonth(this.currentCalendarDate.getMonth() + 1);
             this.initializeCalendar();
         },
-       
-        updateCalendarDisplay() {
-        const monthName = this.currentCalendarDate.toLocaleDateString('en-US', { 
-            month: 'long', 
-            year: 'numeric' 
-        });
-        
-        // Use the correct selector that we confirmed exists
-        const monthElement = document.querySelector('.current-month');
-        if (monthElement) {
-            monthElement.textContent = monthName;
-        } else {
-            console.error('❌ Could not find .current-month element');
-        }
-        
-        this.generateCalendarGrid();
-    },
 
-      generateCalendarGrid() {
-    console.log(`🔄 generateCalendarGrid called, calendarWorkouts has ${Object.keys(this.calendarWorkouts).length} dates`);
-    // Enhanced element finding with fallback creation
-    let calendarGrid = document.getElementById('calendarGrid');
-    
-    // If not found by ID, try other selectors
-    if (!calendarGrid) {
-        calendarGrid = document.querySelector('.calendar-grid') || 
-                      document.querySelector('[class*="calendar-grid"]');
-    }
-    
-    // If still not found, create it
-    if (!calendarGrid) {
-        
-        const container = document.querySelector('.calendar-container') || 
-                         document.querySelector('[class*="calendar"]') ||
-                         document.getElementById('workout-history-section');
-        
-        if (container) {
-            calendarGrid = document.createElement('div');
-            calendarGrid.id = 'calendarGrid';
-            calendarGrid.className = 'calendar-grid';
-            container.appendChild(calendarGrid);
-        } else {
-            console.error('❌ Cannot find calendar container');
-            return;
-        }
-    }
-    
-    const year = this.currentCalendarDate.getFullYear();
-    const month = this.currentCalendarDate.getMonth();
-    
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday
-    
-    // Get today's date in local timezone for proper comparison
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
-    let html = '';
-    let currentDate = new Date(startDate);
-    
-    // Generate 6 weeks (42 days) to fill calendar grid
-    for (let i = 0; i < 42; i++) {
-        const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
-        const isCurrentMonth = currentDate.getMonth() === month;
-        const isToday = dateStr === todayStr;
-        const isFutureDate = currentDate > today;
-        
-        // Check if this date is before the first workout
-        const isBeforeFirstWorkout = this.firstWorkoutDate ? dateStr < this.firstWorkoutDate : false;
-        
-        const workout = this.calendarWorkouts[dateStr];
-        
-        let dayClass = 'calendar-day';
-        if (!isCurrentMonth) {
-            dayClass += ' other-month empty-day'; // Add empty-day class for styling
-        }
-        if (isToday) dayClass += ' today';
-        
-        // UPDATED: Remove the old onclick and add data attributes instead
-        html += `<div class="${dayClass}" data-date="${dateStr}"`;
-        
-        // Add cursor pointer style if there's a workout
-        if (workout && isCurrentMonth) {
-            html += ` style="cursor: pointer;"`;
-        }
-        
-        html += `>`;
-        
-        // Only show content for current month days
-        if (isCurrentMonth) {
-            html += `<div class="day-number">${currentDate.getDate()}</div>`;
-            
-            if (workout) {
-                html += this.getWorkoutIcon(workout);
-            } else if (isCurrentMonth && !isFutureDate && !isBeforeFirstWorkout && !isToday) {
-                // Only show red X for past dates that are AFTER the first workout date
-                html += `<div class="no-workout">
+        updateCalendarDisplay() {
+            const monthName = this.currentCalendarDate.toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
+            });
+
+            // Use the correct selector that we confirmed exists
+            const monthElement = document.querySelector('.current-month');
+            if (monthElement) {
+                monthElement.textContent = monthName;
+            } else {
+                console.error('❌ Could not find .current-month element');
+            }
+
+            this.generateCalendarGrid();
+        },
+
+        generateCalendarGrid() {
+            console.log(
+                `🔄 generateCalendarGrid called, calendarWorkouts has ${Object.keys(this.calendarWorkouts).length} dates`
+            );
+            // Enhanced element finding with fallback creation
+            let calendarGrid = document.getElementById('calendarGrid');
+
+            // If not found by ID, try other selectors
+            if (!calendarGrid) {
+                calendarGrid =
+                    document.querySelector('.calendar-grid') || document.querySelector('[class*="calendar-grid"]');
+            }
+
+            // If still not found, create it
+            if (!calendarGrid) {
+                const container =
+                    document.querySelector('.calendar-container') ||
+                    document.querySelector('[class*="calendar"]') ||
+                    document.getElementById('workout-history-section');
+
+                if (container) {
+                    calendarGrid = document.createElement('div');
+                    calendarGrid.id = 'calendarGrid';
+                    calendarGrid.className = 'calendar-grid';
+                    container.appendChild(calendarGrid);
+                } else {
+                    console.error('❌ Cannot find calendar container');
+                    return;
+                }
+            }
+
+            const year = this.currentCalendarDate.getFullYear();
+            const month = this.currentCalendarDate.getMonth();
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday
+
+            // Get today's date in local timezone for proper comparison
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+            let html = '';
+            let currentDate = new Date(startDate);
+
+            // Generate 6 weeks (42 days) to fill calendar grid
+            for (let i = 0; i < 42; i++) {
+                const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+                const isCurrentMonth = currentDate.getMonth() === month;
+                const isToday = dateStr === todayStr;
+                const isFutureDate = currentDate > today;
+
+                // Check if this date is before the first workout
+                const isBeforeFirstWorkout = this.firstWorkoutDate ? dateStr < this.firstWorkoutDate : false;
+
+                const workout = this.calendarWorkouts[dateStr];
+
+                let dayClass = 'calendar-day';
+                if (!isCurrentMonth) {
+                    dayClass += ' other-month empty-day'; // Add empty-day class for styling
+                }
+                if (isToday) dayClass += ' today';
+
+                // UPDATED: Remove the old onclick and add data attributes instead
+                html += `<div class="${dayClass}" data-date="${dateStr}"`;
+
+                // Add cursor pointer style if there's a workout
+                if (workout && isCurrentMonth) {
+                    html += ` style="cursor: pointer;"`;
+                }
+
+                html += `>`;
+
+                // Only show content for current month days
+                if (isCurrentMonth) {
+                    html += `<div class="day-number">${currentDate.getDate()}</div>`;
+
+                    if (workout) {
+                        html += this.getWorkoutIcon(workout);
+                    } else if (isCurrentMonth && !isFutureDate && !isBeforeFirstWorkout && !isToday) {
+                        // Only show red X for past dates that are AFTER the first workout date
+                        html += `<div class="no-workout">
                     <i class="fas fa-times"></i>
                 </div>`;
+                    }
+                }
+                // Other month days are completely empty
+
+                html += '</div>';
+                currentDate.setDate(currentDate.getDate() + 1);
             }
-        }
-        // Other month days are completely empty
-        
-        html += '</div>';
-        currentDate.setDate(currentDate.getDate() + 1);
-    }
-    
-    calendarGrid.innerHTML = html;
-    
-    // ADDED: Setup click events after rendering
-    this.setupCalendarClickEvents();
-},
+
+            calendarGrid.innerHTML = html;
+
+            // ADDED: Setup click events after rendering
+            this.setupCalendarClickEvents();
+        },
 
         getWorkoutIcon(workouts) {
             // Schema v3.0: workouts is now an array
@@ -349,66 +366,65 @@ export function getWorkoutHistory(appState) {
             const firstWorkout = workoutArray[0];
 
             const iconMap = {
-                'push': '<i class="fas fa-hand-paper"></i>',
-                'pull': '<i class="fas fa-fist-raised"></i>',
-                'legs': '<i class="fas fa-walking"></i>',
-                'cardio': '<i class="fas fa-heartbeat"></i>',
-                'core': '<i class="fas fa-heartbeat"></i>',
-                'other': '<i class="fas fa-dumbbell"></i>'
+                push: '<i class="fas fa-hand-paper"></i>',
+                pull: '<i class="fas fa-fist-raised"></i>',
+                legs: '<i class="fas fa-walking"></i>',
+                cardio: '<i class="fas fa-heartbeat"></i>',
+                core: '<i class="fas fa-heartbeat"></i>',
+                other: '<i class="fas fa-dumbbell"></i>',
             };
 
             const icon = iconMap[firstWorkout.category] || iconMap['other'];
 
             // Show count badge if multiple workouts on same day
-            const countBadge = workoutArray.length > 1
-                ? `<span class="workout-count-badge">${workoutArray.length}</span>`
-                : '';
+            const countBadge =
+                workoutArray.length > 1 ? `<span class="workout-count-badge">${workoutArray.length}</span>` : '';
 
             return `<div class="workout-icon ${firstWorkout.category} status-${firstWorkout.status}">${icon}${countBadge}</div>`;
         },
 
         showWorkoutDetail(date, workoutName, workoutIndex = 0) {
-        const modal = document.getElementById('workoutModal');
-        const title = document.getElementById('modalTitle');
-        const body = document.getElementById('modalBody');
+            const modal = document.getElementById('workoutModal');
+            const title = document.getElementById('modalTitle');
+            const body = document.getElementById('modalBody');
 
-        if (!modal || !title || !body) return;
+            if (!modal || !title || !body) return;
 
-        // FIXED: Create timezone-safe date display
-        let displayDate;
-        if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            // Add noon time to prevent timezone shift
-            const safeDate = new Date(date + 'T12:00:00');
-            displayDate = safeDate.toLocaleDateString('en-US', {
-                month: 'numeric',
-                day: 'numeric',
-                year: 'numeric'
-            });
-        } else {
-            displayDate = 'Unknown Date';
-        }
+            // FIXED: Create timezone-safe date display
+            let displayDate;
+            if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // Add noon time to prevent timezone shift
+                const safeDate = new Date(date + 'T12:00:00');
+                displayDate = safeDate.toLocaleDateString('en-US', {
+                    month: 'numeric',
+                    day: 'numeric',
+                    year: 'numeric',
+                });
+            } else {
+                displayDate = 'Unknown Date';
+            }
 
-        const workouts = this.calendarWorkouts[date];
-        if (!workouts || workouts.length === 0) {
-            body.innerHTML = '<p>No workout data available for this date.</p>';
+            const workouts = this.calendarWorkouts[date];
+            if (!workouts || workouts.length === 0) {
+                body.innerHTML = '<p>No workout data available for this date.</p>';
+                modal.style.display = 'flex';
+                return;
+            }
+
+            // Schema v3.0: Handle multiple workouts per day
+            if (workouts.length > 1 && workoutIndex === -1) {
+                // Show workout picker
+                title.textContent = `Workouts on ${displayDate}`;
+                body.innerHTML = this.generateWorkoutPickerHTML(workouts, date);
+            } else {
+                // Show single workout detail
+                const workout = workouts[workoutIndex] || workouts[0];
+                title.textContent = `${workout.name} - ${displayDate}`;
+                body.innerHTML = this.generateWorkoutDetailHTML(workout, date, workoutIndex);
+            }
+
             modal.style.display = 'flex';
-            return;
-        }
-
-        // Schema v3.0: Handle multiple workouts per day
-        if (workouts.length > 1 && workoutIndex === -1) {
-            // Show workout picker
-            title.textContent = `Workouts on ${displayDate}`;
-            body.innerHTML = this.generateWorkoutPickerHTML(workouts, date);
-        } else {
-            // Show single workout detail
-            const workout = workouts[workoutIndex] || workouts[0];
-            title.textContent = `${workout.name} - ${displayDate}`;
-            body.innerHTML = this.generateWorkoutDetailHTML(workout, date, workoutIndex);
-        }
-
-        modal.style.display = 'flex';
-    },
+        },
 
         // Schema v3.0: Generate picker for multiple workouts on same day
         generateWorkoutPickerHTML(workouts, date) {
@@ -416,14 +432,18 @@ export function getWorkoutHistory(appState) {
 
             workouts.forEach((workout, index) => {
                 const startTime = workout.rawData?.startedAt
-                    ? new Date(workout.rawData.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                    ? new Date(workout.rawData.startedAt).toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                      })
                     : '';
 
-                const statusIcon = workout.status === 'completed'
-                    ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>'
-                    : workout.status === 'cancelled'
-                        ? '<i class="fas fa-times-circle" style="color: var(--danger);"></i>'
-                        : '<i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>';
+                const statusIcon =
+                    workout.status === 'completed'
+                        ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>'
+                        : workout.status === 'cancelled'
+                          ? '<i class="fas fa-times-circle" style="color: var(--danger);"></i>'
+                          : '<i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>';
 
                 html += `
                     <div class="workout-picker-item" onclick="window.workoutHistory.showWorkoutDetail('${date}', '${workout.name}', ${index})">
@@ -445,14 +465,14 @@ export function getWorkoutHistory(appState) {
             return html;
         },
 
-       generateWorkoutDetailHTML(workout, date, workoutIndex = 0) {
-        // Schema v3.0: Use docId for all operations instead of date
-        const docId = workout.docId;
-        let exerciseHTML = '';
-        
-        if (workout.exercises && workout.exercises.length > 0) {
-            workout.exercises.forEach(exercise => {
-                exerciseHTML += `
+        generateWorkoutDetailHTML(workout, date, workoutIndex = 0) {
+            // Schema v3.0: Use docId for all operations instead of date
+            const docId = workout.docId;
+            let exerciseHTML = '';
+
+            if (workout.exercises && workout.exercises.length > 0) {
+                workout.exercises.forEach((exercise) => {
+                    exerciseHTML += `
                     <div style="background: var(--bg-tertiary); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border);">
                         <h4 style="color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                             <i class="fas fa-trophy" style="color: var(--warning);"></i>
@@ -468,69 +488,69 @@ export function getWorkoutHistory(appState) {
                                 </tr>
                             </thead>
                             <tbody>`;
-                
-                if (exercise.sets && exercise.sets.length > 0) {
-                    exercise.sets.forEach((set, index) => {
-                        if (set && (set.reps || set.weight)) {
-                            exerciseHTML += `
+
+                    if (exercise.sets && exercise.sets.length > 0) {
+                        exercise.sets.forEach((set, index) => {
+                            if (set && (set.reps || set.weight)) {
+                                exerciseHTML += `
                                 <tr style="background: rgba(40, 167, 69, 0.1); border-bottom: 1px solid rgba(40, 167, 69, 0.2);">
                                     <td style="padding: 0.75rem; color: var(--text-primary);">Set ${index + 1}</td>
                                     <td style="padding: 0.75rem; color: var(--text-primary);">${set.reps || '-'}</td>
                                     <td style="padding: 0.75rem; color: var(--text-primary);">${set.weight ? set.weight + ' lbs' : '-'}</td>
                                 </tr>`;
-                        }
-                    });
-                } else {
-                    exerciseHTML += `
+                            }
+                        });
+                    } else {
+                        exerciseHTML += `
                         <tr>
                             <td colspan="3" style="padding: 2rem; text-align: center; color: var(--text-secondary); font-style: italic;">No sets recorded</td>
                         </tr>`;
-                }
-                
-                exerciseHTML += `</tbody></table>`;
+                    }
 
-                if (exercise.notes) {
-                    exerciseHTML += `
+                    exerciseHTML += `</tbody></table>`;
+
+                    if (exercise.notes) {
+                        exerciseHTML += `
                         <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-top: 1rem; border-left: 3px solid var(--primary);">
                             <strong style="color: var(--primary); display: block; margin-bottom: 0.5rem;">Notes:</strong>
                             <span style="color: var(--text-primary);">${exercise.notes}</span>
                         </div>`;
-                }
+                    }
 
-                if (exercise.video) {
-                    exerciseHTML += `
+                    if (exercise.video) {
+                        exerciseHTML += `
                         <div style="margin-top: 1rem;">
                             <button class="btn btn-primary btn-small" onclick="showExerciseVideo('${exercise.video}', '${exercise.name}')">
                                 <i class="fas fa-play"></i> Watch Form Video
                             </button>
                         </div>`;
-                }
+                    }
 
-                exerciseHTML += `</div>`;
-            });
-        } else {
-            exerciseHTML = `
+                    exerciseHTML += `</div>`;
+                });
+            } else {
+                exerciseHTML = `
                 <div style="background: var(--bg-tertiary); padding: 2rem; border-radius: 8px; text-align: center; color: var(--text-secondary);">
                     <i class="fas fa-dumbbell" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                     <p>No exercise data available for this workout.</p>
                 </div>`;
-        }
-        
-        // Add manual workout notes if they exist
-        let notesSection = '';
-        if (workout.rawData && workout.rawData.manualNotes) {
-            notesSection = `
+            }
+
+            // Add manual workout notes if they exist
+            let notesSection = '';
+            if (workout.rawData && workout.rawData.manualNotes) {
+                notesSection = `
                 <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 3px solid var(--info);">
                     <strong style="color: var(--info); display: block; margin-bottom: 0.5rem;">Workout Notes:</strong>
                     <span style="color: var(--text-primary);">${workout.rawData.manualNotes}</span>
                 </div>`;
-        }
-        
-        // Create action buttons based on workout status
-        // Schema v3.0: Use docId for operations, pass date for display context
-        let actionButtons = '';
-        if (workout.status === 'cancelled' || workout.status === 'partial') {
-            actionButtons = `
+            }
+
+            // Create action buttons based on workout status
+            // Schema v3.0: Use docId for operations, pass date for display context
+            let actionButtons = '';
+            if (workout.status === 'cancelled' || workout.status === 'partial') {
+                actionButtons = `
                 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
                     <button class="btn btn-primary" onclick="editHistoricalWorkout('${docId}')">
                         <i class="fas fa-edit"></i> Edit Workout
@@ -543,8 +563,8 @@ export function getWorkoutHistory(appState) {
                     </button>
                 </div>
             `;
-        } else {
-            actionButtons = `
+            } else {
+                actionButtons = `
                 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
                     <button class="btn btn-primary" onclick="editHistoricalWorkout('${docId}')">
                         <i class="fas fa-edit"></i> Edit Workout
@@ -557,18 +577,22 @@ export function getWorkoutHistory(appState) {
                     </button>
                 </div>
             `;
-        }
-        
-        // Format workout times
-        const rawData = workout.rawData || {};
-        const startTime = rawData.startedAt ? new Date(rawData.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
-        const endTime = rawData.completedAt ? new Date(rawData.completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
-        const totalDuration = rawData.totalDuration ? this.formatDuration(rawData.totalDuration) : workout.duration;
+            }
 
-        // Get location from rawData
-        const workoutLocation = rawData.location || null;
+            // Format workout times
+            const rawData = workout.rawData || {};
+            const startTime = rawData.startedAt
+                ? new Date(rawData.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                : null;
+            const endTime = rawData.completedAt
+                ? new Date(rawData.completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                : null;
+            const totalDuration = rawData.totalDuration ? this.formatDuration(rawData.totalDuration) : workout.duration;
 
-        return `
+            // Get location from rawData
+            const workoutLocation = rawData.location || null;
+
+            return `
             <div style="margin-bottom: 1.5rem;">
                 <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.75rem 1rem; align-items: center;">
                     <strong style="color: var(--text-secondary);">Status:</strong>
@@ -577,26 +601,38 @@ export function getWorkoutHistory(appState) {
                         ${workout.status.charAt(0).toUpperCase() + workout.status.slice(1)}
                     </span>
 
-                    ${workoutLocation ? `
+                    ${
+                        workoutLocation
+                            ? `
                         <strong style="color: var(--text-secondary);">Location:</strong>
                         <span style="color: var(--primary);">
                             <i class="fas fa-map-marker-alt"></i> ${workoutLocation}
                         </span>
-                    ` : ''}
+                    `
+                            : ''
+                    }
 
-                    ${startTime ? `
+                    ${
+                        startTime
+                            ? `
                         <strong style="color: var(--text-secondary);">Started:</strong>
                         <span style="color: var(--text-primary);">
                             <i class="fas fa-clock"></i> ${startTime}
                         </span>
-                    ` : ''}
+                    `
+                            : ''
+                    }
 
-                    ${endTime ? `
+                    ${
+                        endTime
+                            ? `
                         <strong style="color: var(--text-secondary);">Finished:</strong>
                         <span style="color: var(--text-primary);">
                             <i class="fas fa-flag-checkered"></i> ${endTime}
                         </span>
-                    ` : ''}
+                    `
+                            : ''
+                    }
 
                     <strong style="color: var(--text-secondary);">Duration:</strong>
                     <span style="color: var(--primary); font-weight: 600;">
@@ -621,9 +657,8 @@ export function getWorkoutHistory(appState) {
             </div>
             ${actionButtons}
         `;
-    },
+        },
 
- 
         closeWorkoutDetailModal() {
             // Try both modal IDs (workoutModal and workout-detail-modal)
             const modal1 = document.getElementById('workoutModal');
@@ -634,7 +669,7 @@ export function getWorkoutHistory(appState) {
             }
             if (modal2) {
                 modal2.classList.add('hidden');
-                modal2.style.display = 'none';  // Clear inline style set by showFixedWorkoutModal
+                modal2.style.display = 'none'; // Clear inline style set by showFixedWorkoutModal
             }
         },
 
@@ -648,10 +683,12 @@ export function getWorkoutHistory(appState) {
 
                 for (const workout of workouts) {
                     // Check by docId (new schema), id, or date
-                    if (workout.docId === workoutId ||
+                    if (
+                        workout.docId === workoutId ||
                         workout.id === workoutId ||
                         workout.rawData?.docId === workoutId ||
-                        workout.rawData?.id === workoutId) {
+                        workout.rawData?.id === workoutId
+                    ) {
                         // Ensure date field is set
                         workout.date = workout.date || workout.rawData?.date || date;
                         return workout;
@@ -670,83 +707,90 @@ export function getWorkoutHistory(appState) {
         },
 
         // Setup calendar day click events
-setupCalendarClickEvents() {
-    // Wait a bit for the calendar to render, then add click events
-    setTimeout(() => {
-        document.querySelectorAll('.calendar-day').forEach(day => {
-            const hasWorkout = day.querySelector('.workout-icon');
-            if (hasWorkout) {
-                day.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    const dateStr = day.getAttribute('data-date');
-                    const dayNumber = day.querySelector('.day-number');
+        setupCalendarClickEvents() {
+            // Wait a bit for the calendar to render, then add click events
+            setTimeout(() => {
+                document.querySelectorAll('.calendar-day').forEach((day) => {
+                    const hasWorkout = day.querySelector('.workout-icon');
+                    if (hasWorkout) {
+                        day.addEventListener('click', (event) => {
+                            event.preventDefault();
+                            const dateStr = day.getAttribute('data-date');
+                            const dayNumber = day.querySelector('.day-number');
 
-                    if (dayNumber && dateStr) {
-                        const calendarWorkouts = this.calendarWorkouts[dateStr];
-                        if (calendarWorkouts && calendarWorkouts.length > 0) {
-                            // Schema v3.0: Handle multiple workouts per day
-                            if (calendarWorkouts.length === 1) {
-                                // Single workout - show directly
-                                const fullWorkout = this.currentHistory.find(w =>
-                                    w.date === dateStr && (w.docId === calendarWorkouts[0].docId || w.id === calendarWorkouts[0].docId)
-                                );
-                                if (fullWorkout) {
-                                    this.showFixedWorkoutModal(fullWorkout, 0);
-                                } else {
-                                    this.showFixedBasicModal(dateStr, calendarWorkouts[0], 0);
+                            if (dayNumber && dateStr) {
+                                const calendarWorkouts = this.calendarWorkouts[dateStr];
+                                if (calendarWorkouts && calendarWorkouts.length > 0) {
+                                    // Schema v3.0: Handle multiple workouts per day
+                                    if (calendarWorkouts.length === 1) {
+                                        // Single workout - show directly
+                                        const fullWorkout = this.currentHistory.find(
+                                            (w) =>
+                                                w.date === dateStr &&
+                                                (w.docId === calendarWorkouts[0].docId ||
+                                                    w.id === calendarWorkouts[0].docId)
+                                        );
+                                        if (fullWorkout) {
+                                            this.showFixedWorkoutModal(fullWorkout, 0);
+                                        } else {
+                                            this.showFixedBasicModal(dateStr, calendarWorkouts[0], 0);
+                                        }
+                                    } else {
+                                        // Multiple workouts - show picker
+                                        this.showWorkoutPickerModal(dateStr, calendarWorkouts);
+                                    }
                                 }
-                            } else {
-                                // Multiple workouts - show picker
-                                this.showWorkoutPickerModal(dateStr, calendarWorkouts);
                             }
-                        }
+                        });
                     }
                 });
+            }, 100);
+        },
+
+        // Schema v3.0: Show picker when multiple workouts on same day
+        showWorkoutPickerModal(date, workouts) {
+            const modal = document.getElementById('workout-detail-modal');
+            const content = document.getElementById('workout-detail-content');
+
+            if (!modal || !content) {
+                console.error('❌ Modal elements not found');
+                return;
             }
-        });
-    }, 100);
-},
 
-// Schema v3.0: Show picker when multiple workouts on same day
-showWorkoutPickerModal(date, workouts) {
-    const modal = document.getElementById('workout-detail-modal');
-    const content = document.getElementById('workout-detail-content');
+            // Format date for display
+            let displayDate = 'Unknown Date';
+            if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                const safeDate = new Date(date + 'T12:00:00');
+                displayDate = safeDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                });
+            }
 
-    if (!modal || !content) {
-        console.error('❌ Modal elements not found');
-        return;
-    }
-
-    // Format date for display
-    let displayDate = 'Unknown Date';
-    if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const safeDate = new Date(date + 'T12:00:00');
-        displayDate = safeDate.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric'
-        });
-    }
-
-    let pickerHTML = `
+            let pickerHTML = `
         <div class="workout-header">
             <h3>Workouts on ${displayDate}</h3>
         </div>
         <div class="workout-picker">
     `;
 
-    workouts.forEach((workout, index) => {
-        const startTime = workout.rawData?.startedAt
-            ? new Date(workout.rawData.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-            : '';
+            workouts.forEach((workout, index) => {
+                const startTime = workout.rawData?.startedAt
+                    ? new Date(workout.rawData.startedAt).toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                      })
+                    : '';
 
-        const statusIcon = workout.status === 'completed'
-            ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>'
-            : workout.status === 'cancelled'
-                ? '<i class="fas fa-times-circle" style="color: var(--danger);"></i>'
-                : '<i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>';
+                const statusIcon =
+                    workout.status === 'completed'
+                        ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>'
+                        : workout.status === 'cancelled'
+                          ? '<i class="fas fa-times-circle" style="color: var(--danger);"></i>'
+                          : '<i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>';
 
-        pickerHTML += `
+                pickerHTML += `
             <div class="workout-picker-item" onclick="window.workoutHistory.selectWorkoutFromPicker('${date}', ${index})">
                 <div class="workout-picker-icon ${workout.category}">
                     <i class="fas fa-dumbbell"></i>
@@ -760,96 +804,95 @@ showWorkoutPickerModal(date, workouts) {
                 <i class="fas fa-chevron-right" style="color: var(--text-secondary);"></i>
             </div>
         `;
-    });
+            });
 
-    pickerHTML += '</div>';
-    content.innerHTML = pickerHTML;
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';  // Ensure modal is visible (clears any inline display:none)
-},
+            pickerHTML += '</div>';
+            content.innerHTML = pickerHTML;
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex'; // Ensure modal is visible (clears any inline display:none)
+        },
 
-selectWorkoutFromPicker(date, index) {
-    const workouts = this.calendarWorkouts[date];
-    if (!workouts || !workouts[index]) return;
+        selectWorkoutFromPicker(date, index) {
+            const workouts = this.calendarWorkouts[date];
+            if (!workouts || !workouts[index]) return;
 
-    const workout = workouts[index];
-    // Find by exact ID match first (workout.docId was set from workout.id in formatWorkoutForCalendar)
-    const fullWorkout = this.currentHistory.find(w =>
-        w.id === workout.docId || w.docId === workout.docId
-    );
+            const workout = workouts[index];
+            // Find by exact ID match first (workout.docId was set from workout.id in formatWorkoutForCalendar)
+            const fullWorkout = this.currentHistory.find((w) => w.id === workout.docId || w.docId === workout.docId);
 
-    if (fullWorkout) {
-        this.showFixedWorkoutModal(fullWorkout, index);
-    } else {
-        this.showFixedBasicModal(date, workout, index);
-    }
-},
+            if (fullWorkout) {
+                this.showFixedWorkoutModal(fullWorkout, index);
+            } else {
+                this.showFixedBasicModal(date, workout, index);
+            }
+        },
 
-showFixedWorkoutModal(workout, workoutIndex = 0) {
-    // Use the correct modal elements that actually exist
-    const modal = document.getElementById('workout-detail-modal');
-    const content = document.getElementById('workout-detail-content');
+        showFixedWorkoutModal(workout, workoutIndex = 0) {
+            // Use the correct modal elements that actually exist
+            const modal = document.getElementById('workout-detail-modal');
+            const content = document.getElementById('workout-detail-content');
 
-    if (!modal || !content) {
-        console.error('❌ Modal elements not found');
-        return;
-    }
+            if (!modal || !content) {
+                console.error('❌ Modal elements not found');
+                return;
+            }
 
-    // Schema v3.0: Use docId for all operations
-    const docId = workout.docId || workout.id || workout.date;
+            // Schema v3.0: Use docId for all operations
+            const docId = workout.docId || workout.id || workout.date;
 
-    // FIX 3: Timezone-safe date display
-    let displayDate;
-    if (workout.date && workout.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const safeDate = new Date(workout.date + 'T12:00:00');
-        displayDate = safeDate.toLocaleDateString('en-US', {
-            month: 'numeric',
-            day: 'numeric',
-            year: 'numeric'
-        });
-    } else {
-        displayDate = 'Unknown Date';
-    }
+            // FIX 3: Timezone-safe date display
+            let displayDate;
+            if (workout.date && workout.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                const safeDate = new Date(workout.date + 'T12:00:00');
+                displayDate = safeDate.toLocaleDateString('en-US', {
+                    month: 'numeric',
+                    day: 'numeric',
+                    year: 'numeric',
+                });
+            } else {
+                displayDate = 'Unknown Date';
+            }
 
-    // CORRECTED: Duration calculation - totalDuration is stored in SECONDS
-    let formattedDuration;
-    if (workout.totalDuration && workout.totalDuration > 0) {
-        // totalDuration is in seconds, convert to milliseconds for formatDuration
-        formattedDuration = this.formatDuration(workout.totalDuration * 1000);
-    } else {
-        // Fallback: try to calculate from timestamps
-        const durationMs = this.getWorkoutDuration(workout);
-        formattedDuration = this.formatDuration(durationMs);
-    }
+            // CORRECTED: Duration calculation - totalDuration is stored in SECONDS
+            let formattedDuration;
+            if (workout.totalDuration && workout.totalDuration > 0) {
+                // totalDuration is in seconds, convert to milliseconds for formatDuration
+                formattedDuration = this.formatDuration(workout.totalDuration * 1000);
+            } else {
+                // Fallback: try to calculate from timestamps
+                const durationMs = this.getWorkoutDuration(workout);
+                formattedDuration = this.formatDuration(durationMs);
+            }
 
-    // Generate exercises HTML
-    let exerciseHTML = '';
-    if (workout.exercises && workout.originalWorkout?.exercises) {
-        workout.originalWorkout.exercises.forEach((originalExercise, index) => {
-            const exerciseKey = `exercise_${index}`;
-            const exerciseData = workout.exercises[exerciseKey];
-            const exerciseName = workout.exerciseNames?.[exerciseKey] || originalExercise.machine || 'Unknown Exercise';
+            // Generate exercises HTML
+            let exerciseHTML = '';
+            if (workout.exercises && workout.originalWorkout?.exercises) {
+                workout.originalWorkout.exercises.forEach((originalExercise, index) => {
+                    const exerciseKey = `exercise_${index}`;
+                    const exerciseData = workout.exercises[exerciseKey];
+                    const exerciseName =
+                        workout.exerciseNames?.[exerciseKey] || originalExercise.machine || 'Unknown Exercise';
 
-            exerciseHTML += `
+                    exerciseHTML += `
                 <div class="exercise-detail-item">
                     <h5>${exerciseName}</h5>
                     ${this.generateSetsHTML(exerciseData?.sets || [])}
                     ${exerciseData?.notes ? `<p class="exercise-notes">Notes: ${exerciseData.notes}</p>` : ''}
                 </div>
             `;
-        });
-    } else {
-        exerciseHTML = '<p>No exercise details available</p>';
-    }
+                });
+            } else {
+                exerciseHTML = '<p>No exercise details available</p>';
+            }
 
-    // Create action buttons based on workout status
-    // Schema v3.0: Use docId for all operations instead of date
-    const workoutStatus = workout.status || this.getWorkoutStatus(workout);
-    let actionButtons = '';
+            // Create action buttons based on workout status
+            // Schema v3.0: Use docId for all operations instead of date
+            const workoutStatus = workout.status || this.getWorkoutStatus(workout);
+            let actionButtons = '';
 
-    if (workoutStatus === 'incomplete') {
-        // In-progress workout - show Resume button
-        actionButtons = `
+            if (workoutStatus === 'incomplete') {
+                // In-progress workout - show Resume button
+                actionButtons = `
             <button class="btn btn-primary" onclick="resumeWorkoutById('${docId}')">
                 <i class="fas fa-play"></i> Resume Workout
             </button>
@@ -859,8 +902,8 @@ showFixedWorkoutModal(workout, workoutIndex = 0) {
             <button class="btn btn-danger" onclick="deleteWorkoutById('${docId}')">
                 <i class="fas fa-trash"></i> Delete
             </button>`;
-    } else if (workoutStatus === 'cancelled' || workoutStatus === 'partial') {
-        actionButtons = `
+            } else if (workoutStatus === 'cancelled' || workoutStatus === 'partial') {
+                actionButtons = `
             <button class="btn btn-primary" onclick="editHistoricalWorkout('${docId}')">
                 <i class="fas fa-edit"></i> Edit Workout
             </button>
@@ -870,9 +913,9 @@ showFixedWorkoutModal(workout, workoutIndex = 0) {
             <button class="btn btn-secondary" onclick="repeatWorkout('${docId}')">
                 <i class="fas fa-redo"></i> Repeat
             </button>`;
-    } else {
-        // Completed workout - show Edit and Repeat buttons
-        actionButtons = `
+            } else {
+                // Completed workout - show Edit and Repeat buttons
+                actionButtons = `
             <button class="btn btn-primary" onclick="editHistoricalWorkout('${docId}')">
                 <i class="fas fa-edit"></i> Edit Workout
             </button>
@@ -882,10 +925,10 @@ showFixedWorkoutModal(workout, workoutIndex = 0) {
             <button class="btn btn-danger" onclick="deleteWorkoutById('${docId}')">
                 <i class="fas fa-trash"></i> Delete
             </button>`;
-    }
+            }
 
-    // Set the modal content
-    content.innerHTML = `
+            // Set the modal content
+            content.innerHTML = `
         <div class="workout-header">
             <h3>${workout.workoutType} - ${displayDate}</h3>
         </div>
@@ -907,63 +950,63 @@ showFixedWorkoutModal(workout, workoutIndex = 0) {
             ${actionButtons}
         </div>
     `;
-    
-    // Show the modal - remove hidden class and make it visible
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-},
 
-generateSetsHTML(sets) {
-    if (!sets || sets.length === 0) {
-        return '<p class="no-sets-text">No sets recorded</p>';
-    }
+            // Show the modal - remove hidden class and make it visible
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        },
 
-    let html = '<div class="sets-list">';
-    sets.forEach((set, index) => {
-        if (set && (set.reps || set.weight)) {
-            html += `<span class="set-badge">Set ${index + 1}: ${set.reps || 0} × ${set.weight || 0} lbs</span>`;
-        }
-    });
-    html += '</div>';
-    return html;
-},
+        generateSetsHTML(sets) {
+            if (!sets || sets.length === 0) {
+                return '<p class="no-sets-text">No sets recorded</p>';
+            }
 
-calculateProgress(workout) {
-    if (!workout.exercises || !workout.originalWorkout?.exercises) return 0;
-    
-    let totalSets = 0;
-    let completedSets = 0;
-    
-    Object.keys(workout.exercises).forEach(key => {
-        const exercise = workout.exercises[key];
-        if (exercise.sets) {
-            totalSets += exercise.sets.length;
-            completedSets += exercise.sets.filter(set => set.reps && set.weight).length;
-        }
-    });
-    
-    return totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
-},
+            let html = '<div class="sets-list">';
+            sets.forEach((set, index) => {
+                if (set && (set.reps || set.weight)) {
+                    html += `<span class="set-badge">Set ${index + 1}: ${set.reps || 0} × ${set.weight || 0} lbs</span>`;
+                }
+            });
+            html += '</div>';
+            return html;
+        },
 
-    // Basic modal for calendar workouts without full details
-    showFixedBasicModal(date, calendarWorkout) {
-        const modal = document.getElementById('workoutModal');
-        const content = document.getElementById('modalBody');
-        const modalTitle = document.getElementById('modalTitle');
-        
-        // Fix date display for basic modal too
-        const safeDate = new Date(date + 'T12:00:00');
-        const displayDate = safeDate.toLocaleDateString('en-US', {
-            month: 'numeric',
-            day: 'numeric', 
-            year: 'numeric'
-        });
-        
-        if (modalTitle) {
-            modalTitle.textContent = `${calendarWorkout.name} - ${displayDate}`;
-        }
-        
-        content.innerHTML = `
+        calculateProgress(workout) {
+            if (!workout.exercises || !workout.originalWorkout?.exercises) return 0;
+
+            let totalSets = 0;
+            let completedSets = 0;
+
+            Object.keys(workout.exercises).forEach((key) => {
+                const exercise = workout.exercises[key];
+                if (exercise.sets) {
+                    totalSets += exercise.sets.length;
+                    completedSets += exercise.sets.filter((set) => set.reps && set.weight).length;
+                }
+            });
+
+            return totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
+        },
+
+        // Basic modal for calendar workouts without full details
+        showFixedBasicModal(date, calendarWorkout) {
+            const modal = document.getElementById('workoutModal');
+            const content = document.getElementById('modalBody');
+            const modalTitle = document.getElementById('modalTitle');
+
+            // Fix date display for basic modal too
+            const safeDate = new Date(date + 'T12:00:00');
+            const displayDate = safeDate.toLocaleDateString('en-US', {
+                month: 'numeric',
+                day: 'numeric',
+                year: 'numeric',
+            });
+
+            if (modalTitle) {
+                modalTitle.textContent = `${calendarWorkout.name} - ${displayDate}`;
+            }
+
+            content.innerHTML = `
             <div style="margin-bottom: 1.5rem;">
                 <div style="display: grid; grid-template-columns: auto 1fr; gap: 1rem;">
                     <strong style="color: var(--text-secondary);">Status:</strong>
@@ -974,9 +1017,9 @@ calculateProgress(workout) {
             </div>
             <p style="color: var(--text-secondary); font-style: italic;">Limited workout details available. This workout may have been logged manually or sync data is incomplete.</p>
         `;
-        
-        modal.style.display = 'flex';
-    },
+
+            modal.style.display = 'flex';
+        },
 
         // Search functionality adapted for calendar
         filterHistory(searchTerm) {
@@ -986,7 +1029,7 @@ calculateProgress(workout) {
             }
 
             const query = searchTerm.toLowerCase().trim();
-            this.filteredHistory = this.currentHistory.filter(workout => {
+            this.filteredHistory = this.currentHistory.filter((workout) => {
                 if (!workout) return false;
 
                 // Search in workout type/name
@@ -998,7 +1041,7 @@ calculateProgress(workout) {
                 // Search in exercise names
                 if (workout.exerciseNames) {
                     const exerciseValues = Object.values(workout.exerciseNames);
-                    if (exerciseValues.some(name => name.toLowerCase().includes(query))) return true;
+                    if (exerciseValues.some((name) => name.toLowerCase().includes(query))) return true;
                 }
 
                 // Search in manual notes
@@ -1017,26 +1060,27 @@ calculateProgress(workout) {
         async deleteWorkout(workoutId) {
             if (!appState.currentUser) return;
 
-            const workout = this.currentHistory.find(w => w.id === workoutId);
+            const workout = this.currentHistory.find((w) => w.id === workoutId);
             if (!workout) return;
 
-            const confirmDelete = confirm(`Delete workout "${workout.workoutType}" from ${new Date(workout.date).toLocaleDateString()}?\n\nThis cannot be undone.`);
+            const confirmDelete = confirm(
+                `Delete workout "${workout.workoutType}" from ${new Date(workout.date).toLocaleDateString()}?\n\nThis cannot be undone.`
+            );
             if (!confirmDelete) return;
 
             try {
                 const { deleteDoc, doc, db } = await import('../data/firebase-config.js');
-                await deleteDoc(doc(db, "users", appState.currentUser.uid, "workouts", workoutId));
+                await deleteDoc(doc(db, 'users', appState.currentUser.uid, 'workouts', workoutId));
 
                 // Remove from local arrays
-                this.currentHistory = this.currentHistory.filter(w => w.id !== workoutId);
-                this.filteredHistory = this.filteredHistory.filter(w => w.id !== workoutId);
+                this.currentHistory = this.currentHistory.filter((w) => w.id !== workoutId);
+                this.filteredHistory = this.filteredHistory.filter((w) => w.id !== workoutId);
 
                 // Refresh calendar if currently shown
                 await this.loadCalendarWorkouts();
                 this.generateCalendarGrid();
 
                 showNotification('Workout deleted successfully', 'success');
-
             } catch (error) {
                 console.error('Error deleting workout:', error);
                 showNotification('Failed to delete workout. Please try again.', 'error');
@@ -1069,50 +1113,50 @@ calculateProgress(workout) {
         },
 
         getWorkoutDuration(workout) {
-    // Method 1: Use stored totalDuration (in seconds)
-        if (workout.totalDuration && workout.totalDuration > 0) {
-            return workout.totalDuration * 1000; // Convert to milliseconds
-        }
-        
-        // Method 2: Calculate from timestamps (multiple field name variations)
-        const startTime = workout.startedAt || workout.startTime;
-        const endTime = workout.completedAt || workout.finishedAt;
-        
-        if (startTime && endTime) {
-            return new Date(endTime) - new Date(startTime);
-        }
-        
-        // Method 3: If workout is completed but no duration, estimate based on sets
-        if (workout.completedAt && workout.exercises) {
-            const totalSets = Object.values(workout.exercises).reduce((count, exercise) => {
-                return count + (exercise.sets ? exercise.sets.filter(set => set.reps && set.weight).length : 0);
-            }, 0);
-            
-            // Estimate 2 minutes per set (reasonable assumption)
-            if (totalSets > 0) {
-                return totalSets * 2 * 60 * 1000; // Convert to milliseconds
+            // Method 1: Use stored totalDuration (in seconds)
+            if (workout.totalDuration && workout.totalDuration > 0) {
+                return workout.totalDuration * 1000; // Convert to milliseconds
             }
-        }
-        
-        return 0;
-    },
+
+            // Method 2: Calculate from timestamps (multiple field name variations)
+            const startTime = workout.startedAt || workout.startTime;
+            const endTime = workout.completedAt || workout.finishedAt;
+
+            if (startTime && endTime) {
+                return new Date(endTime) - new Date(startTime);
+            }
+
+            // Method 3: If workout is completed but no duration, estimate based on sets
+            if (workout.completedAt && workout.exercises) {
+                const totalSets = Object.values(workout.exercises).reduce((count, exercise) => {
+                    return count + (exercise.sets ? exercise.sets.filter((set) => set.reps && set.weight).length : 0);
+                }, 0);
+
+                // Estimate 2 minutes per set (reasonable assumption)
+                if (totalSets > 0) {
+                    return totalSets * 2 * 60 * 1000; // Convert to milliseconds
+                }
+            }
+
+            return 0;
+        },
         formatDuration(durationMs) {
             if (!durationMs || durationMs <= 0) return 'N/A';
-            
+
             const minutes = Math.floor(durationMs / 60000);
             const hours = Math.floor(minutes / 60);
-            
+
             if (hours > 0) {
                 return `${hours}h ${minutes % 60}m`;
             }
             return `${minutes}m`;
         },
- };
+    };
 }
 
 // Delete workout by document ID
 console.log('🗑️ Registering deleteWorkoutById on window...');
-window.deleteWorkoutById = async function(docId) {
+window.deleteWorkoutById = async function (docId) {
     console.log('🗑️ deleteWorkoutById called with:', docId);
 
     if (!window.workoutHistory) {
@@ -1121,13 +1165,11 @@ window.deleteWorkoutById = async function(docId) {
     }
 
     // Find the workout in history to get its date for display
-    const workout = window.workoutHistory.currentHistory.find(w =>
-        w.docId === docId || w.id === docId || w.date === docId
+    const workout = window.workoutHistory.currentHistory.find(
+        (w) => w.docId === docId || w.id === docId || w.date === docId
     );
 
-    const displayDate = workout?.date
-        ? new Date(workout.date + 'T12:00:00').toLocaleDateString()
-        : 'this date';
+    const displayDate = workout?.date ? new Date(workout.date + 'T12:00:00').toLocaleDateString() : 'this date';
 
     if (confirm(`Delete workout from ${displayDate}? This cannot be undone.`)) {
         try {
@@ -1142,7 +1184,7 @@ window.deleteWorkoutById = async function(docId) {
             }
 
             console.log(`🗑️ Calling deleteDoc for users/${AppState.currentUser.uid}/workouts/${docId}`);
-            const docRef = doc(db, "users", AppState.currentUser.uid, "workouts", docId);
+            const docRef = doc(db, 'users', AppState.currentUser.uid, 'workouts', docId);
             await deleteDoc(docRef);
             console.log('✅ Firebase delete successful');
 
@@ -1150,8 +1192,8 @@ window.deleteWorkoutById = async function(docId) {
             const { getDocs, collection, query, where } = await import('../data/firebase-config.js');
 
             // Force a fresh query from the server to verify deletion
-            const workoutsRef = collection(db, "users", AppState.currentUser.uid, "workouts");
-            const q = query(workoutsRef, where("__name__", "==", docId));
+            const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+            const q = query(workoutsRef, where('__name__', '==', docId));
             const snapshot = await getDocs(q);
 
             if (!snapshot.empty) {
@@ -1166,13 +1208,15 @@ window.deleteWorkoutById = async function(docId) {
 
             // Remove from local arrays immediately (Firestore cache may not refresh instantly)
             const beforeCount = window.workoutHistory.currentHistory.length;
-            window.workoutHistory.currentHistory = window.workoutHistory.currentHistory.filter(w =>
-                w.id !== docId && w.docId !== docId
+            window.workoutHistory.currentHistory = window.workoutHistory.currentHistory.filter(
+                (w) => w.id !== docId && w.docId !== docId
             );
-            window.workoutHistory.filteredHistory = window.workoutHistory.filteredHistory.filter(w =>
-                w.id !== docId && w.docId !== docId
+            window.workoutHistory.filteredHistory = window.workoutHistory.filteredHistory.filter(
+                (w) => w.id !== docId && w.docId !== docId
             );
-            console.log(`🗑️ Removed from local arrays: ${beforeCount} -> ${window.workoutHistory.currentHistory.length}`);
+            console.log(
+                `🗑️ Removed from local arrays: ${beforeCount} -> ${window.workoutHistory.currentHistory.length}`
+            );
 
             // Refresh calendar display with updated local data
             console.log('🔄 Refreshing calendar display...');
@@ -1187,4 +1231,3 @@ window.deleteWorkoutById = async function(docId) {
         }
     }
 };
-

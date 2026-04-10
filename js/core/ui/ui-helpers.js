@@ -1,6 +1,23 @@
 // UI utility functions
+
+// Escape HTML to prevent XSS — use for any user-controlled string rendered in innerHTML
+export function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Escape a string for safe use inside an inline onclick attribute value (single-quoted)
+export function escapeAttr(text) {
+    if (!text) return '';
+    return escapeHtml(text).replace(/'/g, '&#39;');
+}
+
 export function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
+    notification.setAttribute('role', 'alert');
+    notification.setAttribute('aria-live', 'polite');
     notification.style.cssText = `
         position: fixed;
         top: 20px;
@@ -15,16 +32,16 @@ export function showNotification(message, type = 'info') {
         animation: slideDown 0.3s ease;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     `;
-    
+
     notification.innerHTML = `
         <div style="display: flex; align-items: center; gap: 0.5rem;">
             <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
             <span>${message}</span>
         </div>
     `;
-    
+
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
         notification.style.animation = 'slideUp 0.3s ease';
         setTimeout(() => notification.remove(), 300);
@@ -33,13 +50,13 @@ export function showNotification(message, type = 'info') {
 
 export function setTodayDisplay() {
     const today = new Date();
-    const options = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+    const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
     };
-    
+
     const todayDateDisplay = document.getElementById('today-date-display');
     if (todayDateDisplay) {
         todayDateDisplay.textContent = `Today - ${today.toLocaleDateString('en-US', options)}`;
@@ -49,16 +66,19 @@ export function setTodayDisplay() {
 export function convertWeight(weight, fromUnit, toUnit) {
     // Handle corrupted or invalid weights
     if (!weight || isNaN(weight) || weight <= 0) return 0;
-    if (weight > 1000) return '??'; // Clearly corrupted
-    
+    if (weight > 1000) {
+        console.warn('⚠️ convertWeight: weight exceeds 1000, likely corrupted:', weight);
+        return 0;
+    }
+
     if (fromUnit === toUnit) return Math.round(weight);
-    
+
     if (fromUnit === 'lbs' && toUnit === 'kg') {
         return Math.round(weight * 0.453592 * 10) / 10; // 1 decimal for kg
     } else if (fromUnit === 'kg' && toUnit === 'lbs') {
         return Math.round(weight * 2.20462); // Whole number for lbs
     }
-    
+
     return weight;
 }
 
@@ -77,7 +97,7 @@ export function updateProgress(state) {
         const targetSets = exercise.sets || 3;
         totalSets += targetSets;
         const sets = state.savedData.exercises[`exercise_${index}`]?.sets || [];
-        const exerciseCompletedSets = sets.filter(set => set && set.reps && set.weight).length;
+        const exerciseCompletedSets = sets.filter((set) => set && set.reps && set.weight).length;
         completedSets += exerciseCompletedSets;
 
         // Count exercise as complete if all target sets are done
@@ -189,3 +209,21 @@ export function setHeaderMode(showFullHeader) {
     }
 }
 
+// Lock body scroll when any modal is visible, unlock when all are hidden
+export function initModalScrollLock() {
+    const updateBodyScroll = () => {
+        const anyModalVisible = document.querySelector('.modal:not(.hidden)');
+        document.body.style.overflow = anyModalVisible ? 'hidden' : '';
+    };
+
+    const observer = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+            if (m.type === 'attributes' && m.attributeName === 'class' && m.target.classList.contains('modal')) {
+                updateBodyScroll();
+                break;
+            }
+        }
+    });
+
+    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
+}

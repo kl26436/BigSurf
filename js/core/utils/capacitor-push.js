@@ -9,9 +9,7 @@
 import { auth, functions, httpsCallable } from '../data/firebase-config.js';
 
 // Check if running in Capacitor
-const isCapacitor = typeof window !== 'undefined' &&
-    window.Capacitor &&
-    window.Capacitor.isNativePlatform();
+const isCapacitor = typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform();
 
 let PushNotifications = null;
 
@@ -76,7 +74,6 @@ export async function initializeCapacitorPush() {
 
         console.log('✅ Capacitor push notifications initialized');
         return true;
-
     } catch (error) {
         console.error('❌ Error initializing Capacitor push:', error);
         return false;
@@ -96,7 +93,7 @@ async function saveDeviceToken(token) {
         const saveToken = httpsCallable(functions, 'saveDeviceToken');
         await saveToken({
             token: token,
-            platform: 'ios'
+            platform: 'ios',
         });
         console.log('✅ Device token saved to Firebase');
     } catch (error) {
@@ -121,7 +118,7 @@ export async function scheduleNativePush(delaySeconds, exerciseName) {
             delaySeconds: delaySeconds,
             exerciseName: exerciseName,
             notificationId: notificationId,
-            platform: 'ios'
+            platform: 'ios',
         });
 
         console.log('✅ Native push scheduled:', result.data);

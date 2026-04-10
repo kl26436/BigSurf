@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { db, collection, query, where, getDocs, orderBy, limit } from '../data/firebase-config.js';
+import { getDateString } from '../utils/date-helpers.js';
 
 // ===================================================================
 // WORKOUT STREAK CALCULATION
@@ -28,11 +29,11 @@ export async function calculateWorkoutStreak() {
         if (snapshot.empty) return 0;
 
         const workouts = [];
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc) => {
             const data = doc.data();
             workouts.push({
                 date: doc.id, // Document ID is the date (YYYY-MM-DD)
-                completedAt: data.completedAt
+                completedAt: data.completedAt,
             });
         });
 
@@ -50,19 +51,19 @@ export async function calculateWorkoutStreak() {
                 // Move to previous day
                 const date = new Date(currentDate);
                 date.setDate(date.getDate() - 1);
-                currentDate = date.toISOString().split('T')[0];
+                currentDate = getDateString(date);
             } else {
                 // Check if we should continue from yesterday
                 const yesterday = new Date(today);
                 yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                const yesterdayStr = getDateString(yesterday);
 
                 if (streak === 0 && workout.date === yesterdayStr) {
                     // Start streak from yesterday if no workout today
                     streak++;
                     const date = new Date(yesterdayStr);
                     date.setDate(date.getDate() - 1);
-                    currentDate = date.toISOString().split('T')[0];
+                    currentDate = getDateString(date);
                 } else {
                     // Streak broken
                     break;
@@ -149,20 +150,15 @@ export async function getRecentWorkouts(count = 3) {
 
     try {
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        const q = query(
-            workoutsRef,
-            where('completedAt', '!=', null),
-            orderBy('completedAt', 'desc'),
-            limit(count)
-        );
+        const q = query(workoutsRef, where('completedAt', '!=', null), orderBy('completedAt', 'desc'), limit(count));
 
         const snapshot = await getDocs(q);
         const workouts = [];
 
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc) => {
             workouts.push({
                 id: doc.id,
-                ...doc.data()
+                ...doc.data(),
             });
         });
 
@@ -200,16 +196,12 @@ export async function getWeeklyStats() {
         startOfWeek.setDate(today.getDate() - dayOfWeek);
         startOfWeek.setHours(0, 0, 0, 0);
 
-        const startOfWeekStr = startOfWeek.toISOString().split('T')[0]; // YYYY-MM-DD
+        const startOfWeekStr = getDateString(startOfWeek);
 
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
         // Query by date field (when workout occurred), not completedAt (when it was saved)
         // This ensures edited historical workouts count on their actual date
-        const q = query(
-            workoutsRef,
-            where('date', '>=', startOfWeekStr),
-            orderBy('date', 'desc')
-        );
+        const q = query(workoutsRef, where('date', '>=', startOfWeekStr), orderBy('date', 'desc'));
 
         const snapshot = await getDocs(q);
         const workouts = [];
@@ -218,7 +210,7 @@ export async function getWeeklyStats() {
         let totalExercises = 0;
         let totalMinutes = 0;
 
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc) => {
             const data = doc.data();
 
             // Skip workouts without completedAt (not finished)
@@ -234,9 +226,9 @@ export async function getWeeklyStats() {
             if (data.exercises) {
                 workoutExercises = Object.keys(data.exercises).length;
 
-                Object.values(data.exercises).forEach(exercise => {
+                Object.values(data.exercises).forEach((exercise) => {
                     if (exercise.sets && Array.isArray(exercise.sets)) {
-                        workoutSets += exercise.sets.filter(s => s.reps && s.weight).length;
+                        workoutSets += exercise.sets.filter((s) => s.reps && s.weight).length;
                     }
                 });
             }
@@ -244,7 +236,7 @@ export async function getWeeklyStats() {
             // Add to workouts list (any completed workout counts)
             workouts.push({
                 id: doc.id,
-                ...data
+                ...data,
             });
 
             // Track unique workout days (use date string for deduplication)
@@ -266,7 +258,7 @@ export async function getWeeklyStats() {
             exercises: totalExercises,
             minutes: totalMinutes,
             workouts,
-            uniqueDays: workoutDays.size // Count of unique days with workouts
+            uniqueDays: workoutDays.size, // Count of unique days with workouts
         };
     } catch (error) {
         console.error('❌ Error getting weekly stats:', error);
@@ -304,7 +296,7 @@ export async function getRecentPRs(count = 5) {
                 weight: prs.maxWeight.weight,
                 reps: prs.maxWeight.reps,
                 date: prs.maxWeight.date,
-                location: prs.maxWeight.location
+                location: prs.maxWeight.location,
             });
         }
     }
@@ -327,5 +319,5 @@ export const StatsTracker = {
     getRecentWorkouts,
     getLastWorkout,
     getRecentPRs,
-    getWeeklyStats
+    getWeeklyStats,
 };

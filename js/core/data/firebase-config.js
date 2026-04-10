@@ -1,24 +1,43 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import {
-  getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, getDocsFromServer, orderBy, limit, onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc,
+    updateDoc,
+    deleteDoc,
+    collection,
+    query,
+    where,
+    getDocs,
+    getDocsFromServer,
+    orderBy,
+    limit,
+    onSnapshot,
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import {
-  getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, setPersistence, browserLocalPersistence
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    getAuth,
+    onAuthStateChanged,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
+    signOut,
+    setPersistence,
+    browserLocalPersistence,
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 // Firebase Messaging SDK removed - using Web Push API directly instead
 // See push-notification-manager.js for Web Push implementation
-import {
-  getFunctions, httpsCallable
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAbzL4bGY026Z-oWiWcYLfDgkmmgAfUY3k",
-  authDomain: "workout-tracker-b94b6.firebaseapp.com",
-  projectId: "workout-tracker-b94b6",
-  storageBucket: "workout-tracker-b94b6.appspot.com",
-  messagingSenderId: "111958991290",
-  appId: "1:111958991290:web:23e1014ab2ba27df6ebd83"
+    apiKey: 'AIzaSyAbzL4bGY026Z-oWiWcYLfDgkmmgAfUY3k',
+    authDomain: 'workout-tracker-b94b6.firebaseapp.com',
+    projectId: 'workout-tracker-b94b6',
+    storageBucket: 'workout-tracker-b94b6.appspot.com',
+    messagingSenderId: '111958991290',
+    appId: '1:111958991290:web:23e1014ab2ba27df6ebd83',
 };
 
 // Initialize Firebase
@@ -33,11 +52,10 @@ export const messaging = null;
 
 // Set auth persistence to LOCAL (survives browser restarts and redirects)
 setPersistence(auth, browserLocalPersistence)
-  .then(() => {
-  })
-  .catch((error) => {
-    console.error('❌ Error setting auth persistence:', error);
-  });
+    .then(() => {})
+    .catch((error) => {
+        console.error('❌ Error setting auth persistence:', error);
+    });
 
 export const provider = new GoogleAuthProvider();
 
@@ -46,7 +64,25 @@ export const provider = new GoogleAuthProvider();
 
 // Re-export Firebase functions for easy importing
 export {
-  doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, getDocsFromServer, orderBy, limit, onSnapshot,
-  onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, setPersistence, browserLocalPersistence,
-  httpsCallable
+    doc,
+    setDoc,
+    getDoc,
+    updateDoc,
+    deleteDoc,
+    collection,
+    query,
+    where,
+    getDocs,
+    getDocsFromServer,
+    orderBy,
+    limit,
+    onSnapshot,
+    onAuthStateChanged,
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
+    signOut,
+    setPersistence,
+    browserLocalPersistence,
+    httpsCallable,
 };

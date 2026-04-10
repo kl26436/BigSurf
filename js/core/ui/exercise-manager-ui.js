@@ -2,7 +2,7 @@
 // Handles the integrated exercise manager modal
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode } from './ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { setBottomNavVisible } from './navigation.js';
 
@@ -12,19 +12,19 @@ let currentEditingExercise = null;
 let workoutManager = null;
 let selectedEquipmentId = null;
 let selectedEquipmentData = null;
-let editingEquipmentData = null;  // For equipment editor modal
-let editingEquipmentLocations = [];  // Locations being edited
-let currentBodyPartFilter = '';  // Current body part category selected
-let currentEquipmentFilter = '';  // Current equipment filter
+let editingEquipmentData = null; // For equipment editor modal
+let editingEquipmentLocations = []; // Locations being edited
+let currentBodyPartFilter = ''; // Current body part category selected
+let currentEquipmentFilter = ''; // Current equipment filter
 
 // Equipment type to icon mapping
 const equipmentIcons = {
-    'Barbell': 'fa-dumbbell',
-    'Dumbbell': 'fa-dumbbell',
-    'Machine': 'fa-cogs',
-    'Cable': 'fa-link',
-    'Bodyweight': 'fa-person',
-    'default': 'fa-dumbbell'
+    Barbell: 'fa-dumbbell',
+    Dumbbell: 'fa-dumbbell',
+    Machine: 'fa-cogs',
+    Cable: 'fa-link',
+    Bodyweight: 'fa-person',
+    default: 'fa-dumbbell',
 };
 
 // Get icon class for equipment type
@@ -34,7 +34,6 @@ function getEquipmentIcon(equipmentType) {
 
 // Open exercise manager section
 export function openExerciseManager() {
-
     // Close sidebar first
     const sidebar = document.getElementById('sidebar');
     if (sidebar) {
@@ -44,8 +43,16 @@ export function openExerciseManager() {
     const section = document.getElementById('exercise-manager-section');
     if (section) {
         // Hide all other sections
-        const sections = ['dashboard', 'workout-selector', 'active-workout', 'workout-history-section', 'stats-section', 'workout-management-section', 'location-management-section'];
-        sections.forEach(id => {
+        const sections = [
+            'dashboard',
+            'workout-selector',
+            'active-workout',
+            'workout-history-section',
+            'stats-section',
+            'workout-management-section',
+            'location-management-section',
+        ];
+        sections.forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.classList.add('hidden');
         });
@@ -94,7 +101,7 @@ export function selectBodyPartCategory(bodyPart) {
 
     // Reset equipment filter pills
     const pills = document.querySelectorAll('.filter-pill');
-    pills.forEach(pill => {
+    pills.forEach((pill) => {
         pill.classList.toggle('active', pill.dataset.equipment === '');
     });
 
@@ -115,7 +122,7 @@ export function filterByEquipment(equipmentType) {
 
     // Update pill active states
     const pills = document.querySelectorAll('.filter-pill');
-    pills.forEach(pill => {
+    pills.forEach((pill) => {
         pill.classList.toggle('active', pill.dataset.equipment === equipmentType);
     });
 
@@ -177,8 +184,9 @@ function filterAndRenderExercises(searchTerm = '') {
         searchTerm = searchTerm.toLowerCase();
     }
 
-    filteredExercises = allExercises.filter(exercise => {
-        const matchesSearch = !searchTerm ||
+    filteredExercises = allExercises.filter((exercise) => {
+        const matchesSearch =
+            !searchTerm ||
             exercise.name.toLowerCase().includes(searchTerm) ||
             exercise.bodyPart.toLowerCase().includes(searchTerm) ||
             exercise.equipmentType.toLowerCase().includes(searchTerm);
@@ -188,12 +196,13 @@ function filterAndRenderExercises(searchTerm = '') {
         if (currentBodyPartFilter) {
             if (currentBodyPartFilter === 'Biceps' || currentBodyPartFilter === 'Triceps') {
                 // Check if exercise body part matches directly or is "Arms"
-                matchesBodyPart = exercise.bodyPart === currentBodyPartFilter ||
-                                  (exercise.bodyPart === 'Arms' && exercise.name.toLowerCase().includes(currentBodyPartFilter.toLowerCase()));
+                matchesBodyPart =
+                    exercise.bodyPart === currentBodyPartFilter ||
+                    (exercise.bodyPart === 'Arms' &&
+                        exercise.name.toLowerCase().includes(currentBodyPartFilter.toLowerCase()));
             } else if (currentBodyPartFilter === 'Arms') {
-                matchesBodyPart = exercise.bodyPart === 'Arms' ||
-                                  exercise.bodyPart === 'Biceps' ||
-                                  exercise.bodyPart === 'Triceps';
+                matchesBodyPart =
+                    exercise.bodyPart === 'Arms' || exercise.bodyPart === 'Biceps' || exercise.bodyPart === 'Triceps';
             } else {
                 matchesBodyPart = exercise.bodyPart === currentBodyPartFilter;
             }
@@ -237,7 +246,6 @@ export function closeExerciseManager() {
 
 // Load exercises from AppState
 async function loadExercises() {
-
     // Initialize workout manager if needed
     if (!workoutManager) {
         workoutManager = new FirebaseWorkoutManager(AppState);
@@ -250,7 +258,7 @@ async function loadExercises() {
         return;
     }
 
-    allExercises = AppState.exerciseDatabase.map(exercise => ({
+    allExercises = AppState.exerciseDatabase.map((exercise) => ({
         id: exercise.id || `ex_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: exercise.name || exercise.machine || 'Unnamed Exercise',
         machine: exercise.machine || exercise.name,
@@ -264,7 +272,7 @@ async function loadExercises() {
         equipmentLocation: exercise.equipmentLocation || null,
         isCustom: exercise.isCustom || false,
         isDefault: exercise.isDefault || false,
-        isOverride: exercise.isOverride || false
+        isOverride: exercise.isOverride || false,
     }));
 
     filteredExercises = [...allExercises];
@@ -290,33 +298,33 @@ function renderExercises() {
     }
 
     // Sort exercises alphabetically by name
-    const sortedExercises = [...filteredExercises].sort((a, b) =>
-        a.name.localeCompare(b.name)
-    );
+    const sortedExercises = [...filteredExercises].sort((a, b) => a.name.localeCompare(b.name));
 
     // Render exercise cards (flat list, no grouping in list view)
-    grid.innerHTML = sortedExercises.map(exercise => {
-        const iconClass = getEquipmentIcon(exercise.equipmentType);
+    grid.innerHTML = sortedExercises
+        .map((exercise) => {
+            const iconClass = getEquipmentIcon(exercise.equipmentType);
 
-        return `
-            <div class="exercise-card-new" data-exercise-id="${exercise.id}" onclick="handleExerciseCardClick('${exercise.id}')">
+            return `
+            <div class="exercise-card-new" data-exercise-id="${escapeAttr(exercise.id)}" onclick="handleExerciseCardClick('${escapeAttr(exercise.id)}')">
                 <div class="exercise-card-icon">
                     <i class="fas ${iconClass}"></i>
                 </div>
                 <div class="exercise-card-info">
-                    <span class="exercise-card-name">${exercise.name}</span>
+                    <span class="exercise-card-name">${escapeHtml(exercise.name)}</span>
                 </div>
-                <button class="exercise-card-edit" onclick="event.stopPropagation(); editExercise('${exercise.id}')" title="Edit">
+                <button class="exercise-card-edit" onclick="event.stopPropagation(); editExercise('${escapeAttr(exercise.id)}')" title="Edit">
                     EDIT
                 </button>
             </div>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 // Handle exercise card click (for adding to workout)
 export function handleExerciseCardClick(exerciseId) {
-    const exercise = allExercises.find(e => e.id === exerciseId);
+    const exercise = allExercises.find((e) => e.id === exerciseId);
     if (!exercise) return;
 
     // Check if we're in "add to workout" context
@@ -414,9 +422,16 @@ export function openEditExerciseSection(exercise) {
     selectedEquipmentData = null;
 
     // Hide all other sections
-    const sections = ['dashboard', 'workout-selector', 'active-workout', 'workout-history-section',
-                      'stats-section', 'workout-management-section', 'exercise-manager-section'];
-    sections.forEach(id => {
+    const sections = [
+        'dashboard',
+        'workout-selector',
+        'active-workout',
+        'workout-history-section',
+        'stats-section',
+        'workout-management-section',
+        'exercise-manager-section',
+    ];
+    sections.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
@@ -436,9 +451,11 @@ export function openEditExerciseSection(exercise) {
             if (exercise.isTemplateExercise) {
                 title.textContent = 'Edit Workout Exercise';
             } else {
-                title.textContent = exercise.isOverride ? 'Edit Your Version' :
-                                   exercise.isDefault ? 'Customize Exercise' :
-                                   'Edit Exercise';
+                title.textContent = exercise.isOverride
+                    ? 'Edit Your Version'
+                    : exercise.isDefault
+                      ? 'Customize Exercise'
+                      : 'Edit Exercise';
             }
         }
         populateEditForm(exercise);
@@ -553,23 +570,20 @@ async function populateLocationDatalist() {
         // Also get locations from all equipment
         const allEquipment = await workoutManager.getUserEquipment();
         const equipmentLocations = new Set();
-        allEquipment.forEach(eq => {
+        allEquipment.forEach((eq) => {
             if (eq.location) equipmentLocations.add(eq.location);
             if (eq.locations && Array.isArray(eq.locations)) {
-                eq.locations.forEach(loc => equipmentLocations.add(loc));
+                eq.locations.forEach((loc) => equipmentLocations.add(loc));
             }
         });
 
         // Combine gym locations and equipment locations
-        const allLocations = new Set([
-            ...locations.map(loc => loc.name),
-            ...equipmentLocations
-        ]);
+        const allLocations = new Set([...locations.map((loc) => loc.name), ...equipmentLocations]);
 
         // Populate datalist
         datalist.innerHTML = Array.from(allLocations)
             .sort()
-            .map(name => `<option value="${name}">`)
+            .map((name) => `<option value="${name}">`)
             .join('');
     } catch (error) {
         console.error('❌ Error loading locations for datalist:', error);
@@ -579,7 +593,11 @@ async function populateLocationDatalist() {
 
 // Populate equipment list for the full-screen edit section
 // Only shows equipment that has been used with this specific exercise
-async function populateEquipmentListForSection(exerciseName = null, preselectedEquipment = null, preselectedLocation = null) {
+async function populateEquipmentListForSection(
+    exerciseName = null,
+    preselectedEquipment = null,
+    preselectedLocation = null
+) {
     if (!workoutManager) {
         workoutManager = new FirebaseWorkoutManager(AppState);
     }
@@ -611,31 +629,34 @@ async function populateEquipmentListForSection(exerciseName = null, preselectedE
         }
 
         // Render equipment items - support both single location and locations array
-        listEl.innerHTML = exerciseEquipment.map(eq => {
-            // Get locations from either array or single field
-            let locationsList = [];
-            if (eq.locations && Array.isArray(eq.locations)) {
-                locationsList = eq.locations;
-            } else if (eq.location) {
-                locationsList = [eq.location];
-            }
-            const locationDisplay = locationsList.length > 0 ? locationsList.join(', ') : '';
+        listEl.innerHTML = exerciseEquipment
+            .map((eq) => {
+                // Get locations from either array or single field
+                let locationsList = [];
+                if (eq.locations && Array.isArray(eq.locations)) {
+                    locationsList = eq.locations;
+                } else if (eq.location) {
+                    locationsList = [eq.location];
+                }
+                const locationDisplay = locationsList.length > 0 ? locationsList.join(', ') : '';
 
-            return `
-            <div class="edit-equipment-item" data-equipment-id="${eq.id}" data-name="${eq.name}"
-                 data-location="${locationDisplay}" data-equipment-json='${JSON.stringify(eq).replace(/'/g, "&#39;")}'>
+                return `
+            <div class="edit-equipment-item" data-equipment-id="${escapeAttr(eq.id)}" data-name="${escapeAttr(eq.name)}"
+                 data-location="${escapeAttr(locationDisplay)}" data-equipment-json='${JSON.stringify(eq).replace(/'/g, '&#39;').replace(/</g, '&lt;')}'>
                 <div class="edit-equipment-item-info">
-                    <div class="edit-equipment-item-name">${eq.name}</div>
-                    ${locationDisplay ? `<div class="edit-equipment-item-location">${locationDisplay}</div>` : ''}
+                    <div class="edit-equipment-item-name">${escapeHtml(eq.name)}</div>
+                    ${locationDisplay ? `<div class="edit-equipment-item-location">${escapeHtml(locationDisplay)}</div>` : ''}
                 </div>
-                <button type="button" class="edit-equipment-item-edit" data-equipment-id="${eq.id}" title="Edit equipment">
+                <button type="button" class="edit-equipment-item-edit" data-equipment-id="${escapeAttr(eq.id)}" title="Edit equipment">
                     <i class="fas fa-pen"></i>
                 </button>
             </div>
-        `}).join('');
+        `;
+            })
+            .join('');
 
         // Add click handlers for selection
-        listEl.querySelectorAll('.edit-equipment-item').forEach(item => {
+        listEl.querySelectorAll('.edit-equipment-item').forEach((item) => {
             item.addEventListener('click', (e) => {
                 if (e.target.closest('.edit-equipment-item-edit')) return;
                 selectEquipmentItemForSection(item);
@@ -643,7 +664,7 @@ async function populateEquipmentListForSection(exerciseName = null, preselectedE
         });
 
         // Add click handlers for edit buttons
-        listEl.querySelectorAll('.edit-equipment-item-edit').forEach(btn => {
+        listEl.querySelectorAll('.edit-equipment-item-edit').forEach((btn) => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const item = btn.closest('.edit-equipment-item');
@@ -666,7 +687,6 @@ async function populateEquipmentListForSection(exerciseName = null, preselectedE
                 selectEquipmentItemForSection(matchingItem);
             }
         }
-
     } catch (error) {
         console.error('❌ Error populating equipment list:', error);
         if (listEl) {
@@ -682,7 +702,7 @@ function selectEquipmentItemForSection(item) {
     const selectedText = document.getElementById('edit-selected-equipment-text');
 
     // Clear previous selection
-    listEl?.querySelectorAll('.edit-equipment-item').forEach(i => i.classList.remove('selected'));
+    listEl?.querySelectorAll('.edit-equipment-item').forEach((i) => i.classList.remove('selected'));
 
     // Mark as selected
     item.classList.add('selected');
@@ -691,7 +711,7 @@ function selectEquipmentItemForSection(item) {
     selectedEquipmentId = item.dataset.equipmentId;
     selectedEquipmentData = {
         name: item.dataset.name,
-        location: item.dataset.location || null
+        location: item.dataset.location || null,
     };
 
     // Update display
@@ -720,7 +740,7 @@ export function clearSelectedEquipment() {
     selectedEquipmentData = null;
 
     // Clear visual selection
-    listEl?.querySelectorAll('.edit-equipment-item').forEach(i => i.classList.remove('selected'));
+    listEl?.querySelectorAll('.edit-equipment-item').forEach((i) => i.classList.remove('selected'));
 
     // Hide display
     if (selectedDisplay) selectedDisplay.classList.add('hidden');
@@ -746,10 +766,12 @@ async function deleteEquipmentItem(equipmentId) {
         }
 
         // Refresh the equipment list for this exercise
-        const exerciseName = currentEditingExercise?.name || currentEditingExercise?.machine ||
-                            document.getElementById('edit-exercise-name')?.value.trim() || null;
+        const exerciseName =
+            currentEditingExercise?.name ||
+            currentEditingExercise?.machine ||
+            document.getElementById('edit-exercise-name')?.value.trim() ||
+            null;
         await populateEquipmentListForSection(exerciseName);
-
     } catch (error) {
         console.error('❌ Error deleting equipment:', error);
         showNotification('Error deleting equipment', 'error');
@@ -781,8 +803,11 @@ export async function addEquipmentToList() {
     }
 
     // Get the current exercise name
-    const exerciseName = currentEditingExercise?.name || currentEditingExercise?.machine ||
-                        document.getElementById('edit-exercise-name')?.value.trim() || null;
+    const exerciseName =
+        currentEditingExercise?.name ||
+        currentEditingExercise?.machine ||
+        document.getElementById('edit-exercise-name')?.value.trim() ||
+        null;
 
     if (!exerciseName) {
         showNotification('Enter exercise name first', 'warning');
@@ -796,7 +821,12 @@ export async function addEquipmentToList() {
         }
 
         // Save the new equipment AND associate it with this exercise (including video)
-        const equipment = await workoutManager.getOrCreateEquipment(equipmentName, locationName, exerciseName, videoUrl);
+        const equipment = await workoutManager.getOrCreateEquipment(
+            equipmentName,
+            locationName,
+            exerciseName,
+            videoUrl
+        );
 
         // If we're in an active workout with a location, also add that location to the equipment
         if (equipment && equipment.id && window.getSessionLocation) {
@@ -815,7 +845,6 @@ export async function addEquipmentToList() {
         await populateEquipmentListForSection(exerciseName, equipmentName, locationName);
 
         // Silent success - equipment appears in list immediately
-
     } catch (error) {
         console.error('❌ Error adding equipment:', error);
         showNotification('Error adding equipment', 'error');
@@ -836,7 +865,7 @@ export function closeAddExerciseModal() {
 
 // Edit exercise - opens full-screen edit section
 export function editExercise(exerciseId) {
-    const exercise = allExercises.find(ex => ex.id === exerciseId);
+    const exercise = allExercises.find((ex) => ex.id === exerciseId);
     if (!exercise) return;
 
     openEditExerciseSection(exercise);
@@ -869,7 +898,7 @@ export async function saveExercise(event) {
         weight: parseInt(document.getElementById('new-exercise-weight')?.value) || 50,
         video: document.getElementById('new-exercise-video')?.value.trim() || '',
         equipment: equipmentName || null,
-        equipmentLocation: locationName || null
+        equipmentLocation: locationName || null,
     };
 
     if (!formData.name) {
@@ -890,7 +919,7 @@ export async function saveExercise(event) {
             const exerciseToSave = {
                 ...currentEditingExercise,
                 ...formData,
-                id: currentEditingExercise.id
+                id: currentEditingExercise.id,
             };
             await workoutManager.saveUniversalExercise(exerciseToSave, true);
         } else {
@@ -921,7 +950,6 @@ export async function saveExercise(event) {
             // Dispatch custom event to trigger refresh in workout-management-ui
             window.dispatchEvent(new CustomEvent('exerciseLibraryUpdated'));
         }
-
     } catch (error) {
         console.error('❌ Error saving exercise:', error);
         alert('Error saving exercise: ' + error.message);
@@ -930,7 +958,7 @@ export async function saveExercise(event) {
 
 // Delete exercise
 export async function deleteExercise(exerciseId) {
-    const exercise = allExercises.find(ex => ex.id === exerciseId);
+    const exercise = allExercises.find((ex) => ex.id === exerciseId);
     if (!exercise) return;
 
     let confirmMessage;
@@ -953,16 +981,17 @@ export async function deleteExercise(exerciseId) {
             await workoutManager.deleteUniversalExercise(exerciseId, exercise);
 
             showNotification(
-                exercise.isCustom ? 'Exercise deleted!' :
-                exercise.isOverride ? 'Reverted to default!' :
-                'Exercise hidden!',
+                exercise.isCustom
+                    ? 'Exercise deleted!'
+                    : exercise.isOverride
+                      ? 'Reverted to default!'
+                      : 'Exercise hidden!',
                 'success'
             );
 
             // Refresh AppState exercise database
             AppState.exerciseDatabase = await workoutManager.getExerciseLibrary();
             await loadExercises();
-
         } catch (error) {
             console.error('❌ Error deleting exercise:', error);
             alert('Error processing request: ' + error.message);
@@ -1000,9 +1029,11 @@ export async function deleteExerciseFromSection() {
             await workoutManager.deleteUniversalExercise(exercise.id, exercise);
 
             showNotification(
-                exercise.isCustom ? 'Exercise deleted!' :
-                exercise.isOverride ? 'Reverted to default!' :
-                'Exercise hidden!',
+                exercise.isCustom
+                    ? 'Exercise deleted!'
+                    : exercise.isOverride
+                      ? 'Reverted to default!'
+                      : 'Exercise hidden!',
                 'success'
             );
 
@@ -1012,7 +1043,6 @@ export async function deleteExerciseFromSection() {
 
             // Close the edit section and return to exercise manager
             closeEditExerciseSection();
-
         } catch (error) {
             console.error('❌ Error deleting exercise:', error);
             alert('Error processing request: ' + error.message);
@@ -1050,7 +1080,7 @@ export async function saveExerciseFromSection() {
         video: document.getElementById('edit-exercise-video')?.value.trim() || '',
         equipment: equipmentName || null,
         equipmentLocation: locationName || null,
-        equipmentVideo: document.getElementById('edit-equipment-video')?.value.trim() || null
+        equipmentVideo: document.getElementById('edit-equipment-video')?.value.trim() || null,
     };
 
     if (!formData.name) {
@@ -1082,7 +1112,7 @@ export async function saveExerciseFromSection() {
             const exerciseToSave = {
                 ...currentEditingExercise,
                 ...formData,
-                id: currentEditingExercise.id
+                id: currentEditingExercise.id,
             };
             await workoutManager.saveUniversalExercise(exerciseToSave, true);
         } else {
@@ -1111,7 +1141,7 @@ export async function saveExerciseFromSection() {
         if (isEditing && oldName && newName && oldName !== newName && AppState.currentWorkout) {
             // Find and update the exercise in current workout
             const exerciseIndex = AppState.currentWorkout.exercises.findIndex(
-                ex => (ex.machine || ex.name) === oldName
+                (ex) => (ex.machine || ex.name) === oldName
             );
             if (exerciseIndex !== -1) {
                 AppState.currentWorkout.exercises[exerciseIndex].machine = newName;
@@ -1121,9 +1151,11 @@ export async function saveExerciseFromSection() {
                     AppState.currentWorkout.exercises[exerciseIndex].video = formData.video;
                 }
                 // Dispatch event to refresh workout UI
-                window.dispatchEvent(new CustomEvent('exerciseRenamed', {
-                    detail: { oldName, newName, exerciseIndex }
-                }));
+                window.dispatchEvent(
+                    new CustomEvent('exerciseRenamed', {
+                        detail: { oldName, newName, exerciseIndex },
+                    })
+                );
             }
         }
 
@@ -1135,7 +1167,6 @@ export async function saveExerciseFromSection() {
         if (libraryModal && !libraryModal.classList.contains('hidden')) {
             window.dispatchEvent(new CustomEvent('exerciseLibraryUpdated'));
         }
-
     } catch (error) {
         console.error('❌ Error saving exercise:', error);
         showNotification('Error saving exercise: ' + error.message, 'error');
@@ -1202,23 +1233,20 @@ async function populateEquipmentEditorLocationDatalist() {
         // Also get locations from all equipment
         const allEquipment = await workoutManager.getUserEquipment();
         const equipmentLocations = new Set();
-        allEquipment.forEach(eq => {
+        allEquipment.forEach((eq) => {
             if (eq.location) equipmentLocations.add(eq.location);
             if (eq.locations && Array.isArray(eq.locations)) {
-                eq.locations.forEach(loc => equipmentLocations.add(loc));
+                eq.locations.forEach((loc) => equipmentLocations.add(loc));
             }
         });
 
         // Combine gym locations and equipment locations
-        const allLocations = new Set([
-            ...locations.map(loc => loc.name),
-            ...equipmentLocations
-        ]);
+        const allLocations = new Set([...locations.map((loc) => loc.name), ...equipmentLocations]);
 
         // Populate datalist
         datalist.innerHTML = Array.from(allLocations)
             .sort()
-            .map(name => `<option value="${name}">`)
+            .map((name) => `<option value="${name}">`)
             .join('');
     } catch (error) {
         console.error('❌ Error loading locations for equipment editor datalist:', error);
@@ -1238,7 +1266,9 @@ function renderEquipmentEditorLocations() {
         return;
     }
 
-    container.innerHTML = editingEquipmentLocations.map((loc, index) => `
+    container.innerHTML = editingEquipmentLocations
+        .map(
+            (loc, index) => `
         <div class="equipment-location-item">
             <span class="location-name">
                 <i class="fas fa-map-marker-alt"></i>
@@ -1248,7 +1278,9 @@ function renderEquipmentEditorLocations() {
                 <i class="fas fa-times"></i>
             </button>
         </div>
-    `).join('');
+    `
+        )
+        .join('');
 }
 
 /**
@@ -1315,7 +1347,7 @@ export async function saveEquipmentFromEditor() {
             name: name,
             video: video || null,
             locations: editingEquipmentLocations,
-            location: null  // Clear old single location field
+            location: null, // Clear old single location field
         });
 
         // Removed notification - action is self-evident
@@ -1326,7 +1358,6 @@ export async function saveEquipmentFromEditor() {
             const exerciseName = currentEditingExercise.name || currentEditingExercise.machine;
             await populateEquipmentListForSection(exerciseName);
         }
-
     } catch (error) {
         console.error('❌ Error saving equipment:', error);
         showNotification('Error saving equipment', 'error');
@@ -1370,7 +1401,6 @@ export async function deleteEquipmentFromEditor() {
             const exerciseName = currentEditingExercise.name || currentEditingExercise.machine;
             await populateEquipmentListForSection(exerciseName);
         }
-
     } catch (error) {
         console.error('❌ Error deleting equipment:', error);
         showNotification('Error deleting equipment', 'error');

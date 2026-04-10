@@ -47,12 +47,7 @@ export async function migrateOldWorkoutsToPRs() {
                 for (const set of exerciseData.sets) {
                     if (!set.reps || !set.weight) continue;
 
-                    const prCheck = PRTracker.checkForNewPR(
-                        exerciseName,
-                        set.reps,
-                        set.weight,
-                        equipment
-                    );
+                    const prCheck = PRTracker.checkForNewPR(exerciseName, set.reps, set.weight, equipment);
 
                     if (prCheck.isNewPR) {
                         // Use the workout date (doc.id is YYYY-MM-DD format)
@@ -73,7 +68,6 @@ export async function migrateOldWorkoutsToPRs() {
         }
 
         alert(`PR Migration Complete!\n\nProcessed: ${processedCount} workouts\nFound: ${prCount} PRs`);
-
     } catch (error) {
         console.error('❌ Migration failed:', error);
         alert('Migration failed. Check console for details.');

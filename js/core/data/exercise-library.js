@@ -19,10 +19,10 @@ export function getExerciseLibrary(appState) {
             }
 
             currentContext = 'manual-workout';
-            
+
             const modal = document.getElementById('exercise-library-modal');
             const modalTitle = document.querySelector('#exercise-library-modal .modal-title');
-            
+
             if (modalTitle) {
                 modalTitle.textContent = 'Add Exercise to Manual Workout';
             }
@@ -34,10 +34,10 @@ export function getExerciseLibrary(appState) {
             currentContext = 'template';
             appState.addingToTemplate = true;
             appState.templateEditingContext = template;
-            
+
             const modal = document.getElementById('exercise-library-modal');
             const modalTitle = document.querySelector('#exercise-library-modal .modal-title');
-            
+
             if (modalTitle) {
                 modalTitle.textContent = 'Add Exercise to Template';
             }
@@ -52,10 +52,10 @@ export function getExerciseLibrary(appState) {
             }
 
             currentContext = 'workout-add';
-            
+
             const modal = document.getElementById('exercise-library-modal');
             const modalTitle = document.querySelector('#exercise-library-modal .modal-title');
-            
+
             if (modalTitle) {
                 modalTitle.textContent = 'Add Exercise to Workout';
             }
@@ -221,7 +221,7 @@ export function getExerciseLibrary(appState) {
             // Filter dropdowns
             const bodyPartFilter = document.getElementById('body-part-filter');
             const equipmentFilter = document.getElementById('equipment-filter');
-            
+
             if (bodyPartFilter) {
                 bodyPartFilter.onchange = () => this.filterExercises();
             }
@@ -235,22 +235,23 @@ export function getExerciseLibrary(appState) {
             const bodyPartFilter = document.getElementById('body-part-filter')?.value || '';
             const equipmentFilter = document.getElementById('equipment-filter')?.value || '';
 
-            filteredExercises = currentExercises.filter(exercise => {
+            filteredExercises = currentExercises.filter((exercise) => {
                 // Text search
-                const matchesSearch = !searchQuery || 
+                const matchesSearch =
+                    !searchQuery ||
                     exercise.name?.toLowerCase().includes(searchQuery) ||
                     exercise.machine?.toLowerCase().includes(searchQuery) ||
                     exercise.bodyPart?.toLowerCase().includes(searchQuery) ||
                     exercise.equipmentType?.toLowerCase().includes(searchQuery) ||
-                    (exercise.tags && exercise.tags.some(tag => tag.toLowerCase().includes(searchQuery)));
+                    (exercise.tags && exercise.tags.some((tag) => tag.toLowerCase().includes(searchQuery)));
 
                 // Body part filter
-                const matchesBodyPart = !bodyPartFilter || 
-                    exercise.bodyPart?.toLowerCase() === bodyPartFilter.toLowerCase();
+                const matchesBodyPart =
+                    !bodyPartFilter || exercise.bodyPart?.toLowerCase() === bodyPartFilter.toLowerCase();
 
                 // Equipment filter
-                const matchesEquipment = !equipmentFilter || 
-                    exercise.equipmentType?.toLowerCase() === equipmentFilter.toLowerCase();
+                const matchesEquipment =
+                    !equipmentFilter || exercise.equipmentType?.toLowerCase() === equipmentFilter.toLowerCase();
 
                 return matchesSearch && matchesBodyPart && matchesEquipment;
             });
@@ -284,7 +285,7 @@ export function getExerciseLibrary(appState) {
             const searchInput = document.getElementById('exercise-library-search');
             const bodyPartFilter = document.getElementById('body-part-filter');
             const equipmentFilter = document.getElementById('equipment-filter');
-            
+
             if (searchInput) searchInput.value = '';
             if (bodyPartFilter) bodyPartFilter.value = '';
             if (equipmentFilter) equipmentFilter.value = '';
@@ -294,7 +295,7 @@ export function getExerciseLibrary(appState) {
             if (modalTitle) {
                 modalTitle.textContent = 'Exercise Library';
             }
-        }
+        },
     };
 }
 
@@ -302,7 +303,7 @@ export function getExerciseLibrary(appState) {
 function selectExerciseGeneric(exerciseDataOrName, exerciseJson) {
     try {
         let exercise;
-        
+
         // Handle different parameter formats
         if (arguments.length === 2) {
             // Format: selectExerciseGeneric('Exercise Name', 'jsonString')
@@ -312,9 +313,9 @@ function selectExerciseGeneric(exerciseDataOrName, exerciseJson) {
             // Format: selectExerciseGeneric(exerciseObject) or selectExerciseGeneric('Exercise Name')
             if (typeof exerciseDataOrName === 'string') {
                 // Just a name string - create a simple exercise object
-                exercise = { 
-                    name: exerciseDataOrName, 
-                    machine: exerciseDataOrName 
+                exercise = {
+                    name: exerciseDataOrName,
+                    machine: exerciseDataOrName,
                 };
             } else {
                 // Full exercise object
@@ -323,13 +324,12 @@ function selectExerciseGeneric(exerciseDataOrName, exerciseJson) {
         } else {
             throw new Error('Invalid parameters');
         }
-        
+
         // Close the library modal
         const modal = document.getElementById('exercise-library-modal');
         if (modal) {
             modal.classList.add('hidden');
         }
-        
     } catch (error) {
         console.error('Error in selectExerciseGeneric:', error);
         showNotification('Error selecting exercise', 'error');

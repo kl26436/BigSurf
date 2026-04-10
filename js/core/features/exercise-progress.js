@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { db, collection, query, where, getDocs, orderBy } from '../data/firebase-config.js';
+import { getDateString } from '../utils/date-helpers.js';
 
 // ===================================================================
 // DATA STRUCTURES
@@ -38,7 +39,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
  */
 export async function loadExerciseProgress(forceRefresh = false) {
     // Return cached data if fresh
-    if (!forceRefresh && progressCache && lastCacheTime && (Date.now() - lastCacheTime < CACHE_DURATION)) {
+    if (!forceRefresh && progressCache && lastCacheTime && Date.now() - lastCacheTime < CACHE_DURATION) {
         return progressCache;
     }
 
@@ -48,22 +49,18 @@ export async function loadExerciseProgress(forceRefresh = false) {
 
     try {
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        const q = query(
-            workoutsRef,
-            where('completedAt', '!=', null),
-            orderBy('completedAt', 'asc')
-        );
+        const q = query(workoutsRef, where('completedAt', '!=', null), orderBy('completedAt', 'asc'));
 
         const snapshot = await getDocs(q);
         const progressData = {};
 
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc) => {
             const workout = doc.data();
 
             // Skip cancelled workouts
             if (workout.cancelledAt) return;
 
-            const workoutDate = workout.date || workout.completedAt?.split('T')[0];
+            const workoutDate = workout.date || getDateString(workout.completedAt);
             const location = workout.location || 'Unknown';
 
             if (!workout.exercises || !workout.exerciseNames) return;
@@ -87,8 +84,8 @@ export async function loadExerciseProgress(forceRefresh = false) {
                 // 4. Default to 'Other'
                 let bodyPart = originalExercise?.bodyPart || exerciseData.bodyPart;
                 if (!bodyPart && AppState.exerciseDatabase) {
-                    const dbExercise = AppState.exerciseDatabase.find(ex =>
-                        ex.name?.toLowerCase() === exerciseName?.toLowerCase()
+                    const dbExercise = AppState.exerciseDatabase.find(
+                        (ex) => ex.name?.toLowerCase() === exerciseName?.toLowerCase()
                     );
                     bodyPart = dbExercise?.bodyPart;
                 }
@@ -103,7 +100,7 @@ export async function loadExerciseProgress(forceRefresh = false) {
                         exercise: exerciseName,
                         equipment: equipment,
                         bodyPart: bodyPart,
-                        sessions: []
+                        sessions: [],
                     };
                 }
 
@@ -135,7 +132,7 @@ export async function loadExerciseProgress(forceRefresh = false) {
                         maxReps,
                         totalVolume,
                         location,
-                        bestSet
+                        bestSet,
                     });
                 }
             }
@@ -151,7 +148,6 @@ export async function loadExerciseProgress(forceRefresh = false) {
         lastCacheTime = Date.now();
 
         return progressData;
-
     } catch (error) {
         console.error('❌ Error loading exercise progress:', error);
         return {};
@@ -178,8 +174,14 @@ function getTrainingCategory(bodyPart) {
         return 'Pull';
     }
     // Legs
-    if (bp.includes('leg') || bp.includes('quad') || bp.includes('hamstring') ||
-        bp.includes('glute') || bp.includes('calf') || bp.includes('lower')) {
+    if (
+        bp.includes('leg') ||
+        bp.includes('quad') ||
+        bp.includes('hamstring') ||
+        bp.includes('glute') ||
+        bp.includes('calf') ||
+        bp.includes('lower')
+    ) {
         return 'Legs';
     }
     // Core/Cardio
@@ -203,7 +205,7 @@ export async function getExerciseList() {
         bodyPart: data.bodyPart,
         category: getTrainingCategory(data.bodyPart),
         sessionCount: data.sessions.length,
-        latestDate: data.sessions[data.sessions.length - 1]?.date || null
+        latestDate: data.sessions[data.sessions.length - 1]?.date || null,
     }));
 
     // Sort by most recent first, then by session count
@@ -245,7 +247,7 @@ export async function getExerciseHierarchy() {
             equipment: item.equipment,
             bodyPart: item.bodyPart,
             sessionCount: item.sessionCount,
-            latestDate: item.latestDate
+            latestDate: item.latestDate,
         });
     }
 
@@ -281,35 +283,31 @@ export async function getExerciseProgressData(key, timeRange = 'ALL') {
 
     // Filter sessions by time range
     const cutoffDate = getDateCutoff(timeRange);
-    const filteredSessions = cutoffDate
-        ? data.sessions.filter(s => s.date >= cutoffDate)
-        : data.sessions;
+    const filteredSessions = cutoffDate ? data.sessions.filter((s) => s.date >= cutoffDate) : data.sessions;
 
     if (filteredSessions.length === 0) {
         return {
             ...data,
             sessions: [],
-            stats: null
+            stats: null,
         };
     }
 
     // Calculate stats
     const firstSession = filteredSessions[0];
     const lastSession = filteredSessions[filteredSessions.length - 1];
-    const allWeights = filteredSessions.map(s => s.maxWeight);
+    const allWeights = filteredSessions.map((s) => s.maxWeight);
     const maxWeight = Math.max(...allWeights);
     const minWeight = Math.min(...allWeights);
 
     // Find PR session
-    const prSession = filteredSessions.find(s => s.maxWeight === maxWeight);
+    const prSession = filteredSessions.find((s) => s.maxWeight === maxWeight);
 
     // Calculate improvement
     const startWeight = firstSession.maxWeight;
     const currentWeight = lastSession.maxWeight;
     const improvement = currentWeight - startWeight;
-    const improvementPercent = startWeight > 0
-        ? ((improvement / startWeight) * 100).toFixed(1)
-        : 0;
+    const improvementPercent = startWeight > 0 ? ((improvement / startWeight) * 100).toFixed(1) : 0;
 
     return {
         exercise: data.exercise,
@@ -327,8 +325,8 @@ export async function getExerciseProgressData(key, timeRange = 'ALL') {
             prDate: prSession?.date,
             prReps: prSession?.maxReps,
             firstDate: firstSession.date,
-            lastDate: lastSession.date
-        }
+            lastDate: lastSession.date,
+        },
     };
 }
 
@@ -345,13 +343,13 @@ export async function getChartData(key, timeRange = 'ALL') {
         return { labels: [], data: [], tooltips: [] };
     }
 
-    const labels = progressData.sessions.map(s => formatDateShort(s.date));
-    const data = progressData.sessions.map(s => s.maxWeight);
-    const tooltips = progressData.sessions.map(s => ({
+    const labels = progressData.sessions.map((s) => formatDateShort(s.date));
+    const data = progressData.sessions.map((s) => s.maxWeight);
+    const tooltips = progressData.sessions.map((s) => ({
         date: s.date,
         weight: s.maxWeight,
         reps: s.maxReps,
-        location: s.location
+        location: s.location,
     }));
 
     return { labels, data, tooltips, stats: progressData.stats };
@@ -405,7 +403,7 @@ function getDateCutoff(timeRange) {
             return null;
     }
 
-    return cutoff.toISOString().split('T')[0];
+    return getDateString(cutoff);
 }
 
 /**
@@ -456,8 +454,7 @@ export async function getBodyPartDistribution(timeRange = '3M') {
     }
 
     // Sort by volume descending
-    const sorted = Object.entries(bodyPartVolume)
-        .sort((a, b) => b[1] - a[1]);
+    const sorted = Object.entries(bodyPartVolume).sort((a, b) => b[1] - a[1]);
 
     // Color palette matching app theme
     const colors = [
@@ -476,9 +473,9 @@ export async function getBodyPartDistribution(timeRange = '3M') {
     return {
         labels: sorted.map(([bp]) => bp),
         data: sorted.map(([_, vol]) => vol),
-        percentages: sorted.map(([_, vol]) => total > 0 ? Math.round((vol / total) * 100) : 0),
+        percentages: sorted.map(([_, vol]) => (total > 0 ? Math.round((vol / total) * 100) : 0)),
         colors: sorted.map((_, i) => colors[i % colors.length]),
-        total
+        total,
     };
 }
 
@@ -500,11 +497,7 @@ export async function getHeatMapData() {
         startDate.setDate(startDate.getDate() - 84); // 12 weeks
 
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        const q = query(
-            workoutsRef,
-            where('date', '>=', startDate.toISOString().split('T')[0]),
-            orderBy('date', 'asc')
-        );
+        const q = query(workoutsRef, where('date', '>=', getDateString(startDate)), orderBy('date', 'asc'));
 
         const snapshot = await getDocs(q);
 
@@ -512,7 +505,7 @@ export async function getHeatMapData() {
         const dateData = {};
         let maxSets = 0;
 
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc) => {
             const workout = doc.data();
             if (!workout.completedAt || workout.cancelledAt) return;
 
@@ -525,7 +518,7 @@ export async function getHeatMapData() {
             if (workout.exercises) {
                 for (const ex of Object.values(workout.exercises)) {
                     if (ex.sets) {
-                        dateData[date].sets += ex.sets.filter(s => s.reps && s.weight).length;
+                        dateData[date].sets += ex.sets.filter((s) => s.reps && s.weight).length;
                     }
                 }
             }
@@ -545,7 +538,7 @@ export async function getHeatMapData() {
         startSunday.setDate(startSunday.getDate() - startSunday.getDay());
 
         for (let d = new Date(startSunday); d <= today; d.setDate(d.getDate() + 1)) {
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = getDateString(d);
             const dayData = dateData[dateStr] || { sets: 0, workouts: 0 };
 
             // Calculate intensity (0-4 scale)
@@ -563,8 +556,8 @@ export async function getHeatMapData() {
                 sets: dayData.sets,
                 workouts: dayData.workouts,
                 intensity,
-                isToday: dateStr === today.toISOString().split('T')[0],
-                isFuture: d > today
+                isToday: dateStr === getDateString(today),
+                isFuture: d > today,
             });
 
             // Start new week on Saturday
@@ -580,7 +573,6 @@ export async function getHeatMapData() {
         }
 
         return { weeks, maxSets };
-
     } catch (error) {
         console.error('Error getting heat map data:', error);
         return { weeks: [], maxSets: 0 };
@@ -614,7 +606,7 @@ export async function getPRTimeline(limit = 10) {
                 weight: prs.maxWeight.weight,
                 reps: prs.maxWeight.reps,
                 date: prs.maxWeight.date,
-                location: prs.maxWeight.location
+                location: prs.maxWeight.location,
             });
         }
     }
@@ -639,5 +631,5 @@ export const ExerciseProgress = {
     clearProgressCache,
     getBodyPartDistribution,
     getHeatMapData,
-    getPRTimeline
+    getPRTimeline,
 };

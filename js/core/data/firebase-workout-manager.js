@@ -2,11 +2,23 @@
 // Replace your existing firebase-workout-manager.js with this version
 
 import {
-    db, doc, setDoc, getDoc, deleteDoc, collection, query, where,
-    getDocs, getDocsFromServer, orderBy, limit, onSnapshot
+    db,
+    doc,
+    setDoc,
+    getDoc,
+    deleteDoc,
+    collection,
+    query,
+    where,
+    getDocs,
+    getDocsFromServer,
+    orderBy,
+    limit,
+    onSnapshot,
 } from './firebase-config.js';
-import { writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { showNotification } from '../ui/ui-helpers.js';
+import { sanitizeString, validateExerciseData, validateEquipmentData } from '../utils/validation.js';
 
 export class FirebaseWorkoutManager {
     constructor(appState) {
@@ -17,42 +29,36 @@ export class FirebaseWorkoutManager {
     }
 
     // ===== UNIVERSAL EXERCISE MANAGEMENT =====
-    
+
     /**
      * Get complete exercise library with user overrides applied
      * This is the main method that replaces getExerciseLibrary()
      */
     async getExerciseLibrary() {
         try {
-            
             if (!this.appState.currentUser) {
                 return await this.getDefaultExercisesOnly();
             }
 
             // 1. Load base default exercises
             const defaultExercises = await this.getDefaultExercises();
-            
-            // 2. Load user's custom exercises  
+
+            // 2. Load user's custom exercises
             const customExercises = await this.getCustomExercises();
-            
+
             // 3. Load user's exercise overrides
             const userOverrides = await this.getUserExerciseOverrides();
-            
+
             // 4. Load hidden exercises
             const hiddenExercises = await this.getHiddenExercises();
-            
+
             // 5. Apply overrides and filter hidden exercises
-            let finalExercises = this.mergeExercisesWithOverrides(
-                defaultExercises, 
-                customExercises, 
-                userOverrides
-            );
-            
+            let finalExercises = this.mergeExercisesWithOverrides(defaultExercises, customExercises, userOverrides);
+
             // 6. Filter out hidden exercises
             finalExercises = this.filterHiddenExercises(finalExercises, hiddenExercises);
-            
+
             return finalExercises;
-            
         } catch (error) {
             console.error('❌ Error loading universal exercise library:', error);
             showNotification('Error loading exercise library, using fallback', 'warning');
@@ -68,13 +74,14 @@ export class FirebaseWorkoutManager {
             throw new Error('Must be signed in to save exercises');
         }
 
+        exerciseData = validateExerciseData(exerciseData) || exerciseData;
+
         try {
-            
             // Determine save strategy
             const isDefaultOverride = exerciseData.isDefault && isEditing && !exerciseData.isOverride;
             const isExistingOverride = exerciseData.isOverride && isEditing;
             const isCustomExercise = exerciseData.isCustom || (!exerciseData.isDefault && !exerciseData.isOverride);
-            
+
             if (isDefaultOverride) {
                 // Create user override for default exercise
                 return await this.createUserOverride(exerciseData);
@@ -88,7 +95,6 @@ export class FirebaseWorkoutManager {
                 // New custom exercise
                 return await this.saveCustomExercise(exerciseData, false);
             }
-            
         } catch (error) {
             console.error('❌ Error saving universal exercise:', error);
             showNotification(`Error saving "${exerciseData.name}"`, 'error');
@@ -101,10 +107,9 @@ export class FirebaseWorkoutManager {
      */
     async createUserOverride(exerciseData) {
         try {
-            
             const overrideId = exerciseData.id || exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "exerciseOverrides", overrideId);
-            
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'exerciseOverrides', overrideId);
+
             const overrideData = {
                 originalId: exerciseData.id,
                 originalName: exerciseData.name,
@@ -123,13 +128,12 @@ export class FirebaseWorkoutManager {
                 isOverride: true,
                 overrideCreated: new Date().toISOString(),
                 lastUpdated: new Date().toISOString(),
-                createdBy: this.appState.currentUser.uid
+                createdBy: this.appState.currentUser.uid,
             };
-            
+
             await setDoc(docRef, overrideData);
-            
+
             return overrideId;
-            
         } catch (error) {
             console.error('❌ Error creating user override:', error);
             throw error;
@@ -142,18 +146,17 @@ export class FirebaseWorkoutManager {
     async updateUserOverride(exerciseData) {
         try {
             const overrideId = exerciseData.id;
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "exerciseOverrides", overrideId);
-            
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'exerciseOverrides', overrideId);
+
             const updateData = {
                 ...exerciseData,
                 lastUpdated: new Date().toISOString(),
-                isOverride: true
+                isOverride: true,
             };
-            
+
             await setDoc(docRef, updateData, { merge: true });
-            
+
             return overrideId;
-            
         } catch (error) {
             console.error('❌ Error updating user override:', error);
             throw error;
@@ -167,21 +170,20 @@ export class FirebaseWorkoutManager {
         if (!this.appState.currentUser) {
             return [];
         }
-        
+
         try {
-            const overridesRef = collection(this.db, "users", this.appState.currentUser.uid, "exerciseOverrides");
+            const overridesRef = collection(this.db, 'users', this.appState.currentUser.uid, 'exerciseOverrides');
             const querySnapshot = await getDocs(overridesRef);
-            
+
             const overrides = [];
             querySnapshot.forEach((doc) => {
-                overrides.push({ 
-                    id: doc.id, 
+                overrides.push({
+                    id: doc.id,
                     ...doc.data(),
-                    isOverride: true
+                    isOverride: true,
                 });
             });
             return overrides;
-            
         } catch (error) {
             console.error('❌ Error loading user overrides:', error);
             return [];
@@ -195,8 +197,8 @@ export class FirebaseWorkoutManager {
         // Create lookup maps for overrides
         const overrideByOriginalId = new Map();
         const overrideByOriginalName = new Map();
-        
-        userOverrides.forEach(override => {
+
+        userOverrides.forEach((override) => {
             if (override.originalId) {
                 overrideByOriginalId.set(override.originalId, override);
             }
@@ -206,17 +208,17 @@ export class FirebaseWorkoutManager {
         });
 
         // Apply overrides to default exercises
-        const mergedDefaults = defaultExercises.map(exercise => {
+        const mergedDefaults = defaultExercises.map((exercise) => {
             const overrideById = overrideByOriginalId.get(exercise.id);
             const overrideByName = overrideByOriginalName.get(exercise.name?.toLowerCase());
             const override = overrideById || overrideByName;
-            
+
             if (override) {
-                return { 
-                    ...exercise, 
-                    ...override, 
+                return {
+                    ...exercise,
+                    ...override,
                     isOverridden: true,
-                    originalData: exercise // Keep reference to original
+                    originalData: exercise, // Keep reference to original
                 };
             }
             return exercise;
@@ -245,9 +247,8 @@ export class FirebaseWorkoutManager {
                 // Hide default exercise
                 await this.hideDefaultExercise(exerciseId, exerciseData);
             }
-            
+
             return true;
-            
         } catch (error) {
             console.error('❌ Error deleting exercise:', error);
             throw error;
@@ -258,7 +259,7 @@ export class FirebaseWorkoutManager {
      * Delete user override (reverts to default)
      */
     async deleteUserOverride(overrideId) {
-        const docRef = doc(this.db, "users", this.appState.currentUser.uid, "exerciseOverrides", overrideId);
+        const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'exerciseOverrides', overrideId);
         await deleteDoc(docRef);
     }
 
@@ -267,13 +268,13 @@ export class FirebaseWorkoutManager {
      */
     async hideDefaultExercise(exerciseId, exerciseData) {
         const hideId = exerciseId || exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-        const docRef = doc(this.db, "users", this.appState.currentUser.uid, "hiddenExercises", hideId);
-        
+        const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'hiddenExercises', hideId);
+
         await setDoc(docRef, {
             originalId: exerciseId,
             originalName: exerciseData.name,
             hiddenAt: new Date().toISOString(),
-            reason: 'user_hidden'
+            reason: 'user_hidden',
         });
     }
 
@@ -284,18 +285,17 @@ export class FirebaseWorkoutManager {
         if (!this.appState.currentUser) {
             return [];
         }
-        
+
         try {
-            const hiddenRef = collection(this.db, "users", this.appState.currentUser.uid, "hiddenExercises");
+            const hiddenRef = collection(this.db, 'users', this.appState.currentUser.uid, 'hiddenExercises');
             const querySnapshot = await getDocs(hiddenRef);
-            
+
             const hidden = [];
             querySnapshot.forEach((doc) => {
                 hidden.push(doc.data());
             });
-            
+
             return hidden;
-            
         } catch (error) {
             console.error('❌ Error loading hidden exercises:', error);
             return [];
@@ -307,16 +307,16 @@ export class FirebaseWorkoutManager {
      */
     filterHiddenExercises(exercises, hiddenExercises) {
         if (hiddenExercises.length === 0) return exercises;
-        
+
         const hiddenIds = new Set();
         const hiddenNames = new Set();
-        
-        hiddenExercises.forEach(hidden => {
+
+        hiddenExercises.forEach((hidden) => {
             if (hidden.originalId) hiddenIds.add(hidden.originalId);
             if (hidden.originalName) hiddenNames.add(hidden.originalName.toLowerCase());
         });
-        
-        return exercises.filter(exercise => {
+
+        return exercises.filter((exercise) => {
             const isHiddenById = hiddenIds.has(exercise.id);
             const isHiddenByName = hiddenNames.has(exercise.name?.toLowerCase());
             return !isHiddenById && !isHiddenByName;
@@ -324,7 +324,7 @@ export class FirebaseWorkoutManager {
     }
 
     // ===== TRADITIONAL EXERCISE METHODS (for compatibility) =====
-    
+
     async getDefaultExercises() {
         try {
             const exercisesRef = collection(this.db, 'exercises');
@@ -334,9 +334,11 @@ export class FirebaseWorkoutManager {
             const seenNames = new Set(); // Track names to filter duplicates
 
             querySnapshot.forEach((doc) => {
-                if (doc.id !== 'default') { // Skip metadata
+                if (doc.id !== 'default') {
+                    // Skip metadata
                     const data = doc.data();
-                    if (data.name || data.machine) { // Validate exercise
+                    if (data.name || data.machine) {
+                        // Validate exercise
                         const name = (data.name || data.machine).toLowerCase();
 
                         // Skip if we've already seen this exercise name (dedup)
@@ -357,13 +359,12 @@ export class FirebaseWorkoutManager {
                             video: data.video || '',
                             tags: data.tags || [],
                             isDefault: true,
-                            isCustom: false
+                            isCustom: false,
                         });
                     }
                 }
             });
             return exercises;
-            
         } catch (error) {
             console.error('❌ Error loading default exercises from Firebase:', error);
             return await this.getDefaultExercisesOnly();
@@ -374,22 +375,21 @@ export class FirebaseWorkoutManager {
         if (!this.appState.currentUser) {
             return [];
         }
-        
+
         try {
-            const customRef = collection(this.db, "users", this.appState.currentUser.uid, "customExercises");
+            const customRef = collection(this.db, 'users', this.appState.currentUser.uid, 'customExercises');
             const querySnapshot = await getDocs(customRef);
-            
+
             const customExercises = [];
             querySnapshot.forEach((doc) => {
-                customExercises.push({ 
-                    id: doc.id, 
-                    ...doc.data(), 
+                customExercises.push({
+                    id: doc.id,
+                    ...doc.data(),
                     isCustom: true,
-                    isDefault: false
+                    isDefault: false,
                 });
             });
             return customExercises;
-            
         } catch (error) {
             console.error('❌ Error loading custom exercises:', error);
             return [];
@@ -405,8 +405,8 @@ export class FirebaseWorkoutManager {
             // Check for existing exercise with same name (to prevent duplicates)
             if (!isEditing) {
                 const existingExercises = await this.getCustomExercises();
-                const existingByName = existingExercises.find(ex =>
-                    ex.name?.toLowerCase() === exerciseData.name?.toLowerCase()
+                const existingByName = existingExercises.find(
+                    (ex) => ex.name?.toLowerCase() === exerciseData.name?.toLowerCase()
                 );
                 if (existingByName) {
                     // Update existing instead of creating duplicate
@@ -415,12 +415,13 @@ export class FirebaseWorkoutManager {
                 }
             }
 
-            const exerciseId = isEditing && exerciseData.id ?
-                exerciseData.id :
-                `custom_${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${Date.now()}`;
+            const exerciseId =
+                isEditing && exerciseData.id
+                    ? exerciseData.id
+                    : `custom_${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${Date.now()}`;
 
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "customExercises", exerciseId);
-            
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'customExercises', exerciseId);
+
             const exerciseToSave = {
                 name: exerciseData.name,
                 machine: exerciseData.machine || exerciseData.name,
@@ -437,15 +438,14 @@ export class FirebaseWorkoutManager {
                 isCustom: true,
                 isDefault: false,
                 createdBy: this.appState.currentUser.uid,
-                [isEditing ? 'lastUpdated' : 'createdAt']: new Date().toISOString()
+                [isEditing ? 'lastUpdated' : 'createdAt']: new Date().toISOString(),
             };
-            
+
             await setDoc(docRef, exerciseToSave);
-            
+
             const action = isEditing ? 'Updated' : 'Created';
-            
+
             return exerciseId;
-            
         } catch (error) {
             console.error('❌ Error saving custom exercise:', error);
             throw error;
@@ -460,8 +460,8 @@ export class FirebaseWorkoutManager {
         if (!this.appState.currentUser) {
             throw new Error('Must be signed in to delete custom exercises');
         }
-        
-        const docRef = doc(this.db, "users", this.appState.currentUser.uid, "customExercises", exerciseId);
+
+        const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'customExercises', exerciseId);
         await deleteDoc(docRef);
     }
 
@@ -471,18 +471,18 @@ export class FirebaseWorkoutManager {
             const response = await fetch('./data/exercises.json');
             if (response.ok) {
                 const exercises = await response.json();
-                return exercises.map(ex => ({ 
-                    ...ex, 
+                return exercises.map((ex) => ({
+                    ...ex,
                     name: ex.name || ex.machine,
                     machine: ex.machine || ex.name,
-                    isDefault: true, 
-                    isCustom: false 
+                    isDefault: true,
+                    isCustom: false,
                 }));
             }
         } catch (error) {
             console.error('❌ Error loading fallback exercises:', error);
         }
-        
+
         // Ultimate fallback
         return [
             {
@@ -497,117 +497,115 @@ export class FirebaseWorkoutManager {
                 video: '',
                 isDefault: true,
                 isCustom: false,
-                tags: ['chest', 'compound']
-            }
+                tags: ['chest', 'compound'],
+            },
         ];
     }
 
     // ===== WORKOUT TEMPLATE MANAGEMENT =====
-    
+
     async getWorkoutTemplates() {
-    
-    // For AppState.workoutPlans, we ONLY want global default templates
-    const defaultTemplates = await this.getGlobalDefaultTemplates();
-    return defaultTemplates;
-}
-
-async getGlobalDefaultTemplates() {
-    try {
-
-        // Load from your existing 'workouts' collection
-        const globalDefaultsRef = collection(this.db, "workouts");
-        const querySnapshot = await getDocs(globalDefaultsRef);
-
-        const globalDefaults = [];
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-
-            // Normalize exercises to array format
-            let exercises = data.exercises || [];
-            if (!Array.isArray(exercises) && typeof exercises === 'object') {
-                // Convert object format {exercise_0: {...}, exercise_1: {...}} to array
-                const keys = Object.keys(exercises).sort();
-                exercises = keys.map(key => exercises[key]).filter(ex => ex);
-            }
-
-            globalDefaults.push({
-                id: doc.id,
-                ...data,
-                exercises: exercises, // Use normalized exercises array
-                // Ensure consistent naming
-                name: data.day || data.name || doc.id,
-                isDefault: true,
-                isCustom: false,
-                source: 'global-firebase'
-            });
-        });
-
-        if (globalDefaults.length === 0) {
-            console.warn('⚠️ No global default templates found in workouts collection.');
-        }
-
-        return globalDefaults;
-
-    } catch (error) {
-        console.error('❌ Error loading global default templates:', error);
-
-        // Return empty array - no JSON fallback
-        return [];
+        // For AppState.workoutPlans, we ONLY want global default templates
+        const defaultTemplates = await this.getGlobalDefaultTemplates();
+        return defaultTemplates;
     }
-}
-    async getTemplatesByCategory(category) {
-    try {
-        
-        if (category === 'default') {
-            // Load ONLY global default templates
-            const defaultTemplates = await this.getGlobalDefaultTemplates();
-            return defaultTemplates;
-            
-        } else if (category === 'custom') {
-            // Load ONLY user-specific custom templates
-            if (!this.appState.currentUser) {
-                return [];
-            }
-            
-            const customTemplatesRef = collection(this.db, "users", this.appState.currentUser.uid, "workoutTemplates");
-            const querySnapshot = await getDocs(customTemplatesRef);
-            
-            const customTemplates = [];
+
+    async getGlobalDefaultTemplates() {
+        try {
+            // Load from your existing 'workouts' collection
+            const globalDefaultsRef = collection(this.db, 'workouts');
+            const querySnapshot = await getDocs(globalDefaultsRef);
+
+            const globalDefaults = [];
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-                customTemplates.push({ 
-                    id: doc.id, 
+
+                // Normalize exercises to array format
+                let exercises = data.exercises || [];
+                if (!Array.isArray(exercises) && typeof exercises === 'object') {
+                    // Convert object format {exercise_0: {...}, exercise_1: {...}} to array
+                    const keys = Object.keys(exercises).sort();
+                    exercises = keys.map((key) => exercises[key]).filter((ex) => ex);
+                }
+
+                globalDefaults.push({
+                    id: doc.id,
                     ...data,
-                    isCustom: true,
-                    isDefault: false,
-                    source: 'user-firebase'
+                    exercises: exercises, // Use normalized exercises array
+                    // Ensure consistent naming
+                    name: data.day || data.name || doc.id,
+                    isDefault: true,
+                    isCustom: false,
+                    source: 'global-firebase',
                 });
             });
-            return customTemplates;
-            
-        } else {
-            // For workout categories (Push, Pull, Legs, etc.), load all and filter
-            const allTemplates = await this.getUserWorkoutTemplates();
-            const filteredTemplates = allTemplates.filter(template => 
-                template.category === category || 
-                (template.day && this.getWorkoutCategory(template.day) === category)
-            );
-            return filteredTemplates;
-        }
-        
-    } catch (error) {
-        console.error(`❌ Error loading templates for category ${category}:`, error);
-        return [];
-    }
-}
 
+            if (globalDefaults.length === 0) {
+                console.warn('⚠️ No global default templates found in workouts collection.');
+            }
+
+            return globalDefaults;
+        } catch (error) {
+            console.error('❌ Error loading global default templates:', error);
+
+            // Return empty array - no JSON fallback
+            return [];
+        }
+    }
+    async getTemplatesByCategory(category) {
+        try {
+            if (category === 'default') {
+                // Load ONLY global default templates
+                const defaultTemplates = await this.getGlobalDefaultTemplates();
+                return defaultTemplates;
+            } else if (category === 'custom') {
+                // Load ONLY user-specific custom templates
+                if (!this.appState.currentUser) {
+                    return [];
+                }
+
+                const customTemplatesRef = collection(
+                    this.db,
+                    'users',
+                    this.appState.currentUser.uid,
+                    'workoutTemplates'
+                );
+                const querySnapshot = await getDocs(customTemplatesRef);
+
+                const customTemplates = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    customTemplates.push({
+                        id: doc.id,
+                        ...data,
+                        isCustom: true,
+                        isDefault: false,
+                        source: 'user-firebase',
+                    });
+                });
+                return customTemplates;
+            } else {
+                // For workout categories (Push, Pull, Legs, etc.), load all and filter
+                const allTemplates = await this.getUserWorkoutTemplates();
+                const filteredTemplates = allTemplates.filter(
+                    (template) =>
+                        template.category === category ||
+                        (template.day && this.getWorkoutCategory(template.day) === category)
+                );
+                return filteredTemplates;
+            }
+        } catch (error) {
+            console.error(`❌ Error loading templates for category ${category}:`, error);
+            return [];
+        }
+    }
 
     // Helper method to determine workout category from day name
     getWorkoutCategory(dayName) {
         if (!dayName) return 'Other';
-        
+
         const dayLower = dayName.toLowerCase();
-        
+
         if (dayLower.includes('push') || dayLower.includes('chest')) {
             return 'Push';
         } else if (dayLower.includes('pull') || dayLower.includes('back')) {
@@ -621,9 +619,8 @@ async getGlobalDefaultTemplates() {
         }
     }
 
-        async getUserWorkoutTemplates() {
+    async getUserWorkoutTemplates() {
         try {
-
             // Load global defaults
             const defaultTemplates = await this.getGlobalDefaultTemplates();
 
@@ -632,7 +629,12 @@ async getGlobalDefaultTemplates() {
             const overriddenDefaultIds = new Set();
 
             if (this.appState.currentUser) {
-                const customTemplatesRef = collection(this.db, "users", this.appState.currentUser.uid, "workoutTemplates");
+                const customTemplatesRef = collection(
+                    this.db,
+                    'users',
+                    this.appState.currentUser.uid,
+                    'workoutTemplates'
+                );
                 const customSnapshot = await getDocs(customTemplatesRef);
 
                 customSnapshot.forEach((doc) => {
@@ -652,7 +654,7 @@ async getGlobalDefaultTemplates() {
                     if (!Array.isArray(exercises) && typeof exercises === 'object') {
                         // Convert object format {exercise_0: {...}, exercise_1: {...}} to array
                         const keys = Object.keys(exercises).sort();
-                        exercises = keys.map(key => exercises[key]).filter(ex => ex);
+                        exercises = keys.map((key) => exercises[key]).filter((ex) => ex);
                     }
 
                     customTemplates.push({
@@ -661,7 +663,7 @@ async getGlobalDefaultTemplates() {
                         exercises: exercises, // Use normalized exercises array
                         isCustom: true,
                         isDefault: false,
-                        source: 'user-firebase'
+                        source: 'user-firebase',
                     });
 
                     // Track which defaults are overridden
@@ -672,21 +674,20 @@ async getGlobalDefaultTemplates() {
             }
 
             // Filter out defaults that have been overridden or hidden
-            const visibleDefaults = defaultTemplates.filter(template =>
-                !overriddenDefaultIds.has(template.id || template.day)
+            const visibleDefaults = defaultTemplates.filter(
+                (template) => !overriddenDefaultIds.has(template.id || template.day)
             );
 
             const allTemplates = [...visibleDefaults, ...customTemplates];
 
             return allTemplates;
-
         } catch (error) {
             console.error('❌ Error loading user workout templates:', error);
             return [];
         }
     }
 
-        async getMigratedDefaultWorkouts() {
+    async getMigratedDefaultWorkouts() {
         // Simply return the global defaults
         return await this.getGlobalDefaultTemplates();
     }
@@ -695,10 +696,12 @@ async getGlobalDefaultTemplates() {
         if (!this.appState.currentUser) {
             throw new Error('User must be signed in to save workout templates');
         }
-        
+
+        if (templateData.name) templateData.name = sanitizeString(templateData.name, 200);
+
         try {
             const templateId = templateData.id || templateData.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "workoutTemplates", templateId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'workoutTemplates', templateId);
 
             const templateToSave = {
                 ...templateData,
@@ -706,11 +709,11 @@ async getGlobalDefaultTemplates() {
                 lastUpdated: new Date().toISOString(),
                 createdBy: this.appState.currentUser.uid,
                 isCustom: true,
-                isDefault: false
+                isDefault: false,
             };
 
             // Remove undefined fields (Firebase doesn't allow them)
-            Object.keys(templateToSave).forEach(key => {
+            Object.keys(templateToSave).forEach((key) => {
                 if (templateToSave[key] === undefined) {
                     delete templateToSave[key];
                 }
@@ -719,7 +722,6 @@ async getGlobalDefaultTemplates() {
             await setDoc(docRef, templateToSave);
 
             return templateId;
-            
         } catch (error) {
             console.error('❌ Error saving workout template:', error);
             showNotification('Failed to save workout template', 'error');
@@ -731,20 +733,19 @@ async getGlobalDefaultTemplates() {
         if (!this.appState.currentUser) {
             throw new Error('User must be signed in to update workout templates');
         }
-        
+
         try {
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "workoutTemplates", templateId);
-            
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'workoutTemplates', templateId);
+
             const updateData = {
                 ...templateData,
                 lastUpdated: new Date().toISOString(),
-                isCustom: true
+                isCustom: true,
             };
-            
+
             await setDoc(docRef, updateData, { merge: true });
 
             return true;
-            
         } catch (error) {
             console.error('❌ Error updating workout template:', error);
             showNotification('Failed to update workout template', 'error');
@@ -756,13 +757,12 @@ async getGlobalDefaultTemplates() {
         if (!this.appState.currentUser) {
             throw new Error('User must be signed in to delete workout templates');
         }
-        
+
         try {
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "workoutTemplates", templateId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'workoutTemplates', templateId);
             await deleteDoc(docRef);
 
             return true;
-            
         } catch (error) {
             console.error('❌ Error deleting workout template:', error);
             showNotification('Failed to delete workout template', 'error');
@@ -771,14 +771,14 @@ async getGlobalDefaultTemplates() {
     }
 
     // ===== WORKOUT MANAGEMENT =====
-    
+
     async saveWorkout(workoutData) {
         if (!this.appState.currentUser) {
             throw new Error('User must be signed in to save workouts');
         }
-        
+
         try {
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "workouts", workoutData.date);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'workouts', workoutData.date);
             await setDoc(docRef, workoutData);
             return true;
         } catch (error) {
@@ -793,8 +793,8 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const workoutsRef = collection(this.db, "users", this.appState.currentUser.uid, "workouts");
-            const q = query(workoutsRef, orderBy("date", "desc"));
+            const workoutsRef = collection(this.db, 'users', this.appState.currentUser.uid, 'workouts');
+            const q = query(workoutsRef, orderBy('date', 'desc'));
             // Use getDocsFromServer to bypass Firestore cache (ensures deleted docs don't reappear)
             const querySnapshot = await getDocsFromServer(q);
 
@@ -827,7 +827,7 @@ async getGlobalDefaultTemplates() {
         // Apply search query
         if (searchQuery && searchQuery.trim()) {
             const query = searchQuery.toLowerCase().trim();
-            filtered = filtered.filter(ex => {
+            filtered = filtered.filter((ex) => {
                 const name = (ex.name || ex.machine || '').toLowerCase();
                 const bodyPart = (ex.bodyPart || '').toLowerCase();
                 const equipment = (ex.equipmentType || '').toLowerCase();
@@ -837,15 +837,13 @@ async getGlobalDefaultTemplates() {
 
         // Apply body part filter
         if (filters.bodyPart) {
-            filtered = filtered.filter(ex =>
-                (ex.bodyPart || '').toLowerCase() === filters.bodyPart.toLowerCase()
-            );
+            filtered = filtered.filter((ex) => (ex.bodyPart || '').toLowerCase() === filters.bodyPart.toLowerCase());
         }
 
         // Apply equipment filter
         if (filters.equipment) {
-            filtered = filtered.filter(ex =>
-                (ex.equipmentType || '').toLowerCase() === filters.equipment.toLowerCase()
+            filtered = filtered.filter(
+                (ex) => (ex.equipmentType || '').toLowerCase() === filters.equipment.toLowerCase()
             );
         }
 
@@ -866,23 +864,23 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const equipmentId = equipmentData.id ||
-                `equipment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const equipmentId =
+                equipmentData.id || `equipment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "equipment", equipmentId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'equipment', equipmentId);
 
+            const validated = validateEquipmentData(equipmentData) || equipmentData;
             const equipmentToSave = {
                 id: equipmentId,
-                name: equipmentData.name,
-                location: equipmentData.location || null,
+                name: validated.name,
+                location: validated.location || null,
                 exerciseTypes: equipmentData.exerciseTypes || [],
                 createdAt: equipmentData.createdAt || new Date().toISOString(),
-                lastUsed: new Date().toISOString()
+                lastUsed: new Date().toISOString(),
             };
 
             await setDoc(docRef, equipmentToSave);
             return equipmentId;
-
         } catch (error) {
             console.error('❌ Error saving equipment:', error);
             throw error;
@@ -898,8 +896,8 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const equipmentRef = collection(this.db, "users", this.appState.currentUser.uid, "equipment");
-            const q = query(equipmentRef, orderBy("lastUsed", "desc"));
+            const equipmentRef = collection(this.db, 'users', this.appState.currentUser.uid, 'equipment');
+            const q = query(equipmentRef, orderBy('lastUsed', 'desc'));
             const querySnapshot = await getDocs(q);
 
             const equipment = [];
@@ -908,7 +906,6 @@ async getGlobalDefaultTemplates() {
             });
 
             return equipment;
-
         } catch (error) {
             console.error('❌ Error loading user equipment:', error);
             return [];
@@ -927,10 +924,7 @@ async getGlobalDefaultTemplates() {
             const allEquipment = await this.getUserEquipment();
 
             // Filter equipment that has been used with this exercise
-            return allEquipment.filter(eq =>
-                eq.exerciseTypes && eq.exerciseTypes.includes(exerciseName)
-            );
-
+            return allEquipment.filter((eq) => eq.exerciseTypes && eq.exerciseTypes.includes(exerciseName));
         } catch (error) {
             console.error('❌ Error loading equipment for exercise:', error);
             return [];
@@ -946,7 +940,7 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "equipment", equipmentId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'equipment', equipmentId);
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
@@ -961,10 +955,9 @@ async getGlobalDefaultTemplates() {
                 await setDoc(docRef, {
                     ...data,
                     exerciseTypes: exerciseTypes,
-                    lastUsed: new Date().toISOString()
+                    lastUsed: new Date().toISOString(),
                 });
             }
-
         } catch (error) {
             console.error('❌ Error updating equipment usage:', error);
         }
@@ -979,10 +972,9 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "equipment", equipmentId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'equipment', equipmentId);
             await deleteDoc(docRef);
             return true;
-
         } catch (error) {
             console.error('❌ Error deleting equipment:', error);
             throw error;
@@ -1000,7 +992,7 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "equipment", equipmentId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'equipment', equipmentId);
             const docSnap = await getDoc(docRef);
 
             if (!docSnap.exists()) {
@@ -1013,12 +1005,11 @@ async getGlobalDefaultTemplates() {
             const updatedData = {
                 ...existingData,
                 ...updates,
-                lastUsed: new Date().toISOString()
+                lastUsed: new Date().toISOString(),
             };
 
             await setDoc(docRef, updatedData);
             return true;
-
         } catch (error) {
             console.error('❌ Error updating equipment:', error);
             throw error;
@@ -1039,9 +1030,7 @@ async getGlobalDefaultTemplates() {
             const allEquipment = await this.getUserEquipment();
 
             // Look for existing equipment with same name (case-insensitive)
-            const existing = allEquipment.find(eq =>
-                eq.name?.toLowerCase() === equipmentName.toLowerCase()
-            );
+            const existing = allEquipment.find((eq) => eq.name?.toLowerCase() === equipmentName.toLowerCase());
 
             if (existing) {
                 // Add location if provided and not already present
@@ -1061,12 +1050,11 @@ async getGlobalDefaultTemplates() {
                 locations: location ? [location] : [],
                 location: null, // Use locations array instead
                 exerciseTypes: exerciseName ? [exerciseName] : [],
-                video: videoUrl || null
+                video: videoUrl || null,
             };
 
             const equipmentId = await this.saveEquipment(newEquipment);
             return { id: equipmentId, ...newEquipment };
-
         } catch (error) {
             console.error('❌ Error getting or creating equipment:', error);
             return null;
@@ -1083,7 +1071,7 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "equipment", equipmentId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'equipment', equipmentId);
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
@@ -1102,10 +1090,9 @@ async getGlobalDefaultTemplates() {
                     ...data,
                     locations: locations,
                     location: null, // Clear old single location field
-                    lastUsed: new Date().toISOString()
+                    lastUsed: new Date().toISOString(),
                 });
             }
-
         } catch (error) {
             console.error('❌ Error adding location to equipment:', error);
         }
@@ -1122,10 +1109,9 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const locationId = locationData.id ||
-                `location_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const locationId = locationData.id || `location_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "locations", locationId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'locations', locationId);
 
             const locationToSave = {
                 id: locationId,
@@ -1135,12 +1121,11 @@ async getGlobalDefaultTemplates() {
                 radius: locationData.radius || 150, // Default 150 meters
                 createdAt: locationData.createdAt || new Date().toISOString(),
                 lastVisit: new Date().toISOString(),
-                visitCount: (locationData.visitCount || 0) + 1
+                visitCount: (locationData.visitCount || 0) + 1,
             };
 
             await setDoc(docRef, locationToSave);
             return { id: locationId, ...locationToSave };
-
         } catch (error) {
             console.error('❌ Error saving location:', error);
             throw error;
@@ -1156,8 +1141,8 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const locationsRef = collection(this.db, "users", this.appState.currentUser.uid, "locations");
-            const q = query(locationsRef, orderBy("lastVisit", "desc"));
+            const locationsRef = collection(this.db, 'users', this.appState.currentUser.uid, 'locations');
+            const q = query(locationsRef, orderBy('lastVisit', 'desc'));
             const querySnapshot = await getDocs(q);
 
             const locations = [];
@@ -1166,7 +1151,6 @@ async getGlobalDefaultTemplates() {
             });
 
             return locations;
-
         } catch (error) {
             console.error('❌ Error loading user locations:', error);
             return [];
@@ -1182,7 +1166,7 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "locations", locationId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'locations', locationId);
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
@@ -1190,10 +1174,9 @@ async getGlobalDefaultTemplates() {
                 await setDoc(docRef, {
                     ...data,
                     lastVisit: new Date().toISOString(),
-                    visitCount: (data.visitCount || 0) + 1
+                    visitCount: (data.visitCount || 0) + 1,
                 });
             }
-
         } catch (error) {
             console.error('❌ Error updating location visit:', error);
         }
@@ -1208,10 +1191,9 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "locations", locationId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'locations', locationId);
             await deleteDoc(docRef);
             return true;
-
         } catch (error) {
             console.error('❌ Error deleting location:', error);
             throw error;
@@ -1227,7 +1209,7 @@ async getGlobalDefaultTemplates() {
         }
 
         try {
-            const docRef = doc(this.db, "users", this.appState.currentUser.uid, "locations", locationId);
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'locations', locationId);
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
@@ -1235,12 +1217,11 @@ async getGlobalDefaultTemplates() {
                 await setDoc(docRef, {
                     ...data,
                     ...updates,
-                    updatedAt: new Date().toISOString()
+                    updatedAt: new Date().toISOString(),
                 });
                 return true;
             }
             return false;
-
         } catch (error) {
             console.error('Error updating location:', error);
             throw error;
@@ -1257,8 +1238,7 @@ async getGlobalDefaultTemplates() {
 
         try {
             const locations = await this.getUserLocations();
-            return locations.find(loc => loc.name === name) || null;
-
+            return locations.find((loc) => loc.name === name) || null;
         } catch (error) {
             console.error('❌ Error finding location by name:', error);
             return null;
@@ -1288,11 +1268,10 @@ async getGlobalDefaultTemplates() {
                 name: name,
                 latitude: coords?.latitude || null,
                 longitude: coords?.longitude || null,
-                visitCount: 0
+                visitCount: 0,
             };
 
             return await this.saveLocation(newLocation);
-
         } catch (error) {
             console.error('❌ Error getting or creating location:', error);
             return null;

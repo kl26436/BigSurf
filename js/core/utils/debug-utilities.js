@@ -11,23 +11,23 @@ import { loadExerciseHistory } from '../data/data-manager.js';
 
 export function debugManualWorkoutDate() {
     console.log('🔍 DEBUGGING MANUAL WORKOUT DATE ISSUE:');
-    
+
     // Get current manual workout from the manual workout module
-    const { getCurrentManualWorkout } = import('../features/manual-workout.js').then(module => {
+    const { getCurrentManualWorkout } = import('../features/manual-workout.js').then((module) => {
         const currentManualWorkout = module.getCurrentManualWorkout();
         console.log('currentManualWorkout.date:', currentManualWorkout.date);
     });
-    
+
     const dateInput = document.getElementById('manual-workout-date');
     console.log('Date input value:', dateInput?.value);
-    
+
     const selectedDate = dateInput?.value;
     if (selectedDate) {
         console.log('Selected date string:', selectedDate);
         console.log('Date object from string:', new Date(selectedDate));
         console.log('ISO string:', new Date(selectedDate).toISOString());
         console.log('Local date string:', new Date(selectedDate).toLocaleDateString());
-        
+
         // Check timezone offset
         const date = new Date(selectedDate);
         console.log('Timezone offset (minutes):', date.getTimezoneOffset());
@@ -44,7 +44,7 @@ export async function debugFirebaseWorkoutDates() {
     try {
         const { db, collection, getDocs } = await import('../data/firebase-config.js');
 
-        const workoutsRef = collection(db, "users", AppState.currentUser.uid, "workouts");
+        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
         const querySnapshot = await getDocs(workoutsRef);
 
         console.log('🔍 FIREBASE WORKOUT DATES DEBUG:');
@@ -52,7 +52,6 @@ export async function debugFirebaseWorkoutDates() {
             const data = doc.data();
             console.log(`Document ID: ${doc.id}, Data date: ${data.date}, Workout: ${data.workoutType}`);
         });
-
     } catch (error) {
         console.error('Error debugging Firebase dates:', error);
     }
@@ -76,23 +75,27 @@ export async function debugWeeklyStats() {
         const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
 
         console.log('🔍 WEEKLY STATS DEBUG:');
-        console.log('Today:', today.toISOString().split('T')[0], '(' + today.toLocaleDateString('en-US', {weekday: 'long'}) + ')');
-        console.log('Start of week:', startOfWeekStr, '(' + startOfWeek.toLocaleDateString('en-US', {weekday: 'long'}) + ')');
+        console.log(
+            'Today:',
+            today.toISOString().split('T')[0],
+            '(' + today.toLocaleDateString('en-US', { weekday: 'long' }) + ')'
+        );
+        console.log(
+            'Start of week:',
+            startOfWeekStr,
+            '(' + startOfWeek.toLocaleDateString('en-US', { weekday: 'long' }) + ')'
+        );
         console.log('Query filter: date >=', startOfWeekStr);
 
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
         // Query by date field (workout date), not completedAt
-        const q = query(
-            workoutsRef,
-            where('date', '>=', startOfWeekStr),
-            orderBy('date', 'desc')
-        );
+        const q = query(workoutsRef, where('date', '>=', startOfWeekStr), orderBy('date', 'desc'));
 
         const snapshot = await getDocs(q);
         const workoutDays = new Set();
 
         console.log('\n📋 Workouts found (date >= ' + startOfWeekStr + '):');
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc) => {
             const data = doc.data();
             const completed = data.completedAt ? '✓' : '⏳ INCOMPLETE';
             const cancelled = data.cancelledAt ? ' ❌ CANCELLED' : '';
@@ -106,7 +109,6 @@ export async function debugWeeklyStats() {
 
         console.log('\n📊 Unique workout days:', Array.from(workoutDays).sort());
         console.log('Total unique days:', workoutDays.size);
-
     } catch (error) {
         console.error('Error debugging weekly stats:', error);
     }
@@ -115,13 +117,13 @@ export async function debugWeeklyStats() {
 export function forceCheckHistoryData() {
     console.log('🔍 Force checking history data...');
     console.log('window.workoutHistory:', window.workoutHistory);
-    
+
     // Check both references
     if (window.workoutHistory) {
         console.log('window.workoutHistory.currentHistory:', window.workoutHistory.currentHistory?.length);
         console.log('window.workoutHistory.filteredHistory:', window.workoutHistory.filteredHistory?.length);
     }
-    
+
     console.log('AppState.currentUser:', AppState.currentUser?.displayName);
     console.log('AppState.workoutPlans length:', AppState.workoutPlans?.length);
     console.log('AppState.exerciseDatabase length:', AppState.exerciseDatabase?.length);
@@ -129,23 +131,23 @@ export function forceCheckHistoryData() {
 
 export function testHistoryFilters() {
     console.log('🧪 Testing history filters...');
-    
+
     // Find relevant elements
     const searchInput = document.getElementById('workout-search');
     const startDate = document.getElementById('history-start-date');
     const endDate = document.getElementById('history-end-date');
     const filterBtns = document.querySelectorAll('.history-filter-btn');
-    
+
     console.log('Search input found:', !!searchInput);
     console.log('Date inputs found:', !!startDate, !!endDate);
     console.log('Filter buttons found:', filterBtns.length);
     console.log('Workout history object:', !!window.workoutHistory);
-    
+
     if (window.workoutHistory && window.workoutHistory.currentHistory) {
         console.log('Current history length:', window.workoutHistory.currentHistory.length);
         console.log('Filtered history length:', window.workoutHistory.filteredHistory?.length || 'undefined');
     }
-    
+
     // Test a filter
     if (filterBtns.length > 0) {
         console.log('Testing filter button click...');
@@ -159,11 +161,11 @@ export function testHistoryFilters() {
 
 export function fixWorkoutHistoryReference() {
     console.log('🔧 Attempting to fix workout history reference...');
-    
+
     // Check if the data loaded into the workout-history.js module internally
     if (window.workoutHistory && window.workoutHistory.currentHistory.length === 0) {
         console.log('🔄 Forcing history reload on the correct object...');
-        
+
         // Force reload history on the window object
         window.workoutHistory.loadHistory().then(() => {
             console.log('✅ History reloaded on window object');
@@ -174,7 +176,7 @@ export function fixWorkoutHistoryReference() {
 
 export function emergencyFixFilters() {
     console.log('🚨 Emergency filter fix - checking all references...');
-    
+
     // Force reload data into the right object
     if (window.workoutHistory && window.workoutHistory.loadHistory) {
         window.workoutHistory.loadHistory().then(() => {
@@ -185,18 +187,18 @@ export function emergencyFixFilters() {
             }
         });
     }
-    
+
     // Also check if elements exist
     const historySection = document.getElementById('workout-history-section');
     const searchInput = document.getElementById('workout-search');
-    
+
     console.log('History section exists:', !!historySection);
     console.log('Search input exists:', !!searchInput);
-    
+
     if (!historySection) {
         console.warn('⚠️ History section not found - may need to create it');
     }
-    
+
     if (!searchInput) {
         console.warn('⚠️ Search input not found - may need to create it');
     }
@@ -208,12 +210,12 @@ export function emergencyFixFilters() {
 
 export async function debugExerciseHistory(exerciseName) {
     console.log(`🔍 Debugging exercise history for: ${exerciseName}`);
-    
+
     if (!AppState.currentUser) {
         console.log('❌ No user signed in');
         return;
     }
-    
+
     try {
         await loadExerciseHistory(exerciseName, 0, AppState);
         console.log('✅ Exercise history loaded successfully');
@@ -233,11 +235,11 @@ export function debugAppState() {
     console.log('Exercise Units:', AppState.exerciseUnits);
     console.log('Saved Data:', Object.keys(AppState.savedData || {}).length, 'keys');
     console.log('Focused Exercise Index:', AppState.focusedExerciseIndex);
-    
+
     // Check timers
     console.log('Global Rest Timer:', !!AppState.globalRestTimer);
     console.log('Workout Duration Timer:', !!AppState.workoutDurationTimer);
-    
+
     // Check workout progress
     if (AppState.currentWorkout) {
         console.log('Workout Start Time:', AppState.workoutStartTime);
@@ -263,15 +265,15 @@ export function debounce(func, wait) {
 
 export function throttle(func, limit) {
     let inThrottle;
-    return function() {
+    return function () {
         const args = arguments;
         const context = this;
         if (!inThrottle) {
             func.apply(context, args);
             inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
+            setTimeout(() => (inThrottle = false), limit);
         }
-    }
+    };
 }
 
 // ===================================================================
@@ -279,7 +281,7 @@ export function throttle(func, limit) {
 // ===================================================================
 
 export function measurePerformance(name, func) {
-    return async function(...args) {
+    return async function (...args) {
         const start = performance.now();
         const result = await func.apply(this, args);
         const end = performance.now();
@@ -305,17 +307,16 @@ export function logMemoryUsage() {
 
 export async function debugFirebaseConnection() {
     console.log('🔍 Testing Firebase connection...');
-    
+
     try {
         const { db, doc, getDoc } = await import('../data/firebase-config.js');
-        
+
         // Try to read a test document
         const testDoc = doc(db, 'test', 'connection');
         const docSnap = await getDoc(testDoc);
-        
+
         console.log('✅ Firebase connection successful');
         console.log('Test doc exists:', docSnap.exists());
-        
     } catch (error) {
         console.error('❌ Firebase connection failed:', error);
         showNotification('Firebase connection issue detected', 'warning');
@@ -327,19 +328,19 @@ export async function debugUserPermissions() {
         console.log('❌ No user signed in for permissions check');
         return;
     }
-    
+
     console.log('🔍 Testing user permissions...');
-    
+
     try {
         const { db, doc, setDoc, getDoc } = await import('../data/firebase-config.js');
-        
+
         // Test write permission
-        const testDoc = doc(db, "users", AppState.currentUser.uid, "test", "permissions");
+        const testDoc = doc(db, 'users', AppState.currentUser.uid, 'test', 'permissions');
         await setDoc(testDoc, { test: true, timestamp: new Date().toISOString() });
-        
+
         // Test read permission
         const docSnap = await getDoc(testDoc);
-        
+
         if (docSnap.exists()) {
             console.log('✅ User permissions working correctly');
             showNotification('Firebase permissions OK', 'success');
@@ -347,7 +348,6 @@ export async function debugUserPermissions() {
             console.log('❌ Document not found after write');
             showNotification('Permission test failed', 'error');
         }
-        
     } catch (error) {
         console.error('❌ Permission test failed:', error);
         showNotification('User permission issue detected', 'warning');
@@ -360,31 +360,30 @@ export async function debugUserPermissions() {
 
 export function debugLocalStorage() {
     console.log('🔍 Debugging local storage...');
-    
+
     try {
         // Check local storage availability
         const testKey = 'big-surf-test';
         localStorage.setItem(testKey, 'test-value');
         const testValue = localStorage.getItem(testKey);
         localStorage.removeItem(testKey);
-        
+
         if (testValue === 'test-value') {
             console.log('✅ Local storage working correctly');
         } else {
             console.log('❌ Local storage test failed');
         }
-        
+
         // Check current storage usage
         let totalSize = 0;
         for (let key in localStorage) {
-            if (localStorage.hasOwnProperty(key)) {
+            if (Object.hasOwn(localStorage, key)) {
                 totalSize += localStorage[key].length + key.length;
             }
         }
-        
+
         console.log(`📦 Local storage usage: ${(totalSize / 1024).toFixed(2)} KB`);
         console.log(`📦 Items in storage: ${localStorage.length}`);
-        
     } catch (error) {
         console.error('❌ Local storage error:', error);
     }
@@ -396,16 +395,16 @@ export function debugLocalStorage() {
 
 export async function debugNetworkConnectivity() {
     console.log('🔍 Testing network connectivity...');
-    
+
     try {
         // Test basic internet connectivity
-        const response = await fetch('https://www.google.com/favicon.ico', { 
+        const response = await fetch('https://www.google.com/favicon.ico', {
             method: 'HEAD',
-            mode: 'no-cors'
+            mode: 'no-cors',
         });
-        
+
         console.log('✅ Basic internet connectivity: OK');
-        
+
         // Test Firebase hosting connectivity
         try {
             const firebaseTest = await fetch('./data/exercises.json');
@@ -417,7 +416,6 @@ export async function debugNetworkConnectivity() {
         } catch (firebaseError) {
             console.log('❌ Firebase hosting connectivity: Error', firebaseError);
         }
-        
     } catch (error) {
         console.error('❌ Network connectivity test failed:', error);
         showNotification('Network connectivity issues detected', 'warning');
@@ -436,25 +434,25 @@ export function setupErrorLogging() {
             filename: event.filename,
             line: event.lineno,
             column: event.colno,
-            error: event.error
+            error: event.error,
         });
-        
+
         // Show user-friendly message for critical errors
         if (event.message.includes('Firebase') || event.message.includes('auth')) {
             showNotification('Connection issue detected. Please refresh the page.', 'error');
         }
     });
-    
+
     // Capture unhandled promise rejections
     window.addEventListener('unhandledrejection', (event) => {
         console.error('🚨 Unhandled Promise Rejection:', event.reason);
-        
+
         // Show user-friendly message
         if (event.reason?.message?.includes('Firebase')) {
             showNotification('Database connection issue. Please try again.', 'error');
         }
     });
-    
+
     console.log('✅ Error logging setup complete');
 }
 
@@ -464,42 +462,42 @@ export function setupErrorLogging() {
 
 export function cleanupTempData() {
     console.log('🧹 Cleaning up temporary data...');
-    
+
     // Clear any temporary global variables
     if (window.showingProgressPrompt) {
         window.showingProgressPrompt = false;
     }
-    
+
     // Clear any debug intervals or timeouts
     // (This would clear any debug timers that might be running)
-    
+
     console.log('✅ Temporary data cleanup complete');
 }
 
 export function resetAppState() {
     console.log('🔄 Resetting application state...');
-    
+
     AppState.reset();
-    
+
     // Clear any global state
     window.inProgressWorkout = null;
     window.showingProgressPrompt = false;
-    
+
     // Reset UI to initial state
     const sections = ['workout-selector', 'active-workout', 'workout-management', 'workout-history-section'];
-    sections.forEach(sectionId => {
+    sections.forEach((sectionId) => {
         const section = document.getElementById(sectionId);
         if (section) {
             section.classList.add('hidden');
         }
     });
-    
+
     // Show workout selector
     const workoutSelector = document.getElementById('workout-selector');
     if (workoutSelector) {
         workoutSelector.classList.remove('hidden');
     }
-    
+
     console.log('✅ Application state reset complete');
 }
 
@@ -516,31 +514,31 @@ export const DEBUG_FUNCTIONS = {
     testHistoryFilters,
     debugAppState,
     debugExerciseHistory,
-    
+
     // Emergency fixes
     fixWorkoutHistoryReference,
     emergencyFixFilters,
-    
+
     // Utilities
     debounce,
     throttle,
     measurePerformance,
     logMemoryUsage,
-    
+
     // Firebase debugging
     debugFirebaseConnection,
     debugUserPermissions,
-    
+
     // System debugging
     debugLocalStorage,
     debugNetworkConnectivity,
-    
+
     // Error handling
     setupErrorLogging,
-    
+
     // Cleanup
     cleanupTempData,
-    resetAppState
+    resetAppState,
 };
 
 // ===================================================================
@@ -587,7 +585,7 @@ export async function scanDuplicateExercises() {
         const allExercises = [];
 
         // 1. Custom exercises
-        const customRef = collection(db, "users", uid, "customExercises");
+        const customRef = collection(db, 'users', uid, 'customExercises');
         const customSnapshot = await getDocs(customRef);
         customSnapshot.forEach((docSnap) => {
             const data = docSnap.data();
@@ -595,12 +593,12 @@ export async function scanDuplicateExercises() {
                 id: docSnap.id,
                 name: data.name || '',
                 collection: 'customExercises',
-                data: data
+                data: data,
             });
         });
 
         // 2. Exercise overrides
-        const overridesRef = collection(db, "users", uid, "exerciseOverrides");
+        const overridesRef = collection(db, 'users', uid, 'exerciseOverrides');
         const overridesSnapshot = await getDocs(overridesRef);
         overridesSnapshot.forEach((docSnap) => {
             const data = docSnap.data();
@@ -608,12 +606,12 @@ export async function scanDuplicateExercises() {
                 id: docSnap.id,
                 name: data.name || data.originalName || '',
                 collection: 'exerciseOverrides',
-                data: data
+                data: data,
             });
         });
 
         // 3. Default exercises
-        const defaultRef = collection(db, "exercises");
+        const defaultRef = collection(db, 'exercises');
         const defaultSnapshot = await getDocs(defaultRef);
         defaultSnapshot.forEach((docSnap) => {
             const data = docSnap.data();
@@ -622,14 +620,14 @@ export async function scanDuplicateExercises() {
                     id: docSnap.id,
                     name: data.name,
                     collection: 'exercises (default)',
-                    data: data
+                    data: data,
                 });
             }
         });
 
         // Group by name (case-insensitive)
         const exercisesByName = {};
-        allExercises.forEach(ex => {
+        allExercises.forEach((ex) => {
             const name = (ex.name || '').toLowerCase();
             if (!name) return;
             if (!exercisesByName[name]) {
@@ -654,7 +652,7 @@ export async function scanDuplicateExercises() {
         console.log(`Found ${duplicates.length} exercise(s) with duplicates:\n`);
         duplicates.forEach(({ name, exercises }) => {
             console.log(`📋 "${name}" has ${exercises.length} entries:`);
-            exercises.forEach(ex => {
+            exercises.forEach((ex) => {
                 console.log(`   - ID: ${ex.id}`);
                 console.log(`     Collection: ${ex.collection}`);
                 console.log(`     Equipment: ${ex.data.equipment || 'none'}`);
@@ -664,7 +662,6 @@ export async function scanDuplicateExercises() {
 
         console.log('\n💡 To merge duplicates safely, run: mergeDuplicateExercises()');
         return { duplicates };
-
     } catch (error) {
         console.error('❌ Error scanning:', error);
         throw error;
@@ -690,7 +687,7 @@ export async function mergeDuplicateExercises() {
         const allExercises = [];
 
         // Custom exercises
-        const customRef = collection(db, "users", uid, "customExercises");
+        const customRef = collection(db, 'users', uid, 'customExercises');
         const customSnapshot = await getDocs(customRef);
         customSnapshot.forEach((docSnap) => {
             const data = docSnap.data();
@@ -699,12 +696,12 @@ export async function mergeDuplicateExercises() {
                 name: data.name || '',
                 collection: 'customExercises',
                 data: data,
-                lastUpdated: data.lastUpdated || data.createdAt || '1970-01-01'
+                lastUpdated: data.lastUpdated || data.createdAt || '1970-01-01',
             });
         });
 
         // Exercise overrides
-        const overridesRef = collection(db, "users", uid, "exerciseOverrides");
+        const overridesRef = collection(db, 'users', uid, 'exerciseOverrides');
         const overridesSnapshot = await getDocs(overridesRef);
         overridesSnapshot.forEach((docSnap) => {
             const data = docSnap.data();
@@ -713,13 +710,13 @@ export async function mergeDuplicateExercises() {
                 name: data.name || data.originalName || '',
                 collection: 'exerciseOverrides',
                 data: data,
-                lastUpdated: data.lastUpdated || data.overrideCreated || '1970-01-01'
+                lastUpdated: data.lastUpdated || data.overrideCreated || '1970-01-01',
             });
         });
 
         // Group by name
         const exercisesByName = {};
-        allExercises.forEach(ex => {
+        allExercises.forEach((ex) => {
             const name = (ex.name || '').toLowerCase();
             if (!name) return;
             if (!exercisesByName[name]) {
@@ -729,7 +726,7 @@ export async function mergeDuplicateExercises() {
         });
 
         // Get all workouts to update references
-        const workoutsRef = collection(db, "users", uid, "workouts");
+        const workoutsRef = collection(db, 'users', uid, 'workouts');
         const workoutsSnapshot = await getDocs(workoutsRef);
 
         let mergeCount = 0;
@@ -769,7 +766,7 @@ export async function mergeDuplicateExercises() {
 
                     // Check originalWorkout.exercises for equipment references
                     if (workoutData.originalWorkout?.exercises) {
-                        const updatedExercises = workoutData.originalWorkout.exercises.map(ex => {
+                        const updatedExercises = workoutData.originalWorkout.exercises.map((ex) => {
                             // If this exercise matches the duplicate, merge equipment settings from keepExercise
                             if (ex.machine?.toLowerCase() === name) {
                                 // Keep the workout's existing data, it's fine
@@ -780,7 +777,7 @@ export async function mergeDuplicateExercises() {
                 }
 
                 // Delete the duplicate
-                const docRef = doc(db, "users", uid, duplicate.collection, duplicate.id);
+                const docRef = doc(db, 'users', uid, duplicate.collection, duplicate.id);
                 await deleteDoc(docRef);
                 console.log(`   🗑️ Removed duplicate: ${duplicate.id}`);
                 mergeCount++;
@@ -796,7 +793,6 @@ export async function mergeDuplicateExercises() {
         }
 
         return { merged: mergeCount };
-
     } catch (error) {
         console.error('❌ Error merging:', error);
         showNotification('Error merging duplicates', 'error');
@@ -825,7 +821,7 @@ export async function cleanupDuplicateExercises() {
         const allExercises = [];
 
         // 1. Custom exercises
-        const customRef = collection(db, "users", uid, "customExercises");
+        const customRef = collection(db, 'users', uid, 'customExercises');
         const customSnapshot = await getDocs(customRef);
         customSnapshot.forEach((docSnap) => {
             const data = docSnap.data();
@@ -834,13 +830,13 @@ export async function cleanupDuplicateExercises() {
                 name: data.name || '',
                 collection: 'customExercises',
                 data: data,
-                lastUpdated: data.lastUpdated || data.createdAt || '1970-01-01'
+                lastUpdated: data.lastUpdated || data.createdAt || '1970-01-01',
             });
         });
         console.log(`  📦 Found ${customSnapshot.size} custom exercises`);
 
         // 2. Exercise overrides
-        const overridesRef = collection(db, "users", uid, "exerciseOverrides");
+        const overridesRef = collection(db, 'users', uid, 'exerciseOverrides');
         const overridesSnapshot = await getDocs(overridesRef);
         overridesSnapshot.forEach((docSnap) => {
             const data = docSnap.data();
@@ -849,13 +845,13 @@ export async function cleanupDuplicateExercises() {
                 name: data.name || data.originalName || '',
                 collection: 'exerciseOverrides',
                 data: data,
-                lastUpdated: data.lastUpdated || data.overrideCreated || '1970-01-01'
+                lastUpdated: data.lastUpdated || data.overrideCreated || '1970-01-01',
             });
         });
         console.log(`  📦 Found ${overridesSnapshot.size} exercise overrides`);
 
         // 3. Default exercises (global) - just for reference, we won't delete these
-        const defaultRef = collection(db, "exercises");
+        const defaultRef = collection(db, 'exercises');
         const defaultSnapshot = await getDocs(defaultRef);
         const defaultNames = new Set();
         defaultSnapshot.forEach((docSnap) => {
@@ -868,7 +864,7 @@ export async function cleanupDuplicateExercises() {
 
         // Group by name (case-insensitive)
         const exercisesByName = {};
-        allExercises.forEach(ex => {
+        allExercises.forEach((ex) => {
             const name = (ex.name || '').toLowerCase();
             if (!name) return;
             if (!exercisesByName[name]) {
@@ -892,15 +888,15 @@ export async function cleanupDuplicateExercises() {
                 if (hasDefault && exercises.length >= 1) {
                     // If there's a default, user entries might be overrides or duplicates
                     // Keep the override if it exists, remove plain custom duplicates
-                    const overrides = exercises.filter(e => e.collection === 'exerciseOverrides');
-                    const customs = exercises.filter(e => e.collection === 'customExercises');
+                    const overrides = exercises.filter((e) => e.collection === 'exerciseOverrides');
+                    const customs = exercises.filter((e) => e.collection === 'customExercises');
 
                     if (overrides.length > 0 && customs.length > 0) {
                         // Have both override and custom - remove the custom duplicates
                         console.log(`  ⚠️ Has override AND custom entries - removing customs`);
                         for (const custom of customs) {
                             console.log(`  🗑️ Removing custom duplicate: ${custom.id}`);
-                            const docRef = doc(db, "users", uid, "customExercises", custom.id);
+                            const docRef = doc(db, 'users', uid, 'customExercises', custom.id);
                             await deleteDoc(docRef);
                             duplicatesRemoved++;
                             duplicatesFound++;
@@ -912,7 +908,7 @@ export async function cleanupDuplicateExercises() {
                         overrides.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
                         for (let i = 1; i < overrides.length; i++) {
                             console.log(`  🗑️ Removing duplicate override: ${overrides[i].id}`);
-                            const docRef = doc(db, "users", uid, "exerciseOverrides", overrides[i].id);
+                            const docRef = doc(db, 'users', uid, 'exerciseOverrides', overrides[i].id);
                             await deleteDoc(docRef);
                             duplicatesRemoved++;
                             duplicatesFound++;
@@ -924,7 +920,7 @@ export async function cleanupDuplicateExercises() {
                         customs.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
                         for (let i = 1; i < customs.length; i++) {
                             console.log(`  🗑️ Removing duplicate custom: ${customs[i].id}`);
-                            const docRef = doc(db, "users", uid, "customExercises", customs[i].id);
+                            const docRef = doc(db, 'users', uid, 'customExercises', customs[i].id);
                             await deleteDoc(docRef);
                             duplicatesRemoved++;
                             duplicatesFound++;
@@ -937,7 +933,7 @@ export async function cleanupDuplicateExercises() {
                     for (let i = 1; i < exercises.length; i++) {
                         const ex = exercises[i];
                         console.log(`  🗑️ Removing duplicate from ${ex.collection}: ${ex.id}`);
-                        const docRef = doc(db, "users", uid, ex.collection, ex.id);
+                        const docRef = doc(db, 'users', uid, ex.collection, ex.id);
                         await deleteDoc(docRef);
                         duplicatesRemoved++;
                         duplicatesFound++;
@@ -955,7 +951,6 @@ export async function cleanupDuplicateExercises() {
         }
 
         return { found: duplicatesFound, removed: duplicatesRemoved };
-
     } catch (error) {
         console.error('❌ Error cleaning up duplicates:', error);
         showNotification('Error cleaning up duplicates', 'error');
@@ -983,8 +978,8 @@ export async function getWorkoutHistoryForEditing() {
         const { db, collection, getDocs, query, orderBy } = await import('../data/firebase-config.js');
         const uid = AppState.currentUser.uid;
 
-        const workoutsRef = collection(db, "users", uid, "workouts");
-        const q = query(workoutsRef, orderBy("date", "desc"));
+        const workoutsRef = collection(db, 'users', uid, 'workouts');
+        const q = query(workoutsRef, orderBy('date', 'desc'));
         const snapshot = await getDocs(q);
 
         const workouts = [];
@@ -1000,7 +995,7 @@ export async function getWorkoutHistoryForEditing() {
                         name: ex.name || 'Unknown',
                         equipment: ex.equipment || null,
                         equipmentLocation: ex.equipmentLocation || null,
-                        sets: ex.sets?.length || 0
+                        sets: ex.sets?.length || 0,
                     });
                 });
             }
@@ -1009,7 +1004,7 @@ export async function getWorkoutHistoryForEditing() {
             if (data.originalWorkout?.exercises) {
                 data.originalWorkout.exercises.forEach((ex, idx) => {
                     const key = `exercise_${idx}`;
-                    const existing = exercises.find(e => e.key === key);
+                    const existing = exercises.find((e) => e.key === key);
                     if (existing) {
                         // Merge equipment from originalWorkout if not already set
                         if (!existing.equipment && ex.equipment) {
@@ -1028,7 +1023,7 @@ export async function getWorkoutHistoryForEditing() {
                 workoutType: data.workoutType,
                 location: data.location || null,
                 exercises,
-                status: data.completedAt ? 'completed' : (data.cancelledAt ? 'cancelled' : 'in-progress')
+                status: data.completedAt ? 'completed' : data.cancelledAt ? 'cancelled' : 'in-progress',
             });
         });
 
@@ -1038,8 +1033,10 @@ export async function getWorkoutHistoryForEditing() {
         workouts.slice(0, 10).forEach((w, i) => {
             console.log(`${i + 1}. [${w.date}] ${w.workoutType}`);
             console.log(`   Location: ${w.location || '(none)'}`);
-            w.exercises.forEach(ex => {
-                console.log(`   - ${ex.name}: ${ex.equipment || '(no equipment)'} @ ${ex.equipmentLocation || '(no location)'}`);
+            w.exercises.forEach((ex) => {
+                console.log(
+                    `   - ${ex.name}: ${ex.equipment || '(no equipment)'} @ ${ex.equipmentLocation || '(no location)'}`
+                );
             });
             console.log('');
         });
@@ -1049,13 +1046,16 @@ export async function getWorkoutHistoryForEditing() {
         }
 
         console.log('\n💡 Use updateWorkoutLocation(docId, location) to update workout location');
-        console.log('💡 Use updateExerciseEquipment(docId, exerciseKey, equipment, location) to update exercise equipment');
-        console.log('💡 Use bulkUpdateEquipment(exerciseName, oldEquipment, newEquipment, newLocation) for bulk updates');
+        console.log(
+            '💡 Use updateExerciseEquipment(docId, exerciseKey, equipment, location) to update exercise equipment'
+        );
+        console.log(
+            '💡 Use bulkUpdateEquipment(exerciseName, oldEquipment, newEquipment, newLocation) for bulk updates'
+        );
 
         // Store for easy access
         window._workoutHistory = workouts;
         return workouts;
-
     } catch (error) {
         console.error('❌ Error loading history:', error);
         throw error;
@@ -1075,12 +1075,11 @@ export async function updateWorkoutLocation(docId, newLocation) {
         const { db, doc, updateDoc } = await import('../data/firebase-config.js');
         const uid = AppState.currentUser.uid;
 
-        const docRef = doc(db, "users", uid, "workouts", docId);
+        const docRef = doc(db, 'users', uid, 'workouts', docId);
         await updateDoc(docRef, { location: newLocation });
 
         console.log(`✅ Updated workout ${docId} location to: ${newLocation}`);
         return true;
-
     } catch (error) {
         console.error('❌ Error updating location:', error);
         return false;
@@ -1100,7 +1099,7 @@ export async function updateExerciseEquipment(docId, exerciseKey, newEquipment, 
         const { db, doc, getDoc, updateDoc } = await import('../data/firebase-config.js');
         const uid = AppState.currentUser.uid;
 
-        const docRef = doc(db, "users", uid, "workouts", docId);
+        const docRef = doc(db, 'users', uid, 'workouts', docId);
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
@@ -1127,7 +1126,7 @@ export async function updateExerciseEquipment(docId, exerciseKey, newEquipment, 
                 updatedOriginal[idx] = {
                     ...updatedOriginal[idx],
                     equipment: newEquipment,
-                    ...(newLocation && { equipmentLocation: newLocation })
+                    ...(newLocation && { equipmentLocation: newLocation }),
                 };
                 updates['originalWorkout.exercises'] = updatedOriginal;
             }
@@ -1140,7 +1139,6 @@ export async function updateExerciseEquipment(docId, exerciseKey, newEquipment, 
         if (newLocation) console.log(`   Location: ${newLocation}`);
 
         return true;
-
     } catch (error) {
         console.error('❌ Error updating equipment:', error);
         return false;
@@ -1159,9 +1157,9 @@ export async function bulkUpdateEquipment(exerciseName, oldEquipment, newEquipme
 
     const confirm = window.confirm(
         `This will update all "${exerciseName}" exercises\n` +
-        `FROM: ${oldEquipment || '(any)'}\n` +
-        `TO: ${newEquipment}${newLocation ? ` @ ${newLocation}` : ''}\n\n` +
-        `Continue?`
+            `FROM: ${oldEquipment || '(any)'}\n` +
+            `TO: ${newEquipment}${newLocation ? ` @ ${newLocation}` : ''}\n\n` +
+            `Continue?`
     );
 
     if (!confirm) {
@@ -1175,7 +1173,7 @@ export async function bulkUpdateEquipment(exerciseName, oldEquipment, newEquipme
         const { db, collection, getDocs, doc, getDoc, updateDoc } = await import('../data/firebase-config.js');
         const uid = AppState.currentUser.uid;
 
-        const workoutsRef = collection(db, "users", uid, "workouts");
+        const workoutsRef = collection(db, 'users', uid, 'workouts');
         const snapshot = await getDocs(workoutsRef);
 
         let updateCount = 0;
@@ -1213,7 +1211,7 @@ export async function bulkUpdateEquipment(exerciseName, oldEquipment, newEquipme
                         return {
                             ...ex,
                             equipment: newEquipment,
-                            ...(newLocation && { equipmentLocation: newLocation })
+                            ...(newLocation && { equipmentLocation: newLocation }),
                         };
                     }
                     return ex;
@@ -1225,7 +1223,7 @@ export async function bulkUpdateEquipment(exerciseName, oldEquipment, newEquipme
             }
 
             if (needsUpdate) {
-                const docRef = doc(db, "users", uid, "workouts", docSnap.id);
+                const docRef = doc(db, 'users', uid, 'workouts', docSnap.id);
                 await updateDoc(docRef, updates);
                 updateCount++;
                 console.log(`  ✓ Updated workout ${data.date} - ${data.workoutType}`);
@@ -1236,7 +1234,6 @@ export async function bulkUpdateEquipment(exerciseName, oldEquipment, newEquipme
         showNotification(`Updated ${updateCount} workout(s)`, 'success');
 
         return { updated: updateCount };
-
     } catch (error) {
         console.error('❌ Error in bulk update:', error);
         showNotification('Error updating workouts', 'error');
@@ -1259,7 +1256,7 @@ export async function listAllEquipment() {
         const { db, collection, getDocs } = await import('../data/firebase-config.js');
         const uid = AppState.currentUser.uid;
 
-        const workoutsRef = collection(db, "users", uid, "workouts");
+        const workoutsRef = collection(db, 'users', uid, 'workouts');
         const snapshot = await getDocs(workoutsRef);
 
         // Map: exerciseName -> Set of equipment names
@@ -1277,7 +1274,7 @@ export async function listAllEquipment() {
 
             // Check exercises
             if (data.exercises) {
-                Object.values(data.exercises).forEach(ex => {
+                Object.values(data.exercises).forEach((ex) => {
                     const name = ex.name || 'Unknown';
                     if (!equipmentByExercise[name]) {
                         equipmentByExercise[name] = new Set();
@@ -1290,7 +1287,7 @@ export async function listAllEquipment() {
 
             // Check originalWorkout.exercises
             if (data.originalWorkout?.exercises) {
-                data.originalWorkout.exercises.forEach(ex => {
+                data.originalWorkout.exercises.forEach((ex) => {
                     const name = ex.machine || ex.name || 'Unknown';
                     if (!equipmentByExercise[name]) {
                         equipmentByExercise[name] = new Set();
@@ -1304,17 +1301,19 @@ export async function listAllEquipment() {
 
         // Convert Sets to Arrays and sort
         const result = {};
-        Object.keys(equipmentByExercise).sort().forEach(exercise => {
-            const equipment = [...equipmentByExercise[exercise]].sort();
-            if (equipment.length > 0) {
-                result[exercise] = equipment;
-            }
-        });
+        Object.keys(equipmentByExercise)
+            .sort()
+            .forEach((exercise) => {
+                const equipment = [...equipmentByExercise[exercise]].sort();
+                if (equipment.length > 0) {
+                    result[exercise] = equipment;
+                }
+            });
 
         console.log('=== Equipment by Exercise ===\n');
         Object.entries(result).forEach(([exercise, equipment]) => {
             console.log(`${exercise}:`);
-            equipment.forEach(eq => console.log(`  - ${eq}`));
+            equipment.forEach((eq) => console.log(`  - ${eq}`));
         });
 
         console.log('\n=== Workout Locations ===\n');
@@ -1325,7 +1324,6 @@ export async function listAllEquipment() {
             });
 
         return { equipmentByExercise: result, locationCounts };
-
     } catch (error) {
         console.error('❌ Error listing equipment:', error);
         throw error;
@@ -1347,8 +1345,8 @@ export async function findIncompleteWorkouts() {
         const { db, collection, getDocs, query, orderBy } = await import('../data/firebase-config.js');
         const uid = AppState.currentUser.uid;
 
-        const workoutsRef = collection(db, "users", uid, "workouts");
-        const q = query(workoutsRef, orderBy("date", "desc"));
+        const workoutsRef = collection(db, 'users', uid, 'workouts');
+        const q = query(workoutsRef, orderBy('date', 'desc'));
         const snapshot = await getDocs(q);
 
         const incomplete = [];
@@ -1381,7 +1379,7 @@ export async function findIncompleteWorkouts() {
                     docId: docSnap.id,
                     date: data.date,
                     workoutType: data.workoutType,
-                    issues
+                    issues,
                 });
             }
         });
@@ -1390,7 +1388,7 @@ export async function findIncompleteWorkouts() {
 
         incomplete.slice(0, 20).forEach((w, i) => {
             console.log(`${i + 1}. [${w.date}] ${w.workoutType} (${w.docId})`);
-            w.issues.forEach(issue => console.log(`   ⚠️ ${issue}`));
+            w.issues.forEach((issue) => console.log(`   ⚠️ ${issue}`));
         });
 
         if (incomplete.length > 20) {
@@ -1398,7 +1396,6 @@ export async function findIncompleteWorkouts() {
         }
 
         return incomplete;
-
     } catch (error) {
         console.error('❌ Error finding incomplete workouts:', error);
         throw error;
@@ -1421,7 +1418,7 @@ export async function migrateEquipmentToExercises() {
         const { db, collection, getDocs, doc, updateDoc } = await import('../data/firebase-config.js');
         const uid = AppState.currentUser.uid;
 
-        const workoutsRef = collection(db, "users", uid, "workouts");
+        const workoutsRef = collection(db, 'users', uid, 'workouts');
         const snapshot = await getDocs(workoutsRef);
 
         let migratedCount = 0;
@@ -1463,7 +1460,7 @@ export async function migrateEquipmentToExercises() {
             }
 
             if (workoutNeedsUpdate) {
-                const docRef = doc(db, "users", uid, "workouts", docSnap.id);
+                const docRef = doc(db, 'users', uid, 'workouts', docSnap.id);
                 await updateDoc(docRef, updates);
                 migratedCount++;
                 console.log(`  ✓ Migrated: ${data.date} - ${data.workoutType}`);
@@ -1481,7 +1478,6 @@ export async function migrateEquipmentToExercises() {
         }
 
         return { migrated: migratedCount, exercises: exercisesMigrated };
-
     } catch (error) {
         console.error('❌ Migration error:', error);
         showNotification('Migration failed', 'error');
@@ -1525,14 +1521,13 @@ export async function recalculateStreaks() {
         // Get frequency by day
         const dayFreq = await StreakTracker.getWorkoutFrequencyByDay();
         console.log('\n=== WORKOUTS BY DAY ===');
-        dayFreq.forEach(d => {
+        dayFreq.forEach((d) => {
             const bar = '█'.repeat(Math.min(d.count, 20));
             console.log(`${d.day.padEnd(10)} ${bar} ${d.count}`);
         });
 
         showNotification(`Current streak: ${stats.currentStreak} days`, 'success');
         return stats;
-
     } catch (error) {
         console.error('❌ Error calculating streaks:', error);
         showNotification('Error calculating streaks', 'error');
@@ -1552,8 +1547,8 @@ export async function rebuildAllPRs() {
 
     const confirm = window.confirm(
         'This will clear all existing PRs and rebuild them from workout history.\n\n' +
-        'All workouts from July 2025 onwards will be included.\n\n' +
-        'Continue?'
+            'All workouts from July 2025 onwards will be included.\n\n' +
+            'Continue?'
     );
 
     if (!confirm) {
@@ -1593,19 +1588,21 @@ export async function rebuildAllPRs() {
             const recentPRs = PRTracker.getRecentPRs(5);
             if (recentPRs.length > 0) {
                 console.log('\n=== RECENT PRs ===');
-                recentPRs.forEach(pr => {
+                recentPRs.forEach((pr) => {
                     console.log(`🏆 ${pr.exercise} (${pr.equipment}): ${pr.weight} lbs × ${pr.reps} on ${pr.date}`);
                 });
             }
 
-            showNotification(`Rebuilt ${allPRs.length} exercise PRs from ${result.workoutsProcessed} workouts`, 'success');
+            showNotification(
+                `Rebuilt ${allPRs.length} exercise PRs from ${result.workoutsProcessed} workouts`,
+                'success'
+            );
         } else {
             console.error('❌ PR rebuild failed:', result.error);
             showNotification('PR rebuild failed', 'error');
         }
 
         return result;
-
     } catch (error) {
         console.error('❌ Error rebuilding PRs:', error);
         showNotification('Error rebuilding PRs', 'error');
@@ -1641,9 +1638,8 @@ export async function recalculateAllStats() {
 
         return {
             streaks: streakStats,
-            prs: prResult
+            prs: prResult,
         };
-
     } catch (error) {
         console.error('❌ Error recalculating stats:', error);
         throw error;
@@ -1681,7 +1677,9 @@ export async function showPRSummary() {
             for (const [exerciseName, equipmentData] of Object.entries(exercises)) {
                 for (const [equipment, prs] of Object.entries(equipmentData)) {
                     if (prs.maxWeight) {
-                        console.log(`   ${exerciseName} (${equipment}): ${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}`);
+                        console.log(
+                            `   ${exerciseName} (${equipment}): ${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}`
+                        );
                     }
                 }
             }
@@ -1697,7 +1695,6 @@ export async function showPRSummary() {
         }
 
         return { total: allPRs.length, byBodyPart: prsByBodyPart, recent: recentPRs };
-
     } catch (error) {
         console.error('❌ Error loading PR summary:', error);
         throw error;
@@ -1716,8 +1713,8 @@ export async function renameExercise(oldName, newName) {
 
     const confirm = window.confirm(
         `This will rename all instances of:\n\n` +
-        `"${oldName}"\n\nto:\n\n"${newName}"\n\n` +
-        `across all workout history.\n\nContinue?`
+            `"${oldName}"\n\nto:\n\n"${newName}"\n\n` +
+            `across all workout history.\n\nContinue?`
     );
 
     if (!confirm) {
@@ -1731,7 +1728,7 @@ export async function renameExercise(oldName, newName) {
         const { db, collection, getDocs, doc, updateDoc } = await import('../data/firebase-config.js');
         const uid = AppState.currentUser.uid;
 
-        const workoutsRef = collection(db, "users", uid, "workouts");
+        const workoutsRef = collection(db, 'users', uid, 'workouts');
         const snapshot = await getDocs(workoutsRef);
 
         let updateCount = 0;
@@ -1767,7 +1764,7 @@ export async function renameExercise(oldName, newName) {
             // Check originalWorkout.exercises (template data)
             if (data.originalWorkout?.exercises) {
                 let originalNeedsUpdate = false;
-                const updatedExercises = data.originalWorkout.exercises.map(ex => {
+                const updatedExercises = data.originalWorkout.exercises.map((ex) => {
                     if (!ex) return ex; // Skip null/undefined entries
                     const machineMatch = ex.machine && ex.machine.toLowerCase() === oldNameLower;
                     const nameMatch = ex.name && ex.name.toLowerCase() === oldNameLower;
@@ -1788,7 +1785,7 @@ export async function renameExercise(oldName, newName) {
             }
 
             if (needsUpdate) {
-                const docRef = doc(db, "users", uid, "workouts", docSnap.id);
+                const docRef = doc(db, 'users', uid, 'workouts', docSnap.id);
                 await updateDoc(docRef, updates);
                 updateCount++;
                 console.log(`  ✓ Updated: ${data.date} - ${data.workoutType}`);
@@ -1806,7 +1803,6 @@ export async function renameExercise(oldName, newName) {
         }
 
         return { updated: updateCount, exercises: exerciseCount };
-
     } catch (error) {
         console.error('❌ Error renaming exercise:', error);
         showNotification('Error renaming exercise', 'error');

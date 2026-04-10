@@ -12,7 +12,6 @@ const ERROR_WINDOW_MS = 5000;
  * Global error handler for uncaught errors
  */
 export function initializeErrorHandler() {
-
     // Handle uncaught JavaScript errors
     window.addEventListener('error', (event) => {
         console.error('❌ Uncaught error:', event.error);
@@ -58,20 +57,22 @@ function handleError(error, userMessage) {
     // - Push notification failures (not critical)
     // - Firebase messaging not supported (expected on some browsers)
     // - Network errors when app is being suspended
-    if (errorMessage.includes('push') ||
+    if (
+        errorMessage.includes('push') ||
         errorMessage.includes('messaging') ||
         errorMessage.includes('Messaging') ||
         errorMessage.includes('getToken') ||
         errorMessage.includes('subscription') ||
         errorCode === 'messaging/unsupported-browser' ||
-        errorCode === 'messaging/permission-blocked') {
+        errorCode === 'messaging/permission-blocked'
+    ) {
         console.warn('⚠️ Suppressed non-critical notification error:', errorMessage);
         return;
     }
 
     // Check if we're spamming too many errors
     const now = Date.now();
-    const recentErrors = errorLog.filter(time => now - time < ERROR_WINDOW_MS);
+    const recentErrors = errorLog.filter((time) => now - time < ERROR_WINDOW_MS);
 
     if (recentErrors.length >= MAX_ERRORS_SHOWN) {
         console.warn('⚠️ Too many errors, suppressing notification');
@@ -105,7 +106,7 @@ function handleError(error, userMessage) {
  * Wrap async functions with error handling
  */
 export function withErrorHandling(fn, errorMessage = 'Operation failed') {
-    return async function(...args) {
+    return async function (...args) {
         try {
             return await fn.apply(this, args);
         } catch (error) {
@@ -166,7 +167,7 @@ export function updateConnectionStatus(isConnected) {
  */
 export function startConnectionMonitoring(db) {
     // Initial check
-    checkFirebaseConnection(db).then(isConnected => {
+    checkFirebaseConnection(db).then((isConnected) => {
         updateConnectionStatus(isConnected);
     });
 

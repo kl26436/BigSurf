@@ -2,8 +2,32 @@
 // Schema v3.0: Multiple workouts per day support
 // - Old schema: document ID = date (YYYY-MM-DD), one workout per day
 // - New schema: document ID = unique ID, date stored as field, multiple workouts per day
-import { db, doc, setDoc, getDoc, collection, query, orderBy, limit, getDocs, where, deleteDoc } from './firebase-config.js';
+import {
+    db,
+    doc,
+    setDoc,
+    getDoc,
+    collection,
+    query,
+    orderBy,
+    limit,
+    getDocs,
+    where,
+    deleteDoc,
+} from './firebase-config.js';
 import { showNotification, convertWeight } from '../ui/ui-helpers.js';
+import { validateWorkoutData } from '../utils/validation.js';
+import { getDateString } from '../utils/date-helpers.js';
+
+/**
+ * Wrap a promise with a timeout — rejects if it doesn't resolve within ms
+ */
+function withTimeout(promise, ms = 10000) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Operation timed out')), ms)),
+    ]);
+}
 
 /**
  * Generate a unique workout ID
@@ -11,7 +35,11 @@ import { showNotification, convertWeight } from '../ui/ui-helpers.js';
  */
 function generateWorkoutId(date) {
     const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8);
+    const arr = new Uint8Array(12);
+    crypto.getRandomValues(arr);
+    const random = Array.from(arr, (b) => b.toString(36).padStart(2, '0'))
+        .join('')
+        .substring(0, 12);
     return `${date}_${timestamp}_${random}`;
 }
 
@@ -28,18 +56,10 @@ export async function saveWorkoutData(state) {
     // Ensure proper date handling to prevent timezone issues
     let saveDate = state.savedData.date || state.getTodayDateString();
 
-    if (saveDate && typeof saveDate === 'string') {
-        // If it's an ISO string, extract just the date part
-        if (saveDate.includes('T')) {
-            saveDate = saveDate.split('T')[0];
-        }
+    saveDate = getDateString(saveDate) || state.getTodayDateString();
 
-        // Validate YYYY-MM-DD format
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(saveDate)) {
-            saveDate = state.getTodayDateString();
-        }
-    } else {
+    // Validate YYYY-MM-DD format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(saveDate)) {
         saveDate = state.getTodayDateString();
     }
 
@@ -57,7 +77,7 @@ export async function saveWorkoutData(state) {
         // Store the complete workout structure for reconstruction
         state.savedData.originalWorkout = {
             day: state.currentWorkout.day || state.currentWorkout.name,
-            exercises: state.currentWorkout.exercises.map(ex => ({
+            exercises: state.currentWorkout.exercises.map((ex) => ({
                 machine: ex.machine || ex.name,
                 sets: ex.sets,
                 reps: ex.reps,
@@ -65,8 +85,8 @@ export async function saveWorkoutData(state) {
                 video: ex.video || '',
                 equipment: ex.equipment || null,
                 equipmentLocation: ex.equipmentLocation || null,
-                bodyPart: ex.bodyPart || null  // Include bodyPart for progress categorization
-            }))
+                bodyPart: ex.bodyPart || null, // Include bodyPart for progress categorization
+            })),
         };
 
         // Store total exercise count for progress tracking
@@ -76,16 +96,16 @@ export async function saveWorkoutData(state) {
     // Convert weights to pounds for storage - FIXED to prevent corruption
     const normalizedData = { ...state.savedData };
     if (normalizedData.exercises) {
-        Object.keys(normalizedData.exercises).forEach(exerciseKey => {
+        Object.keys(normalizedData.exercises).forEach((exerciseKey) => {
             const exerciseData = normalizedData.exercises[exerciseKey];
             const exerciseIndex = parseInt(exerciseKey.split('_')[1]);
             const currentUnit = state.exerciseUnits[exerciseIndex] || state.globalUnit;
 
             if (exerciseData.sets) {
-                exerciseData.sets = exerciseData.sets.map(set => {
+                exerciseData.sets = exerciseData.sets.map((set) => {
                     return {
                         ...set,
-                        originalUnit: currentUnit || 'lbs'
+                        originalUnit: currentUnit || 'lbs',
                     };
                 });
             }
@@ -103,21 +123,22 @@ export async function saveWorkoutData(state) {
             state.savedData.workoutId = workoutId;
         }
 
-        const docRef = doc(db, "users", state.currentUser.uid, "workouts", workoutId);
+        const docRef = doc(db, 'users', state.currentUser.uid, 'workouts', workoutId);
+        const validatedData = validateWorkoutData(normalizedData) || normalizedData;
         const savedDoc = {
-            ...normalizedData,
-            workoutId: workoutId,  // Store ID in document for reference
+            ...validatedData,
+            workoutId: workoutId, // Store ID in document for reference
             lastUpdated: new Date().toISOString(),
-            version: '3.0'  // New schema version
+            version: '3.0', // New schema version
         };
-        await setDoc(docRef, savedDoc);
+        await withTimeout(setDoc(docRef, savedDoc));
 
         // CRITICAL: Update window.inProgressWorkout so exercise changes persist on resume
         // This ensures added/deleted exercises are retained when closing and reopening workout
         if (window.inProgressWorkout && !state.savedData.completedAt && !state.savedData.cancelledAt) {
             window.inProgressWorkout = {
                 ...savedDoc,
-                originalWorkout: state.savedData.originalWorkout
+                originalWorkout: state.savedData.originalWorkout,
             };
         }
 
@@ -129,6 +150,13 @@ export async function saveWorkoutData(state) {
     }
 }
 
+// Debounced save — collapses rapid set updates into a single Firestore write
+let _saveTimeout = null;
+export function debouncedSaveWorkoutData(state, delay = 400) {
+    clearTimeout(_saveTimeout);
+    _saveTimeout = setTimeout(() => saveWorkoutData(state), delay);
+}
+
 export async function loadTodaysWorkout(state) {
     if (!state.currentUser) return null;
 
@@ -136,19 +164,16 @@ export async function loadTodaysWorkout(state) {
     try {
         // Schema v3.0: Query by date field instead of document ID
         // This finds incomplete workouts for today
-        const workoutsRef = collection(db, "users", state.currentUser.uid, "workouts");
-        const q = query(workoutsRef, where("date", "==", today));
-        const snapshot = await getDocs(q);
+        const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, where('date', '==', today));
+        const snapshot = await withTimeout(getDocs(q));
 
         let incompleteWorkout = null;
 
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
             // Find an incomplete workout for today
-            if (data.workoutType &&
-                data.workoutType !== 'none' &&
-                !data.completedAt &&
-                !data.cancelledAt) {
+            if (data.workoutType && data.workoutType !== 'none' && !data.completedAt && !data.cancelledAt) {
                 // Add document ID for reference
                 incompleteWorkout = { ...data, docId: docSnap.id };
             }
@@ -156,7 +181,10 @@ export async function loadTodaysWorkout(state) {
 
         return incompleteWorkout;
     } catch (error) {
-        console.error('Error loading today\'s workout:', error);
+        console.error("Error loading today's workout:", error);
+        if (error.message === 'Operation timed out') {
+            showNotification('Loading timed out — check your connection', 'error');
+        }
         return null;
     }
 }
@@ -174,8 +202,8 @@ export async function loadWorkoutsByDate(state, dateStr) {
         const workouts = [];
 
         // Schema v3.0: Query by date field
-        const workoutsRef = collection(db, "users", state.currentUser.uid, "workouts");
-        const q = query(workoutsRef, where("date", "==", dateStr));
+        const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, where('date', '==', dateStr));
         const snapshot = await getDocs(q);
 
         snapshot.forEach((docSnap) => {
@@ -219,7 +247,7 @@ export async function loadWorkoutById(state, workoutId) {
     if (!state.currentUser || !workoutId) return null;
 
     try {
-        const docRef = doc(db, "users", state.currentUser.uid, "workouts", workoutId);
+        const docRef = doc(db, 'users', state.currentUser.uid, 'workouts', workoutId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
@@ -242,7 +270,7 @@ export async function deleteWorkoutById(state, workoutId) {
     if (!state.currentUser || !workoutId) return false;
 
     try {
-        const docRef = doc(db, "users", state.currentUser.uid, "workouts", workoutId);
+        const docRef = doc(db, 'users', state.currentUser.uid, 'workouts', workoutId);
         await deleteDoc(docRef);
         return true;
     } catch (error) {
@@ -263,7 +291,7 @@ export async function loadWorkoutPlans(state) {
     } catch (error) {
         console.error('Error loading data from Firebase:', error);
         showNotification('Error loading workout data from Firebase. Using fallback.', 'warning');
-        
+
         // Fallback to JSON files if Firebase fails
         try {
             const workoutResponse = await fetch('./data/workouts.json');
@@ -294,7 +322,9 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
     if (!state.currentUser) return;
 
     const historyDisplay = document.getElementById(`exercise-history-${exerciseIndex}`);
-    const historyButton = document.querySelector(`button[onclick="loadExerciseHistory('${exerciseName}', ${exerciseIndex})"]`);
+    const historyButton = document.querySelector(
+        `button[onclick="loadExerciseHistory('${exerciseName}', ${exerciseIndex})"]`
+    );
 
     if (!historyDisplay || !historyButton) return;
 
@@ -316,8 +346,8 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
 
     try {
         // Query for recent workouts containing this exercise
-        const workoutsRef = collection(db, "users", state.currentUser.uid, "workouts");
-        const q = query(workoutsRef, orderBy("lastUpdated", "desc"), limit(50)); // Increased limit
+        const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(50)); // Increased limit
         const querySnapshot = await getDocs(q);
 
         let lastWorkout = null;
@@ -365,8 +395,8 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
                     if (exerciseData && exerciseData.sets && exerciseData.sets.length > 0) {
                         // Get the corresponding exercise name
                         const idx = key.replace('exercise_', '');
-                        const exerciseName_check = data.exerciseNames?.[key] ||
-                                                 data.originalWorkout?.exercises?.[idx]?.machine;
+                        const exerciseName_check =
+                            data.exerciseNames?.[key] || data.originalWorkout?.exercises?.[idx]?.machine;
 
                         if (exerciseName_check === exerciseName) {
                             foundExerciseKey = key;
@@ -410,7 +440,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
                         matchScore: matchScore,
                         matchDescription: matchDescription,
                         equipment: histEquipment,
-                        location: histLocation
+                        location: histLocation,
                     });
                 }
             }
@@ -431,13 +461,13 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             workoutDate = bestMatch.date;
             matchType = bestMatch.matchDescription;
         }
-        
+
         // Display the results
         if (lastExerciseData && lastExerciseData.sets) {
             const displayDate = new Date(workoutDate + 'T12:00:00').toLocaleDateString('en-US', {
                 month: 'numeric',
                 day: 'numeric',
-                year: 'numeric'
+                year: 'numeric',
             });
 
             const unit = state.exerciseUnits[exerciseIndex] || state.globalUnit;
@@ -478,11 +508,11 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
                     </div>
                     <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
             `;
-            
+
             lastExerciseData.sets.forEach((set, index) => {
                 if (set.reps && set.weight) {
                     let displayWeight;
-                    
+
                     // Use originalWeights if available (most reliable)
                     if (set.originalWeights && set.originalWeights[unit]) {
                         displayWeight = set.originalWeights[unit];
@@ -501,7 +531,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
                             displayWeight = convertWeight(set.weight, storedUnit, unit);
                         }
                     }
-                    
+
                     historyHTML += `
                         <div style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">
                             Set ${index + 1}: ${set.reps} × ${displayWeight} ${unit}
@@ -509,15 +539,15 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
                     `;
                 }
             });
-            
+
             if (lastExerciseData.notes) {
                 historyHTML += `</div><div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);"><strong>Notes:</strong> ${lastExerciseData.notes}</div>`;
             } else {
                 historyHTML += `</div>`;
             }
-            
+
             historyHTML += `</div>`;
-            
+
             historyDisplay.innerHTML = historyHTML;
             historyDisplay.classList.remove('hidden');
         } else {
@@ -528,7 +558,6 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             `;
             historyDisplay.classList.remove('hidden');
         }
-        
     } catch (error) {
         console.error('Error loading exercise history:', error);
         historyDisplay.innerHTML = `
@@ -537,7 +566,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             </div>
         `;
         historyDisplay.classList.remove('hidden');
-        
+
         // Reset button text on error
         historyButton.innerHTML = '<i class="fas fa-history"></i> Show Last Workout';
     }
@@ -548,8 +577,8 @@ export async function loadWorkoutHistory(state, limitCount = 50) {
     if (!state.currentUser) return [];
 
     try {
-        const workoutsRef = collection(db, "users", state.currentUser.uid, "workouts");
-        const q = query(workoutsRef, orderBy("lastUpdated", "desc"), limit(limitCount));
+        const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(limitCount));
         const querySnapshot = await getDocs(q);
 
         const workouts = [];
@@ -559,9 +588,9 @@ export async function loadWorkoutHistory(state, limitCount = 50) {
             // Enhanced workout data with proper exercise names
             // docId is the canonical reference for all operations
             const workout = {
-                id: docSnap.id,           // Legacy reference
-                docId: docSnap.id,        // Canonical document ID for all operations
-                workoutId: data.workoutId || docSnap.id,  // Schema v3.0 ID or fallback to doc ID
+                id: docSnap.id, // Legacy reference
+                docId: docSnap.id, // Canonical document ID for all operations
+                workoutId: data.workoutId || docSnap.id, // Schema v3.0 ID or fallback to doc ID
                 date: data.date,
                 workoutType: data.workoutType,
                 startTime: data.startTime,
@@ -576,30 +605,30 @@ export async function loadWorkoutHistory(state, limitCount = 50) {
                 totalExercises: data.totalExercises || 0,
                 addedManually: data.addedManually || false,
                 manualNotes: data.manualNotes || '',
-                version: data.version || '1.0'
+                version: data.version || '1.0',
             };
-            
+
             // Calculate progress
             let completedSets = 0;
             let totalSets = 0;
-            
+
             if (workout.originalWorkout && workout.exercises) {
                 workout.originalWorkout.exercises.forEach((exercise, index) => {
                     totalSets += exercise.sets;
                     const exerciseData = workout.exercises[`exercise_${index}`];
                     if (exerciseData && exerciseData.sets) {
-                        const completed = exerciseData.sets.filter(set => set && set.reps && set.weight).length;
+                        const completed = exerciseData.sets.filter((set) => set && set.reps && set.weight).length;
                         completedSets += completed;
                     }
                 });
             }
-            
+
             workout.progress = {
                 completedSets,
                 totalSets,
-                percentage: totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0
+                percentage: totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0,
             };
-            
+
             // Determine status
             if (workout.completedAt) {
                 workout.status = 'completed';
@@ -608,12 +637,11 @@ export async function loadWorkoutHistory(state, limitCount = 50) {
             } else {
                 workout.status = 'incomplete';
             }
-            
+
             workouts.push(workout);
         });
-        
-        return workouts;
 
+        return workouts;
     } catch (error) {
         console.error('Error loading workout history:', error);
         return [];
@@ -625,45 +653,44 @@ export async function migrateWorkoutData(state) {
     if (!state.currentUser) return;
 
     try {
-        const workoutsRef = collection(db, "users", state.currentUser.uid, "workouts");
-        const q = query(workoutsRef, orderBy("lastUpdated", "desc"), limit(10));
+        const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(10));
         const querySnapshot = await getDocs(q);
-        
+
         let migrationCount = 0;
-        
+
         for (const docSnapshot of querySnapshot.docs) {
             const data = docSnapshot.data();
-            
+
             // Check if this is old format (no version or version 1.0)
             if (!data.version || data.version === '1.0') {
-                
                 // Find the original workout plan
-                const workoutPlan = state.workoutPlans?.find(w => w.day === data.workoutType);
+                const workoutPlan = state.workoutPlans?.find((w) => w.day === data.workoutType);
                 if (workoutPlan && data.exercises) {
                     // Add missing fields
                     const exerciseNames = {};
                     workoutPlan.exercises.forEach((exercise, index) => {
                         exerciseNames[`exercise_${index}`] = exercise.machine || exercise.name;
                     });
-                    
+
                     const updatedData = {
                         ...data,
                         exerciseNames,
                         originalWorkout: {
                             day: workoutPlan.day,
-                            exercises: workoutPlan.exercises
+                            exercises: workoutPlan.exercises,
                         },
                         totalExercises: workoutPlan.exercises.length,
-                        version: '2.0'
+                        version: '2.0',
                     };
-                    
+
                     // Save updated data
-                    await setDoc(doc(db, "users", state.currentUser.uid, "workouts", data.date), updatedData);
+                    await setDoc(doc(db, 'users', state.currentUser.uid, 'workouts', data.date), updatedData);
                     migrationCount++;
                 }
             }
         }
-        
+
         if (migrationCount > 0) {
             showNotification(`Updated ${migrationCount} workout entries`, 'info');
         }
@@ -676,40 +703,40 @@ export async function migrateWorkoutData(state) {
 function getDefaultWorkouts() {
     return [
         {
-            "day": "Chest – Push",
-            "exercises": [
+            day: 'Chest – Push',
+            exercises: [
                 {
-                    "machine": "Seated Chest Press",
-                    "sets": 4,
-                    "reps": 10,
-                    "weight": 110,
-                    "video": "https://www.youtube.com/watch?v=n8TOta_pfr4"
+                    machine: 'Seated Chest Press',
+                    sets: 4,
+                    reps: 10,
+                    weight: 110,
+                    video: 'https://www.youtube.com/watch?v=n8TOta_pfr4',
                 },
                 {
-                    "machine": "Pec Deck",
-                    "sets": 3,
-                    "reps": 12,
-                    "weight": 70,
-                    "video": "https://www.youtube.com/watch?v=JJitfZKlKk4"
-                }
-            ]
-        }
+                    machine: 'Pec Deck',
+                    sets: 3,
+                    reps: 12,
+                    weight: 70,
+                    video: 'https://www.youtube.com/watch?v=JJitfZKlKk4',
+                },
+            ],
+        },
     ];
 }
 
 function getDefaultExercises() {
     return [
         {
-            "name": "Incline Dumbbell Press",
-            "machine": "Incline Dumbbell Press",
-            "bodyPart": "Chest",
-            "equipmentType": "Dumbbell",
-            "tags": ["chest", "upper body", "push"],
-            "sets": 4,
-            "reps": 8,
-            "weight": 45,
-            "video": "https://www.youtube.com/watch?v=example"
-        }
+            name: 'Incline Dumbbell Press',
+            machine: 'Incline Dumbbell Press',
+            bodyPart: 'Chest',
+            equipmentType: 'Dumbbell',
+            tags: ['chest', 'upper body', 'push'],
+            sets: 4,
+            reps: 8,
+            weight: 45,
+            video: 'https://www.youtube.com/watch?v=example',
+        },
     ];
 }
 // RECOVERY FUNCTION: Fix corrupted weight data
@@ -717,20 +744,20 @@ async function recoverCorruptedWeights(state) {
     if (!state.currentUser) return;
 
     let fixedCount = 0;
-    
+
     // Get all workout data
-    const workoutsRef = collection(db, "users", state.currentUser.uid, "workouts");
+    const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
     const snapshot = await getDocs(workoutsRef);
-    
+
     for (const docSnapshot of snapshot.docs) {
         const data = docSnapshot.data();
         let needsUpdate = false;
-        
+
         if (data.exercises) {
-            Object.keys(data.exercises).forEach(exerciseKey => {
+            Object.keys(data.exercises).forEach((exerciseKey) => {
                 const exerciseData = data.exercises[exerciseKey];
                 if (exerciseData.sets) {
-                    exerciseData.sets.forEach(set => {
+                    exerciseData.sets.forEach((set) => {
                         // Check if weight is corrupted (unreasonably high)
                         if (set.weight && set.weight > 500 && set.originalWeights) {
                             // Use the original kg value if available
@@ -739,7 +766,7 @@ async function recoverCorruptedWeights(state) {
                             } else if (set.originalWeights.lbs) {
                                 set.weight = set.originalWeights.lbs;
                             }
-                            
+
                             set.alreadyConverted = true;
                             needsUpdate = true;
                             fixedCount++;
@@ -748,9 +775,9 @@ async function recoverCorruptedWeights(state) {
                 }
             });
         }
-        
+
         if (needsUpdate) {
-            await setDoc(doc(db, "users", state.currentUser.uid, "workouts", docSnapshot.id), data);
+            await setDoc(doc(db, 'users', state.currentUser.uid, 'workouts', docSnapshot.id), data);
         }
     }
 

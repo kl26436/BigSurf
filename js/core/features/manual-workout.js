@@ -2,7 +2,7 @@
 // Simplified flow: Select date → Pick workout from library OR create custom → Enter sets → Save
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
 
 // ===================================================================
 // STATE
@@ -10,15 +10,15 @@ import { showNotification } from '../ui/ui-helpers.js';
 
 let manualWorkoutState = {
     date: '',
-    workoutType: '',      // Name of the workout
+    workoutType: '', // Name of the workout
     category: '',
-    isCustom: false,      // true if creating new custom workout
-    exercises: [],        // Array of exercises with sets, equipment
+    isCustom: false, // true if creating new custom workout
+    exercises: [], // Array of exercises with sets, equipment
     duration: 60,
     status: 'completed',
     notes: '',
-    location: '',         // Gym location
-    sourceTemplateId: null  // If from library, track which template
+    location: '', // Gym location
+    sourceTemplateId: null, // If from library, track which template
 };
 
 // ===================================================================
@@ -66,12 +66,12 @@ function resetManualWorkoutState() {
         status: 'completed',
         notes: '',
         location: '',
-        sourceTemplateId: null
+        sourceTemplateId: null,
     };
 
     // Reset form inputs
     const inputs = ['manual-workout-name', 'manual-workout-notes'];
-    inputs.forEach(id => {
+    inputs.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
@@ -136,7 +136,7 @@ async function loadLocationsForManual() {
         locationSelect.innerHTML = '<option value="">Select gym location...</option>';
 
         // Add locations
-        locations.forEach(loc => {
+        locations.forEach((loc) => {
             const option = document.createElement('option');
             option.value = loc.name;
             option.textContent = loc.name;
@@ -182,7 +182,7 @@ async function loadWorkoutLibraryForManual() {
     try {
         // Get all workout templates
         const templates = AppState.workoutPlans || [];
-        const activeTemplates = templates.filter(t => !t.isHidden && !t.deleted);
+        const activeTemplates = templates.filter((t) => !t.isHidden && !t.deleted);
 
         if (activeTemplates.length === 0) {
             container.innerHTML = `
@@ -194,19 +194,22 @@ async function loadWorkoutLibraryForManual() {
             return;
         }
 
-        container.innerHTML = activeTemplates.map((template, index) => `
+        container.innerHTML = activeTemplates
+            .map(
+                (template, index) => `
             <div class="manual-library-item" onclick="selectWorkoutForManual(${index})">
                 <div class="library-item-name">
                     <i class="fas fa-dumbbell"></i>
-                    ${template.name || template.day}
+                    ${escapeHtml(template.name || template.day)}
                 </div>
                 <div class="library-item-meta">
                     ${template.exercises?.length || 0} exercises
                 </div>
                 <i class="fas fa-chevron-right"></i>
             </div>
-        `).join('');
-
+        `
+            )
+            .join('');
     } catch (error) {
         console.error('Error loading workout library:', error);
         container.innerHTML = '<div class="error-message">Error loading workouts</div>';
@@ -221,7 +224,7 @@ export function selectWorkoutForManual(templateIndex) {
     }
 
     const templates = AppState.workoutPlans || [];
-    const activeTemplates = templates.filter(t => !t.isHidden && !t.deleted);
+    const activeTemplates = templates.filter((t) => !t.isHidden && !t.deleted);
     const template = activeTemplates[templateIndex];
 
     if (!template) {
@@ -237,21 +240,22 @@ export function selectWorkoutForManual(templateIndex) {
     manualWorkoutState.sourceTemplateId = template.id;
 
     // Copy exercises from template with empty sets for user to fill in
-    manualWorkoutState.exercises = (template.exercises || []).map(ex => ({
+    manualWorkoutState.exercises = (template.exercises || []).map((ex) => ({
         name: ex.name || ex.machine,
         bodyPart: ex.bodyPart || '',
         equipmentType: ex.equipmentType || '',
         defaultSets: ex.sets || 3,
         defaultReps: ex.reps || 10,
         defaultWeight: ex.weight || 0,
-        sets: Array(ex.sets || 3).fill(null).map(() => ({
-            reps: ex.reps || 10,
-            weight: ex.weight || 0,
-            completed: false
-        })),
-        notes: ''
+        sets: Array(ex.sets || 3)
+            .fill(null)
+            .map(() => ({
+                reps: ex.reps || 10,
+                weight: ex.weight || 0,
+                completed: false,
+            })),
+        notes: '',
     }));
-
 
     showManualStep(2);
 }
@@ -280,7 +284,6 @@ export function startCustomManualWorkout() {
     manualWorkoutState.isCustom = true;
     manualWorkoutState.exercises = [];
 
-
     showManualStep(2);
 }
 
@@ -303,16 +306,17 @@ function renderManualExercises() {
         return;
     }
 
-    container.innerHTML = manualWorkoutState.exercises.map((exercise, exIndex) => {
-        const equipmentDisplay = exercise.equipment
-            ? `${exercise.equipment}${exercise.equipmentLocation ? ' @ ' + exercise.equipmentLocation : ''}`
-            : 'No equipment';
+    container.innerHTML = manualWorkoutState.exercises
+        .map((exercise, exIndex) => {
+            const equipmentDisplay = exercise.equipment
+                ? `${exercise.equipment}${exercise.equipmentLocation ? ' @ ' + exercise.equipmentLocation : ''}`
+                : 'No equipment';
 
-        return `
+            return `
         <div class="manual-exercise-card">
             <div class="manual-exercise-header">
                 <div class="manual-exercise-title-row">
-                    <h4>${exercise.name}</h4>
+                    <h4>${escapeHtml(exercise.name)}</h4>
                     <button class="btn btn-danger btn-small" onclick="removeManualExercise(${exIndex})" title="Remove">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -324,14 +328,16 @@ function renderManualExercises() {
                 </div>
             </div>
             <div class="manual-sets-grid">
-                ${exercise.sets.map((set, setIndex) => `
+                ${exercise.sets
+                    .map(
+                        (set, setIndex) => `
                     <div class="manual-set-row">
                         <span class="set-label">Set ${setIndex + 1}</span>
-                        <input type="number" class="mini-input" placeholder="Reps"
+                        <input type="number" class="mini-input" inputmode="numeric" placeholder="Reps"
                                value="${set.reps || ''}"
                                onchange="updateManualSet(${exIndex}, ${setIndex}, 'reps', this.value)">
                         <span class="separator">×</span>
-                        <input type="number" class="mini-input" placeholder="Weight"
+                        <input type="number" class="mini-input" inputmode="decimal" placeholder="Weight"
                                value="${set.weight || ''}"
                                onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
                         <span class="unit">lbs</span>
@@ -339,13 +345,17 @@ function renderManualExercises() {
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </div>
             <button class="btn btn-secondary btn-small add-set-btn" onclick="addManualSet(${exIndex})">
                 <i class="fas fa-plus"></i> Add Set
             </button>
         </div>
-    `}).join('');
+    `;
+        })
+        .join('');
 }
 
 export function updateManualSet(exIndex, setIndex, field, value) {
@@ -364,7 +374,7 @@ export function addManualSet(exIndex) {
     exercise.sets.push({
         reps: exercise.defaultReps || 10,
         weight: exercise.defaultWeight || 0,
-        completed: false
+        completed: false,
     });
 
     renderManualExercises();
@@ -401,7 +411,7 @@ export function openExercisePickerForManual() {
                 name: exerciseName.trim(),
                 sets: 3,
                 reps: 10,
-                weight: 0
+                weight: 0,
             });
         }
     }
@@ -420,12 +430,14 @@ export function addExerciseToManualWorkout(exerciseData) {
         defaultSets: exercise.sets || 3,
         defaultReps: exercise.reps || 10,
         defaultWeight: exercise.weight || 0,
-        sets: Array(exercise.sets || 3).fill(null).map(() => ({
-            reps: exercise.reps || 10,
-            weight: exercise.weight || 0,
-            completed: false
-        })),
-        notes: ''
+        sets: Array(exercise.sets || 3)
+            .fill(null)
+            .map(() => ({
+                reps: exercise.reps || 10,
+                weight: exercise.weight || 0,
+                completed: false,
+            })),
+        notes: '',
     });
 
     // Close exercise library if open
@@ -490,16 +502,16 @@ export async function saveManualWorkout() {
             exercises: {},
             exerciseNames: {},
             originalWorkout: {
-                exercises: manualWorkoutState.exercises.map(ex => ({
+                exercises: manualWorkoutState.exercises.map((ex) => ({
                     name: ex.name,
                     sets: ex.sets.length,
                     reps: ex.defaultReps,
                     weight: ex.defaultWeight,
                     equipment: ex.equipment,
-                    equipmentLocation: ex.equipmentLocation
-                }))
+                    equipmentLocation: ex.equipmentLocation,
+                })),
             },
-            version: '2.0'
+            version: '2.0',
         };
 
         // Process exercises
@@ -507,15 +519,15 @@ export async function saveManualWorkout() {
             const key = `exercise_${index}`;
             workoutData.exerciseNames[key] = exercise.name;
             workoutData.exercises[key] = {
-                sets: exercise.sets.map(s => ({
+                sets: exercise.sets.map((s) => ({
                     reps: s.reps || 0,
                     weight: s.weight || 0,
-                    originalUnit: 'lbs'
+                    originalUnit: 'lbs',
                 })),
                 notes: exercise.notes || '',
                 completed: true,
                 equipment: exercise.equipment || null,
-                equipmentLocation: exercise.equipmentLocation || null
+                equipmentLocation: exercise.equipmentLocation || null,
             };
         });
 
@@ -543,7 +555,6 @@ export async function saveManualWorkout() {
                 await window.workoutHistory.initializeCalendar();
             }
         }
-
     } catch (error) {
         console.error('Error saving manual workout:', error);
         showNotification('Error saving workout', 'error');
@@ -559,18 +570,18 @@ async function saveAsNewTemplate() {
             name: manualWorkoutState.workoutType,
             day: manualWorkoutState.workoutType,
             category: manualWorkoutState.category,
-            exercises: manualWorkoutState.exercises.map(ex => ({
+            exercises: manualWorkoutState.exercises.map((ex) => ({
                 name: ex.name,
                 machine: ex.name,
                 bodyPart: ex.bodyPart,
                 equipmentType: ex.equipmentType,
                 sets: ex.sets.length,
                 reps: ex.defaultReps || 10,
-                weight: ex.defaultWeight || 0
+                weight: ex.defaultWeight || 0,
             })),
             isDefault: false,
             isHidden: false,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
 
         await workoutManager.saveWorkoutTemplate(templateData);
@@ -579,7 +590,6 @@ async function saveAsNewTemplate() {
         // Refresh workout plans in AppState
         const templates = await workoutManager.getUserWorkoutTemplates();
         AppState.workoutPlans = templates;
-
     } catch (error) {
         console.error('Error saving template:', error);
         showNotification('Error saving template', 'error');
@@ -617,20 +627,23 @@ export async function openEquipmentPickerForManual(exerciseIndex) {
         const listContainer = document.getElementById('equipment-picker-list');
         if (listContainer) {
             if (equipmentList.length === 0) {
-                listContainer.innerHTML = `<p class="empty-state">No equipment saved for "${exerciseName}" yet.<br>Equipment is saved automatically when you log sets during a workout.</p>`;
+                listContainer.innerHTML = `<p class="empty-state">No equipment saved for "${escapeHtml(exerciseName)}" yet.<br>Equipment is saved automatically when you log sets during a workout.</p>`;
             } else {
-                listContainer.innerHTML = equipmentList.map(eq => {
-                    // Get location from locations array or single location field
-                    const location = eq.locations?.length > 0 ? eq.locations[0] : (eq.location || '');
-                    return `
-                    <div class="equipment-picker-item" onclick="selectEquipmentForManual('${eq.id}', '${(eq.name || '').replace(/'/g, "\\'")}', '${(location || '').replace(/'/g, "\\'")}')">
+                listContainer.innerHTML = equipmentList
+                    .map((eq) => {
+                        // Get location from locations array or single location field
+                        const location = eq.locations?.length > 0 ? eq.locations[0] : eq.location || '';
+                        return `
+                    <div class="equipment-picker-item" onclick="selectEquipmentForManual('${escapeAttr(eq.id)}', '${escapeAttr(eq.name || '')}', '${escapeAttr(location || '')}')">
                         <i class="fas fa-cog"></i>
                         <div class="equipment-info">
-                            <span class="equipment-name">${eq.name || 'Unknown'}</span>
-                            ${location ? `<span class="equipment-location">@ ${location}</span>` : ''}
+                            <span class="equipment-name">${escapeHtml(eq.name || 'Unknown')}</span>
+                            ${location ? `<span class="equipment-location">@ ${escapeHtml(location)}</span>` : ''}
                         </div>
                     </div>
-                `}).join('');
+                `;
+                    })
+                    .join('');
             }
         }
 

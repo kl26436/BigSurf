@@ -2,14 +2,33 @@
 // Handles workout session execution, exercise management, and workout lifecycle
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, convertWeight, updateProgress, setHeaderMode, stopActiveWorkoutRestTimer } from '../ui/ui-helpers.js';
-import { setBottomNavVisible } from '../ui/navigation.js';
-import { saveWorkoutData, loadExerciseHistory } from '../data/data-manager.js';
-import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from '../utils/push-notification-manager.js';
 import {
-    detectLocation, setSessionLocation, getSessionLocation,
-    lockLocation, isLocationLocked, resetLocationState,
-    showLocationPrompt, updateLocationIndicator, getCurrentCoords
+    showNotification,
+    convertWeight,
+    updateProgress,
+    setHeaderMode,
+    stopActiveWorkoutRestTimer,
+    escapeHtml,
+    escapeAttr,
+} from '../ui/ui-helpers.js';
+import { getExerciseName } from '../utils/workout-helpers.js';
+import { setBottomNavVisible } from '../ui/navigation.js';
+import { saveWorkoutData, debouncedSaveWorkoutData, loadExerciseHistory } from '../data/data-manager.js';
+import {
+    scheduleRestNotification,
+    cancelRestNotification,
+    isFCMAvailable,
+} from '../utils/push-notification-manager.js';
+import {
+    detectLocation,
+    setSessionLocation,
+    getSessionLocation,
+    lockLocation,
+    isLocationLocked,
+    resetLocationState,
+    showLocationPrompt,
+    updateLocationIndicator,
+    getCurrentCoords,
 } from '../features/location-service.js';
 
 // Global timer state to persist across modal re-renders
@@ -51,9 +70,9 @@ export async function startWorkout(workoutType) {
             const workoutName = todaysWorkout.workoutType || 'Unknown';
             const confirmed = confirm(
                 `⚠️ You already completed a workout today: "${workoutName}"\n\n` +
-                `Starting a new workout will REPLACE your completed workout data.\n\n` +
-                `Your previous workout progress, PRs from that session, and stats will be overwritten.\n\n` +
-                `Are you sure you want to start a new workout?`
+                    `Starting a new workout will REPLACE your completed workout data.\n\n` +
+                    `Your previous workout progress, PRs from that session, and stats will be overwritten.\n\n` +
+                    `Are you sure you want to start a new workout?`
             );
 
             if (!confirmed) {
@@ -68,8 +87,8 @@ export async function startWorkout(workoutType) {
             const workoutName = todaysWorkout.workoutType || 'Unknown';
             const confirmed = confirm(
                 `⚠️ You already have a workout in progress: "${workoutName}"\n\n` +
-                `Starting a new workout will cancel your current workout and you'll lose any unsaved progress.\n\n` +
-                `Do you want to continue?`
+                    `Starting a new workout will cancel your current workout and you'll lose any unsaved progress.\n\n` +
+                    `Do you want to continue?`
             );
 
             if (!confirmed) {
@@ -83,7 +102,7 @@ export async function startWorkout(workoutType) {
             // Mark the existing workout as cancelled and save
             AppState.savedData = {
                 ...todaysWorkout,
-                cancelledAt: new Date().toISOString()
+                cancelledAt: new Date().toISOString(),
             };
             await saveWorkoutData(AppState);
 
@@ -103,8 +122,8 @@ export async function startWorkout(workoutType) {
     await initializeWorkoutLocation();
 
     // Find the workout plan (refresh from Firebase if not found in cache)
-    let workout = AppState.workoutPlans.find(plan =>
-        plan.day === workoutType || plan.name === workoutType || plan.id === workoutType
+    let workout = AppState.workoutPlans.find(
+        (plan) => plan.day === workoutType || plan.name === workoutType || plan.id === workoutType
     );
 
     // If not found in cache, try refreshing from Firebase
@@ -113,8 +132,8 @@ export async function startWorkout(workoutType) {
         const workoutManager = new FirebaseWorkoutManager(AppState);
         AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
 
-        workout = AppState.workoutPlans.find(plan =>
-            plan.day === workoutType || plan.name === workoutType || plan.id === workoutType
+        workout = AppState.workoutPlans.find(
+            (plan) => plan.day === workoutType || plan.name === workoutType || plan.id === workoutType
         );
     }
 
@@ -132,7 +151,7 @@ export async function startWorkout(workoutType) {
         startedAt: new Date().toISOString(),
         exercises: {},
         version: '2.0',
-        location: getSessionLocation() || null
+        location: getSessionLocation() || null,
     };
 
     // Initialize exercise units
@@ -142,7 +161,7 @@ export async function startWorkout(workoutType) {
     if (workoutNameElement) {
         workoutNameElement.textContent = workoutType;
     }
-    
+
     // Hide other sections and show active workout
     const workoutSelector = document.getElementById('workout-selector');
     const activeWorkout = document.getElementById('active-workout');
@@ -179,7 +198,7 @@ export async function startWorkout(workoutType) {
     // This ensures exercise additions/deletions persist when closing/reopening workout
     window.inProgressWorkout = {
         ...AppState.savedData,
-        originalWorkout: AppState.currentWorkout
+        originalWorkout: AppState.currentWorkout,
     };
 
     // Save initial state
@@ -197,7 +216,6 @@ export function pauseWorkout() {
 
     // Stop timers
     AppState.clearTimers();
-
 }
 
 export async function completeWorkout() {
@@ -305,8 +323,6 @@ export function cancelCurrentWorkout() {
 // ===================================================================
 
 export function continueInProgressWorkout() {
-    
-    
     // Hide the resume banner
     const banner = document.getElementById('resume-workout-banner');
     if (banner) banner.classList.add('hidden');
@@ -314,7 +330,7 @@ export function continueInProgressWorkout() {
     if (!window.inProgressWorkout) {
         return;
     }
-    
+
     // Restore workout state
     AppState.currentWorkout = window.inProgressWorkout.originalWorkout;
     AppState.savedData = window.inProgressWorkout;
@@ -328,8 +344,16 @@ export function continueInProgressWorkout() {
     }
 
     // Hide all other sections and show active workout
-    const sections = ['workout-selector', 'dashboard', 'workout-history-section', 'stats-section', 'workout-management-section', 'exercise-manager-section', 'location-management-section'];
-    sections.forEach(sectionId => {
+    const sections = [
+        'workout-selector',
+        'dashboard',
+        'workout-history-section',
+        'stats-section',
+        'workout-management-section',
+        'exercise-manager-section',
+        'location-management-section',
+    ];
+    sections.forEach((sectionId) => {
         const section = document.getElementById(sectionId);
         if (section) section.classList.add('hidden');
     });
@@ -357,8 +381,8 @@ export function continueInProgressWorkout() {
     if (window.inProgressWorkout.location) {
         setSessionLocation(window.inProgressWorkout.location);
         // If workout has logged sets, location should be locked
-        const hasLoggedSets = Object.values(window.inProgressWorkout.exercises || {}).some(ex =>
-            ex.sets && ex.sets.some(set => set.reps || set.weight)
+        const hasLoggedSets = Object.values(window.inProgressWorkout.exercises || {}).some(
+            (ex) => ex.sets && ex.sets.some((set) => set.reps || set.weight)
         );
         if (hasLoggedSets) {
             lockLocation();
@@ -370,7 +394,6 @@ export function continueInProgressWorkout() {
     // DON'T clear this - keep it so we can resume again if user navigates away
     // It will be cleared when workout is completed or cancelled
     // window.inProgressWorkout = null;
-
 }
 
 // ===================================================================
@@ -422,13 +445,13 @@ export async function editHistoricalWorkout(docIdOrDate) {
                 weight: ex.weight || 0,
                 video: ex.video || '',
                 equipment: savedExercise.equipment || ex.equipment || null,
-                equipmentLocation: savedExercise.equipmentLocation || ex.equipmentLocation || null
+                equipmentLocation: savedExercise.equipmentLocation || ex.equipmentLocation || null,
             };
         });
     } else if (workoutData.exerciseNames) {
         // Reconstruct from exerciseNames and exercises data
         const exerciseKeys = Object.keys(workoutData.exerciseNames).sort();
-        workoutExercises = exerciseKeys.map(key => {
+        workoutExercises = exerciseKeys.map((key) => {
             const name = workoutData.exerciseNames[key];
             const savedExercise = workoutData.exercises?.[key] || {};
             return {
@@ -438,7 +461,7 @@ export async function editHistoricalWorkout(docIdOrDate) {
                 weight: 0,
                 video: '',
                 equipment: savedExercise.equipment || null,
-                equipmentLocation: savedExercise.equipmentLocation || null
+                equipmentLocation: savedExercise.equipmentLocation || null,
             };
         });
     }
@@ -447,14 +470,14 @@ export async function editHistoricalWorkout(docIdOrDate) {
     AppState.currentWorkout = {
         day: workoutData.workoutType,
         name: workoutData.workoutType,
-        exercises: workoutExercises
+        exercises: workoutExercises,
     };
 
     // Restore saved data (sets, reps, weights, notes)
     // Use the actual date from workoutData, not the docId
     AppState.savedData = {
         ...workoutData,
-        date: workoutData.date // Preserve original date
+        date: workoutData.date, // Preserve original date
     };
 
     // Restore exercise units
@@ -487,8 +510,16 @@ export async function editHistoricalWorkout(docIdOrDate) {
     AppState.workoutStartTime = null;
 
     // Hide all sections and show active workout
-    const sections = ['workout-selector', 'dashboard', 'workout-history-section', 'stats-section', 'workout-management-section', 'exercise-manager-section', 'location-management-section'];
-    sections.forEach(sectionId => {
+    const sections = [
+        'workout-selector',
+        'dashboard',
+        'workout-history-section',
+        'stats-section',
+        'workout-management-section',
+        'exercise-manager-section',
+        'location-management-section',
+    ];
+    sections.forEach((sectionId) => {
         const section = document.getElementById(sectionId);
         if (section) section.classList.add('hidden');
     });
@@ -590,8 +621,6 @@ export async function discardEditedWorkout() {
 }
 
 export async function discardInProgressWorkout() {
-    
-    
     // Hide the resume banner
     const banner = document.getElementById('resume-workout-banner');
     if (banner) banner.classList.add('hidden');
@@ -599,45 +628,44 @@ export async function discardInProgressWorkout() {
     if (!window.inProgressWorkout) {
         return;
     }
-    
+
     const confirmDiscard = confirm(
         `Are you sure you want to discard your in-progress "${window.inProgressWorkout.workoutType}" workout? ` +
-        `This will permanently delete your progress and cannot be undone.`
+            `This will permanently delete your progress and cannot be undone.`
     );
-    
+
     if (!confirmDiscard) {
         return;
     }
-    
+
     try {
         // Store workout info BEFORE clearing variables
         const workoutToDelete = {
             date: window.inProgressWorkout.date,
             workoutType: window.inProgressWorkout.workoutType,
-            userId: AppState.currentUser?.uid
+            userId: AppState.currentUser?.uid,
         };
-        
+
         // DELETE the workout from Firebase FIRST
         try {
             if (workoutToDelete.userId && workoutToDelete.date) {
                 const { deleteDoc, doc, db } = await import('../data/firebase-config.js');
 
-                const workoutRef = doc(db, "users", workoutToDelete.userId, "workouts", workoutToDelete.date);
+                const workoutRef = doc(db, 'users', workoutToDelete.userId, 'workouts', workoutToDelete.date);
                 await deleteDoc(workoutRef);
             }
         } catch (firebaseError) {
             console.error('Error deleting workout from Firebase', firebaseError);
         }
-        
+
         // Clear in-progress workout state
         window.inProgressWorkout = null;
-        
+
         // Clear any related UI state
         AppState.reset();
-        
+
         // Show workout selector
         showWorkoutSelector();
-        
     } catch (error) {
         console.error('Error during discard process:', error);
         alert('Error discarding workout. Please try again.');
@@ -677,20 +705,20 @@ export function renderExercises() {
 function generateQuickSetsHtml(exercise, exerciseIndex, unit) {
     const savedSets = AppState.savedData.exercises?.[`exercise_${exerciseIndex}`]?.sets || [];
     const targetSets = exercise.sets || 3;
-    
+
     let html = '<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">';
-    
+
     for (let setIndex = 0; setIndex < targetSets; setIndex++) {
         const set = savedSets[setIndex] || {};
         const isCompleted = set.reps && set.weight;
-        
+
         if (isCompleted) {
             // Convert stored lbs weight to display unit
             let displayWeight = set.weight; // stored in lbs
             if (set.weight && unit === 'kg') {
                 displayWeight = Math.round(set.weight * 0.453592); // Convert lbs to kg, rounded to whole number
             }
-            
+
             html += `
                 <div style="background: var(--success); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500;">
                     Set ${setIndex + 1}: ${set.reps} × ${displayWeight} ${unit}
@@ -705,7 +733,7 @@ function generateQuickSetsHtml(exercise, exerciseIndex, unit) {
             `;
         }
     }
-    
+
     html += '</div>';
     return html;
 }
@@ -719,7 +747,7 @@ export function createExerciseCard(exercise, index) {
     const savedSets = AppState.savedData.exercises?.[`exercise_${index}`]?.sets || [];
 
     // Calculate completion status
-    const completedSets = savedSets.filter(set => set && set.reps && set.weight).length;
+    const completedSets = savedSets.filter((set) => set && set.reps && set.weight).length;
     const totalSets = exercise.sets || 3;
 
     // Use the larger of completedSets or totalSets for display to avoid showing 4/3
@@ -732,7 +760,7 @@ export function createExerciseCard(exercise, index) {
         card.classList.add('completed');
         // Don't collapse - show full exercise with green border indicator
     }
-    
+
     // Calculate progress percentage using displayTotal to avoid >100%
     const progressPercent = displayTotal > 0 ? Math.min((completedSets / displayTotal) * 100, 100) : 0;
 
@@ -746,12 +774,12 @@ export function createExerciseCard(exercise, index) {
     }
 
     // Get exercise name with fallback
-    const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+    const exerciseName = getExerciseName(exercise);
 
     card.innerHTML = `
         <div class="exercise-title-row" onclick="focusExercise(${index})" style="cursor: pointer;">
-            <h3 class="exercise-title">${exerciseName}</h3>
-            ${equipmentDisplay ? `<div class="exercise-equipment-tag">${equipmentDisplay}</div>` : ''}
+            <h3 class="exercise-title">${escapeHtml(exerciseName)}</h3>
+            ${equipmentDisplay ? `<div class="exercise-equipment-tag">${escapeHtml(equipmentDisplay)}</div>` : ''}
         </div>
         <div class="exercise-progress-row" onclick="focusExercise(${index})" style="cursor: pointer;">
             <div class="progress-bar-track">
@@ -771,13 +799,13 @@ export function createExerciseCard(exercise, index) {
 
 export function focusExercise(index) {
     if (!AppState.currentWorkout) return;
-    
+
     AppState.focusedExerciseIndex = index;
     const exercise = AppState.currentWorkout.exercises[index];
     const modal = document.getElementById('exercise-modal');
     const title = document.getElementById('modal-exercise-title');
     const content = document.getElementById('exercise-content');
-    
+
     if (!modal || !title || !content) {
         console.error('Modal elements not found:', { modal: !!modal, title: !!title, content: !!content });
         return;
@@ -788,20 +816,20 @@ export function focusExercise(index) {
         ? `${exercise.equipment}${exercise.equipmentLocation ? ' @ ' + exercise.equipmentLocation : ''}`
         : null;
 
-    const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
-    title.innerHTML = `${exerciseName} <a href="#" class="exercise-edit-icon" onclick="event.preventDefault(); editExerciseDefaults('${exerciseName.replace(/'/g, "\\'")}')"><i class="fas fa-pen"></i></a><br><span class="modal-equipment-subtitle">${equipmentText || 'No equipment'} <a href="#" class="equipment-change-icon" onclick="event.preventDefault(); changeExerciseEquipment(${index})"><i class="fas fa-sync-alt"></i></a></span>`;
-    
+    const exerciseName = getExerciseName(exercise);
+    title.innerHTML = `${escapeHtml(exerciseName)} <a href="#" class="exercise-edit-icon" onclick="event.preventDefault(); editExerciseDefaults('${escapeAttr(exerciseName)}')"><i class="fas fa-pen"></i></a><br><span class="modal-equipment-subtitle">${escapeHtml(equipmentText || 'No equipment')} <a href="#" class="equipment-change-icon" onclick="event.preventDefault(); changeExerciseEquipment(${index})"><i class="fas fa-sync-alt"></i></a></span>`;
+
     // Define currentUnit FIRST
     const currentUnit = AppState.exerciseUnits[index] || AppState.globalUnit;
-    
+
     // Generate the HTML content (this creates the unit toggle)
     content.innerHTML = generateExerciseTable(exercise, index, currentUnit);
-    
+
     // NOW find and set up the unit toggle (after it's been created)
     const unitToggle = modal.querySelector('.exercise-unit-toggle .unit-toggle');
-    
+
     if (unitToggle) {
-        unitToggle.querySelectorAll('.unit-btn').forEach(btn => {
+        unitToggle.querySelectorAll('.unit-btn').forEach((btn) => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 setExerciseUnit(index, btn.dataset.unit);
@@ -834,21 +862,23 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
         savedSets.push({ reps: '', weight: '' });
     }
 
-    const modalExerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+    const modalExerciseName = getExerciseName(exercise);
     let html = `
         <!-- Exercise History Reference -->
         <div class="exercise-history-section">
             <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
-                <button class="btn btn-secondary btn-small" onclick="loadExerciseHistory('${modalExerciseName}', ${exerciseIndex})">
+                <button class="btn btn-secondary btn-small" onclick="loadExerciseHistory('${escapeAttr(modalExerciseName)}', ${exerciseIndex})">
                     <i class="fas fa-history"></i> Show Last Workout
                 </button>
-                ${exercise.video ?
-                    `<button id="show-video-btn-${exerciseIndex}" class="btn btn-primary btn-small" onclick="showExerciseVideoAndToggleButton('${exercise.video}', '${modalExerciseName}', ${exerciseIndex})">
+                ${
+                    exercise.video
+                        ? `<button id="show-video-btn-${exerciseIndex}" class="btn btn-primary btn-small" onclick="showExerciseVideoAndToggleButton('${escapeAttr(exercise.video)}', '${escapeAttr(modalExerciseName)}', ${exerciseIndex})">
                         <i class="fas fa-play"></i> Form Video
                     </button>
                     <button id="hide-video-btn-${exerciseIndex}" class="btn btn-secondary btn-small hidden" onclick="hideExerciseVideoAndToggleButton(${exerciseIndex})">
                         <i class="fas fa-times"></i> Hide Video
-                    </button>` : ''
+                    </button>`
+                        : ''
                 }
             </div>
             <div id="exercise-history-${exerciseIndex}" class="exercise-history-display hidden"></div>
@@ -890,32 +920,32 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
     `;
 
     for (let i = 0; i < exercise.sets; i++) {
-    const set = savedSets[i] || { reps: '', weight: '' };
-    
-    // Convert stored lbs weight to display unit
-    let displayWeight = set.weight || '';
-    if (displayWeight && unit === 'kg') {
-        displayWeight = Math.round(displayWeight * 0.453592); // Round kg to whole number
-    }
-    
-    html += `
+        const set = savedSets[i] || { reps: '', weight: '' };
+
+        // Convert stored lbs weight to display unit
+        let displayWeight = set.weight || '';
+        if (displayWeight && unit === 'kg') {
+            displayWeight = Math.round(displayWeight * 0.453592); // Round kg to whole number
+        }
+
+        html += `
         <tr>
             <td>Set ${i + 1}</td>
             <td>
-                <input type="number" class="set-input" 
-                       placeholder="${exercise.reps}" 
+                <input type="number" class="set-input" inputmode="numeric"
+                       placeholder="${exercise.reps}"
                        value="${set.reps}"
                        onchange="updateSet(${exerciseIndex}, ${i}, 'reps', this.value)">
             </td>
             <td>
-                <input type="number" class="set-input" 
-                       placeholder="${convertedWeight}" 
+                <input type="number" class="set-input" inputmode="decimal"
+                       placeholder="${convertedWeight}"
                        value="${displayWeight}"
                        onchange="updateSet(${exerciseIndex}, ${i}, 'weight', this.value)">
             </td>
         </tr>
     `;
-}
+    }
 
     html += `
             </tbody>
@@ -950,7 +980,6 @@ export { loadExerciseHistory };
 // ===================================================================
 
 export async function updateSet(exerciseIndex, setIndex, field, value) {
-
     if (!AppState.currentWorkout || !AppState.savedData.exercises) {
         AppState.savedData.exercises = {};
     }
@@ -964,34 +993,34 @@ export async function updateSet(exerciseIndex, setIndex, field, value) {
             notes: '',
             name: currentExercise?.machine || currentExercise?.name || null,
             equipment: currentExercise?.equipment || null,
-            equipmentLocation: currentExercise?.equipmentLocation || null
+            equipmentLocation: currentExercise?.equipmentLocation || null,
         };
     }
 
     if (!AppState.savedData.exercises[exerciseKey].sets[setIndex]) {
         AppState.savedData.exercises[exerciseKey].sets[setIndex] = {};
     }
-    
+
     // Convert and validate value
     const numValue = parseFloat(value);
     if (!isNaN(numValue) && numValue > 0) {
         if (field === 'weight') {
             const currentUnit = AppState.exerciseUnits[exerciseIndex] || AppState.globalUnit;
             let weightInLbs = numValue;
-            
+
             // Convert to lbs if entered in kg
             if (currentUnit === 'kg') {
                 weightInLbs = Math.round(numValue * 2.20462);
             }
-            
+
             // Store weight in lbs and track original unit
             AppState.savedData.exercises[exerciseKey].sets[setIndex][field] = weightInLbs;
             AppState.savedData.exercises[exerciseKey].sets[setIndex].originalUnit = currentUnit;
-            
+
             // Store both values for reference
             AppState.savedData.exercises[exerciseKey].sets[setIndex].originalWeights = {
                 lbs: weightInLbs,
-                kg: currentUnit === 'kg' ? numValue : Math.round(weightInLbs * 0.453592)
+                kg: currentUnit === 'kg' ? numValue : Math.round(weightInLbs * 0.453592),
             };
         } else {
             AppState.savedData.exercises[exerciseKey].sets[setIndex][field] = numValue;
@@ -999,10 +1028,10 @@ export async function updateSet(exerciseIndex, setIndex, field, value) {
     } else {
         AppState.savedData.exercises[exerciseKey].sets[setIndex][field] = null;
     }
-    
-    // Save to Firebase
-    saveWorkoutData(AppState);
-    
+
+    // Save to Firebase (debounced to batch rapid set updates)
+    debouncedSaveWorkoutData(AppState);
+
     // Update UI
     updateProgress(AppState);
     renderExercises();
@@ -1046,7 +1075,7 @@ const prNotifiedSets = new Set();
 async function checkSetForPR(exerciseIndex, setIndex) {
     try {
         const exercise = AppState.currentWorkout.exercises[exerciseIndex];
-        const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+        const exerciseName = getExerciseName(exercise);
         const equipment = exercise.equipment || 'Unknown Equipment';
 
         const exerciseKey = `exercise_${exerciseIndex}`;
@@ -1074,8 +1103,12 @@ async function checkSetForPR(exerciseIndex, setIndex) {
             if (setRow && !setRow.querySelector('.pr-badge')) {
                 const prBadge = document.createElement('span');
                 prBadge.className = 'pr-badge';
-                prBadge.innerHTML = ' <i class="fas fa-trophy" style="color: gold; margin-left: 0.5rem; animation: pulse 1s infinite;"></i>';
-                prBadge.title = `New ${prCheck.prType.replace('max', '').replace(/([A-Z])/g, ' $1').trim()} PR!`;
+                prBadge.innerHTML =
+                    ' <i class="fas fa-trophy" style="color: gold; margin-left: 0.5rem; animation: pulse 1s infinite;"></i>';
+                prBadge.title = `New ${prCheck.prType
+                    .replace('max', '')
+                    .replace(/([A-Z])/g, ' $1')
+                    .trim()} PR!`;
 
                 const firstCell = setRow.querySelector('td');
                 if (firstCell) {
@@ -1086,9 +1119,7 @@ async function checkSetForPR(exerciseIndex, setIndex) {
             // For "first time" PRs, only show notification once per exercise
             // For other PR types (maxWeight, maxReps, maxVolume), show for each unique achievement
             const exerciseNotifyKey = `${exerciseIndex}-${prCheck.prType}`;
-            const shouldNotify = prCheck.prType === 'first'
-                ? !prNotifiedSets.has(exerciseNotifyKey)
-                : true;
+            const shouldNotify = prCheck.prType === 'first' ? !prNotifiedSets.has(exerciseNotifyKey) : true;
 
             if (shouldNotify) {
                 if (prCheck.prType === 'first') {
@@ -1121,10 +1152,10 @@ async function checkSetForPR(exerciseIndex, setIndex) {
 
 export function addSet(exerciseIndex) {
     if (!AppState.currentWorkout) return;
-    
-    AppState.currentWorkout.exercises[exerciseIndex].sets = 
+
+    AppState.currentWorkout.exercises[exerciseIndex].sets =
         (AppState.currentWorkout.exercises[exerciseIndex].sets || 3) + 1;
-    
+
     renderExercises();
 
     const setData = AppState.savedData.exercises[exerciseKey].sets[setIndex];
@@ -1136,11 +1167,11 @@ export function addSet(exerciseIndex) {
 
 export function deleteSet(exerciseIndex, setIndex) {
     if (!AppState.savedData.exercises) return;
-    
+
     const exerciseKey = `exercise_${exerciseIndex}`;
     if (AppState.savedData.exercises[exerciseKey]?.sets) {
         AppState.savedData.exercises[exerciseKey].sets.splice(setIndex, 1);
-        saveWorkoutData(AppState);
+        debouncedSaveWorkoutData(AppState);
         renderExercises();
     }
 }
@@ -1189,7 +1220,7 @@ export function removeSetFromExercise(exerciseIndex) {
         const lastSetIndex = currentSets - 1;
         if (AppState.savedData.exercises[exerciseKey].sets[lastSetIndex]) {
             AppState.savedData.exercises[exerciseKey].sets.splice(lastSetIndex, 1);
-            saveWorkoutData(AppState);
+            debouncedSaveWorkoutData(AppState);
         }
     }
 
@@ -1217,12 +1248,12 @@ export function saveExerciseNotes(exerciseIndex) {
             notes: '',
             name: currentExercise?.machine || currentExercise?.name || null,
             equipment: currentExercise?.equipment || null,
-            equipmentLocation: currentExercise?.equipmentLocation || null
+            equipmentLocation: currentExercise?.equipmentLocation || null,
         };
     }
 
     AppState.savedData.exercises[exerciseKey].notes = notesTextarea.value;
-    saveWorkoutData(AppState);
+    debouncedSaveWorkoutData(AppState);
 }
 
 export function markExerciseComplete(exerciseIndex) {
@@ -1235,14 +1266,14 @@ export function markExerciseComplete(exerciseIndex) {
             notes: '',
             name: exercise?.machine || exercise?.name || null,
             equipment: exercise?.equipment || null,
-            equipmentLocation: exercise?.equipmentLocation || null
+            equipmentLocation: exercise?.equipmentLocation || null,
         };
     }
 
     // Remove empty sets (sets without both reps AND weight)
     // Only keep sets that have actual data entered
     const existingSets = AppState.savedData.exercises[exerciseKey].sets || [];
-    AppState.savedData.exercises[exerciseKey].sets = existingSets.filter(set => {
+    AppState.savedData.exercises[exerciseKey].sets = existingSets.filter((set) => {
         // Keep set if it has reps OR weight (or both)
         return (set.reps && set.reps > 0) || (set.weight && set.weight > 0);
     });
@@ -1341,11 +1372,11 @@ export function confirmExerciseAddToWorkout(exerciseData) {
         return false;
     }
 
-    const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+    const exerciseName = getExerciseName(exercise);
 
     // Check for duplicate exercise in current workout
-    const isDuplicate = AppState.currentWorkout.exercises.some(ex =>
-        ex.machine === exerciseName || ex.name === exerciseName
+    const isDuplicate = AppState.currentWorkout.exercises.some(
+        (ex) => ex.machine === exerciseName || ex.name === exerciseName
     );
 
     if (isDuplicate) {
@@ -1361,7 +1392,7 @@ export function confirmExerciseAddToWorkout(exerciseData) {
         weight: exercise.weight || 50,
         video: exercise.video || '',
         equipment: exercise.equipment || null,
-        equipmentLocation: exercise.equipmentLocation || null
+        equipmentLocation: exercise.equipmentLocation || null,
     };
 
     AppState.currentWorkout.exercises.push(newExercise);
@@ -1376,7 +1407,6 @@ export function confirmExerciseAddToWorkout(exerciseData) {
     }
 
     return true;
-    
 }
 
 // REMOVED: swapExercise() and confirmExerciseSwap() - Replaced by delete + add workflow
@@ -1429,7 +1459,7 @@ export async function changeExerciseEquipment(exerciseIndex) {
     if (!AppState.currentWorkout) return;
 
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
-    const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+    const exerciseName = getExerciseName(exercise);
 
     // Store the index for the callback
     pendingEquipmentChangeIndex = exerciseIndex;
@@ -1460,23 +1490,27 @@ export async function changeExerciseEquipment(exerciseIndex) {
         // Render equipment options
         if (listEl) {
             if (exerciseEquipment.length > 0) {
-                listEl.innerHTML = exerciseEquipment.map(eq => `
+                listEl.innerHTML = exerciseEquipment
+                    .map(
+                        (eq) => `
                     <div class="equipment-option ${eq.name === exercise.equipment ? 'selected' : ''}"
-                         data-equipment-id="${eq.id}"
-                         data-equipment-name="${eq.name}"
-                         data-equipment-location="${eq.location || ''}">
+                         data-equipment-id="${escapeAttr(eq.id)}"
+                         data-equipment-name="${escapeAttr(eq.name)}"
+                         data-equipment-location="${escapeAttr(eq.location || '')}">
                         <div class="equipment-option-radio"></div>
                         <div class="equipment-option-details">
-                            <div class="equipment-option-name">${eq.name}</div>
-                            ${eq.location ? `<div class="equipment-option-location">${eq.location}</div>` : ''}
+                            <div class="equipment-option-name">${escapeHtml(eq.name)}</div>
+                            ${eq.location ? `<div class="equipment-option-location">${escapeHtml(eq.location)}</div>` : ''}
                         </div>
                     </div>
-                `).join('');
+                `
+                    )
+                    .join('');
 
                 // Add click handlers for selection
-                listEl.querySelectorAll('.equipment-option').forEach(option => {
+                listEl.querySelectorAll('.equipment-option').forEach((option) => {
                     option.addEventListener('click', () => {
-                        listEl.querySelectorAll('.equipment-option').forEach(o => o.classList.remove('selected'));
+                        listEl.querySelectorAll('.equipment-option').forEach((o) => o.classList.remove('selected'));
                         option.classList.add('selected');
                         // Clear the new equipment inputs when selecting existing
                         if (newNameInput) newNameInput.value = '';
@@ -1493,22 +1527,22 @@ export async function changeExerciseEquipment(exerciseIndex) {
         const locationDatalist = document.getElementById('equipment-picker-location-suggestions');
 
         if (equipmentDatalist) {
-            const equipmentNames = [...new Set(allEquipment.map(eq => eq.name))];
-            equipmentDatalist.innerHTML = equipmentNames.map(name => `<option value="${name}">`).join('');
+            const equipmentNames = [...new Set(allEquipment.map((eq) => eq.name))];
+            equipmentDatalist.innerHTML = equipmentNames.map((name) => `<option value="${name}">`).join('');
         }
 
         if (locationDatalist) {
             // Get locations from equipment AND from saved gym locations
-            const equipmentLocations = allEquipment.filter(eq => eq.location).map(eq => eq.location);
+            const equipmentLocations = allEquipment.filter((eq) => eq.location).map((eq) => eq.location);
             let savedGymLocations = [];
             try {
                 savedGymLocations = await workoutManager.getUserLocations();
-                savedGymLocations = savedGymLocations.map(loc => loc.name);
+                savedGymLocations = savedGymLocations.map((loc) => loc.name);
             } catch (e) {
                 // Ignore errors fetching gym locations
             }
             const allLocations = [...new Set([...equipmentLocations, ...savedGymLocations])];
-            locationDatalist.innerHTML = allLocations.map(loc => `<option value="${loc}">`).join('');
+            locationDatalist.innerHTML = allLocations.map((loc) => `<option value="${loc}">`).join('');
         }
     } catch (error) {
         console.error('❌ Error loading equipment:', error);
@@ -1529,7 +1563,7 @@ export async function applyEquipmentChange(equipmentName, equipmentLocation, equ
 
     const exerciseIndex = pendingEquipmentChangeIndex;
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
-    const exerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+    const exerciseName = getExerciseName(exercise);
 
     // Update the exercise with new equipment
     exercise.equipment = equipmentName || null;
@@ -1586,7 +1620,7 @@ export async function applyEquipmentChange(equipmentName, equipmentLocation, equ
 export function toggleModalRestTimer(exerciseIndex) {
     const modalTimer = document.getElementById(`modal-rest-timer-${exerciseIndex}`);
     if (!modalTimer) return;
-    
+
     if (modalTimer.classList.contains('hidden')) {
         // Start new timer
         startModalRestTimer(exerciseIndex, 90);
@@ -1616,7 +1650,7 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
 
     if (!modalTimer || !exerciseLabel || !timerDisplay) return;
 
-    const restExerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+    const restExerciseName = getExerciseName(exercise);
     exerciseLabel.textContent = `Rest Period - ${restExerciseName}`;
     modalTimer.classList.remove('hidden');
 
@@ -1632,8 +1666,7 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
     // This will send a notification even if the app is backgrounded/locked
     if (isFCMAvailable()) {
         const notifExerciseName = exercise.name || exercise.machine || exercise.exercise || 'your next set';
-        scheduleRestNotification(duration, notifExerciseName)
-            .catch(() => {}); // Silently fail - local timer still works
+        scheduleRestNotification(duration, notifExerciseName).catch(() => {}); // Silently fail - local timer still works
     }
 
     const updateDisplay = () => {
@@ -1689,7 +1722,7 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
             modalTimer.timerData.animationFrame = requestAnimationFrame(timerLoop);
         }
     };
-    
+
     modalTimer.timerData = {
         animationFrame: requestAnimationFrame(timerLoop),
         timeLeft: timeLeft,
@@ -1713,8 +1746,7 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
 
             const pauseBtn = modalTimer.querySelector('.modal-rest-controls .btn:first-child');
             if (pauseBtn) {
-                pauseBtn.innerHTML = isPaused ?
-                    '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
+                pauseBtn.innerHTML = isPaused ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
             }
         },
 
@@ -1731,18 +1763,18 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
 
             // Cancel the server-side scheduled notification
             cancelRestNotification().catch(() => {});
-        }
+        },
     };
 
     // Store timer state in AppState for dashboard display
-    const timerExerciseName = exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+    const timerExerciseName = getExerciseName(exercise);
     AppState.activeRestTimer = {
         exerciseIndex,
         exerciseName: timerExerciseName,
         duration,
         startTime,
         pausedTime,
-        isPaused: false
+        isPaused: false,
     };
 
     // Request notification permission if not granted
@@ -1769,13 +1801,13 @@ function clearModalRestTimer(exerciseIndex) {
     }
 
     modalTimer.classList.add('hidden');
-    
+
     // Reset display
     const timerDisplay = modalTimer.querySelector('.modal-rest-display');
     if (timerDisplay) {
         timerDisplay.style.color = 'var(--primary)';
     }
-    
+
     // Reset pause button
     const pauseBtn = modalTimer.querySelector('.modal-rest-controls .btn:first-child');
     if (pauseBtn) {
@@ -1840,16 +1872,16 @@ function restoreModalRestTimer(exerciseIndex, timerState) {
             return;
         }
     };
-    
+
     updateDisplay();
-    
+
     const timerLoop = () => {
         checkTime();
         if (timeLeft > 0) {
             modalTimer.timerData.animationFrame = requestAnimationFrame(timerLoop);
         }
     };
-    
+
     // Store timer state
     modalTimer.timerData = {
         animationFrame: requestAnimationFrame(timerLoop),
@@ -1857,7 +1889,7 @@ function restoreModalRestTimer(exerciseIndex, timerState) {
         isPaused: isPaused,
         startTime: startTime,
         pausedTime: pausedTime,
-        
+
         pause: () => {
             isPaused = !isPaused;
             if (isPaused) {
@@ -1865,18 +1897,17 @@ function restoreModalRestTimer(exerciseIndex, timerState) {
             } else {
                 startTime = Date.now();
             }
-            
+
             const pauseBtn = modalTimer.querySelector('.modal-rest-controls .btn:first-child');
             if (pauseBtn) {
-                pauseBtn.innerHTML = isPaused ? 
-                    '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
+                pauseBtn.innerHTML = isPaused ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
             }
-            
+
             modalTimer.timerData.isPaused = isPaused;
             modalTimer.timerData.pausedTime = pausedTime;
             modalTimer.timerData.timeLeft = timeLeft;
         },
-        
+
         skip: () => {
             if (modalTimer.timerData.animationFrame) {
                 cancelAnimationFrame(modalTimer.timerData.animationFrame);
@@ -1884,29 +1915,29 @@ function restoreModalRestTimer(exerciseIndex, timerState) {
             modalTimer.classList.add('hidden');
             timerDisplay.style.color = 'var(--primary)';
             modalTimer.timerData = null;
-        }
+        },
     };
 }
 
 function stopModalRestTimer(exerciseIndex) {
     const modalTimer = document.getElementById(`modal-rest-timer-${exerciseIndex}`);
     if (!modalTimer) return;
-    
+
     // Clear animation frame
     if (modalTimer.timerData && modalTimer.timerData.animationFrame) {
         cancelAnimationFrame(modalTimer.timerData.animationFrame);
     }
-    
+
     // Hide timer and reset
     modalTimer.classList.add('hidden');
     modalTimer.timerData = null;
-    
+
     // Reset display color
     const timerDisplay = modalTimer.querySelector('.modal-rest-display');
     if (timerDisplay) {
         timerDisplay.style.color = 'var(--primary)';
     }
-    
+
     // Reset pause button
     const pauseBtn = modalTimer.querySelector('.modal-rest-controls .btn:first-child');
     if (pauseBtn) {
@@ -1923,7 +1954,9 @@ function saveActiveTimerState(exerciseIndex) {
     }
 
     const exercise = AppState.currentWorkout?.exercises[exerciseIndex];
-    const exerciseLabel = modalTimer.querySelector('.modal-rest-exercise')?.textContent || `Rest Period - ${exercise?.machine || 'Exercise'}`;
+    const exerciseLabel =
+        modalTimer.querySelector('.modal-rest-exercise')?.textContent ||
+        `Rest Period - ${exercise?.machine || 'Exercise'}`;
 
     // Cancel animation frame but preserve state
     if (modalTimer.timerData.animationFrame) {
@@ -1936,7 +1969,7 @@ function saveActiveTimerState(exerciseIndex) {
         timeLeft: modalTimer.timerData.timeLeft,
         isPaused: modalTimer.timerData.isPaused,
         startTime: modalTimer.timerData.startTime,
-        pausedTime: modalTimer.timerData.pausedTime
+        pausedTime: modalTimer.timerData.pausedTime,
     };
 }
 
@@ -1972,7 +2005,7 @@ function restoreTimerFromAppState(exerciseIndex) {
         timeLeft: timeLeft,
         isPaused: timer.isPaused,
         startTime: timer.startTime,
-        pausedTime: timer.pausedTime
+        pausedTime: timer.pausedTime,
     };
 
     if (timeLeft > 0 && !timer.completed) {
@@ -2041,11 +2074,10 @@ export function updateWorkoutDuration() {
 }
 
 export function autoStartRestTimer(exerciseIndex, setIndex) {
-    
     const modal = document.getElementById('exercise-modal');
     const modalHidden = modal?.classList.contains('hidden');
     const focusedMatch = AppState.focusedExerciseIndex === exerciseIndex;
-    
+
     if (modal && !modalHidden && focusedMatch) {
         startModalRestTimer(exerciseIndex, 90);
     } else {
@@ -2058,9 +2090,9 @@ export function autoStartRestTimer(exerciseIndex, setIndex) {
 
 export function convertYouTubeUrl(url) {
     if (!url) return url;
-    
+
     let videoId = null;
-    
+
     if (url.includes('youtu.be/')) {
         videoId = url.split('youtu.be/')[1].split('?')[0];
     } else if (url.includes('youtube.com/watch?v=')) {
@@ -2068,11 +2100,11 @@ export function convertYouTubeUrl(url) {
     } else if (url.includes('youtube.com/embed/')) {
         return url; // Already in embed format
     }
-    
+
     if (videoId) {
         return `https://www.youtube.com/embed/${videoId}`;
     }
-    
+
     return url; // Return original if not a YouTube URL
 }
 
@@ -2085,7 +2117,7 @@ export function showExerciseVideo(videoUrl, exerciseName) {
     const embedUrl = convertYouTubeUrl(videoUrl);
 
     // Check if it's a valid URL (not a placeholder)
-    if (!embedUrl || embedUrl.includes('example') || embedUrl === videoUrl && !embedUrl.includes('youtube')) {
+    if (!embedUrl || embedUrl.includes('example') || (embedUrl === videoUrl && !embedUrl.includes('youtube'))) {
         return;
     }
 
@@ -2130,14 +2162,14 @@ export function hideExerciseVideoAndToggleButton(exerciseIndex) {
 
 export function setGlobalUnit(unit) {
     if (AppState.globalUnit === unit) return; // No change needed
-    
+
     AppState.globalUnit = unit;
-    
+
     // Update global unit toggle
-    document.querySelectorAll('.global-settings .unit-btn')?.forEach(btn => {
+    document.querySelectorAll('.global-settings .unit-btn')?.forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.unit === unit);
     });
-    
+
     // Update all exercises that don't have individual unit preferences
     if (AppState.currentWorkout) {
         AppState.currentWorkout.exercises.forEach((exercise, index) => {
@@ -2145,22 +2177,22 @@ export function setGlobalUnit(unit) {
                 AppState.exerciseUnits[index] = unit;
             }
         });
-        
+
         renderExercises();
-        saveWorkoutData(AppState); // Save unit preferences
+        debouncedSaveWorkoutData(AppState); // Save unit preferences
     }
 }
 
 export function setExerciseUnit(exerciseIndex, unit) {
     if (!AppState.currentWorkout || exerciseIndex >= AppState.currentWorkout.exercises.length) return;
-    
+
     // Just change the display unit preference
     AppState.exerciseUnits[exerciseIndex] = unit;
-    
+
     // PRESERVE TIMER STATE BEFORE REFRESHING MODAL
     const modalTimer = document.getElementById(`modal-rest-timer-${exerciseIndex}`);
     let timerState = null;
-    
+
     if (modalTimer && modalTimer.timerData && !modalTimer.classList.contains('hidden')) {
         timerState = {
             isActive: true,
@@ -2168,49 +2200,49 @@ export function setExerciseUnit(exerciseIndex, unit) {
             timeLeft: modalTimer.timerData.timeLeft,
             exerciseLabel: modalTimer.querySelector('.modal-rest-exercise')?.textContent,
             startTime: modalTimer.timerData.startTime,
-            pausedTime: modalTimer.timerData.pausedTime
+            pausedTime: modalTimer.timerData.pausedTime,
         };
-        
+
         if (modalTimer.timerData.animationFrame) {
             cancelAnimationFrame(modalTimer.timerData.animationFrame);
         }
     }
 
     // No weight conversion - weights stay in lbs, only display changes
-    
+
     // Update modal display
     const modal = document.getElementById('exercise-modal');
     if (modal) {
-        modal.querySelectorAll('.unit-btn').forEach(btn => {
+        modal.querySelectorAll('.unit-btn').forEach((btn) => {
             btn.classList.toggle('active', btn.dataset.unit === unit);
         });
-        
+
         const exercise = AppState.currentWorkout.exercises[exerciseIndex];
         const content = document.getElementById('exercise-content');
         if (content) {
             content.innerHTML = generateExerciseTable(exercise, exerciseIndex, unit);
-            
+
             // Re-setup unit toggle event listeners
             const unitToggle = modal.querySelector('.exercise-unit-toggle .unit-toggle');
             if (unitToggle) {
-                unitToggle.querySelectorAll('.unit-btn').forEach(btn => {
+                unitToggle.querySelectorAll('.unit-btn').forEach((btn) => {
                     btn.addEventListener('click', (e) => {
                         e.preventDefault();
                         setExerciseUnit(exerciseIndex, btn.dataset.unit);
                     });
                 });
             }
-            
+
             // RESTORE TIMER STATE
             if (timerState && timerState.isActive) {
                 restoreModalRestTimer(exerciseIndex, timerState);
             }
         }
     }
-    
+
     // Refresh main view
     renderExercises();
-    
+
     // Save unit preference (weights unchanged)
     saveWorkoutData(AppState);
 }
@@ -2220,11 +2252,8 @@ export function setExerciseUnit(exerciseIndex, unit) {
 // ===================================================================
 
 export async function editExerciseDefaults(exerciseName) {
-
     // Find the exercise in the database by name
-    const exercise = AppState.exerciseDatabase.find(ex =>
-        (ex.name || ex.machine) === exerciseName
-    );
+    const exercise = AppState.exerciseDatabase.find((ex) => (ex.name || ex.machine) === exerciseName);
 
     if (!exercise) {
         return;
@@ -2252,19 +2281,19 @@ export async function showWorkoutSelector() {
     const activeWorkout = document.getElementById('active-workout');
     const workoutManagement = document.getElementById('workout-management');
     const historySection = document.getElementById('workout-history-section');
-    
+
     // If user has an active workout in progress, show that instead of selector
     if (AppState.currentWorkout && AppState.savedData.workoutType) {
         if (workoutSelector) workoutSelector.classList.add('hidden');
         if (activeWorkout) activeWorkout.classList.remove('hidden');
         if (workoutManagement) workoutManagement.classList.add('hidden');
         if (historySection) historySection.classList.add('hidden');
-        
+
         // Re-render exercises to ensure UI is up to date
         renderExercises();
         return; // Don't show selector or check for in-progress workout
     }
-    
+
     // No active workout - show selector
     if (workoutSelector) workoutSelector.classList.remove('hidden');
     if (activeWorkout) activeWorkout.classList.add('hidden');
@@ -2277,43 +2306,42 @@ export async function showWorkoutSelector() {
 async function checkForInProgressWorkout() {
     // Skip if already showing prompt
     if (window.showingProgressPrompt) return;
-    
+
     // Skip if user is already in an active workout - they dont need a prompt
     if (AppState.currentWorkout && AppState.savedData.workoutType) {
         return;
     }
-    
+
     try {
         const { loadTodaysWorkout } = await import('../data/data-manager.js');
         const todaysData = await loadTodaysWorkout(AppState);
-        
+
         // Check if there's an incomplete workout from today
         if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
-            
             // Validate workout plan exists
-            const workoutPlan = AppState.workoutPlans.find(plan => 
-                plan.day === todaysData.workoutType || 
-                plan.name === todaysData.workoutType ||
-                plan.id === todaysData.workoutType
+            const workoutPlan = AppState.workoutPlans.find(
+                (plan) =>
+                    plan.day === todaysData.workoutType ||
+                    plan.name === todaysData.workoutType ||
+                    plan.id === todaysData.workoutType
             );
-            
+
             if (!workoutPlan) {
                 console.warn('âš ï¸ Workout plan not found for:', todaysData.workoutType);
                 return;
             }
-            
+
             // Store in-progress workout globally
             // Use todaysData.originalWorkout if it exists (contains modified exercise list)
             window.inProgressWorkout = {
                 ...todaysData,
-                originalWorkout: todaysData.originalWorkout || workoutPlan
+                originalWorkout: todaysData.originalWorkout || workoutPlan,
             };
-            
+
             // Show the prompt
             showInProgressWorkoutPrompt(todaysData);
         } else {
         }
-        
     } catch (error) {
         console.error('âŒError checking for in-progress workout:', error);
     }
@@ -2322,10 +2350,10 @@ async function checkForInProgressWorkout() {
 function showInProgressWorkoutPrompt(workoutData) {
     if (window.showingProgressPrompt) return;
     window.showingProgressPrompt = true;
-    
+
     const workoutDate = new Date(workoutData.date).toLocaleDateString();
     const message = `You have an in-progress "${workoutData.workoutType}" workout from ${workoutDate}.\n\nWould you like to continue where you left off?`;
-    
+
     setTimeout(() => {
         if (confirm(message)) {
             continueInProgressWorkout(); // Already exists in this file
@@ -2354,8 +2382,8 @@ export async function loadLastWorkoutHint(exerciseName, exerciseIndex) {
         const { collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
         const { db } = await import('../data/firebase-config.js');
 
-        const workoutsRef = collection(db, "users", AppState.currentUser.uid, "workouts");
-        const q = query(workoutsRef, orderBy("lastUpdated", "desc"), limit(10));
+        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(10));
         const querySnapshot = await getDocs(q);
 
         const today = AppState.getTodayDateString();
@@ -2372,11 +2400,11 @@ export async function loadLastWorkoutHint(exerciseName, exerciseIndex) {
                 for (const [key, name] of Object.entries(data.exerciseNames)) {
                     if (name === exerciseName && data.exercises?.[key]?.sets?.length > 0) {
                         const sets = data.exercises[key].sets;
-                        const completedSets = sets.filter(s => s && (s.reps || s.weight));
+                        const completedSets = sets.filter((s) => s && (s.reps || s.weight));
                         if (completedSets.length > 0) {
                             lastWorkoutData = {
                                 date: data.date,
-                                sets: completedSets
+                                sets: completedSets,
                             };
                             break;
                         }
@@ -2386,8 +2414,12 @@ export async function loadLastWorkoutHint(exerciseName, exerciseIndex) {
         });
 
         if (lastWorkoutData) {
-            const avgReps = Math.round(lastWorkoutData.sets.reduce((sum, s) => sum + (s.reps || 0), 0) / lastWorkoutData.sets.length);
-            const avgWeight = Math.round(lastWorkoutData.sets.reduce((sum, s) => sum + (s.weight || 0), 0) / lastWorkoutData.sets.length);
+            const avgReps = Math.round(
+                lastWorkoutData.sets.reduce((sum, s) => sum + (s.reps || 0), 0) / lastWorkoutData.sets.length
+            );
+            const avgWeight = Math.round(
+                lastWorkoutData.sets.reduce((sum, s) => sum + (s.weight || 0), 0) / lastWorkoutData.sets.length
+            );
 
             hintDiv.innerHTML = `
                 <i class="fas fa-history"></i>
@@ -2420,7 +2452,7 @@ async function initializeWorkoutLocation() {
             const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
             const workoutManager = new FirebaseWorkoutManager(AppState);
             const savedLocations = await workoutManager.getUserLocations();
-            const existingLoc = savedLocations.find(loc => loc.name === existingSessionLocation);
+            const existingLoc = savedLocations.find((loc) => loc.name === existingSessionLocation);
             if (existingLoc) {
                 await workoutManager.updateLocationVisit(existingLoc.id);
             }
@@ -2450,7 +2482,6 @@ async function initializeWorkoutLocation() {
             // No GPS available - prompt user to select/enter location
             await promptForLocationSelection(workoutManager, savedLocations);
         }
-
     } catch (error) {
         console.error('❌ Error initializing workout location:', error);
         // Don't block workout start on location errors
@@ -2465,9 +2496,7 @@ function promptForNewLocation(coords, workoutManager, savedLocations) {
         // Populate datalist with existing locations for autocomplete
         const datalist = document.getElementById('saved-locations-list');
         if (datalist && savedLocations.length > 0) {
-            datalist.innerHTML = savedLocations
-                .map(loc => `<option value="${loc.name}">`)
-                .join('');
+            datalist.innerHTML = savedLocations.map((loc) => `<option value="${loc.name}">`).join('');
         }
 
         showLocationPrompt(
@@ -2475,7 +2504,7 @@ function promptForNewLocation(coords, workoutManager, savedLocations) {
             async (name) => {
                 try {
                     // Check if this is an existing location name
-                    const existing = savedLocations.find(loc => loc.name === name);
+                    const existing = savedLocations.find((loc) => loc.name === name);
 
                     if (existing) {
                         setSessionLocation(name);
@@ -2485,7 +2514,7 @@ function promptForNewLocation(coords, workoutManager, savedLocations) {
                         await workoutManager.saveLocation({
                             name: name,
                             latitude: coords.latitude,
-                            longitude: coords.longitude
+                            longitude: coords.longitude,
                         });
                         setSessionLocation(name);
                     }
@@ -2512,9 +2541,7 @@ function promptForLocationSelection(workoutManager, savedLocations) {
         // Populate datalist with existing locations for autocomplete
         const datalist = document.getElementById('saved-locations-list');
         if (datalist && savedLocations.length > 0) {
-            datalist.innerHTML = savedLocations
-                .map(loc => `<option value="${loc.name}">`)
-                .join('');
+            datalist.innerHTML = savedLocations.map((loc) => `<option value="${loc.name}">`).join('');
         }
 
         showLocationPrompt(
@@ -2522,7 +2549,7 @@ function promptForLocationSelection(workoutManager, savedLocations) {
             async (name) => {
                 try {
                     // Check if this is an existing location name
-                    const existing = savedLocations.find(loc => loc.name === name);
+                    const existing = savedLocations.find((loc) => loc.name === name);
 
                     if (existing) {
                         setSessionLocation(name);
@@ -2532,7 +2559,7 @@ function promptForLocationSelection(workoutManager, savedLocations) {
                         await workoutManager.saveLocation({
                             name: name,
                             latitude: null,
-                            longitude: null
+                            longitude: null,
                         });
                         setSessionLocation(name);
                     }
@@ -2572,7 +2599,7 @@ async function associateLocationWithWorkoutEquipment(locationName) {
             if (!equipmentName) continue;
 
             // Find matching equipment by name
-            const matchingEquipment = allEquipment.find(eq => eq.name === equipmentName);
+            const matchingEquipment = allEquipment.find((eq) => eq.name === equipmentName);
             if (matchingEquipment && matchingEquipment.id) {
                 // Add the workout's location to this equipment
                 await workoutManager.addLocationToEquipment(matchingEquipment.id, locationName);
@@ -2613,7 +2640,9 @@ export async function changeWorkoutLocation() {
             listContainer.innerHTML = '<div class="location-list-empty">No saved locations yet</div>';
         } else {
             const currentLocation = getSessionLocation();
-            listContainer.innerHTML = savedLocations.map(loc => `
+            listContainer.innerHTML = savedLocations
+                .map(
+                    (loc) => `
                 <div class="location-option ${loc.name === currentLocation ? 'selected' : ''}"
                      data-location-id="${loc.id}" data-location-name="${loc.name}"
                      onclick="selectWorkoutLocationOption(this)">
@@ -2621,7 +2650,9 @@ export async function changeWorkoutLocation() {
                     <span class="location-option-name">${loc.name}</span>
                     <span class="location-option-visits">${loc.visitCount || 0} visits</span>
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
         }
 
         // Clear new name input
@@ -2629,7 +2660,6 @@ export async function changeWorkoutLocation() {
 
         // Show modal
         modal.classList.remove('hidden');
-
     } catch (error) {
         console.error('❌ Error loading locations:', error);
         showNotification('Error loading locations', 'error');
@@ -2641,7 +2671,9 @@ export async function changeWorkoutLocation() {
  */
 export function selectWorkoutLocationOption(element) {
     // Remove selected from all
-    document.querySelectorAll('#workout-saved-locations-list .location-option').forEach(el => el.classList.remove('selected'));
+    document
+        .querySelectorAll('#workout-saved-locations-list .location-option')
+        .forEach((el) => el.classList.remove('selected'));
     // Add selected to clicked
     element.classList.add('selected');
     // Clear new name input
@@ -2680,7 +2712,7 @@ export async function confirmWorkoutLocationChange() {
                 await workoutManager.saveLocation({
                     name: newName,
                     latitude: coords?.latitude || null,
-                    longitude: coords?.longitude || null
+                    longitude: coords?.longitude || null,
                 });
             }
         } catch (error) {

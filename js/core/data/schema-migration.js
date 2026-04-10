@@ -30,7 +30,7 @@ export async function needsMigration(userId) {
     if (!userId) return false;
 
     try {
-        const workoutsRef = collection(db, "users", userId, "workouts");
+        const workoutsRef = collection(db, 'users', userId, 'workouts');
         const snapshot = await getDocs(workoutsRef);
 
         let hasOldSchema = false;
@@ -63,11 +63,11 @@ export async function runMigration(userId, onProgress = null) {
         success: true,
         migrated: 0,
         skipped: 0,
-        errors: []
+        errors: [],
     };
 
     try {
-        const workoutsRef = collection(db, "users", userId, "workouts");
+        const workoutsRef = collection(db, 'users', userId, 'workouts');
         const snapshot = await getDocs(workoutsRef);
 
         const oldSchemaDocs = [];
@@ -77,7 +77,7 @@ export async function runMigration(userId, onProgress = null) {
             if (isOldSchemaDoc(docSnap.id)) {
                 oldSchemaDocs.push({
                     id: docSnap.id,
-                    data: docSnap.data()
+                    data: docSnap.data(),
                 });
             }
         });
@@ -105,15 +105,15 @@ export async function runMigration(userId, onProgress = null) {
                     date: oldDoc.id, // Ensure date field is set
                     version: '3.0',
                     migratedAt: new Date().toISOString(),
-                    migratedFrom: oldDoc.id
+                    migratedFrom: oldDoc.id,
                 };
 
                 // Write new document
-                const newDocRef = doc(db, "users", userId, "workouts", newId);
+                const newDocRef = doc(db, 'users', userId, 'workouts', newId);
                 await setDoc(newDocRef, newData);
 
                 // Delete old document
-                const oldDocRef = doc(db, "users", userId, "workouts", oldDoc.id);
+                const oldDocRef = doc(db, 'users', userId, 'workouts', oldDoc.id);
                 await deleteDoc(oldDocRef);
 
                 results.migrated++;
@@ -121,14 +121,12 @@ export async function runMigration(userId, onProgress = null) {
                 if (onProgress) {
                     onProgress(`Migrated ${results.migrated}/${oldSchemaDocs.length} workouts...`);
                 }
-
             } catch (docError) {
                 console.error(`❌ Error migrating document ${oldDoc.id}:`, docError);
                 results.errors.push(`Failed to migrate ${oldDoc.id}: ${docError.message}`);
                 results.success = false;
             }
         }
-
     } catch (error) {
         console.error('❌ Migration error:', error);
         results.success = false;

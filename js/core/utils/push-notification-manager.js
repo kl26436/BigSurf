@@ -27,10 +27,8 @@ const VAPID_PUBLIC_KEY = 'BCCpd5gMslosl6OBbQe5mSwa6YWG2AK8q7pNKAm2MdSIUR41iWFKsU
  * Convert VAPID key from base64 to Uint8Array (required for Web Push API)
  */
 function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
 
     const rawData = window.atob(base64);
     const outputArray = new Uint8Array(rawData.length);
@@ -97,7 +95,7 @@ export async function initializeFCM() {
                 // Create new subscription
                 pushSubscription = await swRegistration.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
                 });
                 console.log('✅ New push subscription created');
             } else {
@@ -177,7 +175,7 @@ export async function scheduleRestNotification(delaySeconds, exerciseName) {
             subscription: subscriptionJson,
             delaySeconds: delaySeconds,
             exerciseName: exerciseName,
-            notificationId: notificationId
+            notificationId: notificationId,
         });
         console.log('✅ Notification scheduled:', result.data);
 
@@ -240,7 +238,7 @@ export async function sendTestNotification() {
         await sendImmediate({
             subscription: pushSubscription.toJSON(),
             title: 'Test Notification',
-            body: 'Push notifications are working!'
+            body: 'Push notifications are working!',
         });
         return true;
     } catch (error) {
