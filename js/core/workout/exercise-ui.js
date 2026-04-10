@@ -652,7 +652,7 @@ export function deleteSet(exerciseIndex, setIndex) {
     if (AppState.savedData.exercises[exerciseKey]?.sets) {
         AppState.savedData.exercises[exerciseKey].sets.splice(setIndex, 1);
         debouncedSaveWorkoutData(AppState);
-        renderExercises();
+        updateExerciseCard(exerciseIndex);
     }
 }
 
@@ -667,8 +667,8 @@ export function addSetToExercise(exerciseIndex) {
     AppState.currentWorkout.exercises[exerciseIndex].sets =
         (AppState.currentWorkout.exercises[exerciseIndex].sets || 3) + 1;
 
-    // Update the exercise cards in the background
-    renderExercises();
+    // Update only the changed exercise card
+    updateExerciseCard(exerciseIndex);
 
     // Refresh the exercise modal to show new set
     focusExercise(exerciseIndex);
@@ -704,8 +704,8 @@ export function removeSetFromExercise(exerciseIndex) {
         }
     }
 
-    // Update the exercise cards in the background
-    renderExercises();
+    // Update only the changed exercise card
+    updateExerciseCard(exerciseIndex);
 
     // Refresh the exercise modal to show updated sets
     focusExercise(exerciseIndex);

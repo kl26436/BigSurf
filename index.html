@@ -383,6 +383,7 @@
                             class="close-btn hidden"
                             onclick="discardEditedWorkout()"
                             title="Close without saving"
+                            aria-label="Close without saving"
                         >
                             <i class="fas fa-times"></i>
                         </button>
@@ -926,7 +927,7 @@
                     <span id="timer-countdown">0:00</span>
                 </div>
                 <div class="timer-controls">
-                    <button id="pause-rest-btn" class="btn btn-secondary" onclick="toggleRestTimer()">
+                    <button id="pause-rest-btn" class="btn btn-secondary" onclick="toggleRestTimer()" aria-label="Pause rest timer">
                         <i class="fas fa-pause"></i>
                     </button>
                     <button id="skip-rest-btn" class="btn btn-primary" onclick="skipRestTimer()">

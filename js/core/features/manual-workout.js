@@ -323,7 +323,7 @@ function renderManualExercises() {
                 </div>
                 <div class="manual-exercise-equipment" onclick="openEquipmentPickerForManual(${exIndex})">
                     <i class="fas fa-cog"></i>
-                    <span>${equipmentDisplay}</span>
+                    <span>${escapeHtml(equipmentDisplay)}</span>
                     <i class="fas fa-pen"></i>
                 </div>
             </div>

@@ -273,6 +273,11 @@ function startDashboardRestTimer() {
         }
     };
 
+    // Clear any existing interval to prevent stacking
+    if (dashboardRestTimerInterval) {
+        clearInterval(dashboardRestTimerInterval);
+    }
+
     // Update immediately
     updateRestDisplay();
 
@@ -533,7 +538,7 @@ function renderInProgressSection(workout) {
                 </div>
                 <div class="in-progress-info">
                     <div class="in-progress-label">IN PROGRESS</div>
-                    <div class="in-progress-name">${workoutName}</div>
+                    <div class="in-progress-name">${escapeHtml(workoutName)}</div>
                 </div>
                 <div class="in-progress-arrow">
                     <i class="fas fa-chevron-right"></i>

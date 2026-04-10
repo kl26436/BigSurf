@@ -184,7 +184,7 @@ function renderLocationManagementList() {
 
             return `
             <div class="location-management-item ${isCurrent ? 'active' : ''}">
-                <div class="location-item-info" onclick="showLocationOnMapById('${escapeHtml(location.id)}')">
+                <div class="location-item-info" onclick="showLocationOnMapById('${escapeAttr(location.id)}')">
                     <div class="location-item-icon">
                         <i class="fas fa-map-marker-alt"></i>
                     </div>
@@ -202,10 +202,10 @@ function renderLocationManagementList() {
                     </div>
                 </div>
                 <div class="location-item-actions">
-                    <button onclick="editLocationName('${escapeHtml(location.id)}')" title="Rename">
+                    <button onclick="editLocationName('${escapeAttr(location.id)}')" title="Rename">
                         <i class="fas fa-pen"></i>
                     </button>
-                    <button class="delete-btn" onclick="deleteLocation('${escapeHtml(location.id)}')" title="Delete">
+                    <button class="delete-btn" onclick="deleteLocation('${escapeAttr(location.id)}')" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>

@@ -1272,7 +1272,7 @@ function renderEquipmentEditorLocations() {
         <div class="equipment-location-item">
             <span class="location-name">
                 <i class="fas fa-map-marker-alt"></i>
-                ${loc}
+                ${escapeHtml(loc)}
             </span>
             <button type="button" class="remove-location-btn" onclick="removeLocationFromEquipmentEditor(${index})" title="Remove location">
                 <i class="fas fa-times"></i>

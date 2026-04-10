@@ -165,14 +165,21 @@ export function updateConnectionStatus(isConnected) {
 /**
  * Monitor connection status
  */
+let connectionMonitorInterval = null;
+
 export function startConnectionMonitoring(db) {
+    // Clear any existing monitor to prevent stacking
+    if (connectionMonitorInterval) {
+        clearInterval(connectionMonitorInterval);
+    }
+
     // Initial check
     checkFirebaseConnection(db).then((isConnected) => {
         updateConnectionStatus(isConnected);
     });
 
     // Check every 30 seconds
-    setInterval(async () => {
+    connectionMonitorInterval = setInterval(async () => {
         const isConnected = await checkFirebaseConnection(db);
         updateConnectionStatus(isConnected);
     }, 30000);
