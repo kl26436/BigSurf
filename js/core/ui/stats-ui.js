@@ -5,7 +5,7 @@ import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { ExerciseProgress } from '../features/exercise-progress.js';
 import { setBottomNavVisible, navigateTo, updateBottomNavActive } from './navigation.js';
-import { setHeaderMode } from './ui-helpers.js';
+import { setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
 import { AppState } from '../utils/app-state.js';
 
 // ===================================================================
@@ -283,9 +283,9 @@ function renderExerciseSelector() {
                     .map(
                         (cat) => `
                     <button class="category-pill ${selectedCategory === cat ? 'active' : ''}"
-                            onclick="selectProgressCategory('${cat}')">
+                            onclick="selectProgressCategory('${escapeAttr(cat)}')">
                         <i class="fas ${categoryIcons[cat] || 'fa-dumbbell'}"></i>
-                        ${cat}
+                        ${escapeHtml(cat)}
                     </button>
                 `
                     )
@@ -303,7 +303,7 @@ function renderExerciseSelector() {
                             ${exercises
                                 .map(
                                     (ex) => `
-                                <option value="${ex}" ${selectedExercise === ex ? 'selected' : ''}>${ex}</option>
+                                <option value="${escapeAttr(ex)}" ${selectedExercise === ex ? 'selected' : ''}>${escapeHtml(ex)}</option>
                             `
                                 )
                                 .join('')}
@@ -325,8 +325,8 @@ function renderExerciseSelector() {
                             .map(
                                 (eq) => `
                             <button class="equipment-pill ${selectedExerciseKey === eq.key ? 'active' : ''}"
-                                    onclick="selectProgressExercise('${eq.key}')">
-                                ${eq.equipment || 'Default'}
+                                    onclick="selectProgressExercise('${escapeAttr(eq.key)}')">
+                                ${escapeHtml(eq.equipment || 'Default')}
                                 <span class="equipment-count">${eq.sessionCount}</span>
                             </button>
                         `
@@ -551,7 +551,7 @@ async function renderSessionHistory(exerciseKey, timeRange) {
                             session.location && session.location !== 'Unknown'
                                 ? `
                             <div class="history-location">
-                                <i class="fas fa-map-marker-alt"></i> ${session.location}
+                                <i class="fas fa-map-marker-alt"></i> ${escapeHtml(session.location)}
                             </div>
                         `
                                 : ''
@@ -695,7 +695,7 @@ async function renderBodyPartDistribution() {
                             (label, i) => `
                         <div class="legend-item">
                             <span class="legend-color" style="background: ${distribution.colors[i]}"></span>
-                            <span class="legend-label">${label}</span>
+                            <span class="legend-label">${escapeHtml(label)}</span>
                             <span class="legend-value">${distribution.percentages[i]}%</span>
                         </div>
                     `
@@ -855,14 +855,14 @@ async function renderPRTimeline() {
                         </div>
                         <div class="pr-timeline-content">
                             <div class="pr-timeline-date">${formatDateRelative(pr.date)}</div>
-                            <div class="pr-timeline-exercise">${pr.exercise}</div>
+                            <div class="pr-timeline-exercise">${escapeHtml(pr.exercise)}</div>
                             <div class="pr-timeline-details">
                                 <span class="pr-timeline-weight">${pr.weight} lbs</span>
                                 <span class="pr-timeline-reps">× ${pr.reps}</span>
                                 ${
                                     pr.equipment && pr.equipment !== 'Unknown'
                                         ? `
-                                    <span class="pr-timeline-equipment">${pr.equipment}</span>
+                                    <span class="pr-timeline-equipment">${escapeHtml(pr.equipment)}</span>
                                 `
                                         : ''
                                 }

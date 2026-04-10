@@ -1,5 +1,5 @@
 // Enhanced Exercise Library Module - core/exercise-library.js
-import { showNotification } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml } from '../ui/ui-helpers.js';
 
 export function getExerciseLibrary(appState) {
     let isOpen = false;
@@ -195,9 +195,9 @@ export function getExerciseLibrary(appState) {
             }
 
             card.innerHTML = `
-                <h5>${exercise.name || exercise.machine}</h5>
+                <h5>${escapeHtml(exercise.name || exercise.machine)}</h5>
                 <div class="library-exercise-info">
-                    ${exercise.bodyPart || 'General'} • ${exercise.equipmentType || 'Machine'}
+                    ${escapeHtml(exercise.bodyPart || 'General')} • ${escapeHtml(exercise.equipmentType || 'Machine')}
                     ${exercise.isCustom ? ' • Custom' : ''}
                 </div>
                 <div class="library-exercise-stats">

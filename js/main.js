@@ -9,23 +9,11 @@ import { AppState } from './core/utils/app-state.js';
 import { startApplication } from './core/app-initialization.js';
 
 // Authentication functions
-import {
-    signIn,
-    signOutUser,
-    showUserInfo,
-    hideUserInfo,
-    setupEventListeners,
-    setupKeyboardShortcuts,
-    showLoadingScreen,
-    updateLoadingMessage,
-    showSignInPrompt,
-    hideLoadingScreen,
-} from './core/app-initialization.js';
+import { signIn, signOutUser } from './core/app-initialization.js';
 
 // Workout core functionality
 import {
     startWorkout,
-    pauseWorkout,
     completeWorkout,
     cancelWorkout,
     cancelCurrentWorkout,
@@ -33,8 +21,6 @@ import {
     discardInProgressWorkout,
     discardEditedWorkout,
     editHistoricalWorkout,
-    renderExercises,
-    createExerciseCard,
     focusExercise,
     updateSet,
     addSet,
@@ -48,19 +34,15 @@ import {
     confirmExerciseAddToWorkout,
     toggleModalRestTimer,
     skipModalRestTimer,
-    updateWorkoutDuration,
-    startWorkoutTimer,
     showExerciseVideo,
     hideExerciseVideo,
     showExerciseVideoAndToggleButton,
     hideExerciseVideoAndToggleButton,
-    convertYouTubeUrl,
     setGlobalUnit,
     setExerciseUnit,
     editExerciseDefaults,
     closeExerciseModal,
     loadExerciseHistory,
-    loadLastWorkoutHint,
     autoStartRestTimer,
     changeExerciseEquipment,
     applyEquipmentChange,
@@ -74,19 +56,11 @@ import {
 import {
     showTemplateSelection,
     closeTemplateSelection,
-    selectTemplate,
     showWorkoutSelector,
-    switchTemplateCategory,
-    loadTemplatesByCategory,
     useTemplate,
     useTemplateFromManagement,
     copyTemplateToCustom,
     deleteCustomTemplate,
-    renderTemplateCards,
-    createTemplateCard,
-    filterTemplates,
-    searchTemplates,
-    getWorkoutCategory,
 } from './core/ui/template-selection.js';
 
 // Workout history UI functionality
@@ -103,10 +77,8 @@ import {
 
 // Workout management UI
 import {
-    initializeWorkoutManagement,
     showWorkoutManagement,
     closeWorkoutManagement,
-    hideWorkoutManagement,
     createNewTemplate,
     closeTemplateEditor,
     saveCurrentTemplate,
@@ -118,7 +90,6 @@ import {
     showCreateExerciseForm,
     closeCreateExerciseModal,
     createNewExercise,
-    returnToWorkoutsFromManagement,
     editTemplate,
     deleteTemplate,
     resetToDefault,
@@ -166,14 +137,11 @@ import {
     openExerciseManager,
     closeExerciseManager,
     filterExerciseLibrary,
-    clearExerciseFilters,
-    refreshExerciseLibrary,
     showAddExerciseModal,
     closeAddExerciseModal,
     editExercise,
     saveExercise,
     deleteExercise,
-    toggleExerciseGroup,
     clearSelectedEquipment,
     addEquipmentToList,
     openEditExerciseSection,
@@ -191,7 +159,6 @@ import {
     selectBodyPartCategory,
     filterByEquipment,
     handleExerciseSearch,
-    toggleExerciseListSearch,
     handleExerciseCardClick,
 } from './core/ui/exercise-manager-ui.js';
 
@@ -202,9 +169,7 @@ import {
     selectSavedLocation,
     selectNewLocation,
     skipLocationSelection,
-    changeLocation,
     showLocationManagement,
-    closeLocationManagement,
     setLocationAsCurrent,
     addNewLocationFromManagement,
     detectAndAddLocation,
@@ -233,13 +198,10 @@ import {
     bottomNavTo,
     toggleMoreMenu,
     closeMoreMenu,
-    setBottomNavVisible,
-    updateBottomNavActive,
 } from './core/ui/navigation.js';
 
 // Dashboard functionality
 import {
-    showDashboard,
     repeatLastWorkout,
     startSuggestedWorkout,
     toggleDashboardSection,
@@ -248,7 +210,6 @@ import {
 
 // Stats functionality
 import {
-    showStats,
     closeStats,
     toggleStatsSection,
     togglePRBodyPart,
@@ -305,7 +266,6 @@ window.addWorkout = function () {
 
 // Core Workout Functions
 window.startWorkout = startWorkout;
-window.pauseWorkout = pauseWorkout;
 window.completeWorkout = completeWorkout;
 window.cancelWorkout = cancelWorkout;
 window.cancelCurrentWorkout = cancelCurrentWorkout;
@@ -409,14 +369,11 @@ window.closeManualExerciseEntry = closeManualExerciseEntry;
 window.openExerciseManager = openExerciseManager;
 window.closeExerciseManager = closeExerciseManager;
 window.filterExerciseLibrary = filterExerciseLibrary;
-window.clearExerciseFilters = clearExerciseFilters;
-window.refreshExerciseLibrary = refreshExerciseLibrary;
 window.showAddExerciseModal = showAddExerciseModal;
 window.closeAddExerciseModal = closeAddExerciseModal;
 window.editExercise = editExercise;
 window.saveExercise = saveExercise;
 window.deleteExercise = deleteExercise;
-window.toggleExerciseGroup = toggleExerciseGroup;
 window.clearSelectedEquipment = clearSelectedEquipment;
 window.addEquipmentToList = addEquipmentToList;
 window.openEditExerciseSection = openEditExerciseSection;
@@ -434,7 +391,6 @@ window.showCategoryView = showCategoryView;
 window.selectBodyPartCategory = selectBodyPartCategory;
 window.filterByEquipment = filterByEquipment;
 window.handleExerciseSearch = handleExerciseSearch;
-window.toggleExerciseListSearch = toggleExerciseListSearch;
 window.handleExerciseCardClick = handleExerciseCardClick;
 
 // Location Selector Functions
@@ -443,11 +399,9 @@ window.closeLocationSelector = closeLocationSelector;
 window.selectSavedLocation = selectSavedLocation;
 window.selectNewLocation = selectNewLocation;
 window.skipLocationSelection = skipLocationSelection;
-window.changeLocation = changeLocation;
 
 // Location Management Functions
 window.showLocationManagement = showLocationManagement;
-window.closeLocationManagement = closeLocationManagement;
 window.setLocationAsCurrent = setLocationAsCurrent;
 window.showLocationOnMapById = showLocationOnMapById;
 window.addNewLocationFromManagement = addNewLocationFromManagement;
@@ -468,21 +422,15 @@ window.navigateTo = navigateTo;
 window.bottomNavTo = bottomNavTo;
 window.toggleMoreMenu = toggleMoreMenu;
 window.closeMoreMenu = closeMoreMenu;
-window.setBottomNavVisible = setBottomNavVisible;
-window.updateBottomNavActive = updateBottomNavActive;
 window.setHeaderMode = setHeaderMode;
-window.escapeHtml = escapeHtml;
-window.escapeAttr = escapeAttr;
 
 // Dashboard Functions
-window.showDashboard = showDashboard;
 window.repeatLastWorkout = repeatLastWorkout;
 window.startSuggestedWorkout = startSuggestedWorkout;
 window.toggleDashboardSection = toggleDashboardSection;
 window.toggleDashboardPRBodyPart = toggleDashboardPRBodyPart;
 
 // Stats Functions
-window.showStats = showStats;
 window.closeStats = closeStats;
 window.toggleStatsSection = toggleStatsSection;
 window.togglePRBodyPart = togglePRBodyPart;
@@ -496,10 +444,7 @@ window.selectProgressExerciseName = selectProgressExerciseName;
 // Template Selection Functions
 window.showTemplateSelection = showTemplateSelection;
 window.closeTemplateSelection = closeTemplateSelection;
-window.selectTemplate = selectTemplate;
 window.showWorkoutSelector = showWorkoutSelector;
-window.switchTemplateCategory = switchTemplateCategory;
-window.loadTemplatesByCategory = loadTemplatesByCategory;
 window.useTemplate = useTemplate;
 window.useTemplateFromManagement = useTemplateFromManagement;
 window.copyTemplateToCustom = copyTemplateToCustom;
@@ -604,7 +549,7 @@ window.showTemplatesByCategory = function (category) {
             `;
 
             card.addEventListener('click', () => {
-                startWorkoutFromModal(workoutName);
+                window.startWorkoutFromModal(workoutName);
             });
 
             gridEl.appendChild(card);
@@ -623,7 +568,7 @@ window.closeTemplateModal = function () {
 };
 
 window.closeTemplateSelection = function () {
-    closeTemplateModal();
+    window.closeTemplateModal();
 };
 
 // Workout History Functions
@@ -646,7 +591,6 @@ window.closeWorkoutDetailModal = function () {
 // Workout Management Functions
 window.showWorkoutManagement = showWorkoutManagement;
 window.closeWorkoutManagement = closeWorkoutManagement;
-window.hideWorkoutManagement = hideWorkoutManagement;
 window.createNewTemplate = createNewTemplate;
 window.closeTemplateEditor = closeTemplateEditor;
 window.saveCurrentTemplate = saveCurrentTemplate;
@@ -658,7 +602,6 @@ window.closeExerciseLibrary = closeExerciseLibrary;
 window.showCreateExerciseForm = showCreateExerciseForm;
 window.closeCreateExerciseModal = closeCreateExerciseModal;
 window.createNewExercise = createNewExercise;
-window.returnToWorkoutsFromManagement = returnToWorkoutsFromManagement;
 window.editTemplate = editTemplate;
 window.deleteTemplate = deleteTemplate;
 window.resetToDefault = resetToDefault;
@@ -675,12 +618,6 @@ window.handleWorkoutSearch = handleWorkoutSearch;
 // Authentication Functions
 window.signIn = signIn;
 window.signOutUser = signOutUser;
-
-// Loading Screen Functions
-window.showLoadingScreen = showLoadingScreen;
-window.updateLoadingMessage = updateLoadingMessage;
-window.showSignInPrompt = showSignInPrompt;
-window.hideLoadingScreen = hideLoadingScreen;
 
 // Debug Functions — lazy-loaded only when ?debug is in URL
 if (new URL(window.location).searchParams.has('debug')) {

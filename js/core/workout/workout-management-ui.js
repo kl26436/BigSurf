@@ -1,7 +1,8 @@
 // Workout Management UI Functions
 import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
-import { showNotification, setHeaderMode } from '../ui/ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
+import { saveWorkoutData } from '../data/data-manager.js';
 import { getSessionLocation } from '../features/location-service.js';
 import { setBottomNavVisible } from '../ui/navigation.js';
 
@@ -11,6 +12,25 @@ let exerciseLibrary = [];
 let filteredExercises = [];
 let allWorkoutTemplates = [];
 let currentWorkoutCategory = '';
+
+// Track which containers already have delegation listeners
+const delegatedContainers = new WeakSet();
+
+function setupWorkoutManagementDelegation(container) {
+    if (!container || delegatedContainers.has(container)) return;
+    delegatedContainers.add(container);
+
+    container.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        e.stopPropagation(); // Preserve original stopPropagation behavior for edit buttons
+        const action = btn.dataset.action;
+
+        if (action === 'editTemplate') {
+            window.editTemplate(btn.dataset.templateId, btn.dataset.isDefault === 'true');
+        }
+    });
+}
 
 export function initializeWorkoutManagement(appState) {
     workoutManager = new FirebaseWorkoutManager(appState);
@@ -216,6 +236,8 @@ function renderFilteredWorkouts(templates, titleOverride = null) {
 
     if (!container) return;
 
+    setupWorkoutManagementDelegation(container);
+
     if (titleOverride && titleEl) {
         titleEl.textContent = titleOverride;
     }
@@ -266,11 +288,11 @@ function createTemplateCard(template) {
             <i class="${categoryIcon}"></i>
         </div>
         <div class="workout-item-content">
-            <div class="workout-item-name">${template.name}</div>
+            <div class="workout-item-name">${escapeHtml(template.name)}</div>
             <div class="workout-item-meta">${exerciseCount} exercises</div>
-            <div class="workout-item-exercises">${exerciseSummary}</div>
+            <div class="workout-item-exercises">${escapeHtml(exerciseSummary)}</div>
         </div>
-        <button class="workout-item-edit" onclick="event.stopPropagation(); editTemplate('${template.id}', ${isDefault})">
+        <button class="workout-item-edit" data-action="editTemplate" data-template-id="${escapeAttr(template.id)}" data-is-default="${isDefault}">
             EDIT
         </button>
     `;
@@ -490,7 +512,7 @@ function showTemplateEditor() {
                 <input type="text"
                        id="template-name"
                        class="form-input"
-                       value="${currentEditingTemplate.name}"
+                       value="${escapeAttr(currentEditingTemplate.name)}"
                        placeholder="e.g., Upper Body Push"
                        required>
             </div>
@@ -641,18 +663,18 @@ function createTemplateExerciseItem(exercise, index) {
 
     item.innerHTML = `
         <div class="exercise-info">
-            <h5>${exercise.name}</h5>
+            <h5>${escapeHtml(exercise.name)}</h5>
             <div class="exercise-details">
                 ${exercise.sets} sets × ${exercise.reps} reps @ ${exercise.weight} lbs
-                ${exercise.bodyPart ? ` • ${exercise.bodyPart}` : ''}
-                ${exercise.equipmentType ? ` • ${exercise.equipmentType}` : ''}
+                ${exercise.bodyPart ? ` • ${escapeHtml(exercise.bodyPart)}` : ''}
+                ${exercise.equipmentType ? ` • ${escapeHtml(exercise.equipmentType)}` : ''}
             </div>
         </div>
         <div class="exercise-item-actions">
-            <button type="button" class="btn btn-secondary btn-small" onclick="editTemplateExercise(${index})">
+            <button type="button" class="btn btn-secondary btn-small" onclick="editTemplateExercise(${index})" aria-label="Edit exercise">
                 <i class="fas fa-edit"></i>
             </button>
-            <button type="button" class="btn btn-danger btn-small" onclick="removeTemplateExercise(${index})">
+            <button type="button" class="btn btn-danger btn-small" onclick="removeTemplateExercise(${index})" aria-label="Delete exercise">
                 <i class="fas fa-trash"></i>
             </button>
         </div>
@@ -902,15 +924,15 @@ function renderExerciseLibrary() {
             const exerciseCards = exercises
                 .map((exercise) => {
                     const exerciseName = exercise.name || exercise.machine;
-                    return `<div class="library-exercise-card" data-exercise-id="${exercise.id || exerciseName}">
-                <span class="library-exercise-name">${exerciseName}</span>
+                    return `<div class="library-exercise-card" data-exercise-id="${escapeAttr(exercise.id || exerciseName)}">
+                <span class="library-exercise-name">${escapeHtml(exerciseName)}</span>
             </div>`;
                 })
                 .join('');
 
             return `
             <div class="library-group">
-                <div class="library-group-header">${bodyPart}</div>
+                <div class="library-group-header">${escapeHtml(bodyPart)}</div>
                 <div class="library-group-items">${exerciseCards}</div>
             </div>
         `;
@@ -934,8 +956,8 @@ function createLibraryExerciseCard(exercise) {
     const exerciseName = exercise.name || exercise.machine;
 
     card.innerHTML = `
-        <span class="library-exercise-name">${exerciseName}</span>
-        <span class="library-exercise-body-part">${exercise.bodyPart || 'General'}</span>
+        <span class="library-exercise-name">${escapeHtml(exerciseName)}</span>
+        <span class="library-exercise-body-part">${escapeHtml(exercise.bodyPart || 'General')}</span>
     `;
 
     card.addEventListener('click', () => selectExerciseFromLibrary(exercise));
@@ -1002,11 +1024,11 @@ async function showEquipmentPicker(exercise, isActiveWorkout) {
                 listEl.innerHTML = exerciseEquipment
                     .map(
                         (eq) => `
-                    <div class="equipment-option" data-equipment-id="${eq.id}" data-equipment-name="${eq.name}" data-equipment-location="${eq.location || ''}">
+                    <div class="equipment-option" data-equipment-id="${escapeAttr(eq.id)}" data-equipment-name="${escapeAttr(eq.name)}" data-equipment-location="${escapeAttr(eq.location || '')}">
                         <div class="equipment-option-radio"></div>
                         <div class="equipment-option-details">
-                            <div class="equipment-option-name">${eq.name}</div>
-                            ${eq.location ? `<div class="equipment-option-location">${eq.location}</div>` : ''}
+                            <div class="equipment-option-name">${escapeHtml(eq.name)}</div>
+                            ${eq.location ? `<div class="equipment-option-location">${escapeHtml(eq.location)}</div>` : ''}
                         </div>
                     </div>
                 `
@@ -1034,7 +1056,7 @@ async function showEquipmentPicker(exercise, isActiveWorkout) {
 
         if (equipmentDatalist) {
             const equipmentNames = [...new Set(allEquipment.map((eq) => eq.name))];
-            equipmentDatalist.innerHTML = equipmentNames.map((name) => `<option value="${name}">`).join('');
+            equipmentDatalist.innerHTML = equipmentNames.map((name) => `<option value="${escapeAttr(name)}">`).join('');
         }
 
         if (locationDatalist) {
@@ -1048,7 +1070,7 @@ async function showEquipmentPicker(exercise, isActiveWorkout) {
                 // Ignore errors fetching gym locations
             }
             const allLocations = [...new Set([...equipmentLocations, ...savedGymLocations])];
-            locationDatalist.innerHTML = allLocations.map((loc) => `<option value="${loc}">`).join('');
+            locationDatalist.innerHTML = allLocations.map((loc) => `<option value="${escapeAttr(loc)}">`).join('');
         }
     } catch (error) {
         console.error('Error loading equipment:', error);
@@ -1139,13 +1161,13 @@ export async function addEquipmentFromPicker() {
                 .map(
                     (eq) => `
                 <div class="equipment-option ${eq.name === equipmentName ? 'selected' : ''}"
-                     data-equipment-id="${eq.id}"
-                     data-equipment-name="${eq.name}"
-                     data-equipment-location="${eq.location || ''}">
+                     data-equipment-id="${escapeAttr(eq.id)}"
+                     data-equipment-name="${escapeAttr(eq.name)}"
+                     data-equipment-location="${escapeAttr(eq.location || '')}">
                     <div class="equipment-option-radio"></div>
                     <div class="equipment-option-details">
-                        <div class="equipment-option-name">${eq.name}</div>
-                        ${eq.location ? `<div class="equipment-option-location">${eq.location}</div>` : ''}
+                        <div class="equipment-option-name">${escapeHtml(eq.name)}</div>
+                        ${eq.location ? `<div class="equipment-option-location">${escapeHtml(eq.location)}</div>` : ''}
                     </div>
                 </div>
             `

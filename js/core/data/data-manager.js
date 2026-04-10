@@ -15,7 +15,7 @@ import {
     where,
     deleteDoc,
 } from './firebase-config.js';
-import { showNotification, convertWeight } from '../ui/ui-helpers.js';
+import { showNotification, convertWeight, escapeHtml } from '../ui/ui-helpers.js';
 import { validateWorkoutData } from '../utils/validation.js';
 import { getDateString } from '../utils/date-helpers.js';
 
@@ -204,7 +204,7 @@ export async function loadWorkoutsByDate(state, dateStr) {
         // Schema v3.0: Query by date field
         const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
         const q = query(workoutsRef, where('date', '==', dateStr));
-        const snapshot = await getDocs(q);
+        const snapshot = await withTimeout(getDocs(q));
 
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
@@ -221,6 +221,9 @@ export async function loadWorkoutsByDate(state, dateStr) {
         return workouts;
     } catch (error) {
         console.error('Error loading workouts by date:', error);
+        if (error.message === 'Operation timed out') {
+            showNotification('Loading timed out — check your connection', 'error');
+        }
         return [];
     }
 }
@@ -248,7 +251,7 @@ export async function loadWorkoutById(state, workoutId) {
 
     try {
         const docRef = doc(db, 'users', state.currentUser.uid, 'workouts', workoutId);
-        const docSnap = await getDoc(docRef);
+        const docSnap = await withTimeout(getDoc(docRef));
 
         if (docSnap.exists()) {
             return { ...docSnap.data(), docId: docSnap.id };
@@ -256,6 +259,9 @@ export async function loadWorkoutById(state, workoutId) {
         return null;
     } catch (error) {
         console.error('Error loading workout by ID:', error);
+        if (error.message === 'Operation timed out') {
+            showNotification('Loading timed out — check your connection', 'error');
+        }
         return null;
     }
 }
@@ -271,10 +277,13 @@ export async function deleteWorkoutById(state, workoutId) {
 
     try {
         const docRef = doc(db, 'users', state.currentUser.uid, 'workouts', workoutId);
-        await deleteDoc(docRef);
+        await withTimeout(deleteDoc(docRef));
         return true;
     } catch (error) {
         console.error('Error deleting workout:', error);
+        if (error.message === 'Operation timed out') {
+            showNotification('Delete timed out — check your connection', 'error');
+        }
         return false;
     }
 }
@@ -323,7 +332,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
 
     const historyDisplay = document.getElementById(`exercise-history-${exerciseIndex}`);
     const historyButton = document.querySelector(
-        `button[onclick="loadExerciseHistory('${exerciseName}', ${exerciseIndex})"]`
+        `button[data-action="loadExerciseHistory"][data-index="${exerciseIndex}"]`
     );
 
     if (!historyDisplay || !historyButton) return;
@@ -348,7 +357,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
         // Query for recent workouts containing this exercise
         const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
         const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(50)); // Increased limit
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await withTimeout(getDocs(q));
 
         let lastWorkout = null;
         let lastExerciseData = null;
@@ -357,7 +366,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
 
         // Find the most recent workout with this exercise (excluding today)
         const today = state.getTodayDateString();
-        let allMatches = []; // Collect ALL matches with metadata
+        const allMatches = []; // Collect ALL matches with metadata
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
@@ -541,7 +550,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             });
 
             if (lastExerciseData.notes) {
-                historyHTML += `</div><div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);"><strong>Notes:</strong> ${lastExerciseData.notes}</div>`;
+                historyHTML += `</div><div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);"><strong>Notes:</strong> ${escapeHtml(lastExerciseData.notes)}</div>`;
             } else {
                 historyHTML += `</div>`;
             }
@@ -579,7 +588,7 @@ export async function loadWorkoutHistory(state, limitCount = 50) {
     try {
         const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
         const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(limitCount));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await withTimeout(getDocs(q));
 
         const workouts = [];
         querySnapshot.forEach((docSnap) => {

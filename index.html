@@ -1,1570 +1,1937 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#05070b">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#05070b" />
 
-    <!-- Title and Description -->
-    <title>Big Surf - Workout Tracker</title>
-    <meta name="description" content="Track your gym workouts with Big Surf - a modern, mobile-first workout tracker with real-time tracking, exercise library, and workout history.">
-    <meta name="keywords" content="workout tracker, gym tracker, fitness app, exercise tracker, weight training, workout log">
-    <meta name="author" content="Big Surf Fitness">
+        <!-- Title and Description -->
+        <title>Big Surf - Workout Tracker</title>
+        <meta
+            name="description"
+            content="Track your gym workouts with Big Surf - a modern, mobile-first workout tracker with real-time tracking, exercise library, and workout history."
+        />
+        <meta
+            name="keywords"
+            content="workout tracker, gym tracker, fitness app, exercise tracker, weight training, workout log"
+        />
+        <meta name="author" content="Big Surf Fitness" />
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="BigSurf.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="BigSurf.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="BigSurf.png">
-    <link rel="apple-touch-icon" sizes="120x120" href="BigSurf.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Big Surf">
+        <!-- Favicon -->
+        <link rel="icon" type="image/png" href="BigSurf.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="BigSurf.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="BigSurf.png" />
+        <link rel="apple-touch-icon" sizes="120x120" href="BigSurf.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Big Surf" />
 
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
+        <!-- PWA Manifest -->
+        <link rel="manifest" href="manifest.json" />
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://bigsurf.fit/">
-    <meta property="og:title" content="Big Surf - Workout Tracker">
-    <meta property="og:description" content="Track your gym workouts with real-time set tracking, exercise library, and comprehensive workout history.">
-    <meta property="og:image" content="https://bigsurf.fit/BigSurf.png">
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://bigsurf.fit/" />
+        <meta property="og:title" content="Big Surf - Workout Tracker" />
+        <meta
+            property="og:description"
+            content="Track your gym workouts with real-time set tracking, exercise library, and comprehensive workout history."
+        />
+        <meta property="og:image" content="https://bigsurf.fit/BigSurf.png" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://bigsurf.fit/">
-    <meta property="twitter:title" content="Big Surf - Workout Tracker">
-    <meta property="twitter:description" content="Track your gym workouts with real-time set tracking, exercise library, and comprehensive workout history.">
-    <meta property="twitter:image" content="https://bigsurf.fit/BigSurf.png">
+        <!-- Twitter -->
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content="https://bigsurf.fit/" />
+        <meta property="twitter:title" content="Big Surf - Workout Tracker" />
+        <meta
+            property="twitter:description"
+            content="Track your gym workouts with real-time set tracking, exercise library, and comprehensive workout history."
+        />
+        <meta property="twitter:image" content="https://bigsurf.fit/BigSurf.png" />
 
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://bigsurf.fit/">
+        <!-- Canonical URL -->
+        <link rel="canonical" href="https://bigsurf.fit/" />
 
-    <!-- Stylesheets -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="style.css">
+        <!-- Stylesheets -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <link rel="stylesheet" href="style.css" />
 
-    <!-- Chart.js for progress tracking -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <!-- Leaflet for maps -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-</head>
-<body>
-    <!-- Loading Screen -->
-    <div id="loading-screen" class="loading-screen">
-        <div class="loading-content">
-            <img src="BigSurfNoBG.png" alt="Big Surf Logo" class="loading-logo loading-logo-large">
-            <div class="loading-spinner"></div>
-            <p id="loading-message" class="loading-message">Initializing...</p>
+        <!-- Chart.js for progress tracking -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <!-- Leaflet for maps -->
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    </head>
+    <body>
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="loading-screen">
+            <div class="loading-content">
+                <img src="BigSurfNoBG.png" alt="Big Surf Logo" class="loading-logo loading-logo-large" />
+                <div class="loading-spinner"></div>
+                <p id="loading-message" class="loading-message">Initializing...</p>
 
-            <!-- Sign-in prompt (shown if not authenticated) -->
-            <div id="loading-signin-prompt" class="loading-signin-prompt hidden">
-                <p>Sign in to access your workouts</p>
-                <button id="loading-signin-btn" class="btn btn-primary">
+                <!-- Sign-in prompt (shown if not authenticated) -->
+                <div id="loading-signin-prompt" class="loading-signin-prompt hidden">
+                    <p>Sign in to access your workouts</p>
+                    <button id="loading-signin-btn" class="btn btn-primary">
+                        <i class="fab fa-google"></i> Sign In with Google
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-container">
+            <!-- Sidebar Navigation -->
+            <nav id="sidebar" class="sidebar" role="navigation" aria-label="Main navigation">
+                <div class="sidebar-header">
+                    <h2>Big Surf</h2>
+                    <button class="sidebar-close" onclick="closeSidebar()" aria-label="Close menu">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <ul class="sidebar-menu" role="menu">
+                    <li role="menuitem">
+                        <a
+                            href="#"
+                            data-route="dashboard"
+                            onclick="
+                                navigateTo('dashboard');
+                                return false;
+                            "
+                        >
+                            <i class="fas fa-home" aria-hidden="true"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li role="menuitem">
+                        <a
+                            href="#"
+                            data-route="start-workout"
+                            onclick="
+                                navigateTo('start-workout');
+                                return false;
+                            "
+                        >
+                            <i class="fas fa-dumbbell" aria-hidden="true"></i>
+                            <span>Start Workout</span>
+                        </a>
+                    </li>
+                    <li role="menuitem">
+                        <a
+                            href="#"
+                            data-route="stats"
+                            onclick="
+                                navigateTo('stats');
+                                return false;
+                            "
+                        >
+                            <i class="fas fa-chart-line" aria-hidden="true"></i>
+                            <span>Stats & Records</span>
+                        </a>
+                    </li>
+                    <li role="menuitem">
+                        <a
+                            href="#"
+                            data-route="history"
+                            onclick="
+                                navigateTo('history');
+                                return false;
+                            "
+                        >
+                            <i class="fas fa-history" aria-hidden="true"></i>
+                            <span>Workout History</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-divider" role="separator"></li>
+                    <li class="sidebar-section-title" role="presentation">Settings</li>
+                    <li role="menuitem">
+                        <a
+                            href="#"
+                            data-route="location"
+                            onclick="
+                                navigateTo('location');
+                                return false;
+                            "
+                        >
+                            <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
+                            <span>Manage Locations</span>
+                        </a>
+                    </li>
+                    <li role="menuitem">
+                        <a
+                            href="#"
+                            data-route="exercises"
+                            onclick="
+                                navigateTo('exercises');
+                                return false;
+                            "
+                        >
+                            <i class="fas fa-list" aria-hidden="true"></i>
+                            <span>Exercise Library</span>
+                        </a>
+                    </li>
+                    <li role="menuitem">
+                        <a
+                            href="#"
+                            data-route="templates"
+                            onclick="
+                                navigateTo('templates');
+                                return false;
+                            "
+                        >
+                            <i class="fas fa-dumbbell" aria-hidden="true"></i>
+                            <span>Workout Library</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- User Profile Footer -->
+                <div id="sidebar-user-profile" class="sidebar-footer hidden">
+                    <div class="sidebar-user-info">
+                        <div class="sidebar-user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="sidebar-user-details">
+                            <span id="sidebar-user-name" class="sidebar-user-name">User</span>
+                            <span class="sidebar-user-email" id="sidebar-user-email"></span>
+                        </div>
+                    </div>
+                    <button
+                        id="sidebar-sign-out-btn"
+                        class="sidebar-sign-out-btn"
+                        onclick="signOutUser()"
+                        aria-label="Sign out"
+                    >
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Sidebar Overlay -->
+            <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+            <!-- Header with centered logo (shown on dashboard/history pages) -->
+            <header class="header" id="main-header">
+                <button class="menu-toggle" onclick="openSidebar()" aria-label="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <img
+                    src="BigSurfNoBG.png"
+                    alt="Big Surf Logo"
+                    class="logo-img"
+                    onerror="
+                        this.style.display = 'none';
+                        document.querySelector('.logo-fallback').style.display = 'flex';
+                    "
+                />
+                <div class="logo-fallback" style="display: none">BS</div>
+            </header>
+
+            <!-- Auth Section (Clean New Structure) -->
+            <div id="auth-section" class="workout-controls">
+                <button id="sign-in-btn" class="btn btn-primary">
                     <i class="fab fa-google"></i> Sign In with Google
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <div class="app-container">
-        <!-- Sidebar Navigation -->
-        <nav id="sidebar" class="sidebar" role="navigation" aria-label="Main navigation">
-            <div class="sidebar-header">
-                <h2>Big Surf</h2>
-                <button class="sidebar-close" onclick="closeSidebar()" aria-label="Close menu">
-                    <i class="fas fa-times" aria-hidden="true"></i>
-                </button>
-            </div>
-
-            <ul class="sidebar-menu" role="menu">
-                <li role="menuitem">
-                    <a href="#" data-route="dashboard" onclick="navigateTo('dashboard'); return false;">
-                        <i class="fas fa-home" aria-hidden="true"></i>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
-                <li role="menuitem">
-                    <a href="#" data-route="start-workout" onclick="navigateTo('start-workout'); return false;">
-                        <i class="fas fa-dumbbell" aria-hidden="true"></i>
-                        <span>Start Workout</span>
-                    </a>
-                </li>
-                <li role="menuitem">
-                    <a href="#" data-route="stats" onclick="navigateTo('stats'); return false;">
-                        <i class="fas fa-chart-line" aria-hidden="true"></i>
-                        <span>Stats & Records</span>
-                    </a>
-                </li>
-                <li role="menuitem">
-                    <a href="#" data-route="history" onclick="navigateTo('history'); return false;">
-                        <i class="fas fa-history" aria-hidden="true"></i>
-                        <span>Workout History</span>
-                    </a>
-                </li>
-                <li class="sidebar-divider" role="separator"></li>
-                <li class="sidebar-section-title" role="presentation">Settings</li>
-                <li role="menuitem">
-                    <a href="#" data-route="location" onclick="navigateTo('location'); return false;">
-                        <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
-                        <span>Manage Locations</span>
-                    </a>
-                </li>
-                <li role="menuitem">
-                    <a href="#" data-route="exercises" onclick="navigateTo('exercises'); return false;">
-                        <i class="fas fa-list" aria-hidden="true"></i>
-                        <span>Exercise Library</span>
-                    </a>
-                </li>
-                <li role="menuitem">
-                    <a href="#" data-route="templates" onclick="navigateTo('templates'); return false;">
-                        <i class="fas fa-dumbbell" aria-hidden="true"></i>
-                        <span>Workout Library</span>
-                    </a>
-                </li>
-            </ul>
-
-            <!-- User Profile Footer -->
-            <div id="sidebar-user-profile" class="sidebar-footer hidden">
-                <div class="sidebar-user-info">
-                    <div class="sidebar-user-avatar">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="sidebar-user-details">
-                        <span id="sidebar-user-name" class="sidebar-user-name">User</span>
-                        <span class="sidebar-user-email" id="sidebar-user-email"></span>
-                    </div>
-                </div>
-                <button id="sidebar-sign-out-btn" class="sidebar-sign-out-btn" onclick="signOutUser()" aria-label="Sign out">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-            </div>
-        </nav>
-
-        <!-- Sidebar Overlay -->
-        <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
-
-        <!-- Header with centered logo (shown on dashboard/history pages) -->
-        <header class="header" id="main-header">
-            <button class="menu-toggle" onclick="openSidebar()" aria-label="Open menu">
-                <i class="fas fa-bars"></i>
-            </button>
-            <img src="BigSurfNoBG.png" alt="Big Surf Logo" class="logo-img"
-                 onerror="this.style.display='none'; document.querySelector('.logo-fallback').style.display='flex'">
-            <div class="logo-fallback" style="display: none;">BS</div>
-        </header>
-
-        <!-- Auth Section (Clean New Structure) -->
-        <div id="auth-section" class="workout-controls">
-            <button id="sign-in-btn" class="btn btn-primary">
-                <i class="fab fa-google"></i> Sign In with Google
-            </button>
-            <div id="user-info" class="hidden">
-                <div class="user-display">
-                    <span id="user-name" class="user-name"></span>
-                    <button id="sign-out-btn" class="btn btn-secondary btn-small">
-                        <i class="fas fa-sign-out-alt"></i> Sign Out
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content Area -->
-        <main id="main-content">
-
-            <!-- Dashboard -->
-            <section id="dashboard" class="content-section hidden">
-                <!-- Resume Workout Card (only shown on dashboard) -->
-                <div id="resume-workout-banner" class="hidden">
-                    <div class="stats-section-header">
-                        <span class="stats-section-title">In Progress</span>
-                        <span id="resume-time-ago" class="resume-time-label">just now</span>
-                    </div>
-                    <div class="resume-goal-card" onclick="continueInProgressWorkout()">
-                        <div class="resume-workout-header">
-                            <span id="resume-workout-name">Workout</span>
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                        <div class="resume-progress-bar-wrap">
-                            <div id="resume-progress-bar" class="resume-progress-bar" style="width: 0%"></div>
-                        </div>
-                        <div class="resume-stats-grid">
-                            <div class="resume-stat-box">
-                                <span id="resume-stat-sets" class="resume-stat-value">0/0</span>
-                                <span class="resume-stat-label">Sets</span>
-                            </div>
-                            <div class="resume-stat-box">
-                                <span id="resume-stat-exercises" class="resume-stat-value">0/0</span>
-                                <span class="resume-stat-label">Exercises</span>
-                            </div>
-                            <div class="resume-stat-box">
-                                <span id="resume-stat-time" class="resume-stat-value">0m</span>
-                                <span class="resume-stat-label">Time</span>
-                            </div>
-                            <div class="resume-stat-box">
-                                <span id="resume-stat-rest" class="resume-stat-value">--</span>
-                                <span class="resume-stat-label">Rest</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="resume-cancel-row">
-                        <button class="resume-cancel-btn" onclick="event.stopPropagation(); discardInProgressWorkout()">
-                            <i class="fas fa-times"></i> Cancel Workout
+                <div id="user-info" class="hidden">
+                    <div class="user-display">
+                        <span id="user-name" class="user-name"></span>
+                        <button id="sign-out-btn" class="btn btn-secondary btn-small">
+                            <i class="fas fa-sign-out-alt"></i> Sign Out
                         </button>
                     </div>
                 </div>
-                <div id="dashboard-content">
-                    <!-- Dashboard content will be dynamically loaded -->
-                </div>
-            </section>
-
-            <!-- Stats & Records -->
-            <section id="stats-section" class="content-section hidden">
-                <div id="stats-content">
-                    <!-- Stats content will be dynamically loaded -->
-                </div>
-            </section>
-
-            <!-- Location Management -->
-            <section id="location-management-section" class="content-section hidden">
-                <div class="section-header-row">
-                    <h2 class="section-title"><i class="fas fa-map-marker-alt"></i> Locations</h2>
-                    <button class="btn btn-primary" onclick="detectAndAddLocation()">
-                        <i class="fas fa-plus"></i> New
-                    </button>
-                </div>
-
-                <div class="location-management-content">
-                    <!-- Map Container -->
-                    <div id="location-map-container" class="location-map-container">
-                        <div class="location-map-placeholder">
-                            <i class="fas fa-map-marked-alt"></i>
-                            <span>Select a location to view on map</span>
-                        </div>
-                    </div>
-
-                    <!-- Saved Locations List -->
-                    <div id="location-management-list" class="location-management-list">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-            </section>
-
-            <!-- Workout Selector -->
-            <section id="workout-selector" class="content-section hidden">
-                <div class="section-header-row">
-                    <h2 class="section-title"><i class="fas fa-play-circle"></i> Start Workout</h2>
-                    <button class="btn btn-primary" onclick="createNewTemplate()">
-                        <i class="fas fa-plus"></i> New
-                    </button>
-                </div>
-                             
-                <div class="workout-grid" id="workout-type-grid">
-                <div class="workout-option" onclick="showTemplatesByCategory('push')" data-category="push">
-                    <i class="fas fa-hand-paper"></i>
-                    <span>Push Workouts</span>
-                    <p>Chest, Shoulders, Triceps</p>
-                </div>
-                
-                <div class="workout-option" onclick="showTemplatesByCategory('pull')" data-category="pull">
-                    <i class="fas fa-fist-raised"></i>
-                    <span>Pull Workouts</span>
-                    <p>Back, Biceps, Rear Delts</p>
-                </div>
-                
-                <div class="workout-option" onclick="showTemplatesByCategory('legs')" data-category="legs">
-                    <i class="fas fa-running"></i>
-                    <span>Leg Workouts</span>
-                    <p>Quads, Glutes, Hamstrings, Calves</p>
-                </div>
-                
-                <div class="workout-option" onclick="showTemplatesByCategory('cardio')" data-category="cardio">
-                    <i class="fas fa-heartbeat"></i>
-                    <span>Cardio & Core</span>
-                    <p>Heart Health, Core Strength</p>
-                </div>
-                
-                <div class="workout-option" onclick="showTemplatesByCategory('other')" data-category="other">
-                    <i class="fas fa-dumbbell"></i>
-                    <span>Other Workouts</span>
-                    <p>Full Body, Mixed Training</p>
-                </div>
             </div>
-                </div>
-            </section>
 
-            <!-- Active Workout -->
-            <section id="active-workout" class="content-section hidden">
-                <!-- Section Header (consistent with other pages) -->
-                <div class="section-header-row">
-                    <h2 id="active-workout-title" class="section-title"><i class="fas fa-dumbbell"></i> Active Workout</h2>
-                    <button id="edit-workout-close-btn" class="close-btn hidden" onclick="discardEditedWorkout()" title="Close without saving">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <!-- Workout Header - Hero Card Style -->
-                <div class="active-workout-hero">
-                    <!-- Top Row: Name + Timer -->
-                    <div class="workout-hero-top">
-                        <h2 id="current-workout-name">Current Workout</h2>
-                        <div class="workout-timer-badge">
-                            <i class="fas fa-clock"></i>
-                            <span id="workout-duration">0:00</span>
+            <!-- Main Content Area -->
+            <main id="main-content">
+                <!-- Dashboard -->
+                <section id="dashboard" class="content-section hidden">
+                    <!-- Resume Workout Card (only shown on dashboard) -->
+                    <div id="resume-workout-banner" class="hidden">
+                        <div class="stats-section-header">
+                            <span class="stats-section-title">In Progress</span>
+                            <span id="resume-time-ago" class="resume-time-label">just now</span>
                         </div>
-                    </div>
-
-                    <!-- Location Indicator -->
-                    <div id="workout-location-indicator" class="workout-location-indicator hidden" onclick="changeWorkoutLocation()">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span id="workout-location-name">Unknown Location</span>
-                        <i id="workout-location-lock" class="fas fa-lock" style="display: none;" title="Location locked"></i>
-                    </div>
-
-                    <!-- Stats Row -->
-                    <div class="workout-hero-stats">
-                        <div class="workout-stat">
-                            <span class="workout-stat-value" id="workout-progress-display">0/16</span>
-                            <span class="workout-stat-label">Sets</span>
-                        </div>
-                        <div class="workout-stat-divider"></div>
-                        <div class="workout-stat">
-                            <span class="workout-stat-value" id="workout-exercises-count">0/4</span>
-                            <span class="workout-stat-label">Exercises</span>
-                        </div>
-                        <div class="workout-stat-divider"></div>
-                        <div class="workout-stat" id="workout-rest-stat">
-                            <span class="workout-stat-value" id="workout-rest-timer">--</span>
-                            <span class="workout-stat-label">Rest</span>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="workout-hero-actions">
-                        <button class="btn-workout-action btn-cancel" onclick="cancelWorkout()">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                        <button class="btn-workout-action btn-add" onclick="addExerciseToActiveWorkout()">
-                            <i class="fas fa-plus"></i> Add
-                        </button>
-                        <button class="btn-workout-action btn-finish" onclick="completeWorkout()">
-                            <i class="fas fa-check"></i> Finish
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Exercise List -->
-                <div id="exercise-list" class="exercise-list">
-                    <!-- Populated by JavaScript -->
-                </div>
-            </section>
-
-
-            <!-- Workout History -->
-            <section id="workout-history-section" class="content-section hidden">
-                <!-- Section Header (consistent with other pages) -->
-                <div class="section-header-row">
-                    <h2 class="section-title"><i class="fas fa-calendar-alt"></i> History</h2>
-                    <button class="btn btn-primary" onclick="showAddManualWorkoutModal()">
-                        <i class="fas fa-plus"></i> Add Missing
-                    </button>
-                </div>
-
-                <!-- Month Navigation -->
-                <div class="month-navigation">
-                    <button class="nav-button" onclick="previousMonth()" aria-label="Previous month">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <div class="current-month" id="currentMonth"></div>
-                    <button class="nav-button" onclick="nextMonth()" aria-label="Next month">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-
-                <!-- Calendar -->
-                <div class="calendar-container">
-                    <div class="calendar-weekdays">
-                        <div class="weekday">Sun</div>
-                        <div class="weekday">Mon</div>
-                        <div class="weekday">Tue</div>
-                        <div class="weekday">Wed</div>
-                        <div class="weekday">Thu</div>
-                        <div class="weekday">Fri</div>
-                        <div class="weekday">Sat</div>
-                    </div>
-                    <div class="calendar-grid" id="calendar-grid">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </div>
-
-            </section>
-
-            <!-- Workout Management Section (Full Page, not a modal) -->
-            <section id="workout-management-section" class="content-section hidden">
-                <!-- Section Header -->
-                <div class="section-header-row">
-                    <h2 class="section-title"><i class="fas fa-clipboard-list"></i> Workout Library</h2>
-                    <button class="btn btn-primary" onclick="createNewTemplate()">
-                        <i class="fas fa-plus"></i> New
-                    </button>
-                </div>
-
-                <!-- View 1: Category Grid (Entry Page) -->
-                <div id="workout-category-view" class="workout-library-view">
-                    <!-- Search -->
-                    <div class="exercise-library-header">
-                        <div class="exercise-search-row">
-                            <div class="exercise-search-wrapper full-width">
-                                <i class="fas fa-search"></i>
-                                <input type="text" id="workout-search-input" class="exercise-search-input"
-                                       placeholder="Search workouts"
-                                       oninput="handleWorkoutSearch()">
+                        <div class="resume-goal-card" onclick="continueInProgressWorkout()">
+                            <div class="resume-workout-header">
+                                <span id="resume-workout-name">Workout</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                            <div class="resume-progress-bar-wrap">
+                                <div id="resume-progress-bar" class="resume-progress-bar" style="width: 0%"></div>
+                            </div>
+                            <div class="resume-stats-grid">
+                                <div class="resume-stat-box">
+                                    <span id="resume-stat-sets" class="resume-stat-value">0/0</span>
+                                    <span class="resume-stat-label">Sets</span>
+                                </div>
+                                <div class="resume-stat-box">
+                                    <span id="resume-stat-exercises" class="resume-stat-value">0/0</span>
+                                    <span class="resume-stat-label">Exercises</span>
+                                </div>
+                                <div class="resume-stat-box">
+                                    <span id="resume-stat-time" class="resume-stat-value">0m</span>
+                                    <span class="resume-stat-label">Time</span>
+                                </div>
+                                <div class="resume-stat-box">
+                                    <span id="resume-stat-rest" class="resume-stat-value">--</span>
+                                    <span class="resume-stat-label">Rest</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Category Grid - uses icons from Start Workout page -->
-                    <div class="category-grid">
-                        <div class="category-card" onclick="selectWorkoutCategory('push')">
-                            <i class="fas fa-hand-paper category-icon"></i>
-                            <span class="category-name">Push</span>
-                        </div>
-                        <div class="category-card" onclick="selectWorkoutCategory('pull')">
-                            <i class="fas fa-fist-raised category-icon"></i>
-                            <span class="category-name">Pull</span>
-                        </div>
-                        <div class="category-card" onclick="selectWorkoutCategory('legs')">
-                            <i class="fas fa-running category-icon"></i>
-                            <span class="category-name">Legs</span>
-                        </div>
-                        <div class="category-card" onclick="selectWorkoutCategory('cardio')">
-                            <i class="fas fa-heartbeat category-icon"></i>
-                            <span class="category-name">Cardio</span>
-                        </div>
-                        <div class="category-card" onclick="selectWorkoutCategory('other')">
-                            <i class="fas fa-dumbbell category-icon"></i>
-                            <span class="category-name">Other</span>
-                        </div>
-                        <div class="category-card" onclick="selectWorkoutCategory('')">
-                            <i class="fas fa-th category-icon"></i>
-                            <span class="category-name">All</span>
+                        <div class="resume-cancel-row">
+                            <button
+                                class="resume-cancel-btn"
+                                onclick="
+                                    event.stopPropagation();
+                                    discardInProgressWorkout();
+                                "
+                            >
+                                <i class="fas fa-times"></i> Cancel Workout
+                            </button>
                         </div>
                     </div>
-                </div>
+                    <div id="dashboard-content">
+                        <!-- Dashboard content will be dynamically loaded -->
+                    </div>
+                </section>
 
-                <!-- View 2: Workout List (After selecting category) -->
-                <div id="workout-list-view" class="workout-library-view hidden">
-                    <!-- Header with back and title -->
-                    <div class="exercise-list-header">
-                        <button class="btn-back-category" aria-label="Go back" onclick="showWorkoutCategoryView()">
-                            <i class="fas fa-arrow-left"></i>
+                <!-- Stats & Records -->
+                <section id="stats-section" class="content-section hidden">
+                    <div id="stats-content">
+                        <!-- Stats content will be dynamically loaded -->
+                    </div>
+                </section>
+
+                <!-- Location Management -->
+                <section id="location-management-section" class="content-section hidden">
+                    <div class="section-header-row">
+                        <h2 class="section-title"><i class="fas fa-map-marker-alt"></i> Locations</h2>
+                        <button class="btn btn-primary" onclick="detectAndAddLocation()">
+                            <i class="fas fa-plus"></i> New
                         </button>
-                        <h2 id="workout-list-title" class="exercise-list-title">Workouts</h2>
                     </div>
 
-                    <!-- Workout List -->
-                    <div id="all-templates" class="workout-list-container">
-                        <!-- Populated by JavaScript -->
+                    <div class="location-management-content">
+                        <!-- Map Container -->
+                        <div id="location-map-container" class="location-map-container">
+                            <div class="location-map-placeholder">
+                                <i class="fas fa-map-marked-alt"></i>
+                                <span>Select a location to view on map</span>
+                            </div>
+                        </div>
+
+                        <!-- Saved Locations List -->
+                        <div id="location-management-list" class="location-management-list">
+                            <!-- Populated dynamically -->
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-        </main>
+                <!-- Workout Selector -->
+                <section id="workout-selector" class="content-section hidden">
+                    <div class="section-header-row">
+                        <h2 class="section-title"><i class="fas fa-play-circle"></i> Start Workout</h2>
+                        <button class="btn btn-primary" onclick="createNewTemplate()">
+                            <i class="fas fa-plus"></i> New
+                        </button>
+                    </div>
 
-        <!-- Modal Containers -->
-        <div id="modal-container">
-            
-            <!-- Template Selection Modal (Start Workout category picker) -->
-            <div id="template-selection-modal" class="modal hidden">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3 id="template-modal-title">Choose Workout</h3>
-                        <button class="close-btn" aria-label="Close" onclick="closeTemplateSelection()">
+                    <div class="workout-grid" id="workout-type-grid">
+                        <div class="workout-option" onclick="showTemplatesByCategory('push')" data-category="push">
+                            <i class="fas fa-hand-paper"></i>
+                            <span>Push Workouts</span>
+                            <p>Chest, Shoulders, Triceps</p>
+                        </div>
+
+                        <div class="workout-option" onclick="showTemplatesByCategory('pull')" data-category="pull">
+                            <i class="fas fa-fist-raised"></i>
+                            <span>Pull Workouts</span>
+                            <p>Back, Biceps, Rear Delts</p>
+                        </div>
+
+                        <div class="workout-option" onclick="showTemplatesByCategory('legs')" data-category="legs">
+                            <i class="fas fa-running"></i>
+                            <span>Leg Workouts</span>
+                            <p>Quads, Glutes, Hamstrings, Calves</p>
+                        </div>
+
+                        <div class="workout-option" onclick="showTemplatesByCategory('cardio')" data-category="cardio">
+                            <i class="fas fa-heartbeat"></i>
+                            <span>Cardio & Core</span>
+                            <p>Heart Health, Core Strength</p>
+                        </div>
+
+                        <div class="workout-option" onclick="showTemplatesByCategory('other')" data-category="other">
+                            <i class="fas fa-dumbbell"></i>
+                            <span>Other Workouts</span>
+                            <p>Full Body, Mixed Training</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Active Workout -->
+                <section id="active-workout" class="content-section hidden">
+                    <!-- Section Header (consistent with other pages) -->
+                    <div class="section-header-row">
+                        <h2 id="active-workout-title" class="section-title">
+                            <i class="fas fa-dumbbell"></i> Active Workout
+                        </h2>
+                        <button
+                            id="edit-workout-close-btn"
+                            class="close-btn hidden"
+                            onclick="discardEditedWorkout()"
+                            title="Close without saving"
+                        >
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <div class="modal-body">
-                        <div id="template-selection-grid" class="workout-list-container">
+
+                    <!-- Workout Header - Hero Card Style -->
+                    <div class="active-workout-hero">
+                        <!-- Top Row: Name + Timer -->
+                        <div class="workout-hero-top">
+                            <h2 id="current-workout-name">Current Workout</h2>
+                            <div class="workout-timer-badge">
+                                <i class="fas fa-clock"></i>
+                                <span id="workout-duration">0:00</span>
+                            </div>
+                        </div>
+
+                        <!-- Location Indicator -->
+                        <div
+                            id="workout-location-indicator"
+                            class="workout-location-indicator hidden"
+                            onclick="changeWorkoutLocation()"
+                        >
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span id="workout-location-name">Unknown Location</span>
+                            <i
+                                id="workout-location-lock"
+                                class="fas fa-lock"
+                                style="display: none"
+                                title="Location locked"
+                            ></i>
+                        </div>
+
+                        <!-- Stats Row -->
+                        <div class="workout-hero-stats">
+                            <div class="workout-stat">
+                                <span class="workout-stat-value" id="workout-progress-display">0/16</span>
+                                <span class="workout-stat-label">Sets</span>
+                            </div>
+                            <div class="workout-stat-divider"></div>
+                            <div class="workout-stat">
+                                <span class="workout-stat-value" id="workout-exercises-count">0/4</span>
+                                <span class="workout-stat-label">Exercises</span>
+                            </div>
+                            <div class="workout-stat-divider"></div>
+                            <div class="workout-stat" id="workout-rest-stat">
+                                <span class="workout-stat-value" id="workout-rest-timer">--</span>
+                                <span class="workout-stat-label">Rest</span>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="workout-hero-actions">
+                            <button class="btn-workout-action btn-cancel" onclick="cancelWorkout()">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            <button class="btn-workout-action btn-add" onclick="addExerciseToActiveWorkout()">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                            <button class="btn-workout-action btn-finish" onclick="completeWorkout()">
+                                <i class="fas fa-check"></i> Finish
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Exercise List -->
+                    <div id="exercise-list" class="exercise-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <!-- Workout History -->
+                <section id="workout-history-section" class="content-section hidden">
+                    <!-- Section Header (consistent with other pages) -->
+                    <div class="section-header-row">
+                        <h2 class="section-title"><i class="fas fa-calendar-alt"></i> History</h2>
+                        <button class="btn btn-primary" onclick="showAddManualWorkoutModal()">
+                            <i class="fas fa-plus"></i> Add Missing
+                        </button>
+                    </div>
+
+                    <!-- Month Navigation -->
+                    <div class="month-navigation">
+                        <button class="nav-button" onclick="previousMonth()" aria-label="Previous month">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <div class="current-month" id="currentMonth"></div>
+                        <button class="nav-button" onclick="nextMonth()" aria-label="Next month">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Calendar -->
+                    <div class="calendar-container">
+                        <div class="calendar-weekdays">
+                            <div class="weekday">Sun</div>
+                            <div class="weekday">Mon</div>
+                            <div class="weekday">Tue</div>
+                            <div class="weekday">Wed</div>
+                            <div class="weekday">Thu</div>
+                            <div class="weekday">Fri</div>
+                            <div class="weekday">Sat</div>
+                        </div>
+                        <div class="calendar-grid" id="calendar-grid">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Recent Workouts List (paginated) -->
+                    <div id="recent-workouts-list" class="recent-workouts-section">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <!-- Workout Management Section (Full Page, not a modal) -->
+                <section id="workout-management-section" class="content-section hidden">
+                    <!-- Section Header -->
+                    <div class="section-header-row">
+                        <h2 class="section-title"><i class="fas fa-clipboard-list"></i> Workout Library</h2>
+                        <button class="btn btn-primary" onclick="createNewTemplate()">
+                            <i class="fas fa-plus"></i> New
+                        </button>
+                    </div>
+
+                    <!-- View 1: Category Grid (Entry Page) -->
+                    <div id="workout-category-view" class="workout-library-view">
+                        <!-- Search -->
+                        <div class="exercise-library-header">
+                            <div class="exercise-search-row">
+                                <div class="exercise-search-wrapper full-width">
+                                    <i class="fas fa-search"></i>
+                                    <input
+                                        type="text"
+                                        id="workout-search-input"
+                                        class="exercise-search-input"
+                                        placeholder="Search workouts"
+                                        oninput="handleWorkoutSearch()"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Category Grid - uses icons from Start Workout page -->
+                        <div class="category-grid">
+                            <div class="category-card" onclick="selectWorkoutCategory('push')">
+                                <i class="fas fa-hand-paper category-icon"></i>
+                                <span class="category-name">Push</span>
+                            </div>
+                            <div class="category-card" onclick="selectWorkoutCategory('pull')">
+                                <i class="fas fa-fist-raised category-icon"></i>
+                                <span class="category-name">Pull</span>
+                            </div>
+                            <div class="category-card" onclick="selectWorkoutCategory('legs')">
+                                <i class="fas fa-running category-icon"></i>
+                                <span class="category-name">Legs</span>
+                            </div>
+                            <div class="category-card" onclick="selectWorkoutCategory('cardio')">
+                                <i class="fas fa-heartbeat category-icon"></i>
+                                <span class="category-name">Cardio</span>
+                            </div>
+                            <div class="category-card" onclick="selectWorkoutCategory('other')">
+                                <i class="fas fa-dumbbell category-icon"></i>
+                                <span class="category-name">Other</span>
+                            </div>
+                            <div class="category-card" onclick="selectWorkoutCategory('')">
+                                <i class="fas fa-th category-icon"></i>
+                                <span class="category-name">All</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- View 2: Workout List (After selecting category) -->
+                    <div id="workout-list-view" class="workout-library-view hidden">
+                        <!-- Header with back and title -->
+                        <div class="exercise-list-header">
+                            <button class="btn-back-category" aria-label="Go back" onclick="showWorkoutCategoryView()">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <h2 id="workout-list-title" class="exercise-list-title">Workouts</h2>
+                        </div>
+
+                        <!-- Workout List -->
+                        <div id="all-templates" class="workout-list-container">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <!-- Modal Containers -->
+            <div id="modal-container">
+                <!-- Template Selection Modal (Start Workout category picker) -->
+                <div id="template-selection-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="template-modal-title">Choose Workout</h3>
+                            <button class="close-btn" aria-label="Close" onclick="closeTemplateSelection()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="template-selection-grid" class="workout-list-container">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Exercise Library Modal -->
+                <div id="exercise-library-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Add Exercise to Workout</h3>
+                            <button class="close-btn" aria-label="Close" onclick="closeExerciseLibrary()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body" id="exercise-library-content">
+                            <!-- Exercise Library Controls -->
+                            <div class="exercise-library-controls">
+                                <div class="search-container">
+                                    <input
+                                        type="text"
+                                        id="exercise-library-search"
+                                        class="form-input"
+                                        placeholder="Search exercises..."
+                                    />
+                                </div>
+
+                                <div class="filter-row">
+                                    <select id="body-part-filter" class="form-input">
+                                        <option value="">All Body Parts</option>
+                                        <option value="chest">Chest</option>
+                                        <option value="back">Back</option>
+                                        <option value="shoulders">Shoulders</option>
+                                        <option value="arms">Arms</option>
+                                        <option value="legs">Legs</option>
+                                        <option value="core">Core</option>
+                                    </select>
+
+                                    <select id="equipment-filter" class="form-input">
+                                        <option value="">All Equipment</option>
+                                        <option value="machine">Machine</option>
+                                        <option value="dumbbell">Dumbbell</option>
+                                        <option value="barbell">Barbell</option>
+                                        <option value="bodyweight">Bodyweight</option>
+                                        <option value="cable">Cable</option>
+                                    </select>
+                                </div>
+
+                                <button class="btn btn-primary btn-full" onclick="showCreateExerciseForm()">
+                                    <i class="fas fa-plus"></i> Create New Exercise
+                                </button>
+                            </div>
+
+                            <!-- Exercise Grid -->
+                            <div id="exercise-library-grid" class="exercise-library-grid">
+                                <!-- Exercises will be populated here by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add/Create Exercise Modal -->
+                <div id="add-exercise-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="add-exercise-modal-title">Create New Exercise</h3>
+                            <button class="close-btn" aria-label="Close" onclick="closeCreateExerciseModal()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="add-exercise-form" onsubmit="createNewExercise(event)">
+                                <div class="form-group">
+                                    <label for="new-exercise-name">Exercise Name *</label>
+                                    <input
+                                        type="text"
+                                        id="new-exercise-name"
+                                        class="form-input"
+                                        placeholder="e.g., Incline Dumbbell Press"
+                                        required
+                                    />
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="new-exercise-body-part">Body Part</label>
+                                        <select id="new-exercise-body-part" class="form-input">
+                                            <option value="Chest">Chest</option>
+                                            <option value="Back">Back</option>
+                                            <option value="Shoulders">Shoulders</option>
+                                            <option value="Arms">Arms</option>
+                                            <option value="Legs">Legs</option>
+                                            <option value="Core">Core</option>
+                                            <option value="Calves">Calves</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="new-exercise-equipment">Equipment Type</label>
+                                        <select id="new-exercise-equipment" class="form-input">
+                                            <option value="Machine">Machine</option>
+                                            <option value="Dumbbell">Dumbbell</option>
+                                            <option value="Barbell">Barbell</option>
+                                            <option value="Cable">Cable</option>
+                                            <option value="Bodyweight">Bodyweight</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="new-exercise-sets">Default Sets</label>
+                                        <input
+                                            type="number"
+                                            id="new-exercise-sets"
+                                            class="form-input"
+                                            value="3"
+                                            min="1"
+                                            max="10"
+                                            inputmode="numeric"
+                                        />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="new-exercise-reps">Default Reps</label>
+                                        <input
+                                            type="number"
+                                            id="new-exercise-reps"
+                                            class="form-input"
+                                            value="10"
+                                            min="1"
+                                            max="50"
+                                            inputmode="numeric"
+                                        />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="new-exercise-weight">Default Weight</label>
+                                        <input
+                                            type="number"
+                                            id="new-exercise-weight"
+                                            class="form-input"
+                                            value="50"
+                                            min="0"
+                                            inputmode="decimal"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="new-exercise-video">Video URL (optional)</label>
+                                    <input
+                                        type="url"
+                                        id="new-exercise-video"
+                                        class="form-input"
+                                        placeholder="https://youtube.com/..."
+                                    />
+                                </div>
+
+                                <div class="modal-actions">
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary"
+                                        onclick="closeCreateExerciseModal()"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> Create Exercise
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workout Details Modal -->
+                <div id="workout-detail-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="workout-detail-title">Workout Details</h3>
+                            <button class="close-btn" aria-label="Close" onclick="closeWorkoutDetailModal()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body" id="workout-detail-content">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Location Modal -->
+                <div id="add-location-modal" class="modal hidden">
+                    <div class="modal-content modal-medium">
+                        <div class="modal-header">
+                            <h3>Add New Location</h3>
+                            <button class="close-btn" aria-label="Close" onclick="closeAddLocationModal()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- Location Name -->
+                            <div class="form-group">
+                                <label>Location Name</label>
+                                <input
+                                    type="text"
+                                    id="add-location-name-input"
+                                    class="form-input"
+                                    placeholder="e.g., LA Fitness Downtown"
+                                    autocomplete="off"
+                                />
+                            </div>
+
+                            <!-- Location Method Tabs -->
+                            <div class="location-method-tabs">
+                                <button
+                                    class="method-tab active"
+                                    onclick="switchLocationMethod('gps')"
+                                    id="method-gps-tab"
+                                >
+                                    <i class="fas fa-crosshairs"></i> Use Current GPS
+                                </button>
+                                <button
+                                    class="method-tab"
+                                    onclick="switchLocationMethod('address')"
+                                    id="method-address-tab"
+                                >
+                                    <i class="fas fa-search"></i> Search Address
+                                </button>
+                                <button class="method-tab" onclick="switchLocationMethod('map')" id="method-map-tab">
+                                    <i class="fas fa-map-pin"></i> Pin on Map
+                                </button>
+                            </div>
+
+                            <!-- GPS Method -->
+                            <div id="location-method-gps" class="location-method-content">
+                                <div class="gps-status-box" id="add-location-gps-status">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <span>Detecting your location...</span>
+                                </div>
+                            </div>
+
+                            <!-- Address Search Method -->
+                            <div id="location-method-address" class="location-method-content hidden">
+                                <div class="form-group">
+                                    <label>Search Address</label>
+                                    <div class="search-input-wrapper">
+                                        <input
+                                            type="text"
+                                            id="location-address-search"
+                                            class="form-input"
+                                            placeholder="Enter address, city, or place name..."
+                                            autocomplete="off"
+                                            onkeydown="
+                                                if (event.key === 'Enter') {
+                                                    event.preventDefault();
+                                                    searchLocationAddress();
+                                                }
+                                            "
+                                        />
+                                        <button
+                                            class="search-btn"
+                                            onclick="searchLocationAddress()"
+                                            aria-label="Search"
+                                        >
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="address-search-results" class="address-results"></div>
+                            </div>
+
+                            <!-- Map Pin Method -->
+                            <div id="location-method-map" class="location-method-content hidden">
+                                <p class="method-description">Drag the pin or tap on the map to set location</p>
+                                <div id="add-location-map-container" class="add-location-map">
+                                    <div class="map-placeholder">
+                                        <i class="fas fa-map-marked-alt"></i>
+                                        <span>Map will load here</span>
+                                    </div>
+                                </div>
+                                <div id="pin-coordinates" class="pin-coords"></div>
+                            </div>
+
+                            <!-- Selected Coordinates Display -->
+                            <div id="selected-coords-display" class="selected-coords hidden">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span id="selected-coords-text">No location selected</span>
+                            </div>
+
+                            <div class="modal-actions">
+                                <button class="btn btn-secondary" onclick="closeAddLocationModal()">Cancel</button>
+                                <button class="btn btn-primary" onclick="saveNewLocationFromModal()">
+                                    <i class="fas fa-plus"></i> Add Location
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Workout Modal -->
+                <div id="manual-workout-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Add Manual Workout</h3>
+                            <button class="close-btn" aria-label="Close" onclick="closeAddManualWorkoutModal()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body" id="manual-workout-content">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workout Editor Modal -->
+                <div id="template-editor-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="template-editor-title">Create Workout</h3>
+                            <button class="close-btn" aria-label="Close" onclick="closeTemplateEditor()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body" id="template-editor-content">
                             <!-- Populated by JavaScript -->
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Exercise Library Modal -->
-            <div id="exercise-library-modal" class="modal hidden">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Add Exercise to Workout</h3>
-                        <button class="close-btn" aria-label="Close" onclick="closeExerciseLibrary()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body" id="exercise-library-content">
-                        <!-- Exercise Library Controls -->
-                        <div class="exercise-library-controls">
-                            <div class="search-container">
-                                <input type="text" 
-                                    id="exercise-library-search"
-                                    class="form-input" 
-                                    placeholder="Search exercises...">
-                            </div>
-                            
-                            <div class="filter-row">
-                                <select id="body-part-filter" class="form-input">
-                                    <option value="">All Body Parts</option>
-                                    <option value="chest">Chest</option>
-                                    <option value="back">Back</option>
-                                    <option value="shoulders">Shoulders</option>
-                                    <option value="arms">Arms</option>
-                                    <option value="legs">Legs</option>
-                                    <option value="core">Core</option>
-                                </select>
-                                
-                                <select id="equipment-filter" class="form-input">
-                                    <option value="">All Equipment</option>
-                                    <option value="machine">Machine</option>
-                                    <option value="dumbbell">Dumbbell</option>
-                                    <option value="barbell">Barbell</option>
-                                    <option value="bodyweight">Bodyweight</option>
-                                    <option value="cable">Cable</option>
-                                </select>
-                            </div>
-                            
-                            <button class="btn btn-primary btn-full" onclick="showCreateExerciseForm()">
-                                <i class="fas fa-plus"></i> Create New Exercise
-                            </button>
-                        </div>
-                        
-                        <!-- Exercise Grid -->
-                        <div id="exercise-library-grid" class="exercise-library-grid">
-                            <!-- Exercises will be populated here by JavaScript -->
-                        </div>
-                    </div>
+            <!-- Notifications -->
+            <div
+                id="notifications-container"
+                class="notifications-container"
+                aria-live="polite"
+                aria-atomic="false"
+            ></div>
+
+            <!-- Rest Timer (if needed) -->
+            <div id="rest-timer" class="rest-timer hidden">
+                <div class="timer-display">
+                    <span id="timer-countdown">0:00</span>
                 </div>
-            </div>
-
-            <!-- Add/Create Exercise Modal -->
-            <div id="add-exercise-modal" class="modal hidden">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3 id="add-exercise-modal-title">Create New Exercise</h3>
-                        <button class="close-btn" aria-label="Close" onclick="closeCreateExerciseModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="add-exercise-form" onsubmit="createNewExercise(event)">
-                            <div class="form-group">
-                                <label for="new-exercise-name">Exercise Name *</label>
-                                <input type="text" id="new-exercise-name" class="form-input"
-                                       placeholder="e.g., Incline Dumbbell Press" required>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="new-exercise-body-part">Body Part</label>
-                                    <select id="new-exercise-body-part" class="form-input">
-                                        <option value="Chest">Chest</option>
-                                        <option value="Back">Back</option>
-                                        <option value="Shoulders">Shoulders</option>
-                                        <option value="Arms">Arms</option>
-                                        <option value="Legs">Legs</option>
-                                        <option value="Core">Core</option>
-                                        <option value="Calves">Calves</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="new-exercise-equipment">Equipment Type</label>
-                                    <select id="new-exercise-equipment" class="form-input">
-                                        <option value="Machine">Machine</option>
-                                        <option value="Dumbbell">Dumbbell</option>
-                                        <option value="Barbell">Barbell</option>
-                                        <option value="Cable">Cable</option>
-                                        <option value="Bodyweight">Bodyweight</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="new-exercise-sets">Default Sets</label>
-                                    <input type="number" id="new-exercise-sets" class="form-input"
-                                           value="3" min="1" max="10" inputmode="numeric">
-                                </div>
-                                <div class="form-group">
-                                    <label for="new-exercise-reps">Default Reps</label>
-                                    <input type="number" id="new-exercise-reps" class="form-input"
-                                           value="10" min="1" max="50" inputmode="numeric">
-                                </div>
-                                <div class="form-group">
-                                    <label for="new-exercise-weight">Default Weight</label>
-                                    <input type="number" id="new-exercise-weight" class="form-input"
-                                           value="50" min="0" inputmode="decimal">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="new-exercise-video">Video URL (optional)</label>
-                                <input type="url" id="new-exercise-video" class="form-input"
-                                       placeholder="https://youtube.com/...">
-                            </div>
-
-                            <div class="modal-actions">
-                                <button type="button" class="btn btn-secondary" onclick="closeCreateExerciseModal()">
-                                    Cancel
-                                </button>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-plus"></i> Create Exercise
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Workout Details Modal -->
-            <div id="workout-detail-modal" class="modal hidden">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3 id="workout-detail-title">Workout Details</h3>
-                        <button class="close-btn" aria-label="Close" onclick="closeWorkoutDetailModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body" id="workout-detail-content">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Add Location Modal -->
-            <div id="add-location-modal" class="modal hidden">
-                <div class="modal-content modal-medium">
-                    <div class="modal-header">
-                        <h3>Add New Location</h3>
-                        <button class="close-btn" aria-label="Close" onclick="closeAddLocationModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <!-- Location Name -->
-                        <div class="form-group">
-                            <label>Location Name</label>
-                            <input type="text" id="add-location-name-input" class="form-input"
-                                   placeholder="e.g., LA Fitness Downtown" autocomplete="off">
-                        </div>
-
-                        <!-- Location Method Tabs -->
-                        <div class="location-method-tabs">
-                            <button class="method-tab active" onclick="switchLocationMethod('gps')" id="method-gps-tab">
-                                <i class="fas fa-crosshairs"></i> Use Current GPS
-                            </button>
-                            <button class="method-tab" onclick="switchLocationMethod('address')" id="method-address-tab">
-                                <i class="fas fa-search"></i> Search Address
-                            </button>
-                            <button class="method-tab" onclick="switchLocationMethod('map')" id="method-map-tab">
-                                <i class="fas fa-map-pin"></i> Pin on Map
-                            </button>
-                        </div>
-
-                        <!-- GPS Method -->
-                        <div id="location-method-gps" class="location-method-content">
-                            <div class="gps-status-box" id="add-location-gps-status">
-                                <i class="fas fa-spinner fa-spin"></i>
-                                <span>Detecting your location...</span>
-                            </div>
-                        </div>
-
-                        <!-- Address Search Method -->
-                        <div id="location-method-address" class="location-method-content hidden">
-                            <div class="form-group">
-                                <label>Search Address</label>
-                                <div class="search-input-wrapper">
-                                    <input type="text" id="location-address-search" class="form-input"
-                                           placeholder="Enter address, city, or place name..." autocomplete="off"
-                                           onkeydown="if(event.key==='Enter'){event.preventDefault();searchLocationAddress();}">
-                                    <button class="search-btn" onclick="searchLocationAddress()" aria-label="Search">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="address-search-results" class="address-results"></div>
-                        </div>
-
-                        <!-- Map Pin Method -->
-                        <div id="location-method-map" class="location-method-content hidden">
-                            <p class="method-description">Drag the pin or tap on the map to set location</p>
-                            <div id="add-location-map-container" class="add-location-map">
-                                <div class="map-placeholder">
-                                    <i class="fas fa-map-marked-alt"></i>
-                                    <span>Map will load here</span>
-                                </div>
-                            </div>
-                            <div id="pin-coordinates" class="pin-coords"></div>
-                        </div>
-
-                        <!-- Selected Coordinates Display -->
-                        <div id="selected-coords-display" class="selected-coords hidden">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span id="selected-coords-text">No location selected</span>
-                        </div>
-
-                        <div class="modal-actions">
-                            <button class="btn btn-secondary" onclick="closeAddLocationModal()">Cancel</button>
-                            <button class="btn btn-primary" onclick="saveNewLocationFromModal()">
-                                <i class="fas fa-plus"></i> Add Location
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Manual Workout Modal -->
-            <div id="manual-workout-modal" class="modal hidden">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Add Manual Workout</h3>
-                        <button class="close-btn" aria-label="Close" onclick="closeAddManualWorkoutModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body" id="manual-workout-content">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Workout Editor Modal -->
-            <div id="template-editor-modal" class="modal hidden">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3 id="template-editor-title">Create Workout</h3>
-                        <button class="close-btn" aria-label="Close" onclick="closeTemplateEditor()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body" id="template-editor-content">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Notifications -->
-        <div id="notifications-container" class="notifications-container"></div>
-
-        <!-- Rest Timer (if needed) -->
-        <div id="rest-timer" class="rest-timer hidden">
-            <div class="timer-display">
-                <span id="timer-countdown">0:00</span>
-            </div>
-            <div class="timer-controls">
-                <button id="pause-rest-btn" class="btn btn-secondary" onclick="toggleRestTimer()">
-                    <i class="fas fa-pause"></i>
-                </button>
-                <button id="skip-rest-btn" class="btn btn-primary" onclick="skipRestTimer()">
-                    <i class="fas fa-forward"></i> Skip
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add Manual Workout Modal -->
-<div id="add-manual-workout-modal" class="modal hidden">
-    <div class="modal-content manual-workout-modal">
-        <div class="modal-header">
-            <h3 class="modal-title">Add Missing Workout</h3>
-            <button class="close-btn" aria-label="Close" onclick="closeAddManualWorkoutModal()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-
-        <!-- Step 1: Date and Workout Selection -->
-        <div id="manual-step-1" class="manual-step">
-            <div class="form-group">
-                <label for="manual-workout-date">When did you work out? *</label>
-                <input type="date" id="manual-workout-date" class="form-input" required>
-            </div>
-
-            <div class="manual-workout-source-section">
-                <label class="section-label">Choose your workout:</label>
-
-                <!-- Option: Select from Library -->
-                <div class="workout-source-option" id="source-library-option">
-                    <div class="source-header" onclick="toggleManualWorkoutSource('library')">
-                        <i class="fas fa-list"></i>
-                        <span>Select from Workout Library</span>
-                        <i class="fas fa-chevron-down toggle-icon"></i>
-                    </div>
-                    <div id="manual-library-list" class="source-content hidden">
-                        <div class="library-loading">Loading workouts...</div>
-                    </div>
-                </div>
-
-                <!-- Option: Create Custom -->
-                <div class="workout-source-option" id="source-custom-option">
-                    <div class="source-header" onclick="toggleManualWorkoutSource('custom')">
-                        <i class="fas fa-plus-circle"></i>
-                        <span>Create Custom Workout</span>
-                        <i class="fas fa-chevron-down toggle-icon"></i>
-                    </div>
-                    <div id="manual-custom-form" class="source-content hidden">
-                        <div class="form-group">
-                            <label for="manual-workout-name">Workout Name *</label>
-                            <input type="text" id="manual-workout-name" class="form-input"
-                                   placeholder="e.g., Chest & Triceps, Upper Body">
-                        </div>
-                        <div class="form-group">
-                            <label for="manual-workout-category">Category *</label>
-                            <select id="manual-workout-category" class="form-input">
-                                <option value="">Select category...</option>
-                                <option value="Push">Push</option>
-                                <option value="Pull">Pull</option>
-                                <option value="Legs">Legs</option>
-                                <option value="Cardio">Cardio</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <button type="button" class="btn btn-primary" onclick="startCustomManualWorkout()">
-                            <i class="fas fa-arrow-right"></i> Continue
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="step-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeAddManualWorkoutModal()">
-                    Cancel
-                </button>
-            </div>
-        </div>
-
-        <!-- Step 2: Enter Exercise Data -->
-        <div id="manual-step-2" class="manual-step hidden">
-            <div class="step-header">
-                <button class="btn btn-secondary btn-small" onclick="backToManualStep1()">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-                <div class="step-info">
-                    <h4 id="manual-workout-title-display">Your Workout</h4>
-                    <p id="manual-workout-date-display">Date</p>
-                </div>
-            </div>
-
-            <!-- Location Selector -->
-            <div class="manual-location-section">
-                <label class="section-label"><i class="fas fa-map-marker-alt"></i> Location</label>
-                <div class="manual-location-row">
-                    <select id="manual-workout-location" class="form-input">
-                        <option value="">Select gym location...</option>
-                        <!-- Populated dynamically -->
-                    </select>
-                </div>
-            </div>
-
-            <!-- Exercise List -->
-            <div id="manual-exercises-container" class="manual-exercises-container">
-                <!-- Exercises will be rendered here -->
-            </div>
-
-            <!-- Add Exercise Button (for custom workouts) -->
-            <div id="manual-add-exercise-section" class="manual-add-exercise-section hidden">
-                <button class="btn btn-primary" onclick="openExercisePickerForManual()">
-                    <i class="fas fa-plus"></i> Add Exercise
-                </button>
-            </div>
-
-            <!-- Step 3: Final Details -->
-            <div class="manual-final-details">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="manual-workout-duration">Duration (min)</label>
-                        <input type="number" id="manual-workout-duration" class="form-input"
-                               placeholder="45" min="1" max="300" value="60" inputmode="numeric">
-                    </div>
-                    <div class="form-group">
-                        <label for="manual-workout-status">Status</label>
-                        <select id="manual-workout-status" class="form-input">
-                            <option value="completed">Completed</option>
-                            <option value="partial">Partial</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="manual-workout-notes">Notes (optional)</label>
-                    <textarea id="manual-workout-notes" class="form-input" rows="2"
-                              placeholder="Any notes about this workout..."></textarea>
-                </div>
-            </div>
-
-            <div class="step-actions">
-                <button type="button" class="btn btn-secondary" onclick="backToManualStep1()">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-                <button type="button" class="btn btn-success" onclick="saveManualWorkout()">
-                    <i class="fas fa-check"></i> Save Workout
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Exercise Modal -->
-<div id="exercise-modal" class="modal hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="modal-exercise-title">Exercise</h3>
-            <button class="close-btn" aria-label="Close" onclick="closeExerciseModal()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-
-         <!-- Exercise video section -->
-          <div id="exercise-video-section" class="video-section hidden">
-            <div class="video-container">
-                <iframe id="exercise-video-iframe" width="100%" height="315" frameborder="0" allowfullscreen></iframe>
-            </div>
-            </div>                
-        <div id="exercise-content">
-            <!-- Exercise table will be populated here -->
-        </div>
-    </div>
-</div>
-
-<!-- Manual Exercise Entry Modal -->
-<div id="manual-exercise-entry-modal" class="exercise-modal">
-    <div class="exercise-modal-content">
-        <div class="modal-header">
-            <h3 id="manual-exercise-title">Exercise</h3>
-            <button class="close-btn" aria-label="Close" onclick="closeManualExerciseEntry()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="exercise-unit-toggle">
-            <div class="unit-toggle">
-                <button class="unit-btn active" data-unit="lbs">lbs</button>
-                <button class="unit-btn" data-unit="kg">kg</button>
-            </div>
-        </div>
-        
-        <div id="manual-exercise-content">
-            <!-- Exercise table will be populated here -->
-        </div>
-    </div>
-</div>
-
-<!-- Exercise Manager Section -->
-<section id="exercise-manager-section" class="content-section hidden">
-    <!-- Section Header -->
-    <div class="section-header-row">
-        <h2 class="section-title"><i class="fas fa-dumbbell"></i> Exercise Library</h2>
-        <button class="btn btn-primary" onclick="showAddExerciseModal()">
-            <i class="fas fa-plus"></i> New
-        </button>
-    </div>
-
-    <!-- View 1: Category Grid (Entry Page) -->
-    <div id="exercise-category-view" class="exercise-library-view">
-        <!-- Header with search only -->
-        <div class="exercise-library-header">
-            <div class="exercise-search-row">
-                <div class="exercise-search-wrapper full-width">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="exercise-search-input" class="exercise-search-input"
-                           placeholder="Search exercises"
-                           oninput="handleExerciseSearch()">
+                <div class="timer-controls">
+                    <button id="pause-rest-btn" class="btn btn-secondary" onclick="toggleRestTimer()">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button id="skip-rest-btn" class="btn btn-primary" onclick="skipRestTimer()">
+                        <i class="fas fa-forward"></i> Skip
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Category Grid -->
-        <div class="category-grid">
-            <div class="category-card" onclick="selectBodyPartCategory('Chest')">
-                <i class="fas fa-dumbbell category-icon"></i>
-                <span class="category-name">Chest</span>
-            </div>
-            <div class="category-card" onclick="selectBodyPartCategory('Back')">
-                <i class="fas fa-arrows-up-down category-icon"></i>
-                <span class="category-name">Back</span>
-            </div>
-            <div class="category-card" onclick="selectBodyPartCategory('Legs')">
-                <i class="fas fa-person-walking category-icon"></i>
-                <span class="category-name">Legs</span>
-            </div>
-            <div class="category-card" onclick="selectBodyPartCategory('Shoulders')">
-                <i class="fas fa-expand category-icon"></i>
-                <span class="category-name">Shoulders</span>
-            </div>
-            <div class="category-card" onclick="selectBodyPartCategory('Biceps')">
-                <i class="fas fa-hand-fist category-icon"></i>
-                <span class="category-name">Biceps</span>
-            </div>
-            <div class="category-card" onclick="selectBodyPartCategory('Triceps')">
-                <i class="fas fa-hand-point-down category-icon"></i>
-                <span class="category-name">Triceps</span>
-            </div>
-            <div class="category-card" onclick="selectBodyPartCategory('Core')">
-                <i class="fas fa-circle-dot category-icon"></i>
-                <span class="category-name">Core</span>
-            </div>
-            <div class="category-card" onclick="selectBodyPartCategory('Cardio')">
-                <i class="fas fa-heart-pulse category-icon"></i>
-                <span class="category-name">Cardio</span>
-            </div>
-            <div class="category-card" onclick="selectBodyPartCategory('')">
-                <i class="fas fa-border-all category-icon"></i>
-                <span class="category-name">All</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- View 2: Exercise List (After selecting category) -->
-    <div id="exercise-list-view" class="exercise-library-view hidden">
-        <!-- Header with back and title -->
-        <div class="exercise-list-header">
-            <button class="btn-back-category" aria-label="Go back" onclick="showCategoryView()">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <h2 id="exercise-list-title" class="exercise-list-title">Exercises</h2>
-        </div>
-
-        <!-- Search bar (always visible) -->
-        <div id="exercise-list-search" class="exercise-list-search">
-            <input type="text" id="exercise-list-search-input" class="exercise-search-input"
-                   placeholder="Search exercises..."
-                   oninput="filterExerciseLibrary()">
-        </div>
-
-        <!-- Equipment Filter Pills -->
-        <div class="equipment-filter-pills">
-            <button class="filter-pill active" data-equipment="" onclick="filterByEquipment('')">All</button>
-            <button class="filter-pill" data-equipment="Dumbbell" onclick="filterByEquipment('Dumbbell')">Dumbbell</button>
-            <button class="filter-pill" data-equipment="Barbell" onclick="filterByEquipment('Barbell')">Barbell</button>
-            <button class="filter-pill" data-equipment="Machine" onclick="filterByEquipment('Machine')">Machine</button>
-            <button class="filter-pill" data-equipment="Cable" onclick="filterByEquipment('Cable')">Cable</button>
-            <button class="filter-pill" data-equipment="Bodyweight" onclick="filterByEquipment('Bodyweight')">Bodyweight</button>
-        </div>
-
-        <!-- Exercise List -->
-        <div id="exercise-manager-grid" class="exercise-list-container">
-            <!-- Exercises will be loaded here -->
-        </div>
-
-    </div>
-</section>
-
-<!-- Edit Exercise Section (Full Screen) -->
-<section id="edit-exercise-section" class="content-section hidden">
-    <div class="edit-exercise-container">
-        <!-- Header -->
-        <div class="edit-exercise-header">
-            <button class="btn-back" aria-label="Go back" onclick="closeEditExerciseSection()">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <h2 id="edit-exercise-title">Edit Exercise</h2>
-            <button class="btn-save" onclick="saveExerciseFromSection()">
-                <i class="fas fa-check"></i> Save
-            </button>
-        </div>
-
-        <form id="edit-exercise-form" class="edit-exercise-form">
-            <!-- Section 1: Exercise Name -->
-            <div class="edit-section">
-                <h3 class="edit-section-title">Exercise Name</h3>
-                <div class="input-with-icon">
-                    <i class="fas fa-dumbbell"></i>
-                    <input type="text" id="edit-exercise-name" class="edit-input-large" required
-                           placeholder="e.g., Bench Press">
-                </div>
-            </div>
-
-            <!-- Section 2: Exercise Info -->
-            <div class="edit-section">
-                <h3 class="edit-section-title">Exercise Info</h3>
-
-                <div class="edit-row">
-                    <div class="edit-field">
-                        <label>Body Part</label>
-                        <select id="edit-exercise-body-part" class="edit-select">
-                            <option value="Chest">Chest</option>
-                            <option value="Back">Back</option>
-                            <option value="Legs">Legs</option>
-                            <option value="Shoulders">Shoulders</option>
-                            <option value="Arms">Arms</option>
-                            <option value="Core">Core</option>
-                            <option value="Calves">Calves</option>
-                            <option value="Abs">Abs</option>
-                        </select>
-                    </div>
-                    <div class="edit-field">
-                        <label>Equipment Type</label>
-                        <select id="edit-exercise-equipment-type" class="edit-select">
-                            <option value="Machine">Machine</option>
-                            <option value="Cable">Cable</option>
-                            <option value="Dumbbell">Dumbbell</option>
-                            <option value="Barbell">Barbell</option>
-                            <option value="Bodyweight">Bodyweight</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="edit-row-three">
-                    <div class="edit-field">
-                        <label>Sets</label>
-                        <input type="number" id="edit-exercise-sets" class="edit-input-number" value="3" min="1" max="10" inputmode="numeric">
-                    </div>
-                    <div class="edit-field">
-                        <label>Reps</label>
-                        <input type="number" id="edit-exercise-reps" class="edit-input-number" value="10" min="1" max="50" inputmode="numeric">
-                    </div>
-                    <div class="edit-field">
-                        <label>Weight (lbs)</label>
-                        <input type="number" id="edit-exercise-weight" class="edit-input-number" value="50" min="0" max="1000" inputmode="decimal">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 3: Default Video -->
-            <div class="edit-section">
-                <h3 class="edit-section-title">Default Video</h3>
-                <p class="edit-section-hint">YouTube link for exercise form reference</p>
-                <div class="input-with-icon">
-                    <i class="fas fa-video"></i>
-                    <input type="url" id="edit-exercise-video" class="edit-input-large"
-                           placeholder="https://youtube.com/watch?v=...">
-                </div>
-            </div>
-
-            <!-- Section 4: Your Equipment (Optional) -->
-            <div class="edit-section">
-                <h3 class="edit-section-title">Your Equipment <span class="optional-tag">(Optional)</span></h3>
-                <p class="edit-section-hint">Equipment you use for this specific exercise</p>
-
-                <!-- Currently Selected Equipment -->
-                <div id="edit-selected-equipment" class="edit-selected-equipment hidden">
-                    <i class="fas fa-check-circle"></i>
-                    <span id="edit-selected-equipment-text"></span>
-                    <button type="button" class="btn-clear" onclick="clearSelectedEquipment()" aria-label="Clear selection">
+        <!-- Add Manual Workout Modal -->
+        <div id="add-manual-workout-modal" class="modal hidden">
+            <div class="modal-content manual-workout-modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">Add Missing Workout</h3>
+                    <button class="close-btn" aria-label="Close" onclick="closeAddManualWorkoutModal()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
 
-                <!-- Saved Equipment List for THIS exercise -->
-                <h4 class="edit-subsection-title">Saved for This Exercise</h4>
-                <div id="edit-equipment-list" class="edit-equipment-list">
-                    <!-- Populated dynamically -->
-                    <div class="edit-equipment-empty">No equipment saved for this exercise</div>
+                <!-- Step 1: Date and Workout Selection -->
+                <div id="manual-step-1" class="manual-step">
+                    <div class="form-group">
+                        <label for="manual-workout-date">When did you work out? *</label>
+                        <input type="date" id="manual-workout-date" class="form-input" required />
+                    </div>
+
+                    <div class="manual-workout-source-section">
+                        <label class="section-label">Choose your workout:</label>
+
+                        <!-- Option: Select from Library -->
+                        <div class="workout-source-option" id="source-library-option">
+                            <div class="source-header" onclick="toggleManualWorkoutSource('library')">
+                                <i class="fas fa-list"></i>
+                                <span>Select from Workout Library</span>
+                                <i class="fas fa-chevron-down toggle-icon"></i>
+                            </div>
+                            <div id="manual-library-list" class="source-content hidden">
+                                <div class="library-loading">Loading workouts...</div>
+                            </div>
+                        </div>
+
+                        <!-- Option: Create Custom -->
+                        <div class="workout-source-option" id="source-custom-option">
+                            <div class="source-header" onclick="toggleManualWorkoutSource('custom')">
+                                <i class="fas fa-plus-circle"></i>
+                                <span>Create Custom Workout</span>
+                                <i class="fas fa-chevron-down toggle-icon"></i>
+                            </div>
+                            <div id="manual-custom-form" class="source-content hidden">
+                                <div class="form-group">
+                                    <label for="manual-workout-name">Workout Name *</label>
+                                    <input
+                                        type="text"
+                                        id="manual-workout-name"
+                                        class="form-input"
+                                        placeholder="e.g., Chest & Triceps, Upper Body"
+                                    />
+                                </div>
+                                <div class="form-group">
+                                    <label for="manual-workout-category">Category *</label>
+                                    <select id="manual-workout-category" class="form-input">
+                                        <option value="">Select category...</option>
+                                        <option value="Push">Push</option>
+                                        <option value="Pull">Pull</option>
+                                        <option value="Legs">Legs</option>
+                                        <option value="Cardio">Cardio</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="startCustomManualWorkout()">
+                                    <i class="fas fa-arrow-right"></i> Continue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeAddManualWorkoutModal()">
+                            Cancel
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Add New Equipment -->
-                <div class="edit-add-equipment">
-                    <h4 class="edit-subsection-title">Add New Equipment</h4>
-                    <div class="edit-equipment-form">
-                        <div class="input-with-icon">
-                            <i class="fas fa-dumbbell"></i>
-                            <input type="text" id="edit-equipment-name" class="edit-input-full" placeholder="Equipment name (e.g., Life Fitness Chest Press)">
+                <!-- Step 2: Enter Exercise Data -->
+                <div id="manual-step-2" class="manual-step hidden">
+                    <div class="step-header">
+                        <button class="btn btn-secondary btn-small" onclick="backToManualStep1()">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <div class="step-info">
+                            <h4 id="manual-workout-title-display">Your Workout</h4>
+                            <p id="manual-workout-date-display">Date</p>
                         </div>
-                        <div class="input-with-icon">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <input type="text" id="edit-equipment-location" class="edit-input-full"
-                                   placeholder="Location/Gym (e.g., LA Fitness Downtown)"
-                                   list="edit-equipment-location-list">
-                            <datalist id="edit-equipment-location-list"></datalist>
+                    </div>
+
+                    <!-- Location Selector -->
+                    <div class="manual-location-section">
+                        <label class="section-label"><i class="fas fa-map-marker-alt"></i> Location</label>
+                        <div class="manual-location-row">
+                            <select id="manual-workout-location" class="form-input">
+                                <option value="">Select gym location...</option>
+                                <!-- Populated dynamically -->
+                            </select>
                         </div>
-                        <div class="input-with-icon">
-                            <i class="fas fa-video"></i>
-                            <input type="url" id="edit-equipment-video" class="edit-input-full" placeholder="Video URL (optional)">
+                    </div>
+
+                    <!-- Exercise List -->
+                    <div id="manual-exercises-container" class="manual-exercises-container">
+                        <!-- Exercises will be rendered here -->
+                    </div>
+
+                    <!-- Add Exercise Button (for custom workouts) -->
+                    <div id="manual-add-exercise-section" class="manual-add-exercise-section hidden">
+                        <button class="btn btn-primary" onclick="openExercisePickerForManual()">
+                            <i class="fas fa-plus"></i> Add Exercise
+                        </button>
+                    </div>
+
+                    <!-- Step 3: Final Details -->
+                    <div class="manual-final-details">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="manual-workout-duration">Duration (min)</label>
+                                <input
+                                    type="number"
+                                    id="manual-workout-duration"
+                                    class="form-input"
+                                    placeholder="45"
+                                    min="1"
+                                    max="300"
+                                    value="60"
+                                    inputmode="numeric"
+                                />
+                            </div>
+                            <div class="form-group">
+                                <label for="manual-workout-status">Status</label>
+                                <select id="manual-workout-status" class="form-input">
+                                    <option value="completed">Completed</option>
+                                    <option value="partial">Partial</option>
+                                </select>
+                            </div>
                         </div>
-                        <button type="button" class="btn-add-equipment" onclick="addEquipmentToList()">
-                            <i class="fas fa-plus"></i> Add Equipment
+                        <div class="form-group">
+                            <label for="manual-workout-notes">Notes (optional)</label>
+                            <textarea
+                                id="manual-workout-notes"
+                                class="form-input"
+                                rows="2"
+                                placeholder="Any notes about this workout..."
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <div class="step-actions">
+                        <button type="button" class="btn btn-secondary" onclick="backToManualStep1()">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="saveManualWorkout()">
+                            <i class="fas fa-check"></i> Save Workout
                         </button>
                     </div>
                 </div>
             </div>
-        </form>
-
-        <!-- Delete Button (shown only when editing existing exercise) -->
-        <div id="delete-exercise-container" class="edit-delete-container hidden">
-            <button id="delete-exercise-btn" class="btn-delete-exercise" onclick="deleteExerciseFromSection()">
-                <i class="fas fa-trash"></i> Delete Exercise
-            </button>
-        </div>
-    </div>
-</section>
-
-<!-- Equipment Picker Modal (for adding exercises to templates) -->
-<div id="equipment-picker-modal" class="modal hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="equipment-picker-title">Select Equipment</h3>
-            <button class="close-btn" aria-label="Close" onclick="closeEquipmentPicker()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <p class="equipment-picker-subtitle" id="equipment-picker-exercise-name"></p>
-
-            <!-- Previously Used Equipment -->
-            <div id="equipment-picker-list" class="equipment-picker-list">
-                <!-- Populated dynamically -->
-            </div>
-
-            <!-- Divider -->
-            <div class="form-section-divider">
-                <span>Or add new equipment</span>
-            </div>
-
-            <!-- Add New Equipment - grouped form -->
-            <div class="equipment-picker-add-form">
-                <input type="text" id="equipment-picker-new-name" class="input-field"
-                       list="equipment-picker-suggestions"
-                       placeholder="Equipment name (e.g., Life Fitness Chest Press)">
-                <datalist id="equipment-picker-suggestions">
-                    <!-- Populated dynamically -->
-                </datalist>
-
-                <input type="text" id="equipment-picker-new-location" class="input-field"
-                       list="equipment-picker-location-suggestions"
-                       placeholder="Location/Gym (e.g., LA Fitness Downtown)">
-                <datalist id="equipment-picker-location-suggestions">
-                    <!-- Populated dynamically -->
-                </datalist>
-
-                <input type="url" id="equipment-picker-new-video" class="input-field"
-                       placeholder="Video URL (optional)">
-
-                <button type="button" class="btn btn-secondary" onclick="addEquipmentFromPicker()">
-                    <i class="fas fa-plus"></i> Add Equipment
-                </button>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="skipEquipmentSelection()">
-                    Skip (No Equipment)
-                </button>
-                <button type="button" class="btn btn-primary" onclick="confirmEquipmentSelection()">
-                    <i class="fas fa-check"></i> Select Equipment
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Location Prompt Modal (for naming new gym locations) -->
-<div id="location-prompt-modal" class="modal hidden">
-    <div class="modal-content modal-content-small">
-        <div class="modal-header">
-            <h3><i class="fas fa-map-marker-alt"></i> New Location Detected</h3>
-        </div>
-        <div class="modal-body">
-            <p class="location-prompt-text">You're at a new location! What gym is this?</p>
-
-            <div class="form-group">
-                <input type="text" id="new-location-name" class="input-field"
-                       list="saved-locations-list"
-                       placeholder="e.g., Planet Fitness Downtown"
-                       autocomplete="off">
-                <datalist id="saved-locations-list">
-                    <!-- Populated dynamically with saved locations -->
-                </datalist>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" id="skip-location-btn" class="btn btn-secondary">
-                    Skip
-                </button>
-                <button type="button" id="save-location-btn" class="btn btn-primary">
-                    <i class="fas fa-check"></i> Save Location
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Workout Location Selector Modal (for changing location during active workout) -->
-<div id="workout-location-selector-modal" class="modal hidden">
-    <div class="modal-content modal-content-small">
-        <div class="modal-header">
-            <h3><i class="fas fa-map-marker-alt"></i> Change Location</h3>
-            <button class="close-btn" aria-label="Close" onclick="closeWorkoutLocationSelector()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div id="workout-saved-locations-list" class="location-list">
-                <!-- Populated dynamically -->
-            </div>
-
-            <div class="form-section-divider">
-                <span>Or add new location</span>
-            </div>
-
-            <div class="form-group">
-                <input type="text" id="workout-location-new-name" class="input-field"
-                       placeholder="Enter new location name">
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeWorkoutLocationSelector()">
-                    Cancel
-                </button>
-                <button type="button" class="btn btn-primary" onclick="confirmWorkoutLocationChange()">
-                    <i class="fas fa-check"></i> Set Location
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Equipment Editor Section (Full Page) -->
-<section id="equipment-editor-section" class="app-section hidden">
-    <div class="edit-exercise-header">
-        <button class="btn-back" aria-label="Go back" onclick="closeEquipmentEditor()">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2 id="equipment-editor-title">Edit Equipment</h2>
-        <button class="btn-save" onclick="saveEquipmentFromEditor()">
-            <i class="fas fa-check"></i> Save
-        </button>
-    </div>
-
-    <form id="equipment-editor-form" class="edit-exercise-form">
-        <!-- Section 1: Equipment Name -->
-        <div class="edit-section">
-            <h3 class="edit-section-title">Equipment Name</h3>
-            <div class="input-with-icon">
-                <i class="fas fa-dumbbell"></i>
-                <input type="text" id="equipment-editor-name" class="edit-input-large"
-                       placeholder="e.g., Life Fitness Chest Press">
-            </div>
         </div>
 
-        <!-- Section 2: Video URL -->
-        <div class="edit-section">
-            <h3 class="edit-section-title">Video URL <span class="optional-tag">(Optional)</span></h3>
-            <p class="edit-section-hint">YouTube link for equipment instructions</p>
-            <div class="input-with-icon">
-                <i class="fas fa-video"></i>
-                <input type="url" id="equipment-editor-video" class="edit-input-large"
-                       placeholder="https://youtube.com/watch?v=...">
-            </div>
-        </div>
-
-        <!-- Section 3: Locations -->
-        <div class="edit-section">
-            <h3 class="edit-section-title">Locations</h3>
-            <p class="edit-section-hint">Gyms where you use this equipment</p>
-
-            <div id="equipment-editor-locations" class="equipment-locations-list">
-                <!-- Populated dynamically -->
-            </div>
-
-            <div class="equipment-add-location-form">
-                <div class="input-with-icon">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <input type="text" id="equipment-editor-new-location" class="edit-input-full"
-                           placeholder="Add location (e.g., Planet Fitness)"
-                           list="equipment-editor-location-list">
-                    <datalist id="equipment-editor-location-list"></datalist>
+        <!-- Exercise Modal -->
+        <dialog id="exercise-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-exercise-title">Exercise</h3>
+                    <button class="close-btn" aria-label="Close" onclick="closeExerciseModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <button type="button" class="btn-add-equipment" onclick="addLocationToEquipmentEditor()">
-                    <i class="fas fa-plus"></i> Add Location
+
+                <!-- Exercise video section -->
+                <div id="exercise-video-section" class="video-section hidden">
+                    <div class="video-container">
+                        <iframe
+                            id="exercise-video-iframe"
+                            width="100%"
+                            height="315"
+                            frameborder="0"
+                            allowfullscreen
+                        ></iframe>
+                    </div>
+                </div>
+                <div id="exercise-content">
+                    <!-- Exercise table will be populated here -->
+                </div>
+            </div>
+        </dialog>
+
+        <!-- Manual Exercise Entry Modal -->
+        <div id="manual-exercise-entry-modal" class="exercise-modal">
+            <div class="exercise-modal-content">
+                <div class="modal-header">
+                    <h3 id="manual-exercise-title">Exercise</h3>
+                    <button class="close-btn" aria-label="Close" onclick="closeManualExerciseEntry()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="exercise-unit-toggle">
+                    <div class="unit-toggle">
+                        <button class="unit-btn active" data-unit="lbs">lbs</button>
+                        <button class="unit-btn" data-unit="kg">kg</button>
+                    </div>
+                </div>
+
+                <div id="manual-exercise-content">
+                    <!-- Exercise table will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Exercise Manager Section -->
+        <section id="exercise-manager-section" class="content-section hidden">
+            <!-- Section Header -->
+            <div class="section-header-row">
+                <h2 class="section-title"><i class="fas fa-dumbbell"></i> Exercise Library</h2>
+                <button class="btn btn-primary" onclick="showAddExerciseModal()">
+                    <i class="fas fa-plus"></i> New
                 </button>
             </div>
-        </div>
-    </form>
 
-    <!-- Delete Button -->
-    <div class="edit-delete-container">
-        <button type="button" class="btn-delete-exercise" onclick="deleteEquipmentFromEditor()">
-            <i class="fas fa-trash"></i> Delete Equipment
-        </button>
-    </div>
-</section>
-
-<!-- Template Exercise Edit Modal (for editing exercises in workout templates) -->
-<div id="template-exercise-edit-modal" class="modal hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Edit Exercise</h3>
-            <button class="close-btn" aria-label="Close" onclick="closeTemplateExerciseEdit()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="form-group">
-                <label for="template-exercise-name">Exercise Name</label>
-                <input type="text" id="template-exercise-name" class="input-field" placeholder="Exercise name">
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="template-exercise-sets">Sets</label>
-                    <input type="number" id="template-exercise-sets" class="input-field" min="1" value="3" inputmode="numeric">
+            <!-- View 1: Category Grid (Entry Page) -->
+            <div id="exercise-category-view" class="exercise-library-view">
+                <!-- Header with search only -->
+                <div class="exercise-library-header">
+                    <div class="exercise-search-row">
+                        <div class="exercise-search-wrapper full-width">
+                            <i class="fas fa-search"></i>
+                            <input
+                                type="text"
+                                id="exercise-search-input"
+                                class="exercise-search-input"
+                                placeholder="Search exercises"
+                                oninput="handleExerciseSearch()"
+                            />
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="template-exercise-reps">Reps</label>
-                    <input type="number" id="template-exercise-reps" class="input-field" min="1" value="10" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                    <label for="template-exercise-weight">Weight (lbs)</label>
-                    <input type="number" id="template-exercise-weight" class="input-field" min="0" value="50" inputmode="decimal">
+
+                <!-- Category Grid -->
+                <div class="category-grid">
+                    <div class="category-card" onclick="selectBodyPartCategory('Chest')">
+                        <i class="fas fa-dumbbell category-icon"></i>
+                        <span class="category-name">Chest</span>
+                    </div>
+                    <div class="category-card" onclick="selectBodyPartCategory('Back')">
+                        <i class="fas fa-arrows-up-down category-icon"></i>
+                        <span class="category-name">Back</span>
+                    </div>
+                    <div class="category-card" onclick="selectBodyPartCategory('Legs')">
+                        <i class="fas fa-person-walking category-icon"></i>
+                        <span class="category-name">Legs</span>
+                    </div>
+                    <div class="category-card" onclick="selectBodyPartCategory('Shoulders')">
+                        <i class="fas fa-expand category-icon"></i>
+                        <span class="category-name">Shoulders</span>
+                    </div>
+                    <div class="category-card" onclick="selectBodyPartCategory('Biceps')">
+                        <i class="fas fa-hand-fist category-icon"></i>
+                        <span class="category-name">Biceps</span>
+                    </div>
+                    <div class="category-card" onclick="selectBodyPartCategory('Triceps')">
+                        <i class="fas fa-hand-point-down category-icon"></i>
+                        <span class="category-name">Triceps</span>
+                    </div>
+                    <div class="category-card" onclick="selectBodyPartCategory('Core')">
+                        <i class="fas fa-circle-dot category-icon"></i>
+                        <span class="category-name">Core</span>
+                    </div>
+                    <div class="category-card" onclick="selectBodyPartCategory('Cardio')">
+                        <i class="fas fa-heart-pulse category-icon"></i>
+                        <span class="category-name">Cardio</span>
+                    </div>
+                    <div class="category-card" onclick="selectBodyPartCategory('')">
+                        <i class="fas fa-border-all category-icon"></i>
+                        <span class="category-name">All</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="form-section-divider">
-                <span>Equipment Details</span>
+            <!-- View 2: Exercise List (After selecting category) -->
+            <div id="exercise-list-view" class="exercise-library-view hidden">
+                <!-- Header with back and title -->
+                <div class="exercise-list-header">
+                    <button class="btn-back-category" aria-label="Go back" onclick="showCategoryView()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2 id="exercise-list-title" class="exercise-list-title">Exercises</h2>
+                </div>
+
+                <!-- Search bar (always visible) -->
+                <div id="exercise-list-search" class="exercise-list-search">
+                    <input
+                        type="text"
+                        id="exercise-list-search-input"
+                        class="exercise-search-input"
+                        placeholder="Search exercises..."
+                        oninput="filterExerciseLibrary()"
+                    />
+                </div>
+
+                <!-- Equipment Filter Pills -->
+                <div class="equipment-filter-pills">
+                    <button class="filter-pill active" data-equipment="" onclick="filterByEquipment('')">All</button>
+                    <button class="filter-pill" data-equipment="Dumbbell" onclick="filterByEquipment('Dumbbell')">
+                        Dumbbell
+                    </button>
+                    <button class="filter-pill" data-equipment="Barbell" onclick="filterByEquipment('Barbell')">
+                        Barbell
+                    </button>
+                    <button class="filter-pill" data-equipment="Machine" onclick="filterByEquipment('Machine')">
+                        Machine
+                    </button>
+                    <button class="filter-pill" data-equipment="Cable" onclick="filterByEquipment('Cable')">
+                        Cable
+                    </button>
+                    <button class="filter-pill" data-equipment="Bodyweight" onclick="filterByEquipment('Bodyweight')">
+                        Bodyweight
+                    </button>
+                </div>
+
+                <!-- Exercise List -->
+                <div id="exercise-manager-grid" class="exercise-list-container">
+                    <!-- Exercises will be loaded here -->
+                </div>
             </div>
+        </section>
 
-            <div class="form-group">
-                <label for="template-exercise-equipment">Equipment/Machine</label>
-                <input type="text" id="template-exercise-equipment" class="input-field" placeholder="e.g., Life Fitness Chest Press">
-            </div>
+        <!-- Edit Exercise Section (Full Screen) -->
+        <section id="edit-exercise-section" class="content-section hidden">
+            <div class="edit-exercise-container">
+                <!-- Header -->
+                <div class="edit-exercise-header">
+                    <button class="btn-back" aria-label="Go back" onclick="closeEditExerciseSection()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2 id="edit-exercise-title">Edit Exercise</h2>
+                    <button class="btn-save" onclick="saveExerciseFromSection()">
+                        <i class="fas fa-check"></i> Save
+                    </button>
+                </div>
 
-            <div class="form-group">
-                <label for="template-exercise-location">Location</label>
-                <input type="text" id="template-exercise-location" class="input-field" placeholder="e.g., LA Fitness Downtown">
-            </div>
+                <form id="edit-exercise-form" class="edit-exercise-form">
+                    <!-- Section 1: Exercise Name -->
+                    <div class="edit-section">
+                        <h3 class="edit-section-title">Exercise Name</h3>
+                        <div class="input-with-icon">
+                            <i class="fas fa-dumbbell"></i>
+                            <input
+                                type="text"
+                                id="edit-exercise-name"
+                                class="edit-input-large"
+                                required
+                                placeholder="e.g., Bench Press"
+                            />
+                        </div>
+                    </div>
 
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeTemplateExerciseEdit()">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveTemplateExerciseEdit()">
-                    <i class="fas fa-check"></i> Save
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+                    <!-- Section 2: Exercise Info -->
+                    <div class="edit-section">
+                        <h3 class="edit-section-title">Exercise Info</h3>
 
-<!-- Location Selector Modal -->
-<div id="location-selector-modal" class="modal hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Select Workout Location</h2>
-            <button class="modal-close" aria-label="Close" onclick="closeLocationSelector()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
+                        <div class="edit-row">
+                            <div class="edit-field">
+                                <label>Body Part</label>
+                                <select id="edit-exercise-body-part" class="edit-select">
+                                    <option value="Chest">Chest</option>
+                                    <option value="Back">Back</option>
+                                    <option value="Legs">Legs</option>
+                                    <option value="Shoulders">Shoulders</option>
+                                    <option value="Arms">Arms</option>
+                                    <option value="Core">Core</option>
+                                    <option value="Calves">Calves</option>
+                                    <option value="Abs">Abs</option>
+                                </select>
+                            </div>
+                            <div class="edit-field">
+                                <label>Equipment Type</label>
+                                <select id="edit-exercise-equipment-type" class="edit-select">
+                                    <option value="Machine">Machine</option>
+                                    <option value="Cable">Cable</option>
+                                    <option value="Dumbbell">Dumbbell</option>
+                                    <option value="Barbell">Barbell</option>
+                                    <option value="Bodyweight">Bodyweight</option>
+                                </select>
+                            </div>
+                        </div>
 
-        <div class="modal-body">
-            <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
-                Track PRs per location and equipment. This helps compare progress accurately when using different machines at different gyms.
-            </p>
+                        <div class="edit-row-three">
+                            <div class="edit-field">
+                                <label>Sets</label>
+                                <input
+                                    type="number"
+                                    id="edit-exercise-sets"
+                                    class="edit-input-number"
+                                    value="3"
+                                    min="1"
+                                    max="10"
+                                    inputmode="numeric"
+                                />
+                            </div>
+                            <div class="edit-field">
+                                <label>Reps</label>
+                                <input
+                                    type="number"
+                                    id="edit-exercise-reps"
+                                    class="edit-input-number"
+                                    value="10"
+                                    min="1"
+                                    max="50"
+                                    inputmode="numeric"
+                                />
+                            </div>
+                            <div class="edit-field">
+                                <label>Weight (lbs)</label>
+                                <input
+                                    type="number"
+                                    id="edit-exercise-weight"
+                                    class="edit-input-number"
+                                    value="50"
+                                    min="0"
+                                    max="1000"
+                                    inputmode="decimal"
+                                />
+                            </div>
+                        </div>
+                    </div>
 
-            <!-- Saved Locations -->
-            <div id="saved-locations-list" class="saved-locations-list">
-                <!-- Populated dynamically -->
-            </div>
+                    <!-- Section 3: Default Video -->
+                    <div class="edit-section">
+                        <h3 class="edit-section-title">Default Video</h3>
+                        <p class="edit-section-hint">YouTube link for exercise form reference</p>
+                        <div class="input-with-icon">
+                            <i class="fas fa-video"></i>
+                            <input
+                                type="url"
+                                id="edit-exercise-video"
+                                class="edit-input-large"
+                                placeholder="https://youtube.com/watch?v=..."
+                            />
+                        </div>
+                    </div>
 
-            <!-- Add New Location -->
-            <div class="form-group" style="margin-top: 1.5rem;">
-                <label for="new-location-input">Or enter a new location:</label>
-                <div style="display: flex; gap: 0.5rem;">
-                    <input type="text" id="new-location-input" class="input-field"
-                           placeholder="e.g., Gym A, Home Gym, 24 Hour Fitness">
-                    <button class="btn btn-primary" onclick="selectNewLocation()">
-                        <i class="fas fa-plus"></i> Add
+                    <!-- Section 4: Your Equipment (Optional) -->
+                    <div class="edit-section">
+                        <h3 class="edit-section-title">Your Equipment <span class="optional-tag">(Optional)</span></h3>
+                        <p class="edit-section-hint">Equipment you use for this specific exercise</p>
+
+                        <!-- Currently Selected Equipment -->
+                        <div id="edit-selected-equipment" class="edit-selected-equipment hidden">
+                            <i class="fas fa-check-circle"></i>
+                            <span id="edit-selected-equipment-text"></span>
+                            <button
+                                type="button"
+                                class="btn-clear"
+                                onclick="clearSelectedEquipment()"
+                                aria-label="Clear selection"
+                            >
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <!-- Saved Equipment List for THIS exercise -->
+                        <h4 class="edit-subsection-title">Saved for This Exercise</h4>
+                        <div id="edit-equipment-list" class="edit-equipment-list">
+                            <!-- Populated dynamically -->
+                            <div class="edit-equipment-empty">No equipment saved for this exercise</div>
+                        </div>
+
+                        <!-- Add New Equipment -->
+                        <div class="edit-add-equipment">
+                            <h4 class="edit-subsection-title">Add New Equipment</h4>
+                            <div class="edit-equipment-form">
+                                <div class="input-with-icon">
+                                    <i class="fas fa-dumbbell"></i>
+                                    <input
+                                        type="text"
+                                        id="edit-equipment-name"
+                                        class="edit-input-full"
+                                        placeholder="Equipment name (e.g., Life Fitness Chest Press)"
+                                    />
+                                </div>
+                                <div class="input-with-icon">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <input
+                                        type="text"
+                                        id="edit-equipment-location"
+                                        class="edit-input-full"
+                                        placeholder="Location/Gym (e.g., LA Fitness Downtown)"
+                                        list="edit-equipment-location-list"
+                                    />
+                                    <datalist id="edit-equipment-location-list"></datalist>
+                                </div>
+                                <div class="input-with-icon">
+                                    <i class="fas fa-video"></i>
+                                    <input
+                                        type="url"
+                                        id="edit-equipment-video"
+                                        class="edit-input-full"
+                                        placeholder="Video URL (optional)"
+                                    />
+                                </div>
+                                <button type="button" class="btn-add-equipment" onclick="addEquipmentToList()">
+                                    <i class="fas fa-plus"></i> Add Equipment
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Delete Button (shown only when editing existing exercise) -->
+                <div id="delete-exercise-container" class="edit-delete-container hidden">
+                    <button id="delete-exercise-btn" class="btn-delete-exercise" onclick="deleteExerciseFromSection()">
+                        <i class="fas fa-trash"></i> Delete Exercise
                     </button>
                 </div>
             </div>
+        </section>
 
-            <!-- Skip Option -->
-            <div style="margin-top: 1.5rem; text-align: center;">
-                <button class="btn btn-secondary btn-small" onclick="skipLocationSelection()">
-                    Skip for now
+        <!-- Equipment Picker Modal (for adding exercises to templates) -->
+        <div id="equipment-picker-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="equipment-picker-title">Select Equipment</h3>
+                    <button class="close-btn" aria-label="Close" onclick="closeEquipmentPicker()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="equipment-picker-subtitle" id="equipment-picker-exercise-name"></p>
+
+                    <!-- Previously Used Equipment -->
+                    <div id="equipment-picker-list" class="equipment-picker-list">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="form-section-divider">
+                        <span>Or add new equipment</span>
+                    </div>
+
+                    <!-- Add New Equipment - grouped form -->
+                    <div class="equipment-picker-add-form">
+                        <input
+                            type="text"
+                            id="equipment-picker-new-name"
+                            class="input-field"
+                            list="equipment-picker-suggestions"
+                            placeholder="Equipment name (e.g., Life Fitness Chest Press)"
+                        />
+                        <datalist id="equipment-picker-suggestions">
+                            <!-- Populated dynamically -->
+                        </datalist>
+
+                        <input
+                            type="text"
+                            id="equipment-picker-new-location"
+                            class="input-field"
+                            list="equipment-picker-location-suggestions"
+                            placeholder="Location/Gym (e.g., LA Fitness Downtown)"
+                        />
+                        <datalist id="equipment-picker-location-suggestions">
+                            <!-- Populated dynamically -->
+                        </datalist>
+
+                        <input
+                            type="url"
+                            id="equipment-picker-new-video"
+                            class="input-field"
+                            placeholder="Video URL (optional)"
+                        />
+
+                        <button type="button" class="btn btn-secondary" onclick="addEquipmentFromPicker()">
+                            <i class="fas fa-plus"></i> Add Equipment
+                        </button>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="skipEquipmentSelection()">
+                            Skip (No Equipment)
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="confirmEquipmentSelection()">
+                            <i class="fas fa-check"></i> Select Equipment
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location Prompt Modal (for naming new gym locations) -->
+        <div id="location-prompt-modal" class="modal hidden">
+            <div class="modal-content modal-content-small">
+                <div class="modal-header">
+                    <h3><i class="fas fa-map-marker-alt"></i> New Location Detected</h3>
+                </div>
+                <div class="modal-body">
+                    <p class="location-prompt-text">You're at a new location! What gym is this?</p>
+
+                    <div class="form-group">
+                        <input
+                            type="text"
+                            id="new-location-name"
+                            class="input-field"
+                            list="saved-locations-list"
+                            placeholder="e.g., Planet Fitness Downtown"
+                            autocomplete="off"
+                        />
+                        <datalist id="saved-locations-list">
+                            <!-- Populated dynamically with saved locations -->
+                        </datalist>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" id="skip-location-btn" class="btn btn-secondary">Skip</button>
+                        <button type="button" id="save-location-btn" class="btn btn-primary">
+                            <i class="fas fa-check"></i> Save Location
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workout Location Selector Modal (for changing location during active workout) -->
+        <div id="workout-location-selector-modal" class="modal hidden">
+            <div class="modal-content modal-content-small">
+                <div class="modal-header">
+                    <h3><i class="fas fa-map-marker-alt"></i> Change Location</h3>
+                    <button class="close-btn" aria-label="Close" onclick="closeWorkoutLocationSelector()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="workout-saved-locations-list" class="location-list">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="form-section-divider">
+                        <span>Or add new location</span>
+                    </div>
+
+                    <div class="form-group">
+                        <input
+                            type="text"
+                            id="workout-location-new-name"
+                            class="input-field"
+                            placeholder="Enter new location name"
+                        />
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeWorkoutLocationSelector()">
+                            Cancel
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="confirmWorkoutLocationChange()">
+                            <i class="fas fa-check"></i> Set Location
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Equipment Editor Section (Full Page) -->
+        <section id="equipment-editor-section" class="app-section hidden">
+            <div class="edit-exercise-header">
+                <button class="btn-back" aria-label="Go back" onclick="closeEquipmentEditor()">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2 id="equipment-editor-title">Edit Equipment</h2>
+                <button class="btn-save" onclick="saveEquipmentFromEditor()"><i class="fas fa-check"></i> Save</button>
+            </div>
+
+            <form id="equipment-editor-form" class="edit-exercise-form">
+                <!-- Section 1: Equipment Name -->
+                <div class="edit-section">
+                    <h3 class="edit-section-title">Equipment Name</h3>
+                    <div class="input-with-icon">
+                        <i class="fas fa-dumbbell"></i>
+                        <input
+                            type="text"
+                            id="equipment-editor-name"
+                            class="edit-input-large"
+                            placeholder="e.g., Life Fitness Chest Press"
+                        />
+                    </div>
+                </div>
+
+                <!-- Section 2: Video URL -->
+                <div class="edit-section">
+                    <h3 class="edit-section-title">Video URL <span class="optional-tag">(Optional)</span></h3>
+                    <p class="edit-section-hint">YouTube link for equipment instructions</p>
+                    <div class="input-with-icon">
+                        <i class="fas fa-video"></i>
+                        <input
+                            type="url"
+                            id="equipment-editor-video"
+                            class="edit-input-large"
+                            placeholder="https://youtube.com/watch?v=..."
+                        />
+                    </div>
+                </div>
+
+                <!-- Section 3: Locations -->
+                <div class="edit-section">
+                    <h3 class="edit-section-title">Locations</h3>
+                    <p class="edit-section-hint">Gyms where you use this equipment</p>
+
+                    <div id="equipment-editor-locations" class="equipment-locations-list">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="equipment-add-location-form">
+                        <div class="input-with-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <input
+                                type="text"
+                                id="equipment-editor-new-location"
+                                class="edit-input-full"
+                                placeholder="Add location (e.g., Planet Fitness)"
+                                list="equipment-editor-location-list"
+                            />
+                            <datalist id="equipment-editor-location-list"></datalist>
+                        </div>
+                        <button type="button" class="btn-add-equipment" onclick="addLocationToEquipmentEditor()">
+                            <i class="fas fa-plus"></i> Add Location
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Delete Button -->
+            <div class="edit-delete-container">
+                <button type="button" class="btn-delete-exercise" onclick="deleteEquipmentFromEditor()">
+                    <i class="fas fa-trash"></i> Delete Equipment
+                </button>
+            </div>
+        </section>
+
+        <!-- Template Exercise Edit Modal (for editing exercises in workout templates) -->
+        <div id="template-exercise-edit-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Edit Exercise</h3>
+                    <button class="close-btn" aria-label="Close" onclick="closeTemplateExerciseEdit()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="template-exercise-name">Exercise Name</label>
+                        <input
+                            type="text"
+                            id="template-exercise-name"
+                            class="input-field"
+                            placeholder="Exercise name"
+                        />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="template-exercise-sets">Sets</label>
+                            <input
+                                type="number"
+                                id="template-exercise-sets"
+                                class="input-field"
+                                min="1"
+                                value="3"
+                                inputmode="numeric"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label for="template-exercise-reps">Reps</label>
+                            <input
+                                type="number"
+                                id="template-exercise-reps"
+                                class="input-field"
+                                min="1"
+                                value="10"
+                                inputmode="numeric"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label for="template-exercise-weight">Weight (lbs)</label>
+                            <input
+                                type="number"
+                                id="template-exercise-weight"
+                                class="input-field"
+                                min="0"
+                                value="50"
+                                inputmode="decimal"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="form-section-divider">
+                        <span>Equipment Details</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="template-exercise-equipment">Equipment/Machine</label>
+                        <input
+                            type="text"
+                            id="template-exercise-equipment"
+                            class="input-field"
+                            placeholder="e.g., Life Fitness Chest Press"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="template-exercise-location">Location</label>
+                        <input
+                            type="text"
+                            id="template-exercise-location"
+                            class="input-field"
+                            placeholder="e.g., LA Fitness Downtown"
+                        />
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeTemplateExerciseEdit()">
+                            Cancel
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="saveTemplateExerciseEdit()">
+                            <i class="fas fa-check"></i> Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location Selector Modal -->
+        <div id="location-selector-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Select Workout Location</h2>
+                    <button class="modal-close" aria-label="Close" onclick="closeLocationSelector()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <p style="margin-bottom: 1.5rem; color: var(--text-secondary)">
+                        Track PRs per location and equipment. This helps compare progress accurately when using
+                        different machines at different gyms.
+                    </p>
+
+                    <!-- Saved Locations -->
+                    <div id="saved-locations-list" class="saved-locations-list">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <!-- Add New Location -->
+                    <div class="form-group" style="margin-top: 1.5rem">
+                        <label for="new-location-input">Or enter a new location:</label>
+                        <div style="display: flex; gap: 0.5rem">
+                            <input
+                                type="text"
+                                id="new-location-input"
+                                class="input-field"
+                                placeholder="e.g., Gym A, Home Gym, 24 Hour Fitness"
+                            />
+                            <button class="btn btn-primary" onclick="selectNewLocation()">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Skip Option -->
+                    <div style="margin-top: 1.5rem; text-align: center">
+                        <button class="btn btn-secondary btn-small" onclick="skipLocationSelection()">
+                            Skip for now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation Bar -->
+        <nav id="bottom-nav" class="bottom-nav" role="navigation" aria-label="Quick navigation">
+            <button
+                class="bottom-nav-item active"
+                data-tab="dashboard"
+                onclick="bottomNavTo('dashboard')"
+                aria-current="page"
+            >
+                <i class="fas fa-home" aria-hidden="true"></i>
+                <span>Dashboard</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="workout" onclick="bottomNavTo('workout')">
+                <i class="fas fa-dumbbell" aria-hidden="true"></i>
+                <span>Workout</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="history" onclick="bottomNavTo('history')">
+                <i class="fas fa-history" aria-hidden="true"></i>
+                <span>History</span>
+            </button>
+            <button
+                class="bottom-nav-item"
+                data-tab="more"
+                onclick="toggleMoreMenu()"
+                aria-expanded="false"
+                aria-haspopup="true"
+            >
+                <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
+                <span>More</span>
+            </button>
+        </nav>
+
+        <!-- More Menu Dropdown -->
+        <div id="more-menu" class="more-menu hidden">
+            <div class="more-menu-content">
+                <button
+                    class="more-menu-item"
+                    onclick="
+                        navigateTo('exercises');
+                        closeMoreMenu();
+                    "
+                >
+                    <i class="fas fa-list"></i>
+                    <span>Exercise Library</span>
+                </button>
+                <button
+                    class="more-menu-item"
+                    onclick="
+                        navigateTo('templates');
+                        closeMoreMenu();
+                    "
+                >
+                    <i class="fas fa-dumbbell"></i>
+                    <span>Workout Library</span>
+                </button>
+                <button
+                    class="more-menu-item"
+                    onclick="
+                        navigateTo('stats');
+                        closeMoreMenu();
+                    "
+                >
+                    <i class="fas fa-chart-line"></i>
+                    <span>Stats & Records</span>
+                </button>
+                <button
+                    class="more-menu-item"
+                    onclick="
+                        navigateTo('location');
+                        closeMoreMenu();
+                    "
+                >
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Manage Locations</span>
+                </button>
+                <div class="more-menu-divider"></div>
+                <div class="more-menu-user">
+                    <i class="fas fa-user"></i>
+                    <span id="more-menu-email"></span>
+                </div>
+                <button
+                    class="more-menu-item more-menu-signout"
+                    onclick="
+                        signOutUser();
+                        closeMoreMenu();
+                    "
+                >
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Sign Out</span>
                 </button>
             </div>
         </div>
-    </div>
-</div>
+        <div id="more-menu-overlay" class="more-menu-overlay hidden" onclick="closeMoreMenu()"></div>
 
-    <!-- Bottom Navigation Bar -->
-    <nav id="bottom-nav" class="bottom-nav" role="navigation" aria-label="Quick navigation">
-        <button class="bottom-nav-item active" data-tab="dashboard" onclick="bottomNavTo('dashboard')" aria-current="page">
-            <i class="fas fa-home" aria-hidden="true"></i>
-            <span>Dashboard</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="workout" onclick="bottomNavTo('workout')">
-            <i class="fas fa-dumbbell" aria-hidden="true"></i>
-            <span>Workout</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="history" onclick="bottomNavTo('history')">
-            <i class="fas fa-history" aria-hidden="true"></i>
-            <span>History</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="more" onclick="toggleMoreMenu()" aria-expanded="false" aria-haspopup="true">
-            <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
-            <span>More</span>
-        </button>
-    </nav>
-
-    <!-- More Menu Dropdown -->
-    <div id="more-menu" class="more-menu hidden">
-        <div class="more-menu-content">
-            <button class="more-menu-item" onclick="navigateTo('exercises'); closeMoreMenu();">
-                <i class="fas fa-list"></i>
-                <span>Exercise Library</span>
-            </button>
-            <button class="more-menu-item" onclick="navigateTo('templates'); closeMoreMenu();">
-                <i class="fas fa-dumbbell"></i>
-                <span>Workout Library</span>
-            </button>
-            <button class="more-menu-item" onclick="navigateTo('stats'); closeMoreMenu();">
-                <i class="fas fa-chart-line"></i>
-                <span>Stats & Records</span>
-            </button>
-            <button class="more-menu-item" onclick="navigateTo('location'); closeMoreMenu();">
-                <i class="fas fa-map-marker-alt"></i>
-                <span>Manage Locations</span>
-            </button>
-            <div class="more-menu-divider"></div>
-            <div class="more-menu-user">
-                <i class="fas fa-user"></i>
-                <span id="more-menu-email"></span>
-            </div>
-            <button class="more-menu-item more-menu-signout" onclick="signOutUser(); closeMoreMenu();">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Sign Out</span>
-            </button>
-        </div>
-    </div>
-    <div id="more-menu-overlay" class="more-menu-overlay hidden" onclick="closeMoreMenu()"></div>
-
-    <!-- Force clear old service worker cache on version mismatch -->
-    <script>
-        (async function() {
-            if ('serviceWorker' in navigator) {
-                const REQUIRED_VERSION = 'v4.55';
-                const regs = await navigator.serviceWorker.getRegistrations();
-                for (const reg of regs) {
-                    // Check if cache is outdated
-                    const cacheNames = await caches.keys();
-                    const hasOldCache = cacheNames.some(name =>
-                        name.includes('big-surf') && !name.includes(REQUIRED_VERSION)
-                    );
-                    if (hasOldCache) {
-                        console.log('🔄 Clearing outdated service worker cache...');
-                        for (const name of cacheNames) {
-                            if (name.includes('big-surf') && !name.includes(REQUIRED_VERSION)) {
-                                await caches.delete(name);
-                                console.log('🗑️ Deleted old cache:', name);
+        <!-- Force clear old service worker cache on version mismatch -->
+        <script>
+            (async function () {
+                if ('serviceWorker' in navigator) {
+                    const REQUIRED_VERSION = 'v4.55';
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (const reg of regs) {
+                        // Check if cache is outdated
+                        const cacheNames = await caches.keys();
+                        const hasOldCache = cacheNames.some(
+                            (name) => name.includes('big-surf') && !name.includes(REQUIRED_VERSION)
+                        );
+                        if (hasOldCache) {
+                            console.log('🔄 Clearing outdated service worker cache...');
+                            for (const name of cacheNames) {
+                                if (name.includes('big-surf') && !name.includes(REQUIRED_VERSION)) {
+                                    await caches.delete(name);
+                                    console.log('🗑️ Deleted old cache:', name);
+                                }
                             }
+                            await reg.unregister();
+                            console.log('✅ Old service worker unregistered, reloading...');
+                            window.location.reload();
+                            return;
                         }
-                        await reg.unregister();
-                        console.log('✅ Old service worker unregistered, reloading...');
-                        window.location.reload();
-                        return;
                     }
                 }
-            }
-        })();
-    </script>
+            })();
+        </script>
 
-    <!-- Application Entry Point -->
-    <script type="module" src="js/main.js"></script>
-</body>
+        <!-- Application Entry Point -->
+        <script type="module" src="js/main.js"></script>
+    </body>
 </html>

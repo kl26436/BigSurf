@@ -317,7 +317,7 @@ function renderManualExercises() {
             <div class="manual-exercise-header">
                 <div class="manual-exercise-title-row">
                     <h4>${escapeHtml(exercise.name)}</h4>
-                    <button class="btn btn-danger btn-small" onclick="removeManualExercise(${exIndex})" title="Remove">
+                    <button class="btn btn-danger btn-small" onclick="removeManualExercise(${exIndex})" title="Remove" aria-label="Delete exercise">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -341,7 +341,7 @@ function renderManualExercises() {
                                value="${set.weight || ''}"
                                onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
                         <span class="unit">lbs</span>
-                        <button class="btn btn-danger btn-tiny" onclick="removeManualSet(${exIndex}, ${setIndex})" title="Remove set">
+                        <button class="btn btn-danger btn-tiny" onclick="removeManualSet(${exIndex}, ${setIndex})" title="Remove set" aria-label="Remove set">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>

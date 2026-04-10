@@ -1,15 +1,15 @@
 // Clean Workout History Module with Calendar View - core/workout-history.js
-import { showNotification } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
 import { getDateString } from '../utils/date-helpers.js';
 
 export function getWorkoutHistory(appState) {
-    let currentHistory = [];
-    let filteredHistory = [];
+    const currentHistory = [];
+    const filteredHistory = [];
 
     // Calendar-specific state
-    let currentCalendarDate = new Date();
-    let calendarWorkouts = {};
-    let firstWorkoutDate = null; // Track the earliest workout date
+    const currentCalendarDate = new Date();
+    const calendarWorkouts = {};
+    const firstWorkoutDate = null; // Track the earliest workout date
 
     return {
         currentHistory,
@@ -46,6 +46,40 @@ export function getWorkoutHistory(appState) {
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) {
                         this.closeWorkoutDetailModal();
+                    }
+                });
+            }
+
+            // Event delegation for workout history UI
+            // workoutModal contains the workout picker items and workout detail HTML (calendar day click)
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    const el = e.target.closest('[data-action]');
+                    if (!el) return;
+                    const action = el.dataset.action;
+
+                    if (action === 'showWorkoutDetail') {
+                        window.workoutHistory.showWorkoutDetail(
+                            el.dataset.date,
+                            el.dataset.workoutName,
+                            parseInt(el.dataset.index, 10)
+                        );
+                    } else if (action === 'showExerciseVideo') {
+                        window.showExerciseVideo(el.dataset.video, el.dataset.exercise);
+                    }
+                });
+            }
+
+            // workout-detail-modal contains exercise video buttons
+            const detailModal = document.getElementById('workout-detail-modal');
+            if (detailModal) {
+                detailModal.addEventListener('click', (e) => {
+                    const el = e.target.closest('[data-action]');
+                    if (!el) return;
+                    const action = el.dataset.action;
+
+                    if (action === 'showExerciseVideo') {
+                        window.showExerciseVideo(el.dataset.video, el.dataset.exercise);
                     }
                 });
             }
@@ -305,7 +339,7 @@ export function getWorkoutHistory(appState) {
             const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
             let html = '';
-            let currentDate = new Date(startDate);
+            const currentDate = new Date(startDate);
 
             // Generate 6 weeks (42 days) to fill calendar grid
             for (let i = 0; i < 42; i++) {
@@ -358,6 +392,87 @@ export function getWorkoutHistory(appState) {
 
             // ADDED: Setup click events after rendering
             this.setupCalendarClickEvents();
+
+            // Render paginated recent workouts list below calendar
+            this.recentWorkoutsPage = 1;
+            this.renderRecentWorkoutsList();
+        },
+
+        // Paginated recent workouts list below calendar
+        ITEMS_PER_PAGE: 10,
+        recentWorkoutsPage: 1,
+
+        renderRecentWorkoutsList() {
+            const container = document.getElementById('recent-workouts-list');
+            if (!container) return;
+
+            // Get workouts for the displayed month, sorted by date descending
+            const year = this.currentCalendarDate.getFullYear();
+            const month = this.currentCalendarDate.getMonth();
+            const monthWorkouts = this.currentHistory
+                .filter((w) => {
+                    if (!w.date) return false;
+                    const parts = w.date.split('-');
+                    if (parts.length !== 3) return false;
+                    return parseInt(parts[0]) === year && parseInt(parts[1]) - 1 === month;
+                })
+                .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+            if (monthWorkouts.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const visibleCount = this.recentWorkoutsPage * this.ITEMS_PER_PAGE;
+            const visibleWorkouts = monthWorkouts.slice(0, visibleCount);
+            const hasMore = monthWorkouts.length > visibleCount;
+
+            let html =
+                '<h3 class="section-title" style="margin-top: 1.5rem; padding: 0 0.25rem;">Workouts This Month</h3>';
+            html += '<div class="recent-workouts-items">';
+
+            visibleWorkouts.forEach((workout) => {
+                const workoutType = workout.workoutType || 'Workout';
+                const displayDate = workout.date
+                    ? new Date(workout.date + 'T12:00:00').toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                      })
+                    : '';
+                const exerciseCount = workout.exercises ? Object.keys(workout.exercises).length : 0;
+                const durationMin = workout.totalDuration ? Math.floor(workout.totalDuration / 60) : 0;
+                const docId = workout.docId || workout.id || workout.date;
+                const status = workout.cancelledAt ? 'cancelled' : workout.completedAt ? 'completed' : 'incomplete';
+                const statusIcon =
+                    status === 'completed'
+                        ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>'
+                        : status === 'cancelled'
+                          ? '<i class="fas fa-times-circle" style="color: var(--danger);"></i>'
+                          : '<i class="fas fa-clock" style="color: var(--warning);"></i>';
+
+                html += `
+                    <div class="recent-workout-item" onclick="window.workoutHistory.showFixedWorkoutModal(window.workoutHistory.currentHistory.find(w => (w.docId || w.id) === '${docId}'), 0)" style="cursor: pointer;">
+                        <div class="recent-workout-info">
+                            <div class="recent-workout-name">${workoutType} ${statusIcon}</div>
+                            <div class="recent-workout-meta">${displayDate}${durationMin > 0 ? ' &middot; ' + durationMin + ' min' : ''}${exerciseCount > 0 ? ' &middot; ' + exerciseCount + ' exercises' : ''}</div>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            if (hasMore) {
+                html += `<button class="btn btn-secondary" style="width: 100%; margin-top: 0.75rem;" onclick="window.workoutHistory.loadMoreRecentWorkouts()">Load More</button>`;
+            }
+
+            container.innerHTML = html;
+        },
+
+        loadMoreRecentWorkouts() {
+            this.recentWorkoutsPage++;
+            this.renderRecentWorkoutsList();
         },
 
         getWorkoutIcon(workouts) {
@@ -446,12 +561,12 @@ export function getWorkoutHistory(appState) {
                           : '<i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>';
 
                 html += `
-                    <div class="workout-picker-item" onclick="window.workoutHistory.showWorkoutDetail('${date}', '${workout.name}', ${index})">
+                    <div class="workout-picker-item" data-action="showWorkoutDetail" data-date="${date}" data-workout-name="${escapeAttr(workout.name)}" data-index="${index}" style="cursor: pointer;">
                         <div class="workout-picker-icon ${workout.category}">
                             <i class="fas fa-dumbbell"></i>
                         </div>
                         <div class="workout-picker-info">
-                            <div class="workout-picker-name">${workout.name}</div>
+                            <div class="workout-picker-name">${escapeHtml(workout.name)}</div>
                             <div class="workout-picker-meta">
                                 ${startTime ? startTime + ' • ' : ''}${workout.duration} ${statusIcon}
                             </div>
@@ -476,7 +591,7 @@ export function getWorkoutHistory(appState) {
                     <div style="background: var(--bg-tertiary); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border);">
                         <h4 style="color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                             <i class="fas fa-trophy" style="color: var(--warning);"></i>
-                            ${exercise.name}
+                            ${escapeHtml(exercise.name)}
                         </h4>
                         
                         <table style="width: 100%; border-collapse: collapse;">
@@ -513,14 +628,14 @@ export function getWorkoutHistory(appState) {
                         exerciseHTML += `
                         <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-top: 1rem; border-left: 3px solid var(--primary);">
                             <strong style="color: var(--primary); display: block; margin-bottom: 0.5rem;">Notes:</strong>
-                            <span style="color: var(--text-primary);">${exercise.notes}</span>
+                            <span style="color: var(--text-primary);">${escapeHtml(exercise.notes)}</span>
                         </div>`;
                     }
 
                     if (exercise.video) {
                         exerciseHTML += `
                         <div style="margin-top: 1rem;">
-                            <button class="btn btn-primary btn-small" onclick="showExerciseVideo('${exercise.video}', '${exercise.name}')">
+                            <button class="btn btn-primary btn-small" data-action="showExerciseVideo" data-video="${escapeAttr(exercise.video)}" data-exercise="${escapeAttr(exercise.name)}">
                                 <i class="fas fa-play"></i> Watch Form Video
                             </button>
                         </div>`;
@@ -542,7 +657,7 @@ export function getWorkoutHistory(appState) {
                 notesSection = `
                 <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 3px solid var(--info);">
                     <strong style="color: var(--info); display: block; margin-bottom: 0.5rem;">Workout Notes:</strong>
-                    <span style="color: var(--text-primary);">${workout.rawData.manualNotes}</span>
+                    <span style="color: var(--text-primary);">${escapeHtml(workout.rawData.manualNotes)}</span>
                 </div>`;
             }
 
@@ -606,7 +721,7 @@ export function getWorkoutHistory(appState) {
                             ? `
                         <strong style="color: var(--text-secondary);">Location:</strong>
                         <span style="color: var(--primary);">
-                            <i class="fas fa-map-marker-alt"></i> ${workoutLocation}
+                            <i class="fas fa-map-marker-alt"></i> ${escapeHtml(workoutLocation)}
                         </span>
                     `
                             : ''
@@ -796,7 +911,7 @@ export function getWorkoutHistory(appState) {
                     <i class="fas fa-dumbbell"></i>
                 </div>
                 <div class="workout-picker-info">
-                    <div class="workout-picker-name">${workout.name}</div>
+                    <div class="workout-picker-name">${escapeHtml(workout.name)}</div>
                     <div class="workout-picker-meta">
                         ${startTime ? startTime + ' • ' : ''}${workout.duration} ${statusIcon}
                     </div>
@@ -875,9 +990,9 @@ export function getWorkoutHistory(appState) {
 
                     exerciseHTML += `
                 <div class="exercise-detail-item">
-                    <h5>${exerciseName}</h5>
+                    <h5>${escapeHtml(exerciseName)}</h5>
                     ${this.generateSetsHTML(exerciseData?.sets || [])}
-                    ${exerciseData?.notes ? `<p class="exercise-notes">Notes: ${exerciseData.notes}</p>` : ''}
+                    ${exerciseData?.notes ? `<p class="exercise-notes">Notes: ${escapeHtml(exerciseData.notes)}</p>` : ''}
                 </div>
             `;
                 });
@@ -930,7 +1045,7 @@ export function getWorkoutHistory(appState) {
             // Set the modal content
             content.innerHTML = `
         <div class="workout-header">
-            <h3>${workout.workoutType} - ${displayDate}</h3>
+            <h3>${escapeHtml(workout.workoutType)} - ${displayDate}</h3>
         </div>
 
         <div class="workout-detail-summary">

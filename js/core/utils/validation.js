@@ -65,6 +65,38 @@ export function validateExerciseData(data) {
 }
 
 /**
+ * Validate template data (for template saves)
+ */
+export function validateTemplateData(data) {
+    if (!data || typeof data !== 'object') return null;
+    const clean = { ...data };
+    if (clean.name) clean.name = sanitizeString(clean.name, 200);
+    if (clean.category) clean.category = sanitizeString(clean.category, 100);
+    if (clean.exercises && Array.isArray(clean.exercises)) {
+        clean.exercises = clean.exercises.map((ex) => ({
+            ...ex,
+            name: sanitizeString(ex.name || '', 200),
+            equipment: sanitizeString(ex.equipment || '', 200),
+            notes: sanitizeString(ex.notes || '', 1000),
+        }));
+    }
+    return clean;
+}
+
+/**
+ * Validate location data (for location saves)
+ */
+export function validateLocationData(data) {
+    if (!data || typeof data !== 'object') return null;
+    return {
+        ...data,
+        name: sanitizeString(data.name, 200),
+        address: data.address ? sanitizeString(data.address, 500) : undefined,
+        notes: data.notes ? sanitizeString(data.notes, 1000) : undefined,
+    };
+}
+
+/**
  * Validate equipment data
  */
 export function validateEquipmentData(data) {

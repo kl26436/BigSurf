@@ -1,5 +1,13 @@
 {
   "projects": {
     "default": "workout-tracker-b94b6"
+  },
+  "targets": {
+    "workout-tracker-b94b6": {
+      "hosting": {
+        "prod": ["workout-tracker-b94b6"],
+        "dev": ["bigsurf-dev"]
+      }
+    }
   }
 }

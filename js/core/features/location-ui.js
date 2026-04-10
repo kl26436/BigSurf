@@ -362,7 +362,7 @@ function showLocationOnMap(lat, lon, name) {
             src="https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.01}%2C${lat - 0.01}%2C${lon + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lon}"
             style="width: 100%; height: 100%; border: none;">
         </iframe>
-        <div class="map-location-label">${name}</div>
+        <div class="map-location-label">${escapeHtml(name)}</div>
     `;
 }
 

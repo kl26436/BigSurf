@@ -6,106 +6,52 @@ Use this plan with Claude Code. Each phase is a self-contained session you can t
 
 ---
 
-## Phase T: Set Up Tests (Do This First)
+## Phase T: Expand Test Coverage (Do This First)
 
-**Why:** There are zero tests right now. Before changing anything, put a safety net in place. The tests in this phase cover the core logic most likely to break during refactoring: weight conversions, date parsing, streak calculations, PR detection, and ID generation. Run them after every phase to make sure nothing broke.
+**Why:** Vitest is installed and there are 4 test files (weight conversion, date helpers, validation, workout helpers), but the most breakable logic — PR detection, streak calculation, and ID generation — isn't tested yet. Add those before changing anything else.
 
-### Setup
+### What's Already Done
 
-1. **Initialize the project and install Vitest.** Create a `package.json` at the project root if one doesn't exist:
+- `package.json` exists with `vitest run` script, ESLint, and Prettier
+- `vitest.config.mjs` exists
+- `tests/unit/weight-conversion.test.js` (57 lines)
+- `tests/unit/date-helpers.test.js` (41 lines)
+- `tests/unit/validation.test.js` (84 lines)
+- `tests/unit/workout-helpers.test.js` (55 lines)
 
-```bash
-npm init -y
-npm install --save-dev vitest
-```
+### New Test Files to Add
 
-2. **Add a test script to `package.json`:**
-
-```json
-{
-  "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest"
-  },
-  "type": "module"
-}
-```
-
-3. **Create a `vitest.config.js`** at the project root:
-
-```js
-import { defineConfig } from 'vitest/config';
-
-export default defineConfig({
-  test: {
-    environment: 'node',
-    include: ['tests/**/*.test.js'],
-    globals: true,
-  },
-});
-```
-
-4. **Create the test directory structure:**
+Add these to `tests/unit/`:
 
 ```
-tests/
-  unit/
-    weight-conversion.test.js
-    date-helpers.test.js
-    id-generation.test.js
-    pr-detection.test.js
-    streak-calculation.test.js
-    volume-calculation.test.js
-  fixtures/
-    mock-workouts.js
-    mock-pr-data.js
+tests/unit/
+  id-generation.test.js      (NEW)
+  pr-detection.test.js        (NEW)
+  streak-calculation.test.js  (NEW)
+tests/fixtures/
+  mock-workouts.js            (NEW)
+  mock-pr-data.js             (NEW)
 ```
 
 ### Test Files to Write
 
-#### T.1 Weight conversion tests
+#### T.1 ID generation and schema detection tests (NEW)
 
-**What to test:** `convertWeight()` from `js/core/ui/ui-helpers.js`
+**What to test:** `generateWorkoutId()` (line 36) and `isOldSchemaDoc()` (line 49) from `js/core/data/data-manager.js`. Both are pure functions — `generateWorkoutId` uses `crypto.getRandomValues()` for the random portion.
 
-This function is pure (takes weight, fromUnit, toUnit → returns number). Extract or import it and test:
-
-- `convertWeight(100, 'lbs', 'kg')` → `45.4` (rounded to 1 decimal)
-- `convertWeight(45.4, 'kg', 'lbs')` → `100` (rounded to whole)
-- `convertWeight(100, 'lbs', 'lbs')` → `100` (same unit, no change)
-- `convertWeight(0, 'lbs', 'kg')` → `0`
-- `convertWeight(null, 'lbs', 'kg')` → should not throw
-- `convertWeight('not a number', 'lbs', 'kg')` → should handle gracefully
-- `convertWeight(1000, 'lbs', 'kg')` → verify large weights aren't corrupted
-
-**Why this matters:** Weight displays throughout the app depend on this. A rounding bug silently shows users wrong numbers.
-
-#### T.2 Date helper tests
-
-**What to test:** `getDateString()` and `getTodayDateString()` from AppState, plus the `.split('T')[0]` pattern used everywhere (which Phase 4 will centralize).
-
-- ISO string `"2025-06-15T10:30:00.000Z"` → `"2025-06-15"`
-- Already formatted `"2025-06-15"` → `"2025-06-15"` (idempotent)
-- Date object `new Date(2025, 5, 15)` → `"2025-06-15"`
-- Null/undefined → should not throw, return sensible default
-- Timezone edge case: a date at 11:30pm in UTC that's the next day in local time → should return the local date, not UTC date
-
-**Why this matters:** Date bugs are the #1 source of "my workout shows on the wrong day" issues. The split('T')[0] pattern appears 40+ times — if any refactoring breaks it, workouts land on wrong dates.
-
-#### T.3 ID generation and schema detection tests
-
-**What to test:** `generateWorkoutId()` and `isOldSchemaDoc()` from `js/core/data/data-manager.js`
-
-- `generateWorkoutId("2025-06-15")` → matches pattern `2025-06-15_{timestamp}_{random}`
-- Two calls to `generateWorkoutId()` with the same date → produce different IDs
+- `generateWorkoutId("2025-06-15")` → matches pattern `2025-06-15_{timestamp}_{12-char-random}`
+- Two calls to `generateWorkoutId()` with the same date → produce different IDs (random portion differs)
 - `isOldSchemaDoc("2025-06-15")` → `true`
 - `isOldSchemaDoc("2025-06-15_1234567890_abc123")` → `false`
 - `isOldSchemaDoc("")` → `false`
 - `isOldSchemaDoc("not-a-date")` → `false`
 - `isOldSchemaDoc("2025-13-45")` → `true` (regex doesn't validate date ranges — document this as a known limitation)
 
+**Note:** `generateWorkoutId` uses `crypto.getRandomValues()` which isn't available in Node by default. Use `import { webcrypto } from 'node:crypto'` and polyfill `globalThis.crypto = webcrypto` in the test setup, or mock the random portion.
+
 **Why this matters:** The v2→v3 migration and multi-workout-per-day feature depends on correctly distinguishing old IDs from new ones.
 
-#### T.4 PR detection tests
+#### T.2 PR detection tests (NEW)
 
 **What to test:** `checkForNewPR()` and `calculateVolume()` from `js/core/features/pr-tracker.js`
 
@@ -135,7 +81,7 @@ Test cases:
 
 **Why this matters:** False PRs are annoying. Missed PRs are demoralizing. This is the emotional core of the app.
 
-#### T.5 Streak calculation tests
+#### T.3 Streak calculation tests (NEW)
 
 **What to test:** The streak calculation logic from `js/core/features/streak-tracker.js`
 
@@ -152,7 +98,7 @@ Test cases with a mocked "today" of 2025-06-15:
 
 **Why this matters:** Streaks are a motivational feature. If the streak count jumps or resets incorrectly, users lose trust.
 
-#### T.6 Create test fixtures
+#### T.4 Create test fixtures
 
 **Create `tests/fixtures/mock-workouts.js`** with a set of realistic workout documents covering:
 - A normal completed workout (all sets filled in)
@@ -189,73 +135,19 @@ If any test fails, the phase introduced a regression — fix it before moving on
 
 The "weird zooms" come from three iOS Safari behaviors colliding: auto-zoom when tapping inputs with font-size below 16px, `100vh` not accounting for the dynamic toolbar (address bar slides in/out), and missing momentum scrolling on modal containers.
 
+### What's Already Done
+
+- Viewport meta tag already has `maximum-scale=1, viewport-fit=cover` (index.html line 5).
+- Global `input, select, textarea { font-size: 1rem; }` already exists (style.css lines 84-88).
+- `touch-action: manipulation` already applied globally to buttons, inputs, etc. (style.css lines 96-100).
+- `.section-content` already uses `100dvh` with fallback (style.css line 4717-4718).
+- `-webkit-overflow-scrolling: touch` already exists (style.css line 108).
+- `inputmode="numeric"` already used on number inputs throughout index.html and JS.
+- All remaining `100vh` uses are paired with `100dvh` fallback — no changes needed.
+
 ### Tasks
 
-#### 0.1 Fix the viewport meta tag
-
-**File:** `index.html` line 5
-
-Change:
-```html
-<meta name="viewport" content="width=device-width, initial-scale=1">
-```
-To:
-```html
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-```
-
-This prevents accidental pinch-zoom and double-tap zoom, and enables safe-area inset support for notch devices (iPhone X and later).
-
-#### 0.2 Fix all input font sizes below 16px
-
-iOS Safari auto-zooms the page to ~200% whenever a user taps an input/select/textarea with font-size below 16px. This is the single most likely cause of the "weird zooms."
-
-**Search for and fix all form element font sizes below 1rem (16px):**
-
-- `style.css` ~line 1327: `.exercise-notes { font-size: 0.9rem }` — change to `1rem`
-- `style.css` ~line 3025: `.edit-select, .edit-input-number { font-size: 0.95rem }` — change to `1rem`
-- Search the entire CSS for any other `font-size` declarations on `input`, `select`, `textarea`, or classes used on form elements. Every one must be at least `1rem` (16px).
-
-**Also add this global rule near the top of style.css:**
-```css
-input, select, textarea {
-  font-size: 1rem; /* Prevent iOS auto-zoom on focus */
-}
-```
-
-#### 0.3 Replace 100vh with 100dvh on full-screen modals
-
-`100vh` is broken on iOS Safari — it equals the viewport height *including* the browser chrome (address bar, tab bar), so content is always taller than visible. `100dvh` (dynamic viewport height) adjusts as the toolbar shows/hides.
-
-**Files to fix in style.css:**
-
-- ~line 2472: `#exercise-library-modal > .modal-content` and related selectors — change `min-height: 100vh` and `max-height: 100vh` to `100dvh`
-- ~line 3779: `.section-content { min-height: 100vh }` — change to `min-height: 100dvh`
-- Search for any other `100vh` usage and replace with `100dvh`
-
-**Add a fallback for older browsers:**
-```css
-min-height: 100vh; /* fallback */
-min-height: 100dvh;
-```
-
-#### 0.4 Add momentum scrolling to all scrollable containers
-
-Without `-webkit-overflow-scrolling: touch`, scrolling inside modals and sidebars feels laggy on iOS (no momentum/bounce).
-
-**Add to style.css:**
-```css
-.sidebar,
-.modal > .modal-content,
-.modal-content-editor,
-.exercise-list-container {
-  -webkit-overflow-scrolling: touch;
-}
-```
-
-Or apply it globally to any element with `overflow-y: auto` or `overflow-y: scroll`.
-
-#### 0.5 Lock background scroll when modals are open
+#### 0.1 Lock background scroll when modals are open
 
 Currently the page behind a modal scrolls when the user swipes, which is disorienting.
 
@@ -271,7 +163,7 @@ document.body.style.overflow = '';
 
 Alternatively, create a central `openModal(id)` / `closeModal(id)` pair in `ui-helpers.js` that handles this automatically, and refactor existing modal toggles to use it.
 
-#### 0.6 Fix safe-area insets for notch devices
+#### 0.2 Fix safe-area insets for notch devices
 
 The bottom nav already has `env(safe-area-inset-bottom)` (good), but nothing else does.
 
@@ -290,7 +182,7 @@ The bottom nav already has `env(safe-area-inset-bottom)` (good), but nothing els
 }
 ```
 
-#### 0.7 Add modal entrance/exit animations
+#### 0.3 Add modal entrance/exit animations
 
 Modals currently snap in and out with `display: none`. Add smooth transitions:
 
@@ -315,7 +207,7 @@ Modals currently snap in and out with `display: none`. Add smooth transitions:
 
 This requires changing the show/hide pattern from toggling a `hidden` class to toggling an `active` class, and using `visibility: hidden` instead of `display: none`. Update the JS accordingly.
 
-#### 0.8 Add section transition animations
+#### 0.4 Add section transition animations
 
 When tapping between Dashboard, Stats, and History in the bottom nav, content just appears/disappears.
 
@@ -327,91 +219,85 @@ When tapping between Dashboard, Stats, and History in the bottom nav, content ju
 
 In JS: add `fade-out` class, wait 150ms, then `display: none` the old section and `display: block` + remove `fade-out` on the new one.
 
-#### 0.9 Add `touch-action: manipulation` to interactive elements
-
-This tells the browser "this element is interactive, don't wait for double-tap zoom":
-
-```css
-button, a, .btn, input, select, textarea, .bottom-nav-item, .clickable {
-  touch-action: manipulation;
-}
-```
-
-#### 0.10 Add `inputmode="numeric"` to number inputs
-
-This ensures iOS shows the numeric keypad instead of the full keyboard for weight/rep/set inputs.
-
-**Search index.html and all JS that generates `<input type="number">` elements.** Add `inputmode="numeric"` to each. For weight inputs that allow decimals, use `inputmode="decimal"`.
-
 ### Verification
 
-- On an iPhone (or iOS Simulator), tap a weight input field — the page should NOT zoom in.
-- Open any full-screen modal — it should exactly fill the visible screen, not extend behind the toolbar.
-- Scroll inside a modal — it should feel smooth with momentum (flick and coast).
 - Swipe on the page behind an open modal — the background should not scroll.
 - Open the app on an iPhone with a notch — no content should be hidden behind the notch or home indicator.
+- Open any modal — it should animate in smoothly, not snap.
 - Navigate between Dashboard/Stats/History — transitions should feel smooth, not jarring.
 
 ---
 
-## Phase 1: Fix XSS & Inline Handler Security
+## Phase 1: Audit XSS & Reduce innerHTML Usage
 
-**Why:** These are the most serious issues — user-controlled strings are rendered as HTML and inline onclick handlers use fragile escaping that can be bypassed.
+**Why:** `escapeHtml()` and `escapeAttr()` utilities already exist in `ui-helpers.js` (lines 4-14) and are used in key places like `exercise-ui.js` line 207. The old `.replace(/'/g, "\\'")` pattern has been removed. However, `innerHTML` is still used ~64 times across 8 JS files. Each use is a potential XSS surface if a future change forgets to escape.
+
+### What's Already Done
+
+- `escapeHtml()` and `escapeAttr()` exist in `js/core/ui/ui-helpers.js` (lines 4-14)
+- `exercise-ui.js` line 207 uses `escapeHtml(exerciseName)` and `escapeAttr(exerciseName)` in innerHTML
+- The fragile `.replace(/'/g, "\\'")` pattern has been removed from all JS files
+- `workout-core.js` is now a 67-line barrel re-export — the actual UI code is in `exercise-ui.js`
 
 ### Tasks
 
-1. **Audit all `innerHTML` assignments that include user data.** Search for `innerHTML` across the codebase. For each occurrence, determine whether user-controlled values (exercise names, equipment names, location names, notes) are interpolated. Key files: `workout-core.js`, `location-ui.js`, `manual-workout.js`, `template-selection.js`, `dashboard-ui.js`, `workout-history-ui.js`.
+1. **Audit all remaining `innerHTML` assignments** (~64 across 8 files). The breakdown: `exercise-ui.js` (15), `stats-ui.js` (14), `workout-session.js` (10), `workout-history.js` (9), `data-manager.js` (6), `rest-timer.js` (4), `ui-helpers.js` (3), `dashboard-ui.js` (3). For each, verify that any user-controlled string passes through `escapeHtml()`. Flag any that don't.
 
-2. **Create an `escapeHtml()` utility in `js/core/utils/ui-helpers.js`** (or verify one exists and is used consistently). It should escape `&`, `<`, `>`, `"`, and `'`. Use it anywhere innerHTML is necessary. Prefer `textContent` or programmatic DOM construction where possible.
+2. **Where possible, replace `innerHTML` with programmatic DOM construction** using `createElement` + `textContent`. This eliminates the need to remember escaping. Prioritize the files with the most innerHTML usage: `exercise-ui.js` (15), `stats-ui.js` (14), and `workout-session.js` (10).
 
-3. **Replace the most dangerous inline onclick handlers with event delegation.** Focus on handlers that pass user-supplied strings (exercise names, equipment names). Use `data-*` attributes to pass values safely. Start with `workout-core.js` line 792 and the equipment picker in `manual-workout.js`.
+3. **Replace inline onclick handlers with event delegation** where they pass user data. Use `data-*` attributes instead. The `escapeAttr()` function mitigates the risk, but event delegation is the long-term fix.
 
-4. **Test by creating an exercise with a name like `<img src=x onerror=alert('xss')>` and verifying it renders as text, not HTML.**
+4. **Test by creating an exercise with a name like `<img src=x onerror=alert('xss')>` and verifying it renders as text, not HTML, everywhere it appears** (workout screen, history, stats, dashboard, template editor).
 
 ### Verification
-- Grep for `innerHTML` — every remaining instance should either use only static content or pass through `escapeHtml()`/`textContent`.
-- No inline onclick handlers should use `.replace(/'/g, "\\'")` on user input.
+- Grep for `innerHTML` — every instance should either use only static content or pass user data through `escapeHtml()`.
+- The XSS test exercise name should render as literal text everywhere.
 
 ---
 
-## Phase 2: Input Validation & Stronger IDs
+## Phase 2: Input Validation for Firestore Writes
 
-**Why:** Data goes to Firestore without checks, and workout IDs use weak randomness.
+**Why:** Data goes to Firestore without validation on string lengths, types, or structure. The ID generation is already strong (uses `crypto.getRandomValues()` at `data-manager.js` line 38-42), so this phase focuses on data validation.
+
+### What's Already Done
+
+- `generateWorkoutId()` already uses `crypto.getRandomValues()` with 12-char random strings — no change needed.
+- `js/core/utils/validation.js` already exists (~97 lines) with `sanitizeString`, `validateWorkoutData`, `validateExerciseData`, `validateTemplateData`, and other validation functions.
+- `tests/unit/validation.test.js` already exists (84 lines).
 
 ### Tasks
 
-1. **Create a validation utility in `js/core/utils/validation.js`.** Export functions like `sanitizeString(str, maxLength)`, `validateWorkoutData(data)`, and `validateExerciseData(data)`. Sanitize by trimming, enforcing max length (e.g., 200 chars for names, 1000 for notes), and stripping HTML tags.
+1. **Verify validation is actually called before Firestore writes.** The validation module exists, but check whether `saveWorkoutData()` (data-manager.js line 53) and the save functions in `firebase-workout-manager.js` actually call the validators. If not, add the calls.
 
-2. **Add validation calls before all Firestore writes in `data-manager.js`.** Specifically in `saveWorkoutData()`, and in `firebase-workout-manager.js` for template, exercise, equipment, and location saves.
+2. **Check edge cases in existing validation.** Review `validation.js` for completeness: does it handle deeply nested exercise data? Does it validate the `sets` array structure? Does it strip HTML from notes?
 
-3. **Replace the ID generator in `data-manager.js` line 12-15.** Replace `Math.random().toString(36).substring(2, 8)` with `crypto.getRandomValues()`:
-   ```js
-   const arr = new Uint8Array(12);
-   crypto.getRandomValues(arr);
-   const random = Array.from(arr, b => b.toString(36).padStart(2, '0')).join('').substring(0, 12);
-   ```
-
-4. **Import and expose the validation module in `main.js` if any validation functions need to be called from HTML.**
+3. **Run existing tests and check for gaps.** Run `npm test` and review `validation.test.js` — does it cover the edge cases listed in Phase T?
 
 ### Verification
 - Manually test saving an exercise with a 10,000-character name — it should be truncated.
-- Verify workout IDs are now 12+ random characters.
+- Run `npm test` — validation tests should pass.
 
 ---
 
-## Phase 3: Error Handling & Debounced Auto-Save
+## Phase 3: Error Handling Audit
 
-**Why:** Firebase operations fail silently and auto-save fires on every keystroke.
+**Why:** Firebase operations can still fail silently in some paths. The debounce and timeout infrastructure is in place — this phase is about ensuring it's used everywhere.
+
+### What's Already Done
+
+- `debouncedSaveWorkoutData()` already exists at data-manager.js line 155.
+- `withTimeout(promise, ms)` utility already exists at data-manager.js lines 25-30.
+- `convertWeight()` already returns `0` for invalid input (ui-helpers.js line 66).
 
 ### Tasks
 
-1. **Add a debounce wrapper for `saveWorkoutData()`.** In `data-manager.js`, create a `debouncedSave()` function with a 400ms delay. Replace direct `saveWorkoutData()` calls in `workout-core.js` with the debounced version. Keep the non-debounced version for explicit saves (complete workout, cancel workout).
+1. **Verify debounced save is used for auto-saves.** Check that `workout-session.js` and `exercise-ui.js` call `debouncedSaveWorkoutData()` (not the raw `saveWorkoutData()`) for set updates. The raw version should only be used for explicit saves (complete, cancel).
 
-2. **Audit async functions for missing try/catch.** Key files to check: `data-manager.js`, `firebase-workout-manager.js`, `workout-core.js`, `workout-history.js`. Every Firestore read/write should be in a try/catch that logs the error with context and shows a user notification.
+2. **Verify `withTimeout()` wraps critical Firestore calls.** Check `loadTodaysWorkout()`, `getExerciseLibrary()`, and other load functions. If any call Firestore without the timeout wrapper, add it.
 
-3. **Add timeout handling for Firestore operations.** Create a `withTimeout(promise, ms)` utility that rejects after a timeout (10 seconds). Wrap critical Firestore calls with it, especially in `loadTodaysWorkout()`, `saveWorkoutData()`, and `getExerciseLibrary()`.
+3. **Audit async functions for missing try/catch.** Key files to check: `data-manager.js`, `firebase-workout-manager.js`, `workout-session.js`, `exercise-ui.js`, `workout-history.js`. Every Firestore read/write should be in a try/catch that logs the error with context and shows a user notification.
 
-4. **Fix `convertWeight()` in `ui-helpers.js`.** Instead of returning `'??'` for invalid input, return `0` and log a warning. Audit callers to ensure they handle the `0` case gracefully.
+4. **Verify `convertWeight()` callers handle the `0` return gracefully** (e.g., don't display "0 lbs" when the weight is actually unknown).
 
 ### Verification
 - Rapidly update 5 sets in quick succession — network tab should show only 1-2 Firestore writes, not 5.
@@ -425,49 +311,46 @@ This ensures iOS shows the numeric keypad instead of the full keyboard for weigh
 
 ### Tasks
 
-1. **Create `js/core/utils/date-helpers.js`.** Extract a `getDateString(value)` function that handles ISO strings, Date objects, and YYYY-MM-DD strings uniformly. Search for `.split('T')[0]` across the codebase (40+ instances) and replace each with `getDateString()`. Export from `main.js` if needed.
+1. **Verify `js/core/utils/date-helpers.js` is used everywhere.** `getDateString()` already exists in `date-helpers.js` (lines 8-29) and `.split('T')[0]` has been mostly centralized — only 3 uses remain in `date-helpers.js` itself (where it's the implementation) and 2 in `debug-utilities.js`. Search the full codebase to confirm no other files use the raw `.split('T')[0]` pattern. If any remain, replace with `getDateString()` imports.
 
-2. **Create `js/core/utils/workout-helpers.js`.** Extract:
-   - `getWorkoutDisplayName(workout)` — replaces the `workout.name || workout.day || 'Unnamed'` pattern
-   - `getExerciseName(exercise)` — replaces `exercise.name || exercise.machine || exercise.exercise || 'Unknown'`
+2. **Verify `workout-helpers.js` is used everywhere.** `js/core/utils/workout-helpers.js` already exists with `getExerciseName()` (used in `exercise-ui.js`) and likely `getWorkoutDisplayName()`. Search for any remaining raw fallback chains (`workout.name || workout.day || 'Unnamed'` or `exercise.name || exercise.machine || 'Unknown'`) and replace with the helper functions.
 
-3. **Extract a shared equipment picker component.** The equipment selection UI is duplicated between `workout-core.js` (~line 1447) and `workout-management-ui.js` (~line 1001). Create `js/core/ui/equipment-picker.js` with a single `renderEquipmentPicker(options)` function both can call.
+3. **Extract a shared equipment picker component.** Equipment picker logic exists in `exercise-ui.js` (~lines 844-940). Check if similar code is duplicated in `workout-management-ui.js`. If so, extract into `js/core/ui/equipment-picker.js` with a single `renderEquipmentPicker(options)` function both can call.
 
 4. **Consolidate rest timer logic.** Timer display code is duplicated between `ui-helpers.js` and `workout-core.js`. Create `js/core/features/rest-timer.js` as a single class that manages the timer state and display updates.
 
 ### Verification
-- Grep for `.split('T')[0]` — should find 0 results (all replaced).
-- Grep for `|| 'Unnamed'` or `|| 'Unknown Exercise'` — should find only the new utility functions.
+- Grep for `.split('T')[0]` — should only appear in `date-helpers.js` (the implementation) and `debug-utilities.js`.
+- Grep for `|| 'Unnamed'` or `|| 'Unknown Exercise'` — should find only the utility functions in `workout-helpers.js`.
 
 ---
 
-## Phase 5: Split Large Files & Remove Dead Code
+## Phase 5: Remove Dead Code
 
-**Why:** `workout-core.js` is 2,700 lines and `debug-utilities.js` ships 1,800 lines of dev-only code to production.
+**Why:** `workout-core.js` has already been split into focused modules (it's now a 67-line barrel re-export with the actual code in `workout-session.js`, `exercise-ui.js`, and `rest-timer.js`). The remaining task is cleaning up dead code.
+
+### What's Already Done
+
+- `workout-core.js` is already a 67-line barrel re-export file.
+- The actual logic lives in `workout-session.js`, `exercise-ui.js`, and `rest-timer.js`.
 
 ### Tasks
 
-1. **Split `workout-core.js` into focused modules:**
-   - `js/core/workout/workout-session.js` — session lifecycle: start, pause, complete, cancel, resume, timer
-   - `js/core/workout/exercise-ui.js` — exercise card rendering, set management UI, exercise modal
-   - `js/core/workout/rest-timer.js` — if not already created in Phase 4
-   - Keep `workout-core.js` as a thin re-export barrel file so existing imports don't break.
-
-2. **Gate `debug-utilities.js` behind a flag.** Only import and execute debug code when a URL param or localStorage flag is set (e.g., `?debug=true`). This keeps it available for development but out of the production path. In `main.js`, change the import to:
+1. **Gate `debug-utilities.js` behind a flag.** It's still ~1,812 lines shipping to production. Only import and execute debug code when a URL param or localStorage flag is set (e.g., `?debug=true`). In `main.js`, change the import to a dynamic one:
    ```js
    if (new URL(window.location).searchParams.has('debug')) {
      import('./core/utils/debug-utilities.js').then(mod => mod.init());
    }
    ```
 
-3. **Remove one-time migration scripts from the main bundle.** `fix-template-exercises.js` and `pr-migration.js` should only be imported if actually needed (check a version flag in Firestore). Remove their `window` assignments from `main.js`.
+2. **Remove `fix-template-exercises.js` from the main bundle** if it's still imported. This is a one-time migration utility. `pr-migration.js` does not exist (previous reference was incorrect). Check `main.js` for any other one-time migration imports that can be removed or gated.
 
-4. **Update all imports across the codebase** to point to the new file locations. Run the app and verify no console errors about missing modules.
+3. **Audit `main.js` for unused window assignments.** With the module split done, some `window.*` assignments may now point to functions that have moved. Verify each export is still needed and remove any dead references.
 
 ### Verification
-- `workout-core.js` should be under 200 lines (just re-exports).
 - Loading the app without `?debug=true` should not load debug-utilities.js (check network tab).
-- All existing features should still work after the split.
+- No console errors about missing modules or undefined functions.
+- `npm test` passes.
 
 ---
 
@@ -499,9 +382,9 @@ This ensures iOS shows the numeric keypad instead of the full keyboard for weigh
 
 2. **Convert modals to use `<dialog>` element.** Start with the most-used modal (exercise detail modal). `<dialog>` gives you free focus trapping, Escape key handling, and proper screen reader announcements. Keep the existing show/hide pattern but use `dialog.showModal()` and `dialog.close()`.
 
-3. **Fix color contrast.** Adjust `--text-muted` to meet WCAG AA (4.5:1 ratio against the background). A value around `#B0B8C1` should work on the dark background.
+3. **Fix color contrast.** `--text-muted` is currently `#b0b8c1` (style.css line 30). Verify this meets WCAG AA (4.5:1 ratio) against the app background `--bg-app`. If not, adjust slightly lighter.
 
-4. **Add `aria-live="polite"` to the notification container** so screen readers announce notifications.
+4. **Add `aria-live="polite"` to the notification container.** Individual notifications created by `showNotification()` in ui-helpers.js already have `role="alert"` and `aria-live="polite"` (line 18-19), but the `.notifications-container` element itself (style.css lines 4873-4882) does not. Add `aria-live="polite"` to the container so screen readers properly announce dynamically added notifications.
 
 ### Verification
 - Run Lighthouse accessibility audit — aim for 90+ score.
@@ -511,21 +394,29 @@ This ensures iOS shows the numeric keypad instead of the full keyboard for weigh
 
 ## Phase 8: Developer Experience
 
-**Why:** Linting and formatting prevent bugs and make the code easier to work on.
+**Why:** The tooling foundation is in place — now make it work for you.
+
+### What's Already Done
+
+- ESLint 10.x installed with `eslint-config-prettier` (`package.json` devDependencies)
+- Prettier installed with `.prettierrc` (single quotes, 4-space tabs, trailing commas)
+- Vitest installed with `vitest.config.mjs`
+- `npm run lint`, `npm run format`, and `npm test` scripts exist
 
 ### Tasks
 
-1. **Add ESLint with a minimal config.** Create `.eslintrc.json` with `eslint:recommended` and `env: { browser: true, es2022: true }`. Run it and fix the most critical warnings (unused variables, unreachable code).
+1. **Run ESLint and fix warnings.** `eslint.config.mjs` (flat config) already exists at the project root. Run `npm run lint` and fix the most critical warnings (unused variables, unreachable code). Use `npm run lint:fix` for auto-fixable issues.
 
-2. **Add Prettier with a `.prettierrc`.** Set your preferred style (e.g., single quotes, 2-space indent, no trailing commas). Format the entire codebase in one commit.
+2. **Run `npm run format` to apply Prettier across the full codebase.** Review the changes and commit in a single formatting commit so future diffs are clean.
 
 3. **Consider adding Vite as a dev server.** It requires minimal config, gives you hot module reload, and can tree-shake unused code in production builds. Start with `npm create vite@latest` and copy your files in.
 
 4. **(Optional) Add basic Firestore emulator tests.** Firebase provides a local emulator that lets you write tests against your security rules and data operations without hitting production.
 
 ### Verification
-- `npx eslint js/` should pass with 0 errors.
-- `npx prettier --check js/` should pass.
+- `npm run lint` should pass with 0 errors.
+- `npm run format:check` should pass.
+- `npm test` should pass.
 
 ---
 
@@ -587,7 +478,16 @@ This is similar to how an accordion works — one exercise can be expanded for e
 
 Keep a list of the user's most-used exercises (query from workout history) and show them as quick-add chips at the top of the exercise library. One tap adds the exercise with its most recent equipment and weight defaults — no equipment picker needed.
 
+### Tests to Write
+
+Add `tests/unit/template-management.test.js`:
+
+- **Reorder logic:** `reorderTemplateExercise([A, B, C], 0, 'down')` → `[B, A, C]`. Test moving first item down, last item up, edge cases (move first up = no change, move last down = no change).
+- **Workout-to-template conversion:** `normalizeWorkoutToTemplate(workoutData)` should convert `{ exercise_0: {...}, exercise_1: {...} }` object format to array format, preserving exercise names, equipment, and last-used sets/reps/weight as defaults.
+- **Template validation:** Template save should reject empty name, template with zero exercises.
+
 ### Verification
+- `npm test` passes with new template tests.
 - Create a template with 5 exercises. Reorder them using move buttons. Save and reopen — order should persist.
 - Complete a workout, tap "Save as Template," name it, save it. Start a new workout from that template — exercises should match.
 - Add 3 exercises to a new template. Count the number of modal layers you go through — should be 1 (the template editor), not 3.
@@ -630,7 +530,17 @@ When viewing a specific exercise's history (already accessible via `loadExercise
 - PR badges on sessions where a new record was hit
 - Trend indicator (arrow up/down/flat) comparing last 4 weeks to the previous 4
 
+### Tests to Write
+
+Add `tests/unit/progress-calculations.test.js`:
+
+- **1RM estimation (Epley formula):** `estimate1RM(weight, reps)` — 225 lbs × 5 reps → ~260 lbs. Edge cases: 1 rep (1RM = weight itself), 0 reps, very high reps (>30 where formula becomes unreliable).
+- **Volume calculation:** `calculateSessionVolume(exercises)` — sum of (sets × reps × weight) across all exercises. Handle missing/null sets, incomplete exercises, mixed units.
+- **Trend detection:** `calculateTrend(dataPoints)` — given an array of `{ date, value }`, return 'up', 'down', or 'flat'. Test with clear uptrend, clear downtrend, plateau, insufficient data (<3 points).
+- **Muscle group aggregation:** `aggregateVolumeByBodyPart(workouts)` — given a week's workouts, return `{ Chest: 12000, Back: 9500, ... }`. Test with workouts that have exercises mapped to body parts.
+
 ### Verification
+- `npm test` passes with new progress tests.
 - Go to any exercise and view its chart. It should show data points for every session where you used that exercise.
 - Check the weekly volume summary — it should match your workout frequency (e.g., 4 workouts/week should show 4 bars of volume).
 - Verify charts render correctly on mobile (no overflow, touch-to-zoom on data points works).
@@ -680,7 +590,18 @@ Let users create ad-hoc supersets during a workout (not just in templates):
 - "Superset with next exercise" button on each exercise card
 - Links the current exercise with the one below it
 
+### Tests to Write
+
+Add `tests/unit/exercise-grouping.test.js`:
+
+- **Group assignment:** `groupExercises([0, 1], exercises)` → exercises 0 and 1 get `group: "A"`. Next group call assigns `"B"`.
+- **Group detection:** `getExerciseGroups(exercises)` → `{ A: [0, 1], B: [2, 3, 4] }`. Handle exercises with `group: null` (standalone).
+- **Next-in-group navigation:** `getNextInGroup(currentIndex, exercises)` → returns next exercise index in the same group, or wraps to the first.
+- **Ungrouping:** `ungroupExercise(index, exercises)` → sets `group: null` on that exercise. If only one exercise remains in the group, ungroup it too.
+- **Schema migration:** Old workout documents without `group` field should be treated as all-standalone (no errors).
+
 ### Verification
+- `npm test` passes with new grouping tests.
 - Create a template with a superset (2 exercises grouped). Start a workout from it — the exercises should appear visually connected.
 - During a workout, complete a set on the first exercise in a superset — the UI should guide you to the second exercise.
 - Save a workout with supersets → view in history — grouping should be visible.
@@ -701,7 +622,20 @@ Let users create ad-hoc supersets during a workout (not just in templates):
 
 4. **Add a standalone plate calculator page** accessible from the More menu for quick reference outside of a workout.
 
+### Tests to Write
+
+Add `tests/unit/plate-calculator.test.js`:
+
+- **Basic calculation:** `calculatePlates(225, 45, [45, 35, 25, 10, 5, 2.5])` → `[45, 45]` per side (greedy algorithm).
+- **Odd weight:** `calculatePlates(185, 45)` → `[45, 25]` per side.
+- **Impossible weight:** `calculatePlates(183, 45)` → should return closest achievable (182.5 or 185) and indicate remainder.
+- **No 35s available:** `calculatePlates(255, 45, [45, 25, 10, 5, 2.5])` → `[45, 45, 10, 5]` per side (not `[45, 35, 25]`).
+- **Kg mode:** `calculatePlates(100, 20, [20, 15, 10, 5, 2.5, 1.25])` → `[20, 20]` per side.
+- **Just the bar:** `calculatePlates(45, 45)` → `[]` (no plates).
+- **Less than bar:** `calculatePlates(30, 45)` → error or indication that weight is less than the bar.
+
 ### Verification
+- `npm test` passes with new plate calculator tests.
 - Enter 225 lbs with a 45 lb bar → should show two 45s per side.
 - Enter 185 lbs → should show one 45 and one 25 per side.
 - Change available plates to exclude 35s → calculator should adjust.
@@ -723,7 +657,16 @@ Let users create ad-hoc supersets during a workout (not just in templates):
 
 4. **(Optional) Add body measurements:** neck, chest, waist, hips, biceps, thighs. Show progress over time. This is a nice-to-have — weight alone covers 80% of the use case.
 
+### Tests to Write
+
+Add `tests/unit/body-measurements.test.js`:
+
+- **Moving average:** `calculate7DayAverage(entries)` — given `[{date, weight}]`, return the 7-day moving average at each point. Test with exactly 7 entries, fewer than 7 (should use available data), gaps in dates.
+- **Unit conversion on entries:** `convertMeasurementUnit(entry, toUnit)` — convert a stored entry from lbs to kg and back. Verify the original entry is not mutated.
+- **Date validation:** Reject duplicate entries for the same date (or overwrite with latest).
+
 ### Verification
+- `npm test` passes with new measurement tests.
 - Log body weight for 7 consecutive days. Chart should show all 7 points plus a trend line.
 - Switch between lbs and kg — chart and entries should convert.
 
@@ -741,7 +684,16 @@ Let users create ad-hoc supersets during a workout (not just in templates):
 
 3. **(Optional) Add Google Sheets integration.** Auto-sync workout logs to a Google Sheet for users who want to do their own analysis.
 
+### Tests to Write
+
+Add `tests/unit/data-export.test.js`:
+
+- **CSV generation:** `generateCSV(workouts)` — given mock workout data, produce a CSV string with correct headers and one row per set. Test with: a normal workout (3 exercises, multiple sets each), a workout with notes containing commas and quotes (must be escaped), a workout with mixed lbs/kg units, an empty workout array.
+- **JSON export structure:** `generateExportJSON(userData)` — verify the output includes all collections (workouts, templates, exercises, equipment, locations) and has a metadata header with export date and version.
+- **JSON import validation:** `validateImportJSON(json)` — reject malformed JSON, reject JSON missing required fields, accept valid export format. Test with a round-trip: export → import → compare.
+
 ### Verification
+- `npm test` passes with new export tests.
 - Export CSV → open in Excel/Google Sheets → verify all workouts and sets are present.
 - Export JSON → create a new account → import JSON → verify all data restored correctly.
 
@@ -772,7 +724,16 @@ Let a user create a challenge (e.g., "Most total volume this week") and invite f
 
 **Note:** Social features are the biggest architectural change in this plan. They require thinking about privacy, data sharing, and potentially Cloud Functions for the feed aggregation. Plan for this to take 2-3x longer than other phases.
 
+### Tests to Write
+
+Add `tests/unit/social-feed.test.js`:
+
+- **Feed item generation:** `createFeedItem(workout, userId)` — given a completed workout, produce a feed document with the right structure (userId, workoutType, date, highlights array, timestamp). Test with a workout that has PRs (should appear in highlights) and one without.
+- **Privacy filtering:** `filterFeedByPrivacy(feedItems, viewerRelationship)` — `public` items visible to all, `friends` items visible only if viewer is in following list, `private` items visible only to owner.
+- **Highlight extraction:** `extractWorkoutHighlights(workout)` — pull out notable achievements: PR sets, total volume, exercise count. Test with various workout sizes.
+
 ### Verification
+- `npm test` passes with new social tests.
 - Complete a workout → it should appear in the feed (if set to public).
 - A friend completes a workout → you should see it in your feed.
 - Hit a PR → celebration should appear in your feed and your friend's feed.

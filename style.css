@@ -28,6 +28,7 @@
     --text-strong: #f6f9ff;
     --text-main: #c4cad4;
     --text-muted: #b0b8c1;
+    --text-secondary: #9aa3ad;
 
     /* Borders - subtle */
     --border: #1a2028;
@@ -1495,12 +1496,19 @@ h3 {
     background: var(--bg-app);
     z-index: 600;
     overflow-y: auto;
-    /* Override base .modal flex alignment */
+    /* Override base dialog.modal flex alignment for full-screen style */
     display: block;
     align-items: unset;
+    border: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
 }
-#exercise-modal.hidden {
-    display: none !important;
+#exercise-modal:not([open]) {
+    display: none;
 }
 
 #exercise-modal > .modal-content {
@@ -3064,6 +3072,30 @@ input[type='number'] {
 .modal.hidden {
     display: none !important;
 }
+
+/* Dialog-based modals (e.g., exercise detail) */
+dialog.modal {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+dialog.modal::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+}
+dialog.modal:not([open]) {
+    display: none;
+}
+
 .modal > .modal-content {
     background: var(--bg-app);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
@@ -3358,6 +3390,42 @@ input[type='number'] {
 }
 .calendar-day .workout-icon {
     position: relative;
+}
+
+/* Recent workouts list below calendar */
+.recent-workouts-section {
+    margin-top: 0.5rem;
+}
+.recent-workouts-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.recent-workout-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    transition: background 0.15s;
+}
+.recent-workout-item:active {
+    background: var(--bg-card-hi);
+}
+.recent-workout-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-strong);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.recent-workout-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
 }
 
 /* Schema v3.0: Workout picker for multiple workouts */
@@ -6407,4 +6475,42 @@ input[type='number'] {
     .sidebar {
         left: 0;
     }
+}
+
+/* ===========================================
+   MODAL ENTRANCE/EXIT ANIMATIONS
+   Override generic .hidden (display:none) for modals
+   so CSS transitions can animate opacity & slide
+   =========================================== */
+.modal.hidden {
+    display: flex !important; /* Override generic .hidden */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        opacity 0.2s ease,
+        visibility 0.2s;
+}
+.modal:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition:
+        opacity 0.2s ease,
+        visibility 0.2s;
+}
+.modal .modal-content {
+    transform: translateY(20px);
+    transition: transform 0.25s ease;
+}
+.modal:not(.hidden) .modal-content {
+    transform: translateY(0);
+}
+
+/* ===========================================
+   SECTION FADE TRANSITIONS
+   =========================================== */
+.section-content {
+    opacity: 1;
+    transition: opacity 0.15s ease;
 }

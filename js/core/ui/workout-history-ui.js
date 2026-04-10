@@ -2,7 +2,7 @@
 // Handles workout history UI interactions with FULL CALENDAR VIEW
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode } from './ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml } from './ui-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 
 // ===================================================================
@@ -261,7 +261,7 @@ function showWorkoutDetailModal(workout) {
             .map(
                 (exercise) => `
             <div class="exercise-summary">
-                <h4>${exercise.name}</h4>
+                <h4>${escapeHtml(exercise.name)}</h4>
                 <div class="exercise-sets">
                     ${exercise.sets
                         .map(

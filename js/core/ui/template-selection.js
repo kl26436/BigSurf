@@ -2,7 +2,7 @@
 // Handles template browsing, selection, and immediate usage
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 
@@ -12,6 +12,37 @@ import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 
 let selectedWorkoutCategory = null;
 let currentTemplateCategory = 'default';
+
+// Track which containers already have delegation listeners
+const delegatedContainers = new WeakSet();
+
+function setupTemplateDelegation(container) {
+    if (!container || delegatedContainers.has(container)) return;
+    delegatedContainers.add(container);
+
+    container.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const templateId = btn.dataset.templateId;
+        const isDefault = btn.dataset.isDefault === 'true';
+        const workoutName = btn.dataset.workout;
+
+        if (action === 'useTemplateFromManagement') {
+            window.useTemplateFromManagement(templateId, isDefault);
+        } else if (action === 'editTemplate') {
+            window.editTemplate(templateId, isDefault);
+        } else if (action === 'resetToDefault') {
+            window.resetToDefault(templateId);
+        } else if (action === 'deleteTemplate') {
+            window.deleteTemplate(templateId, isDefault);
+        } else if (action === 'startWorkout') {
+            window.startWorkout(workoutName);
+        } else if (action === 'previewWorkout') {
+            previewWorkout(workoutName);
+        }
+    });
+}
 
 // ===================================================================
 // TEMPLATE SELECTION UI
@@ -142,6 +173,7 @@ export async function loadTemplatesByCategory() {
 
     if (!container) return;
 
+    setupTemplateDelegation(container);
     container.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading templates...</span></div>';
 
     try {
@@ -276,6 +308,8 @@ export function renderTemplateCards(templates, targetContainer = null) {
     const container = targetContainer || document.getElementById('template-cards-container');
     if (!container) return;
 
+    setupTemplateDelegation(container);
+
     if (templates.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -309,7 +343,7 @@ export function createTemplateCard(template, isDefault = false) {
 
     // Build full exercise list as bullet points
     const exerciseList =
-        exercisesArray.map((ex) => `<li>${getExerciseName(ex)}</li>`).join('') || '<li>No exercises</li>';
+        exercisesArray.map((ex) => `<li>${escapeHtml(getExerciseName(ex))}</li>`).join('') || '<li>No exercises</li>';
 
     // Use template.id for custom templates, template.day for default templates
     const templateId = template.id || template.day;
@@ -317,9 +351,9 @@ export function createTemplateCard(template, isDefault = false) {
 
     card.innerHTML = `
         <div class="template-header">
-            <h4>${templateName}</h4>
+            <h4>${escapeHtml(templateName)}</h4>
             <div class="template-meta">
-                <span class="template-category">${getWorkoutCategory(templateName)}</span>
+                <span class="template-category">${escapeHtml(getWorkoutCategory(templateName))}</span>
                 <small class="template-source">${isDefault ? 'Global' : 'User'}</small>
             </div>
         </div>
@@ -330,22 +364,22 @@ export function createTemplateCard(template, isDefault = false) {
             </ul>
         </div>
         <div class="template-actions">
-            <button class="btn btn-primary btn-small" onclick="useTemplateFromManagement('${templateId}', ${isDefault})">
+            <button class="btn btn-primary btn-small" data-action="useTemplateFromManagement" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
                 <i class="fas fa-play"></i> Use Today
             </button>
-            <button class="btn btn-secondary btn-small" onclick="editTemplate('${templateId}', ${isDefault})">
+            <button class="btn btn-secondary btn-small" data-action="editTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
                 <i class="fas fa-edit"></i> Edit
             </button>
             ${
                 template.overridesDefault
                     ? `
-                <button class="btn btn-warning btn-small" onclick="resetToDefault('${template.overridesDefault}')">
+                <button class="btn btn-warning btn-small" data-action="resetToDefault" data-template-id="${escapeAttr(template.overridesDefault)}">
                     <i class="fas fa-undo"></i> Reset
                 </button>
             `
                     : ''
             }
-            <button class="btn btn-danger btn-small" onclick="deleteTemplate('${templateId}', ${isDefault})">
+            <button class="btn btn-danger btn-small" data-action="deleteTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
                 <i class="fas fa-${isDefault ? 'eye-slash' : 'trash'}"></i> ${isDefault ? 'Hide' : 'Delete'}
             </button>
         </div>
@@ -526,13 +560,13 @@ function generateWorkoutPreviewHtml(workout) {
             html += `
                 <div class="exercise-preview-item">
                     <div class="exercise-preview-info">
-                        <span class="exercise-name">${exerciseName}</span>
+                        <span class="exercise-name">${escapeHtml(exerciseName)}</span>
                         <span class="exercise-details">
                             ${exercise.sets || 3} sets × ${exercise.reps || 10} reps
                             ${exercise.weight ? ` @ ${exercise.weight} lbs` : ''}
                         </span>
                     </div>
-                    ${exercise.bodyPart ? `<span class="exercise-body-part">${exercise.bodyPart}</span>` : ''}
+                    ${exercise.bodyPart ? `<span class="exercise-body-part">${escapeHtml(exercise.bodyPart)}</span>` : ''}
                 </div>
             `;
         });
@@ -569,6 +603,8 @@ export function closeWorkoutPreviewModal() {
 function renderWorkoutCards(workouts) {
     const container = document.getElementById('workout-cards-container');
     if (!container) return;
+
+    setupTemplateDelegation(container);
 
     if (workouts.length === 0) {
         container.innerHTML = `
@@ -609,18 +645,18 @@ function createWorkoutCard(workout) {
 
     card.innerHTML = `
         <div class="workout-header">
-            <h3>${workoutName}</h3>
-            <span class="workout-category">${getWorkoutCategory(workoutName)}</span>
+            <h3>${escapeHtml(workoutName)}</h3>
+            <span class="workout-category">${escapeHtml(getWorkoutCategory(workoutName))}</span>
         </div>
         <div class="workout-preview">
             <div class="exercise-count">${exerciseCount} exercises</div>
-            <div class="exercise-list">${exerciseNames}${moreText}</div>
+            <div class="exercise-list">${escapeHtml(exerciseNames)}${escapeHtml(moreText)}</div>
         </div>
         <div class="workout-actions">
-            <button class="btn btn-primary" onclick="window.startWorkout('${workoutName}')">
+            <button class="btn btn-primary" data-action="startWorkout" data-workout="${escapeAttr(workoutName)}">
                 <i class="fas fa-play"></i> Start Workout
             </button>
-            <button class="btn btn-secondary" onclick="previewWorkout('${workoutName}')">
+            <button class="btn btn-secondary" data-action="previewWorkout" data-workout="${escapeAttr(workoutName)}">
                 <i class="fas fa-eye"></i> Preview
             </button>
         </div>
@@ -768,7 +804,7 @@ function createBasicExerciseItem(exercise, index) {
 
     item.innerHTML = `
         <div class="exercise-info">
-            <span class="exercise-name">${getExerciseName(exercise)}</span>
+            <span class="exercise-name">${escapeHtml(getExerciseName(exercise))}</span>
             <span class="exercise-details">
                 ${exercise.sets || 3} sets × ${exercise.reps || 10} reps @ ${exercise.weight || 50} lbs
             </span>

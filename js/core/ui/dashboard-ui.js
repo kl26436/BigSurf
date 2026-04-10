@@ -233,7 +233,7 @@ async function checkForInProgressWorkout() {
 }
 
 // Dashboard state for expanded sections
-let dashboardExpandedSections = {
+const dashboardExpandedSections = {
     insights: false,
     badges: false,
     prs: false,

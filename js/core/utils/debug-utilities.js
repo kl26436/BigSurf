@@ -4,6 +4,7 @@
 import { AppState } from './app-state.js';
 import { showNotification } from '../ui/ui-helpers.js';
 import { loadExerciseHistory } from '../data/data-manager.js';
+import { getDateString } from './date-helpers.js';
 
 // ===================================================================
 // DEBUG FUNCTIONS
@@ -72,14 +73,10 @@ export async function debugWeeklyStats() {
         startOfWeek.setDate(today.getDate() - dayOfWeek);
         startOfWeek.setHours(0, 0, 0, 0);
 
-        const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
+        const startOfWeekStr = getDateString(startOfWeek);
 
         console.log('🔍 WEEKLY STATS DEBUG:');
-        console.log(
-            'Today:',
-            today.toISOString().split('T')[0],
-            '(' + today.toLocaleDateString('en-US', { weekday: 'long' }) + ')'
-        );
+        console.log('Today:', getDateString(today), '(' + today.toLocaleDateString('en-US', { weekday: 'long' }) + ')');
         console.log(
             'Start of week:',
             startOfWeekStr,
@@ -376,7 +373,7 @@ export function debugLocalStorage() {
 
         // Check current storage usage
         let totalSize = 0;
-        for (let key in localStorage) {
+        for (const key in localStorage) {
             if (Object.hasOwn(localStorage, key)) {
                 totalSize += localStorage[key].length + key.length;
             }
@@ -730,7 +727,7 @@ export async function mergeDuplicateExercises() {
         const workoutsSnapshot = await getDocs(workoutsRef);
 
         let mergeCount = 0;
-        let workoutsUpdated = 0;
+        const workoutsUpdated = 0;
 
         for (const [name, exercises] of Object.entries(exercisesByName)) {
             if (exercises.length <= 1) continue;
@@ -751,7 +748,7 @@ export async function mergeDuplicateExercises() {
                 // Check each workout for references to this duplicate
                 for (const workoutDoc of workoutsSnapshot.docs) {
                     const workoutData = workoutDoc.data();
-                    let needsUpdate = false;
+                    const needsUpdate = false;
                     const updates = {};
 
                     // Check exerciseNames

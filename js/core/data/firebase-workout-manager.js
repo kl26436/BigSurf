@@ -18,7 +18,13 @@ import {
 } from './firebase-config.js';
 import { writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { showNotification } from '../ui/ui-helpers.js';
-import { sanitizeString, validateExerciseData, validateEquipmentData } from '../utils/validation.js';
+import {
+    sanitizeString,
+    validateExerciseData,
+    validateEquipmentData,
+    validateTemplateData,
+    validateLocationData,
+} from '../utils/validation.js';
 
 export class FirebaseWorkoutManager {
     constructor(appState) {
@@ -401,6 +407,8 @@ export class FirebaseWorkoutManager {
             throw new Error('Must be signed in to save custom exercises');
         }
 
+        exerciseData = validateExerciseData(exerciseData) || exerciseData;
+
         try {
             // Check for existing exercise with same name (to prevent duplicates)
             if (!isEditing) {
@@ -461,8 +469,14 @@ export class FirebaseWorkoutManager {
             throw new Error('Must be signed in to delete custom exercises');
         }
 
-        const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'customExercises', exerciseId);
-        await deleteDoc(docRef);
+        try {
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'customExercises', exerciseId);
+            await deleteDoc(docRef);
+        } catch (error) {
+            console.error('❌ Error deleting custom exercise:', error);
+            showNotification('Failed to delete exercise', 'error');
+            throw error;
+        }
     }
 
     async getDefaultExercisesOnly() {
@@ -625,7 +639,7 @@ export class FirebaseWorkoutManager {
             const defaultTemplates = await this.getGlobalDefaultTemplates();
 
             // Load user customs and overrides (only if signed in)
-            let customTemplates = [];
+            const customTemplates = [];
             const overriddenDefaultIds = new Set();
 
             if (this.appState.currentUser) {
@@ -697,7 +711,7 @@ export class FirebaseWorkoutManager {
             throw new Error('User must be signed in to save workout templates');
         }
 
-        if (templateData.name) templateData.name = sanitizeString(templateData.name, 200);
+        templateData = validateTemplateData(templateData) || templateData;
 
         try {
             const templateId = templateData.id || templateData.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
@@ -733,6 +747,8 @@ export class FirebaseWorkoutManager {
         if (!this.appState.currentUser) {
             throw new Error('User must be signed in to update workout templates');
         }
+
+        templateData = validateTemplateData(templateData) || templateData;
 
         try {
             const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'workoutTemplates', templateId);
@@ -1077,7 +1093,7 @@ export class FirebaseWorkoutManager {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 // Migrate from single location to locations array if needed
-                let locations = data.locations || [];
+                const locations = data.locations || [];
                 if (data.location && !locations.includes(data.location)) {
                     locations.push(data.location);
                 }
@@ -1107,6 +1123,8 @@ export class FirebaseWorkoutManager {
         if (!this.appState.currentUser) {
             throw new Error('Must be signed in to save location');
         }
+
+        locationData = validateLocationData(locationData) || locationData;
 
         try {
             const locationId = locationData.id || `location_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

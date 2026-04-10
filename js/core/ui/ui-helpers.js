@@ -17,7 +17,6 @@ export function escapeAttr(text) {
 export function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.setAttribute('role', 'alert');
-    notification.setAttribute('aria-live', 'polite');
     notification.style.cssText = `
         position: fixed;
         top: 20px;
@@ -36,11 +35,12 @@ export function showNotification(message, type = 'info') {
     notification.innerHTML = `
         <div style="display: flex; align-items: center; gap: 0.5rem;">
             <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-            <span>${message}</span>
+            <span>${escapeHtml(message)}</span>
         </div>
     `;
 
-    document.body.appendChild(notification);
+    const container = document.getElementById('notifications-container') || document.body;
+    container.appendChild(notification);
 
     setTimeout(() => {
         notification.style.animation = 'slideUp 0.3s ease';
