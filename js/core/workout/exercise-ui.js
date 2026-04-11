@@ -264,6 +264,14 @@ function reorderExercisesByCompletion(container) {
 
     completed.forEach(card => fragment.appendChild(card));
     container.appendChild(fragment);
+
+    // Auto-scroll to the next incomplete exercise
+    requestAnimationFrame(() => {
+        const next = container.querySelector('.exercise-card:not(.completed)');
+        if (next) {
+            next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
 }
 
 /**

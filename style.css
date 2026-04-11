@@ -3866,6 +3866,14 @@ input[type='number'] {
 /* Workout Selector Page */
 #workout-selector {
     padding: var(--pad-page);
+    padding-top: 0; /* Header handles its own top padding */
+}
+#workout-selector .section-header-row {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg-app);
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
 }
 #workout-selector .section-header {
     margin-bottom: 24px;
@@ -4070,8 +4078,7 @@ dialog.modal:not([open]) {
 #template-selection-modal > .modal-content {
     max-height: 100vh; /* fallback */
     max-height: 100dvh;
-    min-height: 100vh; /* fallback */
-    min-height: 100dvh;
+    /* min-height removed (Phase 1.1) — only outermost wrapper should set viewport height */
     border-radius: 0;
 }
 
@@ -4085,6 +4092,92 @@ dialog.modal:not([open]) {
 /* Equipment editor section appears above exercise modal */
 #equipment-editor-section {
     z-index: 1150;
+}
+
+/* Equipment Reassignment Modal */
+.reassign-header-info {
+    margin-bottom: 8px;
+}
+.reassign-current {
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+.reassign-current .text-muted {
+    margin-right: 4px;
+}
+.reassign-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    margin-top: 8px;
+}
+.reassign-exercise-option {
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s ease;
+}
+.reassign-exercise-option:active {
+    transform: scale(0.98);
+}
+.reassign-exercise-option.selected {
+    border-color: var(--primary);
+    background: rgba(29, 211, 176, 0.06);
+}
+.reassign-exercise-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.reassign-exercise-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.reassign-impact {
+    padding: 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+}
+.reassign-impact p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+.reassign-progress {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    position: relative;
+}
+.reassign-progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+.reassign-progress-text {
+    display: block;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+.reassign-confirm-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+.reassign-confirm-actions .btn {
+    flex: 1;
 }
 
 /* Workout Detail Modal */
@@ -4269,7 +4362,8 @@ dialog.modal:not([open]) {
 .calendar-legend {
     display: flex;
     justify-content: center;
-    gap: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
     padding: 8px 0 4px;
     font-size: 0.7rem;
     color: var(--text-muted);
@@ -4286,7 +4380,13 @@ dialog.modal:not([open]) {
     display: inline-block;
 }
 .legend-dot-completed {
-    background: var(--primary);
+    background: var(--success);
+}
+.legend-dot-incomplete {
+    background: var(--warning);
+}
+.legend-dot-cancelled {
+    background: var(--text-muted);
 }
 .legend-dot-today {
     background: transparent;

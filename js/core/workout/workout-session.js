@@ -381,9 +381,6 @@ export function showWorkoutSummary(workoutData, newPRs = []) {
 
             <div class="completion-actions">
                 <button class="btn btn-primary btn-full" id="completion-done-btn">Done</button>
-                <button class="btn-text-small" id="completion-save-template-btn">
-                    <i class="fas fa-bookmark"></i> Save as Template
-                </button>
             </div>
         </div>
     `;
@@ -408,14 +405,7 @@ export function showWorkoutSummary(workoutData, newPRs = []) {
         navigateTo('dashboard');
     });
 
-    // Save as template handler
-    document.getElementById('completion-save-template-btn')?.addEventListener('click', () => {
-        closeModal('workout-completion-modal');
-        if (window.saveWorkoutAsTemplate) {
-            window.saveWorkoutAsTemplate(workoutData);
-        }
-        navigateTo('dashboard');
-    });
+    // Save as Template is available via the workout overflow menu (Phase 6.3)
 }
 
 function showSaveAsTemplatePrompt(workoutData) {

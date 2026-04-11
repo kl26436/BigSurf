@@ -8,7 +8,7 @@ import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
 import { getDateString } from '../utils/date-helpers.js';
-import { Config } from '../utils/config.js';
+import { Config, CATEGORY_COLORS, getCategoryIcon } from '../utils/config.js';
 import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
@@ -386,7 +386,7 @@ async function getTodaysCompletedWorkout() {
  * Render weekly goal section with progress ring and stats
  */
 function renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats) {
-    const percentage = Math.min((weekCount / weeklyGoal) * 100, 100);
+    const percentage = weeklyGoal > 0 ? Math.min((weekCount / weeklyGoal) * 100, 100) : 0;
     const radius = 52;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
@@ -971,16 +971,7 @@ async function getSuggestedWorkoutsForToday() {
  * Render suggested workouts section (new design with completion status)
  */
 // Category color mapping for workout cards
-const CATEGORY_COLORS = {
-    'Push':     '#4A90D9',
-    'Pull':     '#D94A7A',
-    'Legs':     '#7B4AD9',
-    'Cardio':   '#D9A74A',
-    'Core':     '#4AD9A7',
-    'Arms':     '#D96A4A',
-    'Full Body':'#4AD9D9',
-    'Other':    '#1dd3b0',
-};
+// CATEGORY_COLORS is now imported from config.js
 
 function renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes = [], inProgressWorkoutType = null) {
     if (!suggestedWorkouts || suggestedWorkouts.length === 0) {
