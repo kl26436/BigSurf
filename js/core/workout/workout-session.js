@@ -135,6 +135,8 @@ export async function startWorkout(workoutType) {
         exercises: {},
         version: '2.0',
         location: getSessionLocation() || null,
+        templateId: workout.id || null,
+        templateIsDefault: workout.isDefault || false,
     };
 
     // Initialize exercise units
@@ -240,18 +242,22 @@ export async function completeWorkout() {
         console.error('Error saving completed workout:', err);
     });
 
-    // Process workout for PRs in background — ONLY for new workouts, not edits
+    // Process workout for PRs — ONLY for new workouts, not edits
     const savedDataSnapshot = JSON.parse(JSON.stringify(AppState.savedData));
+    let newPRs = [];
     if (!isEditingHistorical) {
-        import('../features/pr-tracker.js').then(({ PRTracker }) => {
-            PRTracker.processWorkoutForPRs(savedDataSnapshot);
-        }).catch(err => console.error('Error processing PRs:', err));
+        try {
+            const { PRTracker } = await import('../features/pr-tracker.js');
+            newPRs = await PRTracker.processWorkoutForPRs(savedDataSnapshot) || [];
+        } catch (err) {
+            console.error('Error processing PRs:', err);
+        }
     }
 
-    // Capture workout data for "Save as Template" before reset clears it
+    // Capture workout data for summary and template before reset clears it
     const completedWorkoutData = savedDataSnapshot;
 
-    // Reset state BEFORE showing dashboard (critical order!)
+    // Reset state BEFORE showing summary (critical order!)
     AppState.reset();
     AppState.clearTimers();
     stopActiveWorkoutRestTimer();
@@ -267,34 +273,179 @@ export async function completeWorkout() {
     // Reset buttons to normal mode
     updateWorkoutButtonsForEditMode(false);
 
-    // Show dashboard immediately
-    navigateTo('dashboard');
-
-    // Stash completed workout for "Save as Template" prompt
+    // Show completion summary modal (or go to dashboard for historical edits)
     if (!isEditingHistorical) {
         window._lastCompletedWorkout = completedWorkoutData;
-        showSaveAsTemplatePrompt(completedWorkoutData);
+        showWorkoutSummary(completedWorkoutData, newPRs);
+    } else {
+        navigateTo('dashboard');
     }
+}
+
+/**
+ * Show workout completion summary modal with stats, PRs, and notes
+ */
+export function showWorkoutSummary(workoutData, newPRs = []) {
+    const modal = document.getElementById('workout-completion-modal');
+    const content = document.getElementById('workout-completion-content');
+    if (!modal || !content) {
+        // Fallback to dashboard if modal not found
+        navigateTo('dashboard');
+        return;
+    }
+
+    // Calculate stats
+    let totalSets = 0;
+    let totalVolume = 0;
+    let exerciseCount = 0;
+    if (workoutData.exercises) {
+        exerciseCount = Object.keys(workoutData.exercises).length;
+        Object.values(workoutData.exercises).forEach(ex => {
+            if (ex.sets) {
+                ex.sets.forEach(s => {
+                    if (s.reps && s.weight) {
+                        totalSets++;
+                        totalVolume += s.reps * s.weight;
+                    }
+                });
+            }
+        });
+    }
+
+    // Format duration
+    const duration = workoutData.totalDuration || 0;
+    const dMin = Math.floor(duration / 60);
+    const durationStr = dMin >= 60
+        ? `${Math.floor(dMin / 60)}h ${dMin % 60}m`
+        : `${dMin}m`;
+
+    // Format volume
+    const volumeStr = totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : `${totalVolume}`;
+
+    // PR section
+    let prsHtml = '';
+    if (newPRs && newPRs.length > 0) {
+        prsHtml = `
+            <div class="completion-prs">
+                <h3><i class="fas fa-trophy" style="color: #ffd700;"></i> New Personal Records!</h3>
+                ${newPRs.map(pr => `
+                    <div class="completion-pr-item">
+                        <strong>${escapeHtml(pr.exercise)}</strong>: ${pr.weight} ${pr.unit} &times; ${pr.reps}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    content.innerHTML = `
+        <div class="completion-summary">
+            <div class="completion-header">
+                <i class="fas fa-check-circle" style="color: var(--success); font-size: 2.5rem;"></i>
+                <h2>Workout Complete!</h2>
+                <p class="completion-workout-name">${escapeHtml(workoutData.workoutType || 'Workout')}</p>
+            </div>
+
+            <div class="completion-stats-grid">
+                <div class="completion-stat">
+                    <span class="completion-stat-value">${durationStr}</span>
+                    <span class="completion-stat-label">Duration</span>
+                </div>
+                <div class="completion-stat">
+                    <span class="completion-stat-value">${totalSets}</span>
+                    <span class="completion-stat-label">Sets</span>
+                </div>
+                <div class="completion-stat">
+                    <span class="completion-stat-value">${volumeStr}</span>
+                    <span class="completion-stat-label">Volume</span>
+                </div>
+                <div class="completion-stat">
+                    <span class="completion-stat-value">${exerciseCount}</span>
+                    <span class="completion-stat-label">Exercises</span>
+                </div>
+            </div>
+
+            ${prsHtml}
+
+            <div class="completion-notes-section">
+                <label for="workout-notes">How did it feel?</label>
+                <textarea id="workout-notes" placeholder="Great session, felt strong..." rows="2"></textarea>
+            </div>
+
+            <div class="completion-actions">
+                <button class="btn btn-primary btn-full" id="completion-done-btn">Done</button>
+                <button class="btn-text-small" id="completion-save-template-btn">
+                    <i class="fas fa-bookmark"></i> Save as Template
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Open modal
+    openModal('workout-completion-modal');
+
+    // Done button handler
+    document.getElementById('completion-done-btn')?.addEventListener('click', async () => {
+        // Save notes if provided
+        const notesField = document.getElementById('workout-notes');
+        if (notesField?.value && workoutData.workoutId) {
+            try {
+                const { doc, db, updateDoc } = await import('../data/firebase-config.js');
+                const workoutRef = doc(db, 'users', AppState.currentUser?.uid, 'workouts', workoutData.workoutId);
+                await updateDoc(workoutRef, { workoutNotes: notesField.value });
+            } catch (err) {
+                console.error('Error saving workout notes:', err);
+            }
+        }
+        closeModal('workout-completion-modal');
+        navigateTo('dashboard');
+    });
+
+    // Save as template handler
+    document.getElementById('completion-save-template-btn')?.addEventListener('click', () => {
+        closeModal('workout-completion-modal');
+        if (window.saveWorkoutAsTemplate) {
+            window.saveWorkoutAsTemplate(workoutData);
+        }
+        navigateTo('dashboard');
+    });
 }
 
 function showSaveAsTemplatePrompt(workoutData) {
     const workoutName = escapeHtml(workoutData.workoutType || 'Workout');
+    const canUpdate = workoutData.templateId && !workoutData.templateIsDefault;
+
     const banner = document.createElement('div');
     banner.className = 'save-template-banner';
     banner.innerHTML = `
-        <span>Save "${workoutName}" as a template?</span>
-        <button class="btn btn-primary btn-small" id="save-as-template-btn">
-            <i class="fas fa-bookmark"></i> Save as Template
-        </button>
-        <button class="btn-dismiss" id="dismiss-template-banner" aria-label="Dismiss">
-            <i class="fas fa-times"></i>
-        </button>
+        <span>${canUpdate ? `Update "${workoutName}" template?` : `Save "${workoutName}" as a template?`}</span>
+        <div class="save-template-actions">
+            ${canUpdate ? `
+                <button class="btn btn-primary btn-small" id="update-template-btn">
+                    <i class="fas fa-sync-alt"></i> Update
+                </button>
+                <button class="btn btn-secondary btn-small" id="save-as-template-btn">
+                    <i class="fas fa-plus"></i> Save New
+                </button>
+            ` : `
+                <button class="btn btn-primary btn-small" id="save-as-template-btn">
+                    <i class="fas fa-bookmark"></i> Save
+                </button>
+            `}
+            <button class="btn-dismiss" id="dismiss-template-banner" aria-label="Dismiss">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
     `;
 
     const dashboard = document.getElementById('dashboard');
     if (dashboard) {
         dashboard.prepend(banner);
     }
+
+    document.getElementById('update-template-btn')?.addEventListener('click', () => {
+        banner.remove();
+        updateExistingTemplate(workoutData);
+    });
 
     document.getElementById('save-as-template-btn')?.addEventListener('click', () => {
         banner.remove();
@@ -308,7 +459,63 @@ function showSaveAsTemplatePrompt(workoutData) {
     });
 
     // Auto-dismiss after 15 seconds
-    setTimeout(() => banner.remove(), 15000);
+    setTimeout(() => {
+        if (banner.parentNode) banner.remove();
+    }, 15000);
+}
+
+async function updateExistingTemplate(workoutData) {
+    if (!workoutData.templateId || !AppState.currentUser) return;
+
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const workoutManager = new FirebaseWorkoutManager(AppState);
+
+        // Build updated template from actual workout performance
+        const exercises = (workoutData.originalWorkout?.exercises || []).map((ex, i) => {
+            const key = `exercise_${i}`;
+            const actual = workoutData.exercises?.[key];
+            const name = ex.machine || ex.name || workoutData.exerciseNames?.[key] || 'Unknown';
+
+            let sets = ex.sets || 3;
+            let reps = ex.reps || 10;
+            let weight = ex.weight || 0;
+
+            // Use actual performance data if available
+            if (actual?.sets?.length > 0) {
+                sets = actual.sets.filter(s => s && (s.reps || s.weight)).length || sets;
+                const lastSet = actual.sets[actual.sets.length - 1];
+                if (lastSet?.reps) reps = lastSet.reps;
+                if (lastSet?.weight) weight = lastSet.weight;
+            }
+
+            return {
+                machine: name,
+                name: name,
+                bodyPart: ex.bodyPart || '',
+                equipment: actual?.equipment || ex.equipment || '',
+                equipmentLocation: ex.equipmentLocation || '',
+                sets,
+                reps,
+                weight,
+                video: ex.video || '',
+            };
+        });
+
+        await workoutManager.updateWorkoutTemplate(workoutData.templateId, {
+            exercises,
+            name: workoutData.workoutType,
+            day: workoutData.workoutType,
+        });
+
+        // Refresh cached plans
+        AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
+
+        showNotification('Template updated', 'success');
+    } catch (error) {
+        console.error('Error updating template:', error);
+        showNotification('Failed to update template', 'error');
+    }
 }
 
 export function toggleWorkoutOverflowMenu() {
@@ -332,8 +539,6 @@ export function saveActiveWorkoutAsTemplate() {
     }
 
     // Build a snapshot of the current workout state
-    // AppState.currentWorkout.exercises has the exercise list (may have been modified mid-session)
-    // AppState.savedData has actual sets/reps/weight logged
     const snapshot = {
         workoutType: AppState.savedData.workoutType || AppState.currentWorkout.day || '',
         exercises: AppState.savedData.exercises || {},
@@ -341,10 +546,24 @@ export function saveActiveWorkoutAsTemplate() {
         originalWorkout: {
             exercises: AppState.currentWorkout.exercises || [],
         },
+        templateId: AppState.savedData.templateId || null,
+        templateIsDefault: AppState.savedData.templateIsDefault || false,
     };
 
-    // Merge in any actual performance data so the template uses real numbers
-    if (window.saveWorkoutAsTemplate) {
+    const canUpdate = snapshot.templateId && !snapshot.templateIsDefault;
+
+    if (canUpdate) {
+        // Offer choice: update existing or save new
+        const choice = confirm(
+            `Update the existing "${snapshot.workoutType}" template with your current exercises and weights?\n\n` +
+            `OK = Update existing template\nCancel = Save as a new template`
+        );
+        if (choice) {
+            updateExistingTemplate(snapshot);
+        } else if (window.saveWorkoutAsTemplate) {
+            window.saveWorkoutAsTemplate(snapshot);
+        }
+    } else if (window.saveWorkoutAsTemplate) {
         window.saveWorkoutAsTemplate(snapshot);
     }
 }
