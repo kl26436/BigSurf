@@ -356,6 +356,10 @@ export function setupAuthenticationListener() {
                 console.error('Migration check failed:', migrationError);
             }
 
+            // Load user settings first (affects unit display, rest timer, etc.)
+            const { loadUserSettings, checkOnboarding } = await import('./ui/settings-ui.js');
+            await loadUserSettings();
+
             // Load ALL data FIRST (loadWorkoutPlans loads both plans AND exercises)
             await loadWorkoutPlans(AppState);
 
@@ -393,6 +397,9 @@ export function setupAuthenticationListener() {
                     debugLog('📊 Calling showDashboard...');
                     await showDashboard();
                     debugLog('📊 Dashboard should be visible now');
+
+                    // Show onboarding if first login
+                    checkOnboarding();
                 } catch (e) {
                     console.error('❌ Error showing dashboard:', e);
                     // Fallback to window.navigateTo if available

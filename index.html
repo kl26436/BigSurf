@@ -930,7 +930,7 @@
             <!-- Rest Timer (if needed) -->
             <div id="rest-timer" class="rest-timer hidden">
                 <div class="timer-display">
-                    <span id="timer-countdown">0:00</span>
+                    <span id="timer-countdown" aria-live="polite">0:00</span>
                 </div>
                 <div class="timer-controls">
                     <button id="pause-rest-btn" class="btn btn-secondary" onclick="toggleRestTimer()" aria-label="Pause rest timer">
@@ -1100,7 +1100,7 @@
         </dialog>
 
         <!-- Exercise Modal -->
-        <dialog id="exercise-modal" class="modal">
+        <dialog id="exercise-modal" class="modal" aria-modal="true" aria-label="Exercise detail">
             <div class="modal-content">
                 <div class="modal-header">
                     <h3 id="modal-exercise-title">Exercise</h3>
@@ -1884,13 +1884,18 @@
         </nav>
 
         <!-- Workout Completion Summary Modal -->
-        <dialog id="workout-completion-modal" class="modal">
+        <dialog id="workout-completion-modal" class="modal" aria-modal="true" aria-label="Workout complete">
             <div class="modal-content">
                 <div id="workout-completion-content">
                     <!-- Populated by JavaScript -->
                 </div>
             </div>
         </dialog>
+
+        <!-- Settings Page -->
+        <section id="settings-section" class="app-section hidden">
+            <div id="settings-content"></div>
+        </section>
 
         <!-- More Menu Bottom Sheet -->
         <div id="more-menu" class="more-menu">
@@ -1936,6 +1941,16 @@
                 >
                     <i class="fas fa-map-marker-alt"></i>
                     <span>Manage Locations</span>
+                </button>
+                <button
+                    class="more-menu-item"
+                    onclick="
+                        navigateTo('settings');
+                        closeMoreMenu();
+                    "
+                >
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
                 </button>
                 <div class="more-menu-divider"></div>
                 <div class="more-menu-user">

@@ -33,6 +33,22 @@ function withTimeout(promise, ms = Config.FIREBASE_TIMEOUT_MS) {
 }
 
 /**
+ * Retry a function with exponential backoff.
+ * @param {function} fn - Async function to retry
+ * @param {number} maxRetries - Max retry attempts (default 2)
+ */
+async function withRetry(fn, maxRetries = 2) {
+    for (let i = 0; i <= maxRetries; i++) {
+        try {
+            return await fn();
+        } catch (error) {
+            if (i === maxRetries) throw error;
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+        }
+    }
+}
+
+/**
  * Generate a unique workout ID
  * Format: {date}_{timestamp}_{random}
  */
@@ -134,7 +150,7 @@ export async function saveWorkoutData(state) {
             lastUpdated: new Date().toISOString(),
             version: '3.0', // New schema version
         };
-        await withTimeout(setDoc(docRef, savedDoc));
+        await withRetry(() => withTimeout(setDoc(docRef, savedDoc)));
 
         // CRITICAL: Update window.inProgressWorkout so exercise changes persist on resume
         // This ensures added/deleted exercises are retained when closing and reopening workout
@@ -162,6 +178,16 @@ export function debouncedSaveWorkoutData(state, delay = 400) {
 
 // Session-level cache for last session defaults
 const _lastSessionCache = {};
+
+/**
+ * Clear the last-session cache. Call on workout complete or new workout start
+ * so the next workout picks up fresh defaults.
+ */
+export function clearLastSessionCache() {
+    for (const key of Object.keys(_lastSessionCache)) {
+        delete _lastSessionCache[key];
+    }
+}
 
 /**
  * Gets the most recent completed workout data for a specific exercise.
@@ -362,8 +388,12 @@ export async function loadWorkoutPlans(state) {
         const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(state);
 
-        state.workoutPlans = await workoutManager.getUserWorkoutTemplates();
-        state.exerciseDatabase = await workoutManager.getExerciseLibrary();
+        const [plans, exercises] = await Promise.all([
+            workoutManager.getUserWorkoutTemplates(),
+            workoutManager.getExerciseLibrary(),
+        ]);
+        state.workoutPlans = plans;
+        state.exerciseDatabase = exercises;
     } catch (error) {
         console.error('Error loading data from Firebase:', error);
         showNotification('Error loading workout data from Firebase. Using fallback.', 'warning');
@@ -1070,4 +1100,61 @@ export async function reassignEquipment(equipmentId, equipmentName, oldExerciseN
     }
 
     return { workouts: workoutCount, templates: templateCount };
+}
+
+/**
+ * Export all user workout data as a JSON file download.
+ */
+export async function exportWorkoutData(state) {
+    if (!state.currentUser) {
+        showNotification('Sign in to export data', 'warning');
+        return;
+    }
+
+    try {
+        showNotification('Preparing export...', 'info', 2000);
+
+        const userId = state.currentUser.uid;
+
+        // Load all data in parallel
+        const [workoutsSnap, templatesSnap, equipmentSnap] = await Promise.all([
+            getDocs(collection(db, 'users', userId, 'workouts')),
+            getDocs(collection(db, 'users', userId, 'workoutTemplates')),
+            getDocs(collection(db, 'users', userId, 'equipment')),
+        ]);
+
+        const workouts = [];
+        workoutsSnap.forEach(d => workouts.push({ id: d.id, ...d.data() }));
+
+        const templates = [];
+        templatesSnap.forEach(d => templates.push({ id: d.id, ...d.data() }));
+
+        const equipment = [];
+        equipmentSnap.forEach(d => equipment.push({ id: d.id, ...d.data() }));
+
+        const exportData = {
+            exportDate: new Date().toISOString(),
+            version: '3.0',
+            userId: userId,
+            workouts,
+            templates,
+            equipment,
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const today = new Date().toISOString().split('T')[0];
+        a.download = `bigsurf-export-${today}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showNotification(`Exported ${workouts.length} workouts`, 'success', 2000);
+    } catch (error) {
+        console.error('❌ Export failed:', error);
+        showNotification('Export failed', 'error');
+    }
 }

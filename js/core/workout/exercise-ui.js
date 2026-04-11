@@ -714,9 +714,15 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
             }
         }
 
+        const setType = set.type || 'working';
+        const setTypeLabel = { working: 'W', warmup: 'WU', dropset: 'D', failure: 'F' }[setType] || 'W';
+        const isWarmup = setType === 'warmup';
+
         html += `
-        <tr class="${isSetDone ? 'set-row-completed' : ''}">
-            <td>Set ${i + 1}</td>
+        <tr class="${isSetDone ? 'set-row-completed' : ''} ${isWarmup ? 'set-row-warmup' : ''}">
+            <td>
+                <button class="set-type-btn ${isWarmup ? 'warmup' : ''}" onclick="cycleSetType(${exerciseIndex}, ${i})" title="Set type: ${setType}">${setTypeLabel}</button>
+            </td>
             <td>
                 <input type="number" class="set-input" inputmode="numeric"
                        placeholder="${repsPlaceholder}"
@@ -903,6 +909,7 @@ async function checkSetForPR(exerciseIndex, setIndex) {
         const set = AppState.savedData.exercises[exerciseKey].sets[setIndex];
 
         if (!set || !set.reps || !set.weight) return false;
+        if (set.type === 'warmup') return false;
 
         // Create unique key for this set to track if we've already notified
         const setKey = `${exerciseIndex}-${setIndex}-${set.reps}-${set.weight}`;
@@ -969,6 +976,32 @@ async function checkSetForPR(exerciseIndex, setIndex) {
         console.error('Error checking for PR:', error);
         return false;
     }
+}
+
+/**
+ * Cycle set type: working → warmup → dropset → failure → working
+ */
+export function cycleSetType(exerciseIndex, setIndex) {
+    const exerciseKey = `exercise_${exerciseIndex}`;
+    const sets = AppState.savedData.exercises?.[exerciseKey]?.sets;
+    if (!sets || !sets[setIndex]) return;
+
+    const types = ['working', 'warmup', 'dropset', 'failure'];
+    const current = sets[setIndex].type || 'working';
+    const nextIdx = (types.indexOf(current) + 1) % types.length;
+    sets[setIndex].type = types[nextIdx];
+
+    // Re-render the exercise table
+    const exercise = AppState.currentWorkout.exercises[exerciseIndex];
+    const unit = AppState.exerciseUnits[exerciseIndex] || AppState.globalUnit;
+    const content = document.getElementById('exercise-content');
+    if (content && exercise) {
+        generateExerciseTable(exercise, exerciseIndex, unit).then(html => {
+            content.innerHTML = html;
+        });
+    }
+
+    debouncedSaveWorkoutData(AppState);
 }
 
 export async function updateSet(exerciseIndex, setIndex, field, value) {

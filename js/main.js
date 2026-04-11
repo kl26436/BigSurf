@@ -8,6 +8,8 @@
 import { AppState } from './core/utils/app-state.js';
 import { getCategoryIcon } from './core/utils/config.js';
 import { startApplication } from './core/app-initialization.js';
+import { updateSetting, onboardingNext, completeOnboarding } from './core/ui/settings-ui.js';
+import { exportWorkoutData } from './core/data/data-manager.js';
 
 // Authentication functions
 import { signIn, signOutUser } from './core/app-initialization.js';
@@ -27,6 +29,7 @@ import {
     closeWorkoutOverflowMenu,
     focusExercise,
     updateSet,
+    cycleSetType,
     addSet,
     deleteSet,
     addSetToExercise,
@@ -313,6 +316,7 @@ window.startWorkoutFromModal = function (workoutName) {
 // Exercise Management
 window.focusExercise = focusExercise;
 window.updateSet = updateSet;
+window.cycleSetType = cycleSetType;
 window.addSet = addSet;
 window.deleteSet = deleteSet;
 window.addSetToExercise = addSetToExercise;
@@ -638,6 +642,12 @@ window.handleWorkoutSearch = handleWorkoutSearch;
 // Authentication Functions
 window.signIn = signIn;
 window.signOutUser = signOutUser;
+
+// Settings
+window.updateSetting = updateSetting;
+window.onboardingNext = onboardingNext;
+window.completeOnboarding = completeOnboarding;
+window.exportWorkoutData = exportWorkoutData;
 
 // State access (for debugging — used by ui-helpers.js and error-handler.js in production)
 window.AppState = AppState;

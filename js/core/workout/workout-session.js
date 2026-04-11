@@ -5,7 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml, openModal, closeModal } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, navigateTo } from '../ui/navigation.js';
-import { saveWorkoutData, debouncedSaveWorkoutData } from '../data/data-manager.js';
+import { saveWorkoutData, debouncedSaveWorkoutData, clearLastSessionCache } from '../data/data-manager.js';
 import {
     detectLocation,
     setSessionLocation,
@@ -272,6 +272,7 @@ export async function completeWorkout() {
 
     // Clear in-progress workout since it's now completed
     window.inProgressWorkout = null;
+    clearLastSessionCache();
 
     // Clear editing flags if we were editing a historical workout
     window.editingHistoricalWorkout = false;

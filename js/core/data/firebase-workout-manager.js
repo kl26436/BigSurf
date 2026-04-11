@@ -58,17 +58,13 @@ export class FirebaseWorkoutManager {
                 return await this.getDefaultExercisesOnly();
             }
 
-            // 1. Load base default exercises
-            const defaultExercises = await this.getDefaultExercises();
-
-            // 2. Load user's custom exercises
-            const customExercises = await this.getCustomExercises();
-
-            // 3. Load user's exercise overrides
-            const userOverrides = await this.getUserExerciseOverrides();
-
-            // 4. Load hidden exercises
-            const hiddenExercises = await this.getHiddenExercises();
+            // Load all exercise data in parallel
+            const [defaultExercises, customExercises, userOverrides, hiddenExercises] = await Promise.all([
+                this.getDefaultExercises(),
+                this.getCustomExercises(),
+                this.getUserExerciseOverrides(),
+                this.getHiddenExercises(),
+            ]);
 
             // 5. Apply overrides and filter hidden exercises
             let finalExercises = this.mergeExercisesWithOverrides(defaultExercises, customExercises, userOverrides);

@@ -346,9 +346,10 @@ export async function processWorkoutForPRs(workoutData) {
         const equipment = originalExercise?.equipment || 'Unknown Equipment';
         const bodyPart = originalExercise?.bodyPart || getExerciseBodyPart(exerciseName);
 
-        // Check each set for PRs
+        // Check each set for PRs (skip warmup sets)
         for (const set of exerciseData.sets) {
             if (!set.reps || !set.weight) continue;
+            if (set.type === 'warmup') continue;
 
             const prCheck = checkForNewPR(exerciseName, set.reps, set.weight, equipment);
 
@@ -574,9 +575,10 @@ export async function rebuildPRsFromHistory() {
                     const equipment = originalExercise?.equipment || 'Unknown Equipment';
                     const bodyPart = originalExercise?.bodyPart || getExerciseBodyPart(exerciseName);
 
-                    // Process each set
+                    // Process each set (skip warmup sets)
                     for (const set of exerciseData.sets) {
                         if (!set.reps || !set.weight) continue;
+                        if (set.type === 'warmup') continue;
 
                         // Record PR with correct date and location
                         await recordPR(

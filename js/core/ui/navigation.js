@@ -34,6 +34,7 @@ const SECTION_IDS = [
     'stats-section',
     'exercise-manager-section',
     'location-management-section',
+    'settings-section',
 ];
 
 const FADE_DURATION = 150; // ms, matches CSS transition
@@ -113,6 +114,10 @@ function routeToView(view) {
             showWorkoutManagement();
             break;
 
+        case 'settings':
+            showSettings();
+            break;
+
         default:
             console.warn(`Unknown view: ${view}`);
             showWorkoutSelector();
@@ -170,6 +175,16 @@ function showLocationManagement() {
     if (showManagement) {
         showManagement();
     }
+}
+
+async function showSettings() {
+    const section = document.getElementById('settings-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('more');
+    setHeaderMode('settings');
+    const { renderSettings } = await import('./settings-ui.js');
+    renderSettings();
 }
 
 function openExerciseManager() {

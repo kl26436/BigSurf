@@ -299,7 +299,7 @@ async function renderDashboard() {
 
         // Use uniqueDays to count workout days (not total workouts)
         const weekCount = weeklyStats.uniqueDays || weeklyStats.workouts.length;
-        const weeklyGoal = 5;
+        const weeklyGoal = AppState.settings?.weeklyGoal || 5;
         const completedWorkoutTypes = todaysWorkout ? [todaysWorkout.workoutType] : [];
         const inProgressWorkoutType = inProgressWorkout?.workoutType || null;
 

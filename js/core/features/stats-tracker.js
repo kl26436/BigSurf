@@ -170,7 +170,7 @@ export async function getWeeklyStats() {
 
                 Object.values(data.exercises).forEach((exercise) => {
                     if (exercise.sets && Array.isArray(exercise.sets)) {
-                        workoutSets += exercise.sets.filter((s) => s.reps && s.weight).length;
+                        workoutSets += exercise.sets.filter((s) => s.reps && s.weight && s.type !== 'warmup').length;
                     }
                 });
             }
