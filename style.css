@@ -5475,29 +5475,46 @@ dialog.modal:not([open]) {
 /* ===========================================
    32. MORE MENU (Bottom Nav Enhancement)
    =========================================== */
+.bottom-sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    margin: 8px auto 12px;
+    cursor: grab;
+}
 .more-menu-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: 740;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.more-menu-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
 }
 .more-menu {
     position: fixed;
-    bottom: 70px;
-    right: 16px;
+    bottom: 0;
+    left: 0;
+    right: 0;
     background: var(--bg-surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    min-width: 200px;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     z-index: 750;
     box-shadow: var(--shadow-lg);
     overflow: hidden;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    max-height: 70vh;
+    overflow-y: auto;
 }
-.more-menu.hidden {
-    display: none;
-}
-.more-menu-overlay.hidden {
-    display: none;
+.more-menu.visible {
+    transform: translateY(0);
 }
 .more-menu-content {
     padding: 8px 0;

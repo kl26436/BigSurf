@@ -442,16 +442,22 @@
                             <button class="btn-workout-action btn-add" onclick="addExerciseToActiveWorkout()">
                                 <i class="fas fa-plus"></i> Add
                             </button>
-                            <button id="btn-reorder" class="btn-workout-action btn-reorder" onclick="toggleReorderMode()">
-                                <i class="fas fa-arrows-alt-v"></i> Reorder
+                            <button class="btn-workout-action btn-more" onclick="toggleWorkoutOverflowMenu()" aria-label="More options">
+                                <i class="fas fa-ellipsis-h"></i> More
                             </button>
                             <button class="btn-workout-action btn-finish" onclick="completeWorkout()">
                                 <i class="fas fa-check"></i> Finish
                             </button>
                         </div>
-                        <button class="btn-save-as-template" onclick="saveActiveWorkoutAsTemplate()">
-                            <i class="fas fa-bookmark"></i> Save as Template
-                        </button>
+                        <!-- Workout overflow menu -->
+                        <div id="workout-overflow-menu" class="workout-overflow-menu hidden">
+                            <button class="workout-overflow-item" onclick="saveActiveWorkoutAsTemplate(); closeWorkoutOverflowMenu();">
+                                <i class="fas fa-bookmark"></i> Save as Template
+                            </button>
+                            <button id="btn-reorder" class="workout-overflow-item" onclick="toggleReorderMode(); closeWorkoutOverflowMenu();">
+                                <i class="fas fa-arrows-alt-v"></i> Reorder Exercises
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Exercise List -->
@@ -1846,8 +1852,9 @@
             </button>
         </nav>
 
-        <!-- More Menu Dropdown -->
-        <div id="more-menu" class="more-menu hidden">
+        <!-- More Menu Bottom Sheet -->
+        <div id="more-menu" class="more-menu">
+            <div class="bottom-sheet-handle" id="more-menu-handle"></div>
             <div class="more-menu-content">
                 <button
                     class="more-menu-item"
@@ -1880,6 +1887,7 @@
                     <span>Stats & Records</span>
                 </button>
                 <button
+                    id="more-menu-locations"
                     class="more-menu-item"
                     onclick="
                         navigateTo('location');
@@ -1906,7 +1914,7 @@
                 </button>
             </div>
         </div>
-        <div id="more-menu-overlay" class="more-menu-overlay hidden" onclick="closeMoreMenu()"></div>
+        <div id="more-menu-overlay" class="more-menu-overlay" onclick="closeMoreMenu()"></div>
 
         <!-- Force clear old service worker cache on version mismatch -->
         <script>

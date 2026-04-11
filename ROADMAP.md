@@ -4086,6 +4086,15 @@ After each phase, verify on a 375px mobile viewport:
 - [ ] Equipment reassignment: equipment document `exerciseTypes` array updated
 - [ ] Equipment reassignment: progress indicator shown during batch update
 - [ ] Equipment reassignment: confirmation modal shows affected workout count before committing
+- [ ] Form videos: equipment-specific video shows when available (priority 1)
+- [ ] Form videos: exercise default video shows as fallback when no equipment video (priority 2)
+- [ ] Form videos: "No video" state shows "Add form video" prompt (priority 3)
+- [ ] Form videos: source label shows "Video for [equipment]" vs "Default [exercise] form"
+- [ ] Form videos: per-exercise video URLs editable in equipment editor
+- [ ] Form videos: quick "Add video" prompt during active workout (dismissible, once per combo per session)
+- [ ] Form videos: YouTube URL conversion works for watch, shorts, and youtu.be formats
+- [ ] Form videos: video badge icon appears on exercise cards that have a video available
+- [ ] Form videos: hiding video stops iframe playback (src cleared)
 
 ### Design System & Visual Consistency (Phase 7A)
 - [ ] All design tokens defined in `tokens.css` (font scale, radius scale, category colors, badge colors, animation durations, z-index)

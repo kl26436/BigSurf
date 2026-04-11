@@ -405,9 +405,9 @@ export function getWorkoutHistory(appState) {
                 // UPDATED: Remove the old onclick and add data attributes instead
                 html += `<div class="${dayClass}" data-date="${dateStr}"`;
 
-                // Add cursor pointer style if there's a workout
+                // Add tappable class for days with workouts
                 if (workout && isCurrentMonth) {
-                    html += ` style="cursor: pointer;"`;
+                    dayClass += ' has-workout';
                 }
 
                 html += `>`;
@@ -418,11 +418,8 @@ export function getWorkoutHistory(appState) {
 
                     if (workout) {
                         html += this.getWorkoutIcon(workout);
-                    } else if (isCurrentMonth && !isFutureDate && !isBeforeFirstWorkout && !isToday) {
-                        // Only show red X for past dates that are AFTER the first workout date
-                        html += `<div class="no-workout">
-                    <i class="fas fa-times"></i>
-                </div>`;
+                    } else {
+                        // Rest day — no icon, just the day number (neutral, no negative reinforcement)
                     }
                 }
                 // Other month days are completely empty
@@ -432,6 +429,19 @@ export function getWorkoutHistory(appState) {
             }
 
             calendarGrid.innerHTML = html;
+
+            // Add calendar legend below the grid
+            let legendEl = document.getElementById('calendar-legend');
+            if (!legendEl) {
+                legendEl = document.createElement('div');
+                legendEl.id = 'calendar-legend';
+                legendEl.className = 'calendar-legend';
+                calendarGrid.parentNode.insertBefore(legendEl, calendarGrid.nextSibling);
+            }
+            legendEl.innerHTML = `
+                <span class="legend-item"><span class="legend-dot legend-dot-completed"></span> Workout</span>
+                <span class="legend-item"><span class="legend-dot legend-dot-today"></span> Today</span>
+            `;
 
             // ADDED: Setup click events after rendering
             this.setupCalendarClickEvents();
@@ -462,7 +472,13 @@ export function getWorkoutHistory(appState) {
                 .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
             if (monthWorkouts.length === 0) {
-                container.innerHTML = '';
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h3>No workouts this month</h3>
+                        <p>Complete a workout and it will show up here.</p>
+                    </div>
+                `;
                 return;
             }
 

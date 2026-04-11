@@ -243,13 +243,18 @@ export function toggleMoreMenu() {
     const moreBtn = document.querySelector('[data-tab="more"]');
 
     if (menu && overlay) {
-        const isHidden = menu.classList.contains('hidden');
-        menu.classList.toggle('hidden', !isHidden);
-        overlay.classList.toggle('hidden', !isHidden);
+        const isVisible = menu.classList.contains('visible');
+        menu.classList.toggle('visible', !isVisible);
+        overlay.classList.toggle('visible', !isVisible);
 
         // Update ARIA state
         if (moreBtn) {
-            moreBtn.setAttribute('aria-expanded', !isHidden);
+            moreBtn.setAttribute('aria-expanded', !isVisible);
+        }
+
+        // Setup drag-to-dismiss on open
+        if (!isVisible) {
+            setupBottomSheetDrag(menu, overlay);
         }
     }
 }
@@ -258,9 +263,55 @@ export function toggleMoreMenu() {
 export function closeMoreMenu() {
     const menu = document.getElementById('more-menu');
     const overlay = document.getElementById('more-menu-overlay');
+    const moreBtn = document.querySelector('[data-tab="more"]');
 
-    if (menu) menu.classList.add('hidden');
-    if (overlay) overlay.classList.add('hidden');
+    if (menu) menu.classList.remove('visible');
+    if (overlay) overlay.classList.remove('visible');
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+}
+
+// Drag-to-dismiss for bottom sheet
+function setupBottomSheetDrag(sheet, overlay) {
+    const handle = sheet.querySelector('.bottom-sheet-handle');
+    if (!handle || handle._dragSetup) return;
+    handle._dragSetup = true;
+
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+
+    handle.addEventListener('touchstart', (e) => {
+        startY = e.touches[0].clientY;
+        isDragging = true;
+        sheet.style.transition = 'none';
+    }, { passive: true });
+
+    handle.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentY = e.touches[0].clientY;
+        const diff = currentY - startY;
+        if (diff > 0) {
+            sheet.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: true });
+
+    handle.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        sheet.style.transition = 'transform 0.3s ease';
+        const diff = currentY - startY;
+        if (diff > 80) {
+            closeMoreMenu();
+        } else {
+            sheet.style.transform = 'translateY(0)';
+        }
+        // Reset transform after close animation
+        setTimeout(() => {
+            if (!sheet.classList.contains('visible')) {
+                sheet.style.transform = '';
+            }
+        }, 300);
+    });
 }
 
 // Show/hide bottom nav based on current page

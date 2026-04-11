@@ -10,6 +10,7 @@ import { AppState } from '../utils/app-state.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { Config } from '../utils/config.js';
 import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
+import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 
 // ===================================================================
 // DASHBOARD DISPLAY
@@ -303,14 +304,44 @@ async function renderDashboard() {
         const completedWorkoutTypes = todaysWorkout ? [todaysWorkout.workoutType] : [];
         const inProgressWorkoutType = inProgressWorkout?.workoutType || null;
 
-        // Build the dashboard - focused on "what to do today" and quick glance stats
-        container.innerHTML = `
-            ${renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats)}
-            ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
-            ${renderDashboardStreakBoxes(streaks)}
-            ${renderDashboardPRsSection(recentPRs)}
-            ${await renderDashboardMiniChart()}
-        `;
+        // Check if user has any workout history
+        const hasWorkouts = streaks && streaks.totalWorkouts > 0;
+
+        if (!hasWorkouts) {
+            // Show welcome empty state for new users
+            container.innerHTML = `
+                <div class="empty-state empty-state--hero">
+                    <i class="fas fa-dumbbell"></i>
+                    <h3>No workouts yet</h3>
+                    <p>Start your first workout to see your progress, streaks, and personal records here.</p>
+                    <button class="btn btn-primary" onclick="navigateTo('workout')">
+                        <i class="fas fa-play"></i> Start Workout
+                    </button>
+                </div>
+                ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
+            `;
+        } else {
+            // Build the dashboard - focused on "what to do today" and quick glance stats
+            container.innerHTML = `
+                ${renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats)}
+                ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
+                ${renderDashboardStreakBoxes(streaks)}
+                ${renderDashboardPRsSection(recentPRs)}
+                ${await renderDashboardMiniChart()}
+            `;
+        }
+
+        // Conditionally hide "Manage Locations" in More menu if no locations exist
+        try {
+            const wm = new FirebaseWorkoutManager(AppState);
+            const locations = await wm.getUserLocations();
+            const locMenuItem = document.getElementById('more-menu-locations');
+            if (locMenuItem) {
+                locMenuItem.classList.toggle('hidden', !locations || locations.length === 0);
+            }
+        } catch (e) {
+            // Non-critical — leave menu item visible on error
+        }
 
         // Event delegation for suggested workout cards
         container.addEventListener('click', (e) => {
