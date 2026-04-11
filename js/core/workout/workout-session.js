@@ -687,17 +687,17 @@ export async function discardInProgressWorkout() {
     try {
         // Store workout info BEFORE clearing variables
         const workoutToDelete = {
-            date: window.inProgressWorkout.date,
+            workoutId: window.inProgressWorkout.workoutId,
             workoutType: window.inProgressWorkout.workoutType,
             userId: AppState.currentUser?.uid,
         };
 
         // DELETE the workout from Firebase FIRST
         try {
-            if (workoutToDelete.userId && workoutToDelete.date) {
+            if (workoutToDelete.userId && workoutToDelete.workoutId) {
                 const { deleteDoc, doc, db } = await import('../data/firebase-config.js');
 
-                const workoutRef = doc(db, 'users', workoutToDelete.userId, 'workouts', workoutToDelete.date);
+                const workoutRef = doc(db, 'users', workoutToDelete.userId, 'workouts', workoutToDelete.workoutId);
                 await deleteDoc(workoutRef);
             }
         } catch (firebaseError) {
@@ -710,8 +710,8 @@ export async function discardInProgressWorkout() {
         // Clear any related UI state
         AppState.reset();
 
-        // Show workout selector
-        showWorkoutSelector();
+        // Stay on dashboard
+        navigateTo('dashboard');
     } catch (error) {
         console.error('Error during discard process:', error);
         alert('Error discarding workout. Please try again.');
