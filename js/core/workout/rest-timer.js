@@ -2,6 +2,7 @@
 // Handles in-modal rest timer functionality during workouts
 
 import { AppState } from '../utils/app-state.js';
+import { Config } from '../utils/config.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import {
     scheduleRestNotification,
@@ -22,7 +23,7 @@ export function toggleModalRestTimer(exerciseIndex) {
 
     if (modalTimer.classList.contains('hidden')) {
         // Start new timer
-        startModalRestTimer(exerciseIndex, 90);
+        startModalRestTimer(exerciseIndex, Config.DEFAULT_REST_TIMER_SECONDS);
     } else {
         // Pause/resume existing timer
         if (modalTimer.timerData && modalTimer.timerData.pause) {
@@ -38,7 +39,7 @@ export function skipModalRestTimer(exerciseIndex) {
     }
 }
 
-function startModalRestTimer(exerciseIndex, duration = 90) {
+function startModalRestTimer(exerciseIndex, duration = Config.DEFAULT_REST_TIMER_SECONDS) {
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
 
     clearModalRestTimer(exerciseIndex);
@@ -68,10 +69,19 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
         scheduleRestNotification(duration, notifExerciseName).catch(() => {}); // Silently fail - local timer still works
     }
 
+    // Header timer element for persistent display
+    const headerTimerEl = document.getElementById('workout-rest-timer');
+    const headerStatEl = document.getElementById('workout-rest-stat');
+
     const updateDisplay = () => {
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
-        timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        timerDisplay.textContent = timeStr;
+
+        // Sync header timer
+        if (headerTimerEl) headerTimerEl.textContent = timeStr;
+        if (headerStatEl) headerStatEl.classList.add('timer-active');
     };
 
     const checkTime = () => {
@@ -91,6 +101,19 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
             timerDisplay.textContent = 'Ready!';
             timerDisplay.style.color = 'var(--success)';
 
+            // Update header timer with "GO!" message
+            if (headerTimerEl) headerTimerEl.textContent = 'GO!';
+            if (headerStatEl) {
+                headerStatEl.classList.remove('timer-active');
+                headerStatEl.classList.add('timer-done');
+            }
+
+            // Reset header after 3 seconds
+            setTimeout(() => {
+                if (headerTimerEl) headerTimerEl.textContent = '--';
+                if (headerStatEl) headerStatEl.classList.remove('timer-done');
+            }, 3000);
+
             // Mark timer as completed in AppState (but don't clear - shows "Ready" on dashboard)
             if (AppState.activeRestTimer) {
                 AppState.activeRestTimer.completed = true;
@@ -101,14 +124,6 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
                 navigator.vibrate([200, 100, 200]);
             }
 
-            // Don't show local notification - server-side push handles it
-            // The push notification is scheduled via Cloud Functions and will arrive
-            // even if the app is backgrounded (on supported devices)
-            // On iOS, the push may only appear when app is foregrounded due to platform limitations
-
-            // Removed in-app notification - timer shows 0:00 which is clear enough
-
-            // *** REMOVED AUTO-HIDE - Timer stays visible until manually dismissed ***
             return;
         }
     };
@@ -157,6 +172,12 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
             modalTimer.classList.add('hidden');
             timerDisplay.style.color = 'var(--primary)';
             modalTimer.timerData = null;
+
+            // Reset header timer
+            if (headerTimerEl) headerTimerEl.textContent = '--';
+            if (headerStatEl) {
+                headerStatEl.classList.remove('timer-active', 'timer-done');
+            }
 
             // Clear AppState timer
             AppState.activeRestTimer = null;
@@ -431,7 +452,23 @@ export function autoStartRestTimer(exerciseIndex, setIndex) {
     const focusedMatch = AppState.focusedExerciseIndex === exerciseIndex;
 
     if (modal && !modalHidden && focusedMatch) {
-        startModalRestTimer(exerciseIndex, 90);
+        startModalRestTimer(exerciseIndex, Config.DEFAULT_REST_TIMER_SECONDS);
+    }
+}
+
+export function skipHeaderRestTimer() {
+    // Skip the active rest timer from the header
+    if (!AppState.activeRestTimer) return;
+    const exerciseIndex = AppState.activeRestTimer.exerciseIndex;
+    const modalTimer = document.getElementById(`modal-rest-timer-${exerciseIndex}`);
+    if (modalTimer?.timerData?.skip) {
+        modalTimer.timerData.skip();
     } else {
+        // Timer modal not mounted — just reset header display
+        const headerTimerEl = document.getElementById('workout-rest-timer');
+        const headerStatEl = document.getElementById('workout-rest-stat');
+        if (headerTimerEl) headerTimerEl.textContent = '--';
+        if (headerStatEl) headerStatEl.classList.remove('timer-active', 'timer-done');
+        AppState.activeRestTimer = null;
     }
 }

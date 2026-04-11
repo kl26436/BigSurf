@@ -2,6 +2,7 @@
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
+import { debugLog } from '../utils/config.js';
 
 export function getWorkoutHistory(appState) {
     const currentHistory = [];
@@ -129,9 +130,9 @@ export function getWorkoutHistory(appState) {
 
         // Core data loading
         async loadHistory() {
-            console.log('🔄 loadHistory called...');
+            debugLog('🔄 loadHistory called...');
             if (!appState.currentUser) {
-                console.log('❌ loadHistory: No user');
+                debugLog('❌ loadHistory: No user');
                 return;
             }
 
@@ -140,7 +141,7 @@ export function getWorkoutHistory(appState) {
                 const workoutManager = new FirebaseWorkoutManager(appState);
 
                 this.currentHistory = await workoutManager.getUserWorkouts();
-                console.log(`📊 loadHistory: Loaded ${this.currentHistory.length} workouts`);
+                debugLog(`📊 loadHistory: Loaded ${this.currentHistory.length} workouts`);
                 this.filteredHistory = [...this.currentHistory];
 
                 // Find the earliest workout date
@@ -168,13 +169,13 @@ export function getWorkoutHistory(appState) {
         },
 
         async loadCalendarWorkouts() {
-            console.log('🔄 loadCalendarWorkouts called...');
+            debugLog('🔄 loadCalendarWorkouts called...');
             if (!appState.currentUser) return;
 
             try {
                 const year = this.currentCalendarDate.getFullYear();
                 const month = this.currentCalendarDate.getMonth();
-                console.log(
+                debugLog(
                     `📅 Loading workouts for ${year}-${month + 1}, currentHistory has ${this.currentHistory.length} workouts`
                 );
 
@@ -338,7 +339,7 @@ export function getWorkoutHistory(appState) {
         },
 
         generateCalendarGrid() {
-            console.log(
+            debugLog(
                 `🔄 generateCalendarGrid called, calendarWorkouts has ${Object.keys(this.calendarWorkouts).length} dates`
             );
             // Enhanced element finding with fallback creation
@@ -1316,9 +1317,9 @@ export function getWorkoutHistory(appState) {
 }
 
 // Delete workout by document ID
-console.log('🗑️ Registering deleteWorkoutById on window...');
+debugLog('🗑️ Registering deleteWorkoutById on window...');
 window.deleteWorkoutById = async function (docId) {
-    console.log('🗑️ deleteWorkoutById called with:', docId);
+    debugLog('🗑️ deleteWorkoutById called with:', docId);
 
     if (!window.workoutHistory) {
         console.error('❌ workoutHistory not initialized');
@@ -1334,7 +1335,7 @@ window.deleteWorkoutById = async function (docId) {
 
     if (confirm(`Delete workout from ${displayDate}? This cannot be undone.`)) {
         try {
-            console.log(`🗑️ Deleting workout: ${docId}`);
+            debugLog(`🗑️ Deleting workout: ${docId}`);
             const { deleteDoc, doc, db } = await import('../data/firebase-config.js');
             const { AppState } = await import('../utils/app-state.js');
 
@@ -1344,10 +1345,10 @@ window.deleteWorkoutById = async function (docId) {
                 return;
             }
 
-            console.log(`🗑️ Calling deleteDoc for users/${AppState.currentUser.uid}/workouts/${docId}`);
+            debugLog(`🗑️ Calling deleteDoc for users/${AppState.currentUser.uid}/workouts/${docId}`);
             const docRef = doc(db, 'users', AppState.currentUser.uid, 'workouts', docId);
             await deleteDoc(docRef);
-            console.log('✅ Firebase delete successful');
+            debugLog('✅ Firebase delete successful');
 
             // Verify the document is actually gone by trying to fetch it from server
             const { getDocs, collection, query, where } = await import('../data/firebase-config.js');
@@ -1361,7 +1362,7 @@ window.deleteWorkoutById = async function (docId) {
                 console.error('❌ Document still exists after delete! Found', snapshot.size, 'docs');
                 showNotification('Delete may not have synced - please refresh', 'warning');
             } else {
-                console.log('✅ Verified: Document no longer exists on server');
+                debugLog('✅ Verified: Document no longer exists on server');
             }
 
             // Close the modal first so user sees immediate feedback
@@ -1375,15 +1376,15 @@ window.deleteWorkoutById = async function (docId) {
             window.workoutHistory.filteredHistory = window.workoutHistory.filteredHistory.filter(
                 (w) => w.id !== docId && w.docId !== docId
             );
-            console.log(
+            debugLog(
                 `🗑️ Removed from local arrays: ${beforeCount} -> ${window.workoutHistory.currentHistory.length}`
             );
 
             // Refresh calendar display with updated local data
-            console.log('🔄 Refreshing calendar display...');
+            debugLog('🔄 Refreshing calendar display...');
             await window.workoutHistory.loadCalendarWorkouts();
             window.workoutHistory.generateCalendarGrid();
-            console.log('✅ Calendar refreshed');
+            debugLog('✅ Calendar refreshed');
 
             showNotification('Workout deleted successfully', 'success');
         } catch (error) {

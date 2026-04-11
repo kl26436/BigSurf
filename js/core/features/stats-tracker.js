@@ -4,78 +4,20 @@
 import { AppState } from '../utils/app-state.js';
 import { db, collection, query, where, getDocs, orderBy, limit } from '../data/firebase-config.js';
 import { getDateString } from '../utils/date-helpers.js';
+import { StreakTracker } from './streak-tracker.js';
 
 // ===================================================================
-// WORKOUT STREAK CALCULATION
+// WORKOUT STREAK CALCULATION (delegated to streak-tracker.js)
 // ===================================================================
 
 /**
  * Calculate current workout streak (consecutive days)
+ * Delegates to StreakTracker.calculateStreaks() which is the canonical implementation.
  * @returns {Promise<number>} Number of consecutive days with workouts
  */
 export async function calculateWorkoutStreak() {
-    if (!AppState.currentUser) return 0;
-
-    try {
-        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        const q = query(
-            workoutsRef,
-            where('completedAt', '!=', null),
-            orderBy('completedAt', 'desc'),
-            limit(100) // Look back at last 100 workouts
-        );
-
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) return 0;
-
-        const workouts = [];
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            workouts.push({
-                date: doc.id, // Document ID is the date (YYYY-MM-DD)
-                completedAt: data.completedAt,
-            });
-        });
-
-        // Sort by date descending
-        workouts.sort((a, b) => b.date.localeCompare(a.date));
-
-        // Check if today has a workout
-        const today = AppState.getTodayDateString();
-        let streak = 0;
-        let currentDate = today;
-
-        for (const workout of workouts) {
-            if (workout.date === currentDate) {
-                streak++;
-                // Move to previous day
-                const date = new Date(currentDate);
-                date.setDate(date.getDate() - 1);
-                currentDate = getDateString(date);
-            } else {
-                // Check if we should continue from yesterday
-                const yesterday = new Date(today);
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayStr = getDateString(yesterday);
-
-                if (streak === 0 && workout.date === yesterdayStr) {
-                    // Start streak from yesterday if no workout today
-                    streak++;
-                    const date = new Date(yesterdayStr);
-                    date.setDate(date.getDate() - 1);
-                    currentDate = getDateString(date);
-                } else {
-                    // Streak broken
-                    break;
-                }
-            }
-        }
-
-        return streak;
-    } catch (error) {
-        console.error('Error calculating workout streak:', error);
-        return 0;
-    }
+    const streaks = await StreakTracker.calculateStreaks();
+    return streaks ? streaks.currentStreak : 0;
 }
 
 // ===================================================================

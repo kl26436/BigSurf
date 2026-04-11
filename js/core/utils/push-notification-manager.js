@@ -7,6 +7,7 @@
 
 import { functions, auth, httpsCallable } from '../data/firebase-config.js';
 import { AppState } from './app-state.js';
+import { debugLog } from './config.js';
 
 // Push subscription for this device
 let pushSubscription = null;
@@ -44,7 +45,7 @@ function urlBase64ToUint8Array(base64String) {
  * Should be called after user signs in and grants notification permission
  */
 export async function initializeFCM() {
-    console.log('🔔 Initializing push notifications...');
+    debugLog('🔔 Initializing push notifications...');
 
     // Check if Push API is supported
     if (!('PushManager' in window)) {
@@ -58,7 +59,7 @@ export async function initializeFCM() {
             try {
                 // Wait for the existing service worker to be ready
                 swRegistration = await navigator.serviceWorker.ready;
-                console.log('✅ Service Worker is ready for push notifications');
+                debugLog('✅ Service Worker is ready for push notifications');
             } catch (swError) {
                 console.error('❌ Service Worker not available:', swError);
                 return false;
@@ -75,18 +76,18 @@ export async function initializeFCM() {
         }
 
         if (Notification.permission !== 'granted') {
-            console.log('📋 Requesting notification permission...');
+            debugLog('📋 Requesting notification permission...');
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
                 console.warn('⚠️ Notification permission not granted');
                 return false;
             }
-            console.log('✅ Notification permission granted');
+            debugLog('✅ Notification permission granted');
         }
 
         // Subscribe to push notifications using Web Push API
         try {
-            console.log('📝 Subscribing to push notifications...');
+            debugLog('📝 Subscribing to push notifications...');
 
             // Check for existing subscription
             pushSubscription = await swRegistration.pushManager.getSubscription();
@@ -97,14 +98,14 @@ export async function initializeFCM() {
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
                 });
-                console.log('✅ New push subscription created');
+                debugLog('✅ New push subscription created');
             } else {
-                console.log('✅ Existing push subscription found');
+                debugLog('✅ Existing push subscription found');
             }
 
             // Convert subscription to JSON for sending to server
             const subscriptionJson = pushSubscription.toJSON();
-            console.log('✅ Push subscription endpoint:', subscriptionJson.endpoint?.substring(0, 50) + '...');
+            debugLog('✅ Push subscription endpoint:', subscriptionJson.endpoint?.substring(0, 50) + '...');
 
             // Save subscription to server
             await saveSubscriptionToServer(subscriptionJson);
@@ -137,7 +138,7 @@ async function saveSubscriptionToServer(subscription) {
     try {
         const saveSubscription = httpsCallable(functions, 'savePushSubscription');
         await saveSubscription({ subscription });
-        console.log('✅ Push subscription saved to server');
+        debugLog('✅ Push subscription saved to server');
     } catch (error) {
         console.error('❌ Error saving push subscription:', error);
     }
@@ -163,7 +164,7 @@ export async function scheduleRestNotification(delaySeconds, exerciseName) {
     await cancelRestNotification();
 
     try {
-        console.log('📅 Scheduling notification for', delaySeconds, 'seconds -', exerciseName);
+        debugLog('📅 Scheduling notification for', delaySeconds, 'seconds -', exerciseName);
         const scheduleNotification = httpsCallable(functions, 'scheduleRestNotification');
 
         const notificationId = `rest_${auth.currentUser.uid}_${Date.now()}`;
@@ -177,7 +178,7 @@ export async function scheduleRestNotification(delaySeconds, exerciseName) {
             exerciseName: exerciseName,
             notificationId: notificationId,
         });
-        console.log('✅ Notification scheduled:', result.data);
+        debugLog('✅ Notification scheduled:', result.data);
 
         if (result.data.success) {
             activeNotificationId = notificationId;

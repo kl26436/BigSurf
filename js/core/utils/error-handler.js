@@ -81,25 +81,36 @@ function handleError(error, userMessage) {
 
     errorLog.push(now);
 
-    // Determine error type and show appropriate message
+    // Determine severity and user-facing message
+    // 'silent' — log only, no toast
+    // 'warn' — subtle dismissible toast
+    // 'error' — prominent toast
     let message = userMessage;
-    let type = 'error';
+    let severity = 'error';
 
     if (error?.code === 'permission-denied') {
-        message = 'Permission denied. Please try signing out and back in.';
-    } else if (error?.code === 'unavailable') {
-        message = 'Cannot connect to server. Check your internet connection.';
-        type = 'warning';
+        message = 'Please sign in again to continue.';
+    } else if (error?.code === 'unavailable' || error?.message?.includes('timeout') || error?.message?.includes('timed out')) {
+        message = 'Slow connection — saving will retry automatically.';
+        severity = 'warn';
     } else if (error?.code === 'not-found') {
         message = 'Data not found. It may have been deleted.';
-    } else if (error?.message?.includes('Firebase')) {
-        message = 'Database error. Your data is safe, please try again.';
-    } else if (error?.message?.includes('network')) {
-        message = 'Network error. Check your connection and try again.';
-        type = 'warning';
+    } else if (error?.message?.includes('Firebase') || error?.message?.includes('firestore')) {
+        message = 'Slow connection — saving will retry automatically.';
+        severity = 'warn';
+    } else if (error?.message?.includes('network') || error?.message?.includes('Network')) {
+        message = 'Having trouble connecting. Your data will save when you\'re back online.';
+        severity = 'warn';
+    } else if (error?.message?.includes('Load failed') || error?.message?.includes('fetch')) {
+        message = 'Couldn\'t load your data. Pull down to refresh.';
+        severity = 'warn';
     }
 
-    showNotification(message, type);
+    if (severity === 'silent') {
+        return;
+    }
+
+    showNotification(message, severity === 'warn' ? 'warning' : 'error');
 }
 
 /**

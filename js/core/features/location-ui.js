@@ -151,6 +151,10 @@ function renderLocationManagementList() {
     }
 
     if (cachedLocations.length === 0) {
+        // Hide map placeholder when no locations exist
+        const mapContainer = document.getElementById('location-map-container');
+        if (mapContainer) mapContainer.classList.add('hidden');
+
         container.innerHTML = `
             <div class="location-empty-state">
                 <i class="fas fa-map-marker-alt"></i>
@@ -160,6 +164,10 @@ function renderLocationManagementList() {
         `;
         return;
     }
+
+    // Show map container when locations exist
+    const mapContainer = document.getElementById('location-map-container');
+    if (mapContainer) mapContainer.classList.remove('hidden');
 
     container.innerHTML = cachedLocations
         .map((location) => {

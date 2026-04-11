@@ -428,7 +428,7 @@
                                 <span class="workout-stat-label">Exercises</span>
                             </div>
                             <div class="workout-stat-divider"></div>
-                            <div class="workout-stat" id="workout-rest-stat">
+                            <div class="workout-stat" id="workout-rest-stat" onclick="skipHeaderRestTimer()" style="cursor: pointer;">
                                 <span class="workout-stat-value" id="workout-rest-timer">--</span>
                                 <span class="workout-stat-label">Rest</span>
                             </div>
@@ -441,6 +441,9 @@
                             </button>
                             <button class="btn-workout-action btn-add" onclick="addExerciseToActiveWorkout()">
                                 <i class="fas fa-plus"></i> Add
+                            </button>
+                            <button id="btn-reorder" class="btn-workout-action btn-reorder" onclick="toggleReorderMode()">
+                                <i class="fas fa-arrows-alt-v"></i> Reorder
                             </button>
                             <button class="btn-workout-action btn-finish" onclick="completeWorkout()">
                                 <i class="fas fa-check"></i> Finish

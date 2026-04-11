@@ -26,11 +26,12 @@ import {
     validateLocationData,
     validateWorkoutData,
 } from '../utils/validation.js';
+import { Config, debugLog } from '../utils/config.js';
 
 /**
  * Wrap a promise with a timeout — rejects if it doesn't resolve within ms
  */
-function withTimeout(promise, ms = 10000) {
+function withTimeout(promise, ms = Config.FIREBASE_TIMEOUT_MS) {
     return Promise.race([
         promise,
         new Promise((_, reject) => setTimeout(() => reject(new Error('Operation timed out')), ms)),
@@ -429,7 +430,7 @@ export class FirebaseWorkoutManager {
                 );
                 if (existingByName) {
                     // Update existing instead of creating duplicate
-                    console.log('📊 Found existing custom exercise, updating instead of creating duplicate');
+                    debugLog('📊 Found existing custom exercise, updating instead of creating duplicate');
                     return await this.saveCustomExercise({ ...exerciseData, id: existingByName.id }, true);
                 }
             }

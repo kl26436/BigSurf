@@ -45,6 +45,9 @@ import {
     closeExerciseModal,
     loadExerciseHistory,
     autoStartRestTimer,
+    toggleSetComplete,
+    skipHeaderRestTimer,
+    toggleReorderMode,
     changeExerciseEquipment,
     applyEquipmentChange,
     changeWorkoutLocation,
@@ -306,6 +309,7 @@ window.addSetToExercise = addSetToExercise;
 window.removeSetFromExercise = removeSetFromExercise;
 window.saveExerciseNotes = saveExerciseNotes;
 window.markExerciseComplete = markExerciseComplete;
+window.toggleSetComplete = toggleSetComplete;
 window.deleteExerciseFromWorkout = deleteExerciseFromWorkout;
 window.editExerciseDefaults = editExerciseDefaults;
 window.addExerciseToActiveWorkout = addExerciseToActiveWorkout;
@@ -330,6 +334,8 @@ window.getSessionLocation = getSessionLocation;
 window.toggleModalRestTimer = toggleModalRestTimer;
 window.skipModalRestTimer = skipModalRestTimer;
 window.autoStartRestTimer = autoStartRestTimer;
+window.skipHeaderRestTimer = skipHeaderRestTimer;
+window.toggleReorderMode = toggleReorderMode;
 
 // Video Functions
 window.showExerciseVideo = showExerciseVideo;
@@ -633,20 +639,12 @@ window.AppState = AppState;
 if (new URL(window.location).searchParams.has('debug')) {
     Promise.all([
         import('./core/utils/debug-utilities.js'),
-        import('./core/features/pr-migration.js'),
-        import('./core/utils/fix-template-exercises.js'),
         import('./core/data/firebase-workout-manager.js'),
         import('./core/utils/push-notification-manager.js'),
         import('./core/features/pr-tracker.js'),
-    ]).then(([debugMod, prMigMod, fixMod, fwmMod, pushMod, prMod]) => {
+    ]).then(([debugMod, fwmMod, pushMod, prMod]) => {
         Object.keys(debugMod).forEach((key) => {
             window[key] = debugMod[key];
-        });
-        Object.keys(prMigMod).forEach((key) => {
-            window[key] = prMigMod[key];
-        });
-        Object.keys(fixMod).forEach((key) => {
-            window[key] = fixMod[key];
         });
 
         // Firebase Workout Manager, push notifications, PR Tracker — console debugging only
@@ -670,17 +668,9 @@ if (new URL(window.location).searchParams.has('debug')) {
             return result;
         };
 
-        console.log('🔧 Debug + migration utilities loaded');
+        console.log('🔧 Debug utilities loaded');
     });
 }
-
-// ===================================================================
-// ===================================================================
-// ONE-TIME FIX UTILITY
-// ===================================================================
-
-// One-time migration utilities — lazy-loaded only with ?debug
-// Run: window.fixTemplateExercises() or window.migrateOldWorkoutsToPRs()
 
 // ===================================================================
 // SIMPLE INITIALIZATION - Just call your existing startApplication

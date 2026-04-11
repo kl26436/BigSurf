@@ -509,6 +509,8 @@ textarea,
     position: relative;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .weekly-goal-card::before {
     content: '';
@@ -532,6 +534,9 @@ textarea,
 .weekly-goal-status-inline {
     font-size: 0.85rem;
     color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .weekly-goal-status-inline.complete {
     color: var(--success);
@@ -1311,10 +1316,49 @@ h3 {
 #workout-rest-stat.rest-ready .workout-stat-value {
     color: var(--success);
 }
+#workout-rest-stat.timer-active {
+    background: var(--primary);
+    border-radius: var(--radius-md);
+    padding: 6px 10px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+#workout-rest-stat.timer-active .workout-stat-value {
+    font-size: 1.4rem;
+    color: white;
+}
+#workout-rest-stat.timer-active .workout-stat-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+#workout-rest-stat.timer-done {
+    background: var(--success);
+    border-radius: var(--radius-md);
+    padding: 6px 10px;
+}
+#workout-rest-stat.timer-done .workout-stat-value {
+    font-size: 1.4rem;
+    color: white;
+    font-weight: 800;
+}
+#workout-rest-stat.timer-done .workout-stat-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+}
 
 .workout-hero-actions {
     display: flex;
     gap: 8px;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: var(--bg-app);
+    padding: 12px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    margin: 0 -16px;
+    padding-left: 16px;
+    padding-right: 16px;
 }
 .btn-workout-action {
     flex: 1;
@@ -1396,6 +1440,7 @@ h3 {
     cursor: pointer;
     position: relative;
     overflow: hidden;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 .exercise-card::before {
     content: '';
@@ -1407,6 +1452,8 @@ h3 {
     background: var(--primary);
 }
 .exercise-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 0 0 2px var(--primary);
     background: var(--bg-card-hi);
 }
 .exercise-card.completed {
@@ -1417,6 +1464,16 @@ h3 {
     background: var(--success);
 }
 
+.exercise-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.exercise-title-info {
+    flex: 1;
+    min-width: 0;
+}
 .exercise-title {
     font-weight: 600;
     margin-bottom: 4px;
@@ -1425,6 +1482,52 @@ h3 {
     font-size: 0.75rem;
     color: var(--text-muted);
     margin-bottom: 8px;
+}
+.exercise-card-chevron {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    opacity: 0.5;
+    flex-shrink: 0;
+}
+.exercise-card-hint {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--primary);
+    opacity: 0.7;
+    margin-bottom: 4px;
+}
+
+/* Reorder mode */
+.exercise-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    padding: 4px 8px 4px 0;
+    cursor: grab;
+    touch-action: none;
+}
+.reorder-mode .exercise-card {
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+}
+.reorder-mode .exercise-actions-row {
+    display: none;
+}
+.exercise-card.dragging {
+    opacity: 0.85;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+}
+.exercise-card-placeholder {
+    border: 2px dashed var(--primary);
+    border-radius: var(--radius-md);
+    opacity: 0.3;
+    margin-bottom: 12px;
+}
+.btn-reorder {
+    background: var(--bg-card-hi);
+    color: var(--text-primary);
 }
 
 .exercise-progress-row {
@@ -1456,6 +1559,46 @@ h3 {
 }
 .exercise-card.completed .progress-text {
     color: var(--success);
+}
+
+/* Last session label above set table */
+/* Per-set completion checkboxes */
+.set-complete-cell {
+    width: 40px;
+    text-align: center;
+}
+.set-check {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    padding: 4px;
+    transition: color 0.15s ease;
+}
+.set-check.checked {
+    color: var(--success);
+}
+.set-check:active {
+    transform: scale(1.2);
+}
+.set-row-completed {
+    background: rgba(54, 196, 107, 0.06);
+}
+.set-row-completed .set-input {
+    opacity: 0.7;
+}
+
+/* Last session label above set table */
+.last-session-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    padding: 4px 0;
+}
+.last-session-label i {
+    margin-right: 4px;
+    opacity: 0.6;
 }
 
 .exercise-actions-row {
@@ -5005,6 +5148,7 @@ dialog.modal:not([open]) {
     overflow-y: auto;
     overflow-x: hidden;
     padding: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
     box-sizing: border-box;
 }
 #workout-history-section {
@@ -5039,8 +5183,6 @@ dialog.modal:not([open]) {
 /* Section content styling for full-page sections */
 .section-content {
     padding: 20px 16px;
-    min-height: 100vh; /* fallback */
-    min-height: 100dvh;
     background: var(--bg-app);
 }
 .section-header-row {

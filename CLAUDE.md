@@ -149,7 +149,7 @@ The app supports both lbs and kg with per-exercise unit tracking:
 ### Equipment & Location Tracking
 
 - Equipment can belong to multiple locations (array field)
-- Location auto-detected via GPS on workout start (150m radius matching)
+- Location auto-detected via GPS on workout start (500m radius matching)
 - Location locks after first set is logged
 - Equipment auto-associated with location when first set logged
 

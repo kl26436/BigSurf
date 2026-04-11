@@ -8,6 +8,7 @@ import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
 import { getDateString } from '../utils/date-helpers.js';
+import { Config } from '../utils/config.js';
 import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 
 // ===================================================================
@@ -84,7 +85,7 @@ async function checkForInProgressWorkout() {
             const workoutStart = new Date(workoutData.startedAt);
             const hoursSinceStart = (Date.now() - workoutStart.getTime()) / (1000 * 60 * 60);
 
-            if (hoursSinceStart > 3) {
+            if (hoursSinceStart > Config.ABANDONED_WORKOUT_TIMEOUT_HOURS) {
                 // Check if workout has any completed exercises
                 const hasCompletedExercises =
                     workoutData.exercises &&
@@ -455,7 +456,7 @@ async function getInProgressWorkoutData() {
             const workoutStart = new Date(workoutData.startedAt);
             const hoursSinceStart = (Date.now() - workoutStart.getTime()) / (1000 * 60 * 60);
 
-            if (hoursSinceStart > 3) {
+            if (hoursSinceStart > Config.ABANDONED_WORKOUT_TIMEOUT_HOURS) {
                 return null; // Will be auto-handled by checkForInProgressWorkout
             }
 

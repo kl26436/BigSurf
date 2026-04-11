@@ -14,7 +14,16 @@ export function escapeAttr(text) {
     return escapeHtml(text).replace(/'/g, '&#39;');
 }
 
+let lastErrorTime = 0;
+
 export function showNotification(message, type = 'info') {
+    // Rate limit error notifications — max 1 per 10 seconds to prevent stacking
+    if (type === 'error') {
+        const now = Date.now();
+        if (now - lastErrorTime < 10000) return;
+        lastErrorTime = now;
+    }
+
     const notification = document.createElement('div');
     notification.setAttribute('role', 'alert');
     notification.style.cssText = `

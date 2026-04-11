@@ -18,11 +18,12 @@ import {
 import { showNotification, convertWeight, escapeHtml } from '../ui/ui-helpers.js';
 import { validateWorkoutData } from '../utils/validation.js';
 import { getDateString } from '../utils/date-helpers.js';
+import { Config } from '../utils/config.js';
 
 /**
  * Wrap a promise with a timeout — rejects if it doesn't resolve within ms
  */
-function withTimeout(promise, ms = 10000) {
+function withTimeout(promise, ms = Config.FIREBASE_TIMEOUT_MS) {
     return Promise.race([
         promise,
         new Promise((_, reject) => setTimeout(() => reject(new Error('Operation timed out')), ms)),
@@ -155,6 +156,70 @@ let _saveTimeout = null;
 export function debouncedSaveWorkoutData(state, delay = 400) {
     clearTimeout(_saveTimeout);
     _saveTimeout = setTimeout(() => saveWorkoutData(state), delay);
+}
+
+// Session-level cache for last session defaults
+const _lastSessionCache = {};
+
+/**
+ * Gets the most recent completed workout data for a specific exercise.
+ * Matches by exercise name AND equipment to get equipment-specific history.
+ * Returns { sets, date } from the last session, or null if no history.
+ */
+export async function getLastSessionDefaults(exerciseName, equipment = null) {
+    if (!exerciseName) return null;
+
+    const cacheKey = `${exerciseName}__${equipment || ''}`;
+    if (_lastSessionCache[cacheKey] !== undefined) return _lastSessionCache[cacheKey];
+
+    const state = (await import('../utils/app-state.js')).AppState;
+    if (!state.currentUser) return null;
+
+    try {
+        const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(10));
+        const snapshot = await withTimeout(getDocs(q));
+
+        const today = state.getTodayDateString();
+
+        for (const docSnap of snapshot.docs) {
+            const data = docSnap.data();
+            if (data.date === today) continue;
+            if (!data.completedAt) continue;
+            if (!data.exercises) continue;
+
+            // Search all exercises in the workout for a match
+            for (const [key, exData] of Object.entries(data.exercises)) {
+                if (!exData || !exData.sets || exData.sets.length === 0) continue;
+
+                // Get exercise name from exerciseNames map or originalWorkout
+                const idx = key.replace('exercise_', '');
+                const exName = data.exerciseNames?.[key]
+                    || data.originalWorkout?.exercises?.[idx]?.machine
+                    || exData.name;
+
+                if (exName !== exerciseName) continue;
+
+                // If equipment specified, prefer equipment match
+                const exEquipment = exData.equipment || data.originalWorkout?.exercises?.[idx]?.equipment || null;
+                if (equipment && exEquipment && equipment !== exEquipment) continue;
+
+                // Found a match — return sets and date
+                const result = {
+                    sets: exData.sets.filter(s => s && (s.reps || s.weight)),
+                    date: data.date,
+                };
+                _lastSessionCache[cacheKey] = result;
+                return result;
+            }
+        }
+
+        _lastSessionCache[cacheKey] = null;
+        return null;
+    } catch (error) {
+        console.error('Error loading last session defaults:', error);
+        return null;
+    }
 }
 
 export async function loadTodaysWorkout(state) {

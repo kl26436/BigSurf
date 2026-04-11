@@ -54,6 +54,8 @@ export {
     hideExerciseVideoAndToggleButton,
     convertYouTubeUrl,
     loadLastWorkoutHint,
+    toggleSetComplete,
+    toggleReorderMode,
 } from './exercise-ui.js';
 
 // === Rest Timer ===
@@ -65,4 +67,5 @@ export {
     restoreActiveTimerState,
     restoreTimerFromAppState,
     autoStartRestTimer,
+    skipHeaderRestTimer,
 } from './rest-timer.js';

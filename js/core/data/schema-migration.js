@@ -4,6 +4,7 @@
 // - New schema: document ID = unique ID, date stored as field, multiple workouts per day
 
 import { db, doc, setDoc, getDoc, deleteDoc, collection, getDocs } from './firebase-config.js';
+import { debugLog } from '../utils/config.js';
 
 /**
  * Generate a unique workout ID for migration
@@ -147,12 +148,12 @@ export async function checkAndMigrateOnLogin(userId) {
         const needsUpdate = await needsMigration(userId);
 
         if (needsUpdate) {
-            console.log('📦 Schema migration needed, running in background...');
+            debugLog('📦 Schema migration needed, running in background...');
 
             const results = await runMigration(userId);
 
             if (results.success && results.migrated > 0) {
-                console.log(`✅ Schema migration complete: ${results.migrated} workouts migrated`);
+                debugLog(`✅ Schema migration complete: ${results.migrated} workouts migrated`);
             } else if (results.errors.length > 0) {
                 console.error('❌ Schema migration had errors:', results.errors);
             }

@@ -13,6 +13,7 @@ import {
 } from './data/firebase-config.js';
 import { GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { AppState } from './utils/app-state.js';
+import { debugLog } from './utils/config.js';
 import { showNotification, setTodayDisplay, initModalScrollLock, openModal, closeModal } from './ui/ui-helpers.js';
 import { loadWorkoutPlans } from './data/data-manager.js'; // ADD loadWorkoutData here
 import { getExerciseLibrary } from './data/exercise-library.js';
@@ -348,7 +349,7 @@ export function setupAuthenticationListener() {
                 const { checkAndMigrateOnLogin } = await import('./data/schema-migration.js');
                 const migrationResult = await checkAndMigrateOnLogin(user.uid);
                 if (migrationResult.migrated > 0) {
-                    console.log(`✅ Migrated ${migrationResult.migrated} workouts to schema v3.0`);
+                    debugLog(`✅ Migrated ${migrationResult.migrated} workouts to schema v3.0`);
                 }
             } catch (migrationError) {
                 // Migration errors shouldn't block login - just log them
@@ -382,16 +383,16 @@ export function setupAuthenticationListener() {
 
             // Hide loading screen - data is ready!
             setTimeout(async () => {
-                console.log('✅ Auth complete, hiding loading screen...');
+                debugLog('✅ Auth complete, hiding loading screen...');
                 hideLoadingScreen();
 
                 // Show dashboard by default - use dynamic import to avoid timing issues
                 try {
-                    console.log('📊 Importing dashboard-ui...');
+                    debugLog('📊 Importing dashboard-ui...');
                     const { showDashboard } = await import('./ui/dashboard-ui.js');
-                    console.log('📊 Calling showDashboard...');
+                    debugLog('📊 Calling showDashboard...');
                     await showDashboard();
-                    console.log('📊 Dashboard should be visible now');
+                    debugLog('📊 Dashboard should be visible now');
                 } catch (e) {
                     console.error('❌ Error showing dashboard:', e);
                     // Fallback to window.navigateTo if available

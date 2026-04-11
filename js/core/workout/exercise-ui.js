@@ -13,7 +13,7 @@ import {
 } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible } from '../ui/navigation.js';
-import { saveWorkoutData, debouncedSaveWorkoutData, loadExerciseHistory } from '../data/data-manager.js';
+import { saveWorkoutData, debouncedSaveWorkoutData, loadExerciseHistory, getLastSessionDefaults } from '../data/data-manager.js';
 import {
     getSessionLocation,
     lockLocation,
@@ -27,6 +27,7 @@ import {
     restoreModalRestTimer,
     autoStartRestTimer,
 } from './rest-timer.js';
+import { Config } from '../utils/config.js';
 
 // ===================================================================
 // EVENT DELEGATION FOR EXERCISE MODAL
@@ -64,6 +65,148 @@ function setupExerciseModalDelegation() {
 }
 
 // ===================================================================
+// EXERCISE REORDER MODE
+// ===================================================================
+
+let reorderMode = false;
+
+export function toggleReorderMode() {
+    reorderMode = !reorderMode;
+    const container = document.getElementById('exercise-list');
+    const btn = document.getElementById('btn-reorder');
+
+    if (!container) return;
+
+    if (reorderMode) {
+        container.classList.add('reorder-mode');
+        if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Done';
+        initTouchReorder(container);
+    } else {
+        container.classList.remove('reorder-mode');
+        if (btn) btn.innerHTML = '<i class="fas fa-arrows-alt-v"></i> Reorder';
+    }
+}
+
+function initTouchReorder(container) {
+    const cards = container.querySelectorAll('.exercise-card');
+    cards.forEach((card) => {
+        const handle = document.createElement('div');
+        handle.className = 'exercise-drag-handle';
+        handle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
+        card.insertBefore(handle, card.firstChild);
+
+        let startY = 0;
+        let currentY = 0;
+        let dragging = false;
+        let placeholder = null;
+
+        handle.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            dragging = true;
+            startY = e.touches[0].clientY;
+            card.classList.add('dragging');
+
+            placeholder = document.createElement('div');
+            placeholder.className = 'exercise-card-placeholder';
+            placeholder.style.height = card.offsetHeight + 'px';
+            card.parentNode.insertBefore(placeholder, card.nextSibling);
+
+            card.style.position = 'fixed';
+            card.style.left = '16px';
+            card.style.right = '16px';
+            card.style.width = container.offsetWidth - 32 + 'px';
+            card.style.top = card.getBoundingClientRect().top + 'px';
+            card.style.zIndex = '1000';
+        }, { passive: false });
+
+        handle.addEventListener('touchmove', (e) => {
+            if (!dragging) return;
+            e.preventDefault();
+            currentY = e.touches[0].clientY;
+            const diff = currentY - startY;
+            const rect = card.getBoundingClientRect();
+            card.style.top = (rect.top + diff) + 'px';
+            startY = currentY;
+
+            // Find which card we're hovering over
+            const siblings = [...container.querySelectorAll('.exercise-card:not(.dragging)')];
+            for (const sibling of siblings) {
+                const sibRect = sibling.getBoundingClientRect();
+                const sibMiddle = sibRect.top + sibRect.height / 2;
+                if (currentY < sibMiddle && placeholder.nextSibling !== sibling) {
+                    container.insertBefore(placeholder, sibling);
+                    break;
+                } else if (currentY > sibMiddle && placeholder !== sibling.nextSibling) {
+                    container.insertBefore(placeholder, sibling.nextSibling);
+                }
+            }
+        }, { passive: false });
+
+        handle.addEventListener('touchend', () => {
+            if (!dragging) return;
+            dragging = false;
+            card.classList.remove('dragging');
+            card.style.position = '';
+            card.style.left = '';
+            card.style.right = '';
+            card.style.width = '';
+            card.style.top = '';
+            card.style.zIndex = '';
+
+            // Insert card where placeholder is
+            if (placeholder && placeholder.parentNode) {
+                container.insertBefore(card, placeholder);
+                placeholder.remove();
+            }
+
+            // Read new order from DOM and update AppState
+            const newOrder = [...container.querySelectorAll('.exercise-card')].map(c => parseInt(c.dataset.index));
+            applyExerciseReorder(newOrder);
+        });
+    });
+}
+
+function applyExerciseReorder(newOrder) {
+    if (!AppState.currentWorkout) return;
+
+    const oldExercises = AppState.currentWorkout.exercises;
+    const oldSavedData = { ...AppState.savedData.exercises };
+
+    // Reorder exercises array
+    AppState.currentWorkout.exercises = newOrder.map(i => oldExercises[i]);
+
+    // Remap saved data keys
+    const newSavedData = {};
+    newOrder.forEach((oldIndex, newIndex) => {
+        if (oldSavedData[`exercise_${oldIndex}`]) {
+            newSavedData[`exercise_${newIndex}`] = oldSavedData[`exercise_${oldIndex}`];
+        }
+    });
+    AppState.savedData.exercises = newSavedData;
+
+    // Remap exercise units
+    const oldUnits = { ...AppState.exerciseUnits };
+    AppState.exerciseUnits = {};
+    newOrder.forEach((oldIndex, newIndex) => {
+        if (oldUnits[oldIndex]) {
+            AppState.exerciseUnits[newIndex] = oldUnits[oldIndex];
+        }
+    });
+
+    debouncedSaveWorkoutData(AppState);
+    renderExercises();
+
+    // Re-enter reorder mode if still active
+    if (reorderMode) {
+        const container = document.getElementById('exercise-list');
+        if (container) {
+            container.classList.add('reorder-mode');
+            initTouchReorder(container);
+        }
+    }
+}
+
+// ===================================================================
 // EXERCISE RENDERING AND MANAGEMENT
 // ===================================================================
 
@@ -81,13 +224,13 @@ export function renderExercises() {
 
     // Show empty state if no exercises
     if (AppState.currentWorkout.exercises.length === 0) {
-        container.innerHTML += `
+        container.insertAdjacentHTML('beforeend', `
             <div class="empty-workout-message">
                 <i class="fas fa-dumbbell"></i>
                 <h3>No exercises in this workout</h3>
                 <p>Use the "Add Exercise" button above to get started!</p>
             </div>
-        `;
+        `);
     }
 
     updateProgress(AppState);
@@ -205,17 +348,34 @@ export function createExerciseCard(exercise, index) {
     titleRow.style.cursor = 'pointer';
     titleRow.addEventListener('click', () => window.focusExercise(index));
 
+    const titleInfo = document.createElement('div');
+    titleInfo.className = 'exercise-title-info';
+
     const h3 = document.createElement('h3');
     h3.className = 'exercise-title';
     h3.textContent = exerciseName;
-    titleRow.appendChild(h3);
+    titleInfo.appendChild(h3);
 
     if (equipmentDisplay) {
         const eqTag = document.createElement('div');
         eqTag.className = 'exercise-equipment-tag';
         eqTag.textContent = equipmentDisplay;
-        titleRow.appendChild(eqTag);
+        titleInfo.appendChild(eqTag);
     }
+
+    if (completedSets === 0) {
+        const hint = document.createElement('span');
+        hint.className = 'exercise-card-hint';
+        hint.textContent = 'Tap to log sets';
+        titleInfo.appendChild(hint);
+    }
+
+    titleRow.appendChild(titleInfo);
+
+    const chevron = document.createElement('i');
+    chevron.className = 'fas fa-chevron-right exercise-card-chevron';
+    titleRow.appendChild(chevron);
+
     card.appendChild(titleRow);
 
     const progressRow = document.createElement('div');
@@ -255,7 +415,7 @@ export function createExerciseCard(exercise, index) {
     return card;
 }
 
-export function focusExercise(index) {
+export async function focusExercise(index) {
     if (!AppState.currentWorkout) return;
     setupExerciseModalDelegation();
 
@@ -294,6 +454,20 @@ export function focusExercise(index) {
     editLink.appendChild(editIcon);
     title.appendChild(editLink);
 
+    const replaceLink = document.createElement('a');
+    replaceLink.href = '#';
+    replaceLink.className = 'exercise-edit-icon';
+    replaceLink.setAttribute('aria-label', 'Replace exercise');
+    replaceLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        replaceExercise(index);
+    });
+    const replaceIcon = document.createElement('i');
+    replaceIcon.className = 'fas fa-exchange-alt';
+    replaceLink.appendChild(replaceIcon);
+    title.appendChild(document.createTextNode(' '));
+    title.appendChild(replaceLink);
+
     title.appendChild(document.createElement('br'));
 
     const subtitleSpan = document.createElement('span');
@@ -317,7 +491,7 @@ export function focusExercise(index) {
     const currentUnit = AppState.exerciseUnits[index] || AppState.globalUnit;
 
     // Generate the HTML content (this creates the unit toggle)
-    content.innerHTML = generateExerciseTable(exercise, index, currentUnit);
+    content.innerHTML = await generateExerciseTable(exercise, index, currentUnit);
 
     // NOW find and set up the unit toggle (after it's been created)
     const unitToggle = modal.querySelector('.exercise-unit-toggle .unit-toggle');
@@ -337,6 +511,9 @@ export function focusExercise(index) {
     setHeaderMode(false);
     setBottomNavVisible(false);
 
+    // Setup swipe-to-delete on set rows
+    setupSwipeToDelete(index);
+
     // Restore rest timer from AppState if it exists for this exercise
     if (AppState.activeRestTimer && AppState.activeRestTimer.exerciseIndex === index) {
         // Small delay to ensure DOM is ready
@@ -346,7 +523,51 @@ export function focusExercise(index) {
     }
 }
 
-export function generateExerciseTable(exercise, exerciseIndex, unit) {
+function setupSwipeToDelete(exerciseIndex) {
+    const rows = document.querySelectorAll('#exercise-content .exercise-table tbody tr');
+    rows.forEach((row, setIndex) => {
+        let startX = 0;
+        let currentX = 0;
+        let swiping = false;
+
+        row.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            currentX = startX;
+            swiping = true;
+            row.style.transition = 'none';
+        }, { passive: true });
+
+        row.addEventListener('touchmove', (e) => {
+            if (!swiping) return;
+            currentX = e.touches[0].clientX;
+            const diff = startX - currentX;
+            if (diff > 0 && diff < 100) {
+                row.style.transform = `translateX(-${diff}px)`;
+                row.style.background = `linear-gradient(to left, rgba(239, 68, 68, ${diff / 100 * 0.3}) 0%, transparent ${diff}px)`;
+            }
+        }, { passive: true });
+
+        row.addEventListener('touchend', () => {
+            if (!swiping) return;
+            swiping = false;
+            const diff = startX - currentX;
+            row.style.transition = 'transform 0.2s ease';
+
+            if (diff > 70) {
+                row.style.transform = 'translateX(-100%)';
+                row.style.opacity = '0';
+                setTimeout(() => {
+                    removeSetFromExercise(exerciseIndex);
+                }, 200);
+            } else {
+                row.style.transform = 'translateX(0)';
+                row.style.background = '';
+            }
+        });
+    });
+}
+
+export async function generateExerciseTable(exercise, exerciseIndex, unit) {
     const savedSets = AppState.savedData.exercises?.[`exercise_${exerciseIndex}`]?.sets || [];
     const savedNotes = AppState.savedData.exercises?.[`exercise_${exerciseIndex}`]?.notes || '';
     const convertedWeight = convertWeight(exercise.weight, 'lbs', unit);
@@ -356,7 +577,20 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
         savedSets.push({ reps: '', weight: '' });
     }
 
+    // Fetch last session defaults for placeholder text
     const modalExerciseName = getExerciseName(exercise);
+    let lastSession = null;
+    try {
+        lastSession = await getLastSessionDefaults(modalExerciseName, exercise.equipment || null);
+    } catch (_) { /* fall back to template defaults */ }
+
+    // Format last session date label
+    let lastSessionLabel = '';
+    if (lastSession?.date) {
+        const d = new Date(lastSession.date + 'T00:00:00');
+        lastSessionLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
     let html = `
         <!-- Exercise History Reference -->
         <div class="exercise-history-section">
@@ -393,7 +627,7 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
         <div id="modal-rest-timer-${exerciseIndex}" class="modal-rest-timer hidden">
             <div class="modal-rest-content">
                 <div class="modal-rest-exercise">Rest Period</div>
-                <div class="modal-rest-display">90s</div>
+                <div class="modal-rest-display">${Config.DEFAULT_REST_TIMER_SECONDS}s</div>
                 <div class="modal-rest-controls">
                     <button class="btn btn-small" onclick="toggleModalRestTimer(${exerciseIndex})" aria-label="Pause timer">
                         <i class="fas fa-pause"></i>
@@ -405,12 +639,15 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
             </div>
         </div>
 
+        ${lastSessionLabel ? `<div class="last-session-label"><i class="fas fa-history"></i> Last session: ${lastSessionLabel}</div>` : ''}
+
         <table class="exercise-table">
             <thead>
                 <tr>
                     <th>Set</th>
                     <th>Reps</th>
                     <th>Weight (${unit})</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -418,27 +655,48 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
 
     for (let i = 0; i < exercise.sets; i++) {
         const set = savedSets[i] || { reps: '', weight: '' };
+        const isSetDone = !!(set.completed || (set.reps && set.weight));
 
         // Convert stored lbs weight to display unit
         let displayWeight = set.weight || '';
         if (displayWeight && unit === 'kg') {
-            displayWeight = Math.round(displayWeight * 0.453592); // Round kg to whole number
+            displayWeight = Math.round(displayWeight * 0.453592 * 2) / 2; // Round kg to nearest 0.5
+        }
+
+        // Determine placeholder from last session or template defaults
+        let repsPlaceholder = exercise.reps;
+        let weightPlaceholder = convertedWeight;
+        if (lastSession?.sets?.[i]) {
+            const ls = lastSession.sets[i];
+            if (ls.reps) repsPlaceholder = ls.reps;
+            if (ls.weight) {
+                weightPlaceholder = unit === 'kg'
+                    ? Math.round(ls.weight * 0.453592 * 2) / 2
+                    : ls.weight;
+            }
         }
 
         html += `
-        <tr>
+        <tr class="${isSetDone ? 'set-row-completed' : ''}">
             <td>Set ${i + 1}</td>
             <td>
                 <input type="number" class="set-input" inputmode="numeric"
-                       placeholder="${exercise.reps}"
+                       placeholder="${repsPlaceholder}"
                        value="${set.reps}"
                        onchange="updateSet(${exerciseIndex}, ${i}, 'reps', this.value)">
             </td>
             <td>
                 <input type="number" class="set-input" inputmode="decimal"
-                       placeholder="${convertedWeight}"
+                       placeholder="${weightPlaceholder}"
                        value="${displayWeight}"
                        onchange="updateSet(${exerciseIndex}, ${i}, 'weight', this.value)">
+            </td>
+            <td class="set-complete-cell">
+                <button class="set-check ${isSetDone ? 'checked' : ''}"
+                        onclick="toggleSetComplete(${exerciseIndex}, ${i})"
+                        aria-label="Mark set ${i + 1} complete">
+                    <i class="fas ${isSetDone ? 'fa-check-circle' : 'fa-circle'}"></i>
+                </button>
             </td>
         </tr>
     `;
@@ -643,6 +901,70 @@ export async function updateSet(exerciseIndex, setIndex, field, value) {
         // Only show generic notification if it's not a PR
         if (!isPR) {
         }
+    }
+}
+
+export function toggleSetComplete(exerciseIndex, setIndex) {
+    if (!AppState.currentWorkout) return;
+
+    const exerciseKey = `exercise_${exerciseIndex}`;
+    if (!AppState.savedData.exercises) AppState.savedData.exercises = {};
+    if (!AppState.savedData.exercises[exerciseKey]) {
+        const currentExercise = AppState.currentWorkout?.exercises?.[exerciseIndex];
+        AppState.savedData.exercises[exerciseKey] = {
+            sets: [],
+            notes: '',
+            name: currentExercise?.machine || currentExercise?.name || null,
+            equipment: currentExercise?.equipment || null,
+            equipmentLocation: currentExercise?.equipmentLocation || null,
+        };
+    }
+
+    if (!AppState.savedData.exercises[exerciseKey].sets[setIndex]) {
+        AppState.savedData.exercises[exerciseKey].sets[setIndex] = {};
+    }
+
+    const set = AppState.savedData.exercises[exerciseKey].sets[setIndex];
+    const wasCompleted = !!(set.completed || (set.reps && set.weight));
+
+    if (wasCompleted) {
+        // Uncomplete: clear the completed flag
+        set.completed = false;
+    } else {
+        // Complete: use entered values or placeholder defaults
+        const exercise = AppState.currentWorkout.exercises[exerciseIndex];
+        if (!set.reps) set.reps = exercise.reps || 10;
+        if (!set.weight) set.weight = exercise.weight || 0;
+        set.completed = true;
+
+        // Auto-start rest timer
+        autoStartRestTimer(exerciseIndex, setIndex);
+    }
+
+    debouncedSaveWorkoutData(AppState);
+    updateExerciseCard(exerciseIndex);
+
+    // Update the set row UI in the modal
+    const row = document.querySelector(`#exercise-content .exercise-table tbody tr:nth-child(${setIndex + 1})`);
+    if (row) {
+        const isNowDone = !!(set.completed || (set.reps && set.weight));
+        row.classList.toggle('set-row-completed', isNowDone);
+        const checkBtn = row.querySelector('.set-check');
+        if (checkBtn) {
+            checkBtn.classList.toggle('checked', isNowDone);
+            checkBtn.querySelector('i').className = `fas ${isNowDone ? 'fa-check-circle' : 'fa-circle'}`;
+        }
+    }
+
+    // Check if all sets are completed — auto-mark exercise complete
+    const allSets = AppState.savedData.exercises[exerciseKey].sets;
+    const exercise = AppState.currentWorkout.exercises[exerciseIndex];
+    const totalSets = exercise.sets || 3;
+    const completedCount = allSets.filter(s => s && (s.completed || (s.reps && s.weight))).length;
+    if (completedCount >= totalSets) {
+        AppState.savedData.exercises[exerciseKey].completed = true;
+    } else {
+        AppState.savedData.exercises[exerciseKey].completed = false;
     }
 }
 
@@ -863,6 +1185,11 @@ export function addExerciseToActiveWorkout() {
 }
 
 export function confirmExerciseAddToWorkout(exerciseData) {
+    // If we're replacing an exercise, delegate to the replace handler
+    if (window.replacingExerciseIndex !== undefined && window.replacingExerciseIndex !== null) {
+        return confirmExerciseReplace(exerciseData);
+    }
+
     if (!AppState.currentWorkout) return false;
 
     let exercise;
@@ -929,7 +1256,76 @@ export function confirmExerciseAddToWorkout(exerciseData) {
     return true;
 }
 
-// REMOVED: swapExercise() and confirmExerciseSwap() - Replaced by delete + add workflow
+export function replaceExercise(exerciseIndex) {
+    if (!AppState.currentWorkout) return;
+
+    // Store the index we want to replace
+    window.replacingExerciseIndex = exerciseIndex;
+    window.addingToActiveWorkout = true;
+
+    // Close the exercise detail modal first
+    closeExerciseModal();
+
+    // Open exercise library for selection
+    const modal = document.getElementById('exercise-library-modal');
+    if (modal) {
+        openModal(modal);
+        if (window.openExerciseLibrary) {
+            window.openExerciseLibrary('activeWorkout');
+        }
+    }
+}
+
+export function confirmExerciseReplace(exerciseData) {
+    const replaceIndex = window.replacingExerciseIndex;
+    if (replaceIndex === undefined || replaceIndex === null) return false;
+    if (!AppState.currentWorkout) return false;
+
+    let exercise;
+    try {
+        if (typeof exerciseData === 'string') {
+            exercise = JSON.parse(exerciseData.replace(/&quot;/g, '"'));
+        } else {
+            exercise = exerciseData;
+        }
+    } catch (e) {
+        console.error('Error parsing exercise data:', e);
+        return false;
+    }
+
+    const exerciseName = getExerciseName(exercise);
+
+    // Replace the exercise at the given index
+    AppState.currentWorkout.exercises[replaceIndex] = {
+        machine: exerciseName,
+        sets: exercise.sets || 3,
+        reps: exercise.reps || 10,
+        weight: exercise.weight || 50,
+        video: exercise.video || '',
+        equipment: exercise.equipment || null,
+        equipmentLocation: exercise.equipmentLocation || null,
+    };
+
+    // Clear saved data for this exercise (new exercise = fresh start)
+    const exerciseKey = `exercise_${replaceIndex}`;
+    if (AppState.savedData.exercises?.[exerciseKey]) {
+        delete AppState.savedData.exercises[exerciseKey];
+    }
+
+    saveWorkoutData(AppState);
+    renderExercises();
+
+    // Clean up
+    window.replacingExerciseIndex = undefined;
+
+    // Close exercise library
+    if (window.exerciseLibrary?.close) {
+        window.exerciseLibrary.close();
+    }
+
+    showNotification(`Replaced with ${exerciseName}`, 'success');
+    return true;
+}
 
 export function closeExerciseModal() {
     const modal = document.getElementById('exercise-modal');
@@ -1077,7 +1473,7 @@ export function setGlobalUnit(unit) {
     }
 }
 
-export function setExerciseUnit(exerciseIndex, unit) {
+export async function setExerciseUnit(exerciseIndex, unit) {
     if (!AppState.currentWorkout || exerciseIndex >= AppState.currentWorkout.exercises.length) return;
 
     // Just change the display unit preference
@@ -1114,7 +1510,7 @@ export function setExerciseUnit(exerciseIndex, unit) {
         const exercise = AppState.currentWorkout.exercises[exerciseIndex];
         const content = document.getElementById('exercise-content');
         if (content) {
-            content.innerHTML = generateExerciseTable(exercise, exerciseIndex, unit);
+            content.innerHTML = await generateExerciseTable(exercise, exerciseIndex, unit);
 
             // Re-setup unit toggle event listeners
             const unitToggle = modal.querySelector('.exercise-unit-toggle .unit-toggle');

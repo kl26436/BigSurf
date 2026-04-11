@@ -4,11 +4,12 @@
 import { AppState } from '../utils/app-state.js';
 import { db, doc, setDoc, getDoc } from '../data/firebase-config.js';
 import { getDateString } from '../utils/date-helpers.js';
+import { Config } from '../utils/config.js';
 
 // ===================================================================
 // PR CUTOFF DATE - Only count PRs from this date onwards
 // ===================================================================
-const PR_CUTOFF_DATE = '2025-07-01';
+const PR_CUTOFF_DATE = Config.PR_CUTOFF_DATE;
 
 // ===================================================================
 // PR TRACKING STATE
