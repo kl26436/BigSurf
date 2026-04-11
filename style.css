@@ -1839,9 +1839,7 @@ h3 {
 }
 .template-exercise-item {
     display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
     padding: 10px 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     font-size: 0.9rem;
@@ -1911,22 +1909,26 @@ h3 {
 /* Inline edit accordion */
 .exercise-inline-edit {
     width: 100%;
-    padding: 10px 0 4px;
+    padding: 12px;
+    margin-top: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-sm);
 }
 
 .inline-edit-fields {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .inline-edit-row {
     display: flex;
-    gap: 8px;
+    gap: 10px;
 }
 
 .inline-edit-field {
     flex: 1;
+    min-width: 0;
 }
 
 .inline-edit-field-wide {
@@ -1937,19 +1939,32 @@ h3 {
     display: block;
     font-size: 0.75rem;
     color: var(--text-muted);
-    margin-bottom: 2px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .inline-edit-field .form-input {
     width: 100%;
-    padding: 6px 8px;
-    font-size: 0.85rem;
+    padding: 10px 12px;
+    font-size: 1rem;
+    -moz-appearance: textfield;
+}
+
+.inline-edit-field .form-input::-webkit-inner-spin-button,
+.inline-edit-field .form-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .inline-edit-actions {
     display: flex;
     justify-content: flex-end;
-    margin-top: 8px;
+    margin-top: 10px;
+}
+
+.inline-edit-actions .btn {
+    padding: 8px 20px;
 }
 
 /* Inline add exercise search */

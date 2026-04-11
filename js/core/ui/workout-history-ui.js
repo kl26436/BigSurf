@@ -2,7 +2,7 @@
 // Handles workout history UI interactions with FULL CALENDAR VIEW
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode, escapeHtml } from './ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 
 // ===================================================================
@@ -279,22 +279,23 @@ function showWorkoutDetailModal(workout) {
         exerciseHTML = '<p>No exercise details available</p>';
     }
 
-    // Build action buttons
+    // Build action buttons using data attributes for event delegation
+    const escapedId = escapeAttr(workout.id);
     const actionButtons = `
         <div class="modal-actions" style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
             ${
                 workout.status !== 'completed'
                     ? `
-                <button class="btn btn-primary" onclick="resumeWorkout('${workout.id}')">
+                <button class="btn btn-primary" data-action="resumeWorkout" data-workout-id="${escapedId}">
                     <i class="fas fa-play"></i> Resume
                 </button>
             `
                     : ''
             }
-            <button class="btn btn-secondary" onclick="repeatWorkout('${workout.id}')">
+            <button class="btn btn-secondary" data-action="repeatWorkout" data-workout-id="${escapedId}">
                 <i class="fas fa-redo"></i> Repeat
             </button>
-            <button class="btn btn-danger" onclick="deleteWorkout('${workout.id}')">
+            <button class="btn btn-danger" data-action="deleteWorkout" data-workout-id="${escapedId}">
                 <i class="fas fa-trash"></i> Delete
             </button>
         </div>
@@ -305,13 +306,13 @@ function showWorkoutDetailModal(workout) {
         <div class="workout-detail-summary">
             <div class="workout-meta">
                 <div class="meta-item">
-                    <strong>Status:</strong> ${workout.status?.charAt(0).toUpperCase() + workout.status?.slice(1) || 'Unknown'}
+                    <strong>Status:</strong> ${escapeHtml(workout.status?.charAt(0).toUpperCase() + workout.status?.slice(1) || 'Unknown')}
                 </div>
                 <div class="meta-item">
-                    <strong>Duration:</strong> ${workout.duration || 'Unknown'}m
+                    <strong>Duration:</strong> ${escapeHtml(String(workout.duration || 'Unknown'))}m
                 </div>
                 <div class="meta-item">
-                    <strong>Progress:</strong> ${workout.progress || 0}%
+                    <strong>Progress:</strong> ${parseInt(workout.progress) || 0}%
                 </div>
             </div>
         </div>
@@ -326,6 +327,17 @@ function showWorkoutDetailModal(workout) {
 
     // Show modal
     modal.classList.remove('hidden');
+
+    // Event delegation for action buttons
+    content.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const workoutId = btn.dataset.workoutId;
+        if (action === 'resumeWorkout' && window.resumeWorkout) window.resumeWorkout(workoutId);
+        else if (action === 'repeatWorkout' && window.repeatWorkout) window.repeatWorkout(workoutId);
+        else if (action === 'deleteWorkout' && window.deleteWorkout) window.deleteWorkout(workoutId);
+    });
 }
 
 export function closeWorkoutDetailModal() {

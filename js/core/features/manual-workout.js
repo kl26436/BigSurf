@@ -634,7 +634,7 @@ export async function openEquipmentPickerForManual(exerciseIndex) {
                         // Get location from locations array or single location field
                         const location = eq.locations?.length > 0 ? eq.locations[0] : eq.location || '';
                         return `
-                    <div class="equipment-picker-item" onclick="selectEquipmentForManual('${escapeAttr(eq.id)}', '${escapeAttr(eq.name || '')}', '${escapeAttr(location || '')}')">
+                    <div class="equipment-picker-item" data-action="selectEquipment" data-eq-id="${escapeAttr(eq.id)}" data-eq-name="${escapeAttr(eq.name || '')}" data-eq-location="${escapeAttr(location || '')}">
                         <i class="fas fa-cog"></i>
                         <div class="equipment-info">
                             <span class="equipment-name">${escapeHtml(eq.name || 'Unknown')}</span>
@@ -644,6 +644,13 @@ export async function openEquipmentPickerForManual(exerciseIndex) {
                 `;
                     })
                     .join('');
+
+            // Event delegation for equipment selection
+            listContainer.addEventListener('click', (e) => {
+                const item = e.target.closest('[data-action="selectEquipment"]');
+                if (!item) return;
+                selectEquipmentForManual(item.dataset.eqId, item.dataset.eqName, item.dataset.eqLocation);
+            });
             }
         }
 

@@ -938,15 +938,15 @@ function createTemplateExerciseItem(exercise, index) {
                 <div class="inline-edit-row">
                     <div class="inline-edit-field">
                         <label>Sets</label>
-                        <input type="number" class="form-input" id="inline-sets-${index}" value="${exercise.sets || 3}" min="1" max="20">
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="form-input" id="inline-sets-${index}" value="${exercise.sets || 3}">
                     </div>
                     <div class="inline-edit-field">
                         <label>Reps</label>
-                        <input type="number" class="form-input" id="inline-reps-${index}" value="${exercise.reps || 10}" min="1" max="100">
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="form-input" id="inline-reps-${index}" value="${exercise.reps || 10}">
                     </div>
                     <div class="inline-edit-field">
                         <label>Weight</label>
-                        <input type="number" class="form-input" id="inline-weight-${index}" value="${exercise.weight || 0}" min="0" step="5">
+                        <input type="text" inputmode="decimal" class="form-input" id="inline-weight-${index}" value="${exercise.weight || 0}">
                     </div>
                 </div>
                 <div class="inline-edit-row">
@@ -963,7 +963,7 @@ function createTemplateExerciseItem(exercise, index) {
                 </div>
             </div>
             <div class="inline-edit-actions">
-                <button type="button" class="btn btn-primary btn-small" onclick="saveInlineEdit(${index})">
+                <button type="button" class="btn btn-primary" onclick="saveInlineEdit(${index})">
                     <i class="fas fa-check"></i> Done
                 </button>
             </div>

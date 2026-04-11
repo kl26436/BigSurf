@@ -310,6 +310,13 @@ async function renderDashboard() {
             ${renderDashboardPRsSection(recentPRs)}
             ${await renderDashboardMiniChart()}
         `;
+
+        // Event delegation for suggested workout cards
+        container.addEventListener('click', (e) => {
+            const card = e.target.closest('[data-action="startSuggestedWorkout"]');
+            if (!card) return;
+            startSuggestedWorkout(card.dataset.templateId, card.dataset.isDefault === 'true');
+        });
     } catch (error) {
         console.error('❌ Error rendering dashboard:', error);
         container.innerHTML = `
@@ -889,7 +896,7 @@ function renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes = [
             }
 
             return `
-            <div class="suggested-card" onclick="startSuggestedWorkout('${escapeAttr(templateId)}', ${isDefault})">
+            <div class="suggested-card" data-action="startSuggestedWorkout" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
                 <div class="suggested-icon">
                     <i class="fas fa-dumbbell"></i>
                 </div>

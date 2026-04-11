@@ -610,7 +610,7 @@ export function getWorkoutHistory(appState) {
                         <div class="workout-picker-info">
                             <div class="workout-picker-name">${escapeHtml(workout.name)}</div>
                             <div class="workout-picker-meta">
-                                ${startTime ? startTime + ' • ' : ''}${workout.duration} ${statusIcon}
+                                ${startTime ? startTime + ' &bull; ' : ''}${escapeHtml(String(workout.duration || ''))} ${statusIcon}
                             </div>
                         </div>
                         <i class="fas fa-chevron-right" style="color: var(--text-secondary);"></i>
@@ -759,7 +759,7 @@ export function getWorkoutHistory(appState) {
                     <strong style="color: var(--text-secondary);">Status:</strong>
                     <span style="color: ${workout.status === 'completed' ? 'var(--success)' : workout.status === 'cancelled' ? 'var(--danger)' : 'var(--warning)'};">
                         <i class="fas fa-${workout.status === 'completed' ? 'check-circle' : workout.status === 'cancelled' ? 'times-circle' : 'exclamation-circle'}"></i>
-                        ${workout.status.charAt(0).toUpperCase() + workout.status.slice(1)}
+                        ${escapeHtml(workout.status.charAt(0).toUpperCase() + workout.status.slice(1))}
                     </span>
 
                     ${
@@ -797,7 +797,7 @@ export function getWorkoutHistory(appState) {
 
                     <strong style="color: var(--text-secondary);">Duration:</strong>
                     <span style="color: var(--primary); font-weight: 600;">
-                        <i class="fas fa-stopwatch"></i> ${totalDuration || 'Unknown'}
+                        <i class="fas fa-stopwatch"></i> ${escapeHtml(String(totalDuration || 'Unknown'))}
                     </span>
 
                     <strong style="color: var(--text-secondary);">Progress:</strong>
@@ -959,7 +959,7 @@ export function getWorkoutHistory(appState) {
                 <div class="workout-picker-info">
                     <div class="workout-picker-name">${escapeHtml(workout.name)}</div>
                     <div class="workout-picker-meta">
-                        ${startTime ? startTime + ' • ' : ''}${workout.duration} ${statusIcon}
+                        ${startTime ? startTime + ' &bull; ' : ''}${escapeHtml(String(workout.duration || ''))} ${statusIcon}
                     </div>
                 </div>
                 <i class="fas fa-chevron-right" style="color: var(--text-secondary);"></i>
@@ -1100,9 +1100,9 @@ export function getWorkoutHistory(appState) {
 
         <div class="workout-detail-summary">
             <div class="workout-meta">
-                <div><strong>Status:</strong> ${workoutStatus}</div>
-                <div><strong>Duration:</strong> ${formattedDuration}</div>
-                <div><strong>Progress:</strong> ${this.calculateProgress(workout)}%</div>
+                <div><strong>Status:</strong> ${escapeHtml(String(workoutStatus))}</div>
+                <div><strong>Duration:</strong> ${escapeHtml(String(formattedDuration))}</div>
+                <div><strong>Progress:</strong> ${parseInt(this.calculateProgress(workout)) || 0}%</div>
             </div>
         </div>
 

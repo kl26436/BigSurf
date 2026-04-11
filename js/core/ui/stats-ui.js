@@ -151,7 +151,7 @@ async function renderProgressView() {
                         ].map(
                             (type) => `
                             <button class="chart-type-btn ${selectedChartType === type.key ? 'active' : ''}"
-                                    onclick="setProgressChartType('${type.key}')">
+                                    data-action="setChartType" data-chart-type="${type.key}">
                                 <i class="fas ${type.icon}"></i>
                                 ${type.label}
                             </button>
@@ -165,7 +165,7 @@ async function renderProgressView() {
                             .map(
                                 (range) => `
                             <button class="time-range-btn ${selectedTimeRange === range ? 'active' : ''}"
-                                    onclick="setProgressTimeRange('${range}')">
+                                    data-action="setTimeRange" data-range="${range}">
                                 ${range}
                             </button>
                         `
@@ -210,6 +210,17 @@ async function renderProgressView() {
                 </div>
             </div>
         `;
+
+        // Event delegation for stats page interactions
+        container.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            const action = target.dataset.action;
+            if (action === 'selectCategory' && window.selectProgressCategory) window.selectProgressCategory(target.dataset.category);
+            else if (action === 'selectEquipment' && window.selectProgressExercise) window.selectProgressExercise(target.dataset.equipmentKey);
+            else if (action === 'setChartType' && window.setProgressChartType) window.setProgressChartType(target.dataset.chartType);
+            else if (action === 'setTimeRange' && window.setProgressTimeRange) window.setProgressTimeRange(target.dataset.range);
+        });
 
         // Render chart for selected exercise
         if (selectedExerciseKey) {
@@ -311,7 +322,7 @@ function renderExerciseSelector() {
                     .map(
                         (cat) => `
                     <button class="category-pill ${selectedCategory === cat ? 'active' : ''}"
-                            onclick="selectProgressCategory('${escapeAttr(cat)}')">
+                            data-action="selectCategory" data-category="${escapeAttr(cat)}">
                         <i class="fas ${categoryIcons[cat] || 'fa-dumbbell'}"></i>
                         ${escapeHtml(cat)}
                     </button>
@@ -353,7 +364,7 @@ function renderExerciseSelector() {
                             .map(
                                 (eq) => `
                             <button class="equipment-pill ${selectedExerciseKey === eq.key ? 'active' : ''}"
-                                    onclick="selectProgressExercise('${escapeAttr(eq.key)}')">
+                                    data-action="selectEquipment" data-equipment-key="${escapeAttr(eq.key)}">
                                 ${escapeHtml(eq.equipment || 'Default')}
                                 <span class="equipment-count">${eq.sessionCount}</span>
                             </button>
@@ -686,7 +697,7 @@ export async function selectProgressExercise(key) {
 
     // Update equipment pill states
     document.querySelectorAll('.equipment-pill').forEach((pill) => {
-        pill.classList.toggle('active', pill.onclick.toString().includes(key));
+        pill.classList.toggle('active', pill.dataset.equipmentKey === key);
     });
 
     await renderExerciseChart(key, selectedTimeRange);

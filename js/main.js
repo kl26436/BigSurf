@@ -546,7 +546,7 @@ window.showTemplatesByCategory = function (category) {
                     <div class="workout-item-meta">${exerciseCount} exercises</div>
                     <div class="workout-item-exercises">${escapeHtml(exerciseSummary)}</div>
                 </div>
-                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); startWorkoutFromModal('${escapeAttr(workoutName)}')">
+                <button class="btn btn-primary btn-sm start-workout-btn">
                     <i class="fas fa-play"></i> Start
                 </button>
             `;

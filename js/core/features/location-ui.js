@@ -184,7 +184,7 @@ function renderLocationManagementList() {
 
             return `
             <div class="location-management-item ${isCurrent ? 'active' : ''}">
-                <div class="location-item-info" onclick="showLocationOnMapById('${escapeAttr(location.id)}')">
+                <div class="location-item-info" data-action="showLocationOnMap" data-location-id="${escapeAttr(location.id)}">
                     <div class="location-item-icon">
                         <i class="fas fa-map-marker-alt"></i>
                     </div>
@@ -202,10 +202,10 @@ function renderLocationManagementList() {
                     </div>
                 </div>
                 <div class="location-item-actions">
-                    <button onclick="editLocationName('${escapeAttr(location.id)}')" title="Rename">
+                    <button data-action="editLocationName" data-location-id="${escapeAttr(location.id)}" title="Rename">
                         <i class="fas fa-pen"></i>
                     </button>
-                    <button class="delete-btn" onclick="deleteLocation('${escapeAttr(location.id)}')" title="Delete">
+                    <button class="delete-btn" data-action="deleteLocation" data-location-id="${escapeAttr(location.id)}" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -213,6 +213,17 @@ function renderLocationManagementList() {
         `;
         })
         .join('');
+
+    // Event delegation for location actions
+    container.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+        const action = target.dataset.action;
+        const locationId = target.dataset.locationId;
+        if (action === 'showLocationOnMap' && window.showLocationOnMapById) window.showLocationOnMapById(locationId);
+        else if (action === 'editLocationName' && window.editLocationName) window.editLocationName(locationId);
+        else if (action === 'deleteLocation' && window.deleteLocation) window.deleteLocation(locationId);
+    });
 }
 
 /**
@@ -534,13 +545,21 @@ export async function searchLocationAddress() {
         resultsContainer.innerHTML = results
             .map(
                 (result, idx) => `
-            <div class="address-result-item" onclick="selectAddressResult(${idx}, ${result.lat}, ${result.lon}, '${escapeAttr(result.display_name)}')">
+            <div class="address-result-item" data-action="selectAddress" data-idx="${idx}" data-lat="${result.lat}" data-lon="${result.lon}" data-display-name="${escapeAttr(result.display_name)}">
                 <div class="address-result-name">${escapeHtml(result.display_name.split(',')[0])}</div>
                 <div class="address-result-address">${escapeHtml(result.display_name)}</div>
             </div>
         `
             )
             .join('');
+
+        // Event delegation for address results
+        resultsContainer.addEventListener('click', (e) => {
+            const item = e.target.closest('[data-action="selectAddress"]');
+            if (!item) return;
+            const { idx: i, lat, lon, displayName } = item.dataset;
+            selectAddressResult(parseInt(i), parseFloat(lat), parseFloat(lon), displayName);
+        });
     } catch (error) {
         console.error('Address search error:', error);
         resultsContainer.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--danger);">
