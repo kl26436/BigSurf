@@ -88,6 +88,7 @@ function routeToView(view) {
             showActiveWorkout();
             break;
 
+        case 'workout':
         case 'start-workout':
             showWorkoutSelector();
             break;
