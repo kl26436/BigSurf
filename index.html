@@ -22,7 +22,7 @@
         <link rel="apple-touch-icon" sizes="180x180" href="BigSurf.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="BigSurf.png" />
         <link rel="apple-touch-icon" sizes="120x120" href="BigSurf.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Big Surf" />
 
@@ -247,49 +247,38 @@
             <main id="main-content">
                 <!-- Dashboard -->
                 <section id="dashboard" class="content-section hidden">
-                    <!-- Resume Workout Card (only shown on dashboard) -->
+                    <!-- Resume Workout Banner (redesigned bottom sheet style) -->
                     <div id="resume-workout-banner" class="hidden">
-                        <div class="stats-section-header">
-                            <span class="stats-section-title">In Progress</span>
-                            <span id="resume-time-ago" class="resume-time-label">just now</span>
-                        </div>
-                        <div class="resume-goal-card" onclick="continueInProgressWorkout()">
-                            <div class="resume-workout-header">
-                                <span id="resume-workout-name">Workout</span>
-                                <i class="fas fa-chevron-right"></i>
+                        <div class="resume-banner">
+                            <div class="resume-banner-header">
+                                <span class="resume-pulse-dot"></span>
+                                <h3>Workout In Progress</h3>
+                                <span id="resume-time-ago" class="resume-time-label">just now</span>
                             </div>
-                            <div class="resume-progress-bar-wrap">
-                                <div id="resume-progress-bar" class="resume-progress-bar" style="width: 0%"></div>
-                            </div>
-                            <div class="resume-stats-grid">
-                                <div class="resume-stat-box">
-                                    <span id="resume-stat-sets" class="resume-stat-value">0/0</span>
-                                    <span class="resume-stat-label">Sets</span>
-                                </div>
-                                <div class="resume-stat-box">
-                                    <span id="resume-stat-exercises" class="resume-stat-value">0/0</span>
-                                    <span class="resume-stat-label">Exercises</span>
-                                </div>
-                                <div class="resume-stat-box">
-                                    <span id="resume-stat-time" class="resume-stat-value">0m</span>
-                                    <span class="resume-stat-label">Time</span>
-                                </div>
-                                <div class="resume-stat-box">
-                                    <span id="resume-stat-rest" class="resume-stat-value">--</span>
-                                    <span class="resume-stat-label">Rest</span>
+                            <div class="resume-banner-body">
+                                <div id="resume-workout-name" class="resume-workout-name">Workout</div>
+                                <div class="resume-ring-row">
+                                    <svg class="resume-ring" width="56" height="56" viewBox="0 0 56 56">
+                                        <circle cx="28" cy="28" r="24" stroke="rgba(255,255,255,0.08)" stroke-width="4" fill="none"/>
+                                        <circle id="resume-progress-ring" cx="28" cy="28" r="24" stroke="var(--primary)" stroke-width="4" fill="none"
+                                                stroke-dasharray="150.8" stroke-dashoffset="150.8"
+                                                stroke-linecap="round" transform="rotate(-90 28 28)"/>
+                                    </svg>
+                                    <div class="resume-stats-compact">
+                                        <span><strong id="resume-stat-sets">0/0</strong> Sets</span>
+                                        <span><strong id="resume-stat-exercises">0/0</strong> Exercises</span>
+                                        <span><strong id="resume-stat-time">0m</strong> Elapsed</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="resume-cancel-row">
-                            <button
-                                class="resume-cancel-btn"
-                                onclick="
-                                    event.stopPropagation();
-                                    discardInProgressWorkout();
-                                "
-                            >
-                                <i class="fas fa-times"></i> Cancel Workout
-                            </button>
+                            <div class="resume-banner-actions">
+                                <button class="btn btn-primary btn-full" onclick="continueInProgressWorkout()">
+                                    Continue Workout
+                                </button>
+                                <button class="btn-text-small" onclick="event.stopPropagation(); discardInProgressWorkout();">
+                                    Discard
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div id="dashboard-content">

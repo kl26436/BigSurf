@@ -235,20 +235,26 @@ export async function completeWorkout() {
         AppState.savedData.totalDuration = Math.floor((new Date() - AppState.workoutStartTime) / 1000);
     }
 
-    // Save final data
-    await saveWorkoutData(AppState);
+    // Fire-and-forget save — don't block UI on Firebase write
+    saveWorkoutData(AppState).catch(err => {
+        console.error('Error saving completed workout:', err);
+    });
 
-    // Process workout for PRs - ONLY for new workouts, not edits (to avoid duplicate PRs)
+    // Process workout for PRs in background — ONLY for new workouts, not edits
+    const savedDataSnapshot = JSON.parse(JSON.stringify(AppState.savedData));
     if (!isEditingHistorical) {
-        const { PRTracker } = await import('../features/pr-tracker.js');
-        await PRTracker.processWorkoutForPRs(AppState.savedData);
+        import('../features/pr-tracker.js').then(({ PRTracker }) => {
+            PRTracker.processWorkoutForPRs(savedDataSnapshot);
+        }).catch(err => console.error('Error processing PRs:', err));
     }
 
     // Capture workout data for "Save as Template" before reset clears it
-    const completedWorkoutData = JSON.parse(JSON.stringify(AppState.savedData));
+    const completedWorkoutData = savedDataSnapshot;
 
     // Reset state BEFORE showing dashboard (critical order!)
     AppState.reset();
+    AppState.clearTimers();
+    stopActiveWorkoutRestTimer();
 
     // Clear in-progress workout since it's now completed
     window.inProgressWorkout = null;
@@ -261,9 +267,8 @@ export async function completeWorkout() {
     // Reset buttons to normal mode
     updateWorkoutButtonsForEditMode(false);
 
-    // Show dashboard after completion
-    const { showDashboard } = await import('../ui/dashboard-ui.js');
-    showDashboard();
+    // Show dashboard immediately
+    navigateTo('dashboard');
 
     // Stash completed workout for "Save as Template" prompt
     if (!isEditingHistorical) {
@@ -306,6 +311,20 @@ function showSaveAsTemplatePrompt(workoutData) {
     setTimeout(() => banner.remove(), 15000);
 }
 
+export function toggleWorkoutOverflowMenu() {
+    const menu = document.getElementById('workout-overflow-menu');
+    if (menu) {
+        menu.classList.toggle('hidden');
+    }
+}
+
+export function closeWorkoutOverflowMenu() {
+    const menu = document.getElementById('workout-overflow-menu');
+    if (menu) {
+        menu.classList.add('hidden');
+    }
+}
+
 export function saveActiveWorkoutAsTemplate() {
     if (!AppState.currentWorkout) {
         showNotification('No active workout', 'warning');
@@ -341,7 +360,11 @@ export async function cancelWorkout(skipConfirmation = false) {
     }
 
     AppState.savedData.cancelledAt = new Date().toISOString();
-    await saveWorkoutData(AppState);
+
+    // Fire-and-forget save — don't block UI on Firebase write
+    saveWorkoutData(AppState).catch(err => {
+        console.error('Error saving cancelled workout:', err);
+    });
 
     AppState.reset();
     AppState.clearTimers();
@@ -692,20 +715,16 @@ export async function discardInProgressWorkout() {
             userId: AppState.currentUser?.uid,
         };
 
-        // DELETE the workout from Firebase FIRST
-        try {
-            if (workoutToDelete.userId && workoutToDelete.workoutId) {
-                const { deleteDoc, doc, db } = await import('../data/firebase-config.js');
-
-                const workoutRef = doc(db, 'users', workoutToDelete.userId, 'workouts', workoutToDelete.workoutId);
-                await deleteDoc(workoutRef);
-            }
-        } catch (firebaseError) {
-            console.error('Error deleting workout from Firebase', firebaseError);
-        }
-
-        // Clear in-progress workout state
+        // Clear in-progress workout state immediately for responsive UI
         window.inProgressWorkout = null;
+
+        // DELETE from Firebase in background
+        if (workoutToDelete.userId && workoutToDelete.workoutId) {
+            import('../data/firebase-config.js').then(({ deleteDoc, doc, db }) => {
+                const workoutRef = doc(db, 'users', workoutToDelete.userId, 'workouts', workoutToDelete.workoutId);
+                deleteDoc(workoutRef).catch(err => console.error('Error deleting workout from Firebase:', err));
+            });
+        }
 
         // Clear any related UI state
         AppState.reset();
