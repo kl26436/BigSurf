@@ -3378,6 +3378,7 @@ dialog.modal {
     padding: 0;
     margin: 0;
     background: transparent;
+    color: var(--text-primary);
     display: flex;
     align-items: flex-end;
     justify-content: center;
