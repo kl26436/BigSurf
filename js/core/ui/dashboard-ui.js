@@ -8,7 +8,7 @@ import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
 import { getDateString } from '../utils/date-helpers.js';
-import { Config, CATEGORY_COLORS, getCategoryIcon } from '../utils/config.js';
+import { Config, CATEGORY_COLORS } from '../utils/config.js';
 import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { getWorkoutCategory } from './template-selection.js';

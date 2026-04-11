@@ -4,6 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
+import { countReassignmentImpact, reassignEquipment } from '../data/data-manager.js';
 import { setBottomNavVisible } from './navigation.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 
@@ -1239,6 +1240,9 @@ export async function openEquipmentEditor(equipment) {
     // Render locations list
     renderEquipmentEditorLocations();
 
+    // Render per-exercise video list
+    renderEquipmentExerciseVideos();
+
     // Populate location datalist with saved gym locations
     await populateEquipmentEditorLocationDatalist();
 
@@ -1315,6 +1319,64 @@ function renderEquipmentEditorLocations() {
 }
 
 /**
+ * Render per-exercise video list in equipment editor.
+ * Shows each exercise this equipment is used with and its video URL.
+ */
+function renderEquipmentExerciseVideos() {
+    const container = document.getElementById('equipment-exercise-videos');
+    if (!container || !editingEquipmentData) return;
+
+    const exerciseTypes = editingEquipmentData.exerciseTypes || [];
+    const exerciseVideos = editingEquipmentData.exerciseVideos || {};
+
+    if (exerciseTypes.length === 0) {
+        container.innerHTML = '<div class="equipment-locations-empty">No exercises linked yet</div>';
+        return;
+    }
+
+    container.innerHTML = exerciseTypes.map(exName => {
+        const videoUrl = exerciseVideos[exName] || '';
+        return `
+            <div class="equipment-video-row">
+                <div class="equipment-video-info">
+                    <span class="equipment-video-exercise">${escapeHtml(exName)}</span>
+                    <span class="equipment-video-url ${videoUrl ? '' : 'text-muted'}">${videoUrl ? escapeHtml(videoUrl.substring(0, 40)) + (videoUrl.length > 40 ? '...' : '') : 'No video set'}</span>
+                </div>
+                <button type="button" class="btn-text" onclick="editEquipmentExerciseVideo('${escapeAttr(exName)}')">
+                    <i class="fas fa-${videoUrl ? 'pen' : 'plus'}"></i>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Edit the video URL for a specific exercise on this equipment.
+ */
+export function editEquipmentExerciseVideo(exerciseName) {
+    if (!editingEquipmentData) return;
+
+    const exerciseVideos = editingEquipmentData.exerciseVideos || {};
+    const currentUrl = exerciseVideos[exerciseName] || '';
+
+    const newUrl = prompt(`YouTube URL for ${exerciseName}:`, currentUrl);
+    if (newUrl === null) return; // Cancelled
+
+    // Update local state
+    if (!editingEquipmentData.exerciseVideos) {
+        editingEquipmentData.exerciseVideos = {};
+    }
+
+    if (newUrl.trim() === '') {
+        delete editingEquipmentData.exerciseVideos[exerciseName];
+    } else {
+        editingEquipmentData.exerciseVideos[exerciseName] = newUrl.trim();
+    }
+
+    renderEquipmentExerciseVideos();
+}
+
+/**
  * Add location to equipment editor
  */
 export function addLocationToEquipmentEditor() {
@@ -1373,10 +1435,12 @@ export async function saveEquipmentFromEditor() {
             workoutManager = new FirebaseWorkoutManager(AppState);
         }
 
-        // Update the equipment
+        // Update the equipment (include per-exercise videos)
+        const exerciseVideos = editingEquipmentData.exerciseVideos || {};
         await workoutManager.updateEquipment(editingEquipmentData.id, {
             name: name,
             video: video || null,
+            exerciseVideos: Object.keys(exerciseVideos).length > 0 ? exerciseVideos : null,
             locations: editingEquipmentLocations,
             location: null, // Clear old single location field
         });
@@ -1450,4 +1514,296 @@ export function closeEquipmentEditor() {
 
     editingEquipmentData = null;
     editingEquipmentLocations = [];
+}
+
+// ===================================================================
+// EQUIPMENT REASSIGNMENT
+// ===================================================================
+
+let reassignmentState = {
+    equipmentId: null,
+    equipmentName: null,
+    oldExerciseName: null,
+    newExerciseName: null,
+    impactWorkouts: 0,
+    impactTemplates: 0,
+};
+
+/**
+ * Show the reassignment modal — lets user pick a new exercise for this equipment.
+ * Called from the equipment editor UI.
+ */
+export async function showReassignEquipment() {
+    if (!editingEquipmentData) {
+        showNotification('No equipment selected', 'warning');
+        return;
+    }
+
+    const equipmentId = editingEquipmentData.id;
+    const equipmentName = editingEquipmentData.name;
+    const exerciseTypes = editingEquipmentData.exerciseTypes || [];
+
+    // We need to know which exercise this equipment is currently assigned to.
+    // If multiple, show a picker for the source exercise too.
+    // For simplicity, if there's only one exerciseType, use it directly.
+    let oldExerciseName;
+    if (exerciseTypes.length === 1) {
+        oldExerciseName = exerciseTypes[0];
+    } else if (exerciseTypes.length > 1) {
+        // Show a picker for which exercise to reassign FROM
+        oldExerciseName = await showSourceExercisePicker(exerciseTypes);
+        if (!oldExerciseName) return; // Cancelled
+    } else {
+        showNotification('This equipment has no associated exercises', 'warning');
+        return;
+    }
+
+    reassignmentState = {
+        equipmentId,
+        equipmentName,
+        oldExerciseName,
+        newExerciseName: null,
+        impactWorkouts: 0,
+        impactTemplates: 0,
+    };
+
+    // Build exercise list for the target picker
+    const exercises = AppState.exerciseDatabase || [];
+    const exerciseList = exercises
+        .filter(ex => {
+            const name = ex.name || ex.machine;
+            return name && name !== oldExerciseName;
+        })
+        .sort((a, b) => (a.name || a.machine || '').localeCompare(b.name || b.machine || ''));
+
+    const modal = document.getElementById('reassign-equipment-modal');
+    const content = modal?.querySelector('.reassign-exercise-list');
+    const headerEl = modal?.querySelector('.reassign-header-info');
+
+    if (!modal || !content) return;
+
+    // Set header
+    if (headerEl) {
+        headerEl.innerHTML = `
+            <div class="reassign-current">
+                <span class="text-muted">Equipment:</span>
+                <strong>${escapeHtml(equipmentName)}</strong>
+            </div>
+            <div class="reassign-current">
+                <span class="text-muted">Currently on:</span>
+                <strong>${escapeHtml(oldExerciseName)}</strong>
+            </div>
+        `;
+    }
+
+    // Build searchable exercise list
+    content.innerHTML = exerciseList.map(ex => {
+        const name = ex.name || ex.machine;
+        const bodyPart = ex.bodyPart || ex.category || '';
+        return `
+            <div class="reassign-exercise-option" data-exercise="${escapeAttr(name)}" data-action="selectReassignTarget">
+                <div class="reassign-exercise-name">${escapeHtml(name)}</div>
+                <div class="reassign-exercise-meta">${escapeHtml(bodyPart)}</div>
+            </div>
+        `;
+    }).join('');
+
+    // Setup search filter
+    const searchInput = modal.querySelector('#reassign-exercise-search');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.oninput = () => {
+            const term = searchInput.value.toLowerCase();
+            content.querySelectorAll('.reassign-exercise-option').forEach(el => {
+                const name = el.dataset.exercise.toLowerCase();
+                const meta = el.querySelector('.reassign-exercise-meta')?.textContent.toLowerCase() || '';
+                el.style.display = (name.includes(term) || meta.includes(term)) ? '' : 'none';
+            });
+        };
+    }
+
+    // Setup delegation for exercise selection
+    content.onclick = (e) => {
+        const option = e.target.closest('.reassign-exercise-option');
+        if (!option) return;
+        // Toggle selection
+        content.querySelectorAll('.reassign-exercise-option.selected').forEach(el => el.classList.remove('selected'));
+        option.classList.add('selected');
+        reassignmentState.newExerciseName = option.dataset.exercise;
+    };
+
+    // Hide equipment editor, show reassignment modal
+    const equipmentSection = document.getElementById('equipment-editor-section');
+    if (equipmentSection) equipmentSection.classList.add('hidden');
+    openModal(modal);
+}
+
+/**
+ * Prompt user to pick which exercise to reassign FROM (when equipment has multiple exerciseTypes).
+ */
+function showSourceExercisePicker(exerciseTypes) {
+    return new Promise((resolve) => {
+        const choices = exerciseTypes.map(name =>
+            `<button class="btn btn-secondary btn-full" style="margin-bottom: 8px;" data-exercise="${escapeAttr(name)}">${escapeHtml(name)}</button>`
+        ).join('');
+
+        const modal = document.getElementById('reassign-equipment-modal');
+        if (!modal) { resolve(null); return; }
+
+        const content = modal.querySelector('.reassign-exercise-list');
+        const headerEl = modal.querySelector('.reassign-header-info');
+        if (headerEl) {
+            headerEl.innerHTML = `<div class="reassign-current"><strong>Which exercise should this equipment move FROM?</strong></div>`;
+        }
+        if (content) {
+            content.innerHTML = choices;
+            content.onclick = (e) => {
+                const btn = e.target.closest('[data-exercise]');
+                if (btn) {
+                    closeModal(modal);
+                    resolve(btn.dataset.exercise);
+                }
+            };
+        }
+
+        // Show cancel button to close
+        const cancelBtn = modal.querySelector('[data-action="closeReassignModal"]');
+        const origHandler = cancelBtn?.onclick;
+        if (cancelBtn) {
+            cancelBtn.onclick = () => { closeModal(modal); resolve(null); };
+        }
+
+        openModal(modal);
+    });
+}
+
+/**
+ * User confirmed target exercise — now show impact preview before committing.
+ */
+export async function confirmReassignmentTarget() {
+    if (!reassignmentState.newExerciseName) {
+        showNotification('Select an exercise first', 'warning');
+        return;
+    }
+
+    const modal = document.getElementById('reassign-equipment-modal');
+    const content = modal?.querySelector('.reassign-exercise-list');
+    const headerEl = modal?.querySelector('.reassign-header-info');
+    if (!content || !headerEl) return;
+
+    // Show loading
+    content.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Scanning workouts...</div>`;
+
+    // Count impact
+    const impact = await countReassignmentImpact(reassignmentState.equipmentName, reassignmentState.oldExerciseName);
+    reassignmentState.impactWorkouts = impact.workouts;
+    reassignmentState.impactTemplates = impact.templates;
+
+    // Show confirmation preview
+    headerEl.innerHTML = `
+        <h3 style="margin: 0 0 12px;">Confirm Reassignment</h3>
+        <div class="reassign-preview">
+            <div class="reassign-from">
+                <span class="text-muted">From:</span>
+                <strong>${escapeHtml(reassignmentState.oldExerciseName)}</strong>
+            </div>
+            <i class="fas fa-arrow-right" style="color: var(--primary); margin: 0 8px;"></i>
+            <div class="reassign-to">
+                <span class="text-muted">To:</span>
+                <strong>${escapeHtml(reassignmentState.newExerciseName)}</strong>
+            </div>
+        </div>
+    `;
+
+    content.innerHTML = `
+        <div class="reassign-impact">
+            <p>
+                <i class="fas fa-database"></i>
+                This will update <strong>${impact.workouts}</strong> workout${impact.workouts !== 1 ? 's' : ''}
+                and <strong>${impact.templates}</strong> template${impact.templates !== 1 ? 's' : ''}.
+            </p>
+            <p class="text-muted" style="font-size: 0.8rem; margin-top: 8px;">
+                The equipment record "${escapeHtml(reassignmentState.equipmentName)}" will be moved to "${escapeHtml(reassignmentState.newExerciseName)}".
+            </p>
+        </div>
+        <div id="reassign-progress" class="reassign-progress hidden">
+            <div class="reassign-progress-bar" style="width: 0%"></div>
+            <span class="reassign-progress-text">Updating...</span>
+        </div>
+        <div class="reassign-confirm-actions">
+            <button class="btn btn-secondary" onclick="closeReassignModal()">Cancel</button>
+            <button class="btn btn-primary" id="reassign-commit-btn" onclick="commitReassignment()">
+                <i class="fas fa-check"></i> Reassign
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * Execute the equipment reassignment.
+ */
+export async function commitReassignment() {
+    const { equipmentId, equipmentName, oldExerciseName, newExerciseName } = reassignmentState;
+    if (!equipmentId || !oldExerciseName || !newExerciseName) return;
+
+    const commitBtn = document.getElementById('reassign-commit-btn');
+    const progressEl = document.getElementById('reassign-progress');
+    const progressBar = progressEl?.querySelector('.reassign-progress-bar');
+    const progressText = progressEl?.querySelector('.reassign-progress-text');
+
+    // Disable button and show progress
+    if (commitBtn) commitBtn.disabled = true;
+    if (progressEl) progressEl.classList.remove('hidden');
+
+    try {
+        const result = await reassignEquipment(
+            equipmentId,
+            equipmentName,
+            oldExerciseName,
+            newExerciseName,
+            (done, total) => {
+                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                if (progressBar) progressBar.style.width = `${pct}%`;
+                if (progressText) progressText.textContent = `Updating ${done} of ${total} workouts...`;
+            }
+        );
+
+        showNotification(
+            `Reassigned to ${newExerciseName} (${result.workouts} workouts, ${result.templates} templates)`,
+            'success',
+            3000
+        );
+
+        closeReassignModal();
+
+        // Refresh exercise library if open
+        if (AppState.exerciseDatabase) {
+            if (!workoutManager) workoutManager = new FirebaseWorkoutManager(AppState);
+            AppState.exerciseDatabase = await workoutManager.getExerciseLibrary();
+        }
+    } catch (error) {
+        console.error('❌ Equipment reassignment failed:', error);
+        showNotification('Reassignment failed — please try again', 'error');
+        if (commitBtn) commitBtn.disabled = false;
+    }
+}
+
+/**
+ * Close the reassignment modal and return to equipment editor.
+ */
+export function closeReassignModal() {
+    const modal = document.getElementById('reassign-equipment-modal');
+    if (modal) closeModal(modal);
+
+    // Re-show equipment editor if it was hidden
+    const equipmentSection = document.getElementById('equipment-editor-section');
+    if (equipmentSection && editingEquipmentData) {
+        equipmentSection.classList.remove('hidden');
+    }
+
+    reassignmentState = {
+        equipmentId: null, equipmentName: null,
+        oldExerciseName: null, newExerciseName: null,
+        impactWorkouts: 0, impactTemplates: 0,
+    };
 }

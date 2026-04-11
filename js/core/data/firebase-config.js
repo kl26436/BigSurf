@@ -14,6 +14,7 @@ import {
     orderBy,
     limit,
     onSnapshot,
+    writeBatch,
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import {
     getAuth,
@@ -77,6 +78,7 @@ export {
     orderBy,
     limit,
     onSnapshot,
+    writeBatch,
     onAuthStateChanged,
     signInWithPopup,
     signInWithRedirect,

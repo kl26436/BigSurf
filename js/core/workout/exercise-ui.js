@@ -516,13 +516,20 @@ export async function focusExercise(index) {
     equipBtn.addEventListener('click', () => window.changeExerciseEquipment(index));
     actionsRow.appendChild(equipBtn);
 
-    if (exercise.video) {
-        const videoBtn = document.createElement('button');
-        videoBtn.className = 'btn-text btn-small';
-        videoBtn.innerHTML = '<i class="fas fa-play-circle"></i> Video';
-        videoBtn.addEventListener('click', () => window.showExerciseVideoAndToggleButton(exercise.video, exerciseName, index));
-        actionsRow.appendChild(videoBtn);
-    }
+    // Always show video button — resolveFormVideo handles equipment + exercise fallback
+    const videoBtn = document.createElement('button');
+    videoBtn.className = 'btn-text btn-small';
+    videoBtn.id = `show-video-btn-${index}`;
+    videoBtn.innerHTML = '<i class="fas fa-play-circle"></i> Video';
+    videoBtn.addEventListener('click', () => window.showExerciseVideoAndToggleButton(exercise.video || null, exerciseName, index));
+    actionsRow.appendChild(videoBtn);
+
+    const hideVideoBtn = document.createElement('button');
+    hideVideoBtn.className = 'btn-text btn-small hidden';
+    hideVideoBtn.id = `hide-video-btn-${index}`;
+    hideVideoBtn.innerHTML = '<i class="fas fa-times"></i> Hide Video';
+    hideVideoBtn.addEventListener('click', () => window.hideExerciseVideoAndToggleButton(index));
+    actionsRow.appendChild(hideVideoBtn);
 
     title.appendChild(actionsRow);
 
@@ -640,16 +647,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
                 <button class="btn btn-secondary btn-small" data-action="toggleInlineProgress" data-exercise="${escapeAttr(modalExerciseName)}" data-equipment="${escapeAttr(exercise.equipment || '')}" data-index="${exerciseIndex}">
                     <i class="fas fa-chart-line"></i> View Progress
                 </button>
-                ${
-                    exercise.video
-                        ? `<button id="show-video-btn-${exerciseIndex}" class="btn btn-primary btn-small" data-action="showExerciseVideoAndToggleButton" data-video="${escapeAttr(exercise.video)}" data-exercise="${escapeAttr(modalExerciseName)}" data-index="${exerciseIndex}">
-                        <i class="fas fa-play"></i> Form Video
-                    </button>
-                    <button id="hide-video-btn-${exerciseIndex}" class="btn btn-secondary btn-small hidden" onclick="hideExerciseVideoAndToggleButton(${exerciseIndex})">
-                        <i class="fas fa-times"></i> Hide Video
-                    </button>`
-                        : ''
-                }
+                <span id="video-source-label-${exerciseIndex}" class="video-source-label hidden"></span>
             </div>
             <div id="exercise-history-${exerciseIndex}" class="exercise-history-display hidden"></div>
             <div id="exercise-progress-${exerciseIndex}" class="exercise-progress-display hidden"></div>
@@ -1728,24 +1726,75 @@ export async function editExerciseDefaults(exerciseName) {
 // VIDEO FUNCTIONS
 // ===================================================================
 
+/**
+ * Converts various YouTube URL formats to embeddable format.
+ * Handles: watch?v=, youtu.be/, embed/, shorts/
+ */
 export function convertYouTubeUrl(url) {
     if (!url) return url;
 
-    let videoId = null;
-
-    if (url.includes('youtu.be/')) {
-        videoId = url.split('youtu.be/')[1].split('?')[0];
-    } else if (url.includes('youtube.com/watch?v=')) {
-        videoId = url.split('youtube.com/watch?v=')[1].split('&')[0];
-    } else if (url.includes('youtube.com/embed/')) {
-        return url; // Already in embed format
+    const pattern = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = url.match(pattern);
+    if (match) {
+        return `https://www.youtube.com/embed/${match[1]}`;
     }
 
-    if (videoId) {
-        return `https://www.youtube.com/embed/${videoId}`;
+    return url; // Return as-is if not YouTube
+}
+
+/**
+ * Resolve the best form video for a given exercise + equipment combination.
+ * Priority: equipment-specific > equipment general > exercise default > null
+ *
+ * @param {string} exerciseName
+ * @param {string|null} equipmentName
+ * @returns {Promise<{url: string|null, source: 'equipment'|'exercise'|null, label: string|null}>}
+ */
+export async function resolveFormVideo(exerciseName, equipmentName) {
+    // 1. Try equipment-specific video
+    if (equipmentName) {
+        try {
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            const workoutManager = new FirebaseWorkoutManager(AppState);
+            const allEquipment = await workoutManager.getUserEquipment();
+            const equipment = allEquipment.find(eq => eq.name === equipmentName);
+
+            if (equipment) {
+                // Priority 1: per-exercise video on this equipment
+                if (equipment.exerciseVideos?.[exerciseName]) {
+                    return {
+                        url: equipment.exerciseVideos[exerciseName],
+                        source: 'equipment',
+                        label: `Video for ${equipmentName}`,
+                    };
+                }
+                // Priority 2: general equipment video
+                if (equipment.video) {
+                    return {
+                        url: equipment.video,
+                        source: 'equipment',
+                        label: `Video for ${equipmentName}`,
+                    };
+                }
+            }
+        } catch (error) {
+            console.error('Error resolving equipment video:', error);
+        }
     }
 
-    return url; // Return original if not a YouTube URL
+    // 2. Try exercise default video from library
+    const exerciseDb = AppState.exerciseDatabase || [];
+    const exerciseDef = exerciseDb.find(ex => (ex.name || ex.machine) === exerciseName);
+    if (exerciseDef?.video) {
+        return {
+            url: exerciseDef.video,
+            source: 'exercise',
+            label: `Default ${exerciseName} form`,
+        };
+    }
+
+    // 3. No video
+    return { url: null, source: null, label: null };
 }
 
 export function showExerciseVideo(videoUrl, exerciseName) {
@@ -1773,13 +1822,39 @@ export function hideExerciseVideo() {
     if (iframe) iframe.src = '';
 }
 
-// Wrapper functions to handle button toggling
-export function showExerciseVideoAndToggleButton(videoUrl, exerciseName, exerciseIndex) {
-    showExerciseVideo(videoUrl, exerciseName);
-
-    // Hide "Form Video" button, show "Hide Video" button
+/**
+ * Show form video with 3-tier resolution and toggle buttons.
+ * If videoUrl is provided directly, uses it. Otherwise resolves from equipment/exercise.
+ */
+export async function showExerciseVideoAndToggleButton(videoUrl, exerciseName, exerciseIndex) {
     const showBtn = document.getElementById(`show-video-btn-${exerciseIndex}`);
     const hideBtn = document.getElementById(`hide-video-btn-${exerciseIndex}`);
+    const sourceLabel = document.getElementById(`video-source-label-${exerciseIndex}`);
+
+    let url = videoUrl;
+    let label = null;
+
+    // If no direct URL, resolve from equipment/exercise
+    if (!url) {
+        const exercise = AppState.currentWorkout?.exercises?.[exerciseIndex];
+        const equipmentName = exercise?.equipment || null;
+        const resolved = await resolveFormVideo(exerciseName, equipmentName);
+        url = resolved.url;
+        label = resolved.label;
+    }
+
+    if (!url) {
+        showNotification('No form video available', 'info', 1500);
+        return;
+    }
+
+    showExerciseVideo(url, exerciseName);
+
+    // Update source label if present
+    if (sourceLabel && label) {
+        sourceLabel.textContent = label;
+        sourceLabel.classList.remove('hidden');
+    }
 
     if (showBtn) showBtn.classList.add('hidden');
     if (hideBtn) hideBtn.classList.remove('hidden');
@@ -1788,12 +1863,13 @@ export function showExerciseVideoAndToggleButton(videoUrl, exerciseName, exercis
 export function hideExerciseVideoAndToggleButton(exerciseIndex) {
     hideExerciseVideo();
 
-    // Show "Form Video" button, hide "Hide Video" button
     const showBtn = document.getElementById(`show-video-btn-${exerciseIndex}`);
     const hideBtn = document.getElementById(`hide-video-btn-${exerciseIndex}`);
+    const sourceLabel = document.getElementById(`video-source-label-${exerciseIndex}`);
 
     if (showBtn) showBtn.classList.remove('hidden');
     if (hideBtn) hideBtn.classList.add('hidden');
+    if (sourceLabel) sourceLabel.classList.add('hidden');
 }
 
 // ===================================================================

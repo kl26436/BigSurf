@@ -4180,6 +4180,37 @@ dialog.modal:not([open]) {
     flex: 1;
 }
 
+/* Equipment exercise videos list */
+.equipment-exercise-videos-list {
+    margin-bottom: 8px;
+}
+.equipment-video-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+}
+.equipment-video-info {
+    flex: 1;
+    min-width: 0;
+}
+.equipment-video-exercise {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+.equipment-video-url {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Workout Detail Modal */
 .workout-detail-summary {
     background: var(--bg-card);
@@ -5590,6 +5621,14 @@ dialog.modal:not([open]) {
     left: 0;
     width: 100%;
     height: 100%;
+}
+.video-source-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+.video-source-label.hidden {
+    display: none;
 }
 
 /* Exercise modal specific styles */

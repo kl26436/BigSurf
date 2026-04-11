@@ -6,6 +6,7 @@
 
 // Core modules
 import { AppState } from './core/utils/app-state.js';
+import { getCategoryIcon } from './core/utils/config.js';
 import { startApplication } from './core/app-initialization.js';
 
 // Authentication functions
@@ -165,6 +166,11 @@ import {
     removeLocationFromEquipmentEditor,
     saveEquipmentFromEditor,
     deleteEquipmentFromEditor,
+    showReassignEquipment,
+    confirmReassignmentTarget,
+    commitReassignment,
+    closeReassignModal,
+    editEquipmentExerciseVideo,
     // New category grid functions
     showCategoryView,
     selectBodyPartCategory,
@@ -398,6 +404,11 @@ window.addLocationToEquipmentEditor = addLocationToEquipmentEditor;
 window.removeLocationFromEquipmentEditor = removeLocationFromEquipmentEditor;
 window.saveEquipmentFromEditor = saveEquipmentFromEditor;
 window.deleteEquipmentFromEditor = deleteEquipmentFromEditor;
+window.showReassignEquipment = showReassignEquipment;
+window.confirmReassignmentTarget = confirmReassignmentTarget;
+window.commitReassignment = commitReassignment;
+window.closeReassignModal = closeReassignModal;
+window.editEquipmentExerciseVideo = editEquipmentExerciseVideo;
 // New category grid functions
 window.showCategoryView = showCategoryView;
 window.selectBodyPartCategory = selectBodyPartCategory;
@@ -484,15 +495,7 @@ window.showTemplatesByCategory = function (category) {
         return workoutCategory === category.toLowerCase();
     });
 
-    // Get category icon
-    const categoryIcons = {
-        push: 'fas fa-hand-paper',
-        pull: 'fas fa-fist-raised',
-        legs: 'fas fa-running',
-        cardio: 'fas fa-heartbeat',
-        other: 'fas fa-dumbbell',
-    };
-    const categoryIcon = categoryIcons[category.toLowerCase()] || 'fas fa-dumbbell';
+    const categoryIcon = getCategoryIcon(category);
 
     // Use the existing modal in HTML
     const modal = document.getElementById('template-selection-modal');

@@ -2,7 +2,7 @@
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displayWeight } from '../ui/ui-helpers.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
-import { debugLog } from '../utils/config.js';
+import { debugLog, CATEGORY_ICONS } from '../utils/config.js';
 
 export function getWorkoutHistory(appState) {
     const currentHistory = [];
@@ -439,7 +439,9 @@ export function getWorkoutHistory(appState) {
                 calendarGrid.parentNode.insertBefore(legendEl, calendarGrid.nextSibling);
             }
             legendEl.innerHTML = `
-                <span class="legend-item"><span class="legend-dot legend-dot-completed"></span> Workout</span>
+                <span class="legend-item"><span class="legend-dot legend-dot-completed"></span> Completed</span>
+                <span class="legend-item"><span class="legend-dot legend-dot-incomplete"></span> Incomplete</span>
+                <span class="legend-item"><span class="legend-dot legend-dot-cancelled"></span> Cancelled</span>
                 <span class="legend-item"><span class="legend-dot legend-dot-today"></span> Today</span>
             `;
 
@@ -539,16 +541,9 @@ export function getWorkoutHistory(appState) {
             const workoutArray = Array.isArray(workouts) ? workouts : [workouts];
             const firstWorkout = workoutArray[0];
 
-            const iconMap = {
-                push: '<i class="fas fa-hand-paper"></i>',
-                pull: '<i class="fas fa-fist-raised"></i>',
-                legs: '<i class="fas fa-walking"></i>',
-                cardio: '<i class="fas fa-heartbeat"></i>',
-                core: '<i class="fas fa-heartbeat"></i>',
-                other: '<i class="fas fa-dumbbell"></i>',
-            };
-
-            const icon = iconMap[firstWorkout.category] || iconMap['other'];
+            const cat = (firstWorkout.category || 'other').toLowerCase();
+            const iconClass = CATEGORY_ICONS[cat] || CATEGORY_ICONS.other;
+            const icon = `<i class="fas ${iconClass}"></i>`;
 
             // Show count badge if multiple workouts on same day
             const countBadge =
@@ -622,7 +617,7 @@ export function getWorkoutHistory(appState) {
                 html += `
                     <div class="workout-picker-item" data-action="showWorkoutDetail" data-date="${date}" data-workout-name="${escapeAttr(workout.name)}" data-index="${index}" style="cursor: pointer;">
                         <div class="workout-picker-icon ${workout.category}">
-                            <i class="fas fa-dumbbell"></i>
+                            <i class="fas ${CATEGORY_ICONS[(workout.category || 'other').toLowerCase()] || CATEGORY_ICONS.other}"></i>
                         </div>
                         <div class="workout-picker-info">
                             <div class="workout-picker-name">${escapeHtml(workout.name)}</div>
@@ -970,7 +965,7 @@ export function getWorkoutHistory(appState) {
                 pickerHTML += `
             <div class="workout-picker-item" data-action="selectFromPicker" data-date="${escapeAttr(date)}" data-index="${index}">
                 <div class="workout-picker-icon ${workout.category}">
-                    <i class="fas fa-dumbbell"></i>
+                    <i class="fas ${CATEGORY_ICONS[(workout.category || 'other').toLowerCase()] || CATEGORY_ICONS.other}"></i>
                 </div>
                 <div class="workout-picker-info">
                     <div class="workout-picker-name">${escapeHtml(workout.name)}</div>

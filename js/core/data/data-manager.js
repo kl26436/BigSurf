@@ -14,10 +14,12 @@ import {
     getDocs,
     where,
     deleteDoc,
+    writeBatch,
 } from './firebase-config.js';
 import { showNotification, convertWeight, escapeHtml } from '../ui/ui-helpers.js';
 import { validateWorkoutData } from '../utils/validation.js';
 import { getDateString } from '../utils/date-helpers.js';
+import { AppState } from '../utils/app-state.js';
 import { Config } from '../utils/config.js';
 
 /**
@@ -859,4 +861,213 @@ async function recoverCorruptedWeights(state) {
     if (fixedCount > 0) {
         showNotification(`Recovered ${fixedCount} corrupted weights!`, 'success');
     }
+}
+
+/**
+ * Count how many workouts and templates would be affected by equipment reassignment.
+ * Used to show the user a preview before committing.
+ */
+export async function countReassignmentImpact(equipmentName, oldExerciseName) {
+    const userId = AppState.currentUser?.uid;
+    if (!userId) return { workouts: 0, templates: 0 };
+
+    let workoutCount = 0;
+    let templateCount = 0;
+
+    // Count affected workouts
+    const workoutsRef = collection(db, 'users', userId, 'workouts');
+    const allWorkouts = await getDocs(workoutsRef);
+    allWorkouts.forEach(docSnap => {
+        const data = docSnap.data();
+        if (workoutHasEquipmentForExercise(data, equipmentName, oldExerciseName)) {
+            workoutCount++;
+        }
+    });
+
+    // Count affected templates
+    const templatesRef = collection(db, 'users', userId, 'workoutTemplates');
+    const allTemplates = await getDocs(templatesRef);
+    allTemplates.forEach(docSnap => {
+        const data = docSnap.data();
+        if (templateHasEquipmentForExercise(data, equipmentName, oldExerciseName)) {
+            templateCount++;
+        }
+    });
+
+    return { workouts: workoutCount, templates: templateCount };
+}
+
+/**
+ * Check if a workout document contains the given equipment+exercise combo.
+ */
+function workoutHasEquipmentForExercise(data, equipmentName, exerciseName) {
+    // Check originalWorkout.exercises
+    if (data.originalWorkout?.exercises) {
+        for (const ex of data.originalWorkout.exercises) {
+            if (ex.equipment === equipmentName && (ex.machine === exerciseName || ex.name === exerciseName)) {
+                return true;
+            }
+        }
+    }
+    // Check exercises object (exercise_0, exercise_1, etc.)
+    if (data.exercises) {
+        for (const [key, ex] of Object.entries(data.exercises)) {
+            if (ex.equipment === equipmentName) {
+                const idx = parseInt(key.split('_')[1]);
+                const name = data.exerciseNames?.[key] || data.originalWorkout?.exercises?.[idx]?.machine;
+                if (name === exerciseName) return true;
+            }
+        }
+    }
+    return false;
+}
+
+/**
+ * Check if a template contains the given equipment+exercise combo.
+ */
+function templateHasEquipmentForExercise(data, equipmentName, exerciseName) {
+    const exercises = Array.isArray(data.exercises) ? data.exercises : Object.values(data.exercises || {});
+    return exercises.some(ex =>
+        ex.equipment === equipmentName && (ex.machine === exerciseName || ex.name === exerciseName)
+    );
+}
+
+/**
+ * Reassign equipment from one exercise to another.
+ * Updates all workouts, templates, and the equipment document's exerciseTypes.
+ *
+ * @param {string} equipmentId - Firestore doc ID of the equipment
+ * @param {string} equipmentName - The equipment name string
+ * @param {string} oldExerciseName - The exercise it's currently associated with
+ * @param {string} newExerciseName - The exercise it should be associated with
+ * @param {function} onProgress - Optional callback(updatedSoFar, total) for progress
+ * @returns {Promise<{workouts: number, templates: number}>} Count of updated documents
+ */
+export async function reassignEquipment(equipmentId, equipmentName, oldExerciseName, newExerciseName, onProgress) {
+    const userId = AppState.currentUser?.uid;
+    if (!userId) throw new Error('Must be signed in');
+
+    const BATCH_SIZE = 400;
+    let currentBatch = writeBatch(db);
+    let opCount = 0;
+    let workoutCount = 0;
+    let templateCount = 0;
+    let totalProcessed = 0;
+
+    // 1. Update workouts
+    const workoutsRef = collection(db, 'users', userId, 'workouts');
+    const allWorkouts = await getDocs(workoutsRef);
+    const totalDocs = allWorkouts.size;
+
+    for (const docSnap of allWorkouts.docs) {
+        const data = docSnap.data();
+        let needsUpdate = false;
+        const updates = {};
+
+        // Update originalWorkout.exercises array
+        if (data.originalWorkout?.exercises) {
+            const updatedExercises = data.originalWorkout.exercises.map(ex => {
+                if (ex.equipment === equipmentName && (ex.machine === oldExerciseName || ex.name === oldExerciseName)) {
+                    needsUpdate = true;
+                    return { ...ex, machine: newExerciseName, name: newExerciseName };
+                }
+                return ex;
+            });
+            if (needsUpdate) {
+                updates['originalWorkout.exercises'] = updatedExercises;
+            }
+        }
+
+        // Update exercises object and exerciseNames
+        if (data.exercises) {
+            for (const [key, ex] of Object.entries(data.exercises)) {
+                if (ex.equipment === equipmentName) {
+                    const idx = parseInt(key.split('_')[1]);
+                    const name = data.exerciseNames?.[key] || data.originalWorkout?.exercises?.[idx]?.machine;
+                    if (name === oldExerciseName) {
+                        needsUpdate = true;
+                        // exerciseNames stores the display name
+                        updates[`exerciseNames.${key}`] = newExerciseName;
+                    }
+                }
+            }
+        }
+
+        if (needsUpdate) {
+            updates['lastUpdated'] = new Date().toISOString();
+            currentBatch.update(docSnap.ref, updates);
+            opCount++;
+            workoutCount++;
+
+            if (opCount >= BATCH_SIZE) {
+                await currentBatch.commit();
+                currentBatch = writeBatch(db);
+                opCount = 0;
+            }
+        }
+
+        totalProcessed++;
+        if (onProgress) onProgress(totalProcessed, totalDocs);
+    }
+
+    // 2. Update templates
+    const templatesRef = collection(db, 'users', userId, 'workoutTemplates');
+    const allTemplates = await getDocs(templatesRef);
+
+    for (const docSnap of allTemplates.docs) {
+        const data = docSnap.data();
+        let exercises = data.exercises;
+        if (!exercises) continue;
+
+        const isArray = Array.isArray(exercises);
+        const exerciseList = isArray ? exercises : Object.values(exercises);
+        let changed = false;
+
+        const updatedList = exerciseList.map(ex => {
+            if (ex.equipment === equipmentName && (ex.machine === oldExerciseName || ex.name === oldExerciseName)) {
+                changed = true;
+                return { ...ex, machine: newExerciseName, name: newExerciseName };
+            }
+            return ex;
+        });
+
+        if (changed) {
+            const updatedExercises = isArray
+                ? updatedList
+                : Object.fromEntries(Object.keys(exercises).map((k, i) => [k, updatedList[i]]));
+
+            currentBatch.update(docSnap.ref, {
+                exercises: updatedExercises,
+                lastUpdated: new Date().toISOString(),
+            });
+            opCount++;
+            templateCount++;
+
+            if (opCount >= BATCH_SIZE) {
+                await currentBatch.commit();
+                currentBatch = writeBatch(db);
+                opCount = 0;
+            }
+        }
+    }
+
+    // Commit remaining batch
+    if (opCount > 0) {
+        await currentBatch.commit();
+    }
+
+    // 3. Update equipment document's exerciseTypes
+    const equipRef = doc(db, 'users', userId, 'equipment', equipmentId);
+    const equipSnap = await getDoc(equipRef);
+    if (equipSnap.exists()) {
+        const equipData = equipSnap.data();
+        const types = equipData.exerciseTypes || [];
+        const updated = types.filter(t => t !== oldExerciseName);
+        if (!updated.includes(newExerciseName)) {
+            updated.push(newExerciseName);
+        }
+        await setDoc(equipRef, { ...equipData, exerciseTypes: updated, lastUsed: new Date().toISOString() });
+    }
+
+    return { workouts: workoutCount, templates: templateCount };
 }

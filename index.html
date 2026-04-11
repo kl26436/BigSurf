@@ -1625,18 +1625,25 @@
                     </div>
                 </div>
 
-                <!-- Section 2: Video URL -->
+                <!-- Section 2: Form Videos -->
                 <div class="edit-section">
-                    <h3 class="edit-section-title">Video URL <span class="optional-tag">(Optional)</span></h3>
-                    <p class="edit-section-hint">YouTube link for equipment instructions</p>
-                    <div class="input-with-icon">
-                        <i class="fas fa-video"></i>
-                        <input
-                            type="url"
-                            id="equipment-editor-video"
-                            class="edit-input-large"
-                            placeholder="https://youtube.com/watch?v=..."
-                        />
+                    <h3 class="edit-section-title">Form Videos <span class="optional-tag">(Optional)</span></h3>
+                    <p class="edit-section-hint">Per-exercise YouTube links for this equipment</p>
+                    <div id="equipment-exercise-videos" class="equipment-exercise-videos-list">
+                        <!-- Populated dynamically -->
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <label class="edit-section-hint" style="margin-bottom: 4px; display: block;">Default Equipment Video</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-video"></i>
+                            <input
+                                type="url"
+                                id="equipment-editor-video"
+                                class="edit-input-large"
+                                placeholder="https://youtube.com/watch?v=..."
+                            />
+                        </div>
+                        <p class="edit-section-hint" style="margin-top: 4px;">Used when no exercise-specific video is set</p>
                     </div>
                 </div>
 
@@ -1668,6 +1675,13 @@
                 </div>
             </form>
 
+            <!-- Reassign Button -->
+            <div class="edit-section">
+                <button type="button" class="btn btn-secondary btn-full" onclick="showReassignEquipment()">
+                    <i class="fas fa-exchange-alt"></i> Move to Different Exercise
+                </button>
+            </div>
+
             <!-- Delete Button -->
             <div class="edit-delete-container">
                 <button type="button" class="btn-delete-exercise" onclick="deleteEquipmentFromEditor()">
@@ -1675,6 +1689,29 @@
                 </button>
             </div>
         </section>
+
+        <!-- Equipment Reassignment Modal -->
+        <dialog id="reassign-equipment-modal" class="modal">
+            <div class="modal-content" style="max-height: 85vh;">
+                <div class="modal-header">
+                    <h3>Reassign Equipment</h3>
+                    <button class="close-btn" aria-label="Close" data-action="closeReassignModal" onclick="closeReassignModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="reassign-header-info" style="padding: 0 16px;"></div>
+                <div style="padding: 8px 16px 0;">
+                    <input type="text" id="reassign-exercise-search" class="form-input" placeholder="Search exercises...">
+                </div>
+                <div class="reassign-exercise-list" style="padding: 8px 16px 16px; overflow-y: auto; max-height: 50vh;"></div>
+                <div style="padding: 0 16px 16px; display: flex; gap: 8px;">
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="closeReassignModal()">Cancel</button>
+                    <button class="btn btn-primary" style="flex: 1;" onclick="confirmReassignmentTarget()">
+                        <i class="fas fa-arrow-right"></i> Next
+                    </button>
+                </div>
+            </div>
+        </dialog>
 
         <!-- Template Exercise Edit Modal (for editing exercises in workout templates) -->
         <dialog id="template-exercise-edit-modal" class="modal">

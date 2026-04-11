@@ -1,5 +1,6 @@
 // Workout Management UI Functions
 import { AppState } from '../utils/app-state.js';
+import { getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
 import { saveWorkoutData } from '../data/data-manager.js';
@@ -307,28 +308,7 @@ function createTemplateCard(template) {
     return card;
 }
 
-// Get icon for workout category - matches Start Workout page icons
-function getCategoryIcon(category) {
-    const cat = (category || '').toLowerCase();
-    const icons = {
-        push: 'fas fa-hand-paper',
-        pull: 'fas fa-fist-raised',
-        legs: 'fas fa-running',
-        leg: 'fas fa-running',
-        cardio: 'fas fa-heartbeat',
-        core: 'fas fa-heartbeat',
-        other: 'fas fa-dumbbell',
-        'full body': 'fas fa-dumbbell',
-        fullbody: 'fas fa-dumbbell',
-        upper: 'fas fa-hand-paper',
-        lower: 'fas fa-running',
-        chest: 'fas fa-hand-paper',
-        back: 'fas fa-fist-raised',
-        shoulders: 'fas fa-hand-paper',
-        arms: 'fas fa-fist-raised',
-    };
-    return icons[cat] || 'fas fa-dumbbell';
-}
+// getCategoryIcon is now imported from config.js
 
 /**
  * Normalize exercises to array format

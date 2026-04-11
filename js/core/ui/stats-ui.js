@@ -7,6 +7,7 @@ import { ExerciseProgress } from '../features/exercise-progress.js';
 import { setBottomNavVisible, navigateTo, updateBottomNavActive } from './navigation.js';
 import { setHeaderMode, escapeHtml, escapeAttr, displayWeight } from './ui-helpers.js';
 import { AppState } from '../utils/app-state.js';
+import { CATEGORY_ICONS } from '../utils/config.js';
 
 // ===================================================================
 // STATE
@@ -332,14 +333,8 @@ function renderExerciseSelector() {
         `;
     }
 
-    // Category icons
-    const categoryIcons = {
-        Push: 'fa-hand-paper',
-        Pull: 'fa-fist-raised',
-        Legs: 'fa-running',
-        Core: 'fa-child',
-        Other: 'fa-dumbbell',
-    };
+    // Use shared category icons (keyed by lowercase)
+    const categoryIcons = CATEGORY_ICONS;
 
     // Get exercises for selected category
     const exercises = selectedCategory ? Object.keys(exerciseHierarchy[selectedCategory] || {}) : [];
@@ -357,7 +352,7 @@ function renderExerciseSelector() {
                         (cat) => `
                     <button class="category-pill ${selectedCategory === cat ? 'active' : ''}"
                             data-action="selectCategory" data-category="${escapeAttr(cat)}">
-                        <i class="fas ${categoryIcons[cat] || 'fa-dumbbell'}"></i>
+                        <i class="fas ${categoryIcons[cat.toLowerCase()] || 'fa-dumbbell'}"></i>
                         ${escapeHtml(cat)}
                     </button>
                 `
