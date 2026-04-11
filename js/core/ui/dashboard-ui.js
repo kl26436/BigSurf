@@ -11,6 +11,7 @@ import { getDateString } from '../utils/date-helpers.js';
 import { Config } from '../utils/config.js';
 import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
+import { getWorkoutCategory } from './template-selection.js';
 
 // ===================================================================
 // DASHBOARD DISPLAY
@@ -169,18 +170,20 @@ async function checkForInProgressWorkout() {
                     });
                 }
 
-                // Update progress bar
-                const percentage = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
-                const progressBar = document.getElementById('resume-progress-bar');
-                if (progressBar) {
-                    progressBar.style.width = `${percentage}%`;
+                // Update progress ring
+                const percentage = totalSets > 0 ? (completedSets / totalSets) : 0;
+                const circumference = 2 * Math.PI * 24; // radius = 24
+                const progressRing = document.getElementById('resume-progress-ring');
+                if (progressRing) {
+                    const offset = circumference * (1 - percentage);
+                    progressRing.style.strokeDasharray = `${circumference}`;
+                    progressRing.style.strokeDashoffset = `${offset}`;
                 }
 
-                // Update stat boxes
+                // Update stat values
                 const statSets = document.getElementById('resume-stat-sets');
                 const statExercises = document.getElementById('resume-stat-exercises');
                 const statTime = document.getElementById('resume-stat-time');
-                const statRest = document.getElementById('resume-stat-rest');
 
                 if (statSets) {
                     statSets.textContent = `${completedSets}/${totalSets}`;
@@ -197,10 +200,6 @@ async function checkForInProgressWorkout() {
                         const mins = minutes % 60;
                         statTime.textContent = `${hours}h ${mins}m`;
                     }
-                }
-                if (statRest) {
-                    // Start live timer update for rest countdown
-                    startDashboardRestTimer();
                 }
 
                 // Calculate time ago for header
@@ -322,8 +321,10 @@ async function renderDashboard() {
             `;
         } else {
             // Build the dashboard - focused on "what to do today" and quick glance stats
+            const volumeChip = await renderVolumeComparisonChip();
             container.innerHTML = `
                 ${renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats)}
+                ${volumeChip}
                 ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
                 ${renderDashboardStreakBoxes(streaks)}
                 ${renderDashboardPRsSection(recentPRs)}
@@ -386,64 +387,88 @@ async function getTodaysCompletedWorkout() {
  */
 function renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats) {
     const percentage = Math.min((weekCount / weeklyGoal) * 100, 100);
-    const circumference = 2 * Math.PI * 36; // radius = 36 (smaller)
+    const radius = 52;
+    const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
     const isComplete = weekCount >= weeklyGoal;
-    const remaining = Math.max(weeklyGoal - weekCount, 0);
+
+    // Build day-of-week dots (Sun=0 through Sat=6)
+    const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const today = new Date();
+    const todayDow = today.getDay();
+
+    // Get which days of the week had workouts
+    const workoutDays = new Set();
+    if (weeklyStats.workouts) {
+        weeklyStats.workouts.forEach(w => {
+            if (w.date) {
+                const parts = w.date.split('-');
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                workoutDays.add(d.getDay());
+            }
+        });
+    }
+
+    const dayDotsHtml = dayLabels.map((label, i) => {
+        const completed = workoutDays.has(i);
+        const isToday = i === todayDow;
+        let cls = 'day-dot';
+        if (completed) cls += ' completed';
+        else if (isToday) cls += ' today';
+        return `<span class="${cls}">${label}</span>`;
+    }).join('');
+
+    // Calculate total volume for the week
+    let totalVolume = 0;
+    if (weeklyStats.workouts) {
+        weeklyStats.workouts.forEach(w => {
+            if (w.exercises) {
+                Object.values(w.exercises).forEach(ex => {
+                    if (ex.sets) {
+                        ex.sets.forEach(s => {
+                            if (s.reps && s.weight) {
+                                totalVolume += s.reps * s.weight;
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+    const volumeDisplay = totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : `${totalVolume}`;
 
     return `
-        <div class="stats-section-header">
-            <span class="stats-section-title">This Week's Goal</span>
-            <span class="weekly-goal-status-inline ${isComplete ? 'complete' : ''}">
-                ${isComplete ? 'Complete!' : `${remaining} to go`}
-            </span>
-        </div>
-
-        <div class="weekly-goal-card compact">
-            <div class="weekly-goal-content">
-                <div class="weekly-progress-ring-wrap">
-                    <svg class="weekly-progress-ring" width="80" height="80">
-                        <circle
-                            class="ring-bg"
-                            stroke="rgba(64, 224, 208, 0.15)"
-                            stroke-width="6"
-                            fill="transparent"
-                            r="36"
-                            cx="40"
-                            cy="40"
-                        />
-                        <circle
-                            class="ring-progress"
-                            stroke="${isComplete ? '#4ade80' : 'var(--primary)'}"
-                            stroke-width="6"
-                            fill="transparent"
-                            r="36"
-                            cx="40"
-                            cy="40"
-                            stroke-linecap="round"
-                            stroke-dasharray="${circumference}"
-                            stroke-dashoffset="${strokeDashoffset}"
-                            transform="rotate(-90 40 40)"
-                        />
-                    </svg>
-                    <div class="ring-center-text">
-                        <span class="ring-count">${weekCount}</span>
-                        <span class="ring-goal">/ ${weeklyGoal}</span>
-                    </div>
+        <div class="weekly-goal-hero">
+            <div class="weekly-ring-container">
+                <svg class="weekly-ring" width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="${radius}" stroke="rgba(255,255,255,0.06)" stroke-width="8" fill="none"/>
+                    <circle class="ring-progress-animated" cx="60" cy="60" r="${radius}"
+                            stroke="${isComplete ? 'var(--success)' : 'var(--primary)'}" stroke-width="8" fill="none"
+                            stroke-dasharray="${circumference}" stroke-dashoffset="${strokeDashoffset}"
+                            stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                </svg>
+                <div class="ring-center-text">
+                    <span class="ring-count">${weekCount}</span>
+                    <span class="ring-goal">of ${weeklyGoal}</span>
                 </div>
-                <div class="weekly-stats-grid">
-                    <div class="weekly-stat-box">
-                        <span class="weekly-stat-value">${weeklyStats.sets}</span>
-                        <span class="weekly-stat-label">Sets</span>
-                    </div>
-                    <div class="weekly-stat-box">
-                        <span class="weekly-stat-value">${weeklyStats.exercises}</span>
-                        <span class="weekly-stat-label">Exercises</span>
-                    </div>
-                    <div class="weekly-stat-box">
-                        <span class="weekly-stat-value">${weeklyStats.minutes}</span>
-                        <span class="weekly-stat-label">Minutes</span>
-                    </div>
+            </div>
+
+            <div class="week-day-dots">${dayDotsHtml}</div>
+
+            <div class="weekly-stats-row">
+                <div class="weekly-stat">
+                    <span class="weekly-stat-value">${weeklyStats.sets}</span>
+                    <span class="weekly-stat-label">Sets</span>
+                </div>
+                <div class="weekly-stat-divider"></div>
+                <div class="weekly-stat">
+                    <span class="weekly-stat-value">${volumeDisplay}</span>
+                    <span class="weekly-stat-label">Volume</span>
+                </div>
+                <div class="weekly-stat-divider"></div>
+                <div class="weekly-stat">
+                    <span class="weekly-stat-value">${weeklyStats.minutes}</span>
+                    <span class="weekly-stat-label">Minutes</span>
                 </div>
             </div>
         </div>
@@ -574,35 +599,57 @@ function renderInProgressSection(workout) {
 // ===================================================================
 
 function renderDashboardStreakBoxes(stats) {
-    const streakData = stats || { currentStreak: 0, longestStreak: 0, totalWorkouts: 0 };
+    const streakData = stats || { currentStreak: 0, longestStreak: 0, totalWorkouts: 0, workoutsThisMonth: 0, workoutDates: [] };
+    const isActive = streakData.currentStreak > 0;
+    const onFire = streakData.currentStreak >= 7;
+
+    // Build mini month heatmap
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const workoutDateSet = new Set(streakData.workoutDates || []);
+
+    let heatmapHtml = '';
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const hasWorkout = workoutDateSet.has(dateStr);
+        const isToday = d === today.getDate();
+        let cls = 'heatmap-cell';
+        if (hasWorkout) cls += ' active';
+        if (isToday) cls += ' today';
+        heatmapHtml += `<div class="${cls}" title="${dateStr}"></div>`;
+    }
 
     return `
-        <div class="stats-section-header">
-            <span class="stats-section-title">Streaks</span>
-        </div>
+        <div class="streak-section">
+            <div class="streak-hero ${isActive ? 'active' : ''}">
+                <div class="streak-flame-wrap">
+                    <i class="fas fa-fire streak-flame ${onFire ? 'on-fire' : ''}"></i>
+                    <span class="streak-count-overlay">${streakData.currentStreak}</span>
+                </div>
+                <div class="streak-hero-text">
+                    <span class="streak-label">Day Streak</span>
+                    <span class="streak-subtext">${isActive ? 'Keep it going!' : 'Start a streak today'}</span>
+                </div>
+            </div>
 
-        <div class="stats-streak-row">
-            <div class="streak-box ${streakData.currentStreak > 0 ? 'active' : ''}">
-                <div class="streak-box-icon fire">
-                    <i class="fas fa-fire"></i>
+            <div class="streak-stats-row">
+                <div class="streak-stat">
+                    <span class="streak-stat-value">${streakData.longestStreak}</span>
+                    <span class="streak-stat-label">Best Streak</span>
                 </div>
-                <div class="streak-box-label">CURRENT STREAK</div>
-                <div class="streak-box-value">${streakData.currentStreak} days</div>
-            </div>
-            <div class="streak-box">
-                <div class="streak-box-icon trophy">
-                    <i class="fas fa-trophy"></i>
+                <div class="streak-stat">
+                    <span class="streak-stat-value">${streakData.workoutsThisMonth || 0}</span>
+                    <span class="streak-stat-label">This Month</span>
                 </div>
-                <div class="streak-box-label">LONGEST STREAK</div>
-                <div class="streak-box-value">${streakData.longestStreak} days</div>
-            </div>
-            <div class="streak-box">
-                <div class="streak-box-icon total">
-                    <i class="fas fa-dumbbell"></i>
+                <div class="streak-stat">
+                    <span class="streak-stat-value">${streakData.totalWorkouts}</span>
+                    <span class="streak-stat-label">All Time</span>
                 </div>
-                <div class="streak-box-label">TOTAL WORKOUTS</div>
-                <div class="streak-box-value">${streakData.totalWorkouts}</div>
             </div>
+
+            <div class="streak-heatmap">${heatmapHtml}</div>
         </div>
     `;
 }
@@ -621,15 +668,14 @@ function renderDashboardPRsSection(recentPRs) {
     return `
         <div class="stats-section-header mt-lg">
             <span class="stats-section-title">Recent PRs</span>
+            <button class="btn-text-small" onclick="navigateTo('stats')">View all</button>
         </div>
 
-        <div class="prs-card-new">
-            <div class="prs-list-new">
-                ${prs
-                    .slice(0, 3)
-                    .map((pr) => renderDashboardPRItem(pr))
-                    .join('')}
-            </div>
+        <div class="pr-achievement-list">
+            ${prs
+                .slice(0, 3)
+                .map((pr) => renderDashboardPRItem(pr))
+                .join('')}
         </div>
     `;
 }
@@ -638,20 +684,85 @@ function renderDashboardPRItem(pr) {
     const dateDisplay = formatRelativeDateDash(pr.date);
 
     return `
-        <div class="pr-item-new">
-            <div class="pr-item-icon">
-                <i class="fas fa-dumbbell"></i>
+        <div class="pr-achievement-card">
+            <div class="pr-achievement-header">
+                <i class="fas fa-trophy" style="color: #ffd700;"></i>
+                <span class="pr-achievement-exercise">${escapeHtml(pr.exercise)}</span>
+                <span class="pr-achievement-date">${dateDisplay}</span>
             </div>
-            <div class="pr-item-content">
-                <div class="pr-item-exercise">${escapeHtml(pr.exercise)}</div>
-                <div class="pr-item-details">
-                    <span class="pr-item-type">MAX WEIGHT</span>
-                    <span class="pr-item-value">${pr.weight} lb x ${pr.reps}</span>
-                    <span class="pr-item-meta">${dateDisplay}${pr.location ? ` - ${escapeHtml(pr.location)}` : ''}</span>
-                </div>
+            <div class="pr-achievement-body">
+                <span class="pr-achievement-value">${pr.weight} lbs</span>
+                <span class="pr-achievement-detail">&times; ${pr.reps} reps</span>
             </div>
         </div>
     `;
+}
+
+async function renderVolumeComparisonChip() {
+    try {
+        const { StatsTracker: ST } = await import('../features/stats-tracker.js');
+        // Get this week's and last week's stats
+        const thisWeek = await ST.getWeeklyStats();
+        // Calculate last week's volume from workouts
+        let thisWeekVolume = 0;
+        if (thisWeek.workouts) {
+            thisWeek.workouts.forEach(w => {
+                if (w.exercises) {
+                    Object.values(w.exercises).forEach(ex => {
+                        if (ex.sets) {
+                            ex.sets.forEach(s => {
+                                if (s.reps && s.weight) thisWeekVolume += s.reps * s.weight;
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // Query last week
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const startOfLastWeek = new Date(today);
+        startOfLastWeek.setDate(today.getDate() - dayOfWeek - 7);
+        const endOfLastWeek = new Date(today);
+        endOfLastWeek.setDate(today.getDate() - dayOfWeek - 1);
+
+        const { collection, query, where, orderBy, getDocs, db } = await import('../data/firebase-config.js');
+        const startStr = getDateString(startOfLastWeek);
+        const endStr = getDateString(endOfLastWeek);
+        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, where('date', '>=', startStr), where('date', '<=', endStr), orderBy('date', 'desc'));
+        const snapshot = await getDocs(q);
+
+        let lastWeekVolume = 0;
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (!data.completedAt || data.cancelledAt) return;
+            if (data.exercises) {
+                Object.values(data.exercises).forEach(ex => {
+                    if (ex.sets) {
+                        ex.sets.forEach(s => {
+                            if (s.reps && s.weight) lastWeekVolume += s.reps * s.weight;
+                        });
+                    }
+                });
+            }
+        });
+
+        if (lastWeekVolume === 0) return '';
+
+        const trend = ((thisWeekVolume - lastWeekVolume) / lastWeekVolume * 100).toFixed(0);
+        const isUp = Number(trend) >= 0;
+
+        return `
+            <div class="volume-trend-chip ${isUp ? 'up' : 'down'}">
+                <i class="fas fa-arrow-${isUp ? 'up' : 'down'}"></i>
+                ${Math.abs(trend)}% vs last week
+            </div>
+        `;
+    } catch {
+        return '';
+    }
 }
 
 // Legacy toggle exports (sections removed, kept for backwards compatibility)
@@ -859,97 +970,132 @@ async function getSuggestedWorkoutsForToday() {
 /**
  * Render suggested workouts section (new design with completion status)
  */
+// Category color mapping for workout cards
+const CATEGORY_COLORS = {
+    'Push':     '#4A90D9',
+    'Pull':     '#D94A7A',
+    'Legs':     '#7B4AD9',
+    'Cardio':   '#D9A74A',
+    'Core':     '#4AD9A7',
+    'Arms':     '#D96A4A',
+    'Full Body':'#4AD9D9',
+    'Other':    '#1dd3b0',
+};
+
 function renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes = [], inProgressWorkoutType = null) {
     if (!suggestedWorkouts || suggestedWorkouts.length === 0) {
-        return ''; // Don't show section if no suggestions
+        return '';
     }
 
-    // Filter out the in-progress workout (it has its own section)
     const filteredWorkouts = inProgressWorkoutType
         ? suggestedWorkouts.filter((w) => (w.name || w.day) !== inProgressWorkoutType)
         : suggestedWorkouts;
 
     if (filteredWorkouts.length === 0) {
-        return ''; // Don't show section if only workout is in-progress
+        return '';
     }
 
     const today = new Date();
     const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
 
-    // Check if all remaining suggested workouts are completed
+    // Check if all completed
     const allCompleted = filteredWorkouts.every((workout) => {
         const workoutName = workout.name || workout.day;
         return completedWorkoutTypes.includes(workoutName);
     });
 
-    // If all workouts are done, show a single congrats banner
     if (allCompleted && filteredWorkouts.length > 0) {
-        const completedCount = filteredWorkouts.length;
         return `
             <div class="congrats-banner">
-                <div class="congrats-icon">
-                    <i class="fas fa-trophy"></i>
-                </div>
+                <div class="congrats-icon"><i class="fas fa-trophy"></i></div>
                 <div class="congrats-content">
                     <div class="congrats-title">${dayName} Complete!</div>
-                    <div class="congrats-message">
-                        ${
-                            completedCount === 1
-                                ? `You crushed your workout today!`
-                                : `You completed all ${completedCount} scheduled workouts!`
-                        }
-                    </div>
+                    <div class="congrats-message">${filteredWorkouts.length === 1 ? 'You crushed your workout today!' : `You completed all ${filteredWorkouts.length} scheduled workouts!`}</div>
                 </div>
             </div>
         `;
     }
 
     const workoutCards = filteredWorkouts
-        .map((workout) => {
+        .map((workout, index) => {
             const workoutName = workout.name || workout.day;
             const templateId = workout.id || workout.name;
             const isDefault = workout.isDefault || false;
             const isCompleted = completedWorkoutTypes.includes(workoutName);
             const exerciseCount = workout.exercises?.length || 0;
+            const category = getWorkoutCategory(workoutName);
+            const categoryColor = CATEGORY_COLORS[category] || CATEGORY_COLORS['Other'];
 
-            if (isCompleted) {
-                // Completed workout - show small congrats card
-                return `
-                <div class="suggested-card suggested-completed">
-                    <div class="suggested-completed-icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="suggested-info">
-                        <div class="suggested-name">${escapeHtml(workoutName)}</div>
-                        <div class="suggested-status">Done - Nice work!</div>
-                    </div>
-                </div>
-            `;
+            // Get muscle group tags from exercises
+            const muscleTags = [];
+            if (workout.exercises) {
+                const bodyParts = new Set();
+                workout.exercises.forEach(ex => {
+                    if (ex.bodyPart) bodyParts.add(ex.bodyPart);
+                });
+                bodyParts.forEach(bp => muscleTags.push(bp));
             }
 
+            // Estimate workout time (~3 min per exercise)
+            const estimatedMinutes = Math.round(exerciseCount * 3.5);
+
+            if (isCompleted) {
+                return `
+                <div class="suggested-compact suggested-completed-card">
+                    <div class="suggested-compact-bar" style="background: var(--success)"></div>
+                    <div class="suggested-compact-info">
+                        <span class="suggested-compact-name">${escapeHtml(workoutName)}</span>
+                        <span class="suggested-compact-meta">Done!</span>
+                    </div>
+                    <i class="fas fa-check-circle" style="color: var(--success);"></i>
+                </div>
+                `;
+            }
+
+            // First non-completed workout gets featured treatment
+            if (index === 0 || (index === 1 && completedWorkoutTypes.includes(filteredWorkouts[0].name || filteredWorkouts[0].day))) {
+                return `
+                <div class="suggested-featured" data-action="startSuggestedWorkout" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
+                    <div class="suggested-featured-accent" style="background: ${categoryColor}"></div>
+                    <div class="suggested-featured-content">
+                        <div class="suggested-category-badge" style="background: ${categoryColor}20; color: ${categoryColor}">
+                            ${escapeHtml(category)}
+                        </div>
+                        <h4 class="suggested-featured-name">${escapeHtml(workoutName)}</h4>
+                        <div class="suggested-meta-row">
+                            <span><i class="fas fa-dumbbell"></i> ${exerciseCount} exercises</span>
+                            <span><i class="fas fa-clock"></i> ~${estimatedMinutes} min</span>
+                        </div>
+                        ${muscleTags.length > 0 ? `
+                        <div class="suggested-muscle-tags">
+                            ${muscleTags.slice(0, 4).map(t => `<span class="muscle-tag">${escapeHtml(t)}</span>`).join('')}
+                        </div>` : ''}
+                    </div>
+                    <button class="btn btn-primary btn-small">Start</button>
+                </div>
+                `;
+            }
+
+            // Compact cards for subsequent workouts
             return `
-            <div class="suggested-card" data-action="startSuggestedWorkout" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
-                <div class="suggested-icon">
-                    <i class="fas fa-dumbbell"></i>
+            <div class="suggested-compact" data-action="startSuggestedWorkout" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
+                <div class="suggested-compact-bar" style="background: ${categoryColor}"></div>
+                <div class="suggested-compact-info">
+                    <span class="suggested-compact-name">${escapeHtml(workoutName)}</span>
+                    <span class="suggested-compact-meta">${exerciseCount} exercises</span>
                 </div>
-                <div class="suggested-info">
-                    <div class="suggested-name">${escapeHtml(workoutName)}</div>
-                    <div class="suggested-meta">${exerciseCount} exercises</div>
-                </div>
-                <div class="suggested-arrow">
-                    <i class="fas fa-chevron-right"></i>
-                </div>
+                <i class="fas fa-play-circle" style="color: var(--primary); font-size: 1.2rem;"></i>
             </div>
-        `;
+            `;
         })
         .join('');
 
     return `
-        <div class="stats-section-header">
-            <span class="stats-section-title">${dayName} Workouts</span>
-        </div>
-
-        <div class="suggested-list">
+        <div class="suggested-section">
+            <div class="stats-section-header">
+                <span class="stats-section-title">${dayName}'s Workouts</span>
+                <button class="btn-text-small" onclick="navigateTo('workout')">See all</button>
+            </div>
             ${workoutCards}
         </div>
     `;

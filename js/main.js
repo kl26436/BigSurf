@@ -22,6 +22,8 @@ import {
     discardEditedWorkout,
     editHistoricalWorkout,
     saveActiveWorkoutAsTemplate,
+    toggleWorkoutOverflowMenu,
+    closeWorkoutOverflowMenu,
     focusExercise,
     updateSet,
     addSet,
@@ -278,6 +280,8 @@ window.discardInProgressWorkout = discardInProgressWorkout;
 window.discardEditedWorkout = discardEditedWorkout;
 window.editHistoricalWorkout = editHistoricalWorkout;
 window.saveActiveWorkoutAsTemplate = saveActiveWorkoutAsTemplate;
+window.toggleWorkoutOverflowMenu = toggleWorkoutOverflowMenu;
+window.closeWorkoutOverflowMenu = closeWorkoutOverflowMenu;
 window.startWorkoutFromModal = function (workoutName) {
     // Close the modal (hide it, don't remove it from DOM)
     const modal = document.getElementById('template-selection-modal');

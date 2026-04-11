@@ -7,10 +7,48 @@ export function getExerciseLibrary(appState) {
     let currentExercises = [];
     let filteredExercises = [];
     let recentExercises = [];
+    let favoriteExercises = []; // Array of exercise name strings
 
     return {
         initialize() {
             // Exercise library ready
+        },
+
+        async loadFavorites() {
+            try {
+                const { doc, db, getDoc } = await import('./firebase-config.js');
+                const favRef = doc(db, 'users', appState.currentUser.uid, 'preferences', 'favorites');
+                const snap = await getDoc(favRef);
+                if (snap.exists()) {
+                    favoriteExercises = snap.data().exercises || [];
+                } else {
+                    favoriteExercises = [];
+                }
+            } catch {
+                favoriteExercises = [];
+            }
+        },
+
+        async toggleFavorite(exerciseName) {
+            try {
+                const { doc, db, setDoc } = await import('./firebase-config.js');
+                const favRef = doc(db, 'users', appState.currentUser.uid, 'preferences', 'favorites');
+                const idx = favoriteExercises.indexOf(exerciseName);
+                if (idx >= 0) {
+                    favoriteExercises.splice(idx, 1);
+                } else {
+                    favoriteExercises.push(exerciseName);
+                }
+                await setDoc(favRef, { exercises: favoriteExercises }, { merge: true });
+                this.renderExercises(); // Re-render to update star icons
+            } catch (err) {
+                console.error('Error toggling favorite:', err);
+                showNotification('Error saving favorite', 'error');
+            }
+        },
+
+        isFavorite(exerciseName) {
+            return favoriteExercises.includes(exerciseName);
         },
 
         async openForManualWorkout() {
@@ -73,11 +111,15 @@ export function getExerciseLibrary(appState) {
 
             try {
                 await this.loadExercises();
-                // Load recent exercises for Quick Add chips
+                // Load recent exercises and favorites in parallel
                 try {
                     const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
                     const workoutManager = new FirebaseWorkoutManager(appState);
-                    recentExercises = await workoutManager.getMostUsedExercises(8);
+                    const [recent] = await Promise.all([
+                        workoutManager.getMostUsedExercises(8),
+                        this.loadFavorites(),
+                    ]);
+                    recentExercises = recent;
                 } catch {
                     recentExercises = [];
                 }
@@ -121,6 +163,24 @@ export function getExerciseLibrary(appState) {
 
             grid.innerHTML = '';
 
+            // Favorites section
+            if (favoriteExercises.length > 0) {
+                const favSection = document.createElement('div');
+                favSection.className = 'favorites-section';
+                const favExercises = favoriteExercises
+                    .map(name => currentExercises.find(ex => (ex.name || ex.machine) === name) || { name, machine: name })
+                    .filter(Boolean);
+                if (favExercises.length > 0) {
+                    favSection.innerHTML = `
+                        <div class="quick-add-label"><i class="fas fa-star" style="color: gold; margin-right: 4px;"></i> Favorites</div>
+                        <div class="quick-add-chips">
+                            ${favExercises.map((ex) => `<button class="quick-add-chip favorite-chip" data-exercise-name="${escapeHtml(ex.name || ex.machine)}" data-equipment="${escapeHtml(ex.equipment || '')}">${escapeHtml(ex.name || ex.machine)}</button>`).join('')}
+                        </div>
+                    `;
+                    grid.appendChild(favSection);
+                }
+            }
+
             // Quick Add chips for recently used exercises
             if (recentExercises.length > 0) {
                 const quickAddSection = document.createElement('div');
@@ -145,6 +205,15 @@ export function getExerciseLibrary(appState) {
 
         setupExerciseButtonHandlers(grid) {
             grid.addEventListener('click', (e) => {
+                // Handle favorite toggle
+                const favBtn = e.target.closest('.favorite-toggle');
+                if (favBtn) {
+                    e.stopPropagation();
+                    const name = favBtn.dataset.favorite;
+                    if (name) this.toggleFavorite(name);
+                    return;
+                }
+
                 // Handle Quick Add chip clicks — route through the same context-based selection
                 const chip = e.target.closest('.quick-add-chip');
                 if (chip) {
@@ -231,8 +300,15 @@ export function getExerciseLibrary(appState) {
                     `;
             }
 
+            const exerciseName = exercise.name || exercise.machine;
+            const isFav = this.isFavorite(exerciseName);
             card.innerHTML = `
-                <h5>${escapeHtml(exercise.name || exercise.machine)}</h5>
+                <div class="library-exercise-header-row">
+                    <h5>${escapeHtml(exerciseName)}</h5>
+                    <button class="btn-icon favorite-toggle ${isFav ? 'active' : ''}" data-favorite="${escapeHtml(exerciseName)}" aria-label="${isFav ? 'Remove from favorites' : 'Add to favorites'}">
+                        <i class="fas fa-star"></i>
+                    </button>
+                </div>
                 <div class="library-exercise-info">
                     ${escapeHtml(exercise.bodyPart || 'General')} • ${escapeHtml(exercise.equipmentType || 'Machine')}
                     ${exercise.isCustom ? ' • Custom' : ''}

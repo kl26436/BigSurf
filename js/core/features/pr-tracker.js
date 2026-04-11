@@ -331,6 +331,7 @@ export async function processWorkoutForPRs(workoutData) {
     const workoutLocation = workoutData.location || prData.currentLocation || 'Unknown Location';
 
     let newPRCount = 0;
+    const newPRs = [];
 
     // Iterate through all exercises in the workout
     for (const exerciseKey in workoutData.exercises) {
@@ -355,9 +356,18 @@ export async function processWorkoutForPRs(workoutData) {
                 // Use the workout's location, not the current location
                 await recordPR(exerciseName, set.reps, set.weight, equipment, workoutLocation, workoutDate, bodyPart);
                 newPRCount++;
+                newPRs.push({
+                    exercise: exerciseName,
+                    weight: set.weight,
+                    reps: set.reps,
+                    type: prCheck.prType,
+                    unit: set.originalUnit || 'lbs',
+                });
             }
         }
     }
+
+    return newPRs;
 }
 
 // ===================================================================

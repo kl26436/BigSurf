@@ -149,6 +149,7 @@ export async function calculateStreaks() {
             workoutsThisWeek,
             workoutsThisMonth,
             lastWorkoutDate: workoutDates[workoutDates.length - 1],
+            workoutDates, // All workout dates for heatmap
         };
         return stats;
     } catch (error) {
