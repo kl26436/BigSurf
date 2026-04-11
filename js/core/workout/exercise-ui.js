@@ -310,7 +310,7 @@ function generateQuickSetsHtml(exercise, exerciseIndex, unit) {
     const savedSets = AppState.savedData.exercises?.[`exercise_${exerciseIndex}`]?.sets || [];
     const targetSets = exercise.sets || 3;
 
-    let html = '<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">';
+    let html = '<div class="quick-sets-row">';
 
     for (let setIndex = 0; setIndex < targetSets; setIndex++) {
         const set = savedSets[setIndex] || {};
@@ -640,7 +640,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
     let html = `
         <!-- Exercise History Reference -->
         <div class="exercise-history-section">
-            <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
+            <div class="exercise-actions-bar">
                 <button class="btn btn-secondary btn-small" data-action="loadExerciseHistory" data-exercise="${escapeAttr(modalExerciseName)}" data-index="${exerciseIndex}">
                     <i class="fas fa-history"></i> Show Last Workout
                 </button>
@@ -750,7 +750,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
             </tbody>
         </table>
 
-        <div class="set-controls" style="display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0;">
+        <div class="set-controls">
             <button class="btn btn-secondary btn-small" onclick="removeSetFromExercise(${exerciseIndex})" title="Remove last set">
                 <i class="fas fa-minus"></i> Remove Set
             </button>

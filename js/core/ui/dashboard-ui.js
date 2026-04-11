@@ -686,7 +686,7 @@ function renderDashboardPRItem(pr) {
     return `
         <div class="pr-achievement-card">
             <div class="pr-achievement-header">
-                <i class="fas fa-trophy" style="color: #ffd700;"></i>
+                <i class="fas fa-trophy" style="color: var(--badge-gold);"></i>
                 <span class="pr-achievement-exercise">${escapeHtml(pr.exercise)}</span>
                 <span class="pr-achievement-date">${dateDisplay}</span>
             </div>

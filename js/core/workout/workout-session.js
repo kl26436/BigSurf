@@ -336,7 +336,7 @@ export function showWorkoutSummary(workoutData, newPRs = []) {
     if (newPRs && newPRs.length > 0) {
         prsHtml = `
             <div class="completion-prs">
-                <h3><i class="fas fa-trophy" style="color: #ffd700;"></i> New Personal Records!</h3>
+                <h3><i class="fas fa-trophy" style="color: var(--badge-gold);"></i> New Personal Records!</h3>
                 ${newPRs.map(pr => `
                     <div class="completion-pr-item">
                         <strong>${escapeHtml(pr.exercise)}</strong>: ${pr.weight} ${pr.unit} &times; ${pr.reps}
