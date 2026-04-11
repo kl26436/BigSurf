@@ -298,8 +298,9 @@ function createTemplateCard(template) {
         </button>
     `;
 
-    // Click on card to use the workout
-    card.addEventListener('click', () => {
+    // Click on card to use the workout (but not when clicking EDIT)
+    card.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action]')) return;
         useTemplate(template.id, isDefault);
     });
 

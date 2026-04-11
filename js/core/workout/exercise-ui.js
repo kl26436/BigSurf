@@ -1670,8 +1670,8 @@ export async function editExerciseDefaults(exerciseName) {
     // Close the exercise modal first
     closeExerciseModal();
 
-    // Set flag to indicate we're editing from active workout
-    window.editingFromActiveWorkout = true;
+    // Set flag to indicate we're editing from active workout (only if actually in one)
+    window.editingFromActiveWorkout = !!AppState.currentWorkout;
 
     // Open the exercise manager and edit this exercise
     const { openExerciseManager, editExercise } = await import('../ui/exercise-manager-ui.js');
