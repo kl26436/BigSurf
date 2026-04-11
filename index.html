@@ -578,7 +578,7 @@
             <!-- Modal Containers -->
             <div id="modal-container">
                 <!-- Template Selection Modal (Start Workout category picker) -->
-                <div id="template-selection-modal" class="modal hidden">
+                <dialog id="template-selection-modal" class="modal">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3 id="template-modal-title">Choose Workout</h3>
@@ -592,10 +592,10 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </dialog>
 
                 <!-- Exercise Library Modal -->
-                <div id="exercise-library-modal" class="modal hidden">
+                <dialog id="exercise-library-modal" class="modal">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>Add Exercise to Workout</h3>
@@ -647,10 +647,10 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </dialog>
 
                 <!-- Add/Create Exercise Modal -->
-                <div id="add-exercise-modal" class="modal hidden">
+                <dialog id="add-exercise-modal" class="modal">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3 id="add-exercise-modal-title">Create New Exercise</h3>
@@ -759,10 +759,10 @@
                             </form>
                         </div>
                     </div>
-                </div>
+                </dialog>
 
                 <!-- Workout Details Modal -->
-                <div id="workout-detail-modal" class="modal hidden">
+                <dialog id="workout-detail-modal" class="modal">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3 id="workout-detail-title">Workout Details</h3>
@@ -774,10 +774,10 @@
                             <!-- Populated by JavaScript -->
                         </div>
                     </div>
-                </div>
+                </dialog>
 
                 <!-- Add Location Modal -->
-                <div id="add-location-modal" class="modal hidden">
+                <dialog id="add-location-modal" class="modal">
                     <div class="modal-content modal-medium">
                         <div class="modal-header">
                             <h3>Add New Location</h3>
@@ -883,10 +883,10 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </dialog>
 
                 <!-- Manual Workout Modal -->
-                <div id="manual-workout-modal" class="modal hidden">
+                <dialog id="manual-workout-modal" class="modal">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>Add Manual Workout</h3>
@@ -898,10 +898,10 @@
                             <!-- Populated by JavaScript -->
                         </div>
                     </div>
-                </div>
+                </dialog>
 
                 <!-- Workout Editor Modal -->
-                <div id="template-editor-modal" class="modal hidden">
+                <dialog id="template-editor-modal" class="modal">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3 id="template-editor-title">Create Workout</h3>
@@ -913,7 +913,7 @@
                             <!-- Populated by JavaScript -->
                         </div>
                     </div>
-                </div>
+                </dialog>
             </div>
 
             <!-- Notifications -->
@@ -941,7 +941,7 @@
         </div>
 
         <!-- Add Manual Workout Modal -->
-        <div id="add-manual-workout-modal" class="modal hidden">
+        <dialog id="add-manual-workout-modal" class="modal">
             <div class="modal-content manual-workout-modal">
                 <div class="modal-header">
                     <h3 class="modal-title">Add Missing Workout</h3>
@@ -1094,7 +1094,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Exercise Modal -->
         <dialog id="exercise-modal" class="modal">
@@ -1456,7 +1456,7 @@
         </section>
 
         <!-- Equipment Picker Modal (for adding exercises to templates) -->
-        <div id="equipment-picker-modal" class="modal hidden">
+        <dialog id="equipment-picker-modal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
                     <h3 id="equipment-picker-title">Select Equipment</h3>
@@ -1523,10 +1523,10 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Location Prompt Modal (for naming new gym locations) -->
-        <div id="location-prompt-modal" class="modal hidden">
+        <dialog id="location-prompt-modal" class="modal">
             <div class="modal-content modal-content-small">
                 <div class="modal-header">
                     <h3><i class="fas fa-map-marker-alt"></i> New Location Detected</h3>
@@ -1556,10 +1556,10 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Workout Location Selector Modal (for changing location during active workout) -->
-        <div id="workout-location-selector-modal" class="modal hidden">
+        <dialog id="workout-location-selector-modal" class="modal">
             <div class="modal-content modal-content-small">
                 <div class="modal-header">
                     <h3><i class="fas fa-map-marker-alt"></i> Change Location</h3>
@@ -1595,7 +1595,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Equipment Editor Section (Full Page) -->
         <section id="equipment-editor-section" class="app-section hidden">
@@ -1674,7 +1674,7 @@
         </section>
 
         <!-- Template Exercise Edit Modal (for editing exercises in workout templates) -->
-        <div id="template-exercise-edit-modal" class="modal hidden">
+        <dialog id="template-exercise-edit-modal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>Edit Exercise</h3>
@@ -1763,10 +1763,10 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Location Selector Modal -->
-        <div id="location-selector-modal" class="modal hidden">
+        <dialog id="location-selector-modal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
                     <h2>Select Workout Location</h2>
@@ -1810,7 +1810,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Bottom Navigation Bar -->
         <nav id="bottom-nav" class="bottom-nav" role="navigation" aria-label="Quick navigation">

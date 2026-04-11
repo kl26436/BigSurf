@@ -2,7 +2,7 @@
 // Handles template browsing, selection, and immediate usage
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 
@@ -52,7 +52,7 @@ export function showTemplateSelection() {
     const modal = document.getElementById('template-selection-modal');
     if (!modal) return;
 
-    modal.classList.remove('hidden');
+    openModal(modal);
 
     // Load default templates
     switchTemplateCategory('default');
@@ -61,7 +61,7 @@ export function showTemplateSelection() {
 export function closeTemplateSelection() {
     const modal = document.getElementById('template-selection-modal');
     if (modal) {
-        modal.classList.add('hidden');
+        closeModal(modal);
     }
 }
 
@@ -483,7 +483,7 @@ function showWorkoutPreviewModal(workout) {
         content.innerHTML = generateWorkoutPreviewHtml(workout);
     }
 
-    modal.classList.remove('hidden');
+    openModal(modal);
 }
 
 function createWorkoutPreviewModal() {
@@ -596,7 +596,7 @@ function calculateEstimatedDuration(workout) {
 export function closeWorkoutPreviewModal() {
     const modal = document.getElementById('workout-preview-modal');
     if (modal) {
-        modal.classList.add('hidden');
+        closeModal(modal);
     }
 }
 
@@ -746,7 +746,7 @@ function showBasicTemplateEditor(template) {
     modal.dataset.templateId = template.id;
     modal.templateData = template;
 
-    modal.classList.remove('hidden');
+    openModal(modal);
 }
 
 function createBasicTemplateEditorModal() {
@@ -825,7 +825,7 @@ function createBasicExerciseItem(exercise, index) {
 export function closeBasicTemplateEditor() {
     const modal = document.getElementById('basic-template-editor-modal');
     if (modal) {
-        modal.classList.add('hidden');
+        closeModal(modal);
         modal.templateData = null;
     }
 }

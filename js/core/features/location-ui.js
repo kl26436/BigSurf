@@ -1,7 +1,7 @@
 // Location UI Module - core/location-ui.js
 // Handles location management UI - uses Firebase locations
 
-import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
 import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { getSessionLocation, setSessionLocation, getCurrentPosition, findNearbyLocation } from './location-service.js';
@@ -439,7 +439,7 @@ export function detectAndAddLocation() {
     const input = document.getElementById('add-location-name-input');
 
     if (modal) {
-        modal.classList.remove('hidden');
+        openModal(modal);
         if (input) {
             input.value = '';
             setTimeout(() => input.focus(), 100);
@@ -691,7 +691,7 @@ function updateSelectedCoordsDisplay() {
 export function closeAddLocationModal() {
     const modal = document.getElementById('add-location-modal');
     if (modal) {
-        modal.classList.add('hidden');
+        closeModal(modal);
     }
 
     // Clean up map

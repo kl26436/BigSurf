@@ -202,21 +202,37 @@ export function setHeaderMode(showFullHeader) {
     }
 }
 
+// Open a modal — works for both <dialog> and <div> modals
+export function openModal(modal) {
+    if (!modal) return;
+    if (modal.tagName === 'DIALOG') {
+        if (!modal.open) modal.showModal();
+    } else {
+        modal.classList.remove('hidden');
+    }
+}
+
+// Close a modal — works for both <dialog> and <div> modals
+export function closeModal(modal) {
+    if (!modal) return;
+    if (modal.tagName === 'DIALOG') {
+        if (modal.open) modal.close();
+    } else {
+        modal.classList.add('hidden');
+    }
+}
+
 // Lock body scroll when any modal is visible, unlock when all are hidden
 export function initModalScrollLock() {
     const updateBodyScroll = () => {
-        const anyModalVisible = document.querySelector('.modal:not(.hidden)');
-        document.body.style.overflow = anyModalVisible ? 'hidden' : '';
+        const anyDivModal = document.querySelector('.modal:not(.hidden):not(dialog)');
+        const anyDialogOpen = document.querySelector('dialog.modal[open]');
+        document.body.style.overflow = (anyDivModal || anyDialogOpen) ? 'hidden' : '';
     };
 
-    const observer = new MutationObserver((mutations) => {
-        for (const m of mutations) {
-            if (m.type === 'attributes' && m.attributeName === 'class' && m.target.classList.contains('modal')) {
-                updateBodyScroll();
-                break;
-            }
-        }
+    const observer = new MutationObserver(() => {
+        updateBodyScroll();
     });
 
-    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class', 'open'] });
 }

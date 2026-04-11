@@ -2,7 +2,7 @@
 // Handles GPS location detection and gym location management
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification } from '../ui/ui-helpers.js';
+import { showNotification, openModal, closeModal } from '../ui/ui-helpers.js';
 
 // Default radius in meters for location matching
 // 500m accounts for GPS inaccuracy indoors, parking lot distance, and multi-building facilities
@@ -203,7 +203,7 @@ export function showLocationPrompt(onSave, onSkip) {
     if (input) input.value = '';
 
     // Show modal
-    modal.classList.remove('hidden');
+    openModal(modal);
     if (input) input.focus();
 
     // Handle save
@@ -213,14 +213,14 @@ export function showLocationPrompt(onSave, onSkip) {
             showNotification('Please enter a location name', 'warning');
             return;
         }
-        modal.classList.add('hidden');
+        closeModal(modal);
         cleanup();
         if (onSave) onSave(name);
     };
 
     // Handle skip
     const handleSkip = () => {
-        modal.classList.add('hidden');
+        closeModal(modal);
         cleanup();
         if (onSkip) onSkip();
     };
@@ -252,7 +252,7 @@ export function showLocationPrompt(onSave, onSkip) {
  */
 export function closeLocationPrompt() {
     const modal = document.getElementById('location-prompt-modal');
-    if (modal) modal.classList.add('hidden');
+    closeModal(modal);
 }
 
 /**

@@ -9,6 +9,7 @@ import {
     setHeaderMode,
     escapeHtml,
     escapeAttr,
+    openModal,
 } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible } from '../ui/navigation.js';
@@ -843,7 +844,7 @@ export function addExerciseToActiveWorkout() {
     if (modal) {
         // Set flag so we know exercises should be added to active workout
         window.addingToActiveWorkout = true;
-        modal.classList.remove('hidden');
+        openModal(modal);
 
         // Load exercises into the modal
         if (window.openExerciseLibrary) {
@@ -988,7 +989,7 @@ export async function changeExerciseEquipment(exerciseIndex) {
         sessionLocation: getSessionLocation(),
     });
 
-    if (modal) modal.classList.remove('hidden');
+    if (modal) openModal(modal);
 }
 
 // Apply the selected equipment to the current workout exercise

@@ -1,11 +1,12 @@
 // Enhanced Exercise Library Module - core/exercise-library.js
-import { showNotification, escapeHtml } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, openModal, closeModal } from '../ui/ui-helpers.js';
 
 export function getExerciseLibrary(appState) {
     let isOpen = false;
     let currentContext = null; // 'template', 'workout-add', 'manual-workout'
     let currentExercises = [];
     let filteredExercises = [];
+    let recentExercises = [];
 
     return {
         initialize() {
@@ -67,11 +68,19 @@ export function getExerciseLibrary(appState) {
             const modal = document.getElementById('exercise-library-modal');
             if (!modal) return;
 
-            modal.classList.remove('hidden');
+            openModal(modal);
             isOpen = true;
 
             try {
                 await this.loadExercises();
+                // Load recent exercises for Quick Add chips
+                try {
+                    const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+                    const workoutManager = new FirebaseWorkoutManager(appState);
+                    recentExercises = await workoutManager.getMostUsedExercises(8);
+                } catch {
+                    recentExercises = [];
+                }
                 this.renderExercises();
                 this.setupEventHandlers();
             } catch (error) {
@@ -111,6 +120,20 @@ export function getExerciseLibrary(appState) {
             }
 
             grid.innerHTML = '';
+
+            // Quick Add chips for recently used exercises
+            if (recentExercises.length > 0) {
+                const quickAddSection = document.createElement('div');
+                quickAddSection.className = 'quick-add-section';
+                quickAddSection.innerHTML = `
+                    <div class="quick-add-label">Quick Add</div>
+                    <div class="quick-add-chips">
+                        ${recentExercises.map((ex) => `<button class="quick-add-chip" data-exercise-name="${escapeHtml(ex.name)}" data-equipment="${escapeHtml(ex.equipment)}">${escapeHtml(ex.name)}</button>`).join('')}
+                    </div>
+                `;
+                grid.appendChild(quickAddSection);
+            }
+
             filteredExercises.forEach((exercise, index) => {
                 const card = this.createExerciseCard(exercise, index);
                 grid.appendChild(card);
@@ -122,6 +145,16 @@ export function getExerciseLibrary(appState) {
 
         setupExerciseButtonHandlers(grid) {
             grid.addEventListener('click', (e) => {
+                // Handle Quick Add chip clicks — route through the same context-based selection
+                const chip = e.target.closest('.quick-add-chip');
+                if (chip) {
+                    const name = chip.dataset.exerciseName;
+                    const equipment = chip.dataset.equipment;
+                    const exercise = currentExercises.find((ex) => (ex.name || ex.machine) === name) || { name, equipment };
+                    this.handleExerciseSelection(exercise);
+                    return;
+                }
+
                 const btn = e.target.closest('.exercise-add-btn');
                 if (!btn) return;
 
@@ -129,28 +162,32 @@ export function getExerciseLibrary(appState) {
                 const exercise = filteredExercises[index];
                 if (!exercise) return;
 
-                switch (currentContext) {
-                    case 'manual-workout':
-                        if (window.addToManualWorkoutFromLibrary) {
-                            window.addToManualWorkoutFromLibrary(exercise);
-                        }
-                        break;
-                    case 'template':
-                        if (window.addExerciseToTemplateFromLibrary) {
-                            window.addExerciseToTemplateFromLibrary(exercise);
-                        }
-                        break;
-                    case 'workout-add':
-                        if (window.confirmExerciseAddToWorkout) {
-                            window.confirmExerciseAddToWorkout(JSON.stringify(exercise));
-                        }
-                        break;
-                    default:
-                        if (window.selectExerciseGeneric) {
-                            window.selectExerciseGeneric(exercise.name || exercise.machine, JSON.stringify(exercise));
-                        }
-                }
+                this.handleExerciseSelection(exercise);
             });
+        },
+
+        handleExerciseSelection(exercise) {
+            switch (currentContext) {
+                case 'manual-workout':
+                    if (window.addToManualWorkoutFromLibrary) {
+                        window.addToManualWorkoutFromLibrary(exercise);
+                    }
+                    break;
+                case 'template':
+                    if (window.addExerciseToTemplateFromLibrary) {
+                        window.addExerciseToTemplateFromLibrary(exercise);
+                    }
+                    break;
+                case 'workout-add':
+                    if (window.confirmExerciseAddToWorkout) {
+                        window.confirmExerciseAddToWorkout(JSON.stringify(exercise));
+                    }
+                    break;
+                default:
+                    if (window.selectExerciseGeneric) {
+                        window.selectExerciseGeneric(exercise.name || exercise.machine, JSON.stringify(exercise));
+                    }
+            }
         },
 
         // FIXED createExerciseCard function - uses index to avoid JSON escaping issues
@@ -269,7 +306,7 @@ export function getExerciseLibrary(appState) {
         close() {
             const modal = document.getElementById('exercise-library-modal');
             if (modal) {
-                modal.classList.add('hidden');
+                closeModal(modal);
             }
 
             // Reset state
@@ -328,7 +365,7 @@ function selectExerciseGeneric(exerciseDataOrName, exerciseJson) {
         // Close the library modal
         const modal = document.getElementById('exercise-library-modal');
         if (modal) {
-            modal.classList.add('hidden');
+            closeModal(modal);
         }
     } catch (error) {
         console.error('Error in selectExerciseGeneric:', error);

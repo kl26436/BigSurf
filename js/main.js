@@ -194,7 +194,7 @@ import {
 import { getSessionLocation } from './core/features/location-service.js';
 
 // UI helpers
-import { setHeaderMode, escapeHtml, escapeAttr } from './core/ui/ui-helpers.js';
+import { setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './core/ui/ui-helpers.js';
 
 // Navigation functionality
 import {
@@ -279,7 +279,7 @@ window.startWorkoutFromModal = function (workoutName) {
     // Close the modal (hide it, don't remove it from DOM)
     const modal = document.getElementById('template-selection-modal');
     if (modal) {
-        modal.classList.add('hidden');
+        closeModal(modal);
     }
 
     // Try different ways to call startWorkout
@@ -560,13 +560,13 @@ window.showTemplatesByCategory = function (category) {
     }
 
     // Show the modal
-    modal.classList.remove('hidden');
+    openModal(modal);
 };
 
 window.closeTemplateModal = function () {
     const modal = document.getElementById('template-selection-modal');
     if (modal) {
-        modal.classList.add('hidden');
+        closeModal(modal);
     }
 };
 
@@ -586,8 +586,7 @@ window.clearAllHistoryFilters = clearAllHistoryFilters;
 window.closeWorkoutDetailModal = function () {
     const modal = document.getElementById('workout-detail-modal');
     if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = 'none';
+        closeModal(modal);
     }
 };
 

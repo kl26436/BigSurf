@@ -1,5 +1,5 @@
 // Clean Workout History Module with Calendar View - core/workout-history.js
-import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 
@@ -829,8 +829,7 @@ export function getWorkoutHistory(appState) {
                 modal1.style.display = 'none';
             }
             if (modal2) {
-                modal2.classList.add('hidden');
-                modal2.style.display = 'none'; // Clear inline style set by showFixedWorkoutModal
+                closeModal(modal2);
             }
         },
 
@@ -969,8 +968,7 @@ export function getWorkoutHistory(appState) {
 
             pickerHTML += '</div>';
             content.innerHTML = pickerHTML;
-            modal.classList.remove('hidden');
-            modal.style.display = 'flex'; // Ensure modal is visible (clears any inline display:none)
+            openModal(modal);
         },
 
         selectWorkoutFromPicker(date, index) {
@@ -1116,9 +1114,7 @@ export function getWorkoutHistory(appState) {
         </div>
     `;
 
-            // Show the modal - remove hidden class and make it visible
-            modal.classList.remove('hidden');
-            modal.style.display = 'flex';
+            openModal(modal);
         },
 
         generateSetsHTML(sets) {

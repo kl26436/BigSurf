@@ -13,7 +13,7 @@ import {
 } from './data/firebase-config.js';
 import { GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { AppState } from './utils/app-state.js';
-import { showNotification, setTodayDisplay, initModalScrollLock } from './ui/ui-helpers.js';
+import { showNotification, setTodayDisplay, initModalScrollLock, openModal, closeModal } from './ui/ui-helpers.js';
 import { loadWorkoutPlans } from './data/data-manager.js'; // ADD loadWorkoutData here
 import { getExerciseLibrary } from './data/exercise-library.js';
 import { getWorkoutHistory } from './workout/workout-history.js';
@@ -661,32 +661,33 @@ function setupOtherEventListeners() {
         if (e.target.classList.contains('close-modal') || e.target.closest('.close-modal')) {
             const modal = e.target.closest('.modal');
             if (modal) {
-                modal.classList.add('hidden');
+                closeModal(modal);
             }
         }
     });
 
-    // Close modal on backdrop click
+    // Close modal on backdrop click (div modals and dialog modals)
     document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal')) {
-            e.target.classList.add('hidden');
+        // For div modals: clicking the overlay background
+        if (e.target.classList.contains('modal') && e.target.tagName !== 'DIALOG') {
+            closeModal(e.target);
+        }
+        // For dialog modals: clicking outside .modal-content closes the dialog
+        if (e.target.tagName === 'DIALOG' && e.target.classList.contains('modal')) {
+            const rect = e.target.querySelector('.modal-content')?.getBoundingClientRect();
+            if (rect && (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom)) {
+                closeModal(e.target);
+            }
         }
     });
 
-    // ESC key to close modals
+    // ESC key to close modals (dialog handles ESC natively, this covers div modals)
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            const activeModal = document.querySelector('.modal:not(.hidden)');
+            const activeModal = document.querySelector('.modal:not(.hidden):not(dialog)');
             if (activeModal) {
-                activeModal.classList.add('hidden');
+                closeModal(activeModal);
             }
-        }
-    });
-
-    // Click outside modal to close (backdrop click)
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal')) {
-            e.target.classList.add('hidden');
         }
     });
 }
@@ -713,12 +714,12 @@ export function setupKeyboardShortcuts() {
             // Toggle timer pause (would need to implement pause functionality)
         }
 
-        // ESC to close any open modals
+        // ESC to close any open div modals (dialog modals handle ESC natively)
         if (e.key === 'Escape') {
-            const activeModal = document.querySelector('.modal:not(.hidden)');
+            const activeModal = document.querySelector('.modal:not(.hidden):not(dialog)');
             if (activeModal) {
                 e.preventDefault();
-                activeModal.classList.add('hidden');
+                closeModal(activeModal);
             }
         }
     });

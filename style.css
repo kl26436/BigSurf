@@ -5154,6 +5154,41 @@ dialog.modal:not([open]) {
     background: rgba(255, 255, 255, 0.05);
 }
 
+/* Quick Add Chips (recent exercises) */
+.quick-add-section {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.quick-add-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+.quick-add-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.quick-add-chip {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 100px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+.quick-add-chip:active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
 /* Library Exercise Cards (Add Exercise modal) */
 .library-exercise-card {
     background: var(--bg-card);
@@ -6930,7 +6965,8 @@ dialog.modal:not([open]) {
         opacity 0.2s ease,
         visibility 0.2s;
 }
-.modal:not(.hidden) {
+.modal:not(.hidden),
+dialog.modal[open] {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
@@ -6942,7 +6978,8 @@ dialog.modal:not([open]) {
     transform: translateY(20px);
     transition: transform 0.25s ease;
 }
-.modal:not(.hidden) .modal-content {
+.modal:not(.hidden) .modal-content,
+dialog.modal[open] .modal-content {
     transform: translateY(0);
 }
 

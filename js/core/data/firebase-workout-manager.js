@@ -843,6 +843,32 @@ export class FirebaseWorkoutManager {
         }
     }
 
+    async getMostUsedExercises(topN = 8) {
+        try {
+            const workouts = await this.getUserWorkouts();
+            const counts = new Map();
+
+            for (const workout of workouts.slice(0, 50)) {
+                const exercises = workout.exercises || {};
+                for (const key of Object.keys(exercises)) {
+                    const ex = exercises[key];
+                    const name = ex.name || ex.machine;
+                    if (!name) continue;
+                    const entry = counts.get(name) || { name, equipment: ex.equipment || '', count: 0 };
+                    entry.count++;
+                    counts.set(name, entry);
+                }
+            }
+
+            return Array.from(counts.values())
+                .sort((a, b) => b.count - a.count)
+                .slice(0, topN);
+        } catch (error) {
+            console.error('Error getting most used exercises:', error);
+            return [];
+        }
+    }
+
     // Legacy method names for compatibility
     async createExercise(exerciseData) {
         return await this.saveCustomExercise(exerciseData);

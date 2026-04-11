@@ -1,7 +1,7 @@
 // Workout Management UI Functions
 import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
 import { saveWorkoutData } from '../data/data-manager.js';
 import { reorderTemplateExercise, normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
 import { getSessionLocation } from '../features/location-service.js';
@@ -39,7 +39,7 @@ export function initializeWorkoutManagement(appState) {
     // Listen for exercise library updates from exercise-manager-ui
     window.addEventListener('exerciseLibraryUpdated', async () => {
         const libraryModal = document.getElementById('exercise-library-modal');
-        if (libraryModal && !libraryModal.classList.contains('hidden')) {
+        if (libraryModal && (libraryModal.open || !libraryModal.classList.contains('hidden'))) {
             exerciseLibrary = await workoutManager.getExerciseLibrary();
             filteredExercises = [...exerciseLibrary];
             renderExerciseLibrary();
@@ -625,7 +625,7 @@ function showTemplateEditor() {
         </form>
     `;
 
-    templateEditor.classList.remove('hidden');
+    openModal(templateEditor);
 
     // Render the exercises list
     renderTemplateExercises();
@@ -835,7 +835,7 @@ export function cancelInlineAdd() {
 export function closeTemplateEditor() {
     const templateEditor = document.getElementById('template-editor-modal');
     if (templateEditor) {
-        templateEditor.classList.add('hidden');
+        closeModal(templateEditor);
     }
     currentEditingTemplate = null;
 }
@@ -1034,7 +1034,7 @@ export function saveInlineEdit(index) {
 
 export function closeTemplateExerciseEdit() {
     const modal = document.getElementById('template-exercise-edit-modal');
-    if (modal) modal.classList.add('hidden');
+    if (modal) closeModal(modal);
     editingTemplateExerciseIndex = null;
 }
 
@@ -1088,16 +1088,20 @@ export function removeTemplateExercise(index) {
 }
 
 // Exercise Library functions
+let recentExercises = [];
+
 export async function openExerciseLibrary(mode = 'template') {
     const modal = document.getElementById('exercise-library-modal');
     if (!modal) return;
 
-    // Increase z-index to appear above template editor modal
-    modal.style.zIndex = '1100';
-    modal.classList.remove('hidden');
+    openModal(modal);
 
-    // Load exercise library
-    exerciseLibrary = await workoutManager.getExerciseLibrary();
+    // Load exercise library and recent exercises in parallel
+    const [library] = await Promise.all([
+        workoutManager.getExerciseLibrary(),
+        workoutManager.getMostUsedExercises(8).then((r) => { recentExercises = r; }).catch(() => { recentExercises = []; }),
+    ]);
+    exerciseLibrary = library;
     filteredExercises = [...exerciseLibrary];
 
     renderExerciseLibrary();
@@ -1134,9 +1138,7 @@ function setupExerciseLibraryListeners() {
 export function closeExerciseLibrary() {
     const modal = document.getElementById('exercise-library-modal');
     if (modal) {
-        modal.classList.add('hidden');
-        // Reset z-index
-        modal.style.zIndex = '';
+        closeModal(modal);
     }
 
     // Clear the active workout flag
@@ -1197,8 +1199,18 @@ function renderExerciseLibrary() {
     // Sort body parts alphabetically
     const sortedBodyParts = Object.keys(grouped).sort();
 
+    // Quick Add chips for recently used exercises
+    const quickAddHTML = recentExercises.length > 0
+        ? `<div class="quick-add-section">
+            <div class="quick-add-label">Quick Add</div>
+            <div class="quick-add-chips">
+                ${recentExercises.map((ex) => `<button class="quick-add-chip" data-exercise-name="${escapeAttr(ex.name)}" data-equipment="${escapeAttr(ex.equipment)}">${escapeHtml(ex.name)}</button>`).join('')}
+            </div>
+        </div>`
+        : '';
+
     // Render grouped exercises
-    grid.innerHTML = sortedBodyParts
+    grid.innerHTML = quickAddHTML + sortedBodyParts
         .map((bodyPart) => {
             const exercises = grouped[bodyPart];
             const exerciseCards = exercises
@@ -1225,6 +1237,16 @@ function renderExerciseLibrary() {
             const exerciseId = card.dataset.exerciseId;
             const exercise = filteredExercises.find((ex) => (ex.id || ex.name || ex.machine) === exerciseId);
             if (exercise) selectExerciseFromLibrary(exercise);
+        });
+    });
+
+    // Quick Add chip click handlers
+    grid.querySelectorAll('.quick-add-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+            const name = chip.dataset.exerciseName;
+            const equipment = chip.dataset.equipment;
+            const exercise = exerciseLibrary.find((ex) => (ex.name || ex.machine) === name) || { name, equipment };
+            selectExerciseFromLibrary(exercise);
         });
     });
 }
@@ -1293,13 +1315,13 @@ async function showEquipmentPicker(exercise, isActiveWorkout) {
     // Store whether this is for active workout
     window.equipmentPickerForActiveWorkout = isActiveWorkout;
 
-    if (modal) modal.classList.remove('hidden');
+    if (modal) openModal(modal);
 }
 
 // Close equipment picker
 export function closeEquipmentPicker() {
     const modal = document.getElementById('equipment-picker-modal');
-    if (modal) modal.classList.add('hidden');
+    if (modal) closeModal(modal);
     pendingExerciseForEquipment = null;
     window.equipmentPickerForActiveWorkout = false;
     window.changingEquipmentDuringWorkout = false;
@@ -1544,9 +1566,7 @@ export function showCreateExerciseForm() {
     if (form) form.reset();
 
     if (modal) {
-        // Increase z-index to appear above exercise library modal
-        modal.style.zIndex = '1200';
-        modal.classList.remove('hidden');
+        openModal(modal);
     }
 
     document.getElementById('new-exercise-name')?.focus();
@@ -1557,8 +1577,7 @@ export function closeCreateExerciseModal() {
     const form = document.getElementById('add-exercise-form');
 
     if (modal) {
-        modal.classList.add('hidden');
-        modal.style.zIndex = ''; // Reset z-index
+        closeModal(modal);
     }
     if (form) form.reset();
     creatingFromLibraryModal = false;
@@ -1598,14 +1617,13 @@ export async function createNewExercise(event) {
         // Close the add-exercise-modal
         const modal = document.getElementById('add-exercise-modal');
         if (modal) {
-            modal.classList.add('hidden');
-            modal.style.zIndex = '';
+            closeModal(modal);
         }
 
         // Refresh exercise library if it's open
         if (creatingFromLibraryModal) {
             const libraryModal = document.getElementById('exercise-library-modal');
-            if (libraryModal && !libraryModal.classList.contains('hidden')) {
+            if (libraryModal && (libraryModal.open || !libraryModal.classList.contains('hidden'))) {
                 exerciseLibrary = await workoutManager.getExerciseLibrary();
                 filteredExercises = [...exerciseLibrary];
                 renderExerciseLibrary();

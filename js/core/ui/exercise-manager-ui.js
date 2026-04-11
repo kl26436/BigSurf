@@ -2,7 +2,7 @@
 // Handles the integrated exercise manager modal
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { setBottomNavVisible } from './navigation.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
@@ -469,7 +469,7 @@ export function openEditExerciseSection(exercise) {
 
     // Also hide template editor modal if open (we'll show it again when returning)
     const templateModal = document.getElementById('template-editor-modal');
-    if (templateModal) templateModal.classList.add('hidden');
+    if (templateModal) closeModal(templateModal);
 
     // Show/hide delete button container based on add vs edit
     const deleteContainer = document.getElementById('delete-exercise-container');
@@ -530,7 +530,7 @@ export function closeEditExerciseSection() {
 
         // Show the template editor modal
         const templateModal = document.getElementById('template-editor-modal');
-        if (templateModal) templateModal.classList.remove('hidden');
+        if (templateModal) openModal(templateModal);
 
         // Clear the flags (callback clears these, but do it here too for cancel case)
         window.editingFromTemplateEditor = false;
@@ -885,7 +885,7 @@ export async function addEquipmentToList() {
 // Close add exercise modal
 export function closeAddExerciseModal() {
     const modal = document.getElementById('add-exercise-modal');
-    if (modal) modal.classList.add('hidden');
+    if (modal) closeModal(modal);
     currentEditingExercise = null;
 
     // If we were editing from active workout, close the entire exercise manager
@@ -977,7 +977,7 @@ export async function saveExercise(event) {
 
         // Also refresh the exercise-library-modal if it's open (used in workout management)
         const libraryModal = document.getElementById('exercise-library-modal');
-        if (libraryModal && !libraryModal.classList.contains('hidden')) {
+        if (libraryModal && (libraryModal.open || !libraryModal.classList.contains('hidden'))) {
             // Dispatch custom event to trigger refresh in workout-management-ui
             window.dispatchEvent(new CustomEvent('exerciseLibraryUpdated'));
         }
@@ -1195,7 +1195,7 @@ export async function saveExerciseFromSection() {
 
         // Also refresh the exercise-library-modal if it's open (used in workout management)
         const libraryModal = document.getElementById('exercise-library-modal');
-        if (libraryModal && !libraryModal.classList.contains('hidden')) {
+        if (libraryModal && (libraryModal.open || !libraryModal.classList.contains('hidden'))) {
             window.dispatchEvent(new CustomEvent('exerciseLibraryUpdated'));
         }
     } catch (error) {

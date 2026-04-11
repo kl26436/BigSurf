@@ -2,7 +2,7 @@
 // Handles workout session lifecycle: start, pause, complete, cancel, resume, edit
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml } from '../ui/ui-helpers.js';
+import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml, openModal, closeModal } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, navigateTo } from '../ui/navigation.js';
 import { saveWorkoutData, debouncedSaveWorkoutData } from '../data/data-manager.js';
@@ -26,7 +26,7 @@ window.addEventListener('exerciseRenamed', (event) => {
         renderExercises();
         // Close exercise modal if open and re-open with refreshed data
         const modal = document.getElementById('exercise-modal');
-        if (modal && !modal.classList.contains('hidden')) {
+        if (modal && (modal.open || !modal.classList.contains('hidden'))) {
             const { exerciseIndex } = event.detail;
             if (typeof exerciseIndex === 'number') {
                 focusExercise(exerciseIndex);
@@ -1072,7 +1072,7 @@ export async function changeWorkoutLocation() {
         if (newNameInput) newNameInput.value = '';
 
         // Show modal
-        modal.classList.remove('hidden');
+        openModal(modal);
     } catch (error) {
         console.error('\u274C Error loading locations:', error);
         showNotification('Error loading locations', 'error');
@@ -1099,7 +1099,7 @@ export function selectWorkoutLocationOption(element) {
  */
 export function closeWorkoutLocationSelector() {
     const modal = document.getElementById('workout-location-selector-modal');
-    if (modal) modal.classList.add('hidden');
+    if (modal) closeModal(modal);
     window._locationSelectorData = null;
 }
 

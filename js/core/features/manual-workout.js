@@ -2,7 +2,7 @@
 // Simplified flow: Select date → Pick workout from library OR create custom → Enter sets → Save
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
 
 // ===================================================================
 // STATE
@@ -44,14 +44,12 @@ export function showAddManualWorkoutModal() {
     // Load workout library for selection
     loadWorkoutLibraryForManual();
 
-    modal.classList.remove('hidden');
+    openModal(modal);
 }
 
 export function closeAddManualWorkoutModal() {
     const modal = document.getElementById('add-manual-workout-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
+    closeModal(modal);
     resetManualWorkoutState();
 }
 
@@ -654,7 +652,7 @@ export async function openEquipmentPickerForManual(exerciseIndex) {
             }
         }
 
-        modal.classList.remove('hidden');
+        openModal(modal);
     } catch (error) {
         console.error('❌ Error loading equipment:', error);
         showNotification('Error loading equipment', 'error');
@@ -672,7 +670,7 @@ export function selectEquipmentForManual(equipmentId, name, location) {
 
     // Close the modal
     const modal = document.getElementById('equipment-picker-modal');
-    if (modal) modal.classList.add('hidden');
+    closeModal(modal);
 
     manualEquipmentEditIndex = null;
 
@@ -683,7 +681,7 @@ export function selectEquipmentForManual(equipmentId, name, location) {
 
 export function closeEquipmentPickerForManual() {
     const modal = document.getElementById('equipment-picker-modal');
-    if (modal) modal.classList.add('hidden');
+    closeModal(modal);
     manualEquipmentEditIndex = null;
 }
 

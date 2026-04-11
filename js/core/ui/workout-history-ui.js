@@ -2,7 +2,7 @@
 // Handles workout history UI interactions with FULL CALENDAR VIEW
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 
 // ===================================================================
@@ -326,7 +326,7 @@ function showWorkoutDetailModal(workout) {
     `;
 
     // Show modal
-    modal.classList.remove('hidden');
+    openModal(modal);
 
     // Event delegation for action buttons
     content.addEventListener('click', (e) => {
@@ -343,8 +343,7 @@ function showWorkoutDetailModal(workout) {
 export function closeWorkoutDetailModal() {
     const modal = document.getElementById('workout-detail-modal');
     if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = 'none'; // Clear inline style set by showFixedWorkoutModal
+        closeModal(modal);
     }
 }
 
