@@ -123,6 +123,26 @@ async function renderProgressView(preSelectedKey = null) {
             }
         }
 
+        // Show empty state if no exercise data exists
+        if (Object.keys(exerciseHierarchy).length === 0) {
+            container.innerHTML = `
+                <div class="progress-page">
+                    <div class="section-header-row">
+                        <h2 class="section-title"><i class="fas fa-chart-line"></i> Progress</h2>
+                    </div>
+                    <div class="empty-state empty-state--hero">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Not enough data yet</h3>
+                        <p>Complete a few workouts to see your progress charts and personal records.</p>
+                        <button class="btn btn-primary" onclick="navigateTo('workout')">
+                            <i class="fas fa-play"></i> Start Workout
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
         // Auto-select first category and exercise if none selected
         if (!selectedCategory && Object.keys(exerciseHierarchy).length > 0) {
             selectedCategory = Object.keys(exerciseHierarchy)[0];
@@ -289,10 +309,10 @@ function renderSummaryCards(streaks) {
             </div>
             <div class="summary-card">
                 <div class="summary-icon exercises">
-                    <i class="fas fa-chart-line"></i>
+                    <i class="fas fa-list-check"></i>
                 </div>
                 <div class="summary-value">${totalExercises}</div>
-                <div class="summary-label">Tracked</div>
+                <div class="summary-label">Exercises</div>
             </div>
         </div>
     `;

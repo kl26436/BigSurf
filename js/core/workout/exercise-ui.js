@@ -54,12 +54,13 @@ function setupExerciseModalDelegation() {
                 btn.dataset.exercise,
                 parseInt(btn.dataset.index, 10)
             );
-        } else if (action === 'viewExerciseProgress') {
-            const exerciseKey = btn.dataset.equipment
-                ? `${btn.dataset.exercise}|${btn.dataset.equipment}`
-                : btn.dataset.exercise;
-            closeExerciseModal();
-            import('../ui/stats-ui.js').then((mod) => mod.showStats(exerciseKey));
+        } else if (action === 'toggleInlineProgress') {
+            toggleInlineProgress(
+                btn.dataset.exercise,
+                btn.dataset.equipment,
+                parseInt(btn.dataset.index, 10),
+                btn
+            );
         }
     });
 }
@@ -598,7 +599,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
                 <button class="btn btn-secondary btn-small" data-action="loadExerciseHistory" data-exercise="${escapeAttr(modalExerciseName)}" data-index="${exerciseIndex}">
                     <i class="fas fa-history"></i> Show Last Workout
                 </button>
-                <button class="btn btn-secondary btn-small" data-action="viewExerciseProgress" data-exercise="${escapeAttr(modalExerciseName)}" data-equipment="${escapeAttr(exercise.equipment || '')}">
+                <button class="btn btn-secondary btn-small" data-action="toggleInlineProgress" data-exercise="${escapeAttr(modalExerciseName)}" data-equipment="${escapeAttr(exercise.equipment || '')}" data-index="${exerciseIndex}">
                     <i class="fas fa-chart-line"></i> View Progress
                 </button>
                 ${
@@ -613,6 +614,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
                 }
             </div>
             <div id="exercise-history-${exerciseIndex}" class="exercise-history-display hidden"></div>
+            <div id="exercise-progress-${exerciseIndex}" class="exercise-progress-display hidden"></div>
         </div>
 
         <!-- Exercise Unit Toggle -->
@@ -729,6 +731,122 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
 }
 
 export { loadExerciseHistory };
+
+async function toggleInlineProgress(exerciseName, equipment, exerciseIndex, btn) {
+    const display = document.getElementById(`exercise-progress-${exerciseIndex}`);
+    if (!display) return;
+
+    // Toggle visibility
+    if (!display.classList.contains('hidden')) {
+        display.classList.add('hidden');
+        btn.innerHTML = '<i class="fas fa-chart-line"></i> View Progress';
+        return;
+    }
+
+    btn.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Progress';
+    display.classList.remove('hidden');
+    display.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+    try {
+        const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
+        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(50));
+        const snapshot = await getDocs(q);
+
+        const sessions = [];
+        const today = AppState.getTodayDateString();
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data.date === today) return;
+            if (!data.completedAt || !data.exercises) return;
+
+            // Find matching exercise
+            for (const [key, exData] of Object.entries(data.exercises)) {
+                if (!exData?.sets?.length) continue;
+                const idx = key.replace('exercise_', '');
+                const exName = data.exerciseNames?.[key]
+                    || data.originalWorkout?.exercises?.[idx]?.machine
+                    || exData.name;
+                if (exName !== exerciseName) continue;
+
+                // Equipment filter if specified
+                const exEquip = exData.equipment || data.originalWorkout?.exercises?.[idx]?.equipment || null;
+                if (equipment && exEquip && equipment !== exEquip) continue;
+
+                // Get best set (highest weight)
+                const validSets = exData.sets.filter(s => s && s.reps && s.weight);
+                if (validSets.length === 0) continue;
+
+                const bestSet = validSets.reduce((best, s) => s.weight > best.weight ? s : best, validSets[0]);
+                const totalVolume = validSets.reduce((sum, s) => sum + (s.reps * s.weight), 0);
+
+                sessions.push({
+                    date: data.date,
+                    bestWeight: bestSet.weight,
+                    bestReps: bestSet.reps,
+                    totalSets: validSets.length,
+                    totalVolume,
+                    equipment: exEquip,
+                });
+                break;
+            }
+        });
+
+        if (sessions.length === 0) {
+            display.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 12px;">No previous sessions found</p>';
+            return;
+        }
+
+        // Sort by date ascending for the chart, take last 10
+        sessions.sort((a, b) => a.date.localeCompare(b.date));
+        const recent = sessions.slice(-10);
+
+        const unit = AppState.exerciseUnits[exerciseIndex] || AppState.globalUnit;
+        const maxWeight = Math.max(...recent.map(s => s.bestWeight));
+        const minWeight = Math.min(...recent.map(s => s.bestWeight));
+        const weightRange = maxWeight - minWeight || 1;
+
+        // Build inline progress: bar chart + session list
+        let html = '<div class="inline-progress">';
+        html += '<div class="inline-progress-title">Recent Sessions</div>';
+        html += '<div class="inline-progress-chart">';
+
+        for (const s of recent) {
+            const d = new Date(s.date + 'T00:00:00');
+            const dateLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const barHeight = Math.max(20, ((s.bestWeight - minWeight) / weightRange) * 80 + 20);
+            const displayWt = unit === 'kg' ? Math.round(s.bestWeight * 0.453592 * 2) / 2 : s.bestWeight;
+
+            html += `
+                <div class="inline-progress-bar-col">
+                    <div class="inline-progress-bar-label">${displayWt}</div>
+                    <div class="inline-progress-bar" style="height: ${barHeight}%"></div>
+                    <div class="inline-progress-bar-date">${dateLabel}</div>
+                </div>`;
+        }
+        html += '</div>';
+
+        // Summary stats
+        const latest = recent[recent.length - 1];
+        const first = recent[0];
+        const weightDiff = latest.bestWeight - first.bestWeight;
+        const displayDiff = unit === 'kg' ? Math.round(weightDiff * 0.453592 * 2) / 2 : weightDiff;
+        const trendIcon = weightDiff > 0 ? 'fa-arrow-up' : weightDiff < 0 ? 'fa-arrow-down' : 'fa-minus';
+        const trendColor = weightDiff > 0 ? 'var(--success)' : weightDiff < 0 ? 'var(--danger)' : 'var(--text-muted)';
+
+        html += `<div class="inline-progress-summary">
+            <span>${sessions.length} sessions total</span>
+            <span style="color: ${trendColor}"><i class="fas ${trendIcon}"></i> ${displayDiff > 0 ? '+' : ''}${displayDiff} ${unit}</span>
+        </div>`;
+        html += '</div>';
+
+        display.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading inline progress:', error);
+        display.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 12px;">Error loading progress</p>';
+    }
+}
 
 // ===================================================================
 // SET MANAGEMENT
