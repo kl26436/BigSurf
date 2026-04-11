@@ -6455,6 +6455,46 @@ dialog.modal:not([open]) {
     color: var(--primary);
 }
 
+/* PR badges in session history */
+.history-item--pr {
+    border-left: 3px solid #f0a500;
+    background: rgba(240, 165, 0, 0.06);
+}
+.pr-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #f0a500;
+    margin-left: 6px;
+}
+.history-weight--best {
+    color: var(--success);
+}
+
+/* Trend indicator */
+.trend-indicator {
+    text-align: center;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+}
+.trend-up {
+    color: var(--success);
+    background: rgba(64, 224, 208, 0.08);
+}
+.trend-down {
+    color: var(--danger);
+    background: rgba(255, 77, 77, 0.08);
+}
+.trend-flat {
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+}
+
 /* Section Cards (shared style for new sections) */
 .section-card {
     background: var(--bg-card);

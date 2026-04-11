@@ -309,6 +309,9 @@ export async function getExerciseProgressData(key, timeRange = 'ALL') {
     const improvement = currentWeight - startWeight;
     const improvementPercent = startWeight > 0 ? ((improvement / startWeight) * 100).toFixed(1) : 0;
 
+    // Calculate trend
+    const trend = calculateTrend(filteredSessions.map((s) => ({ date: s.date, value: s.maxWeight })));
+
     return {
         exercise: data.exercise,
         equipment: data.equipment,
@@ -322,12 +325,28 @@ export async function getExerciseProgressData(key, timeRange = 'ALL') {
             minWeight,
             improvement,
             improvementPercent,
+            trend,
             prDate: prSession?.date,
             prReps: prSession?.maxReps,
             firstDate: firstSession.date,
             lastDate: lastSession.date,
         },
     };
+}
+
+/**
+ * Calculate trend direction by comparing first half vs second half averages
+ */
+function calculateTrend(dataPoints) {
+    if (!dataPoints || dataPoints.length < 3) return 'flat';
+    const values = dataPoints.map((p) => p.value);
+    const midpoint = Math.floor(values.length / 2);
+    const avgFirst = values.slice(0, midpoint).reduce((s, v) => s + v, 0) / midpoint;
+    const avgSecond = values.slice(midpoint).reduce((s, v) => s + v, 0) / (values.length - midpoint);
+    const changePercent = ((avgSecond - avgFirst) / avgFirst) * 100;
+    if (changePercent > 2) return 'up';
+    if (changePercent < -2) return 'down';
+    return 'flat';
 }
 
 /**

@@ -53,6 +53,12 @@ function setupExerciseModalDelegation() {
                 btn.dataset.exercise,
                 parseInt(btn.dataset.index, 10)
             );
+        } else if (action === 'viewExerciseProgress') {
+            const exerciseKey = btn.dataset.equipment
+                ? `${btn.dataset.exercise}|${btn.dataset.equipment}`
+                : btn.dataset.exercise;
+            closeExerciseModal();
+            import('../ui/stats-ui.js').then((mod) => mod.showStats(exerciseKey));
         }
     });
 }
@@ -357,6 +363,9 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
             <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
                 <button class="btn btn-secondary btn-small" data-action="loadExerciseHistory" data-exercise="${escapeAttr(modalExerciseName)}" data-index="${exerciseIndex}">
                     <i class="fas fa-history"></i> Show Last Workout
+                </button>
+                <button class="btn btn-secondary btn-small" data-action="viewExerciseProgress" data-exercise="${escapeAttr(modalExerciseName)}" data-equipment="${escapeAttr(exercise.equipment || '')}">
+                    <i class="fas fa-chart-line"></i> View Progress
                 </button>
                 ${
                     exercise.video

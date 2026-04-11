@@ -29,7 +29,7 @@ let selectedExercise = null;
 /**
  * Show stats & progress view
  */
-export async function showStats() {
+export async function showStats(preSelectedExerciseKey = null) {
     const statsSection = document.getElementById('stats-section');
     if (!statsSection) {
         console.error('Stats section not found');
@@ -58,7 +58,7 @@ export async function showStats() {
     setBottomNavVisible(true);
     updateBottomNavActive('stats');
 
-    await renderProgressView();
+    await renderProgressView(preSelectedExerciseKey);
 }
 
 /**
@@ -89,7 +89,7 @@ export function closeStats() {
 /**
  * Render the progress view
  */
-async function renderProgressView() {
+async function renderProgressView(preSelectedKey = null) {
     const container = document.getElementById('stats-content');
     if (!container) return;
 
@@ -108,6 +108,20 @@ async function renderProgressView() {
 
         // Get streak data for summary
         const streaks = await StreakTracker.calculateStreaks();
+
+        // Pre-select exercise from key (e.g. "Bench Press|Hammer Strength")
+        if (preSelectedKey) {
+            const [exName] = preSelectedKey.split('|');
+            for (const [cat, exercises] of Object.entries(exerciseHierarchy)) {
+                if (exercises[exName]) {
+                    selectedCategory = cat;
+                    selectedExercise = exName;
+                    const match = exercises[exName].find((eq) => eq.key === preSelectedKey);
+                    selectedExerciseKey = match ? match.key : exercises[exName][0]?.key;
+                    break;
+                }
+            }
+        }
 
         // Auto-select first category and exercise if none selected
         if (!selectedCategory && Object.keys(exerciseHierarchy).length > 0) {
@@ -563,6 +577,9 @@ function renderExerciseStatsSummary(stats) {
     const improvementClass = stats.improvement >= 0 ? 'positive' : 'negative';
     const improvementIcon = stats.improvement >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
 
+    const trendIcon = stats.trend === 'up' ? 'fa-arrow-trend-up' : stats.trend === 'down' ? 'fa-arrow-trend-down' : 'fa-minus';
+    const trendLabel = stats.trend === 'up' ? 'Trending Up' : stats.trend === 'down' ? 'Trending Down' : 'Plateau';
+
     container.innerHTML = `
         <div class="stats-grid">
             <div class="stat-box">
@@ -587,6 +604,9 @@ function renderExerciseStatsSummary(stats) {
                 <div class="stat-label">Sessions</div>
             </div>
         </div>
+        <div class="trend-indicator trend-${stats.trend || 'flat'}">
+            <i class="fas ${trendIcon}"></i> ${trendLabel}
+        </div>
     `;
 }
 
@@ -605,8 +625,19 @@ async function renderSessionHistory(exerciseKey, timeRange) {
         return;
     }
 
+    // Detect which sessions were PRs at the time (ascending order)
+    const prDates = new Set();
+    let runningMax = 0;
+    for (const s of progressData.sessions) {
+        if (s.maxWeight > runningMax) {
+            runningMax = s.maxWeight;
+            prDates.add(s.date);
+        }
+    }
+
     // Show most recent sessions first (reversed)
     const sessions = [...progressData.sessions].reverse().slice(0, 10);
+    const allTimeMax = progressData.stats?.maxWeight || 0;
 
     container.innerHTML = `
         <div class="history-section">
@@ -618,11 +649,14 @@ async function renderSessionHistory(exerciseKey, timeRange) {
                 ${sessions
                     .map(
                         (session) => `
-                    <div class="history-item">
-                        <div class="history-date">${formatDate(session.date)}</div>
+                    <div class="history-item ${prDates.has(session.date) ? 'history-item--pr' : ''}">
+                        <div class="history-date">
+                            ${formatDate(session.date)}
+                            ${prDates.has(session.date) ? '<span class="pr-badge"><i class="fas fa-trophy"></i> PR</span>' : ''}
+                        </div>
                         <div class="history-details">
-                            <span class="history-weight">${session.maxWeight} lbs</span>
-                            <span class="history-reps">× ${session.maxReps}</span>
+                            <span class="history-weight ${session.maxWeight === allTimeMax ? 'history-weight--best' : ''}">${session.maxWeight} lbs</span>
+                            <span class="history-reps">&times; ${session.maxReps}</span>
                         </div>
                         ${
                             session.location && session.location !== 'Unknown'
