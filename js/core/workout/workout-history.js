@@ -1,5 +1,5 @@
 // Clean Workout History Module with Calendar View - core/workout-history.js
-import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displayWeight } from '../ui/ui-helpers.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { debugLog } from '../utils/config.js';
@@ -670,7 +670,7 @@ export function getWorkoutHistory(appState) {
                                 <tr style="background: rgba(40, 167, 69, 0.1); border-bottom: 1px solid rgba(40, 167, 69, 0.2);">
                                     <td style="padding: 0.75rem; color: var(--text-primary);">Set ${index + 1}</td>
                                     <td style="padding: 0.75rem; color: var(--text-primary);">${set.reps || '-'}</td>
-                                    <td style="padding: 0.75rem; color: var(--text-primary);">${set.weight ? set.weight + ' lbs' : '-'}</td>
+                                    <td style="padding: 0.75rem; color: var(--text-primary);">${set.weight ? (() => { const dw = displayWeight(set.weight, set.originalUnit || 'lbs', appState.globalUnit || 'lbs'); return dw.value + ' ' + dw.label; })() : '-'}</td>
                                 </tr>`;
                             }
                         });
@@ -1142,7 +1142,8 @@ export function getWorkoutHistory(appState) {
             let html = '<div class="sets-list">';
             sets.forEach((set, index) => {
                 if (set && (set.reps || set.weight)) {
-                    html += `<span class="set-badge">Set ${index + 1}: ${set.reps || 0} × ${set.weight || 0} lbs</span>`;
+                    const dw = displayWeight(set.weight || 0, set.originalUnit || 'lbs', appState.globalUnit || 'lbs');
+                    html += `<span class="set-badge">Set ${index + 1}: ${set.reps || 0} × ${dw.value} ${dw.label}</span>`;
                 }
             });
             html += '</div>';

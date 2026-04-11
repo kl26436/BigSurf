@@ -234,7 +234,36 @@ export function renderExercises() {
         `);
     }
 
+    // Sort completed exercises to bottom
+    reorderExercisesByCompletion(container);
+
     updateProgress(AppState);
+}
+
+function reorderExercisesByCompletion(container) {
+    if (!container) container = document.getElementById('exercise-list');
+    if (!container) return;
+
+    const cards = Array.from(container.querySelectorAll('.exercise-card'));
+    const incomplete = cards.filter(c => !c.classList.contains('completed'));
+    const completed = cards.filter(c => c.classList.contains('completed'));
+
+    if (completed.length === 0 || incomplete.length === 0) return;
+
+    // Remove existing separator
+    const oldSep = container.querySelector('.completed-separator');
+    if (oldSep) oldSep.remove();
+
+    const fragment = document.createDocumentFragment();
+    incomplete.forEach(card => fragment.appendChild(card));
+
+    const separator = document.createElement('div');
+    separator.className = 'completed-separator';
+    separator.innerHTML = '<span>Completed</span>';
+    fragment.appendChild(separator);
+
+    completed.forEach(card => fragment.appendChild(card));
+    container.appendChild(fragment);
 }
 
 /**
@@ -431,62 +460,63 @@ export async function focusExercise(index) {
         return;
     }
 
-    // Build title with icons for edit/change
-    const equipmentText = exercise.equipment
-        ? `${exercise.equipment}${exercise.equipmentLocation ? ' @ ' + exercise.equipmentLocation : ''}`
-        : null;
-
     const exerciseName = getExerciseName(exercise);
-    // Build title with programmatic DOM (avoids innerHTML with user data)
+    const equipmentText = exercise.equipment || null;
+    const locationText = exercise.equipmentLocation || null;
+
+    // Build clean 3-row header
     title.textContent = '';
-    const nameText = document.createTextNode(exerciseName + ' ');
-    title.appendChild(nameText);
 
-    const editLink = document.createElement('a');
-    editLink.href = '#';
-    editLink.className = 'exercise-edit-icon';
-    editLink.setAttribute('aria-label', 'Edit exercise defaults');
-    editLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        window.editExerciseDefaults(exerciseName);
-    });
-    const editIcon = document.createElement('i');
-    editIcon.className = 'fas fa-pen';
-    editLink.appendChild(editIcon);
-    title.appendChild(editLink);
+    // Row 1: Exercise name only
+    const nameEl = document.createElement('span');
+    nameEl.className = 'exercise-detail-name';
+    nameEl.textContent = exerciseName;
+    title.appendChild(nameEl);
 
-    const replaceLink = document.createElement('a');
-    replaceLink.href = '#';
-    replaceLink.className = 'exercise-edit-icon';
-    replaceLink.setAttribute('aria-label', 'Replace exercise');
-    replaceLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        replaceExercise(index);
-    });
-    const replaceIcon = document.createElement('i');
-    replaceIcon.className = 'fas fa-exchange-alt';
-    replaceLink.appendChild(replaceIcon);
-    title.appendChild(document.createTextNode(' '));
-    title.appendChild(replaceLink);
+    // Row 2: Equipment + location meta
+    const metaRow = document.createElement('div');
+    metaRow.className = 'exercise-detail-meta';
+    const eqSpan = document.createElement('span');
+    eqSpan.innerHTML = `<i class="fas fa-cog"></i> ${escapeHtml(equipmentText || 'No equipment')}`;
+    metaRow.appendChild(eqSpan);
+    if (locationText) {
+        const locSpan = document.createElement('span');
+        locSpan.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${escapeHtml(locationText)}`;
+        metaRow.appendChild(locSpan);
+    }
+    title.appendChild(metaRow);
 
-    title.appendChild(document.createElement('br'));
+    // Row 3: Action pills
+    const actionsRow = document.createElement('div');
+    actionsRow.className = 'exercise-detail-actions';
 
-    const subtitleSpan = document.createElement('span');
-    subtitleSpan.className = 'modal-equipment-subtitle';
-    subtitleSpan.textContent = (equipmentText || 'No equipment') + ' ';
-    const changeLink = document.createElement('a');
-    changeLink.href = '#';
-    changeLink.className = 'equipment-change-icon';
-    changeLink.setAttribute('aria-label', 'Change equipment');
-    changeLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        window.changeExerciseEquipment(index);
-    });
-    const changeIcon = document.createElement('i');
-    changeIcon.className = 'fas fa-sync-alt';
-    changeLink.appendChild(changeIcon);
-    subtitleSpan.appendChild(changeLink);
-    title.appendChild(subtitleSpan);
+    const swapBtn = document.createElement('button');
+    swapBtn.className = 'btn-text btn-small';
+    swapBtn.innerHTML = '<i class="fas fa-exchange-alt"></i> Swap';
+    swapBtn.addEventListener('click', () => replaceExercise(index));
+    actionsRow.appendChild(swapBtn);
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-text btn-small';
+    editBtn.innerHTML = '<i class="fas fa-pen"></i> Edit';
+    editBtn.addEventListener('click', () => window.editExerciseDefaults(exerciseName));
+    actionsRow.appendChild(editBtn);
+
+    const equipBtn = document.createElement('button');
+    equipBtn.className = 'btn-text btn-small';
+    equipBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Equipment';
+    equipBtn.addEventListener('click', () => window.changeExerciseEquipment(index));
+    actionsRow.appendChild(equipBtn);
+
+    if (exercise.video) {
+        const videoBtn = document.createElement('button');
+        videoBtn.className = 'btn-text btn-small';
+        videoBtn.innerHTML = '<i class="fas fa-play-circle"></i> Video';
+        videoBtn.addEventListener('click', () => window.showExerciseVideoAndToggleButton(exercise.video, exerciseName, index));
+        actionsRow.appendChild(videoBtn);
+    }
+
+    title.appendChild(actionsRow);
 
     // Define currentUnit FIRST
     const currentUnit = AppState.exerciseUnits[index] || AppState.globalUnit;
@@ -1081,6 +1111,8 @@ export function toggleSetComplete(exerciseIndex, setIndex) {
     const completedCount = allSets.filter(s => s && (s.completed || (s.reps && s.weight))).length;
     if (completedCount >= totalSets) {
         AppState.savedData.exercises[exerciseKey].completed = true;
+        // Re-sort exercise list to move completed to bottom
+        reorderExercisesByCompletion();
     } else {
         AppState.savedData.exercises[exerciseKey].completed = false;
     }

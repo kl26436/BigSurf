@@ -206,6 +206,13 @@ export function pauseWorkout() {
 export async function completeWorkout() {
     if (!AppState.currentWorkout) return;
 
+    // Prevent double-tap
+    const finishBtn = document.querySelector('.btn-finish');
+    if (finishBtn) {
+        if (finishBtn.disabled) return;
+        finishBtn.disabled = true;
+    }
+
     // Stop duration timer and rest timer display
     AppState.clearTimers();
     stopActiveWorkoutRestTimer();
@@ -242,20 +249,21 @@ export async function completeWorkout() {
         console.error('Error saving completed workout:', err);
     });
 
-    // Process workout for PRs — ONLY for new workouts, not edits
+    // Capture workout data for summary and template before reset clears it
     const savedDataSnapshot = JSON.parse(JSON.stringify(AppState.savedData));
+    const completedWorkoutData = savedDataSnapshot;
+
+    // Process PRs in background — don't block completion flow
     let newPRs = [];
     if (!isEditingHistorical) {
         try {
             const { PRTracker } = await import('../features/pr-tracker.js');
             newPRs = await PRTracker.processWorkoutForPRs(savedDataSnapshot) || [];
         } catch (err) {
-            console.error('Error processing PRs:', err);
+            // PR detection failed — not critical, continue to summary
+            console.error('PR detection failed:', err);
         }
     }
-
-    // Capture workout data for summary and template before reset clears it
-    const completedWorkoutData = savedDataSnapshot;
 
     // Reset state BEFORE showing summary (critical order!)
     AppState.reset();

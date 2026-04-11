@@ -424,19 +424,24 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="workout-hero-actions">
-                            <button class="btn-workout-action btn-cancel" onclick="cancelWorkout()">
-                                <i class="fas fa-times"></i> Cancel
+                        <div class="workout-action-bar">
+                            <button class="btn btn-primary btn-full btn-finish" onclick="completeWorkout()">
+                                <i class="fas fa-check"></i> Finish Workout
                             </button>
-                            <button class="btn-workout-action btn-add" onclick="addExerciseToActiveWorkout()">
-                                <i class="fas fa-plus"></i> Add
-                            </button>
-                            <button class="btn-workout-action btn-more" onclick="toggleWorkoutOverflowMenu()" aria-label="More options">
-                                <i class="fas fa-ellipsis-h"></i> More
-                            </button>
-                            <button class="btn-workout-action btn-finish" onclick="completeWorkout()">
-                                <i class="fas fa-check"></i> Finish
-                            </button>
+                            <div class="workout-secondary-actions">
+                                <button class="btn-icon-label" onclick="addExerciseToActiveWorkout()">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Add</span>
+                                </button>
+                                <button class="btn-icon-label" onclick="toggleWorkoutOverflowMenu()">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                    <span>More</span>
+                                </button>
+                                <button class="btn-icon-label btn-icon-label--danger" onclick="cancelWorkout()">
+                                    <i class="fas fa-times"></i>
+                                    <span>Cancel</span>
+                                </button>
+                            </div>
                         </div>
                         <!-- Workout overflow menu -->
                         <div id="workout-overflow-menu" class="workout-overflow-menu hidden">

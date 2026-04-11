@@ -5,7 +5,7 @@ import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { ExerciseProgress } from '../features/exercise-progress.js';
 import { setBottomNavVisible, navigateTo, updateBottomNavActive } from './navigation.js';
-import { setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { setHeaderMode, escapeHtml, escapeAttr, displayWeight } from './ui-helpers.js';
 import { AppState } from '../utils/app-state.js';
 
 // ===================================================================
@@ -439,42 +439,44 @@ async function renderExerciseChart(exerciseKey, timeRange) {
     }
 
     const ctx = canvas.getContext('2d');
+    const u = AppState.globalUnit || 'lbs';
+    const cw = (w) => displayWeight(w, 'lbs', u).value; // convert weight shorthand
 
     // Chart config varies by type
     const chartConfigs = {
         weight: {
             type: 'line',
-            label: 'Max Weight (lbs)',
+            label: `Max Weight (${u})`,
             color: '#1dd3b0',
             bgColor: 'rgba(29, 211, 176, 0.1)',
-            yLabel: (v) => v + ' lbs',
+            yLabel: (v) => cw(v) + ' ' + u,
             tooltipLabel: (tip) => [
-                `Weight: ${tip.weight} lbs`,
+                `Weight: ${cw(tip.weight)} ${u}`,
                 `Reps: ${tip.reps}`,
                 tip.location ? `Location: ${tip.location}` : '',
             ].filter(Boolean),
         },
         volume: {
             type: 'bar',
-            label: 'Session Volume (lbs)',
+            label: `Session Volume (${u})`,
             color: '#5856d6',
             bgColor: 'rgba(88, 86, 214, 0.6)',
-            yLabel: (v) => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v + ' lbs',
+            yLabel: (v) => { const cv = cw(v); return cv >= 1000 ? (cv / 1000).toFixed(1) + 'k' : cv + ' ' + u; },
             tooltipLabel: (tip) => [
-                `Volume: ${(tip.volume || 0).toLocaleString()} lbs`,
-                `Max Weight: ${tip.weight} lbs × ${tip.reps}`,
+                `Volume: ${cw(tip.volume || 0).toLocaleString()} ${u}`,
+                `Max Weight: ${cw(tip.weight)} ${u} × ${tip.reps}`,
                 tip.location ? `Location: ${tip.location}` : '',
             ].filter(Boolean),
         },
         '1rm': {
             type: 'line',
-            label: 'Estimated 1RM (lbs)',
+            label: `Estimated 1RM (${u})`,
             color: '#ff9500',
             bgColor: 'rgba(255, 149, 0, 0.1)',
-            yLabel: (v) => v + ' lbs',
+            yLabel: (v) => cw(v) + ' ' + u,
             tooltipLabel: (tip) => [
-                `Est. 1RM: ${tip.estimated1RM} lbs`,
-                `Based on: ${tip.weight} lbs × ${tip.reps}`,
+                `Est. 1RM: ${cw(tip.estimated1RM)} ${u}`,
+                `Based on: ${cw(tip.weight)} ${u} × ${tip.reps}`,
                 tip.location ? `Location: ${tip.location}` : '',
             ].filter(Boolean),
         },
@@ -675,7 +677,7 @@ async function renderSessionHistory(exerciseKey, timeRange) {
                             ${prDates.has(session.date) ? '<span class="pr-badge"><i class="fas fa-trophy"></i> PR</span>' : ''}
                         </div>
                         <div class="history-details">
-                            <span class="history-weight ${session.maxWeight === allTimeMax ? 'history-weight--best' : ''}">${session.maxWeight} lbs</span>
+                            <span class="history-weight ${session.maxWeight === allTimeMax ? 'history-weight--best' : ''}">${displayWeight(session.maxWeight, 'lbs', AppState.globalUnit || 'lbs').value} ${AppState.globalUnit || 'lbs'}</span>
                             <span class="history-reps">&times; ${session.maxReps}</span>
                         </div>
                         ${
@@ -1108,7 +1110,7 @@ async function renderPRTimeline() {
                             <div class="pr-timeline-date">${formatDateRelative(pr.date)}</div>
                             <div class="pr-timeline-exercise">${escapeHtml(pr.exercise)}</div>
                             <div class="pr-timeline-details">
-                                <span class="pr-timeline-weight">${pr.weight} lbs</span>
+                                <span class="pr-timeline-weight">${displayWeight(pr.weight, 'lbs', AppState.globalUnit || 'lbs').value} ${AppState.globalUnit || 'lbs'}</span>
                                 <span class="pr-timeline-reps">× ${pr.reps}</span>
                                 ${
                                     pr.equipment && pr.equipment !== 'Unknown'

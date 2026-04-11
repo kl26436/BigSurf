@@ -91,6 +91,28 @@ export function convertWeight(weight, fromUnit, toUnit) {
     return weight;
 }
 
+/**
+ * Converts a stored weight to the user's preferred display unit.
+ * Uses the set's originalUnit to determine what conversion is needed.
+ * @param {number} weight - The stored weight value
+ * @param {string} storedUnit - The unit it was stored in ('lbs' or 'kg')
+ * @param {string} displayUnit - The unit to display in
+ * @returns {{ value: number, label: string }} Converted weight and unit label
+ */
+export function displayWeight(weight, storedUnit, displayUnit) {
+    if (!weight || isNaN(weight)) return { value: 0, label: displayUnit || 'lbs' };
+    const unit = displayUnit || 'lbs';
+    const stored = storedUnit || 'lbs';
+    if (stored === unit) return { value: Math.round(weight), label: unit };
+    if (stored === 'lbs' && unit === 'kg') {
+        return { value: Math.round(weight * 0.453592 * 2) / 2, label: 'kg' };
+    }
+    if (stored === 'kg' && unit === 'lbs') {
+        return { value: Math.round(weight * 2.20462), label: 'lbs' };
+    }
+    return { value: Math.round(weight), label: unit };
+}
+
 import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 
 export function updateProgress(state) {

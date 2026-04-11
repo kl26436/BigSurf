@@ -132,6 +132,46 @@ In `exercise-ui.js`, replace all `container.innerHTML += ...` patterns with `ins
 - Line 84: `container.innerHTML += ...` → `container.insertAdjacentHTML('beforeend', ...)`
 - Apply same fix to any other `innerHTML +=` usage found in the codebase
 
+### 0.7 Fix false "Operation failed" error on workout finish
+
+**Bug:** When tapping "Finish" to complete a workout, an "Operation failed" error notification appears and the user stays on the workout page. However, the workout data actually saves successfully — navigating to the dashboard confirms the workout is recorded.
+
+**Root cause investigation:**
+1. In `workout-session.js`, find `completeWorkout()` (or equivalent finish handler)
+2. The function likely calls multiple async operations: save workout data, update stats, detect PRs, update streaks
+3. One of these operations is throwing/rejecting, which triggers the error notification via `showNotification('Operation failed', 'error')`
+4. But the primary save operation succeeds before the error occurs
+
+**Likely fix:**
+- Wrap the secondary operations (PR detection, streak update, stats recalc) in individual try/catch blocks so a failure in one doesn't block the others or trigger a generic error
+- The primary save (`saveWorkoutData()`) should be the only operation that can prevent navigation to dashboard
+- If secondary operations fail, log them silently or as warnings — not as blocking errors
+- Check for race conditions: is `completeWorkout()` being called twice (double-tap on Finish button)?
+- Add a `disabled` state to the Finish button immediately on first tap to prevent double submission:
+```javascript
+async function completeWorkout() {
+  const finishBtn = document.getElementById('finish-workout-btn');
+  if (finishBtn) finishBtn.disabled = true;
+
+  try {
+    // Primary: save workout — this MUST succeed
+    await saveWorkoutData();
+
+    // Secondary: these can fail gracefully
+    try { await detectAndSavePRs(); } catch (e) { debugLog('PR detection failed:', e); }
+    try { await updateStreaks(); } catch (e) { debugLog('Streak update failed:', e); }
+    try { await recalculateWeeklyStats(); } catch (e) { debugLog('Stats recalc failed:', e); }
+
+    // Show completion summary (Phase 6.1) or navigate to dashboard
+    navigateTo('dashboard');
+  } catch (e) {
+    console.error('❌ Workout save failed:', e);
+    showNotification('Failed to save workout. Please try again.', 'error');
+    if (finishBtn) finishBtn.disabled = false;
+  }
+}
+```
+
 ---
 
 ## Phase 1: CSS & Layout Bug Fixes
@@ -324,19 +364,28 @@ function addSwipeToDelete(rowElement, exerciseIndex, setIndex) {
 
 2. In `rest-timer.js`, modify `startModalRestTimer()` to ALSO update `#workout-rest-timer` in the main workout header. Use `requestAnimationFrame` to keep both in sync (modal timer + header timer).
 
-3. Make the header rest timer more prominent when active:
+3. Make the header rest timer **compact and secondary** when active — it should NOT visually compete with the set/exercise counts. The current teal pill treatment is too dominant. Use a smaller, subtler treatment:
 ```css
 #workout-rest-stat.timer-active {
-  background: var(--primary);
-  border-radius: var(--radius-md);
-  padding: 8px 12px;
-  animation: pulse 1s ease-in-out infinite;
+  background: rgba(29, 211, 176, 0.12);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
 }
 #workout-rest-stat.timer-active .workout-stat-value {
-  font-size: 1.5rem;
-  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+/* Only pulse the text color, not the whole background */
+#workout-rest-stat.timer-active .workout-stat-value {
+  animation: timer-pulse 1.5s ease-in-out infinite;
+}
+@keyframes timer-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 ```
+The timer should feel like a secondary status indicator (like a badge), not a hero element. The set/exercise counts and workout name are the primary content.
 
 4. Auto-start: When `toggleSetComplete()` is called (from 2.2), automatically start the rest timer. Import `Config.DEFAULT_REST_TIMER_SECONDS` for the duration. The user can skip via the header timer or the modal timer.
 
@@ -388,6 +437,265 @@ return Math.round(kg * 2) / 2; // Round to nearest 0.5
 ```
 
 For the default template values (which are stored in lbs), when displaying in kg mode, use this same rounding. This prevents values like "22.7 kg" appearing in input fields — instead showing "22.5 kg".
+
+### 2.7 Compact action button row — reduce visual footprint
+
+**Problem:** The Cancel / Add Exercise / More / Finish button row takes up too much vertical space in the active workout view. Four full-width-ish text buttons compete for attention and push exercise content down.
+
+**Fix:** Restructure the action row to minimize footprint:
+
+```html
+<div class="workout-action-bar">
+  <!-- Primary action: always visible, full width -->
+  <button class="btn btn-primary btn-full" onclick="finishWorkout()" id="finish-workout-btn">
+    <i class="fas fa-check"></i> Finish Workout
+  </button>
+
+  <!-- Secondary actions: icon-only row below -->
+  <div class="workout-secondary-actions">
+    <button class="btn-icon-label" onclick="addExerciseToWorkout()">
+      <i class="fas fa-plus"></i>
+      <span>Add</span>
+    </button>
+    <button class="btn-icon-label" onclick="toggleWorkoutOverflowMenu()">
+      <i class="fas fa-ellipsis-h"></i>
+      <span>More</span>
+    </button>
+    <button class="btn-icon-label btn-icon-label--danger" onclick="cancelWorkout()">
+      <i class="fas fa-times"></i>
+      <span>Cancel</span>
+    </button>
+  </div>
+</div>
+```
+
+```css
+.workout-action-bar {
+  padding: 12px var(--pad-page);
+  background: var(--bg-surface);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+.workout-secondary-actions {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-top: 10px;
+}
+.btn-icon-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  cursor: pointer;
+  padding: 6px 12px;
+}
+.btn-icon-label i {
+  font-size: 1.1rem;
+}
+.btn-icon-label:active {
+  color: var(--primary);
+}
+.btn-icon-label--danger:active {
+  color: var(--danger);
+}
+```
+
+This pattern: "Finish" is the hero action (full-width primary button). Add / More / Cancel are small icon+label items below — similar to how iOS action sheets have a prominent action and secondary options. Total height goes from ~120px (4 stacked buttons) to ~80px (1 button + icon row).
+
+### 2.8 Auto-sort completed exercises to bottom
+
+**Problem:** When you complete all sets for an exercise, the card stays in its original position. As you work through a long workout, you have to scroll past completed exercises to find the next one you need to do.
+
+**New behavior:** When an exercise is marked complete, animate it down to the bottom of the exercise list. Incomplete exercises stay at the top in their original order.
+
+**Implementation:**
+
+1. In `exercise-ui.js`, after marking an exercise complete (all sets done or manual "Mark Complete"), call `reorderExercisesByCompletion()`:
+
+```javascript
+function reorderExercisesByCompletion() {
+  const container = document.getElementById('exercise-list'); // or whatever the container ID is
+  const cards = Array.from(container.querySelectorAll('.exercise-card'));
+
+  // Sort: incomplete first (in original order), completed last (in completion order)
+  const incomplete = cards.filter(c => !c.classList.contains('completed'));
+  const completed = cards.filter(c => c.classList.contains('completed'));
+
+  // Add a separator if there are both incomplete and completed
+  const fragment = document.createDocumentFragment();
+  incomplete.forEach(card => fragment.appendChild(card));
+
+  if (incomplete.length > 0 && completed.length > 0) {
+    // Add a visual separator
+    let separator = container.querySelector('.completed-separator');
+    if (!separator) {
+      separator = document.createElement('div');
+      separator.className = 'completed-separator';
+      separator.innerHTML = `<span>Completed</span>`;
+    }
+    fragment.appendChild(separator);
+  }
+
+  completed.forEach(card => fragment.appendChild(card));
+  container.appendChild(fragment);
+}
+```
+
+2. **Animate the move** — when a card transitions from incomplete to complete:
+```css
+.exercise-card.just-completed {
+  animation: slide-to-bottom 0.4s ease;
+}
+@keyframes slide-to-bottom {
+  0% { opacity: 0.5; transform: translateY(-10px); }
+  100% { opacity: 0.7; transform: translateY(0); }
+}
+.completed-separator {
+  text-align: center;
+  padding: 8px 0;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+```
+
+3. **De-emphasize completed cards** — reduce opacity and collapse the set preview:
+```css
+.exercise-card.completed {
+  opacity: 0.6;
+}
+.exercise-card.completed .exercise-card-sets-preview {
+  max-height: 0;
+  overflow: hidden;
+  margin: 0;
+  transition: max-height 0.3s ease, margin 0.3s ease;
+}
+```
+
+4. **Auto-scroll** to the next incomplete exercise after a completion:
+```javascript
+function scrollToNextIncomplete() {
+  const next = document.querySelector('.exercise-card:not(.completed)');
+  if (next) {
+    next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+```
+
+5. **Important:** This reorder is visual only — it does NOT change the `AppState.savedData.exercises` order or the Firestore document. The exercise indices stay the same so set logging continues to work correctly. Only the DOM order changes.
+
+### 2.9 Unit conversion in workout history and charts
+
+**Problem:** The lb/kg toggle on an exercise only affects the current workout display. When viewing workout history or stats charts, past workouts show in whatever unit they were originally logged in. If you switch gyms (metric vs imperial) or change your unit preference, your history becomes a confusing mix of units.
+
+**Fix:** All history views and charts should display weights in the user's current preferred unit, regardless of what `originalUnit` each set was logged in.
+
+**Implementation:**
+
+1. The `originalUnit` field already exists on every set in Firestore — this is the source of truth for what unit the weight was stored in.
+
+2. Create a display conversion utility in `ui-helpers.js`:
+```javascript
+/**
+ * Converts a stored weight to the user's preferred display unit.
+ * @param {number} weight - The stored weight value
+ * @param {string} storedUnit - The unit it was stored in ('lbs' or 'kg')
+ * @param {string} displayUnit - The unit to display in (from AppState.settings.weightUnit)
+ * @returns {number} The converted weight, rounded appropriately
+ */
+export function displayWeight(weight, storedUnit, displayUnit) {
+  if (storedUnit === displayUnit) return weight;
+  if (storedUnit === 'lbs' && displayUnit === 'kg') {
+    return Math.round(weight * 0.453592 * 2) / 2; // Round to nearest 0.5 kg
+  }
+  if (storedUnit === 'kg' && displayUnit === 'lbs') {
+    return Math.round(weight * 2.20462); // Round to nearest lb
+  }
+  return weight;
+}
+```
+
+3. **Apply in workout history** (`workout-history-ui.js`): When rendering past workout details, pass each set's weight through `displayWeight(set.weight, set.originalUnit, AppState.settings.weightUnit)`.
+
+4. **Apply in stats charts** (`stats-ui.js`): When building chart datasets, convert all weight data points to the user's preferred unit before plotting. Add unit label to the Y-axis: `"Weight (${AppState.settings.weightUnit})"`.
+
+5. **Apply in PR tracker** (`pr-tracker.js`): When displaying PRs, convert to current display unit. Note: PR *detection* should still compare in the original stored unit to avoid false PRs from rounding errors. Only the *display* converts.
+
+6. **Show unit label** wherever weights appear in history: "135 lbs" or "61 kg", never ambiguous bare numbers.
+
+### 2.10 Simplify exercise detail modal header
+
+**Problem:** The exercise detail modal header is cluttered — edit icon, swap/replace icon, close icon, gym/location name, sync indicator, and the exercise name all compete for space. On a phone screen it's hard to parse what's important.
+
+**Fix:** Establish a clear hierarchy:
+
+```html
+<div class="exercise-detail-header">
+  <!-- Row 1: Exercise name + close button -->
+  <div class="exercise-detail-title-row">
+    <h3 class="exercise-detail-name">${exerciseName}</h3>
+    <button class="btn-icon" onclick="closeExerciseDetail()" aria-label="Close">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <!-- Row 2: Equipment + meta (subtle, secondary) -->
+  <div class="exercise-detail-meta">
+    <span class="exercise-detail-equipment">
+      <i class="fas fa-cog"></i> ${equipmentName || 'No equipment'}
+    </span>
+    ${location ? `<span class="exercise-detail-location"><i class="fas fa-map-marker-alt"></i> ${location}</span>` : ''}
+  </div>
+
+  <!-- Row 3: Action pills (only the most used actions) -->
+  <div class="exercise-detail-actions">
+    <button class="btn-text btn-small" onclick="replaceExercise(${idx})">
+      <i class="fas fa-exchange-alt"></i> Swap
+    </button>
+    <button class="btn-text btn-small" onclick="editExerciseDefaults(${idx})">
+      <i class="fas fa-pen"></i> Edit
+    </button>
+    <button class="btn-text btn-small" onclick="toggleFormVideo(${idx})">
+      <i class="fas fa-play-circle"></i> Video
+    </button>
+  </div>
+</div>
+```
+
+```css
+.exercise-detail-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.exercise-detail-name {
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 0;
+}
+.exercise-detail-meta {
+  display: flex;
+  gap: 12px;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.exercise-detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+```
+
+Key changes: exercise name is the only large text. Equipment/location are small meta underneath. Actions are a row of text buttons with icons — not competing with the title. Close button is standard top-right X. Sync indicator removed from the header (move to a global status indicator if needed).
 
 ---
 
@@ -4050,12 +4358,19 @@ After each phase, verify on a 375px mobile viewport:
 - [ ] Completing all sets auto-marks exercise complete
 - [ ] Swipe-to-delete works on set rows
 - [ ] Rest timer auto-starts after set completion
-- [ ] Rest timer visible in workout header without opening modal
+- [ ] Rest timer visible in workout header — compact/subtle, not oversized teal pill
 - [ ] Header timer shows countdown, "GO!" on completion, vibrates
 - [ ] Exercises can be reordered via drag-and-drop without losing data
 - [ ] Exercise swap/replace filters by same muscle group
-- [ ] Cancel/Add/Finish buttons are sticky at bottom while scrolling
+- [ ] Action button row compact: Finish hero button + icon row for Add/More/Cancel
+- [ ] Completed exercises auto-sort to bottom with "Completed" separator
+- [ ] Auto-scroll to next incomplete exercise after completing one
 - [ ] kg values show as whole numbers or .5 increments (not decimals)
+- [ ] Workout history shows weights in user's preferred unit (not mixed lbs/kg)
+- [ ] Stats charts convert all data points to user's preferred display unit
+- [ ] Exercise detail modal header is clean: name → equipment/location meta → action row
+- [ ] "Finish" button doesn't show false "Operation failed" error
+- [ ] "Finish" button disabled after first tap to prevent double submission
 
 ### Dashboard & Templates (Phases 4-5)
 - [ ] No blank space issues on any screen
