@@ -34,6 +34,7 @@ const SECTION_IDS = [
     'stats-section',
     'exercise-manager-section',
     'location-management-section',
+    'equipment-library-section',
     'settings-section',
 ];
 
@@ -114,6 +115,10 @@ function routeToView(view) {
             showWorkoutManagement();
             break;
 
+        case 'equipment':
+            showEquipmentLibrary();
+            break;
+
         case 'settings':
             showSettings();
             break;
@@ -175,6 +180,16 @@ function showLocationManagement() {
     if (showManagement) {
         showManagement();
     }
+}
+
+async function showEquipmentLibrary() {
+    const section = document.getElementById('equipment-library-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('more');
+    setHeaderMode('equipment');
+    const { openEquipmentLibrary } = await import('./equipment-library-ui.js');
+    openEquipmentLibrary();
 }
 
 async function showSettings() {

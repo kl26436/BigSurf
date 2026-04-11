@@ -1892,6 +1892,17 @@
             </div>
         </dialog>
 
+        <!-- Equipment Library Page -->
+        <section id="equipment-library-section" class="app-section hidden">
+            <div class="section-header" style="padding: var(--pad-page); display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0;">Equipment Library</h2>
+                <button class="btn btn-primary btn-small" onclick="showAddEquipmentFlow()">
+                    <i class="fas fa-plus"></i> Add
+                </button>
+            </div>
+            <div id="equipment-library-content"></div>
+        </section>
+
         <!-- Settings Page -->
         <section id="settings-section" class="app-section hidden">
             <div id="settings-content"></div>
@@ -1941,6 +1952,16 @@
                 >
                     <i class="fas fa-map-marker-alt"></i>
                     <span>Manage Locations</span>
+                </button>
+                <button
+                    class="more-menu-item"
+                    onclick="
+                        navigateTo('equipment');
+                        closeMoreMenu();
+                    "
+                >
+                    <i class="fas fa-wrench"></i>
+                    <span>Equipment Library</span>
                 </button>
                 <button
                     class="more-menu-item"

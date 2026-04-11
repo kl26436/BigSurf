@@ -15,6 +15,9 @@ import {
     limit,
     onSnapshot,
     writeBatch,
+    arrayUnion,
+    arrayRemove,
+    deleteField,
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import {
     getAuth,
@@ -79,6 +82,9 @@ export {
     limit,
     onSnapshot,
     writeBatch,
+    arrayUnion,
+    arrayRemove,
+    deleteField,
     onAuthStateChanged,
     signInWithPopup,
     signInWithRedirect,

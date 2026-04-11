@@ -10,6 +10,13 @@ import { getCategoryIcon } from './core/utils/config.js';
 import { startApplication } from './core/app-initialization.js';
 import { updateSetting, onboardingNext, completeOnboarding } from './core/ui/settings-ui.js';
 import { exportWorkoutData } from './core/data/data-manager.js';
+import {
+    openEquipmentLibrary, openEquipmentDetail, backToEquipmentList,
+    filterEquipmentByLocation, filterEquipmentBySearch,
+    assignExerciseToEquipment, unassignExercise,
+    editEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
+    saveEquipmentNotes, showAddEquipmentFlow,
+} from './core/ui/equipment-library-ui.js';
 
 // Authentication functions
 import { signIn, signOutUser } from './core/app-initialization.js';
@@ -648,6 +655,19 @@ window.updateSetting = updateSetting;
 window.onboardingNext = onboardingNext;
 window.completeOnboarding = completeOnboarding;
 window.exportWorkoutData = exportWorkoutData;
+
+// Equipment Library
+window.openEquipmentLibrary = openEquipmentLibrary;
+window.openEquipmentDetail = openEquipmentDetail;
+window.backToEquipmentList = backToEquipmentList;
+window.filterEquipmentByLocation = filterEquipmentByLocation;
+window.filterEquipmentBySearch = filterEquipmentBySearch;
+window.assignExerciseToEquipment = assignExerciseToEquipment;
+window.unassignExercise = unassignExercise;
+window.editEquipmentExerciseVideoFromLib = editEquipmentExerciseVideoFromLib;
+window.deleteEquipmentFromLibrary = deleteEquipmentFromLibrary;
+window.saveEquipmentNotes = saveEquipmentNotes;
+window.showAddEquipmentFlow = showAddEquipmentFlow;
 
 // State access (for debugging — used by ui-helpers.js and error-handler.js in production)
 window.AppState = AppState;
