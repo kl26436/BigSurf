@@ -82,8 +82,7 @@ export function convertWeight(weight, fromUnit, toUnit) {
     return weight;
 }
 
-// Module-level interval for active workout page rest timer
-let activeWorkoutRestInterval = null;
+import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 
 export function updateProgress(state) {
     if (!state.currentWorkout || !state.savedData.exercises) return;
@@ -131,8 +130,8 @@ function updateActiveWorkoutRestDisplay() {
     const restStatEl = document.getElementById('workout-rest-stat');
 
     if (!restTimerEl) {
-        // Element not on page, stop the interval
-        stopActiveWorkoutRestTimer();
+        // Element not on page, unregister this updater
+        unregisterRestDisplayUpdater('activeWorkout');
         return;
     }
 
@@ -176,20 +175,14 @@ function updateActiveWorkoutRestDisplay() {
  * Starts the rest timer update loop for the active workout page
  */
 export function startActiveWorkoutRestTimer() {
-    if (activeWorkoutRestInterval) return; // Already running
-
-    updateActiveWorkoutRestDisplay();
-    activeWorkoutRestInterval = setInterval(updateActiveWorkoutRestDisplay, 1000);
+    registerRestDisplayUpdater('activeWorkout', updateActiveWorkoutRestDisplay);
 }
 
 /**
  * Stops the rest timer update loop
  */
 export function stopActiveWorkoutRestTimer() {
-    if (activeWorkoutRestInterval) {
-        clearInterval(activeWorkoutRestInterval);
-        activeWorkoutRestInterval = null;
-    }
+    unregisterRestDisplayUpdater('activeWorkout');
 }
 
 /**

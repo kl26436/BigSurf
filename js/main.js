@@ -21,6 +21,7 @@ import {
     discardInProgressWorkout,
     discardEditedWorkout,
     editHistoricalWorkout,
+    saveActiveWorkoutAsTemplate,
     focusExercise,
     updateSet,
     addSet,
@@ -80,11 +81,13 @@ import {
     showWorkoutManagement,
     closeWorkoutManagement,
     createNewTemplate,
+    saveWorkoutAsTemplate,
     closeTemplateEditor,
     saveCurrentTemplate,
     addExerciseToTemplate,
     editTemplateExercise,
     removeTemplateExercise,
+    moveTemplateExercise,
     openExerciseLibrary,
     closeExerciseLibrary,
     showCreateExerciseForm,
@@ -99,6 +102,9 @@ import {
     addEquipmentFromPicker,
     closeTemplateExerciseEdit,
     saveTemplateExerciseEdit,
+    saveInlineEdit,
+    confirmInlineAdd,
+    cancelInlineAdd,
     selectWorkoutCategory,
     showWorkoutCategoryView,
     handleWorkoutSearch,
@@ -217,17 +223,12 @@ import {
     clearPRFilters,
     selectProgressExercise,
     setProgressTimeRange,
+    setProgressChartType,
     selectProgressCategory,
     selectProgressExerciseName,
 } from './core/ui/stats-ui.js';
 
 // Debug utilities — loaded on demand with ?debug URL param
-
-// Firebase Workout Manager (for exercise-manager.html)
-import { FirebaseWorkoutManager } from './core/data/firebase-workout-manager.js';
-
-// Push notification manager for iOS background notifications
-import { initializeFCM, sendTestNotification, isFCMAvailable } from './core/utils/push-notification-manager.js';
 
 // ===================================================================
 // CALENDAR NAVIGATION FUNCTIONS (Add to window assignments)
@@ -273,6 +274,7 @@ window.continueInProgressWorkout = continueInProgressWorkout;
 window.discardInProgressWorkout = discardInProgressWorkout;
 window.discardEditedWorkout = discardEditedWorkout;
 window.editHistoricalWorkout = editHistoricalWorkout;
+window.saveActiveWorkoutAsTemplate = saveActiveWorkoutAsTemplate;
 window.startWorkoutFromModal = function (workoutName) {
     // Close the modal (hide it, don't remove it from DOM)
     const modal = document.getElementById('template-selection-modal');
@@ -438,6 +440,7 @@ window.filterPRs = filterPRs;
 window.clearPRFilters = clearPRFilters;
 window.selectProgressExercise = selectProgressExercise;
 window.setProgressTimeRange = setProgressTimeRange;
+window.setProgressChartType = setProgressChartType;
 window.selectProgressCategory = selectProgressCategory;
 window.selectProgressExerciseName = selectProgressExerciseName;
 
@@ -592,11 +595,13 @@ window.closeWorkoutDetailModal = function () {
 window.showWorkoutManagement = showWorkoutManagement;
 window.closeWorkoutManagement = closeWorkoutManagement;
 window.createNewTemplate = createNewTemplate;
+window.saveWorkoutAsTemplate = saveWorkoutAsTemplate;
 window.closeTemplateEditor = closeTemplateEditor;
 window.saveCurrentTemplate = saveCurrentTemplate;
 window.addExerciseToTemplate = addExerciseToTemplate;
 window.editTemplateExercise = editTemplateExercise;
 window.removeTemplateExercise = removeTemplateExercise;
+window.moveTemplateExercise = moveTemplateExercise;
 window.openExerciseLibrary = openExerciseLibrary;
 window.closeExerciseLibrary = closeExerciseLibrary;
 window.showCreateExerciseForm = showCreateExerciseForm;
@@ -611,6 +616,9 @@ window.confirmEquipmentSelection = confirmEquipmentSelection;
 window.addEquipmentFromPicker = addEquipmentFromPicker;
 window.closeTemplateExerciseEdit = closeTemplateExerciseEdit;
 window.saveTemplateExerciseEdit = saveTemplateExerciseEdit;
+window.saveInlineEdit = saveInlineEdit;
+window.confirmInlineAdd = confirmInlineAdd;
+window.cancelInlineAdd = cancelInlineAdd;
 window.selectWorkoutCategory = selectWorkoutCategory;
 window.showWorkoutCategoryView = showWorkoutCategoryView;
 window.handleWorkoutSearch = handleWorkoutSearch;
@@ -619,13 +627,19 @@ window.handleWorkoutSearch = handleWorkoutSearch;
 window.signIn = signIn;
 window.signOutUser = signOutUser;
 
+// State access (for debugging — used by ui-helpers.js and error-handler.js in production)
+window.AppState = AppState;
+
 // Debug Functions — lazy-loaded only when ?debug is in URL
 if (new URL(window.location).searchParams.has('debug')) {
     Promise.all([
         import('./core/utils/debug-utilities.js'),
         import('./core/features/pr-migration.js'),
         import('./core/utils/fix-template-exercises.js'),
-    ]).then(([debugMod, prMigMod, fixMod]) => {
+        import('./core/data/firebase-workout-manager.js'),
+        import('./core/utils/push-notification-manager.js'),
+        import('./core/features/pr-tracker.js'),
+    ]).then(([debugMod, prMigMod, fixMod, fwmMod, pushMod, prMod]) => {
         Object.keys(debugMod).forEach((key) => {
             window[key] = debugMod[key];
         });
@@ -635,37 +649,31 @@ if (new URL(window.location).searchParams.has('debug')) {
         Object.keys(fixMod).forEach((key) => {
             window[key] = fixMod[key];
         });
+
+        // Firebase Workout Manager, push notifications, PR Tracker — console debugging only
+        window.FirebaseWorkoutManager = fwmMod.FirebaseWorkoutManager;
+        window.initializeFCM = pushMod.initializeFCM;
+        window.sendTestNotification = pushMod.sendTestNotification;
+        window.isFCMAvailable = pushMod.isFCMAvailable;
+        window.PRTracker = prMod.PRTracker;
+
+        window.rebuildPRs = async function () {
+            console.log('Rebuilding PRs from workout history...');
+            const result = await prMod.PRTracker.rebuildPRsFromHistory();
+            if (result.success) {
+                console.log(
+                    `✅ Rebuilt PRs: ${result.workoutsProcessed} workouts, ${result.setsProcessed} sets processed`
+                );
+                console.log('Refresh the page to see updated PRs');
+            } else {
+                console.error('❌ Failed to rebuild PRs:', result.error);
+            }
+            return result;
+        };
+
         console.log('🔧 Debug + migration utilities loaded');
     });
 }
-
-// State access (for debugging)
-window.AppState = AppState;
-
-// Firebase Workout Manager (for exercise-manager.html)
-window.FirebaseWorkoutManager = FirebaseWorkoutManager;
-
-// Push notification functions (for iOS background notifications)
-window.initializeFCM = initializeFCM;
-window.sendTestNotification = sendTestNotification;
-window.isFCMAvailable = isFCMAvailable;
-
-// PR Tracker - expose for debugging and rebuilding
-import { PRTracker } from './core/features/pr-tracker.js';
-window.PRTracker = PRTracker;
-
-// Debug utility to rebuild PRs from workout history
-window.rebuildPRs = async function () {
-    console.log('Rebuilding PRs from workout history...');
-    const result = await PRTracker.rebuildPRsFromHistory();
-    if (result.success) {
-        console.log(`✅ Rebuilt PRs: ${result.workoutsProcessed} workouts, ${result.setsProcessed} sets processed`);
-        console.log('Refresh the page to see updated PRs');
-    } else {
-        console.error('❌ Failed to rebuild PRs:', result.error);
-    }
-    return result;
-};
 
 // ===================================================================
 // ===================================================================

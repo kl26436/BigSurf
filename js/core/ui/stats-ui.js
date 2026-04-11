@@ -13,8 +13,10 @@ import { AppState } from '../utils/app-state.js';
 // ===================================================================
 
 let currentChart = null;
+let weeklyVolumeChart = null;
 let selectedExerciseKey = null;
 let selectedTimeRange = '3M';
+let selectedChartType = 'weight'; // 'weight', 'volume', '1rm'
 let exerciseList = [];
 let exerciseHierarchy = {};
 let selectedCategory = null;
@@ -68,10 +70,14 @@ export function closeStats() {
         statsSection.classList.add('hidden');
     }
 
-    // Destroy chart to prevent memory leaks
+    // Destroy charts to prevent memory leaks
     if (currentChart) {
         currentChart.destroy();
         currentChart = null;
+    }
+    if (weeklyVolumeChart) {
+        weeklyVolumeChart.destroy();
+        weeklyVolumeChart = null;
     }
 
     // Restore main header when returning to dashboard
@@ -136,6 +142,23 @@ async function renderProgressView() {
 
                 <!-- Chart Section -->
                 <div class="progress-chart-section">
+                    <!-- Chart Type Toggle -->
+                    <div class="chart-type-toggle">
+                        ${[
+                            { key: 'weight', label: 'Weight', icon: 'fa-dumbbell' },
+                            { key: 'volume', label: 'Volume', icon: 'fa-chart-bar' },
+                            { key: '1rm', label: 'Est. 1RM', icon: 'fa-trophy' },
+                        ].map(
+                            (type) => `
+                            <button class="chart-type-btn ${selectedChartType === type.key ? 'active' : ''}"
+                                    onclick="setProgressChartType('${type.key}')">
+                                <i class="fas ${type.icon}"></i>
+                                ${type.label}
+                            </button>
+                        `
+                        ).join('')}
+                    </div>
+
                     <!-- Time Range Picker -->
                     <div class="time-range-picker">
                         ${['1M', '3M', '6M', '1Y', 'ALL']
@@ -166,6 +189,11 @@ async function renderProgressView() {
                     <!-- Populated after exercise selection -->
                 </div>
 
+                <!-- Weekly Volume Bar Chart -->
+                <div id="weekly-volume-section" class="weekly-volume-section">
+                    <!-- Populated after data loads -->
+                </div>
+
                 <!-- Body Part Distribution -->
                 <div id="body-part-section" class="body-part-section">
                     <!-- Populated after data loads -->
@@ -191,7 +219,7 @@ async function renderProgressView() {
         }
 
         // Render additional sections
-        await Promise.all([renderBodyPartDistribution(), renderHeatMapCalendar(), renderPRTimeline()]);
+        await Promise.all([renderWeeklyVolumeChart(), renderBodyPartDistribution(), renderHeatMapCalendar(), renderPRTimeline()]);
     } catch (error) {
         console.error('Error rendering progress view:', error);
         container.innerHTML = `
@@ -349,7 +377,7 @@ function renderExerciseSelector() {
  * Render progress chart for selected exercise
  */
 async function renderExerciseChart(exerciseKey, timeRange) {
-    const chartData = await ExerciseProgress.getChartData(exerciseKey, timeRange);
+    const chartData = await ExerciseProgress.getChartData(exerciseKey, timeRange, selectedChartType);
 
     // Destroy existing chart
     if (currentChart) {
@@ -367,24 +395,66 @@ async function renderExerciseChart(exerciseKey, timeRange) {
 
     const ctx = canvas.getContext('2d');
 
-    // Chart.js configuration
+    // Chart config varies by type
+    const chartConfigs = {
+        weight: {
+            type: 'line',
+            label: 'Max Weight (lbs)',
+            color: '#1dd3b0',
+            bgColor: 'rgba(29, 211, 176, 0.1)',
+            yLabel: (v) => v + ' lbs',
+            tooltipLabel: (tip) => [
+                `Weight: ${tip.weight} lbs`,
+                `Reps: ${tip.reps}`,
+                tip.location ? `Location: ${tip.location}` : '',
+            ].filter(Boolean),
+        },
+        volume: {
+            type: 'bar',
+            label: 'Session Volume (lbs)',
+            color: '#5856d6',
+            bgColor: 'rgba(88, 86, 214, 0.6)',
+            yLabel: (v) => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v + ' lbs',
+            tooltipLabel: (tip) => [
+                `Volume: ${(tip.volume || 0).toLocaleString()} lbs`,
+                `Max Weight: ${tip.weight} lbs × ${tip.reps}`,
+                tip.location ? `Location: ${tip.location}` : '',
+            ].filter(Boolean),
+        },
+        '1rm': {
+            type: 'line',
+            label: 'Estimated 1RM (lbs)',
+            color: '#ff9500',
+            bgColor: 'rgba(255, 149, 0, 0.1)',
+            yLabel: (v) => v + ' lbs',
+            tooltipLabel: (tip) => [
+                `Est. 1RM: ${tip.estimated1RM} lbs`,
+                `Based on: ${tip.weight} lbs × ${tip.reps}`,
+                tip.location ? `Location: ${tip.location}` : '',
+            ].filter(Boolean),
+        },
+    };
+
+    const config = chartConfigs[selectedChartType] || chartConfigs.weight;
+
     currentChart = new Chart(ctx, {
-        type: 'line',
+        type: config.type,
         data: {
             labels: chartData.labels,
             datasets: [
                 {
-                    label: 'Max Weight (lbs)',
+                    label: config.label,
                     data: chartData.data,
-                    borderColor: '#1dd3b0',
-                    backgroundColor: 'rgba(29, 211, 176, 0.1)',
+                    borderColor: config.color,
+                    backgroundColor: config.bgColor,
                     borderWidth: 2,
-                    fill: true,
+                    fill: config.type === 'line',
                     tension: 0.3,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#1dd3b0',
-                    pointBorderColor: '#1dd3b0',
-                    pointHoverRadius: 6,
+                    pointRadius: config.type === 'line' ? 4 : undefined,
+                    pointBackgroundColor: config.type === 'line' ? config.color : undefined,
+                    pointBorderColor: config.type === 'line' ? config.color : undefined,
+                    pointHoverRadius: config.type === 'line' ? 6 : undefined,
+                    borderRadius: config.type === 'bar' ? 4 : undefined,
                 },
             ],
         },
@@ -411,11 +481,7 @@ async function renderExerciseChart(exerciseKey, timeRange) {
                         label: function (context) {
                             const idx = context.dataIndex;
                             const tip = chartData.tooltips[idx];
-                            return [
-                                `Weight: ${tip.weight} lbs`,
-                                `Reps: ${tip.reps}`,
-                                tip.location ? `Location: ${tip.location}` : '',
-                            ].filter(Boolean);
+                            return config.tooltipLabel(tip);
                         },
                     },
                 },
@@ -438,10 +504,10 @@ async function renderExerciseChart(exerciseKey, timeRange) {
                     ticks: {
                         color: '#7a8a9e',
                         callback: function (value) {
-                            return value + ' lbs';
+                            return config.yLabel(value);
                         },
                     },
-                    beginAtZero: false,
+                    beginAtZero: selectedChartType === 'volume',
                 },
             },
             interaction: {
@@ -661,6 +727,126 @@ export async function setProgressTimeRange(range) {
 
     // Also update body part distribution which uses time range
     await renderBodyPartDistribution();
+}
+
+/**
+ * Handle chart type change (Weight / Volume / Est. 1RM)
+ */
+export async function setProgressChartType(chartType) {
+    selectedChartType = chartType;
+
+    // Update button states
+    document.querySelectorAll('.chart-type-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.onclick.toString().includes(`'${chartType}'`));
+    });
+
+    if (selectedExerciseKey) {
+        await renderExerciseChart(selectedExerciseKey, selectedTimeRange);
+    }
+}
+
+// ===================================================================
+// WEEKLY VOLUME BAR CHART
+// ===================================================================
+
+async function renderWeeklyVolumeChart() {
+    const container = document.getElementById('weekly-volume-section');
+    if (!container) return;
+
+    const volumeData = await ExerciseProgress.getWeeklyVolumeData();
+
+    if (volumeData.maxVolume === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="section-card">
+            <div class="section-card-header">
+                <h3><i class="fas fa-chart-bar"></i> Weekly Volume</h3>
+                <span class="heat-map-label">Last 12 weeks</span>
+            </div>
+            <div class="chart-container weekly-volume-chart-container">
+                <canvas id="weekly-volume-chart"></canvas>
+            </div>
+        </div>
+    `;
+
+    const canvas = document.getElementById('weekly-volume-chart');
+    if (!canvas) return;
+
+    if (weeklyVolumeChart) {
+        weeklyVolumeChart.destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+    weeklyVolumeChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: volumeData.labels,
+            datasets: [
+                {
+                    label: 'Weekly Volume',
+                    data: volumeData.data,
+                    backgroundColor: volumeData.data.map((v) =>
+                        v > 0 ? 'rgba(29, 211, 176, 0.7)' : 'rgba(255,255,255,0.05)'
+                    ),
+                    borderColor: volumeData.data.map((v) =>
+                        v > 0 ? '#1dd3b0' : 'rgba(255,255,255,0.1)'
+                    ),
+                    borderWidth: 1,
+                    borderRadius: 4,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false,
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(20, 25, 35, 0.95)',
+                    titleColor: '#fff',
+                    bodyColor: '#b8c5d6',
+                    padding: 12,
+                    callbacks: {
+                        label: function (context) {
+                            const vol = context.raw;
+                            if (vol === 0) return 'No workouts';
+                            const formatted = vol >= 1000 ? `${(vol / 1000).toFixed(1)}k` : vol;
+                            return `Volume: ${formatted} lbs`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false,
+                    },
+                    ticks: {
+                        color: '#7a8a9e',
+                        maxRotation: 45,
+                        font: { size: 10 },
+                    },
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(255,255,255,0.05)',
+                    },
+                    ticks: {
+                        color: '#7a8a9e',
+                        callback: function (value) {
+                            return value >= 1000 ? (value / 1000).toFixed(0) + 'k' : value;
+                        },
+                    },
+                    beginAtZero: true,
+                },
+            },
+        },
+    });
 }
 
 // ===================================================================

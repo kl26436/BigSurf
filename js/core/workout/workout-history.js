@@ -1,6 +1,7 @@
 // Clean Workout History Module with Calendar View - core/workout-history.js
 import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
 import { getDateString } from '../utils/date-helpers.js';
+import { getExerciseName } from '../utils/workout-helpers.js';
 
 export function getWorkoutHistory(appState) {
     const currentHistory = [];
@@ -51,37 +52,78 @@ export function getWorkoutHistory(appState) {
             }
 
             // Event delegation for workout history UI
-            // workoutModal contains the workout picker items and workout detail HTML (calendar day click)
-            if (modal) {
-                modal.addEventListener('click', (e) => {
-                    const el = e.target.closest('[data-action]');
-                    if (!el) return;
-                    const action = el.dataset.action;
+            // Handles: workout picker items, action buttons, video buttons, recent workout items
+            const actionHandler = (e) => {
+                const el = e.target.closest('[data-action]');
+                if (!el) return;
+                const action = el.dataset.action;
+                const docId = el.dataset.docId;
 
-                    if (action === 'showWorkoutDetail') {
+                switch (action) {
+                    case 'showWorkoutDetail':
                         window.workoutHistory.showWorkoutDetail(
                             el.dataset.date,
                             el.dataset.workoutName,
                             parseInt(el.dataset.index, 10)
                         );
-                    } else if (action === 'showExerciseVideo') {
+                        break;
+                    case 'selectFromPicker':
+                        window.workoutHistory.selectWorkoutFromPicker(
+                            el.dataset.date,
+                            parseInt(el.dataset.index, 10)
+                        );
+                        break;
+                    case 'showExerciseVideo':
                         window.showExerciseVideo(el.dataset.video, el.dataset.exercise);
+                        break;
+                    case 'editWorkout':
+                        window.editHistoricalWorkout(docId);
+                        break;
+                    case 'deleteWorkout':
+                        window.deleteWorkoutById(docId);
+                        break;
+                    case 'repeatWorkout':
+                        window.repeatWorkout(docId);
+                        break;
+                    case 'resumeWorkout':
+                        window.resumeWorkoutById(docId);
+                        break;
+                    case 'saveAsTemplate': {
+                        const workoutData = window.workoutHistory.currentHistory.find(
+                            (w) => (w.docId || w.id) === docId
+                        );
+                        if (workoutData && workoutData.rawData) {
+                            window.saveWorkoutAsTemplate(workoutData.rawData);
+                        } else if (workoutData) {
+                            window.saveWorkoutAsTemplate(workoutData);
+                        }
+                        break;
                     }
-                });
+                    case 'showFixedWorkout':
+                        window.workoutHistory.showFixedWorkoutModal(
+                            window.workoutHistory.currentHistory.find(
+                                (w) => (w.docId || w.id) === docId
+                            ),
+                            0
+                        );
+                        break;
+                }
+            };
+
+            if (modal) {
+                modal.addEventListener('click', actionHandler);
             }
 
-            // workout-detail-modal contains exercise video buttons
+            // workout-detail-modal shares the same action handler
             const detailModal = document.getElementById('workout-detail-modal');
             if (detailModal) {
-                detailModal.addEventListener('click', (e) => {
-                    const el = e.target.closest('[data-action]');
-                    if (!el) return;
-                    const action = el.dataset.action;
+                detailModal.addEventListener('click', actionHandler);
+            }
 
-                    if (action === 'showExerciseVideo') {
-                        window.showExerciseVideo(el.dataset.video, el.dataset.exercise);
-                    }
-                });
+            // Recent workouts list (on the history section itself)
+            const historySection = document.getElementById('workout-history-section');
+            if (historySection) {
+                historySection.addEventListener('click', actionHandler);
             }
         },
 
@@ -451,9 +493,9 @@ export function getWorkoutHistory(appState) {
                           : '<i class="fas fa-clock" style="color: var(--warning);"></i>';
 
                 html += `
-                    <div class="recent-workout-item" onclick="window.workoutHistory.showFixedWorkoutModal(window.workoutHistory.currentHistory.find(w => (w.docId || w.id) === '${docId}'), 0)" style="cursor: pointer;">
+                    <div class="recent-workout-item" data-action="showFixedWorkout" data-doc-id="${escapeAttr(docId)}" style="cursor: pointer;">
                         <div class="recent-workout-info">
-                            <div class="recent-workout-name">${workoutType} ${statusIcon}</div>
+                            <div class="recent-workout-name">${escapeHtml(workoutType)} ${statusIcon}</div>
                             <div class="recent-workout-meta">${displayDate}${durationMin > 0 ? ' &middot; ' + durationMin + ' min' : ''}${exerciseCount > 0 ? ' &middot; ' + exerciseCount + ' exercises' : ''}</div>
                         </div>
                         <i class="fas fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
@@ -663,17 +705,18 @@ export function getWorkoutHistory(appState) {
 
             // Create action buttons based on workout status
             // Schema v3.0: Use docId for operations, pass date for display context
+            const escapedDocId = escapeAttr(docId);
             let actionButtons = '';
             if (workout.status === 'cancelled' || workout.status === 'partial') {
                 actionButtons = `
                 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="editHistoricalWorkout('${docId}')">
+                    <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-edit"></i> Edit Workout
                     </button>
-                    <button class="btn btn-danger" onclick="deleteWorkoutById('${docId}')">
+                    <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-trash"></i> Delete
                     </button>
-                    <button class="btn btn-secondary" onclick="repeatWorkout('${docId}')">
+                    <button class="btn btn-secondary" data-action="repeatWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-redo"></i> Repeat
                     </button>
                 </div>
@@ -681,13 +724,16 @@ export function getWorkoutHistory(appState) {
             } else {
                 actionButtons = `
                 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="editHistoricalWorkout('${docId}')">
+                    <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-edit"></i> Edit Workout
                     </button>
-                    <button class="btn btn-secondary" onclick="repeatWorkout('${docId}')">
+                    <button class="btn btn-secondary" data-action="repeatWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-redo"></i> Repeat
                     </button>
-                    <button class="btn btn-danger" onclick="deleteWorkoutById('${docId}')">
+                    <button class="btn btn-secondary" data-action="saveAsTemplate" data-doc-id="${escapedDocId}">
+                        <i class="fas fa-bookmark"></i> Save as Template
+                    </button>
+                    <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-trash"></i> Delete
                     </button>
                 </div>
@@ -906,7 +952,7 @@ export function getWorkoutHistory(appState) {
                           : '<i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>';
 
                 pickerHTML += `
-            <div class="workout-picker-item" onclick="window.workoutHistory.selectWorkoutFromPicker('${date}', ${index})">
+            <div class="workout-picker-item" data-action="selectFromPicker" data-date="${escapeAttr(date)}" data-index="${index}">
                 <div class="workout-picker-icon ${workout.category}">
                     <i class="fas fa-dumbbell"></i>
                 </div>
@@ -986,7 +1032,7 @@ export function getWorkoutHistory(appState) {
                     const exerciseKey = `exercise_${index}`;
                     const exerciseData = workout.exercises[exerciseKey];
                     const exerciseName =
-                        workout.exerciseNames?.[exerciseKey] || originalExercise.machine || 'Unknown Exercise';
+                        workout.exerciseNames?.[exerciseKey] || getExerciseName(originalExercise);
 
                     exerciseHTML += `
                 <div class="exercise-detail-item">
@@ -1005,39 +1051,43 @@ export function getWorkoutHistory(appState) {
             const workoutStatus = workout.status || this.getWorkoutStatus(workout);
             let actionButtons = '';
 
+            const escapedDocId = escapeAttr(docId);
             if (workoutStatus === 'incomplete') {
                 // In-progress workout - show Resume button
                 actionButtons = `
-            <button class="btn btn-primary" onclick="resumeWorkoutById('${docId}')">
+            <button class="btn btn-primary" data-action="resumeWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-play"></i> Resume Workout
             </button>
-            <button class="btn btn-secondary" onclick="editHistoricalWorkout('${docId}')">
+            <button class="btn btn-secondary" data-action="editWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-edit"></i> Edit
             </button>
-            <button class="btn btn-danger" onclick="deleteWorkoutById('${docId}')">
+            <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-trash"></i> Delete
             </button>`;
             } else if (workoutStatus === 'cancelled' || workoutStatus === 'partial') {
                 actionButtons = `
-            <button class="btn btn-primary" onclick="editHistoricalWorkout('${docId}')">
+            <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-edit"></i> Edit Workout
             </button>
-            <button class="btn btn-danger" onclick="deleteWorkoutById('${docId}')">
+            <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-trash"></i> Delete
             </button>
-            <button class="btn btn-secondary" onclick="repeatWorkout('${docId}')">
+            <button class="btn btn-secondary" data-action="repeatWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-redo"></i> Repeat
             </button>`;
             } else {
                 // Completed workout - show Edit and Repeat buttons
                 actionButtons = `
-            <button class="btn btn-primary" onclick="editHistoricalWorkout('${docId}')">
+            <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-edit"></i> Edit Workout
             </button>
-            <button class="btn btn-secondary" onclick="repeatWorkout('${docId}')">
+            <button class="btn btn-secondary" data-action="repeatWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-redo"></i> Repeat
             </button>
-            <button class="btn btn-danger" onclick="deleteWorkoutById('${docId}')">
+            <button class="btn btn-secondary" data-action="saveAsTemplate" data-doc-id="${escapedDocId}">
+                <i class="fas fa-bookmark"></i> Save as Template
+            </button>
+            <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-trash"></i> Delete
             </button>`;
             }
@@ -1125,9 +1175,9 @@ export function getWorkoutHistory(appState) {
             <div style="margin-bottom: 1.5rem;">
                 <div style="display: grid; grid-template-columns: auto 1fr; gap: 1rem;">
                     <strong style="color: var(--text-secondary);">Status:</strong>
-                    <span style="color: var(--success);">${calendarWorkout.status}</span>
+                    <span style="color: var(--success);">${escapeHtml(calendarWorkout.status)}</span>
                     <strong style="color: var(--text-secondary);">Category:</strong>
-                    <span style="color: var(--text-primary);">${calendarWorkout.category}</span>
+                    <span style="color: var(--text-primary);">${escapeHtml(calendarWorkout.category)}</span>
                 </div>
             </div>
             <p style="color: var(--text-secondary); font-style: italic;">Limited workout details available. This workout may have been logged manually or sync data is incomplete.</p>

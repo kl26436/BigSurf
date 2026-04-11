@@ -24,7 +24,18 @@ import {
     validateEquipmentData,
     validateTemplateData,
     validateLocationData,
+    validateWorkoutData,
 } from '../utils/validation.js';
+
+/**
+ * Wrap a promise with a timeout — rejects if it doesn't resolve within ms
+ */
+function withTimeout(promise, ms = 10000) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Operation timed out')), ms)),
+    ]);
+}
 
 export class FirebaseWorkoutManager {
     constructor(appState) {
@@ -179,7 +190,7 @@ export class FirebaseWorkoutManager {
 
         try {
             const overridesRef = collection(this.db, 'users', this.appState.currentUser.uid, 'exerciseOverrides');
-            const querySnapshot = await getDocs(overridesRef);
+            const querySnapshot = await withTimeout(getDocs(overridesRef));
 
             const overrides = [];
             querySnapshot.forEach((doc) => {
@@ -294,7 +305,7 @@ export class FirebaseWorkoutManager {
 
         try {
             const hiddenRef = collection(this.db, 'users', this.appState.currentUser.uid, 'hiddenExercises');
-            const querySnapshot = await getDocs(hiddenRef);
+            const querySnapshot = await withTimeout(getDocs(hiddenRef));
 
             const hidden = [];
             querySnapshot.forEach((doc) => {
@@ -334,7 +345,7 @@ export class FirebaseWorkoutManager {
     async getDefaultExercises() {
         try {
             const exercisesRef = collection(this.db, 'exercises');
-            const querySnapshot = await getDocs(exercisesRef);
+            const querySnapshot = await withTimeout(getDocs(exercisesRef));
 
             const exercises = [];
             const seenNames = new Set(); // Track names to filter duplicates
@@ -384,7 +395,7 @@ export class FirebaseWorkoutManager {
 
         try {
             const customRef = collection(this.db, 'users', this.appState.currentUser.uid, 'customExercises');
-            const querySnapshot = await getDocs(customRef);
+            const querySnapshot = await withTimeout(getDocs(customRef));
 
             const customExercises = [];
             querySnapshot.forEach((doc) => {
@@ -528,7 +539,7 @@ export class FirebaseWorkoutManager {
         try {
             // Load from your existing 'workouts' collection
             const globalDefaultsRef = collection(this.db, 'workouts');
-            const querySnapshot = await getDocs(globalDefaultsRef);
+            const querySnapshot = await withTimeout(getDocs(globalDefaultsRef));
 
             const globalDefaults = [];
             querySnapshot.forEach((doc) => {
@@ -649,7 +660,7 @@ export class FirebaseWorkoutManager {
                     this.appState.currentUser.uid,
                     'workoutTemplates'
                 );
-                const customSnapshot = await getDocs(customTemplatesRef);
+                const customSnapshot = await withTimeout(getDocs(customTemplatesRef));
 
                 customSnapshot.forEach((doc) => {
                     const data = doc.data();
@@ -794,11 +805,13 @@ export class FirebaseWorkoutManager {
         }
 
         try {
+            const validated = validateWorkoutData(workoutData) || workoutData;
             const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'workouts', workoutData.date);
-            await setDoc(docRef, workoutData);
+            await withTimeout(setDoc(docRef, validated));
             return true;
         } catch (error) {
             console.error('❌ Error saving workout:', error);
+            showNotification('Failed to save workout. Please try again.', 'error');
             throw error;
         }
     }
@@ -812,7 +825,7 @@ export class FirebaseWorkoutManager {
             const workoutsRef = collection(this.db, 'users', this.appState.currentUser.uid, 'workouts');
             const q = query(workoutsRef, orderBy('date', 'desc'));
             // Use getDocsFromServer to bypass Firestore cache (ensures deleted docs don't reappear)
-            const querySnapshot = await getDocsFromServer(q);
+            const querySnapshot = await withTimeout(getDocsFromServer(q), 15000);
 
             const workouts = [];
             querySnapshot.forEach((doc) => {
@@ -914,7 +927,7 @@ export class FirebaseWorkoutManager {
         try {
             const equipmentRef = collection(this.db, 'users', this.appState.currentUser.uid, 'equipment');
             const q = query(equipmentRef, orderBy('lastUsed', 'desc'));
-            const querySnapshot = await getDocs(q);
+            const querySnapshot = await withTimeout(getDocs(q));
 
             const equipment = [];
             querySnapshot.forEach((doc) => {
@@ -1161,7 +1174,7 @@ export class FirebaseWorkoutManager {
         try {
             const locationsRef = collection(this.db, 'users', this.appState.currentUser.uid, 'locations');
             const q = query(locationsRef, orderBy('lastVisit', 'desc'));
-            const querySnapshot = await getDocs(q);
+            const querySnapshot = await withTimeout(getDocs(q));
 
             const locations = [];
             querySnapshot.forEach((doc) => {

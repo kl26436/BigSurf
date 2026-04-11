@@ -21,6 +21,7 @@ export {
     selectWorkoutLocationOption,
     closeWorkoutLocationSelector,
     confirmWorkoutLocationChange,
+    saveActiveWorkoutAsTemplate,
 } from './workout-session.js';
 
 // === Exercise UI: Rendering, Set Management, Equipment, Video, Units ===

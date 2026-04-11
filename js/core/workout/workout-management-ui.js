@@ -3,6 +3,7 @@ import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
 import { saveWorkoutData } from '../data/data-manager.js';
+import { reorderTemplateExercise, normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
 import { getSessionLocation } from '../features/location-service.js';
 import { setBottomNavVisible } from '../ui/navigation.js';
 
@@ -350,6 +351,32 @@ function normalizeExercisesToArray(exercises) {
     return [];
 }
 
+export function saveWorkoutAsTemplate(workoutData) {
+    const template = normalizeWorkoutToTemplate(workoutData);
+    if (!template) {
+        showNotification('Could not convert workout to template', 'error');
+        return;
+    }
+
+    currentEditingTemplate = {
+        name: '',
+        category: template.category,
+        exercises: template.exercises,
+    };
+
+    // Show the template editor (it will be pre-populated)
+    showTemplateEditor();
+
+    // Pre-fill name suggestion from workout type
+    setTimeout(() => {
+        const nameInput = document.getElementById('template-name');
+        if (nameInput && workoutData.workoutType) {
+            nameInput.value = workoutData.workoutType;
+            nameInput.select();
+        }
+    }, 50);
+}
+
 export function createNewTemplate() {
     currentEditingTemplate = {
         name: '',
@@ -565,12 +592,25 @@ function showTemplateEditor() {
             <div class="form-section">
                 <div class="form-section-header">
                     <h4>Exercises</h4>
-                    <button type="button" class="btn btn-primary btn-small" onclick="addExerciseToTemplate()">
-                        <i class="fas fa-plus"></i> Add Exercise
-                    </button>
                 </div>
                 <div id="template-exercises" class="template-exercises-list">
                     <!-- Populated by renderTemplateExercises() -->
+                </div>
+                <div class="inline-add-exercise">
+                    <div id="quick-add-chips" class="quick-add-chips">
+                        <!-- Populated by renderQuickAddChips() -->
+                    </div>
+                    <div class="inline-search-wrapper">
+                        <i class="fas fa-search inline-search-icon"></i>
+                        <input type="text"
+                               id="inline-exercise-search"
+                               class="form-input"
+                               placeholder="Search exercises to add..."
+                               autocomplete="off">
+                    </div>
+                    <div id="inline-search-results" class="inline-search-results hidden">
+                        <!-- Populated by search -->
+                    </div>
                 </div>
             </div>
 
@@ -589,6 +629,207 @@ function showTemplateEditor() {
 
     // Render the exercises list
     renderTemplateExercises();
+
+    // Wire up inline exercise search
+    setupInlineExerciseSearch();
+}
+
+// Inline search state
+let inlineSearchExercises = [];
+
+async function setupInlineExerciseSearch() {
+    // Preload exercise library
+    if (workoutManager) {
+        inlineSearchExercises = await workoutManager.getExerciseLibrary();
+    }
+
+    const searchInput = document.getElementById('inline-exercise-search');
+    if (!searchInput) return;
+
+    // Replace the node to remove old listeners
+    const fresh = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(fresh, searchInput);
+
+    // Render quick-add chips from user's template exercises
+    renderQuickAddChips();
+
+    fresh.addEventListener('input', () => {
+        const query = fresh.value.trim().toLowerCase();
+        if (query.length < 2) {
+            hideInlineSearchResults();
+            return;
+        }
+        showInlineSearchResults(query);
+    });
+
+    fresh.addEventListener('focus', () => {
+        const query = fresh.value.trim().toLowerCase();
+        if (query.length >= 2) showInlineSearchResults(query);
+    });
+}
+
+function renderQuickAddChips() {
+    const container = document.getElementById('quick-add-chips');
+    if (!container) return;
+
+    // Build frequency map from all user templates
+    const frequencyMap = new Map();
+    const templates = allWorkoutTemplates.length > 0 ? allWorkoutTemplates : AppState.workoutPlans || [];
+
+    templates.forEach((t) => {
+        const exercises = Array.isArray(t.exercises) ? t.exercises : [];
+        exercises.forEach((ex) => {
+            const name = ex.name || ex.machine;
+            if (!name) return;
+            frequencyMap.set(name, (frequencyMap.get(name) || 0) + 1);
+        });
+    });
+
+    // Get exercises already in the current template
+    const existing = currentEditingTemplate
+        ? new Set(currentEditingTemplate.exercises.map((ex) => (ex.name || ex.machine || '').toLowerCase()))
+        : new Set();
+
+    // Sort by frequency and take top 6 that aren't already in this template
+    const topExercises = [...frequencyMap.entries()]
+        .filter(([name]) => !existing.has(name.toLowerCase()))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6);
+
+    if (topExercises.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `<div class="quick-add-label">Quick add:</div>` +
+        topExercises
+            .map(([name]) => {
+                const exercise = inlineSearchExercises.find(
+                    (ex) => (ex.name || ex.machine) === name
+                );
+                if (!exercise) return '';
+                return `<button type="button" class="quick-add-chip"
+                            data-exercise-id="${escapeAttr(exercise.id || name)}">${escapeHtml(name)}</button>`;
+            })
+            .join('');
+
+    // Add click handlers
+    container.querySelectorAll('.quick-add-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+            const id = chip.dataset.exerciseId;
+            const exercise = inlineSearchExercises.find((ex) => (ex.id || ex.name || ex.machine) === id);
+            if (exercise) {
+                // Quick-add with default equipment
+                const exerciseName = exercise.name || exercise.machine;
+                const templateExercise = {
+                    name: exerciseName,
+                    machine: exercise.machine || exercise.name,
+                    bodyPart: exercise.bodyPart || '',
+                    equipmentType: exercise.equipmentType || '',
+                    equipment: exercise.equipment || '',
+                    equipmentLocation: exercise.equipmentLocation || '',
+                    sets: exercise.sets || 3,
+                    reps: exercise.reps || 10,
+                    weight: exercise.weight || 50,
+                    video: exercise.video || '',
+                };
+                currentEditingTemplate.exercises.push(templateExercise);
+                renderTemplateExercises();
+                renderQuickAddChips(); // Refresh chips to remove the added one
+            }
+        });
+    });
+}
+
+function showInlineSearchResults(query) {
+    const resultsEl = document.getElementById('inline-search-results');
+    if (!resultsEl) return;
+
+    const existing = currentEditingTemplate
+        ? new Set(currentEditingTemplate.exercises.map((ex) => (ex.name || ex.machine || '').toLowerCase()))
+        : new Set();
+
+    const matches = inlineSearchExercises
+        .filter((ex) => {
+            const name = (ex.name || ex.machine || '').toLowerCase();
+            const bodyPart = (ex.bodyPart || '').toLowerCase();
+            const tags = (ex.tags || []).join(' ').toLowerCase();
+            return name.includes(query) || bodyPart.includes(query) || tags.includes(query);
+        })
+        .slice(0, 8);
+
+    if (matches.length === 0) {
+        resultsEl.innerHTML = `<div class="inline-search-empty">No exercises found. <a href="#" onclick="event.preventDefault(); showCreateExerciseForm()">Create one</a></div>`;
+        resultsEl.classList.remove('hidden');
+        return;
+    }
+
+    resultsEl.innerHTML = matches
+        .map((ex) => {
+            const name = escapeHtml(ex.name || ex.machine);
+            const bodyPart = ex.bodyPart ? ` <span class="inline-result-meta">${escapeHtml(ex.bodyPart)}</span>` : '';
+            const alreadyAdded = existing.has((ex.name || ex.machine || '').toLowerCase());
+            return `<div class="inline-search-result ${alreadyAdded ? 'inline-result-added' : ''}"
+                         data-exercise-id="${escapeAttr(ex.id || ex.name || ex.machine)}"
+                         ${alreadyAdded ? 'title="Already in workout"' : ''}>
+                        <span class="inline-result-name">${name}</span>${bodyPart}
+                        ${alreadyAdded ? '<i class="fas fa-check inline-result-check"></i>' : ''}
+                    </div>`;
+        })
+        .join('');
+
+    resultsEl.classList.remove('hidden');
+
+    // Add click handlers
+    resultsEl.querySelectorAll('.inline-search-result:not(.inline-result-added)').forEach((el) => {
+        el.addEventListener('click', () => {
+            const id = el.dataset.exerciseId;
+            const exercise = inlineSearchExercises.find((ex) => (ex.id || ex.name || ex.machine) === id);
+            if (exercise) selectInlineExercise(exercise);
+        });
+    });
+}
+
+function hideInlineSearchResults() {
+    const resultsEl = document.getElementById('inline-search-results');
+    if (resultsEl) resultsEl.classList.add('hidden');
+}
+
+async function selectInlineExercise(exercise) {
+    hideInlineSearchResults();
+
+    // Clear search input
+    const searchInput = document.getElementById('inline-exercise-search');
+    if (searchInput) searchInput.value = '';
+
+    // Add immediately — equipment can be set via the inline edit accordion
+    const exerciseName = exercise.name || exercise.machine;
+    const templateExercise = {
+        name: exerciseName,
+        machine: exercise.machine || exercise.name,
+        bodyPart: exercise.bodyPart || '',
+        equipmentType: exercise.equipmentType || '',
+        equipment: exercise.equipment || '',
+        equipmentLocation: exercise.equipmentLocation || '',
+        sets: exercise.sets || 3,
+        reps: exercise.reps || 10,
+        weight: exercise.weight || 50,
+        video: exercise.video || '',
+    };
+
+    currentEditingTemplate.exercises.push(templateExercise);
+    renderTemplateExercises();
+    renderQuickAddChips();
+
+    // Auto-open the inline edit for the newly added exercise so user can set equipment
+    const newIndex = currentEditingTemplate.exercises.length - 1;
+    editTemplateExercise(newIndex);
+}
+
+// Keep exports for backward compat with window assignments
+export function confirmInlineAdd() {}
+export function cancelInlineAdd() {
+    hideInlineSearchResults();
 }
 
 export function closeTemplateEditor() {
@@ -660,23 +901,72 @@ function renderTemplateExercises() {
 function createTemplateExerciseItem(exercise, index) {
     const item = document.createElement('div');
     item.className = 'template-exercise-item';
+    item.dataset.exerciseIndex = index;
+    const totalExercises = currentEditingTemplate.exercises.length;
+    const isFirst = index === 0;
+    const isLast = index === totalExercises - 1;
 
     item.innerHTML = `
-        <div class="exercise-info">
-            <h5>${escapeHtml(exercise.name)}</h5>
-            <div class="exercise-details">
-                ${exercise.sets} sets × ${exercise.reps} reps @ ${exercise.weight} lbs
-                ${exercise.bodyPart ? ` • ${escapeHtml(exercise.bodyPart)}` : ''}
-                ${exercise.equipmentType ? ` • ${escapeHtml(exercise.equipmentType)}` : ''}
+        <div class="exercise-row">
+            <div class="exercise-reorder-buttons">
+                <button type="button" class="btn-reorder" onclick="moveTemplateExercise(${index}, 'up')" ${isFirst ? 'disabled' : ''} aria-label="Move up">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
+                <button type="button" class="btn-reorder" onclick="moveTemplateExercise(${index}, 'down')" ${isLast ? 'disabled' : ''} aria-label="Move down">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="exercise-info" onclick="editTemplateExercise(${index})">
+                <h5>${escapeHtml(exercise.name)}</h5>
+                <div class="exercise-details">
+                    ${exercise.sets} sets × ${exercise.reps} reps @ ${exercise.weight} lbs
+                    ${exercise.bodyPart ? ` • ${escapeHtml(exercise.bodyPart)}` : ''}
+                    ${exercise.equipment ? ` • ${escapeHtml(exercise.equipment)}` : ''}
+                </div>
+            </div>
+            <div class="exercise-item-actions">
+                <button type="button" class="btn btn-secondary btn-small" onclick="editTemplateExercise(${index})" aria-label="Edit exercise">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button type="button" class="btn btn-danger btn-small" onclick="removeTemplateExercise(${index})" aria-label="Delete exercise">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         </div>
-        <div class="exercise-item-actions">
-            <button type="button" class="btn btn-secondary btn-small" onclick="editTemplateExercise(${index})" aria-label="Edit exercise">
-                <i class="fas fa-edit"></i>
-            </button>
-            <button type="button" class="btn btn-danger btn-small" onclick="removeTemplateExercise(${index})" aria-label="Delete exercise">
-                <i class="fas fa-trash"></i>
-            </button>
+        <div class="exercise-inline-edit hidden" id="inline-edit-${index}">
+            <div class="inline-edit-fields">
+                <div class="inline-edit-row">
+                    <div class="inline-edit-field">
+                        <label>Sets</label>
+                        <input type="number" class="form-input" id="inline-sets-${index}" value="${exercise.sets || 3}" min="1" max="20">
+                    </div>
+                    <div class="inline-edit-field">
+                        <label>Reps</label>
+                        <input type="number" class="form-input" id="inline-reps-${index}" value="${exercise.reps || 10}" min="1" max="100">
+                    </div>
+                    <div class="inline-edit-field">
+                        <label>Weight</label>
+                        <input type="number" class="form-input" id="inline-weight-${index}" value="${exercise.weight || 0}" min="0" step="5">
+                    </div>
+                </div>
+                <div class="inline-edit-row">
+                    <div class="inline-edit-field inline-edit-field-wide">
+                        <label>Equipment</label>
+                        <input type="text" class="form-input" id="inline-equipment-${index}" value="${escapeAttr(exercise.equipment || '')}" placeholder="e.g., Hammer Strength Flat">
+                    </div>
+                </div>
+                <div class="inline-edit-row">
+                    <div class="inline-edit-field inline-edit-field-wide">
+                        <label>Notes</label>
+                        <input type="text" class="form-input" id="inline-notes-${index}" value="${escapeAttr(exercise.notes || '')}" placeholder="Optional notes">
+                    </div>
+                </div>
+            </div>
+            <div class="inline-edit-actions">
+                <button type="button" class="btn btn-primary btn-small" onclick="saveInlineEdit(${index})">
+                    <i class="fas fa-check"></i> Done
+                </button>
+            </div>
         </div>
     `;
 
@@ -696,65 +986,49 @@ export function editTemplateExercise(index) {
         return;
     }
 
-    const exercise = currentEditingTemplate.exercises[index];
+    const editPanel = document.getElementById(`inline-edit-${index}`);
+    if (!editPanel) return;
+
+    // If this panel is already open, close it
+    if (!editPanel.classList.contains('hidden')) {
+        editPanel.classList.add('hidden');
+        editingTemplateExerciseIndex = null;
+        return;
+    }
+
+    // Close any other open panel
+    if (editingTemplateExerciseIndex !== null && editingTemplateExerciseIndex !== index) {
+        const prevPanel = document.getElementById(`inline-edit-${editingTemplateExerciseIndex}`);
+        if (prevPanel) prevPanel.classList.add('hidden');
+    }
+
+    // Open this panel
+    editPanel.classList.remove('hidden');
     editingTemplateExerciseIndex = index;
 
-    // Use the full Exercise Manager edit section (same one used in Exercise Library)
-    // This provides the full equipment management UI
-    if (window.openEditExerciseSection) {
-        // Set flag so we know to return to template editor after saving
-        window.editingFromTemplateEditor = true;
-        window.templateExerciseEditCallback = (updatedExercise) => {
-            // Update the template exercise with new values
-            if (editingTemplateExerciseIndex !== null && currentEditingTemplate) {
-                const ex = currentEditingTemplate.exercises[editingTemplateExerciseIndex];
-                ex.name = updatedExercise.name;
-                ex.machine = updatedExercise.name;
-                ex.sets = updatedExercise.sets;
-                ex.reps = updatedExercise.reps;
-                ex.weight = updatedExercise.weight;
-                ex.equipment = updatedExercise.equipment;
-                ex.equipmentLocation = updatedExercise.equipmentLocation;
-                ex.video = updatedExercise.video;
-                renderTemplateExercises();
-                // Removed notification - UI update is self-evident
-            }
-            editingTemplateExerciseIndex = null;
-            // Note: Don't clear flags here - closeEditExerciseSection() needs them
-            // to know where to return. It will clear them after navigation.
-        };
-
-        // Open the full edit section with this exercise's data
-        window.openEditExerciseSection({
-            ...exercise,
-            name: exercise.name || exercise.machine,
-            isTemplateExercise: true,
-        });
-    } else {
-        // Fallback to simple modal if edit section not available
-        editTemplateExerciseFallback(index, exercise);
-    }
+    // Focus the sets input
+    const setsInput = document.getElementById(`inline-sets-${index}`);
+    if (setsInput) setsInput.focus();
 }
 
-// Fallback if modal doesn't exist
-function editTemplateExerciseFallback(index, exercise) {
-    const newName = prompt('Exercise name:', exercise.name);
-    if (newName === null) return;
+export function saveInlineEdit(index) {
+    if (!currentEditingTemplate || index >= currentEditingTemplate.exercises.length) return;
 
-    const newSets = prompt('Number of sets:', exercise.sets);
-    if (newSets === null) return;
+    const exercise = currentEditingTemplate.exercises[index];
+    const sets = parseInt(document.getElementById(`inline-sets-${index}`)?.value) || exercise.sets;
+    const reps = parseInt(document.getElementById(`inline-reps-${index}`)?.value) || exercise.reps;
+    const weight = parseFloat(document.getElementById(`inline-weight-${index}`)?.value) ?? exercise.weight;
+    const equipment = document.getElementById(`inline-equipment-${index}`)?.value.trim() || null;
+    const notes = document.getElementById(`inline-notes-${index}`)?.value.trim() || null;
 
-    const newReps = prompt('Number of reps:', exercise.reps);
-    if (newReps === null) return;
+    exercise.sets = sets;
+    exercise.reps = reps;
+    exercise.weight = weight;
+    exercise.equipment = equipment;
+    exercise.notes = notes;
 
-    const newWeight = prompt('Weight (lbs):', exercise.weight);
-    if (newWeight === null) return;
-
-    exercise.name = newName.trim() || exercise.name;
-    exercise.sets = parseInt(newSets) || exercise.sets;
-    exercise.reps = parseInt(newReps) || exercise.reps;
-    exercise.weight = parseFloat(newWeight) || exercise.weight;
-
+    // Close the panel and re-render to show updated values
+    editingTemplateExerciseIndex = null;
     renderTemplateExercises();
 }
 
@@ -797,6 +1071,12 @@ export function saveTemplateExerciseEdit() {
     closeTemplateExerciseEdit();
     renderTemplateExercises();
     // Removed notification - UI update is self-evident
+}
+
+export function moveTemplateExercise(index, direction) {
+    if (!currentEditingTemplate) return;
+    currentEditingTemplate.exercises = reorderTemplateExercise(currentEditingTemplate.exercises, index, direction);
+    renderTemplateExercises();
 }
 
 export function removeTemplateExercise(index) {
@@ -1001,83 +1281,14 @@ function selectExerciseFromLibrary(exercise) {
 async function showEquipmentPicker(exercise, isActiveWorkout) {
     const exerciseName = exercise.name || exercise.machine;
     const modal = document.getElementById('equipment-picker-modal');
-    const titleEl = document.getElementById('equipment-picker-exercise-name');
-    const listEl = document.getElementById('equipment-picker-list');
-    const newNameInput = document.getElementById('equipment-picker-new-name');
-    const newLocationInput = document.getElementById('equipment-picker-new-location');
 
-    if (titleEl) titleEl.textContent = `for "${exerciseName}"`;
-    if (newNameInput) newNameInput.value = exercise.equipment || '';
-    // Pre-fill location with exercise location, or fall back to current session location
-    const sessionLocation = isActiveWorkout ? getSessionLocation() : null;
-    if (newLocationInput) newLocationInput.value = exercise.equipmentLocation || sessionLocation || '';
-
-    // Load equipment that has been used with this exercise
-    try {
-        const workoutManager = new FirebaseWorkoutManager(AppState);
-        const exerciseEquipment = await workoutManager.getEquipmentForExercise(exerciseName);
-        const allEquipment = await workoutManager.getUserEquipment();
-
-        // Render equipment options
-        if (listEl) {
-            if (exerciseEquipment.length > 0) {
-                listEl.innerHTML = exerciseEquipment
-                    .map(
-                        (eq) => `
-                    <div class="equipment-option" data-equipment-id="${escapeAttr(eq.id)}" data-equipment-name="${escapeAttr(eq.name)}" data-equipment-location="${escapeAttr(eq.location || '')}">
-                        <div class="equipment-option-radio"></div>
-                        <div class="equipment-option-details">
-                            <div class="equipment-option-name">${escapeHtml(eq.name)}</div>
-                            ${eq.location ? `<div class="equipment-option-location">${escapeHtml(eq.location)}</div>` : ''}
-                        </div>
-                    </div>
-                `
-                    )
-                    .join('');
-
-                // Add click handlers for selection
-                listEl.querySelectorAll('.equipment-option').forEach((option) => {
-                    option.addEventListener('click', () => {
-                        listEl.querySelectorAll('.equipment-option').forEach((o) => o.classList.remove('selected'));
-                        option.classList.add('selected');
-                        // Clear the new equipment inputs when selecting existing
-                        if (newNameInput) newNameInput.value = '';
-                        if (newLocationInput) newLocationInput.value = '';
-                    });
-                });
-            } else {
-                listEl.innerHTML = `<div class="equipment-picker-empty">No equipment saved for this exercise yet</div>`;
-            }
-        }
-
-        // Populate suggestions datalists
-        const equipmentDatalist = document.getElementById('equipment-picker-suggestions');
-        const locationDatalist = document.getElementById('equipment-picker-location-suggestions');
-
-        if (equipmentDatalist) {
-            const equipmentNames = [...new Set(allEquipment.map((eq) => eq.name))];
-            equipmentDatalist.innerHTML = equipmentNames.map((name) => `<option value="${escapeAttr(name)}">`).join('');
-        }
-
-        if (locationDatalist) {
-            // Get locations from equipment AND from saved gym locations
-            const equipmentLocations = allEquipment.filter((eq) => eq.location).map((eq) => eq.location);
-            let savedGymLocations = [];
-            try {
-                savedGymLocations = await workoutManager.getUserLocations();
-                savedGymLocations = savedGymLocations.map((loc) => loc.name);
-            } catch (e) {
-                // Ignore errors fetching gym locations
-            }
-            const allLocations = [...new Set([...equipmentLocations, ...savedGymLocations])];
-            locationDatalist.innerHTML = allLocations.map((loc) => `<option value="${escapeAttr(loc)}">`).join('');
-        }
-    } catch (error) {
-        console.error('Error loading equipment:', error);
-        if (listEl) {
-            listEl.innerHTML = `<div class="equipment-picker-empty">Error loading equipment</div>`;
-        }
-    }
+    const { populateEquipmentPicker } = await import('../ui/equipment-picker.js');
+    await populateEquipmentPicker({
+        exerciseName,
+        currentEquipment: exercise.equipment || null,
+        currentLocation: exercise.equipmentLocation || null,
+        sessionLocation: isActiveWorkout ? getSessionLocation() : null,
+    });
 
     // Store whether this is for active workout
     window.equipmentPickerForActiveWorkout = isActiveWorkout;

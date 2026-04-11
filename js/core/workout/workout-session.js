@@ -2,9 +2,9 @@
 // Handles workout session lifecycle: start, pause, complete, cancel, resume, edit
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr } from '../ui/ui-helpers.js';
+import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
-import { setBottomNavVisible } from '../ui/navigation.js';
+import { setBottomNavVisible, navigateTo } from '../ui/navigation.js';
 import { saveWorkoutData, debouncedSaveWorkoutData } from '../data/data-manager.js';
 import {
     detectLocation,
@@ -62,7 +62,6 @@ export async function startWorkout(workoutType) {
 
             if (!confirmed) {
                 // Navigate back to dashboard
-                const { navigateTo } = await import('../ui/navigation.js');
                 navigateTo('dashboard');
                 return;
             }
@@ -78,7 +77,6 @@ export async function startWorkout(workoutType) {
 
             if (!confirmed) {
                 // Navigate back to dashboard
-                const { navigateTo } = await import('../ui/navigation.js');
                 navigateTo('dashboard');
                 return;
             }
@@ -246,6 +244,9 @@ export async function completeWorkout() {
         await PRTracker.processWorkoutForPRs(AppState.savedData);
     }
 
+    // Capture workout data for "Save as Template" before reset clears it
+    const completedWorkoutData = JSON.parse(JSON.stringify(AppState.savedData));
+
     // Reset state BEFORE showing dashboard (critical order!)
     AppState.reset();
 
@@ -263,9 +264,73 @@ export async function completeWorkout() {
     // Show dashboard after completion
     const { showDashboard } = await import('../ui/dashboard-ui.js');
     showDashboard();
+
+    // Stash completed workout for "Save as Template" prompt
+    if (!isEditingHistorical) {
+        window._lastCompletedWorkout = completedWorkoutData;
+        showSaveAsTemplatePrompt(completedWorkoutData);
+    }
 }
 
-export function cancelWorkout(skipConfirmation = false) {
+function showSaveAsTemplatePrompt(workoutData) {
+    const workoutName = escapeHtml(workoutData.workoutType || 'Workout');
+    const banner = document.createElement('div');
+    banner.className = 'save-template-banner';
+    banner.innerHTML = `
+        <span>Save "${workoutName}" as a template?</span>
+        <button class="btn btn-primary btn-small" id="save-as-template-btn">
+            <i class="fas fa-bookmark"></i> Save as Template
+        </button>
+        <button class="btn-dismiss" id="dismiss-template-banner" aria-label="Dismiss">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+
+    const dashboard = document.getElementById('dashboard');
+    if (dashboard) {
+        dashboard.prepend(banner);
+    }
+
+    document.getElementById('save-as-template-btn')?.addEventListener('click', () => {
+        banner.remove();
+        if (window.saveWorkoutAsTemplate) {
+            window.saveWorkoutAsTemplate(workoutData);
+        }
+    });
+
+    document.getElementById('dismiss-template-banner')?.addEventListener('click', () => {
+        banner.remove();
+    });
+
+    // Auto-dismiss after 15 seconds
+    setTimeout(() => banner.remove(), 15000);
+}
+
+export function saveActiveWorkoutAsTemplate() {
+    if (!AppState.currentWorkout) {
+        showNotification('No active workout', 'warning');
+        return;
+    }
+
+    // Build a snapshot of the current workout state
+    // AppState.currentWorkout.exercises has the exercise list (may have been modified mid-session)
+    // AppState.savedData has actual sets/reps/weight logged
+    const snapshot = {
+        workoutType: AppState.savedData.workoutType || AppState.currentWorkout.day || '',
+        exercises: AppState.savedData.exercises || {},
+        exerciseNames: AppState.savedData.exerciseNames || {},
+        originalWorkout: {
+            exercises: AppState.currentWorkout.exercises || [],
+        },
+    };
+
+    // Merge in any actual performance data so the template uses real numbers
+    if (window.saveWorkoutAsTemplate) {
+        window.saveWorkoutAsTemplate(snapshot);
+    }
+}
+
+export async function cancelWorkout(skipConfirmation = false) {
     if (!AppState.currentWorkout) return;
 
     // Confirm cancellation unless explicitly skipped
@@ -276,7 +341,7 @@ export function cancelWorkout(skipConfirmation = false) {
     }
 
     AppState.savedData.cancelledAt = new Date().toISOString();
-    saveWorkoutData(AppState);
+    await saveWorkoutData(AppState);
 
     AppState.reset();
     AppState.clearTimers();
@@ -293,10 +358,7 @@ export function cancelWorkout(skipConfirmation = false) {
     // Reset buttons to normal mode
     updateWorkoutButtonsForEditMode(false);
 
-    // Navigate to dashboard instead of legacy workout selector
-    import('../ui/navigation.js').then(({ navigateTo }) => {
-        navigateTo('dashboard');
-    });
+    navigateTo('dashboard');
 }
 
 export function cancelCurrentWorkout() {
@@ -601,7 +663,6 @@ export async function discardEditedWorkout() {
     AppState.savedData = {};
 
     // Navigate back to history
-    const { navigateTo } = await import('../ui/navigation.js');
     navigateTo('history');
 }
 

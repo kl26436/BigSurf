@@ -9,7 +9,7 @@ const testStreakLogic = () => {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    const workoutDates = [yesterday.toISOString().split('T')[0]];
+    const workoutDates = [yesterday.toISOString().slice(0, 10)];
 
     let currentStreak = 0;
 

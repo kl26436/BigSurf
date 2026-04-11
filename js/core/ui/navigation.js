@@ -25,28 +25,60 @@ export function closeSidebar() {
 // NAVIGATION ROUTING
 // ===================================================================
 
+const SECTION_IDS = [
+    'workout-selector',
+    'active-workout',
+    'workout-history-section',
+    'workout-management-section',
+    'dashboard',
+    'stats-section',
+    'exercise-manager-section',
+    'location-management-section',
+];
+
+const FADE_DURATION = 150; // ms, matches CSS transition
+let fadeTimeout = null;
+
 export function navigateTo(view) {
     // Close sidebar after navigation
     closeSidebar();
 
-    // Hide all sections
-    const sections = [
-        'workout-selector',
-        'active-workout',
-        'workout-history-section',
-        'workout-management-section',
-        'dashboard',
-        'stats-section',
-        'exercise-manager-section',
-        'location-management-section',
-    ];
+    // Find the currently visible section
+    const visibleSection = SECTION_IDS
+        .map((id) => document.getElementById(id))
+        .find((el) => el && !el.classList.contains('hidden'));
 
-    sections.forEach((sectionId) => {
-        const section = document.getElementById(sectionId);
-        if (section) section.classList.add('hidden');
-    });
+    function showTarget() {
+        // Hide all sections immediately
+        SECTION_IDS.forEach((sectionId) => {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.classList.add('hidden');
+                section.classList.remove('section-fade-out');
+            }
+        });
 
-    // Route to appropriate view
+        // Route to appropriate view
+        routeToView(view);
+    }
+
+    // Cancel any in-progress fade from a previous navigateTo call
+    if (fadeTimeout) {
+        clearTimeout(fadeTimeout);
+        fadeTimeout = null;
+    }
+
+    if (visibleSection) {
+        // Fade out the visible section, then switch
+        visibleSection.classList.add('section-fade-out');
+        fadeTimeout = setTimeout(showTarget, FADE_DURATION);
+    } else {
+        // Nothing visible — just show immediately
+        showTarget();
+    }
+}
+
+function routeToView(view) {
     switch (view) {
         case 'dashboard':
             showDashboard();

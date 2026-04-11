@@ -1348,6 +1348,25 @@ h3 {
     color: white;
 }
 
+.btn-save-as-template {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    background: none;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-save-as-template:active {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
 /* Location Indicator */
 .workout-location-indicator {
     display: flex;
@@ -1820,15 +1839,55 @@ h3 {
 }
 .template-exercise-item {
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 6px;
-    padding: 8px 0;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     font-size: 0.9rem;
 }
 .template-exercise-item:last-child {
     border: none;
+}
+
+.exercise-reorder-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.btn-reorder {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+}
+
+.btn-reorder:not(:disabled):active {
+    background: var(--primary);
+    color: #fff;
+}
+
+.btn-reorder:disabled {
+    opacity: 0.2;
+    cursor: default;
+}
+
+.exercise-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.exercise-item-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
 }
 
 .template-exercises-list {
@@ -1837,6 +1896,225 @@ h3 {
     background: rgba(0, 0, 0, 0.15);
     border-radius: var(--radius-sm);
 }
+/* Template exercise item layout */
+.exercise-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.exercise-row .exercise-info {
+    cursor: pointer;
+}
+
+/* Inline edit accordion */
+.exercise-inline-edit {
+    width: 100%;
+    padding: 10px 0 4px;
+}
+
+.inline-edit-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.inline-edit-row {
+    display: flex;
+    gap: 8px;
+}
+
+.inline-edit-field {
+    flex: 1;
+}
+
+.inline-edit-field-wide {
+    flex: 1 1 100%;
+}
+
+.inline-edit-field label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.inline-edit-field .form-input {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 0.85rem;
+}
+
+.inline-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+/* Inline add exercise search */
+.inline-add-exercise {
+    margin-top: 8px;
+    position: relative;
+}
+
+.inline-search-wrapper {
+    position: relative;
+}
+
+.inline-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.inline-search-wrapper .form-input {
+    padding-left: 32px;
+    width: 100%;
+}
+
+.inline-search-results {
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.inline-search-result {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.1s;
+}
+
+.inline-search-result:last-child {
+    border-bottom: none;
+}
+
+.inline-search-result:active {
+    background: rgba(29, 211, 176, 0.15);
+}
+
+.inline-search-result.inline-result-added {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.inline-result-name {
+    font-weight: 500;
+    color: var(--text-strong);
+}
+
+.inline-result-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.inline-result-check {
+    margin-left: auto;
+    color: var(--primary);
+    font-size: 0.8rem;
+}
+
+.inline-search-empty {
+    padding: 12px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.inline-search-empty a {
+    color: var(--primary);
+}
+
+.inline-equipment-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: rgba(29, 211, 176, 0.05);
+    border: 1px solid rgba(29, 211, 176, 0.2);
+    border-radius: var(--radius-sm);
+}
+
+.inline-equipment-row .form-input {
+    flex: 1;
+}
+
+/* Quick-add chips */
+.quick-add-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.quick-add-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-right: 2px;
+}
+
+.quick-add-chip {
+    background: rgba(29, 211, 176, 0.1);
+    border: 1px solid rgba(29, 211, 176, 0.3);
+    color: var(--primary);
+    border-radius: 16px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.quick-add-chip:active {
+    background: rgba(29, 211, 176, 0.25);
+}
+
+/* Save as Template banner */
+.save-template-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    background: rgba(29, 211, 176, 0.1);
+    border: 1px solid rgba(29, 211, 176, 0.3);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    color: var(--text-strong);
+    animation: slideDown 0.3s ease;
+}
+
+.save-template-banner span {
+    flex: 1;
+}
+
+.btn-dismiss {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 1rem;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .exercise-number {
     color: var(--text-muted);
     font-weight: 500;
@@ -6419,6 +6697,152 @@ dialog.modal:not([open]) {
 }
 
 /* ===========================================
+   46a. CHART TYPE TOGGLE
+   =========================================== */
+.chart-type-toggle {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+}
+
+.chart-type-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chart-type-btn:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.chart-type-btn.active {
+    background: var(--bg-card);
+    color: var(--primary);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.chart-type-btn i {
+    font-size: 0.75rem;
+}
+
+/* ===========================================
+   46b. WEEKLY VOLUME CHART
+   =========================================== */
+.weekly-volume-section {
+    margin-top: 16px;
+}
+
+.weekly-volume-chart-container {
+    height: 180px;
+}
+
+/* ===========================================
+   46c. DASHBOARD MINI CHART
+   =========================================== */
+.mini-chart-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mini-chart-card:hover {
+    border-color: rgba(29, 211, 176, 0.2);
+}
+
+.mini-chart-header {
+    margin-bottom: 12px;
+}
+
+.mini-chart-exercise {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.mini-chart-equipment {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.mini-chart-body {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.mini-chart-sparkline {
+    flex: 1;
+    height: 50px;
+    min-width: 0;
+}
+
+.mini-chart-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.mini-chart-current {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.mini-chart-change {
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mini-chart-change.positive {
+    color: var(--success);
+}
+
+.mini-chart-change.negative {
+    color: var(--error);
+}
+
+.mini-chart-period {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.mini-chart-tap-hint {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.mini-chart-tap-hint i {
+    margin-right: 4px;
+}
+
+/* ===========================================
    46. RESPONSIVE
    =========================================== */
 @media (max-width: 480px) {
@@ -6510,7 +6934,7 @@ dialog.modal:not([open]) {
 /* ===========================================
    SECTION FADE TRANSITIONS
    =========================================== */
-.section-content {
-    opacity: 1;
+.content-section.section-fade-out {
+    opacity: 0;
     transition: opacity 0.15s ease;
 }

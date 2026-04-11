@@ -331,12 +331,22 @@ export async function getExerciseProgressData(key, timeRange = 'ALL') {
 }
 
 /**
+ * Estimate 1RM using Epley formula: 1RM = weight * (1 + reps/30)
+ */
+function estimate1RM(weight, reps) {
+    if (!weight || weight <= 0 || !reps || reps <= 0) return 0;
+    if (reps === 1) return weight;
+    return Math.round(weight * (1 + reps / 30) * 10) / 10;
+}
+
+/**
  * Get chart-ready data for an exercise
  * @param {string} key - The exercise|equipment key
  * @param {string} timeRange - Time range filter
+ * @param {string} chartType - 'weight', 'volume', or '1rm'
  * @returns {Promise<Object>} { labels: [], data: [], tooltips: [] }
  */
-export async function getChartData(key, timeRange = 'ALL') {
+export async function getChartData(key, timeRange = 'ALL', chartType = 'weight') {
     const progressData = await getExerciseProgressData(key, timeRange);
 
     if (!progressData || progressData.sessions.length === 0) {
@@ -344,15 +354,86 @@ export async function getChartData(key, timeRange = 'ALL') {
     }
 
     const labels = progressData.sessions.map((s) => formatDateShort(s.date));
-    const data = progressData.sessions.map((s) => s.maxWeight);
-    const tooltips = progressData.sessions.map((s) => ({
-        date: s.date,
-        weight: s.maxWeight,
-        reps: s.maxReps,
-        location: s.location,
-    }));
 
-    return { labels, data, tooltips, stats: progressData.stats };
+    let data;
+    let tooltips;
+
+    switch (chartType) {
+        case 'volume':
+            data = progressData.sessions.map((s) => s.totalVolume);
+            tooltips = progressData.sessions.map((s) => ({
+                date: s.date,
+                volume: s.totalVolume,
+                weight: s.maxWeight,
+                reps: s.maxReps,
+                location: s.location,
+            }));
+            break;
+        case '1rm':
+            data = progressData.sessions.map((s) => estimate1RM(s.maxWeight, s.maxReps));
+            tooltips = progressData.sessions.map((s) => ({
+                date: s.date,
+                estimated1RM: estimate1RM(s.maxWeight, s.maxReps),
+                weight: s.maxWeight,
+                reps: s.maxReps,
+                location: s.location,
+            }));
+            break;
+        default: // 'weight'
+            data = progressData.sessions.map((s) => s.maxWeight);
+            tooltips = progressData.sessions.map((s) => ({
+                date: s.date,
+                weight: s.maxWeight,
+                reps: s.maxReps,
+                location: s.location,
+            }));
+            break;
+    }
+
+    return { labels, data, tooltips, stats: progressData.stats, chartType };
+}
+
+/**
+ * Get weekly volume data for bar chart (last 12 weeks)
+ * @returns {Promise<Object>} { labels: [], data: [], maxVolume: number }
+ */
+export async function getWeeklyVolumeData() {
+    const progress = await loadExerciseProgress();
+    const today = new Date();
+
+    // Build 12 weeks of data
+    const weeks = [];
+    for (let i = 11; i >= 0; i--) {
+        const weekEnd = new Date(today);
+        weekEnd.setDate(weekEnd.getDate() - (i * 7));
+        const weekStart = new Date(weekEnd);
+        weekStart.setDate(weekStart.getDate() - 6);
+
+        weeks.push({
+            startDate: getDateString(weekStart),
+            endDate: getDateString(weekEnd),
+            label: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            volume: 0,
+        });
+    }
+
+    // Sum volume into each week bucket
+    for (const key in progress) {
+        for (const session of progress[key].sessions) {
+            for (const week of weeks) {
+                if (session.date >= week.startDate && session.date <= week.endDate) {
+                    week.volume += session.totalVolume || 0;
+                    break;
+                }
+            }
+        }
+    }
+
+    return {
+        labels: weeks.map((w) => w.label),
+        data: weeks.map((w) => w.volume),
+        maxVolume: Math.max(...weeks.map((w) => w.volume), 0),
+    };
 }
 
 /**
@@ -632,4 +713,5 @@ export const ExerciseProgress = {
     getBodyPartDistribution,
     getHeatMapData,
     getPRTimeline,
+    getWeeklyVolumeData,
 };

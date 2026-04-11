@@ -5,6 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { setBottomNavVisible } from './navigation.js';
+import { getExerciseName } from '../utils/workout-helpers.js';
 
 let allExercises = [];
 let filteredExercises = [];
@@ -16,6 +17,7 @@ let editingEquipmentData = null; // For equipment editor modal
 let editingEquipmentLocations = []; // Locations being edited
 let currentBodyPartFilter = ''; // Current body part category selected
 let currentEquipmentFilter = ''; // Current equipment filter
+let exerciseGridDelegationSetup = false;
 
 // Equipment type to icon mapping
 const equipmentIcons = {
@@ -64,6 +66,33 @@ export function openExerciseManager() {
 
         // Keep bottom nav visible for consistency
         setBottomNavVisible(true);
+
+        // Setup event delegation on the grid (once)
+        if (!exerciseGridDelegationSetup) {
+            const grid = document.getElementById('exercise-manager-grid');
+            if (grid) {
+                grid.addEventListener('click', (e) => {
+                    // Check for edit button first (nested inside card)
+                    const editEl = e.target.closest('[data-action="editExercise"]');
+                    if (editEl) {
+                        e.stopPropagation();
+                        editExercise(editEl.dataset.exerciseId);
+                        return;
+                    }
+                    const deleteEl = e.target.closest('[data-action="deleteExercise"]');
+                    if (deleteEl) {
+                        e.stopPropagation();
+                        deleteExercise(deleteEl.dataset.exerciseId);
+                        return;
+                    }
+                    const cardEl = e.target.closest('[data-action="exerciseCardClick"]');
+                    if (cardEl) {
+                        handleExerciseCardClick(cardEl.dataset.exerciseId);
+                    }
+                });
+                exerciseGridDelegationSetup = true;
+            }
+        }
 
         // Show category view by default
         showCategoryView();
@@ -260,7 +289,7 @@ async function loadExercises() {
 
     allExercises = AppState.exerciseDatabase.map((exercise) => ({
         id: exercise.id || `ex_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: exercise.name || exercise.machine || 'Unnamed Exercise',
+        name: getExerciseName(exercise),
         machine: exercise.machine || exercise.name,
         bodyPart: exercise.bodyPart || 'General',
         equipmentType: exercise.equipmentType || exercise.equipment || 'Machine',
@@ -304,16 +333,17 @@ function renderExercises() {
     grid.innerHTML = sortedExercises
         .map((exercise) => {
             const iconClass = getEquipmentIcon(exercise.equipmentType);
+            const eid = escapeAttr(exercise.id);
 
             return `
-            <div class="exercise-card-new" data-exercise-id="${escapeAttr(exercise.id)}" onclick="handleExerciseCardClick('${escapeAttr(exercise.id)}')">
+            <div class="exercise-card-new" data-action="exerciseCardClick" data-exercise-id="${eid}">
                 <div class="exercise-card-icon">
                     <i class="fas ${iconClass}"></i>
                 </div>
                 <div class="exercise-card-info">
                     <span class="exercise-card-name">${escapeHtml(exercise.name)}</span>
                 </div>
-                <button class="exercise-card-edit" onclick="event.stopPropagation(); editExercise('${escapeAttr(exercise.id)}')" title="Edit">
+                <button class="exercise-card-edit" data-action="editExercise" data-exercise-id="${eid}" title="Edit">
                     EDIT
                 </button>
             </div>
@@ -338,16 +368,17 @@ export function handleExerciseCardClick(exerciseId) {
 }
 
 function getDeleteButton(exercise) {
+    const eid = escapeAttr(exercise.id);
     if (exercise.isOverride) {
-        return `<button class="btn-icon btn-icon-warning" onclick="deleteExercise('${exercise.id}')" title="Revert to default">
+        return `<button class="btn-icon btn-icon-warning" data-action="deleteExercise" data-exercise-id="${eid}" title="Revert to default">
             <i class="fas fa-undo"></i>
         </button>`;
     } else if (exercise.isCustom) {
-        return `<button class="btn-icon btn-icon-danger" onclick="deleteExercise('${exercise.id}')" title="Delete exercise">
+        return `<button class="btn-icon btn-icon-danger" data-action="deleteExercise" data-exercise-id="${eid}" title="Delete exercise">
             <i class="fas fa-trash"></i>
         </button>`;
     } else {
-        return `<button class="btn-icon" onclick="deleteExercise('${exercise.id}')" title="Hide exercise">
+        return `<button class="btn-icon" data-action="deleteExercise" data-exercise-id="${eid}" title="Hide exercise">
             <i class="fas fa-eye-slash"></i>
         </button>`;
     }
@@ -479,7 +510,7 @@ export function openEditExerciseSection(exercise) {
     if (section) section.classList.remove('hidden');
 
     // Populate equipment list for THIS exercise (will pre-select if exercise has equipment)
-    const exerciseName = exercise?.name || exercise?.machine || null;
+    const exerciseName = (exercise?.name || exercise?.machine) ? getExerciseName(exercise) : null;
     populateEquipmentListForSection(exerciseName, exercise?.equipment, exercise?.equipmentLocation);
 
     // Focus on name field
@@ -583,7 +614,7 @@ async function populateLocationDatalist() {
         // Populate datalist
         datalist.innerHTML = Array.from(allLocations)
             .sort()
-            .map((name) => `<option value="${name}">`)
+            .map((name) => `<option value="${escapeAttr(name)}">`)
             .join('');
     } catch (error) {
         console.error('❌ Error loading locations for datalist:', error);
@@ -1246,7 +1277,7 @@ async function populateEquipmentEditorLocationDatalist() {
         // Populate datalist
         datalist.innerHTML = Array.from(allLocations)
             .sort()
-            .map((name) => `<option value="${name}">`)
+            .map((name) => `<option value="${escapeAttr(name)}">`)
             .join('');
     } catch (error) {
         console.error('❌ Error loading locations for equipment editor datalist:', error);

@@ -64,7 +64,7 @@ function startModalRestTimer(exerciseIndex, duration = 90) {
     // Schedule server-side push notification for iOS background support
     // This will send a notification even if the app is backgrounded/locked
     if (isFCMAvailable()) {
-        const notifExerciseName = exercise.name || exercise.machine || exercise.exercise || 'your next set';
+        const notifExerciseName = getExerciseName(exercise) !== 'Unknown Exercise' ? getExerciseName(exercise) : 'your next set';
         scheduleRestNotification(duration, notifExerciseName).catch(() => {}); // Silently fail - local timer still works
     }
 
@@ -359,7 +359,7 @@ export function saveActiveTimerState(exerciseIndex) {
     const exercise = AppState.currentWorkout?.exercises[exerciseIndex];
     const exerciseLabel =
         modalTimer.querySelector('.modal-rest-exercise')?.textContent ||
-        `Rest Period - ${exercise?.machine || 'Exercise'}`;
+        `Rest Period - ${exercise ? getExerciseName(exercise) : 'Exercise'}`;
 
     // Cancel animation frame but preserve state
     if (modalTimer.timerData.animationFrame) {
@@ -404,7 +404,7 @@ export function restoreTimerFromAppState(exerciseIndex) {
 
     // Build timer state compatible with restoreModalRestTimer
     const timerState = {
-        exerciseLabel: `Rest Period - ${exercise?.machine || 'Exercise'}`,
+        exerciseLabel: `Rest Period - ${exercise ? getExerciseName(exercise) : 'Exercise'}`,
         timeLeft: timeLeft,
         isPaused: timer.isPaused,
         startTime: timer.startTime,

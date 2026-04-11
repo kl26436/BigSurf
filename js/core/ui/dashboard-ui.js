@@ -8,11 +8,7 @@ import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
 import { getDateString } from '../utils/date-helpers.js';
-import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
-import { db, collection, query, where, getDocs, orderBy } from '../data/firebase-config.js';
-
-// Timer interval for live rest countdown on dashboard
-let dashboardRestTimerInterval = null;
+import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 
 // ===================================================================
 // DASHBOARD DISPLAY
@@ -232,22 +228,11 @@ async function checkForInProgressWorkout() {
     }
 }
 
-// Dashboard state for expanded sections
-const dashboardExpandedSections = {
-    insights: false,
-    badges: false,
-    prs: false,
-};
 
 /**
  * Start live rest timer updates on dashboard
  */
 function startDashboardRestTimer() {
-    // Clear any existing interval
-    if (dashboardRestTimerInterval) {
-        clearInterval(dashboardRestTimerInterval);
-    }
-
     const updateRestDisplay = () => {
         const statRest = document.getElementById('resume-stat-rest');
         if (!statRest) {
@@ -273,26 +258,14 @@ function startDashboardRestTimer() {
         }
     };
 
-    // Clear any existing interval to prevent stacking
-    if (dashboardRestTimerInterval) {
-        clearInterval(dashboardRestTimerInterval);
-    }
-
-    // Update immediately
-    updateRestDisplay();
-
-    // Then update every second
-    dashboardRestTimerInterval = setInterval(updateRestDisplay, 1000);
+    registerRestDisplayUpdater('dashboard', updateRestDisplay);
 }
 
 /**
  * Stop dashboard rest timer updates
  */
 function stopDashboardRestTimer() {
-    if (dashboardRestTimerInterval) {
-        clearInterval(dashboardRestTimerInterval);
-        dashboardRestTimerInterval = null;
-    }
+    unregisterRestDisplayUpdater('dashboard');
 }
 
 /**
@@ -310,13 +283,11 @@ async function renderDashboard() {
     `;
 
     try {
-        // Load all stats in parallel - same as stats page plus dashboard-specific data
-        const [streaks, weeklyStats, insights, badges, suggestedWorkouts, todaysWorkout, inProgressWorkout] =
+        // Load all stats in parallel
+        const [streaks, weeklyStats, suggestedWorkouts, todaysWorkout, inProgressWorkout] =
             await Promise.all([
                 StreakTracker.calculateStreaks(),
                 StatsTracker.getWeeklyStats(),
-                calculateDashboardInsights(),
-                calculateDashboardBadges(),
                 getSuggestedWorkoutsForToday(),
                 getTodaysCompletedWorkout(),
                 getInProgressWorkoutData(),
@@ -331,15 +302,13 @@ async function renderDashboard() {
         const completedWorkoutTypes = todaysWorkout ? [todaysWorkout.workoutType] : [];
         const inProgressWorkoutType = inProgressWorkout?.workoutType || null;
 
-        // Build the unified dashboard with stats page layout
-        // Note: In-progress workout is shown via resume-workout-banner in HTML, not here
+        // Build the dashboard - focused on "what to do today" and quick glance stats
         container.innerHTML = `
             ${renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats)}
             ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
             ${renderDashboardStreakBoxes(streaks)}
-            ${renderDashboardInsightsSection(insights)}
-            ${renderDashboardBadgesSection(badges)}
             ${renderDashboardPRsSection(recentPRs)}
+            ${await renderDashboardMiniChart()}
         `;
     } catch (error) {
         console.error('❌ Error rendering dashboard:', error);
@@ -462,7 +431,7 @@ async function getInProgressWorkoutData() {
             yesterday.setDate(yesterday.getDate() - 1);
             const yesterdayStr = getDateString(yesterday);
 
-            const { getDoc, doc } = await import('../data/firebase-config.js');
+            const { getDoc, doc, db } = await import('../data/firebase-config.js');
             const yesterdayRef = doc(db, 'users', AppState.currentUser.uid, 'workouts', yesterdayStr);
             const yesterdaySnap = await getDoc(yesterdayRef);
 
@@ -599,194 +568,29 @@ function renderDashboardStreakBoxes(stats) {
     `;
 }
 
-// ===================================================================
-// DASHBOARD INSIGHTS SECTION (Same as stats page)
-// ===================================================================
 
-function renderDashboardInsightsSection(insights) {
-    const data = insights || {};
-    const isExpanded = dashboardExpandedSections.insights;
-
-    return `
-        <div class="stats-section-header" onclick="toggleDashboardSection('insights')">
-            <span class="stats-section-title">Insights</span>
-            <span class="view-more-link">${isExpanded ? 'Less' : 'View More'}</span>
-        </div>
-
-        <div class="insights-grid">
-            <div class="insight-box">
-                <div class="insight-label">Day of Week</div>
-                <div class="insight-value">${data.topDays || 'N/A'}</div>
-            </div>
-            <div class="insight-box">
-                <div class="insight-label">Time of Day</div>
-                <div class="insight-value">${data.timeOfDay || 'N/A'}</div>
-            </div>
-            <div class="insight-box">
-                <div class="insight-label">Most Used Location</div>
-                <div class="insight-value">${data.topLocation || 'N/A'}</div>
-            </div>
-            <div class="insight-box">
-                <div class="insight-label">Most Used Workout</div>
-                <div class="insight-value">${data.topWorkout || 'N/A'}</div>
-            </div>
-            ${
-                isExpanded
-                    ? `
-            <div class="insight-box">
-                <div class="insight-label">Total Volume This Month</div>
-                <div class="insight-value">${data.totalVolume || 'N/A'}</div>
-            </div>
-            <div class="insight-box">
-                <div class="insight-label">Avg Duration</div>
-                <div class="insight-value">${data.avgDuration || 'N/A'}</div>
-            </div>
-            `
-                    : ''
-            }
-        </div>
-    `;
-}
 
 // ===================================================================
-// DASHBOARD BADGES SECTION (Same as stats page)
-// ===================================================================
-
-function renderDashboardBadgesSection(badges) {
-    const badgesList = badges || [];
-    const isExpanded = dashboardExpandedSections.badges;
-    const earnedBadges = badgesList.filter((b) => b.earned);
-
-    return `
-        <div class="badges-section-card">
-            <div class="stats-section-header" onclick="toggleDashboardSection('badges')" style="margin-bottom: 0.5rem;">
-                <span class="stats-section-title">Badges</span>
-                <span class="view-more-link">${isExpanded ? 'Less' : 'View All'}</span>
-            </div>
-
-            <div class="badges-row-preview">
-                ${
-                    earnedBadges.length > 0
-                        ? earnedBadges
-                              .slice(0, 4)
-                              .map(
-                                  (badge) => `
-                    <div class="badge-preview-item ${badge.colorClass}">
-                        <div class="badge-preview-icon">
-                            <i class="${badge.icon}"></i>
-                            ${badge.countBadge ? `<span class="badge-count-overlay">${badge.countBadge}</span>` : ''}
-                        </div>
-                        <span class="badge-preview-label">${badge.shortName}</span>
-                    </div>
-                `
-                              )
-                              .join('')
-                        : `
-                    <div class="badges-empty-msg">Complete workouts to earn badges!</div>
-                `
-                }
-            </div>
-
-            ${isExpanded ? renderDashboardBadgesExpanded(badgesList) : ''}
-        </div>
-    `;
-}
-
-function renderDashboardBadgesExpanded(badges) {
-    const earned = badges.filter((b) => b.earned);
-    const inProgress = badges.filter((b) => !b.earned);
-
-    return `
-        <div class="badges-expanded">
-            ${
-                earned.length > 0
-                    ? `
-                <div class="badges-grid-section">
-                    <h4>Earned</h4>
-                    <div class="badges-full-grid">
-                        ${earned
-                            .map(
-                                (badge) => `
-                            <div class="badge-full-item ${badge.colorClass}">
-                                <div class="badge-full-icon">
-                                    <i class="${badge.icon}"></i>
-                                    ${badge.countBadge ? `<span class="badge-count-overlay">${badge.countBadge}</span>` : ''}
-                                </div>
-                                <span class="badge-full-name">${badge.name}</span>
-                                <span class="badge-full-desc">${badge.description}</span>
-                            </div>
-                        `
-                            )
-                            .join('')}
-                    </div>
-                </div>
-            `
-                    : ''
-            }
-
-            ${
-                inProgress.length > 0
-                    ? `
-                <div class="badges-grid-section">
-                    <h4>In Progress</h4>
-                    <div class="badges-full-grid">
-                        ${inProgress
-                            .map(
-                                (badge) => `
-                            <div class="badge-full-item locked">
-                                <div class="badge-full-icon">
-                                    <i class="${badge.icon}"></i>
-                                </div>
-                                <span class="badge-full-name">${badge.name}</span>
-                                <span class="badge-full-progress">${badge.progress || ''}</span>
-                            </div>
-                        `
-                            )
-                            .join('')}
-                    </div>
-                </div>
-            `
-                    : ''
-            }
-        </div>
-    `;
-}
-
-// ===================================================================
-// DASHBOARD RECENT PRS SECTION (Same as stats page)
+// DASHBOARD RECENT PRS SECTION (compact, non-expandable)
 // ===================================================================
 
 function renderDashboardPRsSection(recentPRs) {
     const prs = recentPRs || [];
-    const isExpanded = dashboardExpandedSections.prs;
-    const totalPRCount = PRTracker.getTotalPRCount();
+
+    if (prs.length === 0) return '';
 
     return `
-        <div class="stats-section-header mt-lg" onclick="toggleDashboardSection('prs')">
+        <div class="stats-section-header mt-lg">
             <span class="stats-section-title">Recent PRs</span>
-            <span class="view-more-link">${isExpanded ? 'Less' : 'View All'}</span>
         </div>
 
         <div class="prs-card-new">
-            ${
-                prs.length > 0
-                    ? `
-                <div class="prs-list-new">
-                    ${prs
-                        .slice(0, 3)
-                        .map((pr) => renderDashboardPRItem(pr))
-                        .join('')}
-                </div>
-            `
-                    : `
-                <div class="prs-empty-new">
-                    <p>No PRs recorded yet</p>
-                    <p class="prs-hint">PRs tracked from ${formatDateShortDash(PRTracker.getPRCutoffDate())}</p>
-                </div>
-            `
-            }
-
-            ${isExpanded ? renderDashboardPRsExpanded() : ''}
+            <div class="prs-list-new">
+                ${prs
+                    .slice(0, 3)
+                    .map((pr) => renderDashboardPRItem(pr))
+                    .join('')}
+            </div>
         </div>
     `;
 }
@@ -811,339 +615,92 @@ function renderDashboardPRItem(pr) {
     `;
 }
 
-function renderDashboardPRsExpanded() {
-    const prsByBodyPart = PRTracker.getPRsByBodyPart();
-    const bodyParts = Object.keys(prsByBodyPart).sort();
+// Legacy toggle exports (sections removed, kept for backwards compatibility)
+export function toggleDashboardSection() {}
+export function toggleDashboardPRBodyPart() {}
 
-    if (bodyParts.length === 0) {
-        return `<div class="prs-expanded-empty">Complete workouts to start tracking PRs</div>`;
-    }
-
-    return `
-        <div class="prs-browser">
-            ${bodyParts
-                .map((bodyPart) => {
-                    const exercises = prsByBodyPart[bodyPart];
-                    const exerciseCount = Object.keys(exercises).length;
-
-                    return `
-                    <div class="pr-bodypart-group">
-                        <div class="pr-bodypart-header" onclick="toggleDashboardPRBodyPart('${escapeAttr(bodyPart)}')">
-                            <span class="pr-bodypart-name">${escapeHtml(bodyPart)}</span>
-                            <span class="pr-bodypart-count">${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}</span>
-                            <i class="fas fa-chevron-down pr-chevron"></i>
-                        </div>
-                        <div class="pr-bodypart-content" id="dash-pr-group-${bodyPart.replace(/\s+/g, '-')}">
-                            ${Object.entries(exercises)
-                                .map(
-                                    ([exerciseName, equipmentPRs]) => `
-                                <div class="pr-exercise-item">
-                                    <div class="pr-exercise-title">${escapeHtml(exerciseName)}</div>
-                                    ${Object.entries(equipmentPRs)
-                                        .map(
-                                            ([equipment, prs]) => `
-                                        <div class="pr-equipment-item">
-                                            <span class="pr-equip-name">${escapeHtml(equipment)}</span>
-                                            <span class="pr-equip-value">${prs.maxWeight?.weight || 0} lbs x ${prs.maxWeight?.reps || 0}</span>
-                                            <span class="pr-equip-date">${formatDateShortDash(prs.maxWeight?.date)}</span>
-                                        </div>
-                                    `
-                                        )
-                                        .join('')}
-                                </div>
-                            `
-                                )
-                                .join('')}
-                        </div>
-                    </div>
-                `;
-                })
-                .join('')}
-        </div>
-    `;
-}
 
 // ===================================================================
-// DASHBOARD TOGGLE FUNCTIONS
+// DASHBOARD MINI CHART (sparkline for most-trained exercise)
 // ===================================================================
 
-export function toggleDashboardSection(section) {
-    dashboardExpandedSections[section] = !dashboardExpandedSections[section];
-    renderDashboard();
-}
+async function renderDashboardMiniChart() {
+    try {
+        const { ExerciseProgress } = await import('../features/exercise-progress.js');
+        const exerciseList = await ExerciseProgress.getExerciseList();
 
-export function toggleDashboardPRBodyPart(bodyPart) {
-    const groupId = `dash-pr-group-${bodyPart.replace(/\s+/g, '-')}`;
-    const group = document.getElementById(groupId);
-    const header = group?.previousElementSibling;
+        if (exerciseList.length === 0) return '';
 
-    if (group) {
-        group.classList.toggle('collapsed');
-        header?.classList.toggle('collapsed');
-    }
-}
+        // Pick the exercise with the most sessions
+        const topExercise = exerciseList.reduce((best, ex) =>
+            ex.sessionCount > best.sessionCount ? ex : best
+        );
 
-// ===================================================================
-// RECENT WORKOUTS
-// ===================================================================
+        const chartData = await ExerciseProgress.getChartData(topExercise.key, '3M');
 
-function renderRecentWorkouts(recentWorkouts) {
-    if (recentWorkouts.length === 0) {
+        if (!chartData || chartData.data.length < 2) return '';
+
+        // Calculate trend
+        const first = chartData.data[0];
+        const last = chartData.data[chartData.data.length - 1];
+        const change = last - first;
+        const changePercent = first > 0 ? ((change / first) * 100).toFixed(1) : 0;
+        const trendIcon = change >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+        const trendClass = change >= 0 ? 'positive' : 'negative';
+
+        // Build sparkline points (SVG polyline)
+        const width = 280;
+        const height = 50;
+        const padding = 4;
+        const values = chartData.data;
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const range = max - min || 1;
+
+        const points = values.map((val, i) => {
+            const x = padding + (i / (values.length - 1)) * (width - padding * 2);
+            const y = padding + (1 - (val - min) / range) * (height - padding * 2);
+            return `${x},${y}`;
+        }).join(' ');
+
         return `
-            <div class="dashboard-section">
-                <h3 class="section-title">Recent Workouts</h3>
-                <div class="empty-state">
-                    <i class="fas fa-calendar-check" style="font-size: 2rem; opacity: 0.3; margin-bottom: 1rem;"></i>
-                    <p>No completed workouts yet</p>
-                    <button class="btn btn-primary" onclick="navigateTo('start-workout')" style="margin-top: 1rem;">
-                        <i class="fas fa-dumbbell"></i> Start Your First Workout
-                    </button>
+            <div class="stats-section-header">
+                <span class="stats-section-title">Top Exercise</span>
+            </div>
+
+            <div class="mini-chart-card" onclick="navigateTo('stats')">
+                <div class="mini-chart-header">
+                    <div class="mini-chart-exercise">${escapeHtml(topExercise.exercise)}</div>
+                    <div class="mini-chart-equipment">${escapeHtml(topExercise.equipment !== 'Unknown' ? topExercise.equipment : '')}</div>
+                </div>
+                <div class="mini-chart-body">
+                    <svg class="mini-chart-sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+                        <polyline
+                            points="${points}"
+                            fill="none"
+                            stroke="var(--primary)"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+                    </svg>
+                    <div class="mini-chart-stats">
+                        <span class="mini-chart-current">${last} lbs</span>
+                        <span class="mini-chart-change ${trendClass}">
+                            <i class="fas ${trendIcon}"></i>
+                            ${Math.abs(change)} lbs (${Math.abs(changePercent)}%)
+                        </span>
+                        <span class="mini-chart-period">Last 3 months</span>
+                    </div>
+                </div>
+                <div class="mini-chart-tap-hint">
+                    <i class="fas fa-chart-line"></i> Tap for full progress
                 </div>
             </div>
         `;
-    }
-
-    const workoutsList = recentWorkouts
-        .map((workout) => {
-            const date = new Date(workout.completedAt);
-            const duration = Math.floor(workout.totalDuration / 60); // minutes
-            const exerciseCount = Object.keys(workout.exercises || {}).length;
-
-            return `
-            <div class="workout-item" onclick="showWorkoutDetail('${workout.id}')">
-                <div class="workout-header">
-                    <h4>${workout.workoutType || 'Workout'}</h4>
-                    <span class="workout-date">${formatDate(workout.date)}</span>
-                </div>
-                <div class="workout-stats">
-                    <span><i class="fas fa-clock"></i> ${duration} min</span>
-                    <span><i class="fas fa-list"></i> ${exerciseCount} exercises</span>
-                    ${workout.location ? `<span><i class="fas fa-map-marker-alt"></i> ${workout.location}</span>` : ''}
-                </div>
-            </div>
-        `;
-        })
-        .join('');
-
-    return `
-        <div class="dashboard-section">
-            <h3 class="section-title">
-                Recent Workouts
-                <button class="btn-text" onclick="navigateTo('history')">View All</button>
-            </h3>
-            <div class="workout-list">
-                ${workoutsList}
-            </div>
-        </div>
-    `;
-}
-
-// ===================================================================
-// DASHBOARD INSIGHTS CALCULATION
-// ===================================================================
-
-async function calculateDashboardInsights() {
-    if (!AppState.currentUser) return null;
-
-    try {
-        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        const q = query(workoutsRef, where('completedAt', '!=', null), orderBy('completedAt', 'desc'));
-
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) return null;
-
-        const workouts = [];
-        snapshot.forEach((doc) => workouts.push({ id: doc.id, ...doc.data() }));
-
-        const dayCount = {};
-        const hourCount = { morning: 0, afternoon: 0, evening: 0, night: 0 };
-        const locationCount = {};
-        const workoutTypeCount = {};
-        let totalDuration = 0;
-        let monthlyVolume = 0;
-
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-
-        workouts.forEach((workout) => {
-            if (workout.completedAt) {
-                const date = new Date(workout.completedAt);
-                const day = date.toLocaleDateString('en-US', { weekday: 'short' });
-                dayCount[day] = (dayCount[day] || 0) + 1;
-
-                const hour = date.getHours();
-                if (hour >= 5 && hour < 12) hourCount.morning++;
-                else if (hour >= 12 && hour < 17) hourCount.afternoon++;
-                else if (hour >= 17 && hour < 21) hourCount.evening++;
-                else hourCount.night++;
-
-                if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
-                    if (workout.exercises) {
-                        Object.values(workout.exercises).forEach((exercise) => {
-                            if (exercise.sets) {
-                                exercise.sets.forEach((set) => {
-                                    if (set.weight && set.reps) {
-                                        monthlyVolume += set.weight * set.reps;
-                                    }
-                                });
-                            }
-                        });
-                    }
-                }
-            }
-
-            if (workout.location) {
-                locationCount[workout.location] = (locationCount[workout.location] || 0) + 1;
-            }
-
-            if (workout.workoutType) {
-                workoutTypeCount[workout.workoutType] = (workoutTypeCount[workout.workoutType] || 0) + 1;
-            }
-
-            if (workout.totalDuration) {
-                totalDuration += workout.totalDuration;
-            }
-        });
-
-        const topDaysArr = Object.entries(dayCount)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3);
-        const topDays = topDaysArr.map((d) => d[0]).join(', ');
-
-        const timeEntries = Object.entries(hourCount).sort((a, b) => b[1] - a[1]);
-        const timeOfDay = timeEntries[0][1] > 0 ? capitalize(timeEntries[0][0]) : 'N/A';
-
-        const topLocationEntry = Object.entries(locationCount).sort((a, b) => b[1] - a[1])[0];
-        const topLocation = topLocationEntry ? topLocationEntry[0] : null;
-
-        const topWorkoutEntry = Object.entries(workoutTypeCount).sort((a, b) => b[1] - a[1])[0];
-        const topWorkout = topWorkoutEntry ? topWorkoutEntry[0] : null;
-
-        const avgDurationMins = workouts.length > 0 ? Math.round(totalDuration / workouts.length / 60) : 0;
-
-        const formattedVolume =
-            monthlyVolume > 0
-                ? monthlyVolume >= 1000
-                    ? `${(monthlyVolume / 1000).toFixed(1)}k lbs`
-                    : `${monthlyVolume.toLocaleString()} lbs`
-                : 'N/A';
-
-        return {
-            topDays: topDays || 'N/A',
-            timeOfDay,
-            topLocation,
-            topWorkout,
-            avgDuration: avgDurationMins > 0 ? `${avgDurationMins} min` : 'N/A',
-            totalVolume: formattedVolume,
-        };
     } catch (error) {
-        console.error('Error calculating insights:', error);
-        return null;
-    }
-}
-
-// ===================================================================
-// DASHBOARD BADGES CALCULATION
-// ===================================================================
-
-async function calculateDashboardBadges() {
-    try {
-        const streaks = await StreakTracker.calculateStreaks();
-        const prCount = PRTracker.getTotalPRCount();
-
-        const workoutManager = new FirebaseWorkoutManager(AppState);
-        const locations = await workoutManager.getUserLocations();
-        const locationCount = locations.length;
-
-        const allBadges = [
-            {
-                id: 'consistency',
-                name: 'Consistency',
-                shortName: 'Consistency',
-                description: 'Maintained a 7-day streak',
-                icon: 'fas fa-check',
-                colorClass: 'badge-turquoise',
-                check: () => streaks && streaks.longestStreak >= 7,
-            },
-            {
-                id: 'workouts-100',
-                name: '100 Workouts',
-                shortName: '100 Workouts',
-                description: 'Completed 100 workouts',
-                icon: 'fas fa-dumbbell',
-                colorClass: 'badge-gold',
-                countBadge: streaks && streaks.totalWorkouts >= 50 ? '50' : null,
-                check: () => streaks && streaks.totalWorkouts >= 50,
-                progress: streaks ? `${Math.min(streaks.totalWorkouts, 100)}/100` : '0/100',
-            },
-            {
-                id: 'heavy-lifter',
-                name: '100 Lbs Lifted',
-                shortName: '100 Lbs Lifted',
-                description: 'Lifted 100+ lbs in a single set',
-                icon: 'fas fa-weight-hanging',
-                colorClass: 'badge-teal',
-                check: () => prCount >= 1,
-            },
-            {
-                id: 'pr-streak',
-                name: 'PR Streak',
-                shortName: 'PR Streak',
-                description: 'Set PRs on consecutive days',
-                icon: 'fas fa-calendar-check',
-                colorClass: 'badge-purple',
-                check: () => prCount >= 5,
-                progress: `${Math.min(prCount, 5)}/5 PRs`,
-            },
-            {
-                id: 'first-workout',
-                name: 'First Workout',
-                shortName: 'First',
-                description: 'Completed your first workout',
-                icon: 'fas fa-star',
-                colorClass: 'badge-gold',
-                check: () => streaks && streaks.totalWorkouts >= 1,
-            },
-            {
-                id: 'streak-30',
-                name: '30-Day Streak',
-                shortName: '30 Days',
-                description: 'Worked out 30 days in a row',
-                icon: 'fas fa-fire-alt',
-                colorClass: 'badge-orange',
-                check: () => streaks && streaks.longestStreak >= 30,
-                progress: streaks ? `${Math.min(streaks.longestStreak, 30)}/30 days` : '0/30 days',
-            },
-            {
-                id: 'explorer',
-                name: 'Explorer',
-                shortName: 'Explorer',
-                description: 'Worked out at 5+ locations',
-                icon: 'fas fa-map-marker-alt',
-                colorClass: 'badge-teal',
-                check: () => locationCount >= 5,
-                progress: `${Math.min(locationCount, 5)}/5 locations`,
-            },
-            {
-                id: 'pr-hunter',
-                name: 'PR Hunter',
-                shortName: 'PRs',
-                description: 'Set 10 personal records',
-                icon: 'fas fa-trophy',
-                colorClass: 'badge-gold',
-                check: () => prCount >= 10,
-                progress: `${Math.min(prCount, 10)}/10 PRs`,
-            },
-        ];
-
-        return allBadges.map((badge) => ({
-            ...badge,
-            earned: badge.check(),
-        }));
-    } catch (error) {
-        console.error('Error calculating badges:', error);
-        return [];
+        console.error('Error rendering mini chart:', error);
+        return '';
     }
 }
 
@@ -1190,10 +747,6 @@ function formatDateShortDash(dateStr) {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
-}
-
-function capitalize(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /**

@@ -493,8 +493,8 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             let matchInfo = '';
             if (histEquipment || histLocation) {
                 const parts = [];
-                if (histEquipment) parts.push(histEquipment);
-                if (histLocation) parts.push(histLocation);
+                if (histEquipment) parts.push(escapeHtml(histEquipment));
+                if (histLocation) parts.push(escapeHtml(histLocation));
                 matchInfo = ` <span style="font-size: 0.8rem; color: var(--text-muted);">@ ${parts.join(' - ')}</span>`;
             }
 
@@ -693,8 +693,9 @@ export async function migrateWorkoutData(state) {
                         version: '2.0',
                     };
 
-                    // Save updated data
-                    await setDoc(doc(db, 'users', state.currentUser.uid, 'workouts', data.date), updatedData);
+                    // Validate and save updated data
+                    const validated = validateWorkoutData(updatedData) || updatedData;
+                    await setDoc(doc(db, 'users', state.currentUser.uid, 'workouts', data.date), validated);
                     migrationCount++;
                 }
             }

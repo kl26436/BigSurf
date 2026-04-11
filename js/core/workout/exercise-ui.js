@@ -448,7 +448,7 @@ export function generateExerciseTable(exercise, exerciseIndex, unit) {
         </div>
 
         <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes..."
-                  onchange="saveExerciseNotes(${exerciseIndex})">${savedNotes}</textarea>
+                  onchange="saveExerciseNotes(${exerciseIndex})">${escapeHtml(savedNotes)}</textarea>
 
         <div class="exercise-complete-section" style="margin-top: 1rem; text-align: center;">
             <button class="btn btn-success" onclick="markExerciseComplete(${exerciseIndex})">
@@ -642,7 +642,7 @@ export function addSet(exerciseIndex) {
     AppState.currentWorkout.exercises[exerciseIndex].sets =
         (AppState.currentWorkout.exercises[exerciseIndex].sets || 3) + 1;
 
-    renderExercises();
+    updateExerciseCard(exerciseIndex);
 }
 
 export function deleteSet(exerciseIndex, setIndex) {
@@ -765,7 +765,7 @@ export function markExerciseComplete(exerciseIndex) {
     exercise.sets = keptSets;
 
     saveWorkoutData(AppState);
-    renderExercises();
+    updateExerciseCard(exerciseIndex);
 
     // Close modal properly (this also shows bottom nav)
     closeExerciseModal();
@@ -804,8 +804,24 @@ export function deleteExerciseFromWorkout(exerciseIndex) {
     }
 
     saveWorkoutData(AppState);
-    renderExercises();
-    // Removed notification - UI update is self-evident
+
+    // Incremental removal: remove the card from the DOM
+    const container = document.getElementById('exercise-list');
+    const removedCard = container?.querySelector(`.exercise-card[data-index="${exerciseIndex}"]`);
+    if (removedCard) {
+        removedCard.remove();
+        // Reindex remaining cards after the deleted one (their data-index shifted)
+        const remainingCards = container.querySelectorAll('.exercise-card');
+        remainingCards.forEach((card) => {
+            const idx = parseInt(card.dataset.index, 10);
+            if (idx > exerciseIndex) {
+                card.dataset.index = idx - 1;
+            }
+        });
+        updateProgress(AppState);
+    } else {
+        renderExercises();
+    }
 }
 
 // ===================================================================
@@ -879,7 +895,21 @@ export function confirmExerciseAddToWorkout(exerciseData) {
 
     // Save and update UI
     saveWorkoutData(AppState);
-    renderExercises();
+
+    // Incremental append: add just the new card without rebuilding the list
+    const container = document.getElementById('exercise-list');
+    if (container) {
+        // Remove empty-state message if present
+        const emptyMsg = container.querySelector('.empty-workout-message');
+        if (emptyMsg) emptyMsg.remove();
+
+        const newIndex = AppState.currentWorkout.exercises.length - 1;
+        const card = createExerciseCard(newExercise, newIndex);
+        container.appendChild(card);
+        updateProgress(AppState);
+    } else {
+        renderExercises();
+    }
 
     // Close exercise library
     if (window.exerciseLibrary && window.exerciseLibrary.close) {
@@ -949,96 +979,14 @@ export async function changeExerciseEquipment(exerciseIndex) {
 
     // Open the equipment picker modal
     const modal = document.getElementById('equipment-picker-modal');
-    const titleEl = document.getElementById('equipment-picker-exercise-name');
-    const listEl = document.getElementById('equipment-picker-list');
-    const newNameInput = document.getElementById('equipment-picker-new-name');
-    const newLocationInput = document.getElementById('equipment-picker-new-location');
 
-    if (titleEl) titleEl.textContent = `for "${exerciseName}"`;
-    if (newNameInput) newNameInput.value = exercise.equipment || '';
-    // Pre-fill location with exercise location, or fall back to current session location
-    const sessionLocation = getSessionLocation();
-    if (newLocationInput) newLocationInput.value = exercise.equipmentLocation || sessionLocation || '';
-
-    // Load equipment that has been used with this exercise
-    try {
-        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-        const workoutManager = new FirebaseWorkoutManager(AppState);
-        const exerciseEquipment = await workoutManager.getEquipmentForExercise(exerciseName);
-        const allEquipment = await workoutManager.getUserEquipment();
-
-        // Render equipment options
-        if (listEl) {
-            if (exerciseEquipment.length > 0) {
-                listEl.textContent = '';
-                exerciseEquipment.forEach((eq) => {
-                    const option = document.createElement('div');
-                    option.className = 'equipment-option' + (eq.name === exercise.equipment ? ' selected' : '');
-                    option.dataset.equipmentId = eq.id;
-                    option.dataset.equipmentName = eq.name;
-                    option.dataset.equipmentLocation = eq.location || '';
-
-                    const radio = document.createElement('div');
-                    radio.className = 'equipment-option-radio';
-                    option.appendChild(radio);
-
-                    const details = document.createElement('div');
-                    details.className = 'equipment-option-details';
-                    const nameDiv = document.createElement('div');
-                    nameDiv.className = 'equipment-option-name';
-                    nameDiv.textContent = eq.name;
-                    details.appendChild(nameDiv);
-                    if (eq.location) {
-                        const locDiv = document.createElement('div');
-                        locDiv.className = 'equipment-option-location';
-                        locDiv.textContent = eq.location;
-                        details.appendChild(locDiv);
-                    }
-                    option.appendChild(details);
-
-                    // Click handler for selection
-                    option.addEventListener('click', () => {
-                        listEl.querySelectorAll('.equipment-option').forEach((o) => o.classList.remove('selected'));
-                        option.classList.add('selected');
-                        if (newNameInput) newNameInput.value = '';
-                        if (newLocationInput) newLocationInput.value = '';
-                    });
-
-                    listEl.appendChild(option);
-                });
-            } else {
-                listEl.innerHTML = `<div class="equipment-picker-empty">No equipment saved for this exercise yet</div>`;
-            }
-        }
-
-        // Populate suggestions datalists
-        const equipmentDatalist = document.getElementById('equipment-picker-suggestions');
-        const locationDatalist = document.getElementById('equipment-picker-location-suggestions');
-
-        if (equipmentDatalist) {
-            const equipmentNames = [...new Set(allEquipment.map((eq) => eq.name))];
-            equipmentDatalist.innerHTML = equipmentNames.map((name) => `<option value="${escapeAttr(name)}">`).join('');
-        }
-
-        if (locationDatalist) {
-            // Get locations from equipment AND from saved gym locations
-            const equipmentLocations = allEquipment.filter((eq) => eq.location).map((eq) => eq.location);
-            let savedGymLocations = [];
-            try {
-                savedGymLocations = await workoutManager.getUserLocations();
-                savedGymLocations = savedGymLocations.map((loc) => loc.name);
-            } catch (e) {
-                // Ignore errors fetching gym locations
-            }
-            const allLocations = [...new Set([...equipmentLocations, ...savedGymLocations])];
-            locationDatalist.innerHTML = allLocations.map((loc) => `<option value="${escapeAttr(loc)}">`).join('');
-        }
-    } catch (error) {
-        console.error('\u274C Error loading equipment:', error);
-        if (listEl) {
-            listEl.innerHTML = `<div class="equipment-picker-empty">Error loading equipment</div>`;
-        }
-    }
+    const { populateEquipmentPicker } = await import('../ui/equipment-picker.js');
+    await populateEquipmentPicker({
+        exerciseName,
+        currentEquipment: exercise.equipment || null,
+        currentLocation: exercise.equipmentLocation || null,
+        sessionLocation: getSessionLocation(),
+    });
 
     if (modal) modal.classList.remove('hidden');
 }
@@ -1076,18 +1024,16 @@ export async function applyEquipmentChange(equipmentName, equipmentLocation, equ
         }
     }
 
-    // Save workout data
-    saveWorkoutData(AppState);
+    // Save workout data (debounced — equipment change is a UI-triggered auto-save)
+    debouncedSaveWorkoutData(AppState);
 
-    // Update UI
-    renderExercises();
+    // Update UI — only the affected card
+    updateExerciseCard(exerciseIndex);
 
     // Refresh the modal if it's still open
     if (AppState.focusedExerciseIndex === exerciseIndex) {
         focusExercise(exerciseIndex);
     }
-
-    // Removed unnecessary notifications for equipment updates
 
     // Clean up
     pendingEquipmentChangeIndex = null;
@@ -1178,11 +1124,11 @@ export function setExerciseUnit(exerciseIndex, unit) {
         }
     }
 
-    // Refresh main view
-    renderExercises();
+    // Refresh the affected card only
+    updateExerciseCard(exerciseIndex);
 
-    // Save unit preference (weights unchanged)
-    saveWorkoutData(AppState);
+    // Save unit preference (debounced — unit toggle is a UI-triggered auto-save)
+    debouncedSaveWorkoutData(AppState);
 }
 
 // ===================================================================
