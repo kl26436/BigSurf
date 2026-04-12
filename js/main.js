@@ -8,7 +8,7 @@
 import { AppState } from './core/utils/app-state.js';
 import { getCategoryIcon } from './core/utils/config.js';
 import { startApplication } from './core/app-initialization.js';
-import { updateSetting, onboardingNext, completeOnboarding } from './core/ui/settings-ui.js';
+import { updateSetting, onboardingNext, completeOnboarding, rebuildPRsFromSettings } from './core/ui/settings-ui.js';
 import { exportWorkoutData } from './core/data/data-manager.js';
 import {
     openEquipmentLibrary, openEquipmentDetail, backToEquipmentList,
@@ -671,6 +671,7 @@ window.updateSetting = updateSetting;
 window.onboardingNext = onboardingNext;
 window.completeOnboarding = completeOnboarding;
 window.exportWorkoutData = exportWorkoutData;
+window.rebuildPRsFromSettings = rebuildPRsFromSettings;
 
 // Equipment Library
 window.openEquipmentLibrary = openEquipmentLibrary;

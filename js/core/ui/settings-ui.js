@@ -192,6 +192,16 @@ export function renderSettings() {
                         <i class="fas fa-download" style="color: var(--primary);"></i>
                     </div>
                 </div>
+
+                <div class="settings-item" style="cursor: pointer;" onclick="rebuildPRsFromSettings()">
+                    <div class="settings-label">
+                        <span class="settings-name">Rebuild PRs</span>
+                        <span class="settings-description">Recalculate personal records from workout history</span>
+                    </div>
+                    <div class="settings-control">
+                        <i class="fas fa-sync-alt" style="color: var(--primary);"></i>
+                    </div>
+                </div>
             </div>
 
             <div class="settings-group">
@@ -300,4 +310,23 @@ export function completeOnboarding() {
 
     const overlay = document.getElementById('onboarding-overlay');
     if (overlay) overlay.remove();
+}
+
+/**
+ * Rebuild PRs from settings page — recalculates from full workout history.
+ */
+export async function rebuildPRsFromSettings() {
+    showNotification('Rebuilding PRs...', 'info', 2000);
+    try {
+        const { rebuildPRsFromHistory } = await import('../features/pr-tracker.js');
+        const result = await rebuildPRsFromHistory();
+        if (result.success) {
+            showNotification(`PRs rebuilt from ${result.workoutsProcessed} workouts`, 'success', 2000);
+        } else {
+            showNotification('Failed to rebuild PRs', 'error');
+        }
+    } catch (error) {
+        console.error('PR rebuild failed:', error);
+        showNotification('Failed to rebuild PRs', 'error');
+    }
 }

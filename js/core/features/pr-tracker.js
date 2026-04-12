@@ -38,6 +38,7 @@ const PR_CUTOFF_DATE = Config.PR_CUTOFF_DATE;
  * }
  */
 
+let _rebuildingInProgress = false;
 let prData = {
     exercisePRs: {},
     locations: {},
@@ -308,7 +309,10 @@ export async function recordPR(
         equipmentPRs.maxVolume = { weight, reps, volume, date, location };
     }
 
-    await savePRData();
+    // Skip per-set saves during bulk rebuild (save once at the end)
+    if (!_rebuildingInProgress) {
+        await savePRData();
+    }
 }
 
 /**
@@ -536,8 +540,9 @@ export async function rebuildPRsFromHistory() {
     }
 
     try {
-        // Clear existing PRs
+        // Clear existing PRs and set rebuild flag to batch saves
         prData.exercisePRs = {};
+        _rebuildingInProgress = true;
 
         // Load all workouts from Firebase
         const { collection, getDocs, query, orderBy } = await import('../data/firebase-config.js');
@@ -597,9 +602,11 @@ export async function rebuildPRsFromHistory() {
             processedCount++;
         }
 
+        _rebuildingInProgress = false;
         await savePRData();
         return { success: true, workoutsProcessed: processedCount, setsProcessed: prCount };
     } catch (error) {
+        _rebuildingInProgress = false;
         console.error('❌ Error rebuilding PRs:', error);
         return { success: false, error: error.message };
     }
