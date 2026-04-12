@@ -6,13 +6,16 @@ import { AppState } from '../utils/app-state.js';
 import { showNotification } from '../ui/ui-helpers.js';
 import { debugLog } from '../utils/config.js';
 
+// Withings OAuth client ID (public — safe to include client-side)
+const WITHINGS_CLIENT_ID = '332086edb8febf30285cb268783ae86686a2253dd2c2883f685963b607c21756';
+
 // ===================================================================
 // OAUTH FLOW
 // ===================================================================
 
 /**
  * Start the Withings OAuth flow.
- * Generates auth URL via Cloud Function, then redirects the user.
+ * Builds auth URL client-side and redirects the user to Withings.
  */
 export async function connectWithings() {
     if (!AppState.currentUser) {
@@ -20,25 +23,19 @@ export async function connectWithings() {
         return;
     }
 
-    try {
-        showNotification('Connecting to Withings...', 'info', 2000);
+    // Use current origin as callback URL (must match Withings dashboard)
+    const callbackUrl = window.location.origin;
+    const state = AppState.currentUser.uid;
 
-        // Use current origin as callback URL (must match Withings dashboard)
-        const callbackUrl = window.location.origin;
+    const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: WITHINGS_CLIENT_ID,
+        redirect_uri: callbackUrl,
+        scope: 'user.metrics',
+        state: state,
+    });
 
-        const getAuthUrl = httpsCallable(functions, 'withingsGetAuthUrl');
-        const result = await getAuthUrl({ callbackUrl });
-
-        if (result.data?.url) {
-            // Redirect user to Withings authorization page
-            window.location.href = result.data.url;
-        } else {
-            showNotification('Failed to get authorization URL', 'error');
-        }
-    } catch (error) {
-        console.error('❌ Withings connect error:', error);
-        showNotification('Failed to connect to Withings', 'error');
-    }
+    window.location.href = `https://account.withings.com/oauth2_user/authorize2?${params.toString()}`;
 }
 
 /**
