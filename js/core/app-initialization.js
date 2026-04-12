@@ -398,6 +398,21 @@ export function setupAuthenticationListener() {
                     await showDashboard();
                     debugLog('📊 Dashboard should be visible now');
 
+                    // Process pending Withings OAuth callback (if user just came back from Withings auth)
+                    try {
+                        const { processPendingWithingsCallback, getWithingsStatus } = await import('./features/withings-integration.js');
+                        await processPendingWithingsCallback();
+                        // Update Withings UI status (non-blocking)
+                        getWithingsStatus().then(status => {
+                            if (window.updateWithingsUI) {
+                                window._withingsConnected = status.connected;
+                                window.updateWithingsUI(status.connected, status.lastSync);
+                            }
+                        });
+                    } catch (e) {
+                        console.error('❌ Withings post-auth processing failed:', e);
+                    }
+
                     // Show onboarding if first login
                     checkOnboarding();
                 } catch (e) {

@@ -853,19 +853,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         await startApplication();
 
-        // After auth is ready, process pending Withings callback + update UI
-        if (AppState.currentUser) {
-            try {
-                await processPendingWithingsCallback();
-            } catch (e) {
-                console.error('❌ Withings callback processing failed:', e);
-            }
-            // Update Withings status in Settings (non-blocking)
-            getWithingsStatus().then(status => {
-                _withingsConnected = status.connected;
-                updateWithingsUI(status.connected, status.lastSync);
-            });
-        }
+        // Withings callback + status is now handled inside onAuthStateChanged
+        // in app-initialization.js (after auth and data are fully loaded)
     } catch (error) {
         console.error('Application startup failed:', error);
 
