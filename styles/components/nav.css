@@ -1,0 +1,320 @@
+/* ===========================================
+   15. NOTIFICATIONS & TOASTS
+   =========================================== */
+.notification {
+    position: fixed;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 20px;
+    background: var(--bg-card-hi);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 700;
+    animation: slideUp 0.3s ease;
+}
+.notification.success {
+    border-left: 4px solid var(--success);
+}
+.notification.error {
+    border-left: 4px solid var(--danger);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translate(-50%, 20px);
+        opacity: 0;
+    }
+    to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+}
+
+/* ===========================================
+   16. LOADING STATES
+   =========================================== */
+.loading-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-app);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 800;
+}
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.skeleton {
+    background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hi) 50%, var(--bg-card) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--radius-sm);
+}
+@keyframes shimmer {
+    to {
+        background-position: -200% 0;
+    }
+}
+
+/* ===========================================
+   29. VIDEO SECTION
+   =========================================== */
+.video-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+}
+.video-section.hidden {
+    display: none !important;
+}
+.video-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+.video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+.video-source-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+.video-source-label.hidden {
+    display: none;
+}
+
+/* Exercise modal specific styles */
+.exercise-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 500;
+    display: none; /* Hidden by default */
+    align-items: flex-end;
+    justify-content: center;
+}
+.exercise-modal.active {
+    display: flex;
+} /* Show when active class added */
+.exercise-modal.hidden {
+    display: none;
+}
+.exercise-modal-content {
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.exercise-unit-toggle {
+    padding: 12px 16px;
+}
+
+/* App section for full-page views */
+.app-section {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-app);
+    z-index: 600;
+    overflow-y: auto;
+    animation: sectionFadeIn 0.15s ease;
+}
+.app-section.hidden {
+    display: none;
+}
+
+@keyframes sectionFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Equipment locations list in editor */
+.equipment-locations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.equipment-location-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    gap: 12px;
+}
+.equipment-location-item .location-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    flex: 1;
+    min-width: 0;
+}
+.equipment-location-item .location-name i {
+    color: var(--primary);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.equipment-location-item .remove-location-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+.equipment-location-item .remove-location-btn:hover {
+    background: rgba(255, 82, 82, 0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+.equipment-locations-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+.equipment-add-location-form {
+    margin-top: 12px;
+}
+
+/* Location prompt text */
+.location-prompt-text {
+    font-size: 0.95rem;
+    color: var(--text-main);
+    margin-bottom: 16px;
+}
+
+/* Template categories */
+.template-categories {
+    margin-top: 8px;
+}
+
+/* ===========================================
+   32. MORE MENU (Bottom Nav Enhancement)
+   =========================================== */
+.bottom-sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    margin: 8px auto 12px;
+    cursor: grab;
+}
+.more-menu-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 740;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.more-menu-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+.more-menu {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    z-index: 750;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.more-menu.visible {
+    transform: translateY(0);
+}
+.more-menu-content {
+    padding: 8px 0;
+}
+.more-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-align: left;
+}
+.more-menu-item:hover {
+    background: var(--bg-card);
+}
+.more-menu-item i {
+    width: 20px;
+    text-align: center;
+    color: var(--text-muted);
+}
+.more-menu-signout {
+    color: var(--danger);
+}
+.more-menu-signout i {
+    color: var(--danger);
+}
+.more-menu-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0;
+}
+.more-menu-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.more-menu-user i {
+    width: 20px;
+    text-align: center;
+}
+

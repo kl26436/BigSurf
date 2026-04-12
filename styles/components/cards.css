@@ -1,0 +1,147 @@
+/* ===========================================
+   3. CARD PATTERN (Apple Health / Withings style)
+   =========================================== */
+/* Flat, soft cards - no harsh gradients or loud borders */
+.hero-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: var(--shadow-sm);
+    padding: var(--pad-card-x);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Signature accent line - thin top border on important cards */
+.hero-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Warm accent for streaks/achievements */
+.hero-card-warm::before {
+    background: linear-gradient(90deg, var(--highlight-warm), var(--highlight-warm-dark));
+}
+.hero-card-warm {
+    border-color: rgba(247, 168, 101, 0.15);
+}
+
+/* Success accent */
+.hero-card-success::before {
+    background: var(--success);
+}
+
+/* No accent bar variant */
+.hero-card-flat::before {
+    display: none;
+}
+
+/* Active state */
+.hero-card:active {
+    background: var(--bg-card-hi);
+}
+
+/* ===========================================
+   3b. ROW CARD PATTERN (Unified List Items)
+   =========================================== */
+/* Use for: exercise cards, PR items, location items, equipment options, history items */
+.row-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    transition: background 0.15s ease;
+    cursor: pointer;
+}
+.row-card:active {
+    background: var(--bg-card-hi);
+}
+.row-card__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    background: rgba(29, 211, 176, 0.12);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+}
+.row-card__icon--warning {
+    background: rgba(255, 140, 0, 0.12);
+    color: #ff8c00;
+}
+.row-card__icon--success {
+    background: rgba(54, 196, 107, 0.12);
+    color: var(--success);
+}
+.row-card__content {
+    flex: 1;
+    min-width: 0;
+}
+.row-card__title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-strong);
+    letter-spacing: -0.01em;
+}
+.row-card__subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+}
+.row-card__action {
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+/* ===========================================
+   3c. SECTION HEADER PATTERN (Unified Headers)
+   =========================================== */
+/* Use for: all section headers across the app */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 18px 2px 10px;
+}
+.section-header__title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.section-header__action {
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.section-header__action:hover {
+    text-decoration: underline;
+}
+
+/* ===========================================
+   4. CARDS (Base flat style)
+   =========================================== */
+.card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+}
+.card-accent {
+    border-top: 3px solid var(--border-accent);
+}
+.card-success {
+    border-top: 3px solid var(--success);
+}
+

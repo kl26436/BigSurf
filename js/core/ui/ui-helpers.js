@@ -1,4 +1,5 @@
 // UI utility functions
+import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 
 // Escape HTML to prevent XSS — use for any user-controlled string rendered in innerHTML
 export function escapeHtml(text) {
@@ -112,8 +113,6 @@ export function displayWeight(weight, storedUnit, displayUnit) {
     }
     return { value: Math.round(weight), label: unit };
 }
-
-import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 
 export function updateProgress(state) {
     if (!state.currentWorkout || !state.savedData.exercises) return;
@@ -233,23 +232,65 @@ export function setHeaderMode(showFullHeader) {
     }
 }
 
-// Open a modal — works for both <dialog> and <div> modals
+// Open a modal — works for both <dialog> and <div> modals, accepts element or ID string
 export function openModal(modal) {
+    if (typeof modal === 'string') modal = document.getElementById(modal);
     if (!modal) return;
     if (modal.tagName === 'DIALOG') {
         if (!modal.open) modal.showModal();
     } else {
         modal.classList.remove('hidden');
     }
+    // Focus trapping: store previously focused element and focus first interactive child
+    modal._previousFocus = document.activeElement;
+    const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (firstFocusable) firstFocusable.focus();
+    // Escape key handler
+    if (!modal._escHandler) {
+        modal._escHandler = (e) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                closeModal(modal);
+            }
+        };
+    }
+    modal.addEventListener('keydown', modal._escHandler);
+    // Focus trap: keep Tab within modal
+    if (!modal._trapHandler) {
+        modal._trapHandler = (e) => {
+            if (e.key !== 'Tab') return;
+            const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusable.length === 0) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+    }
+    modal.addEventListener('keydown', modal._trapHandler);
 }
 
-// Close a modal — works for both <dialog> and <div> modals
+// Close a modal — works for both <dialog> and <div> modals, accepts element or ID string
 export function closeModal(modal) {
+    if (typeof modal === 'string') modal = document.getElementById(modal);
     if (!modal) return;
     if (modal.tagName === 'DIALOG') {
         if (modal.open) modal.close();
     } else {
         modal.classList.add('hidden');
+    }
+    // Remove focus trap and Escape handlers
+    if (modal._escHandler) modal.removeEventListener('keydown', modal._escHandler);
+    if (modal._trapHandler) modal.removeEventListener('keydown', modal._trapHandler);
+    // Restore focus to previously focused element
+    if (modal._previousFocus && modal._previousFocus.focus) {
+        modal._previousFocus.focus();
+        modal._previousFocus = null;
     }
 }
 

@@ -1,0 +1,848 @@
+/* ===========================================
+   37. STATS & BREAKDOWN
+   =========================================== */
+.stats-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    cursor: pointer;
+}
+.stats-section-title {
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.stats-header-bar {
+    margin-bottom: 16px;
+}
+.stats-loading,
+.stats-error {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+}
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+}
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+}
+.breakdown-row:last-child {
+    border: none;
+}
+.breakdown-name {
+    color: var(--text-main);
+}
+.breakdown-count {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* ===========================================
+   45. PROGRESS PAGE (Exercise Charts)
+   =========================================== */
+
+/* Progress Page Layout */
+.progress-page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-bottom: 20px;
+}
+
+.progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: -16px -16px 0 -16px;
+    padding: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.progress-header h2 {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--text-strong);
+    margin: 0;
+}
+
+/* Summary Cards */
+.progress-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.summary-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px 12px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.summary-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    font-size: 1rem;
+}
+
+.summary-icon.fire {
+    background: rgba(255, 149, 0, 0.15);
+    color: #ff9500;
+}
+
+.summary-icon.workouts {
+    background: rgba(29, 211, 176, 0.15);
+    color: var(--primary);
+}
+
+.summary-icon.exercises {
+    background: rgba(88, 86, 214, 0.15);
+    color: #5856d6;
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    line-height: 1.2;
+}
+
+.summary-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+/* Exercise Selector - Hierarchical */
+.exercise-selector-hierarchy {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Category Pills (Push/Pull/Legs) */
+.category-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.category-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.category-pill:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-main);
+}
+
+.category-pill.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #000;
+}
+
+.category-pill i {
+    font-size: 0.85rem;
+}
+
+/* Exercise Row */
+.exercise-row {
+    margin-bottom: 16px;
+}
+
+.exercise-dropdown {
+    width: 100%;
+}
+
+/* Equipment Section */
+.equipment-section {
+    margin-top: 4px;
+}
+
+.equipment-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.equipment-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.equipment-pill:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.equipment-pill.active {
+    background: rgba(29, 211, 176, 0.15);
+    border-color: var(--primary);
+    color: var(--text-strong);
+}
+
+.equipment-count {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: var(--text-muted);
+}
+
+.equipment-pill.active .equipment-count {
+    background: rgba(29, 211, 176, 0.3);
+    color: var(--primary);
+}
+
+/* Legacy selector (for backwards compat) */
+.exercise-selector {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.selector-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.exercise-select {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-input);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a8a9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+}
+
+.exercise-select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.exercise-select optgroup {
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-card);
+}
+
+.exercise-select option {
+    padding: 8px;
+    background: var(--bg-card);
+    color: var(--text-main);
+}
+
+.no-exercises-msg {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+.no-exercises-msg i {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+/* Chart Section */
+.progress-chart-section {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Time Range Picker */
+.time-range-picker {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.time-range-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.time-range-btn:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-main);
+}
+
+.time-range-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #000;
+}
+
+/* Chart Container */
+.chart-container {
+    height: 220px;
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.chart-container canvas {
+    max-height: 100%;
+}
+
+.no-chart-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 180px;
+    color: var(--text-muted);
+    gap: 12px;
+}
+
+.no-chart-data i {
+    font-size: 2rem;
+    opacity: 0.4;
+}
+
+/* Stats Summary Grid */
+.exercise-stats-summary {
+    margin-top: 8px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.stat-box {
+    text-align: center;
+    padding: 12px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-sm);
+}
+
+.stat-box.highlight {
+    background: rgba(29, 211, 176, 0.1);
+    border: 1px solid rgba(29, 211, 176, 0.2);
+}
+
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 2px;
+}
+
+.stat-value.positive {
+    color: var(--primary);
+}
+
+.stat-value.negative {
+    color: #ff6b6b;
+}
+
+.stat-value i {
+    font-size: 0.85rem;
+    margin-right: 2px;
+}
+
+.stat-unit {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+.stat-detail {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Session History */
+.session-history {
+    margin-top: 8px;
+}
+
+.history-section {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.history-count {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-sm);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.history-date {
+    font-weight: 500;
+    color: var(--text-main);
+    min-width: 80px;
+}
+
+.history-details {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.history-weight {
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.history-reps {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.history-location {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    width: 100%;
+}
+
+.history-location i {
+    margin-right: 4px;
+    color: var(--primary);
+}
+
+/* PR badges in session history */
+.history-item--pr {
+    border-left: 3px solid #f0a500;
+    background: rgba(240, 165, 0, 0.06);
+}
+.pr-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #f0a500;
+    margin-left: 6px;
+}
+.history-weight--best {
+    color: var(--success);
+}
+
+/* Trend indicator */
+.trend-indicator {
+    text-align: center;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+}
+.trend-up {
+    color: var(--success);
+    background: rgba(64, 224, 208, 0.08);
+}
+.trend-down {
+    color: var(--danger);
+    background: rgba(255, 77, 77, 0.08);
+}
+.trend-flat {
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Section Cards (shared style for new sections) */
+.section-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    margin-top: 16px;
+}
+
+.section-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-card-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-strong);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-card-header h3 i {
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+/* Body Part Distribution (Donut Chart) */
+.body-part-content {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.donut-chart-container {
+    width: 140px;
+    height: 140px;
+    flex-shrink: 0;
+}
+
+.body-part-legend {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.legend-label {
+    flex: 1;
+    font-size: 0.85rem;
+    color: var(--text-main);
+}
+
+.legend-value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+/* Consistency Heat Map (GitHub style) */
+.heat-map-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.heat-map-container {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.heat-map-days {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 6px;
+}
+
+.heat-map-day-label {
+    width: 18px;
+    height: 18px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.heat-map-grid {
+    display: flex;
+    gap: 4px;
+}
+
+.heat-map-week {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.heat-map-cell {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: transform 0.1s ease;
+}
+
+.heat-map-cell:hover {
+    transform: scale(1.15);
+}
+
+.heat-map-cell.intensity-0 {
+    background: rgba(255, 255, 255, 0.05);
+}
+.heat-map-cell.intensity-1 {
+    background: rgba(29, 211, 176, 0.25);
+}
+.heat-map-cell.intensity-2 {
+    background: rgba(29, 211, 176, 0.45);
+}
+.heat-map-cell.intensity-3 {
+    background: rgba(29, 211, 176, 0.7);
+}
+.heat-map-cell.intensity-4 {
+    background: var(--primary);
+}
+
+.heat-map-cell.today {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}
+
+.heat-map-cell.future {
+    opacity: 0.3;
+}
+
+.heat-map-legend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 16px;
+}
+
+.heat-map-legend .heat-map-cell {
+    width: 12px;
+    height: 12px;
+}
+
+.heat-map-legend .heat-map-cell:hover {
+    transform: none;
+}
+
+.heat-map-legend-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin: 0 4px;
+}
+
+/* PR Timeline (Milestone View) */
+.pr-timeline {
+    position: relative;
+    padding-left: 24px;
+}
+
+.pr-timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 1px;
+}
+
+.pr-timeline-item {
+    position: relative;
+    padding-bottom: 16px;
+}
+
+.pr-timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.pr-timeline-marker {
+    position: absolute;
+    left: -24px;
+    top: 0;
+    width: 18px;
+    height: 18px;
+    background: var(--bg-card-hi);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pr-timeline-marker i {
+    font-size: 0.5rem;
+    color: var(--text-muted);
+}
+
+.pr-timeline-item.latest .pr-timeline-marker {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.pr-timeline-item.latest .pr-timeline-marker i {
+    color: #000;
+}
+
+.pr-timeline-content {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+}
+
+.pr-timeline-item.latest .pr-timeline-content {
+    background: rgba(29, 211, 176, 0.08);
+    border: 1px solid rgba(29, 211, 176, 0.15);
+}
+
+.pr-timeline-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.pr-timeline-exercise {
+    font-weight: 600;
+    color: var(--text-strong);
+    margin-bottom: 4px;
+}
+
+.pr-timeline-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.pr-timeline-weight {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.pr-timeline-reps {
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.pr-timeline-equipment {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+}
+
+.pr-timeline-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text-muted);
+}
+
+.pr-timeline-empty i {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    opacity: 0.4;
+}
+

@@ -1,0 +1,110 @@
+/* ===========================================
+   11. FORMS & INPUTS
+   =========================================== */
+.form-group {
+    margin-bottom: 16px;
+}
+.form-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text-main);
+}
+.form-input {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: 1rem;
+}
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+.form-input::placeholder {
+    color: var(--text-muted);
+}
+
+textarea.form-input {
+    min-height: 100px;
+    resize: vertical;
+}
+
+select.form-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b949e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+}
+
+/* Remove number spinners */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type='number'] {
+    -moz-appearance: textfield;
+}
+
+/* ===========================================
+   33. FORM INPUT ELEMENTS
+   =========================================== */
+.edit-exercise-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+}
+.edit-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.edit-field label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.edit-input-full,
+.edit-input-large {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: 1rem;
+}
+.edit-input-full:focus,
+.edit-input-large:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+.edit-input-number {
+    width: 80px;
+    padding: 10px;
+    text-align: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: 1rem;
+}
+.btn-save {
+    background: var(--primary);
+    color: #02100e;
+    border: none;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-save:hover {
+    background: var(--primary-dark);
+}
+

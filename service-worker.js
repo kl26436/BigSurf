@@ -4,7 +4,7 @@
 const CACHE_NAME = 'big-surf-v4.95-unified-sw';
 const STATIC_ASSETS = [
   '/index.html',
-  '/style.css',
+  '/styles/index.css',
   '/BigSurf.png',
   '/js/main.js',
   '/js/core/app-initialization.js',

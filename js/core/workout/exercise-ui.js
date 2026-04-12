@@ -324,14 +324,14 @@ function generateQuickSetsHtml(exercise, exerciseIndex, unit) {
             }
 
             html += `
-                <div style="background: var(--success); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500;">
+                <div class="badge--success">
                     Set ${setIndex + 1}: ${set.reps} × ${displayWeight} ${unit}
                 </div>
             `;
         } else {
             // Show incomplete sets as gray placeholders
             html += `
-                <div style="background: var(--bg-tertiary); color: var(--text-secondary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; border: 1px dashed var(--border);">
+                <div class="badge--muted">
                     Set ${setIndex + 1}
                 </div>
             `;
@@ -383,7 +383,7 @@ export function createExerciseCard(exercise, index) {
     // Build card DOM programmatically (avoids innerHTML with user data)
     const titleRow = document.createElement('div');
     titleRow.className = 'exercise-title-row';
-    titleRow.style.cursor = 'pointer';
+    titleRow.classList.add('clickable');
     titleRow.addEventListener('click', () => window.focusExercise(index));
 
     const titleInfo = document.createElement('div');
@@ -418,7 +418,7 @@ export function createExerciseCard(exercise, index) {
 
     const progressRow = document.createElement('div');
     progressRow.className = 'exercise-progress-row';
-    progressRow.style.cursor = 'pointer';
+    progressRow.classList.add('clickable');
     progressRow.addEventListener('click', () => window.focusExercise(index));
 
     const progressTrack = document.createElement('div');
@@ -762,7 +762,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
         <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes..."
                   onchange="saveExerciseNotes(${exerciseIndex})">${escapeHtml(savedNotes)}</textarea>
 
-        <div class="exercise-complete-section" style="margin-top: 1rem; text-align: center;">
+        <div class="exercise-complete-section">
             <button class="btn btn-success" onclick="markExerciseComplete(${exerciseIndex})">
                 <i class="fas fa-check-circle"></i> Mark Exercise Complete
             </button>
@@ -836,7 +836,7 @@ async function toggleInlineProgress(exerciseName, equipment, exerciseIndex, btn)
         });
 
         if (sessions.length === 0) {
-            display.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 12px;">No previous sessions found</p>';
+            display.innerHTML = '<p class="inline-muted-text">No previous sessions found</p>';
             return;
         }
 
@@ -886,7 +886,7 @@ async function toggleInlineProgress(exerciseName, equipment, exerciseIndex, btn)
         display.innerHTML = html;
     } catch (error) {
         console.error('Error loading inline progress:', error);
-        display.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 12px;">Error loading progress</p>';
+        display.innerHTML = '<p class="inline-muted-text">Error loading progress</p>';
     }
 }
 
@@ -932,7 +932,7 @@ async function checkSetForPR(exerciseIndex, setIndex) {
                 const prBadge = document.createElement('span');
                 prBadge.className = 'pr-badge';
                 prBadge.innerHTML =
-                    ' <i class="fas fa-trophy" style="color: gold; margin-left: 0.5rem; animation: pulse 1s infinite;"></i>';
+                    ' <i class="fas fa-trophy text-badge-gold" style="margin-left: 0.5rem; animation: pulse 1s infinite;"></i>';
                 prBadge.title = `New ${prCheck.prType
                     .replace('max', '')
                     .replace(/([A-Z])/g, ' $1')

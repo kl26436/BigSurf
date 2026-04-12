@@ -1,0 +1,609 @@
+/* ===========================================
+   9. WORKOUT LIBRARY / TEMPLATES
+   =========================================== */
+.template-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.template-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    padding: var(--pad-card-x);
+    position: relative;
+    overflow: hidden;
+}
+.template-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    background: var(--primary);
+}
+.template-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+.template-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+.template-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.template-exercises {
+    margin-bottom: 14px;
+    padding: 14px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-sm);
+}
+.template-exercise-item {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.9rem;
+}
+.template-exercise-item:last-child {
+    border: none;
+}
+
+.exercise-reorder-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.btn-reorder {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+}
+
+.btn-reorder:not(:disabled):active {
+    background: var(--primary);
+    color: #fff;
+}
+
+.btn-reorder:disabled {
+    opacity: 0.2;
+    cursor: default;
+}
+
+.exercise-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.exercise-item-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.template-exercises-list {
+    margin-bottom: 14px;
+    padding: 14px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-sm);
+}
+/* Template exercise item layout */
+.exercise-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.exercise-row .exercise-info {
+    cursor: pointer;
+}
+
+/* Inline edit accordion */
+.exercise-inline-edit {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-sm);
+}
+
+.inline-edit-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.inline-edit-row {
+    display: flex;
+    gap: 10px;
+}
+
+.inline-edit-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.inline-edit-field-wide {
+    flex: 1 1 100%;
+}
+
+.inline-edit-field label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.inline-edit-field .form-input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 1rem;
+    -moz-appearance: textfield;
+}
+
+.inline-edit-field .form-input::-webkit-inner-spin-button,
+.inline-edit-field .form-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.inline-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.inline-edit-actions .btn {
+    padding: 8px 20px;
+}
+
+/* Inline add exercise search */
+.inline-add-exercise {
+    margin-top: 8px;
+    position: relative;
+}
+
+.inline-search-wrapper {
+    position: relative;
+}
+
+.inline-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.inline-search-wrapper .form-input {
+    padding-left: 32px;
+    width: 100%;
+}
+
+.inline-search-results {
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.inline-search-result {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.1s;
+}
+
+.inline-search-result:last-child {
+    border-bottom: none;
+}
+
+.inline-search-result:active {
+    background: rgba(29, 211, 176, 0.15);
+}
+
+.inline-search-result.inline-result-added {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.inline-result-name {
+    font-weight: 500;
+    color: var(--text-strong);
+}
+
+.inline-result-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.inline-result-check {
+    margin-left: auto;
+    color: var(--primary);
+    font-size: 0.8rem;
+}
+
+.inline-search-empty {
+    padding: 12px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.inline-search-empty a {
+    color: var(--primary);
+}
+
+.inline-equipment-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: rgba(29, 211, 176, 0.05);
+    border: 1px solid rgba(29, 211, 176, 0.2);
+    border-radius: var(--radius-sm);
+}
+
+.inline-equipment-row .form-input {
+    flex: 1;
+}
+
+/* Quick-add chips */
+.quick-add-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.quick-add-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-right: 2px;
+}
+
+.quick-add-chip {
+    background: rgba(29, 211, 176, 0.1);
+    border: 1px solid rgba(29, 211, 176, 0.3);
+    color: var(--primary);
+    border-radius: 16px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.quick-add-chip:active {
+    background: rgba(29, 211, 176, 0.25);
+}
+
+/* Save as Template banner */
+.save-template-banner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    background: rgba(29, 211, 176, 0.1);
+    border: 1px solid rgba(29, 211, 176, 0.3);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    color: var(--text-strong);
+    animation: slideDown 0.3s ease;
+}
+
+.save-template-banner > span {
+    flex: 1 1 100%;
+}
+.save-template-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex: 1;
+}
+
+.btn-dismiss {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 1rem;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.exercise-number {
+    color: var(--text-muted);
+    font-weight: 500;
+    min-width: 20px;
+}
+.exercise-name {
+    font-weight: 500;
+    color: var(--text-strong);
+    flex: 1;
+    min-width: 0;
+}
+.exercise-details {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+.template-exercise-equipment {
+    font-size: 0.75rem;
+    background: rgba(29, 211, 176, 0.15);
+    color: var(--primary);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* Template card active state */
+.template-card:active {
+    background: var(--bg-card-hi);
+}
+
+/* Template header styling */
+.template-header h4 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-strong);
+    margin: 0 0 4px 0;
+}
+.template-category {
+    display: inline-block;
+    background: rgba(29, 211, 176, 0.15);
+    color: var(--primary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.template-source {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-left: 8px;
+}
+
+/* Template preview section */
+.template-preview {
+    margin: 12px 0;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: var(--radius-sm);
+}
+.exercise-count {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+.exercise-list-preview {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.exercise-list-preview li {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.exercise-list-preview li:last-child {
+    border-bottom: none;
+}
+.exercise-list-preview li::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Template actions */
+.template-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+.template-actions .btn {
+    white-space: nowrap;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    border-radius: var(--radius-md);
+}
+.template-actions .btn-primary {
+    flex: 1;
+    background: var(--primary);
+    color: #02100e;
+    font-weight: 600;
+}
+.template-actions .btn-secondary,
+.template-actions .btn-danger {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+}
+.template-actions .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+}
+.template-actions .btn-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+/* Icon-only buttons in tight spaces */
+.template-actions .btn-icon {
+    padding: 10px 12px;
+    min-width: auto;
+}
+.template-actions .btn-icon .btn-text {
+    display: none;
+}
+
+/* ===========================================
+   20. WORKOUT SELECTOR
+   =========================================== */
+/* Workout Selector Page */
+#workout-selector {
+    padding: var(--pad-page);
+    padding-top: 0; /* Header handles its own top padding */
+}
+#workout-selector .section-header-row {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg-app);
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+}
+#workout-selector .section-header {
+    margin-bottom: 24px;
+    display: block;
+}
+#workout-selector .section-header h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    color: var(--text-strong);
+    line-height: 1.2;
+}
+#workout-selector .section-header p {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.workout-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.workout-option {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+}
+.workout-option::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.workout-option:hover {
+    background: var(--bg-card-hi);
+    border-color: rgba(29, 211, 176, 0.3);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+.workout-option:hover::before {
+    opacity: 1;
+}
+.workout-option:active {
+    transform: scale(0.98);
+}
+.workout-option i {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    background: rgba(29, 211, 176, 0.12);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+.workout-option span {
+    font-weight: 700;
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-strong);
+}
+.workout-option p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* ===========================================
+   43. DAY SELECTOR
+   =========================================== */
+.day-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+}
+.day-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+.day-checkbox input {
+    display: none;
+}
+.day-checkbox.checked,
+.day-checkbox:has(input:checked) {
+    border-color: var(--primary);
+    background: rgba(29, 211, 176, 0.1);
+}
+.day-number {
+    font-weight: 500;
+}
+

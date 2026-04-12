@@ -1,0 +1,62 @@
+/* ===========================================
+   2. RESET & BASE
+   =========================================== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+html,
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+body {
+    background: var(--bg-app);
+    color: var(--text-strong);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    line-height: 1.5;
+}
+
+input,
+select,
+textarea {
+    font-size: 1rem; /* Prevent iOS auto-zoom on focus */
+}
+
+/* Disable double-tap zoom delay on interactive elements */
+button,
+a,
+.btn,
+input,
+select,
+textarea,
+.bottom-nav-item,
+.clickable {
+    touch-action: manipulation;
+}
+
+/* iOS momentum scrolling for scrollable containers */
+.sidebar,
+.modal > .modal-content,
+.modal-content-editor,
+.exercise-list-container,
+.section-content-scroll {
+    -webkit-overflow-scrolling: touch;
+}
+
+.hidden {
+    display: none !important;
+}
+.text-muted {
+    color: var(--text-muted);
+}
+.text-primary {
+    color: var(--primary);
+}
+

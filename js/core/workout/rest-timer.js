@@ -55,7 +55,7 @@ function startModalRestTimer(exerciseIndex, duration = Config.DEFAULT_REST_TIMER
     modalTimer.classList.remove('hidden');
 
     // Set timer text to primary color (teal)
-    timerDisplay.style.color = 'var(--primary)';
+    timerDisplay.classList.remove('timer-complete');
 
     let timeLeft = duration;
     let isPaused = false;
@@ -99,7 +99,7 @@ function startModalRestTimer(exerciseIndex, duration = Config.DEFAULT_REST_TIMER
 
         if (timeLeft === 0) {
             timerDisplay.textContent = 'Ready!';
-            timerDisplay.style.color = 'var(--success)';
+            timerDisplay.classList.add('timer-complete');
 
             // Update header timer with "GO!" message
             if (headerTimerEl) headerTimerEl.textContent = 'GO!';
@@ -170,7 +170,7 @@ function startModalRestTimer(exerciseIndex, duration = Config.DEFAULT_REST_TIMER
                 cancelAnimationFrame(modalTimer.timerData.animationFrame);
             }
             modalTimer.classList.add('hidden');
-            timerDisplay.style.color = 'var(--primary)';
+            timerDisplay.classList.remove('timer-complete');
             modalTimer.timerData = null;
 
             // Reset header timer
@@ -226,7 +226,7 @@ function clearModalRestTimer(exerciseIndex) {
     // Reset display
     const timerDisplay = modalTimer.querySelector('.modal-rest-display');
     if (timerDisplay) {
-        timerDisplay.style.color = 'var(--primary)';
+        timerDisplay.classList.remove('timer-complete');
     }
 
     // Reset pause button
@@ -249,7 +249,7 @@ export function restoreModalRestTimer(exerciseIndex, timerState) {
     modalTimer.classList.remove('hidden');
 
     // Set timer text to primary color (teal)
-    timerDisplay.style.color = 'var(--primary)';
+    timerDisplay.classList.remove('timer-complete');
 
     // Use the saved timeLeft as our starting point, reset startTime to now
     // This ensures the timer continues from where it was saved, not recalculated
@@ -280,7 +280,7 @@ export function restoreModalRestTimer(exerciseIndex, timerState) {
 
         if (timeLeft === 0) {
             timerDisplay.textContent = 'Ready!';
-            timerDisplay.style.color = 'var(--success)';
+            timerDisplay.classList.add('timer-complete');
 
             // Vibration
             if ('vibrate' in navigator) {
@@ -336,7 +336,7 @@ export function restoreModalRestTimer(exerciseIndex, timerState) {
                 cancelAnimationFrame(modalTimer.timerData.animationFrame);
             }
             modalTimer.classList.add('hidden');
-            timerDisplay.style.color = 'var(--primary)';
+            timerDisplay.classList.remove('timer-complete');
             modalTimer.timerData = null;
         },
     };
@@ -358,7 +358,7 @@ function stopModalRestTimer(exerciseIndex) {
     // Reset display color
     const timerDisplay = modalTimer.querySelector('.modal-rest-display');
     if (timerDisplay) {
-        timerDisplay.style.color = 'var(--primary)';
+        timerDisplay.classList.remove('timer-complete');
     }
 
     // Reset pause button
@@ -441,7 +441,7 @@ export function restoreTimerFromAppState(exerciseIndex) {
         if (modalTimer && timerDisplay) {
             modalTimer.classList.remove('hidden');
             timerDisplay.textContent = 'Ready!';
-            timerDisplay.style.color = 'var(--success)';
+            timerDisplay.classList.add('timer-complete');
         }
     }
 }

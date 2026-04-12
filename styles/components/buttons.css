@@ -1,0 +1,71 @@
+/* ===========================================
+   4. BUTTONS (iOS-style flat, minimal)
+   =========================================== */
+.btn {
+    min-height: var(--tap);
+    padding: 0 18px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--bg-card-hi);
+    color: var(--text-strong);
+    font: 600 0.9rem var(--font);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s ease;
+}
+.btn:active {
+    transform: scale(0.97);
+    background: var(--bg-card);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #02100e;
+}
+.btn-primary:active {
+    background: var(--primary-dark);
+}
+.btn-secondary {
+    background: var(--bg-card);
+    color: var(--text-main);
+}
+.btn-success {
+    background: var(--success);
+    color: white;
+}
+.btn-danger {
+    background: transparent;
+    color: var(--text-muted);
+}
+.btn-danger:active {
+    color: var(--danger);
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    padding: 8px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.btn-text:active {
+    color: var(--text-strong);
+}
+.btn-text-danger {
+    color: var(--danger);
+}
+
+.btn-full {
+    width: 100%;
+}
+.btn-small,
+.btn-sm {
+    min-height: 36px;
+    padding: 0 14px;
+    font-size: 0.85rem;
+}
+

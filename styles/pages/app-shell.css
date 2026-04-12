@@ -1,0 +1,130 @@
+/* ===========================================
+   5. LAYOUT - APP SHELL
+   =========================================== */
+.app-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 16px;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Header */
+.main-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 200;
+}
+.main-header h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+}
+.menu-toggle {
+    width: var(--tap);
+    height: var(--tap);
+    background: none;
+    border: none;
+    color: var(--text-strong);
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100%;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    z-index: 300;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+}
+.sidebar.open {
+    left: 0;
+}
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 299;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s;
+}
+.sidebar-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+}
+.sidebar-nav {
+    padding: 12px 0;
+}
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    color: var(--text-main);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.sidebar-link:hover,
+.sidebar-link.active {
+    background: rgba(29, 211, 176, 0.1);
+    color: var(--primary);
+}
+.sidebar-link i {
+    width: 20px;
+    text-align: center;
+}
+
+/* Bottom Nav */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 12px 0 env(safe-area-inset-bottom, 16px);
+    z-index: 200;
+}
+.bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 20px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    min-height: 48px;
+}
+.bottom-nav-item i {
+    font-size: 1.25rem;
+}
+.bottom-nav-item.active,
+.bottom-nav-item:hover {
+    color: var(--primary);
+}
+

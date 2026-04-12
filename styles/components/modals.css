@@ -1,0 +1,1079 @@
+/* ===========================================
+   8. MODALS - BASE STYLES
+   =========================================== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 500;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+}
+.modal-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+.modal-close,
+.close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.modal-body {
+    padding: 20px;
+}
+
+/* Exercise Detail Modal - Full Screen */
+#exercise-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-app);
+    z-index: 600;
+    overflow-y: auto;
+    /* Override base dialog.modal flex alignment for full-screen style */
+    display: block;
+    align-items: unset;
+    border: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+}
+#exercise-modal:not([open]) {
+    display: none;
+}
+
+#exercise-modal > .modal-content {
+    width: 100%;
+    min-height: 100%;
+    background: var(--bg-app);
+    position: relative;
+}
+#exercise-modal > .modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+    z-index: 2;
+}
+
+#exercise-modal .modal-header {
+    padding: 16px;
+    padding-top: 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-app);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Hidden video section should not take space */
+#exercise-video-section.hidden,
+.video-section.hidden {
+    display: none !important;
+}
+#modal-exercise-title {
+    margin: 0;
+}
+.exercise-detail-name {
+    display: block;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.exercise-detail-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+.exercise-detail-meta i {
+    margin-right: 3px;
+    opacity: 0.6;
+}
+.exercise-detail-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    flex-wrap: wrap;
+}
+.exercise-detail-actions .btn-text {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.exercise-detail-actions .btn-text:active {
+    background: rgba(29, 211, 176, 0.15);
+    color: var(--primary);
+}
+
+#exercise-content {
+    padding: 16px;
+}
+
+/* Exercise History Section */
+.exercise-history-section {
+    margin-bottom: 16px;
+}
+.exercise-history-section > div:first-child {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.exercise-history-display {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+}
+
+/* Exercise Unit Toggle in Modal */
+.exercise-unit-toggle {
+    margin-bottom: 16px;
+}
+
+/* Exercise Table Styling */
+.exercise-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+}
+.exercise-table thead th {
+    padding: 10px 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+}
+.exercise-table thead th:first-child {
+    text-align: left;
+    width: 60px;
+}
+.exercise-table tbody td {
+    padding: 8px;
+    vertical-align: middle;
+}
+.exercise-table tbody td:first-child {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+.exercise-table tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.exercise-table tbody tr:last-child {
+    border-bottom: none;
+}
+.exercise-table input[type='number'] {
+    width: 100%;
+    padding: 12px 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: 1rem;
+    font-weight: 500;
+    text-align: center;
+}
+.exercise-table input[type='number']:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(29, 211, 176, 0.2);
+}
+
+/* Set Action Buttons */
+.set-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.set-actions button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.set-actions button:last-child {
+    background: rgba(29, 211, 176, 0.15);
+    border-color: rgba(29, 211, 176, 0.3);
+    color: var(--primary);
+}
+.set-actions button:hover {
+    border-color: var(--primary);
+}
+
+/* Exercise Notes Textarea */
+.exercise-notes,
+#exercise-content textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-family: var(--font);
+    font-size: 1rem;
+    resize: vertical;
+    margin-bottom: 16px;
+}
+.exercise-notes:focus,
+#exercise-content textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+.exercise-notes::placeholder,
+#exercise-content textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* Mark Complete Button */
+.complete-exercise-btn,
+#exercise-content .btn-success {
+    width: 100%;
+    padding: 16px;
+    background: var(--success);
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Unit Toggle */
+.unit-toggle-container {
+    margin-bottom: 16px;
+}
+.unit-toggle {
+    display: inline-flex;
+    background: var(--bg-card);
+    border-radius: 20px;
+    padding: 4px;
+}
+.unit-btn {
+    padding: 8px 20px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 16px;
+    transition: all 0.2s;
+}
+.unit-btn.active {
+    background: var(--primary);
+    color: #02100e;
+}
+
+/* Rest Timer */
+.modal-rest-timer {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    text-align: center;
+    margin-top: 16px;
+}
+.modal-rest-display {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+.modal-rest-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+/* Mark Complete Button */
+.complete-exercise-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--success);
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+/* ===========================================
+   21. MODALS (Additional Styles)
+   =========================================== */
+/* Base modal - bottom sheet style */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 500;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    animation: modalFadeIn 0.2s ease;
+}
+.modal.hidden {
+    display: none !important;
+}
+
+/* Dialog-based modals (e.g., exercise detail) */
+dialog.modal {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    color: var(--text-primary);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+dialog.modal::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+}
+dialog.modal:not([open]) {
+    display: none;
+}
+
+.modal > .modal-content {
+    background: var(--bg-app);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: none;
+    animation: modalSlideUp 0.25s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+@keyframes modalSlideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+.modal-content-small,
+.modal-small {
+    max-width: 400px;
+    margin: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.modal-medium {
+    max-width: 500px;
+    margin: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.modal-description {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+.close-btn:active {
+    color: var(--text-strong);
+}
+.modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 16px;
+}
+.modal-actions-top {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+}
+
+/* Full-screen modals (no dead space at top) */
+#exercise-library-modal,
+#template-editor-modal,
+#add-exercise-modal,
+#template-selection-modal {
+    align-items: stretch;
+}
+#exercise-library-modal > .modal-content,
+#template-editor-modal > .modal-content,
+#add-exercise-modal > .modal-content,
+#template-selection-modal > .modal-content {
+    max-height: 100vh; /* fallback */
+    max-height: 100dvh;
+    /* min-height removed (Phase 1.1) — only outermost wrapper should set viewport height */
+    border-radius: 0;
+}
+
+/* Modals that appear above exercise library modal (which gets z-index 1100 inline) */
+#location-selector-modal,
+#workout-location-selector-modal,
+#equipment-picker-modal {
+    z-index: 1200;
+}
+
+/* Equipment editor section appears above exercise modal */
+#equipment-editor-section {
+    z-index: 1150;
+}
+
+/* Equipment Reassignment Modal */
+.reassign-header-info {
+    margin-bottom: 8px;
+}
+.reassign-current {
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+.reassign-current .text-muted {
+    margin-right: 4px;
+}
+.reassign-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    margin-top: 8px;
+}
+.reassign-exercise-option {
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s ease;
+}
+.reassign-exercise-option:active {
+    transform: scale(0.98);
+}
+.reassign-exercise-option.selected {
+    border-color: var(--primary);
+    background: rgba(29, 211, 176, 0.06);
+}
+.reassign-exercise-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.reassign-exercise-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.reassign-impact {
+    padding: 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+}
+.reassign-impact p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+.reassign-progress {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    position: relative;
+}
+.reassign-progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+.reassign-progress-text {
+    display: block;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+.reassign-confirm-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+.reassign-confirm-actions .btn {
+    flex: 1;
+}
+
+/* Equipment exercise videos list */
+.equipment-exercise-videos-list {
+    margin-bottom: 8px;
+}
+.equipment-video-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+}
+.equipment-video-info {
+    flex: 1;
+    min-width: 0;
+}
+.equipment-video-exercise {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+.equipment-video-url {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Equipment Library Page */
+.equipment-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-xs);
+}
+.location-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: var(--radius-xs);
+}
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 50%;
+}
+.btn-icon:active {
+    background: rgba(255, 255, 255, 0.06);
+}
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.section-header__title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* Settings Page */
+.settings-page {
+    padding: 16px;
+}
+.settings-group {
+    margin-bottom: 24px;
+}
+.settings-group-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    padding: 0 4px;
+}
+.settings-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.settings-label {
+    flex: 1;
+    min-width: 0;
+}
+.settings-name {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    display: block;
+}
+.settings-description {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: block;
+    margin-top: 2px;
+}
+.settings-control select {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+}
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+.toggle-switch input {
+    display: none;
+}
+.toggle-slider {
+    width: 48px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    position: relative;
+    display: inline-block;
+    transition: background 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--primary);
+}
+.toggle-slider::after {
+    content: '';
+    width: 22px;
+    height: 22px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider::after {
+    transform: translateX(20px);
+}
+
+/* Onboarding */
+.onboarding-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-onboarding);
+    background: var(--bg-app);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+.onboarding-card {
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+}
+.onboarding-card h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.onboarding-card p {
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    font-size: 0.95rem;
+}
+.onboarding-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    color: var(--primary);
+}
+.onboarding-choices {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+.onboarding-choices .btn {
+    flex: 1;
+    padding: 20px 16px;
+    font-size: 1.1rem;
+}
+.onboarding-goal-picker {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+.onboarding-goal-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.onboarding-goal-btn.active {
+    border-color: var(--primary);
+    background: rgba(29, 211, 176, 0.15);
+    color: var(--primary);
+}
+
+/* Workout Detail Modal */
+.workout-detail-summary {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 20px;
+}
+.workout-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.workout-meta div {
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+.workout-meta strong {
+    color: var(--text-muted);
+}
+.workout-exercises {
+    margin-bottom: 20px;
+}
+.workout-exercises > h3 {
+    font-size: 1rem;
+    margin-bottom: 12px;
+    color: var(--text-strong);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+.workout-exercises h5,
+.exercise-detail-item h5 {
+    color: var(--primary);
+    margin: 0 0 10px 0;
+    font-size: 0.95rem;
+}
+.exercise-detail-item {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--primary);
+}
+.exercise-detail-item:last-child {
+    margin-bottom: 0;
+}
+.exercise-notes {
+    margin-top: 8px;
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+.sets-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.set-badge {
+    background: var(--bg-surface);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: var(--text-main);
+}
+.no-sets-text {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* ===========================================
+   25. MANUAL WORKOUT MODAL
+   =========================================== */
+.manual-workout-modal {
+    max-height: 95vh;
+}
+.manual-step {
+    padding: 20px;
+}
+.manual-step.hidden {
+    display: none;
+}
+
+.manual-workout-source-section {
+    margin-top: 20px;
+}
+.section-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+.workout-source-option {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+.source-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    cursor: pointer;
+}
+.source-header i:first-child {
+    color: var(--primary);
+}
+.source-header span {
+    flex: 1;
+    font-weight: 500;
+}
+.toggle-icon {
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+.source-content {
+    padding: 0 14px 14px;
+}
+.source-content.hidden {
+    display: none;
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.step-info {
+    flex: 1;
+}
+.step-info h4 {
+    margin: 0 0 4px;
+}
+.step-info p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.step-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.manual-location-section {
+    margin-bottom: 16px;
+}
+.manual-location-row {
+    display: flex;
+    gap: 10px;
+}
+.manual-exercises-container {
+    margin-bottom: 16px;
+}
+.manual-add-exercise-section {
+    margin-bottom: 16px;
+}
+.manual-final-details {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.library-loading {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+}
+
+/* ===========================================
+   41. MANUAL WORKOUT COMPONENTS
+   =========================================== */
+.manual-exercise-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+.manual-exercise-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.manual-exercise-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+.manual-exercise-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.manual-exercise-equipment {
+    font-size: 0.75rem;
+    background: rgba(29, 211, 176, 0.15);
+    color: var(--primary);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+.manual-set-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr auto;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.manual-sets-grid {
+    margin-bottom: 12px;
+}
+.manual-library-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+.manual-library-item:hover {
+    background: var(--bg-card-hi);
+}
+
+/* ===========================================
+   MODAL ENTRANCE/EXIT ANIMATIONS
+   Override generic .hidden (display:none) for modals
+   so CSS transitions can animate opacity & slide
+   =========================================== */
+.modal.hidden {
+    display: flex !important; /* Override generic .hidden */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        opacity 0.2s ease,
+        visibility 0.2s;
+}
+.modal:not(.hidden),
+dialog.modal[open] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition:
+        opacity 0.2s ease,
+        visibility 0.2s;
+}
+.modal .modal-content {
+    transform: translateY(20px);
+    transition: transform 0.25s ease;
+}
+.modal:not(.hidden) .modal-content,
+dialog.modal[open] .modal-content {
+    transform: translateY(0);
+}
+

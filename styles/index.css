@@ -1,0 +1,31 @@
+/* ============================================================================
+   BIG SURF WORKOUT TRACKER — CSS Module Index
+   Import order: tokens → reset → components → pages → utilities (last)
+   ============================================================================ */
+
+/* 1. Design tokens (CSS custom properties) */
+@import url('tokens.css');
+
+/* 2. Reset & base element styles */
+@import url('reset.css');
+
+/* 3. Reusable component patterns */
+@import url('components/cards.css');
+@import url('components/buttons.css');
+@import url('components/forms.css');
+@import url('components/modals.css');
+@import url('components/nav.css');
+@import url('components/empty-states.css');
+
+/* 4. Page-specific layouts */
+@import url('pages/app-shell.css');
+@import url('pages/dashboard.css');
+@import url('pages/workout.css');
+@import url('pages/templates.css');
+@import url('pages/history.css');
+@import url('pages/stats.css');
+@import url('pages/exercise-lib.css');
+@import url('pages/settings.css');
+
+/* 5. Utility classes & animations (always last — highest specificity intent) */
+@import url('utilities.css');

@@ -1,0 +1,1438 @@
+/* ===========================================
+   12. EXERCISE LIBRARY
+   =========================================== */
+.exercise-library-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.exercise-library-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        border-color 0.15s;
+}
+.exercise-library-item:hover {
+    background: var(--bg-card-hi);
+    border-color: rgba(255, 255, 255, 0.06);
+}
+.exercise-library-item:active {
+    transform: scale(0.98);
+}
+.exercise-library-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: rgba(29, 211, 176, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+.exercise-library-name {
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.exercise-library-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Filter/Search */
+.search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.search-input {
+    flex: 1;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-strong);
+}
+.filter-btn {
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-main);
+    cursor: pointer;
+}
+.filter-btn.active {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* ===========================================
+   13. LOCATION MANAGEMENT
+   =========================================== */
+.location-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.location-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+}
+.location-name {
+    font-weight: 500;
+}
+.location-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Location Selector Modal */
+.location-option {
+    padding: 14px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.location-option:hover {
+    background: var(--bg-card-hi);
+}
+.location-option.selected {
+    border: 2px solid var(--primary);
+    background: rgba(29, 211, 176, 0.1);
+}
+
+/* ===========================================
+   14. EQUIPMENT PICKER
+   =========================================== */
+.equipment-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.equipment-option {
+    padding: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+.equipment-option:hover {
+    border-color: var(--primary);
+}
+.equipment-option.selected {
+    border-color: var(--primary);
+    background: rgba(29, 211, 176, 0.1);
+}
+.equipment-name {
+    font-weight: 500;
+}
+.equipment-location {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* ===========================================
+   23. EXERCISE MANAGER & LIBRARY
+   =========================================== */
+.exercise-library-view {
+    padding: 16px;
+}
+.exercise-library-header {
+    margin-bottom: 16px;
+}
+.exercise-library-controls {
+    margin-bottom: 16px;
+}
+.exercise-search-row {
+    margin-bottom: 12px;
+}
+.exercise-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.exercise-search-wrapper.full-width {
+    width: 100%;
+}
+.exercise-search-wrapper i {
+    position: absolute;
+    left: 14px;
+    color: var(--text-muted);
+}
+.exercise-search-input {
+    width: 100%;
+    padding: 12px 16px 12px 42px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-strong);
+    font-size: 1rem;
+}
+.exercise-search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.search-container {
+    margin-bottom: 12px;
+}
+.filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+/* Category Grid */
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+.category-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 20px 12px;
+    text-align: center;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+.category-card:hover {
+    border-color: var(--primary);
+    background: var(--bg-card-hi);
+}
+.category-icon {
+    font-size: 1.5rem;
+    color: var(--primary);
+    margin-bottom: 8px;
+    display: block;
+}
+.category-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* Exercise List View */
+.exercise-list-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.btn-back-category {
+    width: var(--tap);
+    height: var(--tap);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    cursor: pointer;
+}
+.exercise-list-title {
+    font-size: 1.25rem;
+    margin: 0;
+}
+.exercise-list-search {
+    margin-bottom: 12px;
+}
+.exercise-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.exercise-list-footer {
+    position: sticky;
+    bottom: 0;
+    padding: 16px 0;
+    background: linear-gradient(transparent, var(--bg-app) 20%);
+}
+.btn-add-exercise-bottom {
+    width: 100%;
+    padding: 14px;
+    background: var(--primary);
+    border: none;
+    border-radius: var(--radius-md);
+    color: #02100e;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Equipment Filter Pills */
+.equipment-filter-pills {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+}
+.filter-pill {
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.filter-pill:hover {
+    border-color: var(--primary);
+}
+.filter-pill.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #02100e;
+}
+
+/* ===========================================
+   WORKOUT LIBRARY (Category Grid + List View)
+   =========================================== */
+.workout-library-view {
+    padding: 16px;
+}
+.workout-library-view.hidden {
+    display: none;
+}
+
+.workout-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Workout List Item (like exercise library items) */
+.workout-list-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        transform 0.15s;
+}
+.workout-list-item:hover {
+    background: var(--bg-card-hi);
+}
+.workout-list-item:active {
+    transform: scale(0.98);
+}
+
+.workout-item-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-sm);
+    background: rgba(29, 211, 176, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.workout-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.workout-item-name {
+    font-weight: 600;
+    color: var(--text-strong);
+    font-size: 1rem;
+    margin-bottom: 2px;
+}
+
+.workout-item-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.workout-item-exercises {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.workout-item-edit {
+    padding: 8px 14px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.workout-item-edit:hover {
+    color: var(--primary);
+}
+
+/* ===========================================
+   24. EDIT EXERCISE SECTION
+   =========================================== */
+.edit-exercise-container {
+    padding: 0 16px 32px;
+}
+.edit-exercise-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    margin: 0 -16px 16px;
+    position: sticky;
+    top: 0;
+    background: var(--bg-app);
+    z-index: 10;
+}
+.edit-exercise-header h2 {
+    font-size: 1.1rem;
+    margin: 0;
+    flex: 1;
+    text-align: center;
+}
+.btn-back,
+.btn-save {
+    min-width: 60px;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-back {
+    color: var(--text-muted);
+}
+
+.edit-section {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.edit-section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--text-strong);
+}
+.edit-section-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: -8px 0 12px;
+}
+.optional-tag {
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.input-with-icon i {
+    position: absolute;
+    left: 14px;
+    color: var(--text-muted);
+    z-index: 1;
+}
+/* Any input inside icon wrapper needs left padding for the icon */
+.input-with-icon input {
+    padding-left: 42px !important;
+}
+.edit-input-large,
+.edit-input-full {
+    width: 100%;
+    padding: 12px 16px 12px 42px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: 1rem;
+}
+.edit-input-large:focus,
+.edit-input-full:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.edit-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.edit-row-three {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+}
+.edit-field label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+.edit-select,
+.edit-input-number {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: 1rem;
+}
+.edit-select {
+    appearance: none;
+}
+
+.edit-subsection-title {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 16px 0 8px;
+}
+.edit-equipment-list {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.edit-equipment-empty {
+    text-align: center;
+    padding: 16px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Equipment item cards in edit exercise section */
+.edit-equipment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition:
+        border-color 0.2s,
+        background 0.2s;
+}
+.edit-equipment-item:hover {
+    border-color: var(--primary);
+    background: var(--bg-card-hi);
+}
+.edit-equipment-item.selected {
+    border-color: var(--primary);
+    background: rgba(29, 211, 176, 0.1);
+}
+.edit-equipment-item-info {
+    flex: 1;
+    min-width: 0;
+}
+.edit-equipment-item-name {
+    font-weight: 600;
+    color: var(--text-strong);
+    margin-bottom: 2px;
+}
+.edit-equipment-item-location {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.edit-equipment-item-edit {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-left: 12px;
+    transition:
+        border-color 0.2s,
+        color 0.2s;
+}
+.edit-equipment-item-edit:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.edit-add-equipment {
+    margin-top: 16px;
+}
+.edit-equipment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.btn-add-equipment {
+    padding: 12px;
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn-add-equipment:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.edit-delete-container {
+    margin-top: 24px;
+    text-align: center;
+}
+.btn-delete-exercise {
+    padding: 12px 24px;
+    background: transparent;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius-sm);
+    color: var(--danger);
+    font-weight: 500;
+    cursor: pointer;
+}
+.btn-delete-exercise:hover {
+    background: rgba(227, 93, 106, 0.1);
+}
+
+.edit-selected-equipment {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(29, 211, 176, 0.1);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+}
+.edit-selected-equipment i {
+    color: var(--primary);
+}
+.btn-clear {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+/* ===========================================
+   27. LOCATION MANAGEMENT
+   =========================================== */
+.location-management-content {
+    padding: 16px;
+}
+.current-location-card {
+    background: var(--bg-card);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 20px;
+}
+.current-location-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.current-location-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+.current-location-display i {
+    color: var(--primary);
+}
+
+.location-map-container {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    height: 200px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    position: relative;
+}
+.location-map-placeholder {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+.location-map-placeholder i {
+    font-size: 2rem;
+    margin-bottom: 8px;
+}
+.map-hint {
+    font-size: 0.8rem;
+}
+.map-location-label {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.location-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.location-list-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+.location-count {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.location-management-list {
+    margin-bottom: 20px;
+}
+
+/* Location Items */
+.location-item,
+.location-management-item {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+.location-management-item.active {
+    border: 1px solid var(--primary);
+    background: var(--bg-card-hi);
+}
+.location-item-info {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+    cursor: pointer;
+}
+.location-item-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(29, 211, 176, 0.15);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+.location-item-details {
+    flex: 1;
+}
+.location-item-name {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.location-item-name .current-badge {
+    background: var(--primary);
+    color: #02100e;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    text-transform: uppercase;
+}
+.location-item-address {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+.location-item-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.location-item-actions {
+    display: flex;
+    gap: 8px;
+}
+.location-item-actions button {
+    width: 36px;
+    height: 36px;
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.location-item-actions button:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.location-item-actions button.btn-delete:hover,
+.location-item-actions button.delete-btn:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.add-location-form {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+}
+.add-location-form h4 {
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+}
+.add-location-inputs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.add-location-inputs .input-field {
+    flex: 1;
+}
+.input-field {
+    padding: 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: 1rem;
+}
+.input-field:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* Add Location Modal Enhancements */
+.location-method-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.method-tab {
+    flex: 1;
+    min-width: 100px;
+    padding: 10px 12px;
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+.method-tab:hover {
+    border-color: var(--primary);
+    color: var(--text-strong);
+}
+.method-tab.active {
+    background: rgba(29, 211, 176, 0.15);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.location-method-content {
+    min-height: 120px;
+}
+.gps-status-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-card-hi);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+}
+.gps-status-box.success {
+    background: rgba(29, 211, 176, 0.1);
+    color: var(--primary);
+}
+.gps-status-box.error {
+    background: rgba(255, 107, 107, 0.1);
+    color: var(--danger);
+}
+.search-input-wrapper {
+    display: flex;
+    gap: 8px;
+}
+.search-input-wrapper .form-input {
+    flex: 1;
+}
+.search-btn {
+    width: 44px;
+    background: var(--primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #000;
+    cursor: pointer;
+}
+.search-btn:hover {
+    opacity: 0.9;
+}
+.address-results {
+    margin-top: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.address-result-item {
+    padding: 12px;
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.address-result-item:hover {
+    border-color: var(--primary);
+}
+.address-result-item.selected {
+    border-color: var(--primary);
+    background: rgba(29, 211, 176, 0.1);
+}
+.address-result-name {
+    font-weight: 500;
+    color: var(--text-strong);
+}
+.address-result-address {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+.method-description {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+.add-location-map {
+    height: 200px;
+    background: var(--bg-card-hi);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    position: relative;
+}
+.map-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+}
+.map-placeholder i {
+    font-size: 2rem;
+    margin-bottom: 8px;
+}
+.pin-coords {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 8px;
+}
+.selected-coords {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(29, 211, 176, 0.1);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-sm);
+    margin-top: 16px;
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+/* ===========================================
+   28. EQUIPMENT PICKER
+   =========================================== */
+.equipment-picker-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+.equipment-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.equipment-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+.equipment-picker-item:hover {
+    border-color: var(--primary);
+}
+.equipment-picker-item.selected {
+    border-color: var(--primary);
+    background: rgba(29, 211, 176, 0.1);
+}
+.form-section-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+.form-section-divider::before,
+.form-section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+.equipment-picker-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ===========================================
+   31. EXERCISE LIBRARY CARDS (Apple-style flat)
+   =========================================== */
+.exercise-card-new {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+.exercise-card-new::before {
+    display: none;
+}
+.exercise-card-new:active {
+    background: var(--bg-card-hi);
+}
+.exercise-card-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(29, 211, 176, 0.12);
+    border-radius: var(--radius-sm);
+    color: var(--primary);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.exercise-card-info {
+    flex: 1;
+    min-width: 0;
+}
+.exercise-card-name {
+    display: block;
+    font-weight: 600;
+    color: var(--text-strong);
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.exercise-card-meta {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+}
+.exercise-card-edit {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.exercise-card-edit:active {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Quick Add Chips (recent exercises) */
+.quick-add-section {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.quick-add-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+.quick-add-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.quick-add-chip {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 100px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+.quick-add-chip:active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+/* Library Exercise Cards (Add Exercise modal) */
+.library-exercise-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+}
+.library-exercise-card::before {
+    display: none;
+}
+.library-exercise-card:active {
+    background: var(--bg-card-hi);
+}
+.library-exercise-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.favorite-toggle {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    opacity: 0.4;
+    transition: opacity 0.15s, color 0.15s;
+}
+.favorite-toggle.active {
+    color: var(--badge-gold);
+    opacity: 1;
+}
+.favorite-toggle:active {
+    transform: scale(1.2);
+}
+.favorites-section {
+    margin-bottom: 8px;
+}
+.favorite-chip {
+    border-color: rgba(255, 215, 0, 0.3) !important;
+}
+.library-exercise-card h5 {
+    margin: 0 0 8px 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.library-exercise-info {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+.library-exercise-stats {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-sm);
+}
+.library-exercise-card .btn {
+    width: 100%;
+}
+
+/* Notifications container */
+.notifications-container {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 700;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ===========================================
+   40. EQUIPMENT PICKER
+   =========================================== */
+.equipment-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    margin-bottom: 8px;
+}
+.equipment-option:hover {
+    border-color: var(--primary);
+}
+.equipment-option.selected {
+    border-color: var(--primary);
+    background: rgba(29, 211, 176, 0.1);
+}
+.equipment-option-radio {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.equipment-option.selected .equipment-option-radio {
+    border-color: var(--primary);
+    background: var(--primary);
+}
+.equipment-option-details {
+    flex: 1;
+}
+.equipment-option-name {
+    font-weight: 500;
+    color: var(--text-strong);
+}
+.equipment-option-location {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.equipment-info {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.equipment-locations-empty,
+.equipment-picker-empty {
+    text-align: center;
+    padding: 16px;
+    color: var(--text-muted);
+}
+
+/* ===========================================
+   42. LIBRARY & WORKOUT ITEMS
+   =========================================== */
+.library-group {
+    margin-bottom: 20px;
+}
+.library-group-header {
+    font-weight: 600;
+    color: var(--text-strong);
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+}
+.library-group-items {
+    padding-left: 8px;
+}
+.library-item-name {
+    font-weight: 500;
+    color: var(--text-strong);
+}
+.library-item-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.workout-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+.workout-item:hover {
+    background: var(--bg-card-hi);
+}
+.workout-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.workout-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.workout-category {
+    font-size: 0.75rem;
+    background: var(--bg-surface);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--text-muted);
+}
+.workout-icon {
+    color: var(--primary);
+}
+
+/* ===========================================
+   46c. DASHBOARD MINI CHART
+   =========================================== */
+.mini-chart-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mini-chart-card:hover {
+    border-color: rgba(29, 211, 176, 0.2);
+}
+
+.mini-chart-header {
+    margin-bottom: 12px;
+}
+
+.mini-chart-exercise {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.mini-chart-equipment {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.mini-chart-body {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.mini-chart-sparkline {
+    flex: 1;
+    height: 50px;
+    min-width: 0;
+}
+
+.mini-chart-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.mini-chart-current {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.mini-chart-change {
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mini-chart-change.positive {
+    color: var(--success);
+}
+
+.mini-chart-change.negative {
+    color: var(--error);
+}
+
+.mini-chart-period {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.mini-chart-tap-hint {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.mini-chart-tap-hint i {
+    margin-right: 4px;
+}
+

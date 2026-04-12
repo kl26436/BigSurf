@@ -1,0 +1,697 @@
+/* ===========================================
+   17. ANIMATIONS
+   =========================================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+@keyframes scaleIn {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease;
+}
+.scale-in {
+    animation: scaleIn 0.2s ease;
+}
+
+/* PR Badge Animation */
+.pr-badge-animate {
+    animation: prPop 0.5s ease;
+}
+@keyframes prPop {
+    0% {
+        transform: scale(0);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Consistent tap feedback — all interactive elements */
+.hero-card:active,
+.row-card:active,
+.exercise-card:active,
+.template-card:active,
+.workout-list-item:active,
+.suggested-compact:active {
+    transform: scale(0.98);
+    transition: transform var(--anim-fast) ease;
+}
+/* Modal entrance animation */
+@keyframes modal-slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+dialog[open]::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+}
+dialog[open] > .modal-content {
+    animation: modal-slide-up var(--anim-slow) ease forwards;
+}
+
+/* Bottom sheet entrance */
+@keyframes sheet-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+/* Page transition fade */
+.section-fade-out {
+    opacity: 0;
+    transition: opacity var(--anim-normal) ease;
+}
+
+/* Success flash (set completion, save) */
+.flash-success {
+    animation: flash-green var(--anim-slow) ease;
+}
+@keyframes flash-green {
+    0% { background-color: rgba(54, 196, 107, 0.2); }
+    100% { background-color: transparent; }
+}
+
+/* Skeleton loading shimmer */
+.skeleton {
+    background: linear-gradient(90deg,
+        var(--bg-card) 25%,
+        var(--bg-card-hi) 50%,
+        var(--bg-card) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+}
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ===========================================
+   18. UTILITY CLASSES
+   =========================================== */
+.flex {
+    display: flex;
+}
+.flex-col {
+    flex-direction: column;
+}
+.flex-center {
+    align-items: center;
+    justify-content: center;
+}
+.flex-between {
+    justify-content: space-between;
+}
+.gap-sm {
+    gap: 8px;
+}
+.gap-md {
+    gap: 12px;
+}
+.gap-lg {
+    gap: 16px;
+}
+
+.mt-sm {
+    margin-top: 8px;
+}
+.mt-md {
+    margin-top: 12px;
+}
+.mt-lg {
+    margin-top: 16px;
+}
+.mb-sm {
+    margin-bottom: 8px;
+}
+.mb-md {
+    margin-bottom: 12px;
+}
+.mb-lg {
+    margin-bottom: 16px;
+}
+
+.p-sm {
+    padding: 8px;
+}
+.p-md {
+    padding: 12px;
+}
+.p-lg {
+    padding: 16px;
+}
+
+.text-center {
+    text-align: center;
+}
+.font-bold {
+    font-weight: 700;
+}
+
+/* State classes used by JS */
+.collapsed > *:not(:first-child) {
+    display: none;
+}
+.online {
+    color: var(--success);
+}
+.offline {
+    color: var(--danger);
+}
+.focused {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(29, 211, 176, 0.2);
+}
+.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+.loading {
+    pointer-events: none;
+}
+
+/* Content sections */
+.content-section {
+    display: block;
+    animation: sectionFadeIn 0.15s ease;
+}
+.content-section.hidden {
+    display: none;
+}
+
+/* Sign-in prompt */
+.sign-in-prompt {
+    text-align: center;
+    padding: 40px 20px;
+}
+.sign-in-prompt h2 {
+    margin-bottom: 12px;
+}
+.sign-in-prompt p {
+    color: var(--text-muted);
+    margin-bottom: 24px;
+}
+
+/* Auth section */
+.auth-section {
+    padding: 20px;
+}
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+}
+.user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.user-name {
+    font-weight: 600;
+}
+.user-email {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Sidebar profile */
+.sidebar-profile {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Sidebar menu */
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+}
+.sidebar-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+.sidebar-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 8px;
+}
+.sidebar-menu {
+    list-style: none;
+    padding: 12px 0;
+    margin: 0;
+}
+.sidebar-menu li a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    color: var(--text-main);
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.sidebar-menu li a:hover {
+    background: rgba(29, 211, 176, 0.1);
+    color: var(--primary);
+}
+.sidebar-menu li a i {
+    width: 20px;
+    text-align: center;
+}
+.sidebar-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0;
+}
+.sidebar-section-title {
+    padding: 8px 20px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+.sidebar-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-surface);
+}
+.sidebar-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.sidebar-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+.sidebar-user-details {
+    flex: 1;
+    min-width: 0;
+}
+.sidebar-user-name {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.sidebar-user-email {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sidebar-sign-out-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+}
+.sidebar-sign-out-btn:hover {
+    color: var(--danger);
+}
+
+/* Loading screen */
+.loading-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-app);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 800;
+}
+.loading-content {
+    text-align: center;
+    padding: 20px;
+}
+.loading-logo {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 16px;
+}
+.loading-logo.loading-logo-large {
+    width: 200px;
+    height: 200px;
+    margin-bottom: 24px;
+}
+.loading-title {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+}
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+}
+.loading-message {
+    color: var(--text-muted);
+}
+.loading-signin-prompt {
+    margin-top: 24px;
+}
+.loading-signin-prompt p {
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: var(--bg-app);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+}
+.header.hidden {
+    display: none !important;
+}
+#auth-section.hidden {
+    display: none !important;
+}
+.header .menu-toggle {
+    position: absolute;
+    left: 12px;
+    background: none;
+    border: none;
+    color: var(--text-strong);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 8px;
+}
+.logo-img {
+    height: 80px;
+}
+.logo-fallback {
+    width: 80px;
+    height: 80px;
+    background: var(--primary);
+    color: #02100e;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Workout controls / Auth section */
+.workout-controls {
+    padding: 12px 16px;
+    display: flex;
+    justify-content: center;
+}
+.user-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Resume banner styles */
+.stats-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.stats-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+}
+/* Redesigned resume banner */
+.resume-banner {
+    background: linear-gradient(135deg, rgba(29, 211, 176, 0.08), rgba(29, 211, 176, 0.02));
+    border: 1px solid rgba(29, 211, 176, 0.2);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: var(--gap-section);
+    position: relative;
+    overflow: hidden;
+}
+.resume-banner-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.resume-banner-header h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-strong);
+    flex: 1;
+    margin: 0;
+}
+.resume-pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(54, 196, 107, 0.4); }
+    50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(54, 196, 107, 0); }
+}
+.resume-time-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.resume-workout-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    margin-bottom: 12px;
+}
+.resume-ring-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.resume-ring {
+    flex-shrink: 0;
+}
+.resume-ring circle:last-child {
+    transition: stroke-dashoffset 0.5s ease;
+}
+.resume-stats-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.resume-stats-compact strong {
+    color: var(--text-strong);
+    font-weight: 600;
+}
+.resume-banner-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+}
+.btn-text-small {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+.btn-text-small:active {
+    color: var(--danger);
+}
+
+/* ===========================================
+   19. RESPONSIVE
+   =========================================== */
+@media (max-width: 480px) {
+    .hero-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    .progress-ring-container {
+        margin: 0 auto;
+    }
+    .hero-stats {
+        flex-wrap: wrap;
+    }
+
+    .set-row {
+        grid-template-columns: 40px 1fr 1fr auto;
+        gap: 8px;
+    }
+
+    .template-actions {
+        flex-wrap: wrap;
+    }
+    .template-actions .btn {
+        flex: 1;
+        min-width: 100px;
+    }
+}
+
+/* ===========================================
+   44. MISC UTILITIES
+   =========================================== */
+.full-width {
+    width: 100%;
+}
+.separator {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+}
+.error-state {
+    color: var(--danger);
+    text-align: center;
+    padding: 20px;
+}
+.error-message {
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin-top: 8px;
+}
+.empty-state,
+.empty-exercises-state,
+.empty-workout-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+.empty-state i,
+.empty-exercises-state i {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+.empty-state--hero {
+    padding: 48px 24px;
+}
+.empty-state--hero i {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+.empty-state h3 {
+    margin-bottom: 8px;
+    color: var(--text-strong);
+    font-size: 1.1rem;
+}
+.empty-state p {
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    max-width: 260px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.empty-state .btn {
+    margin-top: 4px;
+}
+.modal-footer {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+.quick-sets-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.exercise-actions-bar {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.set-controls {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin: 1rem 0;
+}
+.set-summary {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.filter-pill {
+    padding: 6px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.filter-pill.active {
+    background: var(--primary);
+    color: #02100e;
+    border-color: var(--primary);
+}
+.saved-locations-list {
+    margin-top: 12px;
+}
+.view-more-link {
+    font-size: 0.85rem;
+    color: var(--primary);
+    cursor: pointer;
+}
+.view-more-link:hover {
+    text-decoration: underline;
+}
+
+/* ===========================================
+   SECTION FADE TRANSITIONS
+   =========================================== */
+.content-section.section-fade-out {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+/* Clickable utility (replaces inline cursor:pointer from JS) */
+.clickable { cursor: pointer; }
