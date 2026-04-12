@@ -1,0 +1,200 @@
+// Withings Integration — OAuth + Weight Sync
+// Connects to Withings API via Cloud Functions for body weight data
+
+import { functions, httpsCallable } from '../data/firebase-config.js';
+import { AppState } from '../utils/app-state.js';
+import { showNotification } from '../ui/ui-helpers.js';
+import { debugLog } from '../utils/config.js';
+
+// ===================================================================
+// OAUTH FLOW
+// ===================================================================
+
+/**
+ * Start the Withings OAuth flow.
+ * Generates auth URL via Cloud Function, then redirects the user.
+ */
+export async function connectWithings() {
+    if (!AppState.currentUser) {
+        showNotification('Sign in first', 'warning');
+        return;
+    }
+
+    try {
+        showNotification('Connecting to Withings...', 'info', 2000);
+
+        // Use current origin as callback URL (must match Withings dashboard)
+        const callbackUrl = window.location.origin;
+
+        const getAuthUrl = httpsCallable(functions, 'withingsGetAuthUrl');
+        const result = await getAuthUrl({ callbackUrl });
+
+        if (result.data?.url) {
+            // Redirect user to Withings authorization page
+            window.location.href = result.data.url;
+        } else {
+            showNotification('Failed to get authorization URL', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Withings connect error:', error);
+        showNotification('Failed to connect to Withings', 'error');
+    }
+}
+
+/**
+ * Handle the OAuth callback — called on app load if URL has Withings params.
+ * Withings redirects back with ?code=XXX&state=XXX
+ */
+export async function handleWithingsCallback() {
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get('code');
+    const state = url.searchParams.get('state');
+
+    // Only process if we have a code and it looks like a Withings callback
+    if (!code || !state) return false;
+
+    // Clean the URL immediately so it doesn't re-trigger on refresh
+    url.searchParams.delete('code');
+    url.searchParams.delete('state');
+    window.history.replaceState({}, '', url.pathname);
+
+    // Wait for auth to be ready
+    if (!AppState.currentUser) {
+        // Store callback data and process after auth
+        sessionStorage.setItem('withings_pending_code', code);
+        sessionStorage.setItem('withings_pending_origin', window.location.origin);
+        debugLog('Withings callback stored — waiting for auth');
+        return true;
+    }
+
+    return await exchangeWithingsCode(code);
+}
+
+/**
+ * Process a pending Withings callback after auth is ready.
+ * Called from app initialization after user is authenticated.
+ */
+export async function processPendingWithingsCallback() {
+    const code = sessionStorage.getItem('withings_pending_code');
+    const origin = sessionStorage.getItem('withings_pending_origin');
+    if (!code) return false;
+
+    sessionStorage.removeItem('withings_pending_code');
+    sessionStorage.removeItem('withings_pending_origin');
+
+    return await exchangeWithingsCode(code, origin);
+}
+
+/**
+ * Exchange the authorization code for tokens via Cloud Function.
+ */
+async function exchangeWithingsCode(code, callbackUrl) {
+    try {
+        showNotification('Completing Withings setup...', 'info', 3000);
+
+        const exchangeToken = httpsCallable(functions, 'withingsExchangeToken');
+        const result = await exchangeToken({
+            code,
+            callbackUrl: callbackUrl || window.location.origin,
+        });
+
+        if (result.data?.success) {
+            showNotification('Withings connected! Syncing weight data...', 'success', 2000);
+            // Auto-sync after connecting
+            await syncWithingsWeight();
+            return true;
+        } else {
+            showNotification('Failed to complete Withings connection', 'error');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Withings token exchange error:', error);
+        showNotification('Withings connection failed', 'error');
+        return false;
+    }
+}
+
+// ===================================================================
+// SYNC
+// ===================================================================
+
+/**
+ * Sync weight data from Withings.
+ * @param {number} [days=30] - Number of days to sync
+ */
+export async function syncWithingsWeight(days = 30) {
+    if (!AppState.currentUser) return;
+
+    try {
+        showNotification('Syncing from Withings...', 'info', 2000);
+
+        const sync = httpsCallable(functions, 'withingsSyncWeight');
+        const result = await sync({ days });
+
+        if (result.data?.success) {
+            const count = result.data.synced || 0;
+            showNotification(
+                count > 0 ? `Synced ${count} weight entries from Withings` : 'Already up to date',
+                'success',
+                2000
+            );
+        }
+    } catch (error) {
+        console.error('❌ Withings sync error:', error);
+        const msg = error.message?.includes('not connected')
+            ? 'Withings not connected — tap Connect to set up'
+            : 'Withings sync failed';
+        showNotification(msg, 'error');
+    }
+}
+
+// ===================================================================
+// STATUS & DISCONNECT
+// ===================================================================
+
+/**
+ * Check if Withings is connected for the current user.
+ * @returns {{connected: boolean, lastSync: string|null, expired: boolean}}
+ */
+export async function getWithingsStatus() {
+    if (!AppState.currentUser) return { connected: false };
+
+    try {
+        const status = httpsCallable(functions, 'withingsStatus');
+        const result = await status();
+        return result.data || { connected: false };
+    } catch (error) {
+        console.error('❌ Withings status check error:', error);
+        return { connected: false };
+    }
+}
+
+/**
+ * Disconnect Withings integration.
+ */
+export async function disconnectWithings() {
+    if (!AppState.currentUser) return;
+
+    try {
+        const disconnect = httpsCallable(functions, 'withingsDisconnect');
+        await disconnect();
+        showNotification('Withings disconnected', 'success', 1500);
+    } catch (error) {
+        console.error('❌ Withings disconnect error:', error);
+        showNotification('Failed to disconnect', 'error');
+    }
+}
+
+/**
+ * Test that Withings secrets are configured on the server.
+ */
+export async function testWithingsConfig() {
+    try {
+        const test = httpsCallable(functions, 'withingsTestConfig');
+        const result = await test();
+        return result.data;
+    } catch (error) {
+        console.error('❌ Withings config test error:', error);
+        return { configured: false, error: error.message };
+    }
+}

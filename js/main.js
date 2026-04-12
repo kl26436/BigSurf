@@ -242,6 +242,16 @@ import {
     confirmImport,
 } from './core/data/data-export-import.js';
 
+// Withings integration
+import {
+    connectWithings,
+    syncWithingsWeight,
+    getWithingsStatus,
+    disconnectWithings,
+    handleWithingsCallback,
+    processPendingWithingsCallback,
+} from './core/features/withings-integration.js';
+
 // UI helpers
 import { setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './core/ui/ui-helpers.js';
 
@@ -715,6 +725,49 @@ window.closeImportModal = closeImportModal;
 window.handleImportFileSelect = handleImportFileSelect;
 window.confirmImport = confirmImport;
 
+// Withings Integration
+window.connectWithings = connectWithings;
+window.syncWithingsWeight = syncWithingsWeight;
+window.disconnectWithings = disconnectWithings;
+
+// Withings settings action — connects, syncs, or shows disconnect option
+let _withingsConnected = false;
+window.handleWithingsSettingsAction = async function () {
+    if (_withingsConnected) {
+        // Already connected — offer sync or disconnect
+        const action = confirm('Withings is connected.\n\nOK = Sync now\nCancel = Disconnect');
+        if (action) {
+            await syncWithingsWeight();
+        } else {
+            if (confirm('Disconnect Withings?')) {
+                await disconnectWithings();
+                _withingsConnected = false;
+                updateWithingsUI(false);
+            }
+        }
+    } else {
+        await connectWithings();
+    }
+};
+
+function updateWithingsUI(connected, lastSync) {
+    const statusText = document.getElementById('withings-status-text');
+    const statusIcon = document.getElementById('withings-status-icon');
+    if (statusText) {
+        if (connected) {
+            const syncInfo = lastSync ? `Last sync: ${new Date(lastSync).toLocaleDateString()}` : 'Connected — tap to sync';
+            statusText.textContent = syncInfo;
+        } else {
+            statusText.textContent = 'Tap to connect your Withings scale';
+        }
+    }
+    if (statusIcon) {
+        statusIcon.innerHTML = connected
+            ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>'
+            : '<i class="fas fa-link" style="color: var(--primary);"></i>';
+    }
+}
+
 // Equipment Library
 window.openEquipmentLibrary = openEquipmentLibrary;
 window.openEquipmentDetail = openEquipmentDetail;
@@ -776,7 +829,21 @@ if (new URL(window.location).searchParams.has('debug')) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        // Check for Withings OAuth callback before app starts
+        // (cleans URL params so they don't interfere with routing)
+        await handleWithingsCallback();
+
         await startApplication();
+
+        // After auth is ready, check for pending Withings callback + update UI
+        if (AppState.currentUser) {
+            processPendingWithingsCallback();
+            // Update Withings status in Settings (non-blocking)
+            getWithingsStatus().then(status => {
+                _withingsConnected = status.connected;
+                updateWithingsUI(status.connected, status.lastSync);
+            });
+        }
     } catch (error) {
         console.error('Application startup failed:', error);
 

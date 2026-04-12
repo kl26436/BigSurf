@@ -212,6 +212,16 @@ export function renderSettings() {
                         <i class="fas fa-ruler" style="color: var(--primary);"></i>
                     </div>
                 </div>
+
+                <div id="withings-settings-item" class="settings-item" style="cursor: pointer;" onclick="handleWithingsSettingsAction()">
+                    <div class="settings-label">
+                        <span class="settings-name">Withings</span>
+                        <span class="settings-description" id="withings-status-text">Tap to connect your Withings scale</span>
+                    </div>
+                    <div class="settings-control" id="withings-status-icon">
+                        <i class="fas fa-link" style="color: var(--primary);"></i>
+                    </div>
+                </div>
             </div>
 
             <div class="settings-group">
