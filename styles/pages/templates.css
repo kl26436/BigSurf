@@ -642,3 +642,32 @@
     display: none;
 }
 
+/* Equipment compatibility badges on template cards (Phase 16.1) */
+.compat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--font-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-xs);
+    margin-top: 4px;
+}
+.compat-badge--full {
+    background: rgba(54, 196, 107, 0.12);
+    color: var(--success);
+}
+.compat-badge--partial {
+    background: rgba(240, 194, 75, 0.12);
+    color: var(--warning);
+}
+#equipment-filter-btn {
+    font-size: var(--font-xs);
+    padding: 4px 10px;
+    margin-right: 8px;
+}
+#equipment-filter-btn.active {
+    background: var(--primary);
+    color: #02100e;
+    border-color: var(--primary);
+}
+

@@ -80,6 +80,8 @@ import {
     useTemplateFromManagement,
     copyTemplateToCustom,
     deleteCustomTemplate,
+    toggleEquipmentFilter,
+    clearEquipmentFilterCache,
 } from './core/ui/template-selection.js';
 
 // Workout history UI functionality
@@ -559,6 +561,8 @@ window.useTemplate = useTemplate;
 window.useTemplateFromManagement = useTemplateFromManagement;
 window.copyTemplateToCustom = copyTemplateToCustom;
 window.deleteCustomTemplate = deleteCustomTemplate;
+window.toggleEquipmentFilter = toggleEquipmentFilter;
+window.clearEquipmentFilterCache = clearEquipmentFilterCache;
 window.showTemplatesByCategory = function (category) {
     // Helper to derive category from workout name
     function getWorkoutCategory(dayName) {

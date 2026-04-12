@@ -5,6 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
+import { getEquipmentAtLocation, getExercisesAtLocation, checkTemplateCompatibility, categorizeTemplates } from '../features/equipment-planner.js';
 
 // ===================================================================
 // TEMPLATE SELECTION STATE
@@ -12,6 +13,8 @@ import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 
 let selectedWorkoutCategory = null;
 let currentTemplateCategory = 'default';
+let equipmentFilterActive = false;
+let cachedAvailableExercises = null; // Set<string> of exercises at current location
 
 // Track which containers already have delegation listeners
 const delegatedContainers = new WeakSet();
@@ -45,6 +48,60 @@ function setupTemplateDelegation(container) {
 }
 
 // ===================================================================
+// EQUIPMENT FILTER — "At this gym"
+// ===================================================================
+
+/**
+ * Load available exercises at the current/detected location.
+ * Caches result for the session to avoid repeated queries.
+ */
+async function loadAvailableExercisesAtLocation() {
+    if (cachedAvailableExercises) return cachedAvailableExercises;
+
+    try {
+        const locationName = AppState.currentLocation
+            || AppState.savedData?.location
+            || null;
+        if (!locationName) return null;
+
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const workoutManager = new FirebaseWorkoutManager(AppState);
+        const allEquipment = await workoutManager.getUserEquipment();
+        const locationEquipment = getEquipmentAtLocation(allEquipment, locationName);
+        cachedAvailableExercises = getExercisesAtLocation(locationEquipment);
+        return cachedAvailableExercises;
+    } catch (err) {
+        console.error('Error loading equipment for location filter:', err);
+        return null;
+    }
+}
+
+/**
+ * Toggle the "At this gym" equipment compatibility filter.
+ */
+export async function toggleEquipmentFilter() {
+    equipmentFilterActive = !equipmentFilterActive;
+
+    // Update button state
+    const btn = document.getElementById('equipment-filter-btn');
+    if (btn) btn.classList.toggle('active', equipmentFilterActive);
+
+    if (equipmentFilterActive) {
+        await loadAvailableExercisesAtLocation();
+    }
+
+    loadTemplatesByCategory();
+}
+
+/**
+ * Clear equipment cache (call on location change or workout start).
+ */
+export function clearEquipmentFilterCache() {
+    cachedAvailableExercises = null;
+    equipmentFilterActive = false;
+}
+
+// ===================================================================
 // TEMPLATE SELECTION UI
 // ===================================================================
 
@@ -54,8 +111,26 @@ export function showTemplateSelection() {
 
     openModal(modal);
 
+    // Inject the "At this gym" filter button if location is known
+    injectEquipmentFilterButton();
+
     // Load default templates
     switchTemplateCategory('default');
+}
+
+function injectEquipmentFilterButton() {
+    const header = document.querySelector('#template-selection-modal .modal-header');
+    if (!header || header.querySelector('#equipment-filter-btn')) return;
+
+    const locationName = AppState.currentLocation || AppState.savedData?.location;
+    if (!locationName) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'equipment-filter-btn';
+    btn.className = `btn btn-secondary btn-small${equipmentFilterActive ? ' active' : ''}`;
+    btn.innerHTML = `<i class="fas fa-map-marker-alt"></i> At this gym`;
+    btn.addEventListener('click', () => window.toggleEquipmentFilter());
+    header.insertBefore(btn, header.querySelector('.close-btn'));
 }
 
 export function closeTemplateSelection() {
@@ -197,7 +272,13 @@ export async function loadTemplatesByCategory() {
             );
         }
 
-        renderTemplateCards(templates, container);
+        // Apply equipment filter if active
+        if (equipmentFilterActive && cachedAvailableExercises) {
+            const { fullyCompatible, partiallyCompatible } = categorizeTemplates(templates, cachedAvailableExercises);
+            templates = [...fullyCompatible, ...partiallyCompatible];
+        }
+
+        renderTemplateCards(templates, container, cachedAvailableExercises);
     } catch (error) {
         console.error('Error loading templates:', error);
         container.innerHTML = `
@@ -304,7 +385,7 @@ export async function deleteCustomTemplate(templateId) {
 // TEMPLATE RENDERING FOR SELECTION
 // ===================================================================
 
-export function renderTemplateCards(templates, targetContainer = null) {
+export function renderTemplateCards(templates, targetContainer = null, availableExercises = null) {
     const container = targetContainer || document.getElementById('template-cards-container');
     if (!container) return;
 
@@ -316,9 +397,11 @@ export function renderTemplateCards(templates, targetContainer = null) {
                 <i class="fas fa-clipboard-list"></i>
                 <h3>No Templates Found</h3>
                 <p>${
-                    currentTemplateCategory === 'custom'
-                        ? 'Create your first custom template in Workout Management.'
-                        : 'No templates available in this category.'
+                    equipmentFilterActive
+                        ? 'No templates match the equipment at this gym.'
+                        : currentTemplateCategory === 'custom'
+                            ? 'Create your first custom template in Workout Management.'
+                            : 'No templates available in this category.'
                 }</p>
             </div>
         `;
@@ -328,12 +411,12 @@ export function renderTemplateCards(templates, targetContainer = null) {
     container.innerHTML = '';
 
     templates.forEach((template) => {
-        const card = createTemplateCard(template, currentTemplateCategory === 'default');
+        const card = createTemplateCard(template, currentTemplateCategory === 'default', availableExercises);
         container.appendChild(card);
     });
 }
 
-export function createTemplateCard(template, isDefault = false) {
+export function createTemplateCard(template, isDefault = false, availableExercises = null) {
     const card = document.createElement('div');
     card.className = 'template-card';
 
@@ -349,6 +432,17 @@ export function createTemplateCard(template, isDefault = false) {
     const templateId = template.id || template.day;
     const templateName = template.name || template.day;
 
+    // Equipment compatibility badge
+    let compatBadgeHtml = '';
+    if (availableExercises && availableExercises.size > 0) {
+        const compat = template.compatibility || checkTemplateCompatibility(template, availableExercises);
+        if (compat.compatible) {
+            compatBadgeHtml = '<span class="compat-badge compat-badge--full"><i class="fas fa-check-circle"></i> All equipment available</span>';
+        } else if (compat.missing > 0 && compat.available > 0) {
+            compatBadgeHtml = `<span class="compat-badge compat-badge--partial"><i class="fas fa-exclamation-triangle"></i> ${compat.missing} exercise${compat.missing > 1 ? 's' : ''} need other equipment</span>`;
+        }
+    }
+
     card.innerHTML = `
         <div class="template-header">
             <h4>${escapeHtml(templateName)}</h4>
@@ -356,6 +450,7 @@ export function createTemplateCard(template, isDefault = false) {
                 <span class="template-category">${escapeHtml(getWorkoutCategory(templateName))}</span>
                 <small class="template-source">${isDefault ? 'Global' : 'User'}</small>
             </div>
+            ${compatBadgeHtml}
         </div>
         <div class="template-preview">
             <div class="exercise-count">${exerciseCount} exercises</div>
