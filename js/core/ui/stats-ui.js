@@ -792,8 +792,13 @@ export async function setProgressTimeRange(range) {
         await renderExerciseChart(selectedExerciseKey, range);
     }
 
-    // Also update body part distribution which uses time range
-    await renderBodyPartDistribution();
+    // Re-render all time-dependent sections
+    await Promise.all([
+        renderWeeklyVolumeChart(),
+        renderBodyPartDistribution(),
+        renderHeatMapCalendar(),
+        renderPRTimeline(),
+    ]);
 }
 
 /**
@@ -820,7 +825,7 @@ async function renderWeeklyVolumeChart() {
     const container = document.getElementById('weekly-volume-section');
     if (!container) return;
 
-    const volumeData = await ExerciseProgress.getWeeklyVolumeData();
+    const volumeData = await ExerciseProgress.getWeeklyVolumeData(selectedTimeRange);
 
     if (volumeData.maxVolume === 0) {
         container.innerHTML = '';
@@ -831,7 +836,7 @@ async function renderWeeklyVolumeChart() {
         <div class="section-card">
             <div class="section-card-header">
                 <h3><i class="fas fa-chart-bar"></i> Weekly Volume</h3>
-                <span class="heat-map-label">Last 12 weeks</span>
+                <span class="heat-map-label">${getTimeRangeLabel(selectedTimeRange)}</span>
             </div>
             <div class="chart-container weekly-volume-chart-container">
                 <canvas id="weekly-volume-chart"></canvas>
@@ -1015,7 +1020,7 @@ async function renderHeatMapCalendar() {
     const container = document.getElementById('heat-map-section');
     if (!container) return;
 
-    const heatMapData = await ExerciseProgress.getHeatMapData();
+    const heatMapData = await ExerciseProgress.getHeatMapData(selectedTimeRange);
 
     if (heatMapData.weeks.length === 0) {
         container.innerHTML = '';
@@ -1029,7 +1034,7 @@ async function renderHeatMapCalendar() {
         <div class="section-card">
             <div class="section-card-header">
                 <h3><i class="fas fa-fire"></i> Consistency</h3>
-                <span class="heat-map-label">Last 12 weeks</span>
+                <span class="heat-map-label">${getTimeRangeLabel(selectedTimeRange)}</span>
             </div>
             <div class="heat-map-container">
                 <div class="heat-map-days">
@@ -1076,7 +1081,7 @@ async function renderPRTimeline() {
     const container = document.getElementById('pr-timeline-section');
     if (!container) return;
 
-    const timeline = await ExerciseProgress.getPRTimeline(8);
+    const timeline = await ExerciseProgress.getPRTimeline(8, selectedTimeRange);
 
     if (timeline.length === 0) {
         container.innerHTML = `
@@ -1133,6 +1138,11 @@ async function renderPRTimeline() {
 // ===================================================================
 // HELPERS
 // ===================================================================
+
+function getTimeRangeLabel(range) {
+    const labels = { '1M': 'Last month', '3M': 'Last 3 months', '6M': 'Last 6 months', '1Y': 'Last year', 'ALL': 'All time' };
+    return labels[range] || 'Last 3 months';
+}
 
 function formatDate(dateStr) {
     if (!dateStr) return '';

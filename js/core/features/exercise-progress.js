@@ -416,13 +416,29 @@ export async function getChartData(key, timeRange = 'ALL', chartType = 'weight')
  * Get weekly volume data for bar chart (last 12 weeks)
  * @returns {Promise<Object>} { labels: [], data: [], maxVolume: number }
  */
-export async function getWeeklyVolumeData() {
+export async function getWeeklyVolumeData(timeRange = '3M') {
     const progress = await loadExerciseProgress();
     const today = new Date();
 
-    // Build 12 weeks of data
+    // Number of weeks based on time range
+    const weekCounts = { '1M': 5, '3M': 12, '6M': 26, '1Y': 52 };
+    let numWeeks = weekCounts[timeRange] || 12;
+
+    // For ALL, derive week count from earliest session date
+    if (timeRange === 'ALL') {
+        let earliest = getDateString(today);
+        for (const key in progress) {
+            for (const session of progress[key].sessions) {
+                if (session.date < earliest) earliest = session.date;
+            }
+        }
+        const diffMs = today - new Date(earliest);
+        numWeeks = Math.max(Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)), 12);
+    }
+
+    // Build weeks of data
     const weeks = [];
-    for (let i = 11; i >= 0; i--) {
+    for (let i = numWeeks - 1; i >= 0; i--) {
         const weekEnd = new Date(today);
         weekEnd.setDate(weekEnd.getDate() - (i * 7));
         const weekStart = new Date(weekEnd);
@@ -584,20 +600,27 @@ export async function getBodyPartDistribution(timeRange = '3M') {
 // ===================================================================
 
 /**
- * Get workout data for heat map calendar (last 12 weeks)
+ * Get workout data for heat map calendar
+ * @param {string} timeRange - Time range filter (1M/3M/6M/1Y/ALL)
  * @returns {Promise<Object>} { weeks: [[{date, intensity, sets}]] }
  */
-export async function getHeatMapData() {
+export async function getHeatMapData(timeRange = '3M') {
     if (!AppState.currentUser) return { weeks: [], maxSets: 0 };
 
     try {
-        // Get last 12 weeks of data
         const today = new Date();
-        const startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - 84); // 12 weeks
-
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        const q = query(workoutsRef, where('date', '>=', getDateString(startDate)), orderBy('date', 'asc'));
+
+        let q;
+        if (timeRange === 'ALL') {
+            q = query(workoutsRef, orderBy('date', 'asc'));
+        } else {
+            const dayLookback = { '1M': 35, '3M': 84, '6M': 182, '1Y': 364 };
+            const days = dayLookback[timeRange] || 84;
+            const startDate = new Date(today);
+            startDate.setDate(startDate.getDate() - days);
+            q = query(workoutsRef, where('date', '>=', getDateString(startDate)), orderBy('date', 'asc'));
+        }
 
         const snapshot = await getDocs(q);
 
@@ -633,8 +656,14 @@ export async function getHeatMapData() {
         const weeks = [];
         let currentWeek = [];
 
+        // Determine grid start: earliest workout date for ALL, or computed lookback
+        const dates = Object.keys(dateData).sort();
+        const gridStart = dates.length > 0 && timeRange === 'ALL'
+            ? new Date(dates[0])
+            : (() => { const dayLookback = { '1M': 35, '3M': 84, '6M': 182, '1Y': 364 }; const d = new Date(today); d.setDate(d.getDate() - (dayLookback[timeRange] || 84)); return d; })();
+
         // Start from Sunday of start week
-        const startSunday = new Date(startDate);
+        const startSunday = new Date(gridStart);
         startSunday.setDate(startSunday.getDate() - startSunday.getDay());
 
         for (let d = new Date(startSunday); d <= today; d.setDate(d.getDate() + 1)) {
@@ -688,9 +717,10 @@ export async function getHeatMapData() {
  * @param {number} limit - Max PRs to return
  * @returns {Promise<Array>} Array of PRs sorted by date
  */
-export async function getPRTimeline(limit = 10) {
+export async function getPRTimeline(limit = 10, timeRange = '3M') {
     const { PRTracker } = await import('./pr-tracker.js');
     const allPRs = PRTracker.getAllPRs();
+    const cutoffDate = getDateCutoff(timeRange);
 
     const timeline = [];
 
@@ -699,6 +729,9 @@ export async function getPRTimeline(limit = 10) {
 
         // Only include max weight PRs with 5+ reps (significant PRs)
         if (prs.maxWeight && prs.maxWeight.reps >= 5) {
+            // Filter by time range
+            if (cutoffDate && prs.maxWeight.date < cutoffDate) continue;
+
             timeline.push({
                 exercise,
                 equipment,
