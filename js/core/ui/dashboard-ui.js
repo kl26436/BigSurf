@@ -319,10 +319,10 @@ async function renderDashboard() {
         if (!hasWorkouts) {
             // Show welcome empty state for new users
             container.innerHTML = `
-                <div class="empty-state empty-state--hero">
-                    <i class="fas fa-dumbbell"></i>
-                    <h3>No workouts yet</h3>
-                    <p>Start your first workout to see your progress, streaks, and personal records here.</p>
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
+                    <div class="empty-state-title">No workouts yet</div>
+                    <div class="empty-state-description">Start your first workout to see your progress, streaks, and personal records here.</div>
                     <button class="btn btn-primary" onclick="navigateTo('workout')">
                         <i class="fas fa-play"></i> Start Workout
                     </button>

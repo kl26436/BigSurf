@@ -642,7 +642,7 @@ export function getWorkoutHistory(appState) {
             if (workout.exercises && workout.exercises.length > 0) {
                 workout.exercises.forEach((exercise) => {
                     exerciseHTML += `
-                    <div style="background: var(--bg-tertiary); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border);">
+                    <div style="background: var(--bg-secondary); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border);">
                         <h4 style="color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                             <i class="fas fa-trophy" style="color: var(--warning);"></i>
                             ${escapeHtml(exercise.name)}
@@ -699,7 +699,7 @@ export function getWorkoutHistory(appState) {
                 });
             } else {
                 exerciseHTML = `
-                <div style="background: var(--bg-tertiary); padding: 2rem; border-radius: 8px; text-align: center; color: var(--text-secondary);">
+                <div style="background: var(--bg-secondary); padding: 2rem; border-radius: 8px; text-align: center; color: var(--text-secondary);">
                     <i class="fas fa-dumbbell" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                     <p>No exercise data available for this workout.</p>
                 </div>`;
@@ -709,7 +709,7 @@ export function getWorkoutHistory(appState) {
             let notesSection = '';
             if (workout.rawData && workout.rawData.manualNotes) {
                 notesSection = `
-                <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 3px solid var(--info);">
+                <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 3px solid var(--info);">
                     <strong style="color: var(--info); display: block; margin-bottom: 0.5rem;">Workout Notes:</strong>
                     <span style="color: var(--text-primary);">${escapeHtml(workout.rawData.manualNotes)}</span>
                 </div>`;
@@ -815,7 +815,7 @@ export function getWorkoutHistory(appState) {
                     <strong style="color: var(--text-secondary);">Progress:</strong>
                     <span style="color: var(--text-primary);">
                         ${workout.progress || 0}%
-                        <div style="background: var(--bg-tertiary); height: 6px; border-radius: 3px; overflow: hidden; margin-top: 4px;">
+                        <div style="background: var(--bg-secondary); height: 6px; border-radius: 3px; overflow: hidden; margin-top: 4px;">
                             <div style="background: var(--primary); height: 100%; width: ${workout.progress || 0}%; transition: width 0.3s ease;"></div>
                         </div>
                     </span>

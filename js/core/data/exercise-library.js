@@ -153,9 +153,9 @@ export function getExerciseLibrary(appState) {
             if (filteredExercises.length === 0) {
                 grid.innerHTML = `
                     <div class="empty-state">
-                        <i class="fas fa-search"></i>
-                        <h3>No Exercises Found</h3>
-                        <p>Try adjusting your search or filters.</p>
+                        <div class="empty-state-icon"><i class="fas fa-search"></i></div>
+                        <div class="empty-state-title">No Exercises Found</div>
+                        <div class="empty-state-description">Try adjusting your search or filters.</div>
                     </div>
                 `;
                 return;

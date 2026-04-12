@@ -536,7 +536,7 @@ export async function searchLocationAddress() {
     }
 
     resultsContainer.innerHTML =
-        '<div style="text-align: center; padding: 20px; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+        '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
 
     try {
         // Use Firebase Cloud Function to bypass CORS restrictions
@@ -546,7 +546,7 @@ export async function searchLocationAddress() {
 
         if (!Array.isArray(results) || results.length === 0) {
             resultsContainer.innerHTML =
-                '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No results found. Try a different search.</div>';
+                '<div class="empty-state"><div class="empty-state-description">No results found. Try a different search.</div></div>';
             return;
         }
 

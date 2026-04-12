@@ -94,7 +94,7 @@ styles/
 │   ├── buttons.css        # .btn-* system
 │   ├── forms.css          # Inputs, selects, toggles
 │   ├── modals.css         # Modal overlay, content, animations
-│   ├── nav.css            # Bottom nav, sidebar, More menu (bottom sheet)
+│   ├── nav.css            # Bottom nav (5-tab), More menu (bottom sheet with grouped sections)
 │   └── empty-states.css   # Empty state patterns
 ├── pages/
 │   ├── app-shell.css      # App container, full-page overlay sections

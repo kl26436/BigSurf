@@ -111,7 +111,7 @@
     font-weight: 700;
     width: 160px;
     text-align: center;
-    background: var(--bg-tertiary);
+    background: var(--bg-secondary);
     border: 2px solid var(--border);
     border-radius: var(--radius-md);
     color: var(--text-strong);

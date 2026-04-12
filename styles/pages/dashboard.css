@@ -1454,11 +1454,5 @@ h3 {
         max-width: 500px;
         margin: auto;
     }
-    .bottom-nav {
-        display: none;
-    }
-    .sidebar {
-        left: 0;
-    }
 }
 

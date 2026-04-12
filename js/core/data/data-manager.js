@@ -596,7 +596,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             }
 
             let historyHTML = `
-                <div class="exercise-history-content" style="background: var(--bg-tertiary); padding: 0.5rem 0.75rem; border-radius: 8px; margin-top: 0.5rem;">`;
+                <div class="exercise-history-content" style="background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 8px; margin-top: 0.5rem;">`;
 
             // Show PR if available (only max weight with 5+ reps counts as a real PR)
             if (prs && prs.maxWeight && prs.maxWeight.reps >= 5) {
@@ -658,7 +658,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             historyDisplay.classList.remove('hidden');
         } else {
             historyDisplay.innerHTML = `
-                <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; margin-top: 1rem; text-align: center; color: var(--text-secondary);">
+                <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-top: 1rem; text-align: center; color: var(--text-secondary);">
                     No previous data found for this exercise
                 </div>
             `;
@@ -667,7 +667,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
     } catch (error) {
         console.error('Error loading exercise history:', error);
         historyDisplay.innerHTML = `
-            <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; margin-top: 1rem; text-align: center; color: var(--danger);">
+            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-top: 1rem; text-align: center; color: var(--danger);">
                 Error loading exercise history
             </div>
         `;

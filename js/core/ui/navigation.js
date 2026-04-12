@@ -1,25 +1,5 @@
 // Navigation Module - core/navigation.js
-// Handles sidebar navigation and view switching
-
-// ===================================================================
-// SIDEBAR CONTROLS
-// ===================================================================
-
-export function openSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-
-    if (sidebar) sidebar.classList.add('open');
-    if (overlay) overlay.classList.add('active');
-}
-
-export function closeSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-
-    if (sidebar) sidebar.classList.remove('open');
-    if (overlay) overlay.classList.remove('active');
-}
+// Handles bottom nav navigation and view switching
 
 // ===================================================================
 // NAVIGATION ROUTING
@@ -43,9 +23,6 @@ const FADE_DURATION = 150; // ms, matches CSS transition
 let fadeTimeout = null;
 
 export function navigateTo(view) {
-    // Close sidebar after navigation
-    closeSidebar();
-
     // Find the currently visible section
     const visibleSection = SECTION_IDS
         .map((id) => document.getElementById(id))
@@ -251,6 +228,9 @@ export function bottomNavTo(tab) {
         case 'history':
             navigateTo('history');
             break;
+        case 'stats':
+            navigateTo('stats');
+            break;
         case 'workout':
             // Check if there's an active workout
             const { AppState } = window;
@@ -366,6 +346,4 @@ export function setBottomNavVisible(visible) {
     if (bottomNav) {
         bottomNav.classList.toggle('hidden', !visible);
     }
-    // Also toggle body class for hamburger visibility
-    document.body.classList.toggle('no-bottom-nav', !visible);
 }

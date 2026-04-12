@@ -37,12 +37,6 @@ function getEquipmentIcon(equipmentType) {
 
 // Open exercise manager section
 export function openExerciseManager() {
-    // Close sidebar first
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar) {
-        sidebar.classList.remove('open');
-    }
-
     const section = document.getElementById('exercise-manager-section');
     if (section) {
         // Hide all other sections

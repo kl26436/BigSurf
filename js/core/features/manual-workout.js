@@ -184,9 +184,10 @@ async function loadWorkoutLibraryForManual() {
 
         if (activeTemplates.length === 0) {
             container.innerHTML = `
-                <div class="no-workouts-message">
-                    <p>No saved workouts found.</p>
-                    <p>Create a custom workout instead!</p>
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
+                    <div class="empty-state-title">No saved workouts found</div>
+                    <div class="empty-state-description">Create a custom workout instead!</div>
                 </div>
             `;
             return;
@@ -295,10 +296,10 @@ function renderManualExercises() {
 
     if (manualWorkoutState.exercises.length === 0) {
         container.innerHTML = `
-            <div class="empty-exercises-state">
-                <i class="fas fa-dumbbell"></i>
-                <p>No exercises yet</p>
-                <p class="hint">Click "Add Exercise" to get started</p>
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
+                <div class="empty-state-title">No exercises yet</div>
+                <div class="empty-state-description">Click "Add Exercise" to get started</div>
             </div>
         `;
         return;

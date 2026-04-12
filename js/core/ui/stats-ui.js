@@ -133,10 +133,10 @@ async function renderProgressView(preSelectedKey = null) {
                     <div class="section-header-row">
                         <h2 class="section-title"><i class="fas fa-chart-line"></i> Progress</h2>
                     </div>
-                    <div class="empty-state empty-state--hero">
-                        <i class="fas fa-chart-line"></i>
-                        <h3>Not enough data yet</h3>
-                        <p>Complete a few workouts to see your progress charts and personal records.</p>
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i class="fas fa-chart-line"></i></div>
+                        <div class="empty-state-title">Not enough data yet</div>
+                        <div class="empty-state-description">Complete a few workouts to see your progress charts and personal records.</div>
                         <button class="btn btn-primary" onclick="navigateTo('workout')">
                             <i class="fas fa-play"></i> Start Workout
                         </button>
@@ -331,9 +331,9 @@ function renderSummaryCards(streaks) {
 function renderExerciseSelector() {
     if (Object.keys(exerciseHierarchy).length === 0) {
         return `
-            <div class="no-exercises-msg">
-                <i class="fas fa-dumbbell"></i>
-                <p>Complete workouts to track progress</p>
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
+                <div class="empty-state-description">Complete workouts to track progress</div>
             </div>
         `;
     }

@@ -230,10 +230,10 @@ export function renderExercises() {
     // Show empty state if no exercises
     if (AppState.currentWorkout.exercises.length === 0) {
         container.insertAdjacentHTML('beforeend', `
-            <div class="empty-workout-message">
-                <i class="fas fa-dumbbell"></i>
-                <h3>No exercises in this workout</h3>
-                <p>Use the "Add Exercise" button above to get started!</p>
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
+                <div class="empty-state-title">No exercises in this workout</div>
+                <div class="empty-state-description">Use the "Add Exercise" button above to get started!</div>
             </div>
         `);
     }
@@ -1564,7 +1564,7 @@ export function confirmExerciseAddToWorkout(exerciseData) {
     const container = document.getElementById('exercise-list');
     if (container) {
         // Remove empty-state message if present
-        const emptyMsg = container.querySelector('.empty-workout-message');
+        const emptyMsg = container.querySelector('.empty-state');
         if (emptyMsg) emptyMsg.remove();
 
         const newIndex = AppState.currentWorkout.exercises.length - 1;

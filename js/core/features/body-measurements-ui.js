@@ -292,9 +292,9 @@ export async function showWeightHistory() {
     if (entries.length === 0) {
         historyHTML = `
             <div class="empty-state">
-                <i class="fas fa-weight-scale"></i>
-                <h3>No entries yet</h3>
-                <p>Start logging your weight to see history here.</p>
+                <div class="empty-state-icon"><i class="fas fa-weight-scale"></i></div>
+                <div class="empty-state-title">No entries yet</div>
+                <div class="empty-state-description">Start logging your weight to see history here.</div>
             </div>
         `;
     } else {
@@ -446,9 +446,9 @@ export async function renderBodyWeightChart() {
         const container = document.getElementById('bodyweight-chart-container');
         if (container) {
             container.innerHTML = `
-                <div class="empty-state" style="padding: 24px 0;">
-                    <i class="fas fa-chart-line"></i>
-                    <p>No weight data for this period.</p>
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fas fa-chart-line"></i></div>
+                    <div class="empty-state-description">No weight data for this period.</div>
                 </div>
             `;
         }

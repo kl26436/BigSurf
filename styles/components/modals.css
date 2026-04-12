@@ -356,6 +356,31 @@
     margin-top: 20px;
 }
 
+/* Fallback close button — visible when JS fails to populate modal content */
+.modal-fallback-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 5;
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.modal-fallback-close:active {
+    color: var(--text-strong);
+}
+/* Hide fallback when JS has populated the modal content */
+.modal-content:has(> div:not(:empty)) .modal-fallback-close {
+    display: none;
+}
+
 /* ===========================================
    21. MODALS (Additional Styles)
    =========================================== */
@@ -408,6 +433,7 @@ dialog.modal:not([open]) {
     border: 1px solid rgba(255, 255, 255, 0.04);
     border-bottom: none;
     animation: modalSlideUp 0.25s ease;
+    position: relative;
 }
 
 @keyframes modalFadeIn {
@@ -740,150 +766,6 @@ dialog.modal:not([open]) {
 }
 .equip-lib-item {
     margin-bottom: 6px;
-}
-
-/* Settings Page */
-.settings-page {
-    padding: 16px;
-}
-.settings-group {
-    margin-bottom: 24px;
-}
-.settings-group-title {
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-    padding: 0 4px;
-}
-.settings-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 4px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-.settings-label {
-    flex: 1;
-    min-width: 0;
-}
-.settings-name {
-    font-size: 0.95rem;
-    color: var(--text-primary);
-    display: block;
-}
-.settings-description {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    display: block;
-    margin-top: 2px;
-}
-.settings-control select {
-    background: var(--bg-card);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 0.85rem;
-}
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    cursor: pointer;
-}
-.toggle-switch input {
-    display: none;
-}
-.toggle-slider {
-    width: 48px;
-    height: 28px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 14px;
-    position: relative;
-    display: inline-block;
-    transition: background 0.2s;
-}
-.toggle-switch input:checked + .toggle-slider {
-    background: var(--primary);
-}
-.toggle-slider::after {
-    content: '';
-    width: 22px;
-    height: 22px;
-    background: white;
-    border-radius: 50%;
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    transition: transform 0.2s;
-}
-.toggle-switch input:checked + .toggle-slider::after {
-    transform: translateX(20px);
-}
-
-/* Onboarding */
-.onboarding-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-onboarding);
-    background: var(--bg-app);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-}
-.onboarding-card {
-    text-align: center;
-    max-width: 340px;
-    width: 100%;
-}
-.onboarding-card h2 {
-    font-size: 1.4rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-}
-.onboarding-card p {
-    color: var(--text-muted);
-    margin-bottom: 24px;
-    font-size: 0.95rem;
-}
-.onboarding-icon {
-    font-size: 3rem;
-    margin-bottom: 16px;
-    color: var(--primary);
-}
-.onboarding-choices {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-}
-.onboarding-choices .btn {
-    flex: 1;
-    padding: 20px 16px;
-    font-size: 1.1rem;
-}
-.onboarding-goal-picker {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-}
-.onboarding-goal-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    background: transparent;
-    color: var(--text-primary);
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-.onboarding-goal-btn.active {
-    border-color: var(--primary);
-    background: rgba(29, 211, 176, 0.15);
-    color: var(--primary);
 }
 
 /* Workout Detail Modal */

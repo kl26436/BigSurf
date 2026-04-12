@@ -81,141 +81,8 @@
         </div>
 
         <div class="app-container">
-            <!-- Sidebar Navigation -->
-            <nav id="sidebar" class="sidebar" role="navigation" aria-label="Main navigation">
-                <div class="sidebar-header">
-                    <h2>Big Surf</h2>
-                    <button class="sidebar-close" onclick="closeSidebar()" aria-label="Close menu">
-                        <i class="fas fa-times" aria-hidden="true"></i>
-                    </button>
-                </div>
-
-                <ul class="sidebar-menu" role="menu">
-                    <li role="menuitem">
-                        <a
-                            href="#"
-                            data-route="dashboard"
-                            onclick="
-                                navigateTo('dashboard');
-                                return false;
-                            "
-                        >
-                            <i class="fas fa-home" aria-hidden="true"></i>
-                            <span>Dashboard</span>
-                        </a>
-                    </li>
-                    <li role="menuitem">
-                        <a
-                            href="#"
-                            data-route="start-workout"
-                            onclick="
-                                navigateTo('start-workout');
-                                return false;
-                            "
-                        >
-                            <i class="fas fa-dumbbell" aria-hidden="true"></i>
-                            <span>Start Workout</span>
-                        </a>
-                    </li>
-                    <li role="menuitem">
-                        <a
-                            href="#"
-                            data-route="stats"
-                            onclick="
-                                navigateTo('stats');
-                                return false;
-                            "
-                        >
-                            <i class="fas fa-chart-line" aria-hidden="true"></i>
-                            <span>Stats & Records</span>
-                        </a>
-                    </li>
-                    <li role="menuitem">
-                        <a
-                            href="#"
-                            data-route="history"
-                            onclick="
-                                navigateTo('history');
-                                return false;
-                            "
-                        >
-                            <i class="fas fa-history" aria-hidden="true"></i>
-                            <span>Workout History</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-divider" role="separator"></li>
-                    <li class="sidebar-section-title" role="presentation">Settings</li>
-                    <li role="menuitem">
-                        <a
-                            href="#"
-                            data-route="location"
-                            onclick="
-                                navigateTo('location');
-                                return false;
-                            "
-                        >
-                            <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
-                            <span>Manage Locations</span>
-                        </a>
-                    </li>
-                    <li role="menuitem">
-                        <a
-                            href="#"
-                            data-route="exercises"
-                            onclick="
-                                navigateTo('exercises');
-                                return false;
-                            "
-                        >
-                            <i class="fas fa-list" aria-hidden="true"></i>
-                            <span>Exercise Library</span>
-                        </a>
-                    </li>
-                    <li role="menuitem">
-                        <a
-                            href="#"
-                            data-route="templates"
-                            onclick="
-                                navigateTo('templates');
-                                return false;
-                            "
-                        >
-                            <i class="fas fa-dumbbell" aria-hidden="true"></i>
-                            <span>Workout Library</span>
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- User Profile Footer -->
-                <div id="sidebar-user-profile" class="sidebar-footer hidden">
-                    <div class="sidebar-user-info">
-                        <div class="sidebar-user-avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="sidebar-user-details">
-                            <span id="sidebar-user-name" class="sidebar-user-name">User</span>
-                            <span class="sidebar-user-email" id="sidebar-user-email"></span>
-                        </div>
-                    </div>
-                    <button
-                        id="sidebar-sign-out-btn"
-                        class="sidebar-sign-out-btn"
-                        onclick="signOutUser()"
-                        aria-label="Sign out"
-                    >
-                        <i class="fas fa-sign-out-alt"></i>
-                    </button>
-                </div>
-            </nav>
-
-            <!-- Sidebar Overlay -->
-            <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
-
             <!-- Header with centered logo (shown on dashboard/history pages) -->
             <header class="header" id="main-header">
-                <button class="menu-toggle" onclick="openSidebar()" aria-label="Open menu">
-                    <i class="fas fa-bars"></i>
-                </button>
                 <img
                     src="BigSurfNoBG.png"
                     alt="Big Surf Logo"
@@ -1871,6 +1738,10 @@
                 <i class="fas fa-history" aria-hidden="true"></i>
                 <span>History</span>
             </button>
+            <button class="bottom-nav-item" data-tab="stats" onclick="bottomNavTo('stats')">
+                <i class="fas fa-chart-line" aria-hidden="true"></i>
+                <span>Stats</span>
+            </button>
             <button
                 class="bottom-nav-item"
                 data-tab="more"
@@ -1886,6 +1757,9 @@
         <!-- Workout Completion Summary Modal -->
         <dialog id="workout-completion-modal" class="modal" aria-modal="true" aria-label="Workout complete">
             <div class="modal-content">
+                <button class="modal-fallback-close" onclick="closeModal('workout-completion-modal')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
                 <div id="workout-completion-content">
                     <!-- Populated by JavaScript -->
                 </div>
@@ -1895,6 +1769,9 @@
         <!-- Body Weight Entry Modal (Phase 12.2) -->
         <dialog id="weight-entry-modal" class="modal" aria-modal="true" aria-label="Log body weight">
             <div class="modal-content">
+                <button class="modal-fallback-close" onclick="closeModal('weight-entry-modal')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
                 <!-- Populated by JavaScript -->
             </div>
         </dialog>
@@ -1902,6 +1779,9 @@
         <!-- Weight History Modal (Phase 12.2) -->
         <dialog id="weight-history-modal" class="modal" aria-modal="true" aria-label="Weight history">
             <div class="modal-content">
+                <button class="modal-fallback-close" onclick="closeModal('weight-history-modal')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
                 <!-- Populated by JavaScript -->
             </div>
         </dialog>
@@ -1909,6 +1789,9 @@
         <!-- Body Measurements Modal (Phase 12.4) -->
         <dialog id="measurements-modal" class="modal" aria-modal="true" aria-label="Body measurements">
             <div class="modal-content">
+                <button class="modal-fallback-close" onclick="closeModal('measurements-modal')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
                 <!-- Populated by JavaScript -->
             </div>
         </dialog>
@@ -1916,6 +1799,9 @@
         <!-- DEXA Scan Upload Modal (Phase 18) -->
         <dialog id="dexa-upload-modal" class="modal" aria-modal="true" aria-label="DEXA scan upload">
             <div class="modal-content">
+                <button class="modal-fallback-close" onclick="closeModal('dexa-upload-modal')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
                 <!-- Populated by JavaScript -->
             </div>
         </dialog>
@@ -1923,6 +1809,9 @@
         <!-- DEXA Scan History Modal (Phase 18) -->
         <dialog id="dexa-history-modal" class="modal" aria-modal="true" aria-label="DEXA scan history">
             <div class="modal-content">
+                <button class="modal-fallback-close" onclick="closeModal('dexa-history-modal')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
                 <!-- Populated by JavaScript -->
             </div>
         </dialog>
@@ -1930,6 +1819,9 @@
         <!-- DEXA Scan Detail Modal (Phase 18) -->
         <dialog id="dexa-detail-modal" class="modal" aria-modal="true" aria-label="DEXA scan detail">
             <div class="modal-content">
+                <button class="modal-fallback-close" onclick="closeModal('dexa-detail-modal')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
                 <!-- Populated by JavaScript -->
             </div>
         </dialog>
@@ -1992,99 +1884,55 @@
         <div id="more-menu" class="more-menu">
             <div class="bottom-sheet-handle" id="more-menu-handle"></div>
             <div class="more-menu-content">
-                <button
-                    class="more-menu-item"
-                    onclick="
-                        navigateTo('exercises');
-                        closeMoreMenu();
-                    "
-                >
+                <!-- Training Tools -->
+                <div class="more-menu-section-title">Training Tools</div>
+                <button class="more-menu-item" onclick="navigateTo('exercises'); closeMoreMenu();">
                     <i class="fas fa-list"></i>
                     <span>Exercise Library</span>
                 </button>
-                <button
-                    class="more-menu-item"
-                    onclick="
-                        navigateTo('templates');
-                        closeMoreMenu();
-                    "
-                >
+                <button class="more-menu-item" onclick="navigateTo('templates'); closeMoreMenu();">
                     <i class="fas fa-dumbbell"></i>
                     <span>Workout Library</span>
                 </button>
-                <button
-                    class="more-menu-item"
-                    onclick="
-                        navigateTo('stats');
-                        closeMoreMenu();
-                    "
-                >
-                    <i class="fas fa-chart-line"></i>
-                    <span>Stats & Records</span>
-                </button>
-                <button
-                    id="more-menu-locations"
-                    class="more-menu-item"
-                    onclick="
-                        navigateTo('location');
-                        closeMoreMenu();
-                    "
-                >
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>Manage Locations</span>
-                </button>
-                <button
-                    class="more-menu-item"
-                    onclick="
-                        navigateTo('equipment');
-                        closeMoreMenu();
-                    "
-                >
+                <button class="more-menu-item" onclick="navigateTo('equipment'); closeMoreMenu();">
                     <i class="fas fa-wrench"></i>
                     <span>Equipment Library</span>
                 </button>
-                <button
-                    class="more-menu-item"
-                    onclick="
-                        navigateTo('plate-calculator');
-                        closeMoreMenu();
-                    "
-                >
+
+                <div class="more-menu-divider"></div>
+
+                <!-- Utilities -->
+                <div class="more-menu-section-title">Utilities</div>
+                <button class="more-menu-item" onclick="navigateTo('plate-calculator'); closeMoreMenu();">
                     <i class="fas fa-calculator"></i>
                     <span>Plate Calculator</span>
                 </button>
-                <button
-                    class="more-menu-item"
-                    onclick="
-                        showAICoach();
-                        closeMoreMenu();
-                    "
-                >
+                <button class="more-menu-item" onclick="showAICoach(); closeMoreMenu();">
                     <i class="fas fa-brain"></i>
                     <span>AI Coach</span>
                 </button>
-                <button
-                    class="more-menu-item"
-                    onclick="
-                        navigateTo('settings');
-                        closeMoreMenu();
-                    "
-                >
+
+                <div class="more-menu-divider"></div>
+
+                <!-- Manage -->
+                <div class="more-menu-section-title">Manage</div>
+                <button id="more-menu-locations" class="more-menu-item" onclick="navigateTo('location'); closeMoreMenu();">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Manage Locations</span>
+                </button>
+                <button class="more-menu-item" onclick="navigateTo('settings'); closeMoreMenu();">
                     <i class="fas fa-cog"></i>
                     <span>Settings</span>
                 </button>
+
                 <div class="more-menu-divider"></div>
+
+                <!-- Account -->
                 <div class="more-menu-user">
                     <i class="fas fa-user"></i>
                     <span id="more-menu-email"></span>
                 </div>
-                <button
-                    class="more-menu-item more-menu-signout"
-                    onclick="
-                        signOutUser();
-                        closeMoreMenu();
-                    "
-                >
+                <button class="more-menu-item more-menu-signout" onclick="signOutUser(); closeMoreMenu();">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Sign Out</span>
                 </button>

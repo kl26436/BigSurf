@@ -77,7 +77,7 @@
 }
 .row-card__icon--warning {
     background: rgba(255, 140, 0, 0.12);
-    color: #ff8c00;
+    color: var(--highlight-warm);
 }
 .row-card__icon--success {
     background: rgba(54, 196, 107, 0.12);

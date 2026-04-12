@@ -290,8 +290,6 @@ import { setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './
 
 // Navigation functionality
 import {
-    openSidebar,
-    closeSidebar,
     navigateTo,
     bottomNavTo,
     toggleMoreMenu,
@@ -529,8 +527,6 @@ window.selectAddressResult = selectAddressResult;
 window.applyManualCoords = applyManualCoords;
 
 // Navigation Functions
-window.openSidebar = openSidebar;
-window.closeSidebar = closeSidebar;
 window.navigateTo = navigateTo;
 window.bottomNavTo = bottomNavTo;
 window.toggleMoreMenu = toggleMoreMenu;
@@ -607,9 +603,9 @@ window.showTemplatesByCategory = function (category) {
     if (filteredWorkouts.length === 0) {
         gridEl.innerHTML = `
             <div class="empty-state">
-                <i class="fas fa-dumbbell"></i>
-                <h3>No ${categoryDisplay} Workouts</h3>
-                <p>Create a workout to get started.</p>
+                <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
+                <div class="empty-state-title">No ${categoryDisplay} Workouts</div>
+                <div class="empty-state-description">Create a workout to get started.</div>
             </div>
         `;
     } else {

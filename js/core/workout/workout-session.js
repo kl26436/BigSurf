@@ -633,7 +633,16 @@ export async function cancelWorkout(skipConfirmation = false) {
 
     // Confirm cancellation unless explicitly skipped
     if (!skipConfirmation) {
-        if (!confirm('Cancel this workout? All progress will be saved but marked as cancelled.')) {
+        const exercises = AppState.savedData?.exercises || {};
+        const completedSets = Object.values(exercises)
+            .flatMap(ex => ex.sets || [])
+            .filter(s => s.completed).length;
+
+        const message = completedSets > 0
+            ? `You've completed ${completedSets} set${completedSets !== 1 ? 's' : ''}. Are you sure you want to cancel this workout? This cannot be undone.`
+            : 'Are you sure you want to cancel this workout?';
+
+        if (!confirm(message)) {
             return; // User chose not to cancel
         }
     }

@@ -580,9 +580,9 @@ export async function showDexaHistory() {
     if (scans.length === 0) {
         historyHTML = `
             <div class="empty-state">
-                <i class="fas fa-x-ray"></i>
-                <h3>No scans yet</h3>
-                <p>Upload your first DEXA scan to start tracking body composition.</p>
+                <div class="empty-state-icon"><i class="fas fa-x-ray"></i></div>
+                <div class="empty-state-title">No scans yet</div>
+                <div class="empty-state-description">Upload your first DEXA scan to start tracking body composition.</div>
                 <button class="btn btn-primary btn-sm" onclick="closeDexaHistory(); showDexaUploadModal();">
                     <i class="fas fa-upload"></i> Upload Scan
                 </button>

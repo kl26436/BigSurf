@@ -223,12 +223,6 @@ export async function signOutUser() {
         // Set flag BEFORE calling signOut to prevent auth listener from running
         manualSignOut = true;
 
-        // Close hamburger menu
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebar-overlay');
-        if (sidebar) sidebar.classList.remove('open');
-        if (overlay) overlay.classList.remove('active');
-
         // Hide all content sections
         const sections = [
             'workout-selector',
@@ -293,15 +287,6 @@ export function showUserInfo(user) {
         authSection.style.display = 'none';
     }
 
-    // Show and populate sidebar user profile
-    const sidebarProfile = document.getElementById('sidebar-user-profile');
-    const sidebarUserName = document.getElementById('sidebar-user-name');
-    const sidebarUserEmail = document.getElementById('sidebar-user-email');
-
-    if (sidebarProfile) sidebarProfile.classList.remove('hidden');
-    if (sidebarUserName) sidebarUserName.textContent = user.displayName || 'User';
-    if (sidebarUserEmail) sidebarUserEmail.textContent = user.email || '';
-
     // Update More menu email
     const moreMenuEmail = document.getElementById('more-menu-email');
     if (moreMenuEmail) moreMenuEmail.textContent = user.email || '';
@@ -312,9 +297,6 @@ export function hideUserInfo() {
     const authSection = document.getElementById('auth-section');
     if (authSection) authSection.classList.remove('hidden');
 
-    // Hide sidebar user profile
-    const sidebarProfile = document.getElementById('sidebar-user-profile');
-    if (sidebarProfile) sidebarProfile.classList.add('hidden');
 }
 
 export function setupAuthenticationListener() {
