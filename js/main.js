@@ -285,6 +285,20 @@ import {
     deleteDexaEntry,
 } from './core/features/dexa-scan-ui.js';
 
+// Error Log UI
+import {
+    initErrorBadge,
+    showErrorLog,
+    closeErrorLog,
+    toggleErrorLogSource,
+    clearAllErrors,
+    copyErrorLog,
+    toggleErrorDetail,
+} from './core/ui/error-log-ui.js';
+
+// Error handler — public capture APIs
+import { captureError, captureWarning, getErrorLog, loadPersistedErrors } from './core/utils/error-handler.js';
+
 // UI helpers
 import { setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './core/ui/ui-helpers.js';
 
@@ -852,6 +866,16 @@ window.deleteEquipmentFromLibrary = deleteEquipmentFromLibrary;
 window.saveEquipmentNotes = saveEquipmentNotes;
 window.showAddEquipmentFlow = showAddEquipmentFlow;
 
+// Error Log
+window.showErrorLog = showErrorLog;
+window.closeErrorLog = closeErrorLog;
+window.toggleErrorLogSource = toggleErrorLogSource;
+window.clearAllErrors = clearAllErrors;
+window.copyErrorLog = copyErrorLog;
+window.toggleErrorDetail = toggleErrorDetail;
+window.captureError = captureError;
+window.captureWarning = captureWarning;
+
 // State access (for debugging — used by ui-helpers.js and error-handler.js in production)
 window.AppState = AppState;
 
@@ -888,6 +912,39 @@ if (new URL(window.location).searchParams.has('debug')) {
             return result;
         };
 
+        // Error log utilities for console debugging
+        window.getErrorLog = getErrorLog;
+        window.loadPersistedErrors = loadPersistedErrors;
+        window.dumpErrors = async function () {
+            console.log('=== In-Memory Errors (this session) ===');
+            const memErrors = getErrorLog();
+            if (memErrors.length === 0) {
+                console.log('(none)');
+            } else {
+                console.table(memErrors.map(e => ({
+                    time: new Date(e.timestamp).toLocaleTimeString(),
+                    severity: e.severity,
+                    message: e.message?.substring(0, 80),
+                    source: e.source,
+                    shown: e.shownToUser,
+                })));
+            }
+
+            console.log('\n=== Persisted Errors (Firestore) ===');
+            const persisted = await loadPersistedErrors();
+            if (persisted.length === 0) {
+                console.log('(none)');
+            } else {
+                console.table(persisted.map(e => ({
+                    time: new Date(e.timestamp).toLocaleString(),
+                    severity: e.severity,
+                    message: e.message?.substring(0, 80),
+                    source: e.source,
+                })));
+            }
+            return { session: memErrors, persisted };
+        };
+
         console.log('🔧 Debug utilities loaded');
     });
 }
@@ -898,6 +955,9 @@ if (new URL(window.location).searchParams.has('debug')) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        // Initialize error log badge listener early
+        initErrorBadge();
+
         // Check for Withings OAuth callback before app starts
         // (cleans URL params so they don't interfere with routing)
         handleWithingsCallback();

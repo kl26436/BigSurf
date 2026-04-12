@@ -30,6 +30,7 @@
 @import url('pages/body-measurements.css');
 @import url('pages/ai-coach.css');
 @import url('pages/dexa.css');
+@import url('pages/error-log.css');
 
 /* 5. Utility classes & animations (always last — highest specificity intent) */
 @import url('utilities.css');

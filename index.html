@@ -1878,6 +1878,33 @@
             <div id="settings-content"></div>
         </section>
 
+        <!-- Error Log Modal -->
+        <dialog id="error-log-modal" class="modal">
+            <div class="modal-content modal-content--full">
+                <div class="modal-header">
+                    <h3 class="modal-title">Error Log</h3>
+                    <button class="btn-icon modal-close" onclick="closeErrorLog()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="error-log-toolbar">
+                    <div class="error-log-tabs">
+                        <button id="error-log-session-btn" class="error-log-tab active" onclick="toggleErrorLogSource()">This Session</button>
+                        <button id="error-log-saved-btn" class="error-log-tab" onclick="toggleErrorLogSource()">Saved</button>
+                    </div>
+                    <div class="error-log-actions">
+                        <button id="error-log-copy-btn" class="btn-icon" onclick="copyErrorLog()" title="Copy to clipboard">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="btn-icon" onclick="clearAllErrors()" title="Clear all errors">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="error-log-list" class="error-log-list"></div>
+            </div>
+        </dialog>
+
         <!-- AI Coach Modal (Phase 17) -->
         <dialog id="ai-coach-modal" class="modal">
             <div class="modal-content modal-content--full">
@@ -1934,6 +1961,11 @@
                 <button class="more-menu-item" onclick="navigateTo('settings'); closeMoreMenu();">
                     <i class="fas fa-cog"></i>
                     <span>Settings</span>
+                </button>
+                <button class="more-menu-item" onclick="showErrorLog(); closeMoreMenu();">
+                    <i class="fas fa-bug"></i>
+                    <span>Error Log</span>
+                    <span id="error-log-badge" class="error-badge hidden">0</span>
                 </button>
 
                 <div class="more-menu-divider"></div>

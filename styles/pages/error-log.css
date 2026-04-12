@@ -1,0 +1,219 @@
+/* ===========================================
+   ERROR LOG VIEWER
+   =========================================== */
+
+/* --- Toolbar --- */
+.error-log-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.error-log-tabs {
+    display: flex;
+    gap: 4px;
+}
+
+.error-log-tab {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.error-log-tab.active {
+    background: var(--primary);
+    color: var(--bg-app);
+    border-color: var(--primary);
+    font-weight: 600;
+}
+
+.error-log-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.error-log-actions .btn-icon {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+
+/* --- List --- */
+.error-log-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* --- Empty state --- */
+.error-log-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 16px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.error-log-empty i {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    color: var(--success);
+}
+
+.error-log-empty p {
+    font-size: var(--font-sm);
+}
+
+/* --- Entry --- */
+.error-log-entry {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-left: 3px solid var(--border);
+}
+
+.error-log-entry.error-severity-error {
+    border-left-color: var(--danger);
+}
+
+.error-log-entry.error-severity-warn {
+    border-left-color: var(--warning);
+}
+
+.error-log-entry.error-severity-info {
+    border-left-color: var(--text-muted);
+}
+
+/* --- Entry header --- */
+.error-log-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.error-severity-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 1px 6px;
+    border-radius: var(--radius-xs);
+    text-transform: uppercase;
+}
+
+.error-severity-tag.error-severity-error {
+    background: rgba(227, 93, 106, 0.15);
+    color: var(--danger);
+}
+
+.error-severity-tag.error-severity-warn {
+    background: rgba(240, 194, 75, 0.15);
+    color: var(--warning);
+}
+
+.error-severity-tag.error-severity-info {
+    background: rgba(176, 184, 193, 0.1);
+    color: var(--text-muted);
+}
+
+.error-time {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    flex: 1;
+}
+
+.error-shown-badge,
+.error-hidden-badge {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.error-expand-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    padding: 2px 6px;
+    cursor: pointer;
+}
+
+/* --- Entry body --- */
+.error-message {
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.error-source {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    margin-top: 2px;
+    font-family: monospace;
+}
+
+/* --- Expandable details --- */
+.error-details {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+.error-stack pre {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    background: var(--bg-app);
+    border-radius: var(--radius-xs);
+    padding: 8px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 0;
+}
+
+.error-context {
+    margin-top: 6px;
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+
+.error-context code {
+    display: block;
+    background: var(--bg-app);
+    border-radius: var(--radius-xs);
+    padding: 6px 8px;
+    margin-top: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 0.65rem;
+}
+
+/* --- Error badge (More menu) --- */
+.error-badge {
+    background: var(--danger);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    margin-left: auto;
+}
