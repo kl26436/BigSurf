@@ -61,6 +61,8 @@ import {
     toggleSetComplete,
     skipHeaderRestTimer,
     toggleReorderMode,
+    supersetWithNext,
+    ungroupExerciseFromWorkout,
     changeExerciseEquipment,
     applyEquipmentChange,
     changeWorkoutLocation,
@@ -104,6 +106,9 @@ import {
     editTemplateExercise,
     removeTemplateExercise,
     moveTemplateExercise,
+    groupSelectedTemplateExercises,
+    ungroupTemplateExercise,
+    updateSupersetSelectionBar,
     openExerciseLibrary,
     closeExerciseLibrary,
     showCreateExerciseForm,
@@ -357,6 +362,14 @@ window.skipModalRestTimer = skipModalRestTimer;
 window.autoStartRestTimer = autoStartRestTimer;
 window.skipHeaderRestTimer = skipHeaderRestTimer;
 window.toggleReorderMode = toggleReorderMode;
+window.supersetWithNext = supersetWithNext;
+window.ungroupExerciseFromWorkout = ungroupExerciseFromWorkout;
+
+// Plate Calculator (lazy-loaded)
+window.openPlateCalcPopover = async function (exerciseIndex) {
+    const { openPlateCalcPopover } = await import('./core/features/plate-calculator.js');
+    openPlateCalcPopover(exerciseIndex);
+};
 
 // Video Functions
 window.showExerciseVideo = showExerciseVideo;
@@ -625,6 +638,9 @@ window.addExerciseToTemplate = addExerciseToTemplate;
 window.editTemplateExercise = editTemplateExercise;
 window.removeTemplateExercise = removeTemplateExercise;
 window.moveTemplateExercise = moveTemplateExercise;
+window.groupSelectedTemplateExercises = groupSelectedTemplateExercises;
+window.ungroupTemplateExercise = ungroupTemplateExercise;
+window.updateSupersetSelectionBar = updateSupersetSelectionBar;
 window.openExerciseLibrary = openExerciseLibrary;
 window.closeExerciseLibrary = closeExerciseLibrary;
 window.showCreateExerciseForm = showCreateExerciseForm;

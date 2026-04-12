@@ -607,3 +607,38 @@
     font-weight: 500;
 }
 
+/* Superset selection in template editor */
+.exercise-select-col {
+    display: flex;
+    align-items: center;
+    padding-right: 6px;
+}
+.superset-select-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+.superset-badge {
+    display: inline-block;
+    font-size: var(--font-xs);
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: var(--radius-xs);
+    margin-right: 4px;
+    vertical-align: middle;
+}
+.superset-action-bar {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-card-hi);
+    border-top: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    justify-content: center;
+    z-index: 10;
+}
+.superset-action-bar.hidden {
+    display: none;
+}
+

@@ -7,6 +7,7 @@ import { saveWorkoutData } from '../data/data-manager.js';
 import { reorderTemplateExercise, normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
 import { getSessionLocation } from '../features/location-service.js';
 import { setBottomNavVisible } from '../ui/navigation.js';
+import { groupExercises, ungroupExercise } from '../features/superset-manager.js';
 
 let workoutManager;
 let currentEditingTemplate = null;
@@ -877,6 +878,69 @@ function renderTemplateExercises() {
         const item = createTemplateExerciseItem(exercise, index);
         container.appendChild(item);
     });
+
+    // Add the superset selection action bar
+    ensureSupersetBar(container);
+}
+
+function ensureSupersetBar(container) {
+    let bar = document.getElementById('superset-action-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'superset-action-bar';
+        bar.className = 'superset-action-bar hidden';
+        bar.innerHTML = `
+            <button type="button" class="btn btn-primary btn-small" onclick="groupSelectedTemplateExercises()">
+                <i class="fas fa-link"></i> Group as Superset
+            </button>
+        `;
+        container.parentNode.appendChild(bar);
+    }
+}
+
+export function updateSupersetSelectionBar() {
+    const checkboxes = document.querySelectorAll('.superset-select-checkbox:checked');
+    const bar = document.getElementById('superset-action-bar');
+    if (!bar) return;
+    if (checkboxes.length >= 2) {
+        bar.classList.remove('hidden');
+    } else {
+        bar.classList.add('hidden');
+    }
+}
+
+export function groupSelectedTemplateExercises() {
+    if (!currentEditingTemplate) return;
+
+    const checkboxes = document.querySelectorAll('.superset-select-checkbox:checked');
+    const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
+    if (indices.length < 2) return;
+
+    // Convert array to object format for groupExercises()
+    const exercisesObj = {};
+    currentEditingTemplate.exercises.forEach((ex, i) => {
+        exercisesObj[`exercise_${i}`] = ex;
+    });
+
+    const letter = groupExercises(indices, exercisesObj);
+    if (letter) {
+        showNotification(`Grouped as Superset ${letter}`, 'success');
+    }
+
+    renderTemplateExercises();
+}
+
+export function ungroupTemplateExercise(index) {
+    if (!currentEditingTemplate || index >= currentEditingTemplate.exercises.length) return;
+
+    // Convert array to object format for ungroupExercise()
+    const exercisesObj = {};
+    currentEditingTemplate.exercises.forEach((ex, i) => {
+        exercisesObj[`exercise_${i}`] = ex;
+    });
+
+    ungroupExercise(index, exercisesObj);
+    renderTemplateExercises();
 }
 
 function createTemplateExerciseItem(exercise, index) {
@@ -887,8 +951,19 @@ function createTemplateExerciseItem(exercise, index) {
     const isFirst = index === 0;
     const isLast = index === totalExercises - 1;
 
+    const group = exercise.group || null;
+    const groupBadge = group
+        ? `<span class="superset-badge" style="background: var(--primary); color: var(--bg-app);">${escapeHtml(group)}</span>`
+        : '';
+    const ungroupBtn = group
+        ? `<button type="button" class="btn btn-secondary btn-small" onclick="ungroupTemplateExercise(${index})" aria-label="Ungroup" title="Remove from superset"><i class="fas fa-unlink"></i></button>`
+        : '';
+
     item.innerHTML = `
         <div class="exercise-row">
+            <div class="exercise-select-col">
+                <input type="checkbox" class="superset-select-checkbox" data-index="${index}" onchange="updateSupersetSelectionBar()">
+            </div>
             <div class="exercise-reorder-buttons">
                 <button type="button" class="btn-reorder" onclick="moveTemplateExercise(${index}, 'up')" ${isFirst ? 'disabled' : ''} aria-label="Move up">
                     <i class="fas fa-chevron-up"></i>
@@ -898,7 +973,7 @@ function createTemplateExerciseItem(exercise, index) {
                 </button>
             </div>
             <div class="exercise-info" onclick="editTemplateExercise(${index})">
-                <h5>${escapeHtml(exercise.name)}</h5>
+                <h5>${groupBadge} ${escapeHtml(exercise.name)}</h5>
                 <div class="exercise-details">
                     ${exercise.sets} sets × ${exercise.reps} reps @ ${exercise.weight} lbs
                     ${exercise.bodyPart ? ` • ${escapeHtml(exercise.bodyPart)}` : ''}
@@ -906,6 +981,7 @@ function createTemplateExerciseItem(exercise, index) {
                 </div>
             </div>
             <div class="exercise-item-actions">
+                ${ungroupBtn}
                 <button type="button" class="btn btn-secondary btn-small" onclick="editTemplateExercise(${index})" aria-label="Edit exercise">
                     <i class="fas fa-edit"></i>
                 </button>

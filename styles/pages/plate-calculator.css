@@ -1,0 +1,264 @@
+/* ===========================================
+   PLATE CALCULATOR PAGE & POPOVER
+   =========================================== */
+
+/* Page header */
+.plate-calc-page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px var(--pad-page);
+}
+.plate-calc-page-header h2 {
+    font-size: var(--font-lg);
+    margin: 0;
+}
+
+/* Container */
+.plate-calc-container {
+    padding: 0 var(--pad-page) var(--pad-page);
+}
+
+/* Sections */
+.plate-calc-section {
+    margin-bottom: 20px;
+}
+.plate-calc-label {
+    display: block;
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+.plate-calc-input {
+    font-size: var(--font-lg);
+    padding: 14px 16px;
+    text-align: center;
+    letter-spacing: 0.02em;
+}
+
+/* Bar weight selector */
+.plate-calc-bar-options {
+    display: flex;
+    gap: 8px;
+}
+.plate-calc-bar-btn {
+    flex: 1;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--anim-fast);
+}
+.plate-calc-bar-btn.active {
+    border-color: var(--primary);
+    background: rgba(29, 211, 176, 0.1);
+    color: var(--primary);
+}
+.plate-calc-bar-btn:active {
+    transform: scale(0.96);
+}
+
+/* Plate checkboxes */
+.plate-calc-plates-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.plate-calc-plate-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--anim-fast);
+}
+.plate-calc-plate-toggle input {
+    display: none;
+}
+.plate-calc-plate-toggle.active {
+    border-color: var(--primary);
+    color: var(--text-strong);
+    background: rgba(29, 211, 176, 0.08);
+}
+.plate-calc-plate-toggle:active {
+    transform: scale(0.96);
+}
+
+/* Result area */
+.plate-calc-result {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px 16px;
+    text-align: center;
+}
+.plate-calc-empty {
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    padding: 20px 0;
+}
+.plate-calc-error {
+    color: var(--danger);
+    font-size: var(--font-sm);
+    padding: 12px 0;
+}
+.plate-calc-breakdown {
+    margin-top: 16px;
+}
+.plate-calc-total {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.plate-calc-total-label {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+.plate-calc-total-value {
+    font-size: var(--font-xl);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.plate-calc-per-side {
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+.plate-calc-bar-label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.plate-calc-remainder {
+    font-size: var(--font-xs);
+    color: var(--warning);
+    margin-top: 8px;
+}
+
+/* ============================================
+   BARBELL DIAGRAM
+   ============================================ */
+.barbell-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 12px 0;
+    overflow-x: auto;
+}
+.barbell-bar-only {
+    background: var(--text-muted);
+    height: 8px;
+    width: 120px;
+    border-radius: 4px;
+    position: relative;
+    color: var(--text-secondary);
+    font-size: var(--font-xs);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 0;
+}
+.barbell-side {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.barbell-left {
+    flex-direction: row;
+}
+.barbell-right {
+    flex-direction: row;
+}
+.barbell-bar {
+    width: 40px;
+    height: 8px;
+    background: var(--text-muted);
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+.barbell-collar {
+    width: 8px;
+    height: 16px;
+    background: var(--text-secondary);
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+.barbell-plate {
+    width: 16px;
+    min-width: 16px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.barbell-plate span {
+    font-size: 8px;
+    font-weight: 700;
+    color: #fff;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    line-height: 1;
+}
+
+/* ============================================
+   IN-MODAL POPOVER
+   ============================================ */
+.plate-calc-popover {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 16px var(--pad-page) 24px;
+    z-index: var(--z-add-exercise);
+    box-shadow: var(--shadow-lg);
+    animation: slideUp var(--anim-normal) ease-out;
+}
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+.plate-calc-popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.plate-calc-popover-header h3 {
+    font-size: var(--font-md);
+    margin: 0;
+}
+.plate-calc-popover-body {
+    text-align: center;
+}
+.plate-calc-popover-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.plate-calc-popover-input-row .form-input {
+    flex: 1;
+    text-align: center;
+    font-size: var(--font-lg);
+}
+.plate-calc-popover-unit {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    min-width: 30px;
+}

@@ -12,7 +12,7 @@ import {
     openModal,
 } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
-import { getExerciseGroups } from '../features/superset-manager.js';
+import { getExerciseGroups, groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import { setBottomNavVisible } from '../ui/navigation.js';
 import { saveWorkoutData, debouncedSaveWorkoutData, loadExerciseHistory, getLastSessionDefaults } from '../data/data-manager.js';
 import {
@@ -501,6 +501,69 @@ export function createExerciseCard(exercise, index) {
     return card;
 }
 
+export function supersetWithNext(index) {
+    if (!AppState.currentWorkout) return;
+    const nextIndex = index + 1;
+    if (nextIndex >= AppState.currentWorkout.exercises.length) return;
+
+    // Ensure savedData.exercises entries exist for both
+    if (!AppState.savedData.exercises) AppState.savedData.exercises = {};
+    for (const idx of [index, nextIndex]) {
+        const key = `exercise_${idx}`;
+        if (!AppState.savedData.exercises[key]) {
+            const ex = AppState.currentWorkout.exercises[idx];
+            AppState.savedData.exercises[key] = {
+                sets: [],
+                notes: '',
+                name: ex?.machine || ex?.name || null,
+                equipment: ex?.equipment || null,
+            };
+        }
+    }
+
+    groupExercises([index, nextIndex], AppState.savedData.exercises);
+
+    // Also set on the workout exercise objects so it persists
+    AppState.currentWorkout.exercises[index].group = AppState.savedData.exercises[`exercise_${index}`].group;
+    AppState.currentWorkout.exercises[nextIndex].group = AppState.savedData.exercises[`exercise_${nextIndex}`].group;
+
+    renderExercises();
+    debouncedSaveWorkoutData(AppState);
+
+    // Close the modal and show the grouped view
+    const modal = document.getElementById('exercise-modal');
+    if (modal) modal.close();
+    setHeaderMode('workout');
+    setBottomNavVisible(true);
+}
+
+export function ungroupExerciseFromWorkout(index) {
+    if (!AppState.currentWorkout || !AppState.savedData.exercises) return;
+
+    const key = `exercise_${index}`;
+    const group = AppState.savedData.exercises[key]?.group;
+    if (!group) return;
+
+    ungroupExercise(index, AppState.savedData.exercises);
+
+    // Sync back to workout exercise objects
+    for (let i = 0; i < AppState.currentWorkout.exercises.length; i++) {
+        const exKey = `exercise_${i}`;
+        if (AppState.savedData.exercises[exKey]) {
+            AppState.currentWorkout.exercises[i].group = AppState.savedData.exercises[exKey].group || null;
+        }
+    }
+
+    renderExercises();
+    debouncedSaveWorkoutData(AppState);
+
+    // Close the modal
+    const modal = document.getElementById('exercise-modal');
+    if (modal) modal.close();
+    setHeaderMode('workout');
+    setBottomNavVisible(true);
+}
+
 export async function focusExercise(index) {
     if (!AppState.currentWorkout) return;
     setupExerciseModalDelegation();
@@ -563,6 +626,33 @@ export async function focusExercise(index) {
     equipBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Equipment';
     equipBtn.addEventListener('click', () => window.changeExerciseEquipment(index));
     actionsRow.appendChild(equipBtn);
+
+    // Superset/Ungroup button
+    const currentGroup = exercise.group || AppState.savedData.exercises?.[`exercise_${index}`]?.group;
+    if (currentGroup) {
+        const ungroupBtn = document.createElement('button');
+        ungroupBtn.className = 'btn-text btn-small';
+        ungroupBtn.innerHTML = '<i class="fas fa-unlink"></i> Ungroup';
+        ungroupBtn.addEventListener('click', () => window.ungroupExerciseFromWorkout(index));
+        actionsRow.appendChild(ungroupBtn);
+    } else {
+        const nextIdx = index + 1;
+        const hasNext = nextIdx < (AppState.currentWorkout?.exercises?.length || 0);
+        if (hasNext) {
+            const supersetBtn = document.createElement('button');
+            supersetBtn.className = 'btn-text btn-small';
+            supersetBtn.innerHTML = '<i class="fas fa-link"></i> Superset';
+            supersetBtn.addEventListener('click', () => window.supersetWithNext(index));
+            actionsRow.appendChild(supersetBtn);
+        }
+    }
+
+    // Plate calculator button
+    const platesBtn = document.createElement('button');
+    platesBtn.className = 'btn-text btn-small';
+    platesBtn.innerHTML = '<i class="fas fa-calculator"></i> Plates';
+    platesBtn.addEventListener('click', () => window.openPlateCalcPopover(index));
+    actionsRow.appendChild(platesBtn);
 
     // Always show video button — resolveFormVideo handles equipment + exercise fallback
     const videoBtn = document.createElement('button');

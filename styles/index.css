@@ -26,6 +26,7 @@
 @import url('pages/stats.css');
 @import url('pages/exercise-lib.css');
 @import url('pages/settings.css');
+@import url('pages/plate-calculator.css');
 
 /* 5. Utility classes & animations (always last — highest specificity intent) */
 @import url('utilities.css');

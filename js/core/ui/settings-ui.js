@@ -19,6 +19,12 @@ const DEFAULT_SETTINGS = {
     // Goals
     weeklyGoal: 5,
 
+    // Plate Calculator
+    plateLbs: [45, 35, 25, 10, 5, 2.5],
+    plateKg: [20, 15, 10, 5, 2.5, 1.25],
+    plateBarLbs: 45,
+    plateBarKg: 20,
+
     // Meta
     hasCompletedOnboarding: false,
 };

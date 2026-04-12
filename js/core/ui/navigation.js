@@ -35,6 +35,7 @@ const SECTION_IDS = [
     'exercise-manager-section',
     'location-management-section',
     'equipment-library-section',
+    'plate-calculator-section',
     'settings-section',
 ];
 
@@ -119,6 +120,10 @@ function routeToView(view) {
             showEquipmentLibrary();
             break;
 
+        case 'plate-calculator':
+            showPlateCalculator();
+            break;
+
         case 'settings':
             showSettings();
             break;
@@ -190,6 +195,16 @@ async function showEquipmentLibrary() {
     setHeaderMode('equipment');
     const { openEquipmentLibrary } = await import('./equipment-library-ui.js');
     openEquipmentLibrary();
+}
+
+async function showPlateCalculator() {
+    const section = document.getElementById('plate-calculator-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('more');
+    setHeaderMode('plate-calculator');
+    const { initPlateCalculatorPage } = await import('../features/plate-calculator.js');
+    initPlateCalculatorPage();
 }
 
 async function showSettings() {
