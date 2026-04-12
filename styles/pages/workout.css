@@ -10,10 +10,9 @@
     background: var(--bg-card-hi);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle);
-    padding: 16px;
-    margin-bottom: 16px;
-    /* Removed sticky positioning - was causing iOS scrolling issues */
-    box-shadow: var(--shadow-md);
+    padding: var(--space-20) var(--pad-card-x) var(--space-16);
+    margin-bottom: var(--space-16);
+    box-shadow: none;
     overflow: hidden;
 }
 .active-workout-hero::after {
@@ -32,7 +31,9 @@
     margin-bottom: 8px;
 }
 .workout-hero-top h2 {
-    font-size: 1.2rem;
+    font-size: var(--font-md);
+    font-weight: 500;
+    color: var(--text-secondary);
     margin: 0;
 }
 .workout-timer-badge {
@@ -43,7 +44,8 @@
     border: 1px solid rgba(29, 211, 176, 0.3);
     padding: 6px 12px;
     border-radius: var(--radius-pill);
-    font-weight: 600;
+    font-size: var(--font-sm);
+    font-weight: 500;
     color: var(--primary);
 }
 
@@ -60,7 +62,7 @@
     flex: 1;
 }
 .workout-stat-value {
-    font-size: 1.25rem;
+    font-size: var(--font-display-sm);
     font-weight: 700;
     color: var(--primary);
 }
@@ -111,9 +113,19 @@
     bottom: 0;
     z-index: 10;
     background: var(--bg-app);
-    padding: var(--pad-card-y) var(--pad-card-x);
-    border-top: 1px solid var(--border-subtle);
+    padding: var(--space-24) var(--pad-card-x) var(--space-16);
+    border-top: none;
     margin: 0 -16px;
+}
+.workout-action-bar::before {
+    content: '';
+    position: absolute;
+    top: -32px;
+    left: 0;
+    right: 0;
+    height: 32px;
+    background: linear-gradient(to bottom, transparent, var(--bg-app));
+    pointer-events: none;
 }
 .btn-full {
     width: 100%;
@@ -224,11 +236,9 @@
     background: var(--bg-card);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
-    padding: 16px;
-    cursor: pointer;
     position: relative;
     overflow: hidden;
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    transition: box-shadow var(--anim-normal), border-color var(--anim-normal);
 }
 .exercise-card::before {
     content: '';
@@ -236,13 +246,8 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: var(--accent-bar);
     background: var(--primary);
-}
-.exercise-card:active {
-    transform: scale(0.98);
-    box-shadow: 0 0 0 2px var(--primary);
-    background: var(--bg-card-hi);
 }
 .exercise-card.completed {
     background: var(--bg-card);
@@ -252,6 +257,190 @@
     background: var(--success);
 }
 
+/* Expanded card gets prominence */
+.exercise-card.expanded {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-accent);
+}
+.exercise-card.expanded::before {
+    height: var(--accent-bar);
+}
+
+/* ── Card Header (always visible) ── */
+.exercise-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--pad-card-y) var(--pad-card-x);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    gap: var(--space-8);
+}
+.exercise-card-header:active {
+    background: var(--bg-card-hi);
+}
+.exercise-card-info {
+    flex: 1;
+    min-width: 0;
+}
+.exercise-title {
+    font-weight: 600;
+    font-size: var(--font-md);
+    color: var(--text-strong);
+    margin: 0;
+}
+.exercise-card-meta {
+    display: flex;
+    gap: var(--space-8);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.exercise-card-last {
+    color: var(--text-secondary);
+}
+.exercise-card-hint {
+    font-size: var(--font-xs);
+    color: var(--primary);
+    opacity: 0.7;
+}
+.exercise-card-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    flex-shrink: 0;
+}
+.exercise-card-count {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--primary);
+}
+.exercise-card-chevron {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    transition: transform var(--anim-normal) var(--ease-out-expo);
+}
+.exercise-card.expanded .exercise-card-chevron {
+    transform: rotate(180deg);
+}
+
+/* ── Card Body (inline expansion) ── */
+.exercise-card-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height var(--anim-slow) var(--ease-out-expo);
+    padding: 0 var(--pad-card-x);
+}
+.exercise-card.expanded .exercise-card-body {
+    padding-bottom: var(--pad-card-x);
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* ── Inline toolbar (Swap | Equipment | More) ── */
+.exercise-inline-toolbar {
+    display: flex;
+    gap: var(--space-8);
+    padding: var(--space-8) 0;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: var(--space-12);
+}
+.exercise-inline-toolbar .btn-text {
+    font-size: var(--font-xs);
+}
+
+/* Overflow menu inside expanded card */
+.exercise-overflow-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-8) 0;
+    margin-bottom: var(--space-8);
+}
+.exercise-overflow-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-12);
+    border: none;
+    background: none;
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    cursor: pointer;
+    border-radius: var(--radius-xs);
+    text-align: left;
+}
+.exercise-overflow-item:active {
+    background: var(--bg-card-hi);
+}
+.exercise-overflow-item--danger {
+    color: var(--danger);
+}
+
+/* Inline video section */
+.exercise-card-body .video-section {
+    margin-bottom: var(--space-12);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+.exercise-card-body .exercise-video-iframe {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border: none;
+    border-radius: var(--radius-sm);
+}
+
+/* Ghost values (previous session) as placeholder text */
+.exercise-card-body .set-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.5;
+    font-style: italic;
+}
+
+/* Inline card body form elements */
+.exercise-card-body textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-family: var(--font);
+    font-size: var(--font-base);
+    resize: vertical;
+    margin-bottom: var(--space-12);
+}
+.exercise-card-body textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+.exercise-card-body textarea::placeholder {
+    color: var(--text-muted);
+}
+.exercise-card-body .btn-success {
+    width: 100%;
+    padding: var(--space-16);
+    background: var(--success);
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: var(--font-md);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    min-height: var(--tap);
+}
+.exercise-card-body .btn-success:active {
+    opacity: 0.85;
+}
+
+/* Legacy compatibility: old title row */
 .exercise-title-row {
     display: flex;
     align-items: center;
@@ -262,27 +451,10 @@
     flex: 1;
     min-width: 0;
 }
-.exercise-title {
-    font-weight: 600;
-    margin-bottom: var(--space-6);
-}
 .exercise-equipment-tag {
     font-size: 0.75rem;
     color: var(--text-muted);
     margin-bottom: 8px;
-}
-.exercise-card-chevron {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    opacity: 0.5;
-    flex-shrink: 0;
-}
-.exercise-card-hint {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--primary);
-    opacity: 0.7;
-    margin-bottom: 4px;
 }
 
 /* Inline exercise progress */
@@ -359,11 +531,7 @@
     opacity: 0.55;
 }
 .exercise-card.just-completed {
-    animation: slide-to-bottom 0.4s ease;
-}
-@keyframes slide-to-bottom {
-    0% { opacity: 0.3; transform: translateY(-10px); }
-    100% { opacity: 0.55; transform: translateY(0); }
+    animation: slideToBottom 0.4s ease;
 }
 
 /* Reorder mode */

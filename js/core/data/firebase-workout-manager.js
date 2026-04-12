@@ -1073,9 +1073,18 @@ export class FirebaseWorkoutManager {
      * Returns existing equipment if found (by name only), creates new if not
      * Equipment can have multiple locations, so we match by name only
      */
-    async getOrCreateEquipment(equipmentName, location = null, exerciseName = null, videoUrl = null) {
+    async getOrCreateEquipment(equipmentName, locationOrOptions = null, exerciseName = null, videoUrl = null) {
         if (!this.appState.currentUser || !equipmentName) {
             return null;
+        }
+
+        // Support both old signature (location string) and new (options object)
+        let location = null;
+        let extraFields = {};
+        if (typeof locationOrOptions === 'string') {
+            location = locationOrOptions;
+        } else if (locationOrOptions && typeof locationOrOptions === 'object') {
+            extraFields = locationOrOptions;
         }
 
         try {
@@ -1100,9 +1109,10 @@ export class FirebaseWorkoutManager {
             const newEquipment = {
                 name: equipmentName,
                 locations: location ? [location] : [],
-                location: null, // Use locations array instead
+                location: null,
                 exerciseTypes: exerciseName ? [exerciseName] : [],
                 video: videoUrl || null,
+                ...extraFields,
             };
 
             const equipmentId = await this.saveEquipment(newEquipment);

@@ -323,19 +323,14 @@ export async function showWeightHistory() {
         }).join('');
     }
 
-    modal.querySelector('.modal-content').innerHTML = `
-        <div class="modal-header">
-            <h3>Weight History</h3>
-            <button class="modal-close-btn" onclick="closeWeightHistory()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            ${historyHTML}
-        </div>
-    `;
+    // Populate the full-page body content
+    const body = document.getElementById('weight-history-content') || modal.querySelector('.full-page-body');
+    if (body) {
+        body.innerHTML = historyHTML;
+    }
 
-    openModal(modal);
+    // Show as full-page section
+    modal.classList.remove('hidden');
 }
 
 /**
@@ -343,7 +338,7 @@ export async function showWeightHistory() {
  */
 export function closeWeightHistory() {
     const modal = document.getElementById('weight-history-modal');
-    if (modal) closeModal(modal);
+    if (modal) modal.classList.add('hidden');
 }
 
 /**

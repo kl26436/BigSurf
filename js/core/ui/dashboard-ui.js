@@ -286,11 +286,20 @@ async function renderDashboard() {
     const container = document.getElementById('dashboard-content');
     if (!container) return;
 
-    // Show loading state
+    // Show skeleton loading state
     container.innerHTML = `
-        <div class="dashboard-loading">
-            <div class="loading-spinner"></div>
+        <div class="skeleton skeleton-card" style="height: 100px;"></div>
+        <div style="display: flex; gap: var(--gap-items); margin-bottom: var(--gap-items);">
+            <div class="skeleton skeleton-ring"></div>
+            <div style="flex: 1;">
+                <div class="skeleton skeleton-line skeleton-line-medium"></div>
+                <div class="skeleton skeleton-line skeleton-line-short"></div>
+                <div class="skeleton skeleton-line skeleton-line-full"></div>
+            </div>
         </div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card" style="height: 140px;"></div>
     `;
 
     try {

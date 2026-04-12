@@ -618,27 +618,22 @@ export async function showDexaHistory() {
         }).join('');
     }
 
-    modal.querySelector('.modal-content').innerHTML = `
-        <div class="modal-header">
-            <h3>DEXA Scan History</h3>
-            <button class="modal-close-btn" onclick="closeDexaHistory()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            ${historyHTML}
-        </div>
-    `;
+    // Populate the full-page body content
+    const body = document.getElementById('dexa-history-content') || modal.querySelector('.full-page-body');
+    if (body) {
+        body.innerHTML = historyHTML;
+    }
 
-    openModal(modal);
+    // Show as full-page section
+    modal.classList.remove('hidden');
 }
 
 /**
- * Close the history modal.
+ * Close the history section.
  */
 export function closeDexaHistory() {
     const modal = document.getElementById('dexa-history-modal');
-    if (modal) closeModal(modal);
+    if (modal) modal.classList.add('hidden');
 }
 
 // ===================================================================
@@ -711,14 +706,10 @@ export async function showDexaDetail(scanId) {
         `;
     }
 
-    modal.querySelector('.modal-content').innerHTML = `
-        <div class="modal-header">
-            <h3>DEXA Scan</h3>
-            <button class="modal-close-btn" onclick="closeDexaDetail()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
+    // Populate the full-page body content
+    const body = document.getElementById('dexa-detail-content') || modal.querySelector('.full-page-body');
+    if (body) {
+        body.innerHTML = `
             <div class="dexa-detail-date">
                 ${escapeHtml(dateStr)}
                 ${scan.provider ? ` — ${escapeHtml(scan.provider)}` : ''}
@@ -733,18 +724,19 @@ export async function showDexaDetail(scanId) {
                     <i class="fas fa-trash"></i> Delete Scan
                 </button>
             </div>
-        </div>
-    `;
+        `;
+    }
 
-    openModal(modal);
+    // Show as full-page section
+    modal.classList.remove('hidden');
 }
 
 /**
- * Close the detail modal.
+ * Close the detail section.
  */
 export function closeDexaDetail() {
     const modal = document.getElementById('dexa-detail-modal');
-    if (modal) closeModal(modal);
+    if (modal) modal.classList.add('hidden');
 }
 
 /**

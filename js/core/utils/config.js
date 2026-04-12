@@ -14,6 +14,7 @@ export const Config = {
     PR_CUTOFF_DATE: '2025-07-01',
 
     // UI
+    INLINE_EXERCISE_CARDS: true,
     EXERCISE_MODAL_HISTORY_COUNT: 5,
     RECENT_EXERCISES_COUNT: 8,
 

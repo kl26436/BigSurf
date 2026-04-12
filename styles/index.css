@@ -32,5 +32,8 @@
 @import url('pages/dexa.css');
 @import url('pages/error-log.css');
 
-/* 5. Utility classes & animations (always last — highest specificity intent) */
+/* 5. Animations (centralized keyframes) */
+@import url('animations.css');
+
+/* 6. Utility classes (always last — highest specificity intent) */
 @import url('utilities.css');

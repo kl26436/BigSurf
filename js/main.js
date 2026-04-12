@@ -17,6 +17,7 @@ import {
     assignExerciseToEquipment, filterAssignList, confirmAssignExercise, unassignExercise,
     editEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
     saveEquipmentNotes, showAddEquipmentFlow,
+    selectEquipType, updateEquipNamePreview, confirmAddEquipment,
 } from './core/ui/equipment-library-ui.js';
 
 // Authentication functions
@@ -64,6 +65,8 @@ import {
     toggleReorderMode,
     supersetWithNext,
     ungroupExerciseFromWorkout,
+    toggleExerciseExpansion,
+    replaceExercise,
     changeExerciseEquipment,
     applyEquipmentChange,
     changeWorkoutLocation,
@@ -305,6 +308,7 @@ import { setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './
 // Navigation functionality
 import {
     navigateTo,
+    navigateBack,
     bottomNavTo,
     toggleMoreMenu,
     closeMoreMenu,
@@ -406,6 +410,8 @@ window.startWorkoutFromModal = function (workoutName) {
 
 // Exercise Management
 window.focusExercise = focusExercise;
+window.toggleExerciseExpansion = toggleExerciseExpansion;
+window.replaceExercise = replaceExercise;
 window.updateSet = updateSet;
 window.cycleSetType = cycleSetType;
 window.addSet = addSet;
@@ -543,6 +549,7 @@ window.applyManualCoords = applyManualCoords;
 
 // Navigation Functions
 window.navigateTo = navigateTo;
+window.navigateBack = navigateBack;
 window.bottomNavTo = bottomNavTo;
 window.toggleMoreMenu = toggleMoreMenu;
 window.closeMoreMenu = closeMoreMenu;
@@ -865,6 +872,9 @@ window.editEquipmentExerciseVideoFromLib = editEquipmentExerciseVideoFromLib;
 window.deleteEquipmentFromLibrary = deleteEquipmentFromLibrary;
 window.saveEquipmentNotes = saveEquipmentNotes;
 window.showAddEquipmentFlow = showAddEquipmentFlow;
+window.selectEquipType = selectEquipType;
+window.updateEquipNamePreview = updateEquipNamePreview;
+window.confirmAddEquipment = confirmAddEquipment;
 
 // Error Log
 window.showErrorLog = showErrorLog;

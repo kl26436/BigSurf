@@ -612,7 +612,8 @@ function showTemplateEditor() {
         </form>
     `;
 
-    openModal(templateEditor);
+    // Show as full-page section
+    templateEditor.classList.remove('hidden');
 
     // Render the exercises list
     renderTemplateExercises();
@@ -822,7 +823,7 @@ export function cancelInlineAdd() {
 export function closeTemplateEditor() {
     const templateEditor = document.getElementById('template-editor-modal');
     if (templateEditor) {
-        closeModal(templateEditor);
+        templateEditor.classList.add('hidden');
     }
     currentEditingTemplate = null;
 }
@@ -1158,7 +1159,8 @@ export async function openExerciseLibrary(mode = 'template') {
     const modal = document.getElementById('exercise-library-modal');
     if (!modal) return;
 
-    openModal(modal);
+    // Show as full-page section (no longer a dialog)
+    modal.classList.remove('hidden');
 
     // Load exercise library, recent exercises, and equipment data in parallel
     const [library, , allEquipment, savedLocations] = await Promise.all([
@@ -1225,7 +1227,7 @@ function setupExerciseLibraryListeners() {
 export function closeExerciseLibrary() {
     const modal = document.getElementById('exercise-library-modal');
     if (modal) {
-        closeModal(modal);
+        modal.classList.add('hidden');
     }
 
     // Clear the active workout flag

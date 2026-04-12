@@ -19,11 +19,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: var(--gap-section) 0 var(--gap-items);
+    margin: var(--space-32) 0 var(--gap-items);
 }
 .stats-section-title {
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: var(--font-md);
+    font-weight: 700;
 }
 .view-more-link {
     font-size: 0.85rem;
@@ -105,8 +105,8 @@
     justify-content: center;
 }
 .ring-count {
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: var(--font-display-sm);
+    font-weight: var(--font-display-weight);
     line-height: 1;
 }
 .ring-goal {

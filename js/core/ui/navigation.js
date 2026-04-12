@@ -22,7 +22,48 @@ const SECTION_IDS = [
 const FADE_DURATION = 150; // ms, matches CSS transition
 let fadeTimeout = null;
 
+// ===================================================================
+// NAVIGATION BACK STACK
+// ===================================================================
+
+const navStack = [];
+const MAX_STACK_SIZE = 5;
+let skipStackPush = false;
+
+export function navigateBack() {
+    const previous = navStack.pop();
+    if (previous) {
+        skipStackPush = true;
+        navigateTo(previous);
+        skipStackPush = false;
+    } else {
+        skipStackPush = true;
+        navigateTo('dashboard');
+        skipStackPush = false;
+    }
+}
+
+function getCurrentView() {
+    return SECTION_IDS
+        .map(id => {
+            const el = document.getElementById(id);
+            return el && !el.classList.contains('hidden') ? id : null;
+        })
+        .find(Boolean) || null;
+}
+
 export function navigateTo(view) {
+    // Push current view onto stack for back navigation
+    if (!skipStackPush) {
+        const current = getCurrentView();
+        if (current && current !== view) {
+            navStack.push(current);
+            // Cap stack size
+            if (navStack.length > MAX_STACK_SIZE) {
+                navStack.shift();
+            }
+        }
+    }
     // Find the currently visible section
     const visibleSection = SECTION_IDS
         .map((id) => document.getElementById(id))

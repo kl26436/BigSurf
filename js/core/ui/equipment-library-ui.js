@@ -462,14 +462,142 @@ export async function deleteEquipmentFromLibrary(equipmentId) {
 // ADD EQUIPMENT FLOW
 // ===================================================================
 
-export async function showAddEquipmentFlow() {
-    const name = prompt('Equipment name (e.g., Hammer Strength Flat Bench):');
-    if (!name?.trim()) return;
+// Known brands for autocomplete
+const KNOWN_BRANDS = [
+    'Pannatta', 'Hammer Strength', 'Life Fitness', 'Cybex', 'Nautilus',
+    'Precor', 'Technogym', 'Rogue', 'Atlantis', 'Hoist', 'Matrix',
+    'Star Trac', 'Body-Solid', 'Arsenal Strength', 'Prime Fitness',
+    'REP Fitness', 'Eleiko', 'Concept2', 'AssaultFitness',
+];
+
+const EQUIPMENT_TYPES_LIST = ['Machine', 'Barbell', 'Dumbbell', 'Cable', 'Bench', 'Rack', 'Bodyweight', 'Other'];
+
+function getExistingBrands() {
+    const brands = [...new Set(allEquipment.map(e => e.brand).filter(Boolean))];
+    return [...new Set([...KNOWN_BRANDS, ...brands])].sort();
+}
+
+function generateEquipmentDisplayName(brand, model, func) {
+    const parts = [brand, model].filter(Boolean).join(' ');
+    if (parts && func) return `${parts} — ${func}`;
+    if (func) return func;
+    return parts || 'Unnamed Equipment';
+}
+
+export function showAddEquipmentFlow() {
+    const container = document.getElementById('equipment-library-content');
+    if (!container) return;
+
+    const brands = getExistingBrands();
+    const existingFunctions = [...new Set(allEquipment.flatMap(e => e.exerciseTypes || []))].sort();
+
+    container.innerHTML = `
+        <div style="padding: var(--pad-page);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: var(--gap-section);">
+                <button class="btn-icon" onclick="backToEquipmentList()" aria-label="Back">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h3 style="flex: 1; margin: 0;">Add Equipment</h3>
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-16);">
+                <label class="form-label">Brand</label>
+                <input type="text" id="equip-brand" class="form-input"
+                    placeholder="e.g., Hammer Strength, Rogue"
+                    list="brand-suggestions"
+                    oninput="updateEquipNamePreview()">
+                <datalist id="brand-suggestions">
+                    ${brands.map(b => `<option value="${escapeAttr(b)}">`).join('')}
+                </datalist>
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-16);">
+                <label class="form-label">Model / Line <span style="color: var(--text-muted); font-weight: 400;">(optional)</span></label>
+                <input type="text" id="equip-model" class="form-input"
+                    placeholder="e.g., Monolith, Plate-Loaded"
+                    oninput="updateEquipNamePreview()">
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-16);">
+                <label class="form-label">What is it?</label>
+                <input type="text" id="equip-function" class="form-input"
+                    placeholder="e.g., Leg Press, Lat Pulldown"
+                    list="function-suggestions"
+                    oninput="updateEquipNamePreview()">
+                <datalist id="function-suggestions">
+                    ${existingFunctions.map(f => `<option value="${escapeAttr(f)}">`).join('')}
+                </datalist>
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-16);">
+                <label class="form-label">Type</label>
+                <div style="display: flex; flex-wrap: wrap; gap: var(--space-8);">
+                    ${EQUIPMENT_TYPES_LIST.map(t => `
+                        <button class="btn btn-secondary btn-small equip-type-btn" data-type="${t}"
+                            onclick="selectEquipType(this, '${t}')">
+                            ${t}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div style="background: var(--bg-card-hi); border-radius: var(--radius-sm); padding: var(--space-12); margin-bottom: var(--space-24);">
+                <span style="font-size: var(--font-xs); color: var(--text-muted);">Preview:</span>
+                <strong id="equip-name-preview" style="display: block; margin-top: var(--space-4); color: var(--text-strong);">—</strong>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%;" onclick="confirmAddEquipment()">
+                <i class="fas fa-plus"></i> Add Equipment
+            </button>
+        </div>
+    `;
+}
+
+let selectedEquipType = 'Machine';
+
+export function selectEquipType(btn, type) {
+    selectedEquipType = type;
+    document.querySelectorAll('.equip-type-btn').forEach(b => b.classList.remove('btn-primary'));
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-primary');
+    // Remove btn-secondary from selected, add to others
+    document.querySelectorAll('.equip-type-btn').forEach(b => {
+        if (b !== btn) {
+            b.classList.remove('btn-primary');
+            b.classList.add('btn-secondary');
+        }
+    });
+}
+
+export function updateEquipNamePreview() {
+    const brand = document.getElementById('equip-brand')?.value?.trim() || '';
+    const model = document.getElementById('equip-model')?.value?.trim() || '';
+    const func = document.getElementById('equip-function')?.value?.trim() || '';
+    const preview = document.getElementById('equip-name-preview');
+    if (preview) {
+        preview.textContent = generateEquipmentDisplayName(brand, model, func) || '—';
+    }
+}
+
+export async function confirmAddEquipment() {
+    const brand = document.getElementById('equip-brand')?.value?.trim() || '';
+    const model = document.getElementById('equip-model')?.value?.trim() || '';
+    const func = document.getElementById('equip-function')?.value?.trim() || '';
+    const name = generateEquipmentDisplayName(brand, model, func);
+
+    if (!name || name === 'Unnamed Equipment') {
+        showNotification('Please fill in at least one field', 'error');
+        return;
+    }
 
     try {
-        const result = await getManager().getOrCreateEquipment(name.trim());
+        const result = await getManager().getOrCreateEquipment(name, {
+            brand: brand || null,
+            model: model || null,
+            function: func || null,
+            equipmentType: selectedEquipType,
+        });
         if (result) {
-            // Refresh list and open detail
             allEquipment = await getManager().getUserEquipment();
             showNotification('Equipment added', 'success', 1500);
             openEquipmentDetail(result.id);
@@ -478,4 +606,26 @@ export async function showAddEquipmentFlow() {
         console.error('Error adding equipment:', error);
         showNotification('Failed to add equipment', 'error');
     }
+}
+
+export function autoParseEquipmentName(name) {
+    let brand = null, model = null, func = name;
+
+    for (const b of KNOWN_BRANDS) {
+        if (name.toLowerCase().startsWith(b.toLowerCase())) {
+            brand = b;
+            func = name.slice(b.length).trim();
+            if (func.includes('—')) {
+                [model, func] = func.split('—').map(s => s.trim());
+            } else if (func.includes('-')) {
+                const parts = func.split('-').map(s => s.trim());
+                if (parts.length === 2) {
+                    [model, func] = parts;
+                }
+            }
+            break;
+        }
+    }
+
+    return { brand, model, function: func };
 }

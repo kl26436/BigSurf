@@ -325,8 +325,8 @@ function showWorkoutDetailModal(workout) {
         ${actionButtons}
     `;
 
-    // Show modal
-    openModal(modal);
+    // Show as full-page section
+    modal.classList.remove('hidden');
 
     // Event delegation for action buttons
     content.addEventListener('click', (e) => {
@@ -343,7 +343,7 @@ function showWorkoutDetailModal(workout) {
 export function closeWorkoutDetailModal() {
     const modal = document.getElementById('workout-detail-modal');
     if (modal) {
-        closeModal(modal);
+        modal.classList.add('hidden');
     }
 }
 

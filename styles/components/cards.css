@@ -119,10 +119,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: var(--gap-section) 0 var(--space-10);
+    margin: var(--space-32) 0 var(--gap-items);
 }
 .section-header__title {
-    font-size: 1.05rem;
+    font-size: var(--font-md);
     font-weight: 700;
     color: var(--text-strong);
 }

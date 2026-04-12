@@ -63,3 +63,47 @@
     color: var(--primary);
 }
 
+/* ===== Full-Page Sections (replacing modals) ===== */
+.full-page-section {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-modal);
+    background: var(--bg-app);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.full-page-section.hidden {
+    display: none;
+}
+.full-page-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--pad-page);
+    padding-top: calc(var(--space-12) + env(safe-area-inset-top, 0px));
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+.full-page-header h3 {
+    flex: 1;
+    margin: 0;
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.full-page-header-action {
+    flex-shrink: 0;
+}
+.full-page-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: var(--pad-page);
+    padding-bottom: calc(var(--pad-page) + env(safe-area-inset-bottom, 0px));
+}
+

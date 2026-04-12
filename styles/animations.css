@@ -1,0 +1,125 @@
+/* ===========================================
+   ANIMATIONS SYSTEM
+   Centralized keyframes and animation utilities
+   =========================================== */
+
+/* ── Card expand/collapse ── */
+@keyframes cardExpand {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.exercise-card-body.expanded > * {
+    animation: cardExpand 250ms var(--ease-out-expo) both;
+}
+
+/* Stagger children for cascading reveal */
+.exercise-card.expanded .exercise-card-body > *:nth-child(1) { animation-delay: 0ms; }
+.exercise-card.expanded .exercise-card-body > *:nth-child(2) { animation-delay: 50ms; }
+.exercise-card.expanded .exercise-card-body > *:nth-child(3) { animation-delay: 100ms; }
+.exercise-card.expanded .exercise-card-body > *:nth-child(4) { animation-delay: 150ms; }
+.exercise-card.expanded .exercise-card-body > *:nth-child(5) { animation-delay: 200ms; }
+
+/* ── Set completion bounce ── */
+@keyframes checkBounce {
+    0%   { transform: scale(0.5); opacity: 0; }
+    60%  { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.set-check.just-checked i {
+    animation: checkBounce 300ms var(--ease-out-back) both;
+    color: var(--success);
+}
+
+/* Row flash on set completion */
+@keyframes rowFlash {
+    0%   { background: transparent; }
+    30%  { background: rgba(29, 211, 176, 0.1); }
+    100% { background: transparent; }
+}
+
+.set-row-just-completed {
+    animation: rowFlash 600ms ease-out;
+}
+
+/* ── PR celebration ── */
+@keyframes prPop {
+    0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+    50%  { transform: scale(1.3) rotate(5deg); }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.pr-badge-new {
+    animation: prPop 500ms var(--ease-out-back) both;
+}
+
+/* ── Rest timer pulse ── */
+@keyframes timerPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.05); opacity: 0.8; }
+}
+
+.rest-timer-active {
+    animation: timerPulse 1.5s ease-in-out infinite;
+}
+
+/* Last 5 seconds — urgent pulse */
+.rest-timer-ending {
+    animation: timerPulse 0.5s ease-in-out infinite;
+    color: var(--warning);
+}
+
+/* ── Page/section transitions ── */
+@keyframes sectionFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.full-page-section:not(.hidden) {
+    animation: sectionFadeIn 200ms var(--ease-out-expo) both;
+}
+
+/* Section fade-out (used by navigation) */
+.section-fade-out {
+    opacity: 0;
+    transition: opacity 150ms ease;
+}
+
+/* ── Exercise completion slide ── */
+@keyframes slideToBottom {
+    0%   { opacity: 0.3; transform: translateY(-10px); }
+    100% { opacity: 0.55; transform: translateY(0); }
+}
+
+.exercise-card.just-completed {
+    animation: slideToBottom 0.4s ease;
+}
+
+/* ── Modal animations (kept for remaining modals) ── */
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Shimmer for skeleton loading ── */
+@keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── Respect user preference ── */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

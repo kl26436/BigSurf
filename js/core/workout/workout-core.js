@@ -62,6 +62,8 @@ export {
     toggleReorderMode,
     supersetWithNext,
     ungroupExerciseFromWorkout,
+    toggleExerciseExpansion,
+    replaceExercise,
 } from './exercise-ui.js';
 
 // === Rest Timer ===

@@ -106,7 +106,7 @@
     --pad-page: 18px;
     --pad-card-y: 14px;
     --pad-card-x: 16px;
-    --gap-section: 18px;
+    --gap-section: 24px;
     --gap-items: 12px;
 
     /* Sizing */
@@ -133,6 +133,7 @@
     /* Display typography */
     --font-display: 2rem;
     --font-display-sm: 1.4rem;
+    --font-display-weight: 800;
 
     /* Easing curves */
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -142,4 +143,5 @@
     /* Background - differentiate tertiary */
     --bg-tertiary: #1a2028;
 
-    --font: system-ui, -apple-system, Bl
+    --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

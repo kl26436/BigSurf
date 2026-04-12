@@ -29,6 +29,7 @@ import {
     autoStartRestTimer,
 } from './rest-timer.js';
 import { Config, CATEGORY_COLORS } from '../utils/config.js';
+import { haptic } from '../utils/haptics.js';
 import { getWorkoutCategory } from '../ui/template-selection.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 
@@ -45,6 +46,42 @@ function setupExerciseModalDelegation() {
     exerciseModalDelegationSetup = true;
 
     modal.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+
+        if (action === 'loadExerciseHistory') {
+            window.loadExerciseHistory(btn.dataset.exercise, parseInt(btn.dataset.index, 10));
+        } else if (action === 'showExerciseVideoAndToggleButton') {
+            window.showExerciseVideoAndToggleButton(
+                btn.dataset.video,
+                btn.dataset.exercise,
+                parseInt(btn.dataset.index, 10)
+            );
+        } else if (action === 'toggleInlineProgress') {
+            toggleInlineProgress(
+                btn.dataset.exercise,
+                btn.dataset.equipment,
+                parseInt(btn.dataset.index, 10),
+                btn
+            );
+        }
+    });
+}
+
+// ===================================================================
+// INLINE CARD EVENT DELEGATION
+// ===================================================================
+
+let inlineCardDelegationSetup = false;
+
+function setupInlineCardDelegation() {
+    if (inlineCardDelegationSetup) return;
+    const exerciseList = document.getElementById('exercise-list');
+    if (!exerciseList) return;
+    inlineCardDelegationSetup = true;
+
+    exerciseList.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-action]');
         if (!btn) return;
         const action = btn.dataset.action;
@@ -332,7 +369,6 @@ export function updateExerciseCard(exerciseIndex) {
 
     const existingCard = container.querySelector(`.exercise-card[data-index="${exerciseIndex}"]`);
     if (!existingCard) {
-        // Card not found (e.g., newly added exercise) - do full render
         renderExercises();
         return;
     }
@@ -340,6 +376,20 @@ export function updateExerciseCard(exerciseIndex) {
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
     if (!exercise) {
         renderExercises();
+        return;
+    }
+
+    // If this card is currently expanded, only update the header portion
+    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+        const newCard = createExerciseCard(exercise, exerciseIndex);
+        const newHeader = newCard.querySelector('.exercise-card-header');
+        const existingHeader = existingCard.querySelector('.exercise-card-header');
+        if (newHeader && existingHeader) {
+            existingHeader.replaceWith(newHeader);
+            // Re-add expanded class since the new header doesn't have it
+            existingCard.classList.add('expanded');
+        }
+        updateProgress(AppState);
         return;
     }
 
@@ -412,107 +462,348 @@ export function createExerciseCard(exercise, index) {
 
     if (isCompleted) {
         card.classList.add('completed');
-        // Don't collapse - show full exercise with green border indicator
     }
 
     // Calculate progress percentage using displayTotal to avoid >100%
     const progressPercent = displayTotal > 0 ? Math.min((completedSets / displayTotal) * 100, 100) : 0;
 
-    // Build equipment display string
-    let equipmentDisplay = '';
-    if (exercise.equipment) {
-        equipmentDisplay = exercise.equipment;
-        if (exercise.equipmentLocation) {
-            equipmentDisplay += ` @ ${exercise.equipmentLocation}`;
-        }
-    }
-
     // Get exercise name with fallback
     const exerciseName = getExerciseName(exercise);
 
-    // Build card DOM programmatically (avoids innerHTML with user data)
-    const titleRow = document.createElement('div');
-    titleRow.className = 'exercise-title-row';
-    titleRow.classList.add('clickable');
-    titleRow.addEventListener('click', () => window.focusExercise(index));
+    // Build equipment + summary line
+    let metaParts = [];
+    if (exercise.equipment) {
+        metaParts.push(exercise.equipment);
+    }
+    // Information-dense summary: show current or last session set data
+    const setPreview = savedSets
+        .filter(s => s && s.reps && s.weight)
+        .slice(0, 4)
+        .map(s => {
+            let w = s.weight;
+            if (unit === 'kg') w = Math.round(w * 0.453592 * 2) / 2;
+            return `${w}×${s.reps}`;
+        })
+        .join(', ');
 
-    const titleInfo = document.createElement('div');
-    titleInfo.className = 'exercise-title-info';
+    // ── HEADER (always visible) ──
+    const header = document.createElement('div');
+    header.className = 'exercise-card-header';
+    header.addEventListener('click', () => {
+        if (Config.INLINE_EXERCISE_CARDS) {
+            window.toggleExerciseExpansion(index);
+        } else {
+            window.focusExercise(index);
+        }
+    });
+
+    const headerInfo = document.createElement('div');
+    headerInfo.className = 'exercise-card-info';
 
     const h3 = document.createElement('h3');
     h3.className = 'exercise-title';
     h3.textContent = exerciseName;
-    titleInfo.appendChild(h3);
+    headerInfo.appendChild(h3);
 
-    if (equipmentDisplay) {
-        const eqTag = document.createElement('div');
-        eqTag.className = 'exercise-equipment-tag';
-        eqTag.textContent = equipmentDisplay;
-        titleInfo.appendChild(eqTag);
+    const meta = document.createElement('div');
+    meta.className = 'exercise-card-meta';
+    if (exercise.equipment) {
+        const eqSpan = document.createElement('span');
+        eqSpan.textContent = exercise.equipment;
+        meta.appendChild(eqSpan);
     }
-
-    if (completedSets === 0) {
+    if (setPreview) {
+        const previewSpan = document.createElement('span');
+        previewSpan.className = 'exercise-card-last';
+        previewSpan.textContent = setPreview;
+        meta.appendChild(previewSpan);
+    } else if (completedSets === 0) {
         const hint = document.createElement('span');
         hint.className = 'exercise-card-hint';
         hint.textContent = 'Tap to log sets';
-        titleInfo.appendChild(hint);
+        meta.appendChild(hint);
     }
+    headerInfo.appendChild(meta);
+    header.appendChild(headerInfo);
 
-    titleRow.appendChild(titleInfo);
-
-    const chevron = document.createElement('i');
-    chevron.className = 'fas fa-chevron-right exercise-card-chevron';
-    titleRow.appendChild(chevron);
-
-    card.appendChild(titleRow);
-
-    const progressRow = document.createElement('div');
-    progressRow.className = 'exercise-progress-row';
-    progressRow.classList.add('clickable');
-    progressRow.addEventListener('click', () => window.focusExercise(index));
+    // Right side: count + chevron
+    const status = document.createElement('div');
+    status.className = 'exercise-card-status';
 
     // SVG mini progress ring
     const category = getWorkoutCategory(AppState.currentWorkout?.workoutType || AppState.savedData?.workoutType || '');
     const categoryColor = CATEGORY_COLORS[category] || CATEGORY_COLORS.Other;
     const ringColor = isCompleted ? 'var(--success)' : categoryColor;
-    const circumference = 2 * Math.PI * 18;
+    const circumference = 2 * Math.PI * 12;
     const offset = circumference - (progressPercent / 100) * circumference;
 
     const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     ring.setAttribute('class', 'exercise-mini-ring');
-    ring.setAttribute('width', '40');
-    ring.setAttribute('height', '40');
-    ring.setAttribute('viewBox', '0 0 44 44');
+    ring.setAttribute('width', '28');
+    ring.setAttribute('height', '28');
+    ring.setAttribute('viewBox', '0 0 28 28');
     ring.innerHTML = `
-        <circle cx="22" cy="22" r="18" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/>
-        <circle cx="22" cy="22" r="18" stroke="${ringColor}" stroke-width="3" fill="none"
+        <circle cx="14" cy="14" r="12" stroke="rgba(255,255,255,0.06)" stroke-width="2.5" fill="none"/>
+        <circle cx="14" cy="14" r="12" stroke="${ringColor}" stroke-width="2.5" fill="none"
             stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
-            stroke-linecap="round" transform="rotate(-90 22 22)"/>
+            stroke-linecap="round" transform="rotate(-90 14 14)"/>
     `;
-    progressRow.appendChild(ring);
+    status.appendChild(ring);
 
-    const progressText = document.createElement('span');
-    progressText.className = 'progress-text';
-    progressText.textContent = `${completedSets}/${displayTotal}`;
-    progressRow.appendChild(progressText);
-    card.appendChild(progressRow);
+    const countText = document.createElement('span');
+    countText.className = 'exercise-card-count';
+    countText.textContent = `${completedSets}/${displayTotal}`;
+    status.appendChild(countText);
 
-    const actionsRow = document.createElement('div');
-    actionsRow.className = 'exercise-actions-row';
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'btn-text btn-text-danger';
-    deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        window.deleteExerciseFromWorkout(index);
-    });
-    const trashIcon = document.createElement('i');
-    trashIcon.className = 'fas fa-trash-alt';
-    deleteBtn.appendChild(trashIcon);
-    deleteBtn.appendChild(document.createTextNode(' Delete'));
-    actionsRow.appendChild(deleteBtn);
-    card.appendChild(actionsRow);
+    const chevron = document.createElement('i');
+    chevron.className = Config.INLINE_EXERCISE_CARDS
+        ? 'fas fa-chevron-down exercise-card-chevron'
+        : 'fas fa-chevron-right exercise-card-chevron';
+    status.appendChild(chevron);
+
+    header.appendChild(status);
+    card.appendChild(header);
+
+    // ── BODY (hidden, populated on expand) ──
+    if (Config.INLINE_EXERCISE_CARDS) {
+        const body = document.createElement('div');
+        body.className = 'exercise-card-body';
+        body.id = `exercise-body-${index}`;
+        card.appendChild(body);
+    }
+
+    // Async: load last session preview for cards with no current data
+    if (!setPreview && Config.INLINE_EXERCISE_CARDS) {
+        getLastSessionDefaults(exerciseName, exercise.equipment || null).then(lastSession => {
+            if (!lastSession?.sets?.length) return;
+            const preview = lastSession.sets
+                .filter(s => s.reps && s.weight)
+                .slice(0, 4)
+                .map(s => {
+                    let w = s.weight;
+                    if (unit === 'kg') w = Math.round(w * 0.453592 * 2) / 2;
+                    return `${w}×${s.reps}`;
+                })
+                .join(', ');
+            if (preview) {
+                const metaEl = card.querySelector('.exercise-card-meta');
+                if (metaEl) {
+                    // Remove hint if present
+                    const hint = metaEl.querySelector('.exercise-card-hint');
+                    if (hint) hint.remove();
+                    const lastSpan = document.createElement('span');
+                    lastSpan.className = 'exercise-card-last';
+                    lastSpan.textContent = `Last: ${preview}`;
+                    metaEl.appendChild(lastSpan);
+                }
+            }
+        }).catch(() => {});
+    }
 
     return card;
+}
+
+// ===================================================================
+// INLINE EXERCISE EXPANSION (accordion pattern)
+// ===================================================================
+
+let expandedExerciseIndex = null;
+
+export async function toggleExerciseExpansion(index) {
+    if (!AppState.currentWorkout) return;
+
+    // If same card, collapse it
+    if (expandedExerciseIndex === index) {
+        collapseExercise(index);
+        return;
+    }
+
+    // Collapse previously expanded card
+    if (expandedExerciseIndex !== null) {
+        collapseExercise(expandedExerciseIndex);
+    }
+
+    // Expand the new card
+    await expandExercise(index);
+}
+
+async function expandExercise(index) {
+    const card = document.querySelector(`.exercise-card[data-index="${index}"]`);
+    const body = document.getElementById(`exercise-body-${index}`);
+    if (!card || !body) return;
+
+    const exercise = AppState.currentWorkout.exercises[index];
+    if (!exercise) return;
+
+    expandedExerciseIndex = index;
+    AppState.focusedExerciseIndex = index;
+
+    // Setup inline card event delegation (once)
+    setupInlineCardDelegation();
+
+    const unit = AppState.exerciseUnits[index] || AppState.globalUnit;
+    const exerciseName = getExerciseName(exercise);
+
+    // Build inline toolbar (Swap | Equipment | More)
+    const toolbarHtml = buildInlineToolbar(exercise, index, exerciseName);
+
+    // Generate the set table (reuse existing function)
+    const tableHtml = await generateExerciseTable(exercise, index, unit);
+
+    body.innerHTML = toolbarHtml + tableHtml;
+
+    // Setup unit toggle event listeners
+    const unitToggle = body.querySelector('.exercise-unit-toggle .unit-toggle');
+    if (unitToggle) {
+        unitToggle.querySelectorAll('.unit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                setExerciseUnit(index, btn.dataset.unit);
+            });
+        });
+    }
+
+    // Add expanded class and animate
+    card.classList.add('expanded');
+    body.style.maxHeight = body.scrollHeight + 'px';
+
+    // After transition, remove max-height constraint so content can grow
+    const onTransitionEnd = () => {
+        body.style.maxHeight = 'none';
+        body.removeEventListener('transitionend', onTransitionEnd);
+    };
+    body.addEventListener('transitionend', onTransitionEnd);
+
+    // Scroll card into view
+    setTimeout(() => {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    // Focus first empty input for immediate typing
+    setTimeout(() => {
+        const emptyInput = body.querySelector('.set-input:not([value]), .set-input[value=""]');
+        if (emptyInput) emptyInput.focus();
+    }, 350);
+
+    // Setup swipe-to-delete on set rows
+    setupSwipeToDeleteInline(index, body);
+
+    // Restore rest timer from AppState if it exists for this exercise
+    if (AppState.activeRestTimer && AppState.activeRestTimer.exerciseIndex === index) {
+        setTimeout(() => {
+            restoreTimerFromAppState(index);
+        }, 50);
+    }
+}
+
+function collapseExercise(index) {
+    const card = document.querySelector(`.exercise-card[data-index="${index}"]`);
+    const body = document.getElementById(`exercise-body-${index}`);
+    if (!card || !body) return;
+
+    // Save rest timer state before collapse
+    if (AppState.activeRestTimer && AppState.activeRestTimer.exerciseIndex === index) {
+        saveActiveTimerState();
+    }
+
+    // Animate collapse: set max-height to current height first, then to 0
+    body.style.maxHeight = body.scrollHeight + 'px';
+    // Force reflow
+    body.offsetHeight; // eslint-disable-line no-unused-expressions
+    body.style.maxHeight = '0';
+
+    card.classList.remove('expanded');
+    expandedExerciseIndex = null;
+    AppState.focusedExerciseIndex = null;
+
+    // Clear body after animation
+    setTimeout(() => {
+        body.innerHTML = '';
+    }, 300);
+
+    // Update the card header to reflect changes
+    updateExerciseCard(index);
+}
+
+function buildInlineToolbar(exercise, index, exerciseName) {
+    const currentGroup = exercise.group || AppState.savedData.exercises?.[`exercise_${index}`]?.group;
+    const hasNext = (index + 1) < (AppState.currentWorkout?.exercises?.length || 0);
+
+    let overflowItems = '';
+
+    // Edit defaults
+    overflowItems += `<button class="exercise-overflow-item" onclick="editExerciseDefaults('${escapeAttr(exerciseName)}')"><i class="fas fa-pen"></i> Edit Defaults</button>`;
+
+    // Superset/Ungroup
+    if (currentGroup) {
+        overflowItems += `<button class="exercise-overflow-item" onclick="ungroupExerciseFromWorkout(${index})"><i class="fas fa-unlink"></i> Ungroup</button>`;
+    } else if (hasNext) {
+        overflowItems += `<button class="exercise-overflow-item" onclick="supersetWithNext(${index})"><i class="fas fa-link"></i> Superset</button>`;
+    }
+
+    // Video
+    overflowItems += `<button class="exercise-overflow-item" id="show-video-btn-${index}" onclick="showExerciseVideoAndToggleButton(${exercise.video ? `'${escapeAttr(exercise.video)}'` : 'null'}, '${escapeAttr(exerciseName)}', ${index})"><i class="fas fa-play-circle"></i> Form Video</button>`;
+    overflowItems += `<button class="exercise-overflow-item hidden" id="hide-video-btn-${index}" onclick="hideExerciseVideoAndToggleButton(${index})"><i class="fas fa-times"></i> Hide Video</button>`;
+
+    // Delete
+    overflowItems += `<button class="exercise-overflow-item exercise-overflow-item--danger" onclick="deleteExerciseFromWorkout(${index})"><i class="fas fa-trash-alt"></i> Delete</button>`;
+
+    return `
+        <div class="exercise-inline-toolbar">
+            <button class="btn-text btn-small" onclick="replaceExercise(${index})"><i class="fas fa-exchange-alt"></i> Swap</button>
+            <button class="btn-text btn-small" onclick="changeExerciseEquipment(${index})"><i class="fas fa-sync-alt"></i> Equipment</button>
+            <button class="btn-text btn-small exercise-more-toggle" onclick="document.getElementById('exercise-overflow-${index}').classList.toggle('hidden')"><i class="fas fa-ellipsis-h"></i> More</button>
+        </div>
+        <div id="exercise-overflow-${index}" class="exercise-overflow-menu hidden">
+            ${overflowItems}
+        </div>
+        <div id="exercise-video-section-inline-${index}" class="video-section hidden">
+            <iframe id="exercise-video-iframe-inline-${index}" class="exercise-video-iframe" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+    `;
+}
+
+function setupSwipeToDeleteInline(exerciseIndex, container) {
+    const rows = container.querySelectorAll('.exercise-table tbody tr');
+    rows.forEach((row) => {
+        let startX = 0;
+        let currentX = 0;
+        let swiping = false;
+
+        row.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            currentX = startX;
+            swiping = true;
+            row.style.transition = 'none';
+        }, { passive: true });
+
+        row.addEventListener('touchmove', (e) => {
+            if (!swiping) return;
+            currentX = e.touches[0].clientX;
+            const diff = startX - currentX;
+            if (diff > 0 && diff < 100) {
+                row.style.transform = `translateX(-${diff}px)`;
+                row.style.background = `linear-gradient(to left, rgba(239, 68, 68, ${diff / 100 * 0.3}) 0%, transparent ${diff}px)`;
+            }
+        }, { passive: true });
+
+        row.addEventListener('touchend', () => {
+            if (!swiping) return;
+            swiping = false;
+            const diff = startX - currentX;
+            row.style.transition = 'transform 0.2s ease';
+            if (diff > 70) {
+                row.style.transform = 'translateX(-100%)';
+                row.style.opacity = '0';
+                setTimeout(() => {
+                    removeSetFromExercise(exerciseIndex);
+                }, 200);
+            } else {
+                row.style.transform = 'translateX(0)';
+                row.style.background = '';
+            }
+        });
+    });
 }
 
 export function supersetWithNext(index) {
@@ -541,14 +832,19 @@ export function supersetWithNext(index) {
     AppState.currentWorkout.exercises[index].group = AppState.savedData.exercises[`exercise_${index}`].group;
     AppState.currentWorkout.exercises[nextIndex].group = AppState.savedData.exercises[`exercise_${nextIndex}`].group;
 
-    renderExercises();
     debouncedSaveWorkoutData(AppState);
 
-    // Close the modal and show the grouped view
-    const modal = document.getElementById('exercise-modal');
-    if (modal) modal.close();
-    setHeaderMode('workout');
-    setBottomNavVisible(true);
+    // Close inline card or modal, then re-render
+    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex !== null) {
+        collapseExercise(expandedExerciseIndex);
+    } else {
+        const modal = document.getElementById('exercise-modal');
+        if (modal) modal.close();
+        setHeaderMode('workout');
+        setBottomNavVisible(true);
+    }
+
+    renderExercises();
 }
 
 export function ungroupExerciseFromWorkout(index) {
@@ -568,14 +864,19 @@ export function ungroupExerciseFromWorkout(index) {
         }
     }
 
-    renderExercises();
     debouncedSaveWorkoutData(AppState);
 
-    // Close the modal
-    const modal = document.getElementById('exercise-modal');
-    if (modal) modal.close();
-    setHeaderMode('workout');
-    setBottomNavVisible(true);
+    // Close inline card or modal, then re-render
+    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex !== null) {
+        collapseExercise(expandedExerciseIndex);
+    } else {
+        const modal = document.getElementById('exercise-modal');
+        if (modal) modal.close();
+        setHeaderMode('workout');
+        setBottomNavVisible(true);
+    }
+
+    renderExercises();
 }
 
 export async function focusExercise(index) {
@@ -776,6 +1077,22 @@ function setupSwipeToDelete(exerciseIndex) {
             }
         });
     });
+}
+
+// ===================================================================
+// CONTENT CONTAINER HELPER
+// ===================================================================
+
+/**
+ * Returns the DOM container for exercise content based on inline vs modal mode.
+ * In inline mode: returns the expanded card body.
+ * In modal mode: returns the #exercise-content div inside the modal.
+ */
+function getExerciseContentContainer(exerciseIndex) {
+    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+        return document.getElementById(`exercise-body-${exerciseIndex}`);
+    }
+    return document.getElementById('exercise-content');
 }
 
 export async function generateExerciseTable(exercise, exerciseIndex, unit) {
@@ -1094,6 +1411,7 @@ async function checkSetForPR(exerciseIndex, setIndex) {
         const prCheck = PRTracker.checkForNewPR(exerciseName, set.reps, set.weight, equipment);
 
         if (prCheck.isNewPR) {
+            haptic('pr');
             // Mark this set as notified
             prNotifiedSets.add(setKey);
 
@@ -1162,13 +1480,24 @@ export function cycleSetType(exerciseIndex, setIndex) {
     const nextIdx = (types.indexOf(current) + 1) % types.length;
     sets[setIndex].type = types[nextIdx];
 
-    // Re-render the exercise table
+    // Re-render the exercise table in the appropriate container
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
     const unit = AppState.exerciseUnits[exerciseIndex] || AppState.globalUnit;
-    const content = document.getElementById('exercise-content');
+    const content = getExerciseContentContainer(exerciseIndex);
     if (content && exercise) {
         generateExerciseTable(exercise, exerciseIndex, unit).then(html => {
-            content.innerHTML = html;
+            if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+                // Preserve the toolbar when re-rendering inline
+                const toolbar = content.querySelector('.exercise-inline-toolbar');
+                const overflow = content.querySelector('.exercise-overflow-menu');
+                const videoSection = content.querySelector('.video-section');
+                const toolbarHtml = (toolbar ? toolbar.outerHTML : '') +
+                    (overflow ? overflow.outerHTML : '') +
+                    (videoSection ? videoSection.outerHTML : '');
+                content.innerHTML = toolbarHtml + html;
+            } else {
+                content.innerHTML = html;
+            }
         });
     }
 
@@ -1295,6 +1624,9 @@ export function toggleSetComplete(exerciseIndex, setIndex) {
         if (!set.weight) set.weight = exercise.weight || 0;
         set.completed = true;
 
+        // Haptic feedback on completion
+        haptic('success');
+
         // Auto-start rest timer
         autoStartRestTimer(exerciseIndex, setIndex);
     }
@@ -1302,15 +1634,28 @@ export function toggleSetComplete(exerciseIndex, setIndex) {
     debouncedSaveWorkoutData(AppState);
     updateExerciseCard(exerciseIndex);
 
-    // Update the set row UI in the modal
-    const row = document.querySelector(`#exercise-content .exercise-table tbody tr:nth-child(${setIndex + 1})`);
+    // Update the set row UI in the modal or inline card
+    const contentContainer = getExerciseContentContainer(exerciseIndex);
+    const row = contentContainer?.querySelector(`.exercise-table tbody tr:nth-child(${setIndex + 1})`);
     if (row) {
         const isNowDone = !!(set.completed || (set.reps && set.weight));
         row.classList.toggle('set-row-completed', isNowDone);
+
+        // Animation on completion
+        if (isNowDone) {
+            row.classList.add('set-row-just-completed');
+            setTimeout(() => row.classList.remove('set-row-just-completed'), 600);
+        }
+
         const checkBtn = row.querySelector('.set-check');
         if (checkBtn) {
             checkBtn.classList.toggle('checked', isNowDone);
             checkBtn.querySelector('i').className = `fas ${isNowDone ? 'fa-check-circle' : 'fa-circle'}`;
+            // Bounce animation
+            if (isNowDone) {
+                checkBtn.classList.add('just-checked');
+                setTimeout(() => checkBtn.classList.remove('just-checked'), 300);
+            }
         }
     }
 
@@ -1362,14 +1707,18 @@ export function addSetToExercise(exerciseIndex) {
     // Update only the changed exercise card
     updateExerciseCard(exerciseIndex);
 
-    // Refresh the exercise modal to show new set
-    focusExercise(exerciseIndex);
+    // Refresh the content view (inline card or modal)
+    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+        expandExercise(exerciseIndex);
+    } else {
+        focusExercise(exerciseIndex);
+    }
 
     // Restore timer after re-render
     restoreActiveTimerState(exerciseIndex);
 }
 
-// Remove last set from exercise modal (refreshes modal instead of full exercise list)
+// Remove last set from exercise (refreshes inline card or modal)
 export function removeSetFromExercise(exerciseIndex) {
     if (!AppState.currentWorkout) return;
 
@@ -1399,8 +1748,12 @@ export function removeSetFromExercise(exerciseIndex) {
     // Update only the changed exercise card
     updateExerciseCard(exerciseIndex);
 
-    // Refresh the exercise modal to show updated sets
-    focusExercise(exerciseIndex);
+    // Refresh the content view (inline card or modal)
+    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+        expandExercise(exerciseIndex);
+    } else {
+        focusExercise(exerciseIndex);
+    }
 
     // Restore timer after re-render
     restoreActiveTimerState(exerciseIndex);
@@ -1429,6 +1782,7 @@ export function saveExerciseNotes(exerciseIndex) {
 }
 
 export function markExerciseComplete(exerciseIndex) {
+    haptic('complete');
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
     const exerciseKey = `exercise_${exerciseIndex}`;
 
@@ -1457,10 +1811,16 @@ export function markExerciseComplete(exerciseIndex) {
     exercise.sets = keptSets;
 
     saveWorkoutData(AppState);
-    updateExerciseCard(exerciseIndex);
 
-    // Close modal properly (this also shows bottom nav)
-    closeExerciseModal();
+    // Close inline card or modal
+    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+        collapseExercise(exerciseIndex);
+        // Re-sort completed exercises to bottom
+        reorderExercisesByCompletion();
+    } else {
+        updateExerciseCard(exerciseIndex);
+        closeExerciseModal();
+    }
 }
 
 function markSetComplete(exerciseIndex, setIndex) {
@@ -1623,8 +1983,12 @@ export function replaceExercise(exerciseIndex) {
     window.replacingExerciseIndex = exerciseIndex;
     window.addingToActiveWorkout = true;
 
-    // Close the exercise detail modal first
-    closeExerciseModal();
+    // Close inline card or exercise detail modal
+    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+        collapseExercise(exerciseIndex);
+    } else {
+        closeExerciseModal();
+    }
 
     // Open exercise library for selection
     const modal = document.getElementById('exercise-library-modal');
@@ -1860,33 +2224,39 @@ export async function setExerciseUnit(exerciseIndex, unit) {
 
     // No weight conversion - weights stay in lbs, only display changes
 
-    // Update modal display
-    const modal = document.getElementById('exercise-modal');
-    if (modal) {
-        modal.querySelectorAll('.unit-btn').forEach((btn) => {
+    // Update content in the appropriate container (inline card or modal)
+    const content = getExerciseContentContainer(exerciseIndex);
+    if (content) {
+        const exercise = AppState.currentWorkout.exercises[exerciseIndex];
+
+        if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+            // Inline mode: preserve toolbar, regenerate table
+            const toolbarHtml = buildInlineToolbar(exercise, exerciseIndex, getExerciseName(exercise));
+            const tableHtml = await generateExerciseTable(exercise, exerciseIndex, unit);
+            content.innerHTML = toolbarHtml + tableHtml;
+        } else {
+            content.innerHTML = await generateExerciseTable(exercise, exerciseIndex, unit);
+        }
+
+        // Update active unit toggle buttons
+        content.querySelectorAll('.unit-btn').forEach((btn) => {
             btn.classList.toggle('active', btn.dataset.unit === unit);
         });
 
-        const exercise = AppState.currentWorkout.exercises[exerciseIndex];
-        const content = document.getElementById('exercise-content');
-        if (content) {
-            content.innerHTML = await generateExerciseTable(exercise, exerciseIndex, unit);
-
-            // Re-setup unit toggle event listeners
-            const unitToggle = modal.querySelector('.exercise-unit-toggle .unit-toggle');
-            if (unitToggle) {
-                unitToggle.querySelectorAll('.unit-btn').forEach((btn) => {
-                    btn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        setExerciseUnit(exerciseIndex, btn.dataset.unit);
-                    });
+        // Re-setup unit toggle event listeners
+        const unitToggle = content.querySelector('.exercise-unit-toggle .unit-toggle');
+        if (unitToggle) {
+            unitToggle.querySelectorAll('.unit-btn').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    setExerciseUnit(exerciseIndex, btn.dataset.unit);
                 });
-            }
+            });
+        }
 
-            // RESTORE TIMER STATE
-            if (timerState && timerState.isActive) {
-                restoreModalRestTimer(exerciseIndex, timerState);
-            }
+        // RESTORE TIMER STATE
+        if (timerState && timerState.isActive) {
+            restoreModalRestTimer(exerciseIndex, timerState);
         }
     }
 
@@ -1909,8 +2279,12 @@ export async function editExerciseDefaults(exerciseName) {
         return;
     }
 
-    // Close the exercise modal first
-    closeExerciseModal();
+    // Close inline card or exercise modal first
+    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex !== null) {
+        collapseExercise(expandedExerciseIndex);
+    } else {
+        closeExerciseModal();
+    }
 
     // Set flag to indicate we're editing from active workout (only if actually in one)
     window.editingFromActiveWorkout = !!AppState.currentWorkout;
@@ -2001,9 +2375,17 @@ export async function resolveFormVideo(exerciseName, equipmentName) {
     return { url: null, source: null, label: null };
 }
 
-export function showExerciseVideo(videoUrl, exerciseName) {
-    const videoSection = document.getElementById('exercise-video-section');
-    const iframe = document.getElementById('exercise-video-iframe');
+export function showExerciseVideo(videoUrl, exerciseName, exerciseIndex) {
+    // Try inline video section first, then modal version
+    let videoSection, iframe;
+    if (Config.INLINE_EXERCISE_CARDS && exerciseIndex !== undefined) {
+        videoSection = document.getElementById(`exercise-video-section-inline-${exerciseIndex}`);
+        iframe = document.getElementById(`exercise-video-iframe-inline-${exerciseIndex}`);
+    }
+    if (!videoSection || !iframe) {
+        videoSection = document.getElementById('exercise-video-section');
+        iframe = document.getElementById('exercise-video-iframe');
+    }
 
     if (!videoSection || !iframe) return;
 
@@ -2018,9 +2400,17 @@ export function showExerciseVideo(videoUrl, exerciseName) {
     videoSection.classList.remove('hidden');
 }
 
-export function hideExerciseVideo() {
-    const videoSection = document.getElementById('exercise-video-section');
-    const iframe = document.getElementById('exercise-video-iframe');
+export function hideExerciseVideo(exerciseIndex) {
+    // Try inline video section first, then modal version
+    let videoSection, iframe;
+    if (Config.INLINE_EXERCISE_CARDS && exerciseIndex !== undefined) {
+        videoSection = document.getElementById(`exercise-video-section-inline-${exerciseIndex}`);
+        iframe = document.getElementById(`exercise-video-iframe-inline-${exerciseIndex}`);
+    }
+    if (!videoSection || !iframe) {
+        videoSection = document.getElementById('exercise-video-section');
+        iframe = document.getElementById('exercise-video-iframe');
+    }
 
     if (videoSection) videoSection.classList.add('hidden');
     if (iframe) iframe.src = '';
@@ -2052,7 +2442,7 @@ export async function showExerciseVideoAndToggleButton(videoUrl, exerciseName, e
         return;
     }
 
-    showExerciseVideo(url, exerciseName);
+    showExerciseVideo(url, exerciseName, exerciseIndex);
 
     // Update source label if present
     if (sourceLabel && label) {
@@ -2065,7 +2455,7 @@ export async function showExerciseVideoAndToggleButton(videoUrl, exerciseName, e
 }
 
 export function hideExerciseVideoAndToggleButton(exerciseIndex) {
-    hideExerciseVideo();
+    hideExerciseVideo(exerciseIndex);
 
     const showBtn = document.getElementById(`show-video-btn-${exerciseIndex}`);
     const hideBtn = document.getElementById(`hide-video-btn-${exerciseIndex}`);

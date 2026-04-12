@@ -484,60 +484,59 @@
                     </div>
                 </dialog>
 
-                <!-- Exercise Library Modal -->
-                <dialog id="exercise-library-modal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3>Add Exercise to Workout</h3>
-                            <button class="close-btn" aria-label="Close" onclick="closeExerciseLibrary()">
-                                <i class="fas fa-times"></i>
+                <!-- Exercise Library (Full-Page Section) -->
+                <section id="exercise-library-modal" class="full-page-section hidden">
+                    <div class="full-page-header">
+                        <button class="btn-icon" onclick="closeExerciseLibrary()" aria-label="Back">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h3>Add Exercise</h3>
+                        <div class="full-page-header-action">
+                            <button class="btn btn-primary btn-small" onclick="showCreateExerciseForm()">
+                                <i class="fas fa-plus"></i> New
                             </button>
                         </div>
-                        <div class="modal-body" id="exercise-library-content">
-                            <!-- Exercise Library Controls -->
-                            <div class="exercise-library-controls">
-                                <div class="search-container">
-                                    <input
-                                        type="text"
-                                        id="exercise-library-search"
-                                        class="form-input"
-                                        placeholder="Search exercises..."
-                                    />
-                                </div>
-
-                                <div class="filter-row">
-                                    <select id="body-part-filter" class="form-input">
-                                        <option value="">All Body Parts</option>
-                                        <option value="chest">Chest</option>
-                                        <option value="back">Back</option>
-                                        <option value="shoulders">Shoulders</option>
-                                        <option value="arms">Arms</option>
-                                        <option value="legs">Legs</option>
-                                        <option value="core">Core</option>
-                                    </select>
-
-                                    <select id="equipment-filter" class="form-input">
-                                        <option value="">All Equipment</option>
-                                        <option value="machine">Machine</option>
-                                        <option value="dumbbell">Dumbbell</option>
-                                        <option value="barbell">Barbell</option>
-                                        <option value="bodyweight">Bodyweight</option>
-                                        <option value="cable">Cable</option>
-                                    </select>
-                                </div>
-
-                                <button class="btn btn-primary btn-full" onclick="showCreateExerciseForm()">
-                                    <i class="fas fa-plus"></i> Create New Exercise
-                                </button>
+                    </div>
+                    <div class="full-page-body" id="exercise-library-content">
+                        <!-- Exercise Library Controls -->
+                        <div class="exercise-library-controls">
+                            <div class="search-container">
+                                <input
+                                    type="text"
+                                    id="exercise-library-search"
+                                    class="form-input"
+                                    placeholder="Search exercises..."
+                                />
                             </div>
 
-                            <!-- Exercise Grid -->
-                            <div id="exercise-library-grid" class="exercise-library-grid">
-                                <!-- Exercises will be populated here by JavaScript -->
+                            <div class="filter-row">
+                                <select id="body-part-filter" class="form-input">
+                                    <option value="">All Body Parts</option>
+                                    <option value="chest">Chest</option>
+                                    <option value="back">Back</option>
+                                    <option value="shoulders">Shoulders</option>
+                                    <option value="arms">Arms</option>
+                                    <option value="legs">Legs</option>
+                                    <option value="core">Core</option>
+                                </select>
+
+                                <select id="equipment-filter" class="form-input">
+                                    <option value="">All Equipment</option>
+                                    <option value="machine">Machine</option>
+                                    <option value="dumbbell">Dumbbell</option>
+                                    <option value="barbell">Barbell</option>
+                                    <option value="bodyweight">Bodyweight</option>
+                                    <option value="cable">Cable</option>
+                                </select>
                             </div>
                         </div>
+
+                        <!-- Exercise Grid -->
+                        <div id="exercise-library-grid" class="exercise-library-grid">
+                            <!-- Exercises will be populated here by JavaScript -->
+                        </div>
                     </div>
-                </dialog>
+                </section>
 
                 <!-- Add/Create Exercise Modal -->
                 <dialog id="add-exercise-modal" class="modal">
@@ -651,20 +650,19 @@
                     </div>
                 </dialog>
 
-                <!-- Workout Details Modal -->
-                <dialog id="workout-detail-modal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3 id="workout-detail-title">Workout Details</h3>
-                            <button class="close-btn" aria-label="Close" onclick="closeWorkoutDetailModal()">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body" id="workout-detail-content">
-                            <!-- Populated by JavaScript -->
-                        </div>
+                <!-- Workout Details (Full-Page Section) -->
+                <section id="workout-detail-modal" class="full-page-section hidden">
+                    <div class="full-page-header">
+                        <button class="btn-icon" onclick="closeWorkoutDetailModal()" aria-label="Back">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h3 id="workout-detail-title">Workout Details</h3>
+                        <div class="full-page-header-action"></div>
                     </div>
-                </dialog>
+                    <div class="full-page-body" id="workout-detail-content">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
 
                 <!-- Add Location Modal -->
                 <dialog id="add-location-modal" class="modal">
@@ -790,20 +788,19 @@
                     </div>
                 </dialog>
 
-                <!-- Workout Editor Modal -->
-                <dialog id="template-editor-modal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3 id="template-editor-title">Create Workout</h3>
-                            <button class="close-btn" aria-label="Close" onclick="closeTemplateEditor()">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body" id="template-editor-content">
-                            <!-- Populated by JavaScript -->
-                        </div>
+                <!-- Workout Editor (Full-Page Section) -->
+                <section id="template-editor-modal" class="full-page-section hidden">
+                    <div class="full-page-header">
+                        <button class="btn-icon" onclick="closeTemplateEditor()" aria-label="Back">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h3 id="template-editor-title">Create Workout</h3>
+                        <div class="full-page-header-action"></div>
                     </div>
-                </dialog>
+                    <div class="full-page-body" id="template-editor-content">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
             </div>
 
             <!-- Notifications -->
@@ -1796,15 +1793,19 @@
             </div>
         </dialog>
 
-        <!-- Weight History Modal (Phase 12.2) -->
-        <dialog id="weight-history-modal" class="modal" aria-modal="true" aria-label="Weight history">
-            <div class="modal-content">
-                <button class="modal-fallback-close" onclick="closeModal('weight-history-modal')" aria-label="Close">
-                    <i class="fas fa-times"></i>
+        <!-- Weight History (Full-Page Section) -->
+        <section id="weight-history-modal" class="full-page-section hidden" aria-label="Weight history">
+            <div class="full-page-header">
+                <button class="btn-icon" onclick="closeWeightHistory()" aria-label="Back">
+                    <i class="fas fa-arrow-left"></i>
                 </button>
+                <h3>Weight History</h3>
+                <div class="full-page-header-action"></div>
+            </div>
+            <div class="full-page-body" id="weight-history-content">
                 <!-- Populated by JavaScript -->
             </div>
-        </dialog>
+        </section>
 
 
         <!-- DEXA Scan Upload Modal (Phase 18) -->
@@ -1817,25 +1818,33 @@
             </div>
         </dialog>
 
-        <!-- DEXA Scan History Modal (Phase 18) -->
-        <dialog id="dexa-history-modal" class="modal" aria-modal="true" aria-label="DEXA scan history">
-            <div class="modal-content">
-                <button class="modal-fallback-close" onclick="closeModal('dexa-history-modal')" aria-label="Close">
-                    <i class="fas fa-times"></i>
+        <!-- DEXA Scan History (Full-Page Section) -->
+        <section id="dexa-history-modal" class="full-page-section hidden" aria-label="DEXA scan history">
+            <div class="full-page-header">
+                <button class="btn-icon" onclick="closeDexaHistory()" aria-label="Back">
+                    <i class="fas fa-arrow-left"></i>
                 </button>
+                <h3>DEXA History</h3>
+                <div class="full-page-header-action"></div>
+            </div>
+            <div class="full-page-body" id="dexa-history-content">
                 <!-- Populated by JavaScript -->
             </div>
-        </dialog>
+        </section>
 
-        <!-- DEXA Scan Detail Modal (Phase 18) -->
-        <dialog id="dexa-detail-modal" class="modal" aria-modal="true" aria-label="DEXA scan detail">
-            <div class="modal-content">
-                <button class="modal-fallback-close" onclick="closeModal('dexa-detail-modal')" aria-label="Close">
-                    <i class="fas fa-times"></i>
+        <!-- DEXA Scan Detail (Full-Page Section) -->
+        <section id="dexa-detail-modal" class="full-page-section hidden" aria-label="DEXA scan detail">
+            <div class="full-page-header">
+                <button class="btn-icon" onclick="closeDexaDetail()" aria-label="Back">
+                    <i class="fas fa-arrow-left"></i>
                 </button>
+                <h3>DEXA Scan Details</h3>
+                <div class="full-page-header-action"></div>
+            </div>
+            <div class="full-page-body" id="dexa-detail-content">
                 <!-- Populated by JavaScript -->
             </div>
-        </dialog>
+        </section>
 
         <!-- Import Data Modal (Phase 13.2) -->
         <dialog id="import-data-modal" class="modal" aria-modal="true" aria-label="Import data">
