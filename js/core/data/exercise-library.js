@@ -59,8 +59,8 @@ export function getExerciseLibrary(appState) {
 
             currentContext = 'manual-workout';
 
-            const modal = document.getElementById('exercise-library-modal');
-            const modalTitle = document.querySelector('#exercise-library-modal .modal-title');
+            const modal = document.getElementById('exercise-library-section');
+            const modalTitle = document.querySelector('#exercise-library-section .modal-title');
 
             if (modalTitle) {
                 modalTitle.textContent = 'Add Exercise to Manual Workout';
@@ -74,8 +74,8 @@ export function getExerciseLibrary(appState) {
             appState.addingToTemplate = true;
             appState.templateEditingContext = template;
 
-            const modal = document.getElementById('exercise-library-modal');
-            const modalTitle = document.querySelector('#exercise-library-modal .modal-title');
+            const modal = document.getElementById('exercise-library-section');
+            const modalTitle = document.querySelector('#exercise-library-section .modal-title');
 
             if (modalTitle) {
                 modalTitle.textContent = 'Add Exercise to Template';
@@ -92,8 +92,8 @@ export function getExerciseLibrary(appState) {
 
             currentContext = 'workout-add';
 
-            const modal = document.getElementById('exercise-library-modal');
-            const modalTitle = document.querySelector('#exercise-library-modal .modal-title');
+            const modal = document.getElementById('exercise-library-section');
+            const modalTitle = document.querySelector('#exercise-library-section .modal-title');
 
             if (modalTitle) {
                 modalTitle.textContent = 'Add Exercise to Workout';
@@ -103,7 +103,7 @@ export function getExerciseLibrary(appState) {
         },
 
         async loadAndShow() {
-            const modal = document.getElementById('exercise-library-modal');
+            const modal = document.getElementById('exercise-library-section');
             if (!modal) return;
 
             openModal(modal);
@@ -380,7 +380,7 @@ export function getExerciseLibrary(appState) {
         },
 
         close() {
-            const modal = document.getElementById('exercise-library-modal');
+            const modal = document.getElementById('exercise-library-section');
             if (modal) {
                 closeModal(modal);
             }
@@ -404,7 +404,7 @@ export function getExerciseLibrary(appState) {
             if (equipmentFilter) equipmentFilter.value = '';
 
             // Reset modal title
-            const modalTitle = document.querySelector('#exercise-library-modal .modal-title');
+            const modalTitle = document.querySelector('#exercise-library-section .modal-title');
             if (modalTitle) {
                 modalTitle.textContent = 'Exercise Library';
             }
@@ -439,7 +439,7 @@ function selectExerciseGeneric(exerciseDataOrName, exerciseJson) {
         }
 
         // Close the library modal
-        const modal = document.getElementById('exercise-library-modal');
+        const modal = document.getElementById('exercise-library-section');
         if (modal) {
             closeModal(modal);
         }

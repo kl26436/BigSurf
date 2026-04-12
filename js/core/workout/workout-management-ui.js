@@ -45,7 +45,7 @@ export function initializeWorkoutManagement(appState) {
 
     // Listen for exercise library updates from exercise-manager-ui
     window.addEventListener('exerciseLibraryUpdated', async () => {
-        const libraryModal = document.getElementById('exercise-library-modal');
+        const libraryModal = document.getElementById('exercise-library-section');
         if (libraryModal && (libraryModal.open || !libraryModal.classList.contains('hidden'))) {
             exerciseLibrary = await workoutManager.getExerciseLibrary();
             filteredExercises = [...exerciseLibrary];
@@ -509,7 +509,7 @@ export function useTemplate(templateId) {
 }
 
 function showTemplateEditor() {
-    const templateEditor = document.getElementById('template-editor-modal');
+    const templateEditor = document.getElementById('template-editor-section');
     const editorContent = document.getElementById('template-editor-content');
 
     if (!templateEditor || !editorContent) {
@@ -821,7 +821,7 @@ export function cancelInlineAdd() {
 }
 
 export function closeTemplateEditor() {
-    const templateEditor = document.getElementById('template-editor-modal');
+    const templateEditor = document.getElementById('template-editor-section');
     if (templateEditor) {
         templateEditor.classList.add('hidden');
     }
@@ -1156,7 +1156,7 @@ let gymSuggestedExercises = [];
 let gymLocationName = null;
 
 export async function openExerciseLibrary(mode = 'template') {
-    const modal = document.getElementById('exercise-library-modal');
+    const modal = document.getElementById('exercise-library-section');
     if (!modal) return;
 
     // Show as full-page section (no longer a dialog)
@@ -1225,7 +1225,7 @@ function setupExerciseLibraryListeners() {
 }
 
 export function closeExerciseLibrary() {
-    const modal = document.getElementById('exercise-library-modal');
+    const modal = document.getElementById('exercise-library-section');
     if (modal) {
         modal.classList.add('hidden');
     }
@@ -1731,7 +1731,7 @@ export async function createNewExercise(event) {
 
         // Refresh exercise library if it's open
         if (creatingFromLibraryModal) {
-            const libraryModal = document.getElementById('exercise-library-modal');
+            const libraryModal = document.getElementById('exercise-library-section');
             if (libraryModal && (libraryModal.open || !libraryModal.classList.contains('hidden'))) {
                 exerciseLibrary = await workoutManager.getExerciseLibrary();
                 filteredExercises = [...exerciseLibrary];

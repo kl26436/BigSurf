@@ -115,8 +115,8 @@ export function getWorkoutHistory(appState) {
                 modal.addEventListener('click', actionHandler);
             }
 
-            // workout-detail-modal shares the same action handler
-            const detailModal = document.getElementById('workout-detail-modal');
+            // workout-detail-section shares the same action handler
+            const detailModal = document.getElementById('workout-detail-section');
             if (detailModal) {
                 detailModal.addEventListener('click', actionHandler);
             }
@@ -901,9 +901,9 @@ export function getWorkoutHistory(appState) {
         },
 
         closeWorkoutDetailModal() {
-            // Try both modal IDs (workoutModal and workout-detail-modal)
+            // Try both modal IDs (workoutModal and workout-detail-section)
             const modal1 = document.getElementById('workoutModal');
-            const modal2 = document.getElementById('workout-detail-modal');
+            const modal2 = document.getElementById('workout-detail-section');
 
             if (modal1) {
                 modal1.style.display = 'none';
@@ -989,7 +989,7 @@ export function getWorkoutHistory(appState) {
 
         // Schema v3.0: Show picker when multiple workouts on same day
         showWorkoutPickerModal(date, workouts) {
-            const modal = document.getElementById('workout-detail-modal');
+            const modal = document.getElementById('workout-detail-section');
             const content = document.getElementById('workout-detail-content');
 
             if (!modal || !content) {
@@ -1068,7 +1068,7 @@ export function getWorkoutHistory(appState) {
 
         showFixedWorkoutModal(workout, workoutIndex = 0) {
             // Use the correct modal elements that actually exist
-            const modal = document.getElementById('workout-detail-modal');
+            const modal = document.getElementById('workout-detail-section');
             const content = document.getElementById('workout-detail-content');
 
             if (!modal || !content) {

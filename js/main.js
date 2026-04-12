@@ -36,7 +36,6 @@ import {
     saveActiveWorkoutAsTemplate,
     toggleWorkoutOverflowMenu,
     closeWorkoutOverflowMenu,
-    focusExercise,
     updateSet,
     cycleSetType,
     addSet,
@@ -57,7 +56,6 @@ import {
     setGlobalUnit,
     setExerciseUnit,
     editExerciseDefaults,
-    closeExerciseModal,
     loadExerciseHistory,
     autoStartRestTimer,
     toggleSetComplete,
@@ -409,7 +407,6 @@ window.startWorkoutFromModal = function (workoutName) {
 };
 
 // Exercise Management
-window.focusExercise = focusExercise;
 window.toggleExerciseExpansion = toggleExerciseExpansion;
 window.replaceExercise = replaceExercise;
 window.updateSet = updateSet;
@@ -425,7 +422,6 @@ window.deleteExerciseFromWorkout = deleteExerciseFromWorkout;
 window.editExerciseDefaults = editExerciseDefaults;
 window.addExerciseToActiveWorkout = addExerciseToActiveWorkout;
 window.confirmExerciseAddToWorkout = confirmExerciseAddToWorkout;
-window.closeExerciseModal = closeExerciseModal;
 window.loadExerciseHistory = function (exerciseName, exerciseIndex) {
     loadExerciseHistory(exerciseName, exerciseIndex, AppState);
 };
@@ -717,7 +713,7 @@ window.clearHistorySearch = function () {
     if (window.workoutHistory) window.workoutHistory.clearSearch();
 };
 window.closeWorkoutDetailModal = function () {
-    const modal = document.getElementById('workout-detail-modal');
+    const modal = document.getElementById('workout-detail-section');
     if (modal) {
         closeModal(modal);
     }

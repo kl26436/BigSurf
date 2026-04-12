@@ -440,23 +440,6 @@
     opacity: 0.85;
 }
 
-/* Legacy compatibility: old title row */
-.exercise-title-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-.exercise-title-info {
-    flex: 1;
-    min-width: 0;
-}
-.exercise-equipment-tag {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-}
-
 /* Inline exercise progress */
 .inline-progress {
     padding: 12px 0;
@@ -548,9 +531,6 @@
 .reorder-mode .exercise-card {
     border: 1px dashed var(--border-medium);
 }
-.reorder-mode .exercise-actions-row {
-    display: none;
-}
 .exercise-card.dragging {
     opacity: 0.85;
     box-shadow: var(--shadow-md);
@@ -565,24 +545,6 @@
 .btn-reorder {
     background: var(--bg-card-hi);
     color: var(--text-primary);
-}
-
-.exercise-progress-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
-}
-.exercise-mini-ring {
-    flex-shrink: 0;
-}
-.progress-text {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--primary);
-}
-.exercise-card.completed .progress-text {
-    color: var(--success);
 }
 
 /* Last session label above set table */
@@ -680,11 +642,6 @@
 .last-session-label i {
     margin-right: 4px;
     opacity: 0.6;
-}
-
-.exercise-actions-row {
-    display: flex;
-    gap: 8px;
 }
 
 /* ===========================================
@@ -822,45 +779,6 @@
 /* ===========================================
    34. EXERCISE CARD DYNAMIC ELEMENTS
    =========================================== */
-.exercise-title-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-}
-.exercise-progress-row {
-    margin: 12px 0;
-}
-.exercise-actions-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-}
-.exercise-edit-icon {
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 4px;
-}
-.exercise-edit-icon:hover {
-    color: var(--primary);
-}
-.exercise-equipment-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.75rem;
-    background: rgba(29, 211, 176, 0.15);
-    color: var(--primary);
-    padding: var(--space-2) var(--space-8);
-    border-radius: var(--radius-sm);
-}
-.equipment-change-icon {
-    cursor: pointer;
-    opacity: 0.7;
-}
-.equipment-change-icon:hover {
-    opacity: 1;
-}
 .exercise-history-section {
     margin-top: 16px;
     padding-top: 12px;

@@ -485,7 +485,7 @@
                 </dialog>
 
                 <!-- Exercise Library (Full-Page Section) -->
-                <section id="exercise-library-modal" class="full-page-section hidden">
+                <section id="exercise-library-section" class="full-page-section hidden">
                     <div class="full-page-header">
                         <button class="btn-icon" onclick="closeExerciseLibrary()" aria-label="Back">
                             <i class="fas fa-arrow-left"></i>
@@ -651,7 +651,7 @@
                 </dialog>
 
                 <!-- Workout Details (Full-Page Section) -->
-                <section id="workout-detail-modal" class="full-page-section hidden">
+                <section id="workout-detail-section" class="full-page-section hidden">
                     <div class="full-page-header">
                         <button class="btn-icon" onclick="closeWorkoutDetailModal()" aria-label="Back">
                             <i class="fas fa-arrow-left"></i>
@@ -789,7 +789,7 @@
                 </dialog>
 
                 <!-- Workout Editor (Full-Page Section) -->
-                <section id="template-editor-modal" class="full-page-section hidden">
+                <section id="template-editor-section" class="full-page-section hidden">
                     <div class="full-page-header">
                         <button class="btn-icon" onclick="closeTemplateEditor()" aria-label="Back">
                             <i class="fas fa-arrow-left"></i>
@@ -979,34 +979,6 @@
                             <i class="fas fa-check"></i> Save Workout
                         </button>
                     </div>
-                </div>
-            </div>
-        </dialog>
-
-        <!-- Exercise Modal -->
-        <dialog id="exercise-modal" class="modal" aria-modal="true" aria-label="Exercise detail">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 id="modal-exercise-title">Exercise</h3>
-                    <button class="close-btn" aria-label="Close" onclick="closeExerciseModal()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <!-- Exercise video section -->
-                <div id="exercise-video-section" class="video-section hidden">
-                    <div class="video-container">
-                        <iframe
-                            id="exercise-video-iframe"
-                            width="100%"
-                            height="315"
-                            frameborder="0"
-                            allowfullscreen
-                        ></iframe>
-                    </div>
-                </div>
-                <div id="exercise-content">
-                    <!-- Exercise table will be populated here -->
                 </div>
             </div>
         </dialog>
@@ -1794,7 +1766,7 @@
         </dialog>
 
         <!-- Weight History (Full-Page Section) -->
-        <section id="weight-history-modal" class="full-page-section hidden" aria-label="Weight history">
+        <section id="weight-history-section" class="full-page-section hidden" aria-label="Weight history">
             <div class="full-page-header">
                 <button class="btn-icon" onclick="closeWeightHistory()" aria-label="Back">
                     <i class="fas fa-arrow-left"></i>
@@ -1819,7 +1791,7 @@
         </dialog>
 
         <!-- DEXA Scan History (Full-Page Section) -->
-        <section id="dexa-history-modal" class="full-page-section hidden" aria-label="DEXA scan history">
+        <section id="dexa-history-section" class="full-page-section hidden" aria-label="DEXA scan history">
             <div class="full-page-header">
                 <button class="btn-icon" onclick="closeDexaHistory()" aria-label="Back">
                     <i class="fas fa-arrow-left"></i>
@@ -1833,7 +1805,7 @@
         </section>
 
         <!-- DEXA Scan Detail (Full-Page Section) -->
-        <section id="dexa-detail-modal" class="full-page-section hidden" aria-label="DEXA scan detail">
+        <section id="dexa-detail-section" class="full-page-section hidden" aria-label="DEXA scan detail">
             <div class="full-page-header">
                 <button class="btn-icon" onclick="closeDexaDetail()" aria-label="Back">
                     <i class="fas fa-arrow-left"></i>

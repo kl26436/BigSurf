@@ -40,148 +40,9 @@
     padding: var(--pad-card-x);
 }
 
-/* Exercise Detail Modal - Full Screen */
-#exercise-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--bg-app);
-    z-index: 600;
-    overflow-y: auto;
-    /* Override base dialog.modal flex alignment for full-screen style */
-    display: block;
-    align-items: unset;
-    border: none;
-    padding: 0;
-    margin: 0;
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    max-height: 100%;
-}
-#exercise-modal:not([open]) {
-    display: none;
-}
-
-#exercise-modal > .modal-content {
-    width: 100%;
-    min-height: 100%;
-    background: var(--bg-app);
-    position: relative;
-}
-#exercise-modal > .modal-content::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
-    z-index: 2;
-}
-
-#exercise-modal .modal-header {
-    padding: var(--pad-card-x);
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-app);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
 /* Hidden video section should not take space */
-#exercise-video-section.hidden,
 .video-section.hidden {
     display: none !important;
-}
-#modal-exercise-title {
-    margin: 0;
-}
-.exercise-detail-name {
-    display: block;
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--text-strong);
-}
-.exercise-detail-meta {
-    display: flex;
-    gap: 12px;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-top: 4px;
-}
-.exercise-detail-meta i {
-    margin-right: 3px;
-    opacity: 0.6;
-}
-.exercise-detail-actions {
-    display: flex;
-    gap: 6px;
-    margin-top: var(--space-12);
-    padding-top: 10px;
-    border-top: 1px solid var(--border-subtle);
-    flex-wrap: wrap;
-}
-.exercise-detail-actions .btn-text {
-    font-size: 0.75rem;
-    padding: 4px 10px;
-    border-radius: var(--radius-sm);
-    background: var(--border-subtle);
-    color: var(--text-muted);
-    border: none;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-.exercise-detail-actions .btn-text:active {
-    background: rgba(29, 211, 176, 0.15);
-    color: var(--primary);
-}
-
-/* Exercise overflow menu (hidden by default) */
-.exercise-overflow-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin-top: 8px;
-    padding: var(--space-8);
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-light);
-}
-.exercise-overflow-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: var(--space-12) var(--pad-card-x);
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-sm);
-    color: var(--text-main);
-    font-size: var(--font-sm);
-    cursor: pointer;
-    text-align: left;
-}
-.exercise-overflow-item i {
-    width: 16px;
-    text-align: center;
-    color: var(--text-muted);
-}
-.exercise-overflow-item:active {
-    background: var(--border-light);
-}
-.exercise-more-toggle {
-    margin-left: auto;
-}
-
-#exercise-content {
-    padding: 16px;
 }
 
 /* Exercise History Section */
@@ -290,8 +151,7 @@
 }
 
 /* Exercise Notes Textarea */
-.exercise-notes,
-#exercise-content textarea {
+.exercise-notes {
     width: 100%;
     min-height: 60px;
     padding: 12px;
@@ -304,19 +164,16 @@
     resize: vertical;
     margin-bottom: 16px;
 }
-.exercise-notes:focus,
-#exercise-content textarea:focus {
+.exercise-notes:focus {
     outline: none;
     border-color: var(--primary);
 }
-.exercise-notes::placeholder,
-#exercise-content textarea::placeholder {
+.exercise-notes::placeholder {
     color: var(--text-muted);
 }
 
 /* Mark Complete Button */
-.complete-exercise-btn,
-#exercise-content .btn-success {
+.complete-exercise-btn {
     width: 100%;
     padding: 16px;
     background: var(--success);
@@ -525,14 +382,10 @@ dialog.modal:not([open]) {
 }
 
 /* Full-screen modals (no dead space at top) */
-#exercise-library-modal,
-#template-editor-modal,
 #add-exercise-modal,
 #template-selection-modal {
     align-items: stretch;
 }
-#exercise-library-modal > .modal-content,
-#template-editor-modal > .modal-content,
 #add-exercise-modal > .modal-content,
 #template-selection-modal > .modal-content {
     max-height: 100vh; /* fallback */

@@ -31,43 +31,6 @@ import {
 import { Config, CATEGORY_COLORS } from '../utils/config.js';
 import { haptic } from '../utils/haptics.js';
 import { getWorkoutCategory } from '../ui/template-selection.js';
-import { showFirstUseTip } from '../features/first-use-tips.js';
-
-// ===================================================================
-// EVENT DELEGATION FOR EXERCISE MODAL
-// ===================================================================
-
-let exerciseModalDelegationSetup = false;
-
-function setupExerciseModalDelegation() {
-    if (exerciseModalDelegationSetup) return;
-    const modal = document.getElementById('exercise-modal');
-    if (!modal) return;
-    exerciseModalDelegationSetup = true;
-
-    modal.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-action]');
-        if (!btn) return;
-        const action = btn.dataset.action;
-
-        if (action === 'loadExerciseHistory') {
-            window.loadExerciseHistory(btn.dataset.exercise, parseInt(btn.dataset.index, 10));
-        } else if (action === 'showExerciseVideoAndToggleButton') {
-            window.showExerciseVideoAndToggleButton(
-                btn.dataset.video,
-                btn.dataset.exercise,
-                parseInt(btn.dataset.index, 10)
-            );
-        } else if (action === 'toggleInlineProgress') {
-            toggleInlineProgress(
-                btn.dataset.exercise,
-                btn.dataset.equipment,
-                parseInt(btn.dataset.index, 10),
-                btn
-            );
-        }
-    });
-}
 
 // ===================================================================
 // INLINE CARD EVENT DELEGATION
@@ -380,7 +343,7 @@ export function updateExerciseCard(exerciseIndex) {
     }
 
     // If this card is currently expanded, only update the header portion
-    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+    if (expandedExerciseIndex === exerciseIndex) {
         const newCard = createExerciseCard(exercise, exerciseIndex);
         const newHeader = newCard.querySelector('.exercise-card-header');
         const existingHeader = existingCard.querySelector('.exercise-card-header');
@@ -398,42 +361,6 @@ export function updateExerciseCard(exerciseIndex) {
     existingCard.replaceWith(newCard);
 
     updateProgress(AppState);
-}
-
-function generateQuickSetsHtml(exercise, exerciseIndex, unit) {
-    const savedSets = AppState.savedData.exercises?.[`exercise_${exerciseIndex}`]?.sets || [];
-    const targetSets = exercise.sets || 3;
-
-    let html = '<div class="quick-sets-row">';
-
-    for (let setIndex = 0; setIndex < targetSets; setIndex++) {
-        const set = savedSets[setIndex] || {};
-        const isCompleted = set.reps && set.weight;
-
-        if (isCompleted) {
-            // Convert stored lbs weight to display unit
-            let displayWeight = set.weight; // stored in lbs
-            if (set.weight && unit === 'kg') {
-                displayWeight = Math.round(set.weight * 0.453592); // Convert lbs to kg, rounded to whole number
-            }
-
-            html += `
-                <div class="badge--success">
-                    Set ${setIndex + 1}: ${set.reps} × ${displayWeight} ${unit}
-                </div>
-            `;
-        } else {
-            // Show incomplete sets as gray placeholders
-            html += `
-                <div class="badge--muted">
-                    Set ${setIndex + 1}
-                </div>
-            `;
-        }
-    }
-
-    html += '</div>';
-    return html;
 }
 
 export function createExerciseCard(exercise, index) {
@@ -490,11 +417,7 @@ export function createExerciseCard(exercise, index) {
     const header = document.createElement('div');
     header.className = 'exercise-card-header';
     header.addEventListener('click', () => {
-        if (Config.INLINE_EXERCISE_CARDS) {
-            window.toggleExerciseExpansion(index);
-        } else {
-            window.focusExercise(index);
-        }
+        window.toggleExerciseExpansion(index);
     });
 
     const headerInfo = document.createElement('div');
@@ -556,24 +479,20 @@ export function createExerciseCard(exercise, index) {
     status.appendChild(countText);
 
     const chevron = document.createElement('i');
-    chevron.className = Config.INLINE_EXERCISE_CARDS
-        ? 'fas fa-chevron-down exercise-card-chevron'
-        : 'fas fa-chevron-right exercise-card-chevron';
+    chevron.className = 'fas fa-chevron-down exercise-card-chevron';
     status.appendChild(chevron);
 
     header.appendChild(status);
     card.appendChild(header);
 
     // ── BODY (hidden, populated on expand) ──
-    if (Config.INLINE_EXERCISE_CARDS) {
-        const body = document.createElement('div');
-        body.className = 'exercise-card-body';
-        body.id = `exercise-body-${index}`;
-        card.appendChild(body);
-    }
+    const body = document.createElement('div');
+    body.className = 'exercise-card-body';
+    body.id = `exercise-body-${index}`;
+    card.appendChild(body);
 
     // Async: load last session preview for cards with no current data
-    if (!setPreview && Config.INLINE_EXERCISE_CARDS) {
+    if (!setPreview) {
         getLastSessionDefaults(exerciseName, exercise.equipment || null).then(lastSession => {
             if (!lastSession?.sets?.length) return;
             const preview = lastSession.sets
@@ -835,7 +754,7 @@ export function supersetWithNext(index) {
     debouncedSaveWorkoutData(AppState);
 
     // Close inline card or modal, then re-render
-    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex !== null) {
+    if (expandedExerciseIndex !== null) {
         collapseExercise(expandedExerciseIndex);
     } else {
         const modal = document.getElementById('exercise-modal');
@@ -867,7 +786,7 @@ export function ungroupExerciseFromWorkout(index) {
     debouncedSaveWorkoutData(AppState);
 
     // Close inline card or modal, then re-render
-    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex !== null) {
+    if (expandedExerciseIndex !== null) {
         collapseExercise(expandedExerciseIndex);
     } else {
         const modal = document.getElementById('exercise-modal');
@@ -879,220 +798,19 @@ export function ungroupExerciseFromWorkout(index) {
     renderExercises();
 }
 
-export async function focusExercise(index) {
-    if (!AppState.currentWorkout) return;
-    setupExerciseModalDelegation();
-
-    AppState.focusedExerciseIndex = index;
-    const exercise = AppState.currentWorkout.exercises[index];
-    const modal = document.getElementById('exercise-modal');
-    const title = document.getElementById('modal-exercise-title');
-    const content = document.getElementById('exercise-content');
-
-    if (!modal || !title || !content) {
-        console.error('Modal elements not found:', { modal: !!modal, title: !!title, content: !!content });
-        return;
-    }
-
-    const exerciseName = getExerciseName(exercise);
-    const equipmentText = exercise.equipment || null;
-    const locationText = exercise.equipmentLocation || null;
-
-    // Build clean 3-row header
-    title.textContent = '';
-
-    // Row 1: Exercise name only
-    const nameEl = document.createElement('span');
-    nameEl.className = 'exercise-detail-name';
-    nameEl.textContent = exerciseName;
-    title.appendChild(nameEl);
-
-    // Row 2: Equipment + location meta
-    const metaRow = document.createElement('div');
-    metaRow.className = 'exercise-detail-meta';
-    const eqSpan = document.createElement('span');
-    eqSpan.innerHTML = `<i class="fas fa-cog"></i> ${escapeHtml(equipmentText || 'No equipment')}`;
-    metaRow.appendChild(eqSpan);
-    if (locationText) {
-        const locSpan = document.createElement('span');
-        locSpan.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${escapeHtml(locationText)}`;
-        metaRow.appendChild(locSpan);
-    }
-    title.appendChild(metaRow);
-
-    // Row 3: Primary action pills (visible) + overflow menu (hidden)
-    const actionsRow = document.createElement('div');
-    actionsRow.className = 'exercise-detail-actions';
-
-    // Primary actions — always visible
-    const swapBtn = document.createElement('button');
-    swapBtn.className = 'btn-text btn-small';
-    swapBtn.innerHTML = '<i class="fas fa-exchange-alt"></i> Swap';
-    swapBtn.addEventListener('click', () => replaceExercise(index));
-    actionsRow.appendChild(swapBtn);
-
-    const equipBtn = document.createElement('button');
-    equipBtn.className = 'btn-text btn-small';
-    equipBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Equipment';
-    equipBtn.addEventListener('click', () => window.changeExerciseEquipment(index));
-    actionsRow.appendChild(equipBtn);
-
-    // More toggle
-    const moreToggle = document.createElement('button');
-    moreToggle.className = 'btn-text btn-small exercise-more-toggle';
-    moreToggle.innerHTML = '<i class="fas fa-ellipsis-h"></i> More';
-    moreToggle.addEventListener('click', () => {
-        const menu = document.getElementById(`exercise-overflow-${index}`);
-        if (menu) menu.classList.toggle('hidden');
-    });
-    actionsRow.appendChild(moreToggle);
-
-    title.appendChild(actionsRow);
-
-    // Overflow menu — hidden by default
-    const overflowMenu = document.createElement('div');
-    overflowMenu.id = `exercise-overflow-${index}`;
-    overflowMenu.className = 'exercise-overflow-menu hidden';
-
-    const editBtn = document.createElement('button');
-    editBtn.className = 'exercise-overflow-item';
-    editBtn.innerHTML = '<i class="fas fa-pen"></i> Edit Defaults';
-    editBtn.addEventListener('click', () => window.editExerciseDefaults(exerciseName));
-    overflowMenu.appendChild(editBtn);
-
-    // Superset/Ungroup button
-    const currentGroup = exercise.group || AppState.savedData.exercises?.[`exercise_${index}`]?.group;
-    if (currentGroup) {
-        const ungroupBtn = document.createElement('button');
-        ungroupBtn.className = 'exercise-overflow-item';
-        ungroupBtn.innerHTML = '<i class="fas fa-unlink"></i> Ungroup';
-        ungroupBtn.addEventListener('click', () => window.ungroupExerciseFromWorkout(index));
-        overflowMenu.appendChild(ungroupBtn);
-    } else {
-        const nextIdx = index + 1;
-        const hasNext = nextIdx < (AppState.currentWorkout?.exercises?.length || 0);
-        if (hasNext) {
-            const supersetBtn = document.createElement('button');
-            supersetBtn.className = 'exercise-overflow-item';
-            supersetBtn.innerHTML = '<i class="fas fa-link"></i> Superset';
-            supersetBtn.addEventListener('click', () => window.supersetWithNext(index));
-            overflowMenu.appendChild(supersetBtn);
-        }
-    }
-
-    const videoBtn = document.createElement('button');
-    videoBtn.className = 'exercise-overflow-item';
-    videoBtn.id = `show-video-btn-${index}`;
-    videoBtn.innerHTML = '<i class="fas fa-play-circle"></i> Form Video';
-    videoBtn.addEventListener('click', () => window.showExerciseVideoAndToggleButton(exercise.video || null, exerciseName, index));
-    overflowMenu.appendChild(videoBtn);
-
-    const hideVideoBtn = document.createElement('button');
-    hideVideoBtn.className = 'exercise-overflow-item hidden';
-    hideVideoBtn.id = `hide-video-btn-${index}`;
-    hideVideoBtn.innerHTML = '<i class="fas fa-times"></i> Hide Video';
-    hideVideoBtn.addEventListener('click', () => window.hideExerciseVideoAndToggleButton(index));
-    overflowMenu.appendChild(hideVideoBtn);
-
-    title.appendChild(overflowMenu);
-
-    // Define currentUnit FIRST
-    const currentUnit = AppState.exerciseUnits[index] || AppState.globalUnit;
-
-    // Generate the HTML content (this creates the unit toggle)
-    content.innerHTML = await generateExerciseTable(exercise, index, currentUnit);
-
-    // NOW find and set up the unit toggle (after it's been created)
-    const unitToggle = modal.querySelector('.exercise-unit-toggle .unit-toggle');
-
-    if (unitToggle) {
-        unitToggle.querySelectorAll('.unit-btn').forEach((btn) => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                setExerciseUnit(index, btn.dataset.unit);
-            });
-        });
-    }
-
-    modal.showModal();
-
-    // Hide nav when exercise modal is open (no hamburger needed - has X to close)
-    setHeaderMode(false);
-    setBottomNavVisible(false);
-
-    // First-use tip for set completion
-    showFirstUseTip('exercise-sets');
-
-    // Setup swipe-to-delete on set rows
-    setupSwipeToDelete(index);
-
-    // Restore rest timer from AppState if it exists for this exercise
-    if (AppState.activeRestTimer && AppState.activeRestTimer.exerciseIndex === index) {
-        // Small delay to ensure DOM is ready
-        setTimeout(() => {
-            restoreTimerFromAppState(index);
-        }, 50);
-    }
-}
-
-function setupSwipeToDelete(exerciseIndex) {
-    const rows = document.querySelectorAll('#exercise-content .exercise-table tbody tr');
-    rows.forEach((row, setIndex) => {
-        let startX = 0;
-        let currentX = 0;
-        let swiping = false;
-
-        row.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-            currentX = startX;
-            swiping = true;
-            row.style.transition = 'none';
-        }, { passive: true });
-
-        row.addEventListener('touchmove', (e) => {
-            if (!swiping) return;
-            currentX = e.touches[0].clientX;
-            const diff = startX - currentX;
-            if (diff > 0 && diff < 100) {
-                row.style.transform = `translateX(-${diff}px)`;
-                row.style.background = `linear-gradient(to left, rgba(239, 68, 68, ${diff / 100 * 0.3}) 0%, transparent ${diff}px)`;
-            }
-        }, { passive: true });
-
-        row.addEventListener('touchend', () => {
-            if (!swiping) return;
-            swiping = false;
-            const diff = startX - currentX;
-            row.style.transition = 'transform 0.2s ease';
-
-            if (diff > 70) {
-                row.style.transform = 'translateX(-100%)';
-                row.style.opacity = '0';
-                setTimeout(() => {
-                    removeSetFromExercise(exerciseIndex);
-                }, 200);
-            } else {
-                row.style.transform = 'translateX(0)';
-                row.style.background = '';
-            }
-        });
-    });
-}
 
 // ===================================================================
 // CONTENT CONTAINER HELPER
 // ===================================================================
 
 /**
- * Returns the DOM container for exercise content based on inline vs modal mode.
- * In inline mode: returns the expanded card body.
- * In modal mode: returns the #exercise-content div inside the modal.
+ * Returns the expanded card body for the given exercise, or null if not expanded.
  */
 function getExerciseContentContainer(exerciseIndex) {
-    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+    if (expandedExerciseIndex === exerciseIndex) {
         return document.getElementById(`exercise-body-${exerciseIndex}`);
     }
-    return document.getElementById('exercise-content');
+    return null;
 }
 
 export async function generateExerciseTable(exercise, exerciseIndex, unit) {
@@ -1486,7 +1204,7 @@ export function cycleSetType(exerciseIndex, setIndex) {
     const content = getExerciseContentContainer(exerciseIndex);
     if (content && exercise) {
         generateExerciseTable(exercise, exerciseIndex, unit).then(html => {
-            if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+            if (expandedExerciseIndex === exerciseIndex) {
                 // Preserve the toolbar when re-rendering inline
                 const toolbar = content.querySelector('.exercise-inline-toolbar');
                 const overflow = content.querySelector('.exercise-overflow-menu');
@@ -1708,7 +1426,7 @@ export function addSetToExercise(exerciseIndex) {
     updateExerciseCard(exerciseIndex);
 
     // Refresh the content view (inline card or modal)
-    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+    if (expandedExerciseIndex === exerciseIndex) {
         expandExercise(exerciseIndex);
     } else {
         focusExercise(exerciseIndex);
@@ -1749,7 +1467,7 @@ export function removeSetFromExercise(exerciseIndex) {
     updateExerciseCard(exerciseIndex);
 
     // Refresh the content view (inline card or modal)
-    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+    if (expandedExerciseIndex === exerciseIndex) {
         expandExercise(exerciseIndex);
     } else {
         focusExercise(exerciseIndex);
@@ -1813,7 +1531,7 @@ export function markExerciseComplete(exerciseIndex) {
     saveWorkoutData(AppState);
 
     // Close inline card or modal
-    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+    if (expandedExerciseIndex === exerciseIndex) {
         collapseExercise(exerciseIndex);
         // Re-sort completed exercises to bottom
         reorderExercisesByCompletion();
@@ -1891,7 +1609,7 @@ export function addExerciseToActiveWorkout() {
     }
 
     // Open the exercise library modal for adding to active workout
-    const modal = document.getElementById('exercise-library-modal');
+    const modal = document.getElementById('exercise-library-section');
     if (modal) {
         // Set flag so we know exercises should be added to active workout
         window.addingToActiveWorkout = true;
@@ -1984,14 +1702,14 @@ export function replaceExercise(exerciseIndex) {
     window.addingToActiveWorkout = true;
 
     // Close inline card or exercise detail modal
-    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+    if (expandedExerciseIndex === exerciseIndex) {
         collapseExercise(exerciseIndex);
     } else {
         closeExerciseModal();
     }
 
     // Open exercise library for selection
-    const modal = document.getElementById('exercise-library-modal');
+    const modal = document.getElementById('exercise-library-section');
     if (modal) {
         openModal(modal);
         if (window.openExerciseLibrary) {
@@ -2051,42 +1769,6 @@ export function confirmExerciseReplace(exerciseData) {
     return true;
 }
 
-export function closeExerciseModal() {
-    const modal = document.getElementById('exercise-modal');
-    if (modal) {
-        modal.close();
-    }
-
-    // Show nav again when exercise modal closes (if still in active workout)
-    // Keep header hidden (no logo) during active workout
-    if (AppState.currentWorkout) {
-        setHeaderMode(false);
-        setBottomNavVisible(true);
-    }
-
-    // Save current timer state to AppState before closing (for restore on reopen)
-    if (AppState.focusedExerciseIndex !== null) {
-        const modalTimer = document.getElementById(`modal-rest-timer-${AppState.focusedExerciseIndex}`);
-        if (modalTimer && modalTimer.timerData && !modalTimer.classList.contains('hidden')) {
-            // Update AppState with current timeLeft so timer resumes correctly on reopen
-            if (AppState.activeRestTimer && AppState.activeRestTimer.exerciseIndex === AppState.focusedExerciseIndex) {
-                // Store the current remaining time as the new duration baseline
-                AppState.activeRestTimer.duration = modalTimer.timerData.timeLeft;
-                AppState.activeRestTimer.startTime = Date.now();
-                AppState.activeRestTimer.pausedTime = 0;
-                AppState.activeRestTimer.isPaused = modalTimer.timerData.isPaused;
-            }
-
-            // Cancel animation frame (timer continues via AppState)
-            if (modalTimer.timerData.animationFrame) {
-                cancelAnimationFrame(modalTimer.timerData.animationFrame);
-            }
-            modalTimer.classList.add('hidden');
-        }
-    }
-
-    AppState.focusedExerciseIndex = null;
-}
 
 // ===================================================================
 // EQUIPMENT CHANGE DURING WORKOUT
@@ -2229,7 +1911,7 @@ export async function setExerciseUnit(exerciseIndex, unit) {
     if (content) {
         const exercise = AppState.currentWorkout.exercises[exerciseIndex];
 
-        if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex === exerciseIndex) {
+        if (expandedExerciseIndex === exerciseIndex) {
             // Inline mode: preserve toolbar, regenerate table
             const toolbarHtml = buildInlineToolbar(exercise, exerciseIndex, getExerciseName(exercise));
             const tableHtml = await generateExerciseTable(exercise, exerciseIndex, unit);
@@ -2280,7 +1962,7 @@ export async function editExerciseDefaults(exerciseName) {
     }
 
     // Close inline card or exercise modal first
-    if (Config.INLINE_EXERCISE_CARDS && expandedExerciseIndex !== null) {
+    if (expandedExerciseIndex !== null) {
         collapseExercise(expandedExerciseIndex);
     } else {
         closeExerciseModal();
@@ -2378,7 +2060,7 @@ export async function resolveFormVideo(exerciseName, equipmentName) {
 export function showExerciseVideo(videoUrl, exerciseName, exerciseIndex) {
     // Try inline video section first, then modal version
     let videoSection, iframe;
-    if (Config.INLINE_EXERCISE_CARDS && exerciseIndex !== undefined) {
+    if (exerciseIndex !== undefined) {
         videoSection = document.getElementById(`exercise-video-section-inline-${exerciseIndex}`);
         iframe = document.getElementById(`exercise-video-iframe-inline-${exerciseIndex}`);
     }
@@ -2403,7 +2085,7 @@ export function showExerciseVideo(videoUrl, exerciseName, exerciseIndex) {
 export function hideExerciseVideo(exerciseIndex) {
     // Try inline video section first, then modal version
     let videoSection, iframe;
-    if (Config.INLINE_EXERCISE_CARDS && exerciseIndex !== undefined) {
+    if (exerciseIndex !== undefined) {
         videoSection = document.getElementById(`exercise-video-section-inline-${exerciseIndex}`);
         iframe = document.getElementById(`exercise-video-iframe-inline-${exerciseIndex}`);
     }

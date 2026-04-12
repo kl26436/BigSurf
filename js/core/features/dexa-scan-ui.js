@@ -571,7 +571,7 @@ export async function confirmDexaSave() {
  * Show DEXA scan history as a timeline.
  */
 export async function showDexaHistory() {
-    const modal = document.getElementById('dexa-history-modal');
+    const modal = document.getElementById('dexa-history-section');
     if (!modal) return;
 
     const scans = await loadDexaHistory();
@@ -632,7 +632,7 @@ export async function showDexaHistory() {
  * Close the history section.
  */
 export function closeDexaHistory() {
-    const modal = document.getElementById('dexa-history-modal');
+    const modal = document.getElementById('dexa-history-section');
     if (modal) modal.classList.add('hidden');
 }
 
@@ -645,7 +645,7 @@ export function closeDexaHistory() {
  * @param {string} scanId
  */
 export async function showDexaDetail(scanId) {
-    const modal = document.getElementById('dexa-detail-modal');
+    const modal = document.getElementById('dexa-detail-section');
     if (!modal) return;
 
     const scans = await loadDexaHistory();
@@ -735,7 +735,7 @@ export async function showDexaDetail(scanId) {
  * Close the detail section.
  */
 export function closeDexaDetail() {
-    const modal = document.getElementById('dexa-detail-modal');
+    const modal = document.getElementById('dexa-detail-section');
     if (modal) modal.classList.add('hidden');
 }
 
@@ -746,7 +746,7 @@ export async function deleteDexaEntry(scanId) {
     await deleteDexaScan(scanId);
     closeDexaDetail();
     // Refresh history if it's open
-    const historyModal = document.getElementById('dexa-history-modal');
+    const historyModal = document.getElementById('dexa-history-section');
     if (historyModal?.open) await showDexaHistory();
 }
 

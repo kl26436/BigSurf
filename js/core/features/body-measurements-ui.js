@@ -282,7 +282,7 @@ export async function saveMeasurementsEntry() {
  * Show weight history list modal.
  */
 export async function showWeightHistory() {
-    const modal = document.getElementById('weight-history-modal');
+    const modal = document.getElementById('weight-history-section');
     if (!modal) return;
 
     const unit = AppState.globalUnit || 'lbs';
@@ -337,7 +337,7 @@ export async function showWeightHistory() {
  * Close weight history modal.
  */
 export function closeWeightHistory() {
-    const modal = document.getElementById('weight-history-modal');
+    const modal = document.getElementById('weight-history-section');
     if (modal) modal.classList.add('hidden');
 }
 

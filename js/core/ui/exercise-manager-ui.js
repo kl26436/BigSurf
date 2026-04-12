@@ -463,7 +463,7 @@ export function openEditExerciseSection(exercise) {
     });
 
     // Also hide template editor modal if open (we'll show it again when returning)
-    const templateModal = document.getElementById('template-editor-modal');
+    const templateModal = document.getElementById('template-editor-section');
     if (templateModal) closeModal(templateModal);
 
     // Show/hide delete button container based on add vs edit
@@ -524,7 +524,7 @@ export function closeEditExerciseSection() {
         if (workoutManagement) workoutManagement.classList.remove('hidden');
 
         // Show the template editor modal
-        const templateModal = document.getElementById('template-editor-modal');
+        const templateModal = document.getElementById('template-editor-section');
         if (templateModal) openModal(templateModal);
 
         // Clear the flags (callback clears these, but do it here too for cancel case)
@@ -970,8 +970,8 @@ export async function saveExercise(event) {
             await loadExercises();
         }
 
-        // Also refresh the exercise-library-modal if it's open (used in workout management)
-        const libraryModal = document.getElementById('exercise-library-modal');
+        // Also refresh the exercise-library-section if it's open (used in workout management)
+        const libraryModal = document.getElementById('exercise-library-section');
         if (libraryModal && (libraryModal.open || !libraryModal.classList.contains('hidden'))) {
             // Dispatch custom event to trigger refresh in workout-management-ui
             window.dispatchEvent(new CustomEvent('exerciseLibraryUpdated'));
@@ -1188,8 +1188,8 @@ export async function saveExerciseFromSection() {
         // Refresh exercise manager section
         await loadExercises();
 
-        // Also refresh the exercise-library-modal if it's open (used in workout management)
-        const libraryModal = document.getElementById('exercise-library-modal');
+        // Also refresh the exercise-library-section if it's open (used in workout management)
+        const libraryModal = document.getElementById('exercise-library-section');
         if (libraryModal && (libraryModal.open || !libraryModal.classList.contains('hidden'))) {
             window.dispatchEvent(new CustomEvent('exerciseLibraryUpdated'));
         }

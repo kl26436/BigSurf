@@ -242,7 +242,7 @@ export function retryWorkout(workoutId) {
 // ===================================================================
 
 function showWorkoutDetailModal(workout) {
-    const modal = document.getElementById('workout-detail-modal');
+    const modal = document.getElementById('workout-detail-section');
     const title = document.getElementById('workout-detail-title');
     const content = document.getElementById('workout-detail-content');
 
@@ -341,7 +341,7 @@ function showWorkoutDetailModal(workout) {
 }
 
 export function closeWorkoutDetailModal() {
-    const modal = document.getElementById('workout-detail-modal');
+    const modal = document.getElementById('workout-detail-section');
     if (modal) {
         modal.classList.add('hidden');
     }
@@ -375,7 +375,7 @@ export function clearAllHistoryFilters() {
 
 export function setupWorkoutHistoryEventListeners() {
     // Set up modal close handlers
-    const modal = document.getElementById('workout-detail-modal');
+    const modal = document.getElementById('workout-detail-section');
     if (modal) {
         // Close on background click
         modal.addEventListener('click', (e) => {
@@ -389,7 +389,7 @@ export function setupWorkoutHistoryEventListeners() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             const activeModal = document.querySelector('.modal:not(.hidden)');
-            if (activeModal && activeModal.id === 'workout-detail-modal') {
+            if (activeModal && activeModal.id === 'workout-detail-section') {
                 closeWorkoutDetailModal();
             }
         }
