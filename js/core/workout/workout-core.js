@@ -60,6 +60,8 @@ export {
     loadLastWorkoutHint,
     toggleSetComplete,
     toggleReorderMode,
+    supersetWithNext,
+    ungroupExerciseFromWorkout,
 } from './exercise-ui.js';
 
 // === Rest Timer ===
