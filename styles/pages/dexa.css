@@ -1,0 +1,555 @@
+/* ============================================================================
+   DEXA Scan — Phase 18
+   Upload, review form, dashboard card, history, detail views
+   ============================================================================ */
+
+/* ---- Dashboard Card ---- */
+.dexa-card {
+    position: relative;
+}
+
+.dexa-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.dexa-card-header h3 {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-strong);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dexa-card-header h3 i {
+    color: var(--primary);
+}
+
+.dexa-card-date {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.dexa-card-empty {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.dexa-card-empty p {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.dexa-card-stats {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    padding: 12px 0;
+    cursor: pointer;
+}
+
+.dexa-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.dexa-stat-value {
+    font-size: var(--font-xl);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.dexa-stat-label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dexa-imbalance-hint {
+    font-size: var(--font-xs);
+    color: var(--warning);
+    text-align: center;
+    padding: 6px 0 4px;
+}
+
+.dexa-imbalance-hint i {
+    margin-right: 4px;
+}
+
+.dexa-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.dexa-card-actions .btn {
+    flex: 1;
+}
+
+/* ---- Upload Modal ---- */
+.dexa-upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dexa-upload-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 32px 16px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.dexa-upload-zone:hover,
+.dexa-upload-zone:active {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.dexa-upload-zone i {
+    font-size: var(--font-2xl);
+}
+
+.dexa-upload-text {
+    font-size: var(--font-base);
+    font-weight: 500;
+}
+
+.dexa-upload-hint {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.dexa-file-selected {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.dexa-file-selected i {
+    color: var(--danger);
+    font-size: var(--font-lg);
+}
+
+.dexa-file-selected span {
+    flex: 1;
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dexa-upload-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+}
+
+.dexa-upload-divider::before,
+.dexa-upload-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+/* ---- Analyzing State ---- */
+.dexa-analyzing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.dexa-analyzing-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: dexaSpin 0.8s linear infinite;
+}
+
+@keyframes dexaSpin {
+    to { transform: rotate(360deg); }
+}
+
+.dexa-analyzing-status {
+    font-size: var(--font-base);
+    font-weight: 500;
+    color: var(--text-strong);
+}
+
+.dexa-analyzing-hint {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+/* ---- Error State ---- */
+.dexa-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 0;
+    text-align: center;
+}
+
+.dexa-error i {
+    font-size: var(--font-2xl);
+    color: var(--danger);
+}
+
+.dexa-error p {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+
+/* ---- Review Form ---- */
+.dexa-review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.dexa-review-hint {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.form-row {
+    display: flex;
+    gap: 12px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+/* Low confidence highlight */
+.low-confidence {
+    position: relative;
+    border-left: 3px solid var(--warning);
+    padding-left: 8px;
+}
+
+.confidence-badge {
+    display: inline-block;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--warning);
+    background: rgba(255, 193, 7, 0.12);
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+/* ---- Collapsible Field Groups ---- */
+.dexa-field-group {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.dexa-field-group-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: none;
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.dexa-field-group-toggle:active {
+    transform: scale(0.98);
+}
+
+.dexa-field-group-toggle i {
+    transition: transform 0.2s;
+}
+
+.dexa-field-group-toggle i.fa-chevron-up {
+    transform: rotate(180deg);
+}
+
+.dexa-field-group-content {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+}
+
+.dexa-regional-section {
+    margin-bottom: 12px;
+}
+
+.dexa-regional-section:last-child {
+    margin-bottom: 0;
+}
+
+.dexa-regional-label {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.dexa-regional-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.dexa-regional-grid .dexa-regional-item:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+}
+
+.dexa-regional-item label {
+    display: block;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.dexa-regional-item .form-input {
+    padding: 8px 10px;
+    font-size: var(--font-sm);
+}
+
+/* ---- History Modal ---- */
+.dexa-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 12px 16px;
+}
+
+.dexa-history-item:active {
+    transform: scale(0.98);
+}
+
+.dexa-history-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dexa-history-date {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.dexa-history-bf {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+
+.dexa-history-provider {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.dexa-history-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dexa-history-right i {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+}
+
+/* ---- Delta Badges ---- */
+.dexa-delta {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.dexa-delta.delta-positive {
+    color: var(--success);
+    background: rgba(76, 175, 80, 0.12);
+}
+
+.dexa-delta.delta-negative {
+    color: var(--danger);
+    background: rgba(244, 67, 54, 0.12);
+}
+
+/* ---- Detail Modal ---- */
+.dexa-detail-date {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-strong);
+    margin-bottom: 4px;
+}
+
+.dexa-detail-comparison {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.dexa-detail-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 16px;
+}
+
+.dexa-detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.dexa-detail-row:last-child {
+    border-bottom: none;
+}
+
+.dexa-detail-label {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+
+.dexa-detail-value {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dexa-detail-section {
+    margin-bottom: 16px;
+}
+
+.dexa-detail-section h4 {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+    margin-bottom: 8px;
+}
+
+/* ---- Imbalance Analysis ---- */
+.dexa-imbalance-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    font-size: var(--font-sm);
+    color: var(--text-main);
+}
+
+.dexa-imbalance-item:last-child {
+    margin-bottom: 0;
+}
+
+.dexa-imbalance-mild {
+    background: rgba(255, 193, 7, 0.08);
+    border-left: 3px solid var(--warning);
+}
+
+.dexa-imbalance-moderate {
+    background: rgba(255, 152, 0, 0.08);
+    border-left: 3px solid #ff9800;
+}
+
+.dexa-imbalance-significant {
+    background: rgba(244, 67, 54, 0.08);
+    border-left: 3px solid var(--danger);
+}
+
+.dexa-imbalance-severity {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-left: 4px;
+    opacity: 0.7;
+}
+
+/* ---- Regional Detail (in detail modal) ---- */
+.dexa-regional-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.dexa-regional-detail-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.dexa-regional-detail-item:last-child {
+    border-bottom: none;
+}
+
+.dexa-regional-detail-label {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+
+.dexa-regional-detail-value {
+    font-size: var(--font-sm);
+    font-weight: 500;
+    color: var(--text-strong);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ---- Detail Notes & Actions ---- */
+.dexa-detail-notes {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+}
+
+.dexa-detail-actions {
+    padding-top: 16px;
+    display: flex;
+    justify-content: center;
+}

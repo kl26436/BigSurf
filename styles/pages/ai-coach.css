@@ -1,0 +1,583 @@
+/* ============================================================================
+   AI COACH & TRAINING INSIGHTS — Phase 17
+   Uses tokens from tokens.css. Dashboard card follows existing card patterns.
+   ============================================================================ */
+
+/* ===== Training Insights Dashboard Card ===== */
+
+.insights-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: var(--gap-section);
+}
+
+.insight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    font-size: var(--font-sm);
+    line-height: 1.45;
+    border-left: 3px solid transparent;
+}
+
+.insight-icon {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+}
+
+.insight-text {
+    flex: 1;
+    color: var(--text-main);
+}
+
+.insight-coach-btn {
+    flex-shrink: 0;
+    align-self: center;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--primary);
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    background: rgba(29, 211, 176, 0.1);
+    border: none;
+    white-space: nowrap;
+}
+
+.insight-coach-btn:active {
+    background: rgba(29, 211, 176, 0.2);
+}
+
+/* Severity: warning — warm amber */
+.insight-warning {
+    border-left-color: var(--warning);
+}
+.insight-warning .insight-icon {
+    background: rgba(240, 194, 75, 0.12);
+    color: var(--warning);
+}
+
+/* Severity: info — primary teal */
+.insight-info {
+    border-left-color: var(--primary);
+}
+.insight-info .insight-icon {
+    background: rgba(29, 211, 176, 0.12);
+    color: var(--primary);
+}
+
+/* Severity: success — green */
+.insight-success {
+    border-left-color: var(--success);
+}
+.insight-success .insight-icon {
+    background: rgba(54, 196, 107, 0.12);
+    color: var(--success);
+}
+
+/* Section header icon tint */
+.stats-section-title .fa-brain {
+    color: var(--primary);
+    margin-right: 4px;
+}
+
+/* ===== AI Coach Modal ===== */
+
+.coach-header {
+    text-align: center;
+    padding: 20px 0 24px;
+}
+
+.coach-header i {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+.coach-header h2 {
+    margin: 8px 0 0;
+    font-size: var(--font-xl);
+    color: var(--text-strong);
+}
+
+.coach-subtitle {
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    margin-top: 4px;
+}
+
+/* Prompt cards grid */
+.coach-prompts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 var(--pad-card-x);
+}
+
+.coach-prompt-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: background var(--anim-fast), border-color var(--anim-fast);
+    text-align: center;
+    font-size: var(--font-sm);
+    color: var(--text-main);
+}
+
+.coach-prompt-card:active {
+    background: var(--bg-card-hi);
+    border-color: var(--primary);
+}
+
+.coach-prompt-card i {
+    font-size: 1.4rem;
+    color: var(--primary);
+}
+
+/* Freeform input */
+.coach-freeform {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.coach-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-main);
+    font-family: var(--font);
+    font-size: var(--font-sm);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.coach-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* Response area */
+.coach-response {
+    padding: 16px;
+}
+
+.coach-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 32px 16px;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+}
+
+.coach-loading i {
+    color: var(--primary);
+    font-size: 1.25rem;
+}
+
+.coach-recommendation {
+    font-size: var(--font-sm);
+    line-height: 1.6;
+    color: var(--text-main);
+}
+
+.coach-recommendation ul {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+}
+
+.coach-recommendation li {
+    position: relative;
+    padding-left: 1.25rem;
+    margin-bottom: 6px;
+}
+
+.coach-recommendation li::before {
+    content: '\2022';
+    position: absolute;
+    left: 0;
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.coach-recommendation strong {
+    color: var(--text-strong);
+}
+
+.coach-meta {
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 16px;
+}
+
+.coach-timestamp {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.coach-ask-another {
+    margin-top: 16px;
+    width: 100%;
+}
+
+/* Rate limit & error */
+.coach-rate-limit,
+.coach-error {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-muted);
+}
+
+.coach-rate-limit i,
+.coach-error i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.coach-rate-limit i {
+    color: var(--warning);
+}
+
+.coach-error i {
+    color: var(--text-muted);
+}
+
+.coach-error-detail {
+    font-size: var(--font-xs);
+    margin-top: 8px;
+}
+
+.coach-error-detail code {
+    background: var(--bg-card);
+    padding: 2px 6px;
+    border-radius: var(--radius-xs);
+    font-size: var(--font-xs);
+}
+
+/* Past session display */
+.coach-past-label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.coach-past-question {
+    font-style: italic;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    font-size: var(--font-sm);
+}
+
+/* Coach history section */
+.coach-history-section {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    margin-top: 16px;
+}
+
+.coach-history-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.coach-history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: background var(--anim-fast);
+}
+
+.coach-history-item:active {
+    background: var(--bg-card-hi);
+}
+
+.coach-history-question {
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.coach-history-date {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+
+/* ===== Workout Builder — Focus Picker ===== */
+
+.builder-title {
+    font-size: var(--font-lg);
+    color: var(--text-strong);
+    margin-bottom: 14px;
+    text-align: center;
+}
+
+.builder-focus-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.builder-focus-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 14px 8px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color var(--anim-fast), background var(--anim-fast);
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    font-weight: 600;
+}
+
+.builder-focus-btn:active {
+    border-color: var(--primary);
+    background: var(--bg-card-hi);
+}
+
+.builder-focus-btn i {
+    font-size: 1.2rem;
+    color: var(--primary);
+}
+
+.builder-focus-hint {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    font-weight: 400;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.builder-custom-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.builder-custom-wrap input {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: var(--font-sm);
+}
+
+/* ===== Workout Builder — Template Preview ===== */
+
+.template-preview {
+    padding: 0;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.preview-template-name {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: 0;
+}
+
+.preview-exercise-count {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.preview-exercise-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.preview-exercise-card {
+    position: relative;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 12px 40px 12px 14px;
+    border-left: 3px solid var(--primary);
+}
+
+.preview-exercise-new {
+    border-left-color: var(--highlight-warm);
+}
+
+.preview-exercise-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.preview-exercise-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(29, 211, 176, 0.12);
+    color: var(--primary);
+    font-size: var(--font-xs);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.preview-exercise-new .preview-exercise-num {
+    background: rgba(247, 168, 101, 0.12);
+    color: var(--highlight-warm);
+}
+
+.preview-exercise-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.preview-exercise-name {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.preview-exercise-meta {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.preview-exercise-prescription {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+
+.preview-sets {
+    font-size: var(--font-base);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.preview-weight {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.preview-new-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--highlight-warm);
+    background: rgba(247, 168, 101, 0.12);
+    padding: 1px 6px;
+    border-radius: var(--radius-pill);
+}
+
+/* Substitutes row */
+.preview-alts {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.preview-alts-label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.preview-alt-chip {
+    font-size: var(--font-xs);
+    color: var(--text-main);
+    background: var(--bg-card-hi);
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+}
+
+/* Remove button */
+.preview-remove-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: color var(--anim-fast), background var(--anim-fast);
+}
+
+.preview-remove-btn:active {
+    background: rgba(227, 93, 106, 0.15);
+    color: var(--danger);
+}
+
+/* Action buttons */
+.preview-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.preview-actions .btn-primary {
+    flex: 1;
+}
+
+.preview-actions .btn-secondary {
+    flex-shrink: 0;
+}

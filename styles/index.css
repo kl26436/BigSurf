@@ -28,6 +28,8 @@
 @import url('pages/settings.css');
 @import url('pages/plate-calculator.css');
 @import url('pages/body-measurements.css');
+@import url('pages/ai-coach.css');
+@import url('pages/dexa.css');
 
 /* 5. Utility classes & animations (always last — highest specificity intent) */
 @import url('utilities.css');

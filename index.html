@@ -1913,6 +1913,27 @@
             </div>
         </dialog>
 
+        <!-- DEXA Scan Upload Modal (Phase 18) -->
+        <dialog id="dexa-upload-modal" class="modal" aria-modal="true" aria-label="DEXA scan upload">
+            <div class="modal-content">
+                <!-- Populated by JavaScript -->
+            </div>
+        </dialog>
+
+        <!-- DEXA Scan History Modal (Phase 18) -->
+        <dialog id="dexa-history-modal" class="modal" aria-modal="true" aria-label="DEXA scan history">
+            <div class="modal-content">
+                <!-- Populated by JavaScript -->
+            </div>
+        </dialog>
+
+        <!-- DEXA Scan Detail Modal (Phase 18) -->
+        <dialog id="dexa-detail-modal" class="modal" aria-modal="true" aria-label="DEXA scan detail">
+            <div class="modal-content">
+                <!-- Populated by JavaScript -->
+            </div>
+        </dialog>
+
         <!-- Import Data Modal (Phase 13.2) -->
         <dialog id="import-data-modal" class="modal" aria-modal="true" aria-label="Import data">
             <div class="modal-content">
@@ -1953,6 +1974,19 @@
             </div>
             <div id="settings-content"></div>
         </section>
+
+        <!-- AI Coach Modal (Phase 17) -->
+        <dialog id="ai-coach-modal" class="modal">
+            <div class="modal-content modal-content--full">
+                <div class="modal-header">
+                    <h3 class="modal-title">AI Coach</h3>
+                    <button class="btn-icon modal-close" onclick="closeAICoach()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="coach-content"></div>
+            </div>
+        </dialog>
 
         <!-- More Menu Bottom Sheet -->
         <div id="more-menu" class="more-menu">
@@ -2018,6 +2052,16 @@
                 >
                     <i class="fas fa-calculator"></i>
                     <span>Plate Calculator</span>
+                </button>
+                <button
+                    class="more-menu-item"
+                    onclick="
+                        showAICoach();
+                        closeMoreMenu();
+                    "
+                >
+                    <i class="fas fa-brain"></i>
+                    <span>AI Coach</span>
                 </button>
                 <button
                     class="more-menu-item"

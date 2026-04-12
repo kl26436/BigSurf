@@ -834,6 +834,47 @@ Always be specific: name exercises, give exact set/rep/weight targets based on t
 Keep recommendations concise and actionable — these are read on a phone at the gym.
 Format as short bullet points, not paragraphs.`;
 
+const WORKOUT_BUILDER_PROMPT = `You are an expert strength and conditioning coach. You build workout templates for the Big Surf workout tracker app.
+
+You will be given the user's exercise library and training history. Generate a workout template as a JSON object.
+
+RULES:
+- Prefer exercises from the user's library when they match the focus. Use the exact name from their library.
+- You may suggest exercises NOT in the library if they fill a gap. For any exercise not in the user's library, add an "alternatives" array with 2 substitutions the user could do instead.
+- Exercises from the user's library should NOT have an "alternatives" field.
+- Each exercise needs: name, bodyPart, equipmentType, sets (number), reps (number), weight (number in user's unit or 0 if unknown).
+- Use the user's recent weights as a baseline for weight suggestions. If no history exists, use 0.
+- Order exercises: compound movements first, isolation last.
+- Total exercises: 5-8 per workout.
+- Include a mix of compound and isolation work appropriate for the focus.
+
+RESPOND WITH ONLY VALID JSON matching this schema — no markdown, no explanation, no code fences:
+{
+  "name": "Workout Name",
+  "category": "push|pull|legs|cardio|other",
+  "exercises": [
+    {
+      "name": "Exercise Name",
+      "bodyPart": "Chest|Back|Legs|Shoulders|Arms|Core",
+      "equipmentType": "Machine|Dumbbell|Barbell|Cable|Bodyweight",
+      "sets": 4,
+      "reps": 10,
+      "weight": 135,
+      "fromLibrary": true
+    },
+    {
+      "name": "New Exercise",
+      "bodyPart": "Chest",
+      "equipmentType": "Cable",
+      "sets": 3,
+      "reps": 12,
+      "weight": 0,
+      "fromLibrary": false,
+      "alternatives": ["Library Exercise A", "Library Exercise B"]
+    }
+  ]
+}`;
+
 /**
  * AI Coach — on-demand training analysis using Claude API.
  * Rate limited to 1 call per 24 hours per user.
@@ -952,5 +993,332 @@ exports.getTrainingRecommendation = functions.runWith({
         if (error instanceof functions.https.HttpsError) throw error;
         console.error('❌ AI Coach error:', error);
         throw new functions.https.HttpsError('internal', 'Failed to get training recommendation');
+    }
+});
+
+/**
+ * Generate a structured workout template using Claude API.
+ * Separate from getTrainingRecommendation — no shared rate limit.
+ *
+ * Request data:
+ * - focus: string — workout focus (e.g. "Push", "Pull", "Legs", "Upper Body")
+ * - exerciseLibrary: string — compact list of user's exercises
+ * - trainingContext: string — recent training summary
+ * - unit: string — "lbs" or "kg"
+ */
+exports.generateWorkoutTemplate = functions.runWith({
+    secrets: [anthropicApiKey],
+    timeoutSeconds: 60,
+    memory: '256MB',
+}).https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const userId = context.auth.uid;
+    const { focus, exerciseLibrary, trainingContext, unit } = data;
+
+    if (!focus) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing workout focus');
+    }
+
+    try {
+        const apiKey = anthropicApiKey.value();
+        if (!apiKey) {
+            throw new functions.https.HttpsError(
+                'failed-precondition',
+                'ANTHROPIC_API_KEY not configured'
+            );
+        }
+
+        const userMessage = `Generate a ${focus} workout template.
+
+User's exercise library (prefer these):
+${exerciseLibrary || 'No exercises in library yet.'}
+
+Recent training data:
+${trainingContext || 'No recent data.'}
+
+Weight unit: ${unit || 'lbs'}
+
+Build the workout now. Return ONLY the JSON object.`;
+
+        const requestBody = JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 2000,
+            system: WORKOUT_BUILDER_PROMPT,
+            messages: [{
+                role: 'user',
+                content: userMessage,
+            }],
+        });
+
+        const response = await new Promise((resolve, reject) => {
+            const req = https.request({
+                hostname: 'api.anthropic.com',
+                path: '/v1/messages',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'Content-Length': Buffer.byteLength(requestBody),
+                },
+            }, (res) => {
+                let body = '';
+                res.on('data', chunk => { body += chunk; });
+                res.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(body);
+                        if (res.statusCode === 200) {
+                            resolve(parsed);
+                        } else {
+                            console.error('❌ Claude API error:', res.statusCode, body);
+                            reject(new Error(`Claude API error: ${res.statusCode}`));
+                        }
+                    } catch (e) {
+                        reject(new Error('Failed to parse Claude API response'));
+                    }
+                });
+            });
+            req.on('error', reject);
+            req.write(requestBody);
+            req.end();
+        });
+
+        const rawText = response.content?.[0]?.text || '';
+
+        // Parse the JSON response — strip any markdown fences if present
+        let template;
+        try {
+            const cleaned = rawText.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+            template = JSON.parse(cleaned);
+        } catch (e) {
+            console.error('❌ Failed to parse template JSON:', rawText);
+            throw new functions.https.HttpsError('internal', 'AI returned invalid template format');
+        }
+
+        // Validate basic structure
+        if (!template.name || !template.exercises || !Array.isArray(template.exercises)) {
+            throw new functions.https.HttpsError('internal', 'AI returned incomplete template');
+        }
+
+        console.log(`✅ Generated template "${template.name}" with ${template.exercises.length} exercises for user ${userId}`);
+
+        return { template };
+    } catch (error) {
+        if (error instanceof functions.https.HttpsError) throw error;
+        console.error('❌ Template generation error:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to generate workout template');
+    }
+});
+
+// ============================================================================
+// DEXA SCAN EXTRACTION (Phase 18 — PDF upload + AI extraction)
+// ============================================================================
+
+const DEXA_EXTRACTION_PROMPT = `You are a medical data extraction specialist. You extract structured body composition data from DEXA (Dual-Energy X-ray Absorptiometry) scan reports.
+
+Given a DEXA scan PDF, extract ALL available data into a JSON object. Different providers (Bodyspec, DexaFit, Hologic, GE Lunar) use different layouts — adapt accordingly.
+
+Return ONLY a valid JSON object with this structure:
+{
+  "date": "YYYY-MM-DD",
+  "provider": "provider name or null",
+  "totalBodyFat": number (percentage, e.g. 18.5),
+  "regionFat": {
+    "leftArm": number or null,
+    "rightArm": number or null,
+    "leftLeg": number or null,
+    "rightLeg": number or null,
+    "trunk": number or null
+  },
+  "leanMass": {
+    "leftArm": number or null (in lbs),
+    "rightArm": number or null,
+    "leftLeg": number or null,
+    "rightLeg": number or null,
+    "trunk": number or null
+  },
+  "fatMass": {
+    "leftArm": number or null (in lbs),
+    "rightArm": number or null,
+    "leftLeg": number or null,
+    "rightLeg": number or null,
+    "trunk": number or null
+  },
+  "massUnit": "lbs" or "kg",
+  "boneDensity": {
+    "tScore": number or null,
+    "zScore": number or null
+  },
+  "vat": number or null (visceral adipose tissue in lbs/kg),
+  "totalWeight": number or null (total body weight at scan),
+  "totalLeanMass": number or null (total lean mass),
+  "totalFatMass": number or null (total fat mass),
+  "confidence": {
+    "totalBodyFat": 0.0-1.0,
+    "regionFat": 0.0-1.0,
+    "leanMass": 0.0-1.0,
+    "fatMass": 0.0-1.0,
+    "boneDensity": 0.0-1.0,
+    "vat": 0.0-1.0,
+    "totalWeight": 0.0-1.0
+  }
+}
+
+Rules:
+- If a value is not found in the report, use null and set confidence to 0.0
+- If values are in grams, convert to lbs or kg (match whatever unit the report uses)
+- Regional fat percentages should be the body fat % for that specific region
+- The confidence score reflects how certain you are the extracted value is correct
+- RESPOND WITH ONLY VALID JSON — no markdown fences, no explanation`;
+
+exports.extractDexaData = functions.runWith({
+    secrets: [anthropicApiKey],
+    timeoutSeconds: 120,
+    memory: '1GB',
+}).https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const userId = context.auth.uid;
+    const { pdfBase64, fileName } = data;
+
+    if (!pdfBase64) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing PDF data');
+    }
+
+    // Reject files > 10 MB (base64 is ~33% larger than raw)
+    const estimatedSize = (pdfBase64.length * 3) / 4;
+    if (estimatedSize > 10 * 1024 * 1024) {
+        throw new functions.https.HttpsError('invalid-argument', 'File too large. Maximum 10 MB.');
+    }
+
+    // Rate limiting: max 5 extractions per day per user
+    const rateLimitDoc = await db.collection('users').doc(userId)
+        .collection('preferences').doc('dexaRateLimit').get();
+
+    if (rateLimitDoc.exists) {
+        const { timestamp, count } = rateLimitDoc.data();
+        const hoursSince = (Date.now() - timestamp) / (1000 * 60 * 60);
+        if (hoursSince < 24 && count >= 5) {
+            throw new functions.https.HttpsError(
+                'resource-exhausted',
+                'DEXA extraction limit reached (5 per day). Try again tomorrow.'
+            );
+        }
+    }
+
+    try {
+        const apiKey = anthropicApiKey.value();
+        if (!apiKey) {
+            throw new functions.https.HttpsError(
+                'failed-precondition',
+                'ANTHROPIC_API_KEY not configured. Run: firebase functions:secrets:set ANTHROPIC_API_KEY'
+            );
+        }
+
+        // Call Claude API with PDF document
+        const requestBody = JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 3000,
+            system: DEXA_EXTRACTION_PROMPT,
+            messages: [{
+                role: 'user',
+                content: [
+                    {
+                        type: 'document',
+                        source: {
+                            type: 'base64',
+                            media_type: 'application/pdf',
+                            data: pdfBase64,
+                        },
+                    },
+                    {
+                        type: 'text',
+                        text: `Extract all DEXA scan data from this report${fileName ? ` (${fileName})` : ''}. Return ONLY the JSON object.`,
+                    },
+                ],
+            }],
+        });
+
+        const response = await new Promise((resolve, reject) => {
+            const req = https.request({
+                hostname: 'api.anthropic.com',
+                path: '/v1/messages',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'Content-Length': Buffer.byteLength(requestBody),
+                },
+            }, (res) => {
+                let body = '';
+                res.on('data', chunk => { body += chunk; });
+                res.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(body);
+                        if (res.statusCode === 200) {
+                            resolve(parsed);
+                        } else {
+                            console.error(`❌ Claude API error ${res.statusCode}:`, body);
+                            reject(new Error(`Claude API error: ${res.statusCode}`));
+                        }
+                    } catch (e) {
+                        reject(new Error('Failed to parse Claude API response'));
+                    }
+                });
+            });
+            req.on('error', reject);
+            req.write(requestBody);
+            req.end();
+        });
+
+        const rawText = response.content?.[0]?.text || '';
+
+        // Parse the JSON response — strip any markdown fences if present
+        let extractedData;
+        try {
+            const cleaned = rawText.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+            extractedData = JSON.parse(cleaned);
+        } catch (e) {
+            console.error('❌ Failed to parse DEXA extraction JSON:', rawText);
+            throw new functions.https.HttpsError('internal', 'AI could not extract data from this PDF. Try manual entry.');
+        }
+
+        // Validate minimum required field
+        if (extractedData.totalBodyFat === undefined || extractedData.totalBodyFat === null) {
+            console.warn('⚠️ DEXA extraction missing totalBodyFat, returning partial data');
+        }
+
+        // Update rate limit counter
+        const currentData = rateLimitDoc.exists ? rateLimitDoc.data() : {};
+        const hoursSinceLastCall = currentData.timestamp
+            ? (Date.now() - currentData.timestamp) / (1000 * 60 * 60)
+            : 999;
+
+        await db.collection('users').doc(userId)
+            .collection('preferences').doc('dexaRateLimit')
+            .set({
+                timestamp: Date.now(),
+                count: hoursSinceLastCall < 24 ? (currentData.count || 0) + 1 : 1,
+            });
+
+        console.log(`✅ DEXA scan extracted for user ${userId}: ${extractedData.totalBodyFat}% body fat`);
+
+        return {
+            extractedData,
+            usage: {
+                inputTokens: response.usage?.input_tokens || 0,
+                outputTokens: response.usage?.output_tokens || 0,
+            },
+        };
+    } catch (error) {
+        if (error instanceof functions.https.HttpsError) throw error;
+        console.error('❌ DEXA extraction error:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to extract DEXA scan data');
     }
 });

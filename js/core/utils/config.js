@@ -20,6 +20,15 @@ export const Config = {
     // Firebase
     FIREBASE_TIMEOUT_MS: 10000,
     MAX_STREAK_QUERY_LIMIT: 100,
+
+    // Training Insights (Phase 17)
+    VOLUME_MEV: 8,              // Minimum Effective Volume (sets/muscle/week)
+    VOLUME_MRV: 22,             // Maximum Recoverable Volume (sets/muscle/week)
+    PLATEAU_MIN_SESSIONS: 3,    // Sessions with no progression to flag plateau
+    DELOAD_DAYS_PER_WEEK: 5,    // Days/week threshold for "hard week"
+    DELOAD_CONSECUTIVE_WEEKS: 4, // Consecutive hard weeks before suggesting deload
+    INSIGHTS_MIN_WORKOUTS: 3,   // Minimum workouts needed to show insights
+    COACH_RATE_LIMIT_HOURS: 24, // Hours between AI coach calls
 };
 
 // Consistent category icons used across all screens (FA 6.0.0 compatible)
