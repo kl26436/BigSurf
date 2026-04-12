@@ -113,6 +113,7 @@
     --tap: 44px;
     --tap-sm: 36px;
     --input-height: 44px;
+    --input-padding: 12px 16px;
 
     /* Icon size scale */
     --icon-xs: 20px;

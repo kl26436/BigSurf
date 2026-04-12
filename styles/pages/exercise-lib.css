@@ -1141,7 +1141,7 @@
     background: var(--bg-secondary);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
-    border-radius: 100px;
+    border-radius: var(--radius-pill);
     padding: 0.35rem 0.75rem;
     font-size: 0.8rem;
     cursor: pointer;
