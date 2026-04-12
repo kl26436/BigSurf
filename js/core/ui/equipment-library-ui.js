@@ -62,6 +62,9 @@ function renderEquipmentLibrary() {
         const term = currentSearchTerm.toLowerCase();
         filtered = filtered.filter(eq =>
             eq.name?.toLowerCase().includes(term) ||
+            eq.brand?.toLowerCase().includes(term) ||
+            eq.model?.toLowerCase().includes(term) ||
+            eq.function?.toLowerCase().includes(term) ||
             (eq.exerciseTypes || []).some(t => t.toLowerCase().includes(term))
         );
     }

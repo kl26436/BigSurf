@@ -128,11 +128,6 @@ function startModalRestTimer(exerciseIndex, duration = Config.DEFAULT_REST_TIMER
                 AppState.activeRestTimer.completed = true;
             }
 
-            // Vibration
-            if ('vibrate' in navigator) {
-                navigator.vibrate([200, 100, 200]);
-            }
-
             return;
         }
     };
