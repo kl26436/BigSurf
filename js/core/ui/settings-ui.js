@@ -181,15 +181,15 @@ export function renderSettings() {
             </div>
 
             <div class="settings-group">
-                <h3 class="settings-group-title">Body Weight</h3>
+                <h3 class="settings-group-title">Body & Metrics</h3>
 
                 <div class="settings-item" style="cursor: pointer;" onclick="showWeightEntryModal()">
                     <div class="settings-label">
-                        <span class="settings-name">Log Weight</span>
+                        <span class="settings-name">Log Body Weight</span>
                         <span class="settings-description">Record today's body weight</span>
                     </div>
                     <div class="settings-control">
-                        <i class="fas fa-plus" style="color: var(--primary);"></i>
+                        <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
                     </div>
                 </div>
 
@@ -199,7 +199,17 @@ export function renderSettings() {
                         <span class="settings-description">View and manage past entries</span>
                     </div>
                     <div class="settings-control">
-                        <i class="fas fa-list" style="color: var(--primary);"></i>
+                        <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
+                    </div>
+                </div>
+
+                <div class="settings-item" style="cursor: pointer;" onclick="showDexaHistory()">
+                    <div class="settings-label">
+                        <span class="settings-name">DEXA Scans</span>
+                        <span class="settings-description">Body composition tracking</span>
+                    </div>
+                    <div class="settings-control">
+                        <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
                     </div>
                 </div>
 
@@ -270,6 +280,21 @@ export function renderSettings() {
             </div>
         </div>
     `;
+
+    // Update Withings connection status after DOM is ready
+    if (window._withingsConnected !== undefined && window.updateWithingsUI) {
+        window.updateWithingsUI(window._withingsConnected);
+    } else {
+        // Fetch status if not yet loaded
+        import('../features/withings-integration.js').then(({ getWithingsStatus }) => {
+            getWithingsStatus().then(status => {
+                if (window.updateWithingsUI) {
+                    window._withingsConnected = status.connected;
+                    window.updateWithingsUI(status.connected, status.lastSync);
+                }
+            });
+        });
+    }
 }
 
 // ===================================================================
