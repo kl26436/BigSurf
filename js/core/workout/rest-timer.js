@@ -10,6 +10,7 @@ import {
     cancelRestNotification,
     isFCMAvailable,
 } from '../utils/push-notification-manager.js';
+import { haptic } from '../utils/haptics.js';
 
 // Global timer state to persist across modal re-renders
 let activeRestTimer = null;
@@ -448,9 +449,7 @@ export function restoreTimerFromAppState(exerciseIndex) {
 }
 
 export function autoStartRestTimer(exerciseIndex, setIndex) {
-    const modal = document.getElementById('exercise-modal');
-    const modalHidden = modal?.classList.contains('hidden');
-    const focusedMatch = AppState.focusedExerciseIndex === exerciseIndex;
+    const cardExpanded = AppState.focusedExerciseIndex === exerciseIndex;
 
     // Superset logic: skip rest timer between exercises in the same group.
     // Only start rest timer after the last exercise in the group completes its set.
@@ -469,13 +468,13 @@ export function autoStartRestTimer(exerciseIndex, setIndex) {
             // Navigate to the next exercise in the superset instead of resting
             const nextIdx = getNextInGroup(exerciseIndex, exercises);
             if (nextIdx !== null && nextIdx !== exerciseIndex) {
-                window.focusExercise(nextIdx);
+                window.toggleExerciseExpansion(nextIdx);
                 return;
             }
         }
     }
 
-    if (modal && !modalHidden && focusedMatch) {
+    if (cardExpanded) {
         startModalRestTimer(exerciseIndex, Config.DEFAULT_REST_TIMER_SECONDS);
     }
 }

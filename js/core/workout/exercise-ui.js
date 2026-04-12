@@ -6,14 +6,12 @@ import {
     showNotification,
     convertWeight,
     updateProgress,
-    setHeaderMode,
     escapeHtml,
     escapeAttr,
     openModal,
 } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { getExerciseGroups, groupExercises, ungroupExercise } from '../features/superset-manager.js';
-import { setBottomNavVisible } from '../ui/navigation.js';
 import { saveWorkoutData, debouncedSaveWorkoutData, loadExerciseHistory, getLastSessionDefaults } from '../data/data-manager.js';
 import {
     getSessionLocation,
@@ -753,14 +751,8 @@ export function supersetWithNext(index) {
 
     debouncedSaveWorkoutData(AppState);
 
-    // Close inline card or modal, then re-render
     if (expandedExerciseIndex !== null) {
         collapseExercise(expandedExerciseIndex);
-    } else {
-        const modal = document.getElementById('exercise-modal');
-        if (modal) modal.close();
-        setHeaderMode('workout');
-        setBottomNavVisible(true);
     }
 
     renderExercises();
@@ -785,14 +777,8 @@ export function ungroupExerciseFromWorkout(index) {
 
     debouncedSaveWorkoutData(AppState);
 
-    // Close inline card or modal, then re-render
     if (expandedExerciseIndex !== null) {
         collapseExercise(expandedExerciseIndex);
-    } else {
-        const modal = document.getElementById('exercise-modal');
-        if (modal) modal.close();
-        setHeaderMode('workout');
-        setBottomNavVisible(true);
     }
 
     renderExercises();
@@ -1426,11 +1412,7 @@ export function addSetToExercise(exerciseIndex) {
     updateExerciseCard(exerciseIndex);
 
     // Refresh the content view (inline card or modal)
-    if (expandedExerciseIndex === exerciseIndex) {
-        expandExercise(exerciseIndex);
-    } else {
-        focusExercise(exerciseIndex);
-    }
+    expandExercise(exerciseIndex);
 
     // Restore timer after re-render
     restoreActiveTimerState(exerciseIndex);
@@ -1467,11 +1449,7 @@ export function removeSetFromExercise(exerciseIndex) {
     updateExerciseCard(exerciseIndex);
 
     // Refresh the content view (inline card or modal)
-    if (expandedExerciseIndex === exerciseIndex) {
-        expandExercise(exerciseIndex);
-    } else {
-        focusExercise(exerciseIndex);
-    }
+    expandExercise(exerciseIndex);
 
     // Restore timer after re-render
     restoreActiveTimerState(exerciseIndex);
@@ -1530,15 +1508,9 @@ export function markExerciseComplete(exerciseIndex) {
 
     saveWorkoutData(AppState);
 
-    // Close inline card or modal
-    if (expandedExerciseIndex === exerciseIndex) {
-        collapseExercise(exerciseIndex);
-        // Re-sort completed exercises to bottom
-        reorderExercisesByCompletion();
-    } else {
-        updateExerciseCard(exerciseIndex);
-        closeExerciseModal();
-    }
+    // Collapse the inline card and re-sort completed exercises to bottom
+    collapseExercise(exerciseIndex);
+    reorderExercisesByCompletion();
 }
 
 function markSetComplete(exerciseIndex, setIndex) {
@@ -1701,20 +1673,14 @@ export function replaceExercise(exerciseIndex) {
     window.replacingExerciseIndex = exerciseIndex;
     window.addingToActiveWorkout = true;
 
-    // Close inline card or exercise detail modal
-    if (expandedExerciseIndex === exerciseIndex) {
-        collapseExercise(exerciseIndex);
-    } else {
-        closeExerciseModal();
+    // Collapse the inline card
+    if (expandedExerciseIndex !== null) {
+        collapseExercise(expandedExerciseIndex);
     }
 
     // Open exercise library for selection
-    const modal = document.getElementById('exercise-library-section');
-    if (modal) {
-        openModal(modal);
-        if (window.openExerciseLibrary) {
-            window.openExerciseLibrary('activeWorkout');
-        }
+    if (window.openExerciseLibrary) {
+        window.openExerciseLibrary('activeWorkout');
     }
 }
 
@@ -1842,9 +1808,9 @@ export async function applyEquipmentChange(equipmentName, equipmentLocation, equ
     // Update UI — only the affected card
     updateExerciseCard(exerciseIndex);
 
-    // Refresh the modal if it's still open
-    if (AppState.focusedExerciseIndex === exerciseIndex) {
-        focusExercise(exerciseIndex);
+    // Refresh the expanded card if it's still open
+    if (expandedExerciseIndex === exerciseIndex) {
+        expandExercise(exerciseIndex);
     }
 
     // Clean up
@@ -1964,8 +1930,6 @@ export async function editExerciseDefaults(exerciseName) {
     // Close inline card or exercise modal first
     if (expandedExerciseIndex !== null) {
         collapseExercise(expandedExerciseIndex);
-    } else {
-        closeExerciseModal();
     }
 
     // Set flag to indicate we're editing from active workout (only if actually in one)

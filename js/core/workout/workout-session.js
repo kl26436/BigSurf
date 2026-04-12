@@ -17,7 +17,7 @@ import {
     updateLocationIndicator,
     getCurrentCoords,
 } from '../features/location-service.js';
-import { renderExercises, focusExercise } from './exercise-ui.js';
+import { renderExercises, toggleExerciseExpansion } from './exercise-ui.js';
 
 // Listen for exercise rename events to refresh active workout UI
 window.addEventListener('exerciseRenamed', (event) => {
@@ -25,12 +25,9 @@ window.addEventListener('exerciseRenamed', (event) => {
     if (AppState.currentWorkout) {
         renderExercises();
         // Close exercise modal if open and re-open with refreshed data
-        const modal = document.getElementById('exercise-modal');
-        if (modal && (modal.open || !modal.classList.contains('hidden'))) {
-            const { exerciseIndex } = event.detail;
-            if (typeof exerciseIndex === 'number') {
-                focusExercise(exerciseIndex);
-            }
+        const { exerciseIndex } = event.detail;
+        if (typeof exerciseIndex === 'number') {
+            toggleExerciseExpansion(exerciseIndex);
         }
     }
 });
