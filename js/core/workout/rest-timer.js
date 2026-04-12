@@ -90,6 +90,7 @@ function startModalRestTimer(exerciseIndex, duration = Config.DEFAULT_REST_TIMER
         if (isPaused) return;
 
         const elapsed = Math.floor((Date.now() - startTime - pausedTime) / 1000);
+        const prevTimeLeft = timeLeft;
         timeLeft = Math.max(0, duration - elapsed);
 
         // Update stored timeLeft so save/restore works correctly
@@ -97,11 +98,17 @@ function startModalRestTimer(exerciseIndex, duration = Config.DEFAULT_REST_TIMER
             modalTimer.timerData.timeLeft = timeLeft;
         }
 
+        // Countdown haptic at 5 seconds
+        if (timeLeft === 5 && prevTimeLeft === 6) {
+            haptic('countdown');
+        }
+
         updateDisplay();
 
         if (timeLeft === 0) {
             timerDisplay.textContent = 'Ready!';
             timerDisplay.classList.add('timer-complete');
+            haptic('warning');
 
             // Update header timer with "GO!" message
             if (headerTimerEl) headerTimerEl.textContent = 'GO!';
@@ -283,11 +290,7 @@ export function restoreModalRestTimer(exerciseIndex, timerState) {
         if (timeLeft === 0) {
             timerDisplay.textContent = 'Ready!';
             timerDisplay.classList.add('timer-complete');
-
-            // Vibration
-            if ('vibrate' in navigator) {
-                navigator.vibrate([200, 100, 200]);
-            }
+            haptic('warning');
 
             // Don't show local notification - server-side push handles it
             // The push notification is scheduled via Cloud Functions

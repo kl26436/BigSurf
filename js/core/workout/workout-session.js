@@ -18,6 +18,7 @@ import {
     getCurrentCoords,
 } from '../features/location-service.js';
 import { renderExercises, toggleExerciseExpansion } from './exercise-ui.js';
+import { haptic } from '../utils/haptics.js';
 
 // Listen for exercise rename events to refresh active workout UI
 window.addEventListener('exerciseRenamed', (event) => {
@@ -296,6 +297,7 @@ export async function completeWorkout() {
 
     // Show completion summary modal (or go to dashboard for historical edits)
     if (!isEditingHistorical) {
+        haptic('complete');
         window._lastCompletedWorkout = completedWorkoutData;
         showWorkoutSummary(completedWorkoutData, newPRs);
     } else {

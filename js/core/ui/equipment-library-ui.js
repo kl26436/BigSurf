@@ -119,8 +119,27 @@ function renderEquipmentLibrary() {
         `;
     } else {
         for (const [location, items] of grouped) {
-            // Sort items alphabetically within each group
-            items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            // Group by brand within each location
+            const byBrand = {};
+            items.forEach(eq => {
+                const brand = eq.brand || 'Other';
+                if (!byBrand[brand]) byBrand[brand] = [];
+                byBrand[brand].push(eq);
+            });
+
+            // Sort brands alphabetically, "Other" last
+            const sortedBrands = Object.keys(byBrand).sort((a, b) => {
+                if (a === 'Other') return 1;
+                if (b === 'Other') return -1;
+                return a.localeCompare(b);
+            });
+
+            // Sort items within each brand alphabetically
+            sortedBrands.forEach(brand => {
+                byBrand[brand].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            });
+
+            const hasBrands = sortedBrands.length > 1 || (sortedBrands.length === 1 && sortedBrands[0] !== 'Other');
 
             listHTML += `
                 <div class="equip-lib-group">
@@ -129,7 +148,15 @@ function renderEquipmentLibrary() {
                         <span>${escapeHtml(location)}</span>
                         <span class="equip-lib-group-count">${items.length}</span>
                     </div>
-                    ${items.map(eq => renderEquipmentRow(eq)).join('')}
+                    ${hasBrands ? sortedBrands.map(brand => `
+                        <div class="equip-brand-group">
+                            <div class="equip-brand-header">
+                                <span class="equip-brand-name">${escapeHtml(brand)}</span>
+                                <span class="equip-brand-count">${byBrand[brand].length}</span>
+                            </div>
+                            ${byBrand[brand].map(eq => renderEquipmentRow(eq)).join('')}
+                        </div>
+                    `).join('') : items.map(eq => renderEquipmentRow(eq)).join('')}
                 </div>
             `;
         }

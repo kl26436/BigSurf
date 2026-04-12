@@ -7,22 +7,13 @@
 }
 
 .active-workout-hero {
-    background: var(--bg-card-hi);
+    background: transparent;
     border-radius: var(--radius-lg);
-    border: 1px solid var(--border-subtle);
-    padding: var(--space-20) var(--pad-card-x) var(--space-16);
-    margin-bottom: var(--space-16);
+    border: none;
+    padding: var(--space-12) var(--pad-card-x) var(--space-8);
+    margin-bottom: var(--space-8);
     box-shadow: none;
     overflow: hidden;
-}
-.active-workout-hero::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
 }
 .workout-hero-top {
     display: flex;
@@ -52,19 +43,20 @@
 .workout-hero-stats {
     display: flex;
     justify-content: space-around;
-    padding: 12px 0;
-    border-top: 1px solid var(--border-medium);
-    border-bottom: 1px solid var(--border-medium);
-    margin: 12px 0;
+    padding: 8px 0;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: none;
+    margin: 8px 0 0;
+    opacity: 0.8;
 }
 .workout-stat {
     text-align: center;
     flex: 1;
 }
 .workout-stat-value {
-    font-size: var(--font-display-sm);
-    font-weight: 700;
-    color: var(--primary);
+    font-size: var(--font-md);
+    font-weight: 600;
+    color: var(--text-secondary);
 }
 .workout-stat-label {
     font-size: 0.65rem;

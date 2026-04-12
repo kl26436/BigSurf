@@ -335,6 +335,84 @@
     position: relative;
 }
 
+/* History search & filter bar */
+.history-search-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.history-search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.history-search-input-wrapper i.fa-search {
+    position: absolute;
+    left: 12px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.history-search-input-wrapper input {
+    width: 100%;
+    padding: var(--input-padding, 10px 14px);
+    padding-left: 36px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.history-search-input-wrapper input::placeholder {
+    color: var(--text-muted);
+}
+
+.history-search-input-wrapper input:focus {
+    border-color: var(--primary);
+}
+
+.history-search-clear {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+}
+
+.history-search-bar select {
+    width: 100%;
+    padding: var(--input-padding, 10px 14px);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+
+.history-search-bar select:focus {
+    border-color: var(--primary);
+}
+
 /* Recent workouts list below calendar */
 .recent-workouts-section {
     margin-top: 0.5rem;

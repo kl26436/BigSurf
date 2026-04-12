@@ -656,6 +656,31 @@ dialog.modal:not([open]) {
     margin-bottom: 6px;
 }
 
+/* Equipment brand grouping within location */
+.equip-brand-group {
+    margin-left: 8px;
+    margin-bottom: 8px;
+}
+
+.equip-brand-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.equip-brand-count {
+    font-weight: 400;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
 /* Workout Detail Modal */
 .workout-detail-summary {
     background: var(--bg-card);

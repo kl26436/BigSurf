@@ -16,7 +16,7 @@
 .template-exercise-item {
     display: flex;
     flex-direction: column;
-    padding: 10px 0;
+    padding: 12px 0;
     border-bottom: 1px solid var(--border-subtle);
     font-size: 0.9rem;
 }
@@ -27,29 +27,35 @@
 .exercise-reorder-buttons {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
     flex-shrink: 0;
 }
 
 .btn-reorder {
-    background: none;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--text-muted);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
     border-radius: var(--radius-xs);
-    padding: 2px 6px;
-    font-size: 0.7rem;
+    padding: 4px 8px;
+    font-size: 0.75rem;
     cursor: pointer;
     line-height: 1;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    min-width: 28px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-reorder:not(:disabled):active {
     background: var(--primary);
-    color: #fff;
+    color: var(--bg-app);
+    border-color: var(--primary);
 }
 
 .btn-reorder:disabled {
-    opacity: 0.2;
+    opacity: 0.15;
     cursor: default;
 }
 
@@ -60,8 +66,35 @@
 
 .exercise-item-actions {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     flex-shrink: 0;
+}
+
+.exercise-item-actions .btn-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.exercise-item-actions .btn-icon:active {
+    background: var(--bg-card-hi);
+    border-color: var(--border);
+}
+
+.exercise-item-actions .btn-icon.btn-danger:active {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
 }
 
 .template-exercises-list {
@@ -74,7 +107,7 @@
 .exercise-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
 }
 
@@ -548,6 +581,35 @@
     height: 18px;
     accent-color: var(--primary);
     cursor: pointer;
+    border-radius: var(--radius-xs);
+}
+
+/* Custom checkbox look for dark theme */
+@supports (appearance: none) {
+    .superset-select-checkbox {
+        appearance: none;
+        -webkit-appearance: none;
+        background: var(--bg-card);
+        border: 2px solid var(--border);
+        border-radius: 4px;
+        position: relative;
+        transition: background 0.15s, border-color 0.15s;
+    }
+    .superset-select-checkbox:checked {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+    .superset-select-checkbox:checked::after {
+        content: '';
+        position: absolute;
+        left: 4px;
+        top: 1px;
+        width: 5px;
+        height: 9px;
+        border: solid var(--bg-app);
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
 }
 .superset-badge {
     display: inline-block;
