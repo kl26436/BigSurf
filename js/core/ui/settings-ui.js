@@ -181,6 +181,40 @@ export function renderSettings() {
             </div>
 
             <div class="settings-group">
+                <h3 class="settings-group-title">Body Weight</h3>
+
+                <div class="settings-item" style="cursor: pointer;" onclick="showWeightEntryModal()">
+                    <div class="settings-label">
+                        <span class="settings-name">Log Weight</span>
+                        <span class="settings-description">Record today's body weight</span>
+                    </div>
+                    <div class="settings-control">
+                        <i class="fas fa-plus" style="color: var(--primary);"></i>
+                    </div>
+                </div>
+
+                <div class="settings-item" style="cursor: pointer;" onclick="showWeightHistory()">
+                    <div class="settings-label">
+                        <span class="settings-name">Weight History</span>
+                        <span class="settings-description">View and manage past entries</span>
+                    </div>
+                    <div class="settings-control">
+                        <i class="fas fa-list" style="color: var(--primary);"></i>
+                    </div>
+                </div>
+
+                <div class="settings-item" style="cursor: pointer;" onclick="showMeasurementsModal()">
+                    <div class="settings-label">
+                        <span class="settings-name">Body Measurements</span>
+                        <span class="settings-description">Track neck, chest, waist, hips, arms, legs</span>
+                    </div>
+                    <div class="settings-control">
+                        <i class="fas fa-ruler" style="color: var(--primary);"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group">
                 <h3 class="settings-group-title">Data</h3>
 
                 <div class="settings-item" style="cursor: pointer;" onclick="exportWorkoutData(window.AppState)">
