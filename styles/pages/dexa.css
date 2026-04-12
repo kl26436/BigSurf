@@ -240,12 +240,12 @@
     margin-bottom: 4px;
 }
 
-.form-row {
+.dexa-form-row {
     display: flex;
     gap: 12px;
 }
 
-.form-row .form-group {
+.dexa-form-row .form-group {
     flex: 1;
 }
 

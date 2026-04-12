@@ -45,16 +45,26 @@ js/
     │   ├── firebase-config.js      # Firebase SDK init
     │   ├── firebase-workout-manager.js  # Templates, exercises, equipment, locations
     │   ├── data-manager.js         # Workout save/load, export, equipment reassignment
+    │   ├── data-export-import.js   # CSV export, JSON export/import
     │   ├── exercise-library.js     # Exercise database with favorites
     │   └── schema-migration.js     # v2 to v3 migration
     ├── features/               # Feature modules
+    │   ├── ai-coach-ui.js          # AI Coach modal, prompt cards, history
+    │   ├── body-measurements.js    # Body weight/measurements data layer
+    │   ├── body-measurements-ui.js # Dashboard widget, weight chart, measurements modal
+    │   ├── dexa-scan.js            # DEXA scan data import/analysis
+    │   ├── dexa-scan-ui.js         # DEXA upload modal, history, detail views
+    │   ├── equipment-planner.js    # Equipment-based workout planning (Phase 16)
     │   ├── exercise-progress.js    # Exercise progress charts
     │   ├── location-service.js     # GPS detection, location matching
     │   ├── location-ui.js          # Location management UI
     │   ├── manual-workout.js       # Manual workout entry
+    │   ├── plate-calculator.js     # Plate breakdown algorithm + standalone page
     │   ├── pr-tracker.js           # Personal record detection
     │   ├── stats-tracker.js        # Weekly stats (delegates streaks to streak-tracker)
-    │   └── streak-tracker.js       # Canonical streak calculation
+    │   ├── streak-tracker.js       # Canonical streak calculation
+    │   ├── superset-manager.js     # Exercise grouping for supersets/circuits
+    │   └── training-insights.js    # Rules engine for dashboard insights (no API)
     ├── ui/                     # UI components
     │   ├── dashboard-ui.js         # Dashboard rendering
     │   ├── equipment-library-ui.js # Equipment library page
@@ -104,7 +114,11 @@ styles/
 │   ├── stats.css          # Stats page, progress charts
 │   ├── history.css        # Calendar, workout history
 │   ├── exercise-lib.css   # Exercise library, equipment editor
-│   └── settings.css       # Settings page, onboarding
+│   ├── settings.css       # Settings page, onboarding
+│   ├── plate-calculator.css # Plate calculator page + popover
+│   ├── body-measurements.css # Body weight widget, chart, measurements modal
+│   ├── ai-coach.css       # AI Coach modal, prompt cards, response display
+│   └── dexa.css           # DEXA scan upload, history, detail views
 └── utilities.css          # .hidden, animations, responsive, misc utilities
 ```
 
@@ -124,11 +138,15 @@ tests/
     ├── exercise-completion.test.js # Set completion, exercise ordering
     ├── exercise-grouping.test.js   # Superset grouping (Phase 10)
     ├── id-generation.test.js       # Workout ID generation
+    ├── body-measurements.test.js   # 7-day average, unit conversion (Phase 12)
+    ├── data-export.test.js         # CSV generation, JSON import validation (Phase 13)
     ├── plate-calculator.test.js    # Plate breakdown algorithm (Phase 11)
     ├── pr-detection.test.js        # PR detection logic
     ├── progress-calculations.test.js # 1RM, volume, trends
+    ├── social-feed.test.js         # Feed items, privacy filtering (Phase 14 stubs)
     ├── streak-calculation.test.js  # Streak calculation
     ├── template-management.test.js # Template operations
+    ├── training-insights.test.js   # Volume analysis, plateaus, deload (Phase 17)
     ├── validation.test.js          # Input validation
     ├── weekly-goal.test.js         # Goal percentage, progress ring
     ├── weight-conversion.test.js   # Weight unit conversion
@@ -325,5 +343,6 @@ console.log(window.AppState)  // Full app state
 ## Roadmap & Implementation Status
 
 See [roadmap.md](roadmap.md) for the full overhaul plan. Current status:
-- **Sprints 1-3 (Phases 0-9, 15)**: Complete
-- **Sprints 4+ (Phases 10-14, 16-19)**: Not yet started — test files pre-written in `tests/unit/`
+- **Sprints 1-7 (Phases 0-13, 15-18)**: Complete
+- **Phase 14 (Social features)**: Intentionally on hold
+- **Phase 19 (Community gym DB)**: Intentionally on hold

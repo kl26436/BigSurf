@@ -472,13 +472,13 @@ export function showWorkoutBuilder() {
                 </button>
             </div>
             <div class="builder-custom-wrap">
-                <input type="text" id="builder-custom-focus" class="coach-textarea" placeholder="Or type a custom focus... (e.g. Arms, Chest & Tris)" style="resize:none;height:auto;">
+                <input type="text" id="builder-custom-focus" class="coach-textarea" placeholder="Or type a custom focus... (e.g. Arms, Chest & Tris)">
                 <button class="btn btn-primary btn-small" onclick="generateWorkoutTemplate(document.getElementById('builder-custom-focus').value)">
                     <i class="fas fa-magic"></i> Generate
                 </button>
             </div>
         </div>
-        <button class="btn btn-secondary coach-ask-another" onclick="resetCoachUI()" style="margin-top:12px;width:100%">
+        <button class="btn btn-secondary coach-ask-another" onclick="resetCoachUI()">
             <i class="fas fa-arrow-left"></i> Back
         </button>
     `;
@@ -533,7 +533,7 @@ export async function generateWorkoutTemplate(focus) {
                 <i class="fas fa-exclamation-circle"></i>
                 <p>Failed to generate workout. ${error.message || 'Try again.'}</p>
             </div>
-            <button class="btn btn-secondary coach-ask-another" onclick="showWorkoutBuilder()" style="margin-top:12px;width:100%">
+            <button class="btn btn-secondary coach-ask-another" onclick="showWorkoutBuilder()">
                 <i class="fas fa-arrow-left"></i> Try again
             </button>
         `;

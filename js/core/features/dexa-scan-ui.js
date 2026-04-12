@@ -360,7 +360,7 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
                        value="${data.totalBodyFat ?? ''}">
             </div>
 
-            <div class="form-row">
+            <div class="dexa-form-row">
                 <div class="form-group ${lowConf('totalWeight')}">
                     <label>Total Weight ${reviewBadge('totalWeight')}</label>
                     <input type="number" id="dexa-total-weight" class="form-input"
@@ -376,7 +376,7 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
                 </div>
             </div>
 
-            <div class="form-row">
+            <div class="dexa-form-row">
                 <div class="form-group">
                     <label>Total Lean Mass</label>
                     <input type="number" id="dexa-total-lean" class="form-input"
@@ -411,7 +411,7 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
                     <i class="fas fa-chevron-down" id="dexa-bone-chevron"></i>
                 </button>
                 <div id="dexa-bone" class="dexa-field-group-content hidden">
-                    <div class="form-row ${lowConf('boneDensity')}">
+                    <div class="dexa-form-row ${lowConf('boneDensity')}">
                         <div class="form-group">
                             <label>T-Score ${reviewBadge('boneDensity')}</label>
                             <input type="number" id="dexa-t-score" class="form-input"

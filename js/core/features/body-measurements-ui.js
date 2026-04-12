@@ -220,7 +220,7 @@ export function showMeasurementsModal() {
             <div class="measurements-form">
                 ${measurementFields}
             </div>
-            <button class="btn btn-primary btn-block" onclick="saveMeasurementsEntry()" style="margin-top: 16px;">
+            <button class="btn btn-primary btn-block measurements-save-btn" onclick="saveMeasurementsEntry()">
                 <i class="fas fa-check"></i> Save Measurements
             </button>
         </div>
