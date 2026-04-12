@@ -36,6 +36,7 @@ export {
     generateExerciseTable,
     loadExerciseHistory,
     updateSet,
+    cycleSetType,
     addSet,
     deleteSet,
     addSetToExercise,
