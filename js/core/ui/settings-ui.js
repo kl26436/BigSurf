@@ -203,16 +203,6 @@ export function renderSettings() {
                     </div>
                 </div>
 
-                <div class="settings-item" style="cursor: pointer;" onclick="showMeasurementsModal()">
-                    <div class="settings-label">
-                        <span class="settings-name">Body Measurements</span>
-                        <span class="settings-description">Track neck, chest, waist, hips, arms, legs</span>
-                    </div>
-                    <div class="settings-control">
-                        <i class="fas fa-ruler" style="color: var(--primary);"></i>
-                    </div>
-                </div>
-
                 <div id="withings-settings-item" class="settings-item" style="cursor: pointer;" onclick="handleWithingsSettingsAction()">
                     <div class="settings-label">
                         <span class="settings-name">Withings</span>

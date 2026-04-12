@@ -389,9 +389,6 @@ export function renderBodyWeightChartSection() {
                     <button class="btn btn-sm btn-outline" onclick="showWeightHistory()">
                         <i class="fas fa-list"></i> History
                     </button>
-                    <button class="btn btn-sm btn-outline" onclick="showMeasurementsModal()">
-                        <i class="fas fa-ruler"></i> Measurements
-                    </button>
                 </div>
             </div>
         </div>

@@ -226,9 +226,6 @@ import {
     showWeightEntryModal,
     closeWeightEntryModal,
     saveBodyWeightEntry,
-    showMeasurementsModal,
-    closeMeasurementsModal,
-    saveMeasurementsEntry,
     showWeightHistory,
     closeWeightHistory,
     deleteWeightEntry,
@@ -743,9 +740,6 @@ window.rebuildPRsFromSettings = rebuildPRsFromSettings;
 window.showWeightEntryModal = showWeightEntryModal;
 window.closeWeightEntryModal = closeWeightEntryModal;
 window.saveBodyWeightEntry = saveBodyWeightEntry;
-window.showMeasurementsModal = showMeasurementsModal;
-window.closeMeasurementsModal = closeMeasurementsModal;
-window.saveMeasurementsEntry = saveMeasurementsEntry;
 window.showWeightHistory = showWeightHistory;
 window.closeWeightHistory = closeWeightHistory;
 window.deleteWeightEntry = deleteWeightEntry;
