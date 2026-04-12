@@ -887,6 +887,22 @@
     cursor: default;
 }
 
+/* Equipment Badges on Suggested Workouts (Phase 16.1) */
+.equipment-badge-ok {
+    color: var(--success);
+    font-size: 0.75rem;
+}
+.equipment-badge-ok .fa-check-circle {
+    margin-right: 2px;
+}
+.equipment-badge-warn {
+    color: var(--warning);
+    font-size: 0.75rem;
+}
+.equipment-badge-warn .fa-exclamation-triangle {
+    margin-right: 2px;
+}
+
 /* All Completed Banner */
 .all-completed-banner {
     background: var(--bg-card);

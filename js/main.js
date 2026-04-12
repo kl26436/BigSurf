@@ -260,7 +260,30 @@ import {
     askCoach,
     resetCoachUI,
     showPastCoachSession,
+    showWorkoutBuilder,
+    generateWorkoutTemplate,
+    removePreviewExercise,
+    saveGeneratedTemplate,
 } from './core/features/ai-coach-ui.js';
+
+// DEXA Scan Integration (Phase 18)
+import {
+    renderDexaCard,
+    showDexaUploadModal,
+    closeDexaUploadModal,
+    handleDexaFileSelect,
+    clearDexaFile,
+    handleDexaUpload,
+    showDexaManualEntry,
+    showDexaReviewForm,
+    toggleDexaSection,
+    confirmDexaSave,
+    showDexaHistory,
+    closeDexaHistory,
+    showDexaDetail,
+    closeDexaDetail,
+    deleteDexaEntry,
+} from './core/features/dexa-scan-ui.js';
 
 // UI helpers
 import { setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './core/ui/ui-helpers.js';
@@ -747,6 +770,27 @@ window.showCoachFreeform = showCoachFreeform;
 window.askCoach = askCoach;
 window.resetCoachUI = resetCoachUI;
 window.showPastCoachSession = showPastCoachSession;
+window.showWorkoutBuilder = showWorkoutBuilder;
+window.generateWorkoutTemplate = generateWorkoutTemplate;
+window.removePreviewExercise = removePreviewExercise;
+window.saveGeneratedTemplate = saveGeneratedTemplate;
+
+// DEXA Scan Integration (Phase 18)
+window.renderDexaCard = renderDexaCard;
+window.showDexaUploadModal = showDexaUploadModal;
+window.closeDexaUploadModal = closeDexaUploadModal;
+window.handleDexaFileSelect = handleDexaFileSelect;
+window.clearDexaFile = clearDexaFile;
+window.handleDexaUpload = handleDexaUpload;
+window.showDexaManualEntry = showDexaManualEntry;
+window.showDexaReviewForm = showDexaReviewForm;
+window.toggleDexaSection = toggleDexaSection;
+window.confirmDexaSave = confirmDexaSave;
+window.showDexaHistory = showDexaHistory;
+window.closeDexaHistory = closeDexaHistory;
+window.showDexaDetail = showDexaDetail;
+window.closeDexaDetail = closeDexaDetail;
+window.deleteDexaEntry = deleteDexaEntry;
 
 // Withings settings action — connects, syncs, or shows disconnect option
 let _withingsConnected = false;

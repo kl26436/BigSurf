@@ -12,6 +12,14 @@ import { Config, CATEGORY_COLORS } from '../utils/config.js';
 import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
+import { TrainingInsights } from '../features/training-insights.js';
+import { detectLocation, getSessionLocation } from '../features/location-service.js';
+import {
+    getEquipmentAtLocation,
+    getExercisesAtLocation,
+    checkTemplateCompatibility,
+} from '../features/equipment-planner.js';
+import { renderDexaCard } from '../features/dexa-scan-ui.js';
 
 // ===================================================================
 // DASHBOARD DISPLAY
@@ -285,13 +293,15 @@ async function renderDashboard() {
 
     try {
         // Load all stats in parallel
-        const [streaks, weeklyStats, suggestedWorkouts, todaysWorkout, inProgressWorkout] =
+        const wm = new FirebaseWorkoutManager(AppState);
+        const [streaks, weeklyStats, suggestedWorkouts, todaysWorkout, inProgressWorkout, insightsData] =
             await Promise.all([
                 StreakTracker.calculateStreaks(),
                 StatsTracker.getWeeklyStats(),
                 getSuggestedWorkoutsForToday(),
                 getTodaysCompletedWorkout(),
                 getInProgressWorkoutData(),
+                TrainingInsights.loadInsightsData().catch(() => ({ recentWorkouts: [], allWorkouts: [] })),
             ]);
 
         await PRTracker.loadPRData();
@@ -322,10 +332,13 @@ async function renderDashboard() {
         } else {
             // Build the dashboard - focused on "what to do today" and quick glance stats
             const volumeChip = await renderVolumeComparisonChip();
+            const insightsHtml = renderTrainingInsights(insightsData);
             container.innerHTML = `
                 ${renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats)}
                 ${volumeChip}
                 ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
+                ${insightsHtml}
+                ${await renderDexaCard()}
                 ${renderDashboardStreakBoxes(streaks)}
                 ${renderDashboardPRsSection(recentPRs)}
                 ${await renderDashboardMiniChart()}
@@ -334,7 +347,6 @@ async function renderDashboard() {
 
         // Conditionally hide "Manage Locations" in More menu if no locations exist
         try {
-            const wm = new FirebaseWorkoutManager(AppState);
             const locations = await wm.getUserLocations();
             const locMenuItem = document.getElementById('more-menu-locations');
             if (locMenuItem) {
@@ -350,6 +362,11 @@ async function renderDashboard() {
             if (!card) return;
             startSuggestedWorkout(card.dataset.templateId, card.dataset.isDefault === 'true');
         });
+
+        // Async-detect location and add equipment badges to suggested workouts (Phase 16)
+        if (hasWorkouts && suggestedWorkouts.length > 0) {
+            appendEquipmentBadges(container, suggestedWorkouts, wm);
+        }
     } catch (error) {
         console.error('❌ Error rendering dashboard:', error);
         container.innerHTML = `
@@ -855,6 +872,55 @@ async function renderDashboardMiniChart() {
 }
 
 // ===================================================================
+// TRAINING INSIGHTS CARD (Phase 17)
+// ===================================================================
+
+/**
+ * Render the Training Insights dashboard card.
+ * Shows top 1-3 actionable insights from the rules engine.
+ */
+function renderTrainingInsights(insightsData) {
+    const exerciseDatabase = AppState.exerciseDatabase || [];
+    const insights = TrainingInsights.getTopInsights(
+        insightsData.recentWorkouts,
+        insightsData.allWorkouts,
+        exerciseDatabase
+    );
+
+    if (insights.length === 0) return '';
+
+    const severityClass = {
+        warning: 'insight-warning',
+        info: 'insight-info',
+        success: 'insight-success',
+    };
+
+    const insightItems = insights.map(insight => {
+        const cls = severityClass[insight.severity] || 'insight-info';
+        const coachButton = insight.type === 'plateau'
+            ? `<button class="insight-coach-btn" onclick="showAICoach('${escapeAttr(insight.exerciseName || '')}')">Get advice</button>`
+            : '';
+
+        return `
+            <div class="insight-item ${cls}">
+                <div class="insight-icon"><i class="fas ${insight.icon}"></i></div>
+                <span class="insight-text">${escapeHtml(insight.message)}</span>
+                ${coachButton}
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="stats-section-header mt-lg">
+            <span class="stats-section-title"><i class="fas fa-brain"></i> Training Insights</span>
+        </div>
+        <div class="insights-card">
+            ${insightItems}
+        </div>
+    `;
+}
+
+// ===================================================================
 // HELPERS
 // ===================================================================
 
@@ -923,6 +989,83 @@ export async function repeatLastWorkout(workoutId) {
             repeatBtn.click();
         }
     }, 500);
+}
+
+// ===================================================================
+// EQUIPMENT BADGES ON SUGGESTED WORKOUTS (Phase 16.1)
+// ===================================================================
+
+/**
+ * Async-detect location and add equipment availability badges to today's suggested workout cards.
+ * Non-blocking — cards render immediately, badges appear when GPS resolves.
+ */
+async function appendEquipmentBadges(container, suggestedWorkouts, wm) {
+    try {
+        const [savedLocations, savedEquipment] = await Promise.all([
+            wm.getUserLocations(),
+            wm.getUserEquipment(),
+        ]);
+
+        if (!savedLocations.length || !savedEquipment.length) return;
+
+        // Detect current gym
+        let locationName = getSessionLocation();
+        if (!locationName) {
+            const result = await detectLocation(savedLocations);
+            if (result.location) {
+                locationName = result.location.name;
+            }
+        }
+        if (!locationName) return;
+
+        const locationEquipment = getEquipmentAtLocation(savedEquipment, locationName);
+        if (locationEquipment.length === 0) return;
+
+        const availableExercises = getExercisesAtLocation(locationEquipment);
+        if (availableExercises.size === 0) return;
+
+        // Check each suggested workout and inject a badge
+        for (const workout of suggestedWorkouts) {
+            const compatibility = checkTemplateCompatibility(workout, availableExercises);
+            const templateId = workout.id || workout.name;
+
+            // Find the card in the DOM by template ID
+            const card = container.querySelector(
+                `[data-action="startSuggestedWorkout"][data-template-id="${CSS.escape(templateId)}"]`
+            );
+            if (!card) continue;
+
+            // Find the meta row to append the badge
+            const metaRow = card.querySelector('.suggested-meta-row');
+            const compactMeta = card.querySelector('.suggested-compact-meta');
+
+            if (compatibility.compatible) {
+                if (metaRow) {
+                    metaRow.insertAdjacentHTML('beforeend',
+                        `<span class="equipment-badge-ok"><i class="fas fa-check-circle"></i> ${escapeHtml(locationName)}</span>`
+                    );
+                } else if (compactMeta) {
+                    compactMeta.insertAdjacentHTML('beforeend',
+                        ` · <span class="equipment-badge-ok"><i class="fas fa-check-circle"></i> ${escapeHtml(locationName)}</span>`
+                    );
+                }
+            } else if (compatibility.missing > 0) {
+                const msg = `${compatibility.missing} exercise${compatibility.missing !== 1 ? 's' : ''} need other equipment`;
+                if (metaRow) {
+                    metaRow.insertAdjacentHTML('beforeend',
+                        `<span class="equipment-badge-warn"><i class="fas fa-exclamation-triangle"></i> ${msg}</span>`
+                    );
+                } else if (compactMeta) {
+                    compactMeta.insertAdjacentHTML('beforeend',
+                        ` · <span class="equipment-badge-warn"><i class="fas fa-exclamation-triangle"></i> ${msg}</span>`
+                    );
+                }
+            }
+        }
+    } catch (error) {
+        // Non-critical — cards work fine without badges
+        console.error('❌ Error adding equipment badges:', error);
+    }
 }
 
 // ===================================================================

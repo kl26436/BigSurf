@@ -5,9 +5,14 @@ import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
 import { saveWorkoutData } from '../data/data-manager.js';
 import { reorderTemplateExercise, normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
-import { getSessionLocation } from '../features/location-service.js';
+import { getSessionLocation, detectLocation } from '../features/location-service.js';
 import { setBottomNavVisible } from '../ui/navigation.js';
 import { groupExercises, ungroupExercise } from '../features/superset-manager.js';
+import {
+    getEquipmentAtLocation,
+    getExercisesAtLocation,
+    rankExercisesForLocation,
+} from '../features/equipment-planner.js';
 
 let workoutManager;
 let currentEditingTemplate = null;
@@ -1146,6 +1151,8 @@ export function removeTemplateExercise(index) {
 
 // Exercise Library functions
 let recentExercises = [];
+let gymSuggestedExercises = [];
+let gymLocationName = null;
 
 export async function openExerciseLibrary(mode = 'template') {
     const modal = document.getElementById('exercise-library-modal');
@@ -1153,13 +1160,36 @@ export async function openExerciseLibrary(mode = 'template') {
 
     openModal(modal);
 
-    // Load exercise library and recent exercises in parallel
-    const [library] = await Promise.all([
+    // Load exercise library, recent exercises, and equipment data in parallel
+    const [library, , allEquipment, savedLocations] = await Promise.all([
         workoutManager.getExerciseLibrary(),
         workoutManager.getMostUsedExercises(8).then((r) => { recentExercises = r; }).catch(() => { recentExercises = []; }),
+        workoutManager.getUserEquipment().catch(() => []),
+        workoutManager.getUserLocations().catch(() => []),
     ]);
     exerciseLibrary = library;
     filteredExercises = [...exerciseLibrary];
+
+    // Compute gym-suggested exercises (Phase 16.2)
+    gymSuggestedExercises = [];
+    gymLocationName = null;
+    try {
+        let locationName = getSessionLocation();
+        if (!locationName && savedLocations.length > 0) {
+            const result = await detectLocation(savedLocations);
+            if (result.location) {
+                locationName = result.location.name;
+            }
+        }
+        if (locationName && allEquipment.length > 0) {
+            gymLocationName = locationName;
+            const locationEquipment = getEquipmentAtLocation(allEquipment, locationName);
+            const availableExercises = getExercisesAtLocation(locationEquipment);
+            gymSuggestedExercises = rankExercisesForLocation(availableExercises, recentExercises, exerciseLibrary);
+        }
+    } catch {
+        // Non-critical — gym suggestions just won't appear
+    }
 
     renderExerciseLibrary();
 
@@ -1256,8 +1286,14 @@ function renderExerciseLibrary() {
     // Sort body parts alphabetically
     const sortedBodyParts = Object.keys(grouped).sort();
 
+    // Check if search/filter is active
+    const searchQuery = document.getElementById('exercise-library-search')?.value || '';
+    const bodyPartFilter = document.getElementById('body-part-filter')?.value || '';
+    const equipmentFilterVal = document.getElementById('equipment-filter')?.value || '';
+    const isFiltered = !!(searchQuery || bodyPartFilter || equipmentFilterVal);
+
     // Quick Add chips for recently used exercises
-    const quickAddHTML = recentExercises.length > 0
+    const quickAddHTML = (recentExercises.length > 0)
         ? `<div class="quick-add-section">
             <div class="quick-add-label">Quick Add</div>
             <div class="quick-add-chips">
@@ -1266,8 +1302,22 @@ function renderExerciseLibrary() {
         </div>`
         : '';
 
+    // Gym-suggested exercises (Phase 16.2) — only in unfiltered view
+    const gymSuggestedHTML = (!isFiltered && gymSuggestedExercises.length > 0 && gymLocationName)
+        ? `<div class="quick-add-section">
+            <div class="quick-add-label"><i class="fas fa-map-marker-alt"></i> Suggested for ${escapeHtml(gymLocationName)}</div>
+            <div class="quick-add-chips">
+                ${gymSuggestedExercises.slice(0, 12).map((ex) => {
+                    const name = ex.name || ex.machine;
+                    const chipClass = ex.usedBefore ? 'quick-add-chip quick-add-chip--used' : 'quick-add-chip';
+                    return `<button class="${chipClass}" data-exercise-name="${escapeAttr(name)}" data-equipment="${escapeAttr(ex.equipment || '')}">${escapeHtml(name)}</button>`;
+                }).join('')}
+            </div>
+        </div>`
+        : '';
+
     // Render grouped exercises
-    grid.innerHTML = quickAddHTML + sortedBodyParts
+    grid.innerHTML = quickAddHTML + gymSuggestedHTML + sortedBodyParts
         .map((bodyPart) => {
             const exercises = grouped[bodyPart];
             const exerciseCards = exercises

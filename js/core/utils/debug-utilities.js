@@ -5,6 +5,7 @@ import { AppState } from './app-state.js';
 import { showNotification } from '../ui/ui-helpers.js';
 import { loadExerciseHistory } from '../data/data-manager.js';
 import { getDateString } from './date-helpers.js';
+import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 
 // ===================================================================
 // DEBUG FUNCTIONS
@@ -1805,4 +1806,122 @@ export async function renameExercise(oldName, newName) {
         showNotification('Error renaming exercise', 'error');
         throw error;
     }
+}
+
+// ===================================================================
+// EQUIPMENT BACKFILL FROM WORKOUT HISTORY
+// ===================================================================
+
+/**
+ * Scan workout history and backfill equipment data into templates.
+ * For each template exercise, finds the most recent workout where that exercise
+ * was done with equipment and updates the template.
+ *
+ * Run from console: window.backfillEquipmentFromHistory()
+ * Pass dryRun=true to preview changes without saving.
+ */
+export async function backfillEquipmentFromHistory(dryRun = false) {
+    if (!AppState.currentUser) {
+        console.error('❌ Must be logged in');
+        return;
+    }
+
+    console.log(`🔧 ${dryRun ? '[DRY RUN] ' : ''}Backfilling equipment from workout history...`);
+
+    const { collection, query, orderBy, getDocs } = await import('../data/firebase-config.js');
+    const workoutManager = new FirebaseWorkoutManager(AppState);
+
+    // Load all workouts and templates
+    const workoutsRef = collection(
+        (await import('../data/firebase-config.js')).db,
+        'users', AppState.currentUser.uid, 'workouts'
+    );
+    const q = query(workoutsRef, orderBy('date', 'desc'));
+    const snapshot = await getDocs(q);
+
+    const workouts = [];
+    snapshot.forEach(doc => workouts.push({ id: doc.id, ...doc.data() }));
+    console.log(`📊 Found ${workouts.length} workouts`);
+
+    // Build a map: exerciseName → most recent equipment + location
+    const equipmentMap = new Map();
+    for (const workout of workouts) {
+        if (!workout.exercises) continue;
+        for (const [key, exercise] of Object.entries(workout.exercises)) {
+            const name = exercise.name || workout.exerciseNames?.[key];
+            if (!name || !exercise.equipment) continue;
+
+            // Only keep the most recent (workouts are sorted desc)
+            if (!equipmentMap.has(name)) {
+                equipmentMap.set(name, {
+                    equipment: exercise.equipment,
+                    equipmentLocation: exercise.equipmentLocation || workout.location || '',
+                    fromWorkout: workout.date,
+                });
+            }
+        }
+    }
+
+    console.log(`🏋️ Found equipment data for ${equipmentMap.size} exercises:`);
+    for (const [name, data] of equipmentMap) {
+        console.log(`  ${name}: "${data.equipment}" at "${data.equipmentLocation}" (from ${data.fromWorkout})`);
+    }
+
+    // Load all user templates
+    const templates = await workoutManager.getUserWorkoutTemplates();
+    const customTemplates = templates.filter(t => !t.isDefault);
+    console.log(`📋 Found ${customTemplates.length} custom templates to check`);
+
+    let templatesUpdated = 0;
+    let exercisesUpdated = 0;
+
+    for (const template of customTemplates) {
+        if (!template.exercises || !template.exercises.length) continue;
+
+        let changed = false;
+        const updatedExercises = template.exercises.map(ex => {
+            const name = ex.name || ex.machine;
+            if (!name) return ex;
+
+            const historyData = equipmentMap.get(name);
+            if (!historyData) return ex;
+
+            // Only update if template has no equipment or different equipment
+            const currentEquipment = ex.equipment || '';
+            if (currentEquipment === historyData.equipment) return ex;
+
+            changed = true;
+            exercisesUpdated++;
+            console.log(`  ✏️ ${template.name} → ${name}: "${currentEquipment || '(none)'}" → "${historyData.equipment}"`);
+            return {
+                ...ex,
+                equipment: historyData.equipment,
+                equipmentLocation: historyData.equipmentLocation || ex.equipmentLocation || '',
+            };
+        });
+
+        if (changed) {
+            templatesUpdated++;
+            if (!dryRun) {
+                await workoutManager.updateWorkoutTemplate(template.id, {
+                    exercises: updatedExercises,
+                });
+            }
+        }
+    }
+
+    const summary = `${dryRun ? '[DRY RUN] ' : ''}Updated ${exercisesUpdated} exercises across ${templatesUpdated} templates`;
+    console.log(`✅ ${summary}`);
+    showNotification(summary, templatesUpdated > 0 ? 'success' : 'info');
+
+    if (dryRun && templatesUpdated > 0) {
+        console.log('\n💡 Run window.backfillEquipmentFromHistory(false) to apply changes');
+    }
+
+    // Refresh cached plans
+    if (!dryRun && templatesUpdated > 0) {
+        AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
+    }
+
+    return { templatesUpdated, exercisesUpdated, equipmentMap: Object.fromEntries(equipmentMap) };
 }

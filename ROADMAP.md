@@ -4021,13 +4021,9 @@ When building a template or adding exercises mid-workout:
 - Based on equipment at the current/selected location
 - Rank by: exercises the user has done before > popular exercises > all available
 
-### 16.3 Equipment availability awareness
+### 16.3 Equipment availability awareness — SKIPPED
 
-Optional stretch goal:
-
-- Let users mark equipment as "in use" or "out of order"
-- Suggest alternative exercises when preferred equipment is unavailable
-- This could be manual (user taps "in use") or time-based (auto-clear after 30 min)
+~~Optional stretch goal — skipped in favor of shipping 16.1 + 16.2.~~
 
 ---
 
@@ -4456,13 +4452,82 @@ Add `tests/unit/ai-coach-integration.test.js` (mock the API call):
 
 ## Phase 18: DEXA Integration
 
-Integration with DEXA body composition scans for intelligent workout recommendations. Adapted from ENHANCEMENTS.md. Depends on Phase 12 (body measurements infrastructure). Now powered by the AI Coach from Phase 17 for scan interpretation.
+Integration with DEXA body composition scans using hybrid PDF upload + AI extraction. Works with any DEXA provider (Bodyspec, DexaFit, university labs, hospitals, etc.). Depends on Phase 12 (body measurements infrastructure) and Phase 17 (Cloud Functions + Claude API).
 
-### 18.1 DEXA data import
+### 18.1 DEXA scan upload (hybrid approach)
 
-- Manual entry form for DEXA scan results: total body fat %, lean mass by region (arms, legs, trunk), bone density
-- Store in Firestore: `users/{userId}/dexa/{scanId}` with `{ date, totalBodyFat, leanMass: { leftArm, rightArm, leftLeg, rightLeg, trunk }, boneDensity, scanProvider, notes }`
-- Optional: photo upload of DEXA report for reference
+**PDF upload with AI-powered extraction:**
+
+1. User uploads DEXA scan report PDF (downloaded from their provider's patient portal)
+2. PDF stored in Firebase Storage: `users/{userId}/dexa-reports/{scanId}.pdf`
+3. Cloud Function sends PDF to Claude API for structured data extraction
+4. Extracted values pre-fill the entry form for user review
+5. User confirms/corrects values, then saves
+
+**Extracted fields (pre-filled from PDF):**
+
+- Scan date, provider name
+- Total body fat %
+- Regional body fat % (arms, legs, trunk)
+- Lean mass by region: `{ leftArm, rightArm, leftLeg, rightLeg, trunk }` (lbs or kg)
+- Fat mass by region (lbs or kg)
+- Bone mineral density (BMD) T-score and Z-score
+- Visceral adipose tissue (VAT) estimate
+- Total body weight at time of scan
+
+**Claude API extraction prompt strategy:**
+
+- Send PDF as document input with structured extraction prompt
+- Request JSON output matching the Firestore schema
+- Include confidence scores per field so the UI can highlight low-confidence values for user attention
+- Handle varied report formats (different providers use different layouts)
+
+**Manual entry fallback:**
+
+- Full form available if user prefers to type values directly
+- Same form used for review/correction after AI extraction
+- All fields optional except date and total body fat %
+
+**Firestore schema:** `users/{userId}/dexa/{scanId}`
+
+```javascript
+{
+  date: "2026-04-01",                    // Scan date (YYYY-MM-DD)
+  provider: "Bodyspec",                  // Optional provider name
+  totalBodyFat: 18.5,                    // Total body fat %
+  regionFat: {                           // Regional body fat % (optional)
+    leftArm: 16.2, rightArm: 15.8,
+    leftLeg: 20.1, rightLeg: 19.7,
+    trunk: 19.3
+  },
+  leanMass: {                            // Regional lean mass in lbs (optional)
+    leftArm: 7.8, rightArm: 8.1,
+    leftLeg: 20.3, rightLeg: 21.0,
+    trunk: 62.5
+  },
+  fatMass: {                             // Regional fat mass in lbs (optional)
+    leftArm: 1.5, rightArm: 1.5,
+    leftLeg: 5.1, rightLeg: 4.9,
+    trunk: 15.2
+  },
+  massUnit: "lbs",                       // Unit for mass values
+  boneDensity: {                         // Optional
+    tScore: 1.2,
+    zScore: 1.5
+  },
+  vat: 0.8,                             // Visceral adipose tissue (lbs, optional)
+  totalWeight: 185.3,                    // Body weight at scan time (optional)
+  reportUrl: "dexa-reports/scan123.pdf", // Firebase Storage path
+  notes: "First scan of 2026",
+  extractionConfidence: {                // AI confidence per field (0-1)
+    totalBodyFat: 0.98,
+    leanMass: 0.92,
+    boneDensity: 0.85
+  },
+  createdAt: "2026-04-01T10:00:00.000Z",
+  version: "1.0"
+}
+```
 
 ### 18.2 Lagging muscle group detection
 
@@ -4485,6 +4550,15 @@ function identifyLaggingGroups(dexaData) {
   }
 
   // Similar for legs
+  const legDiff = Math.abs(leftLeg - rightLeg) / Math.max(leftLeg, rightLeg);
+  if (legDiff > 0.05) {
+    imbalances.push({
+      type: 'leg-imbalance',
+      weaker: leftLeg < rightLeg ? 'left' : 'right',
+      difference: (legDiff * 100).toFixed(1) + '%'
+    });
+  }
+
   // Trunk-to-limb ratio analysis
   // Compare to population norms if available
 
@@ -4508,6 +4582,7 @@ On the Stats page, add a section showing:
 - DEXA scan timeline with body fat % and lean mass trends
 - Overlay with workout volume by body part to show if training is addressing weak areas
 - Before/after comparison between scans
+- Lean mass change vs. training volume scatter plot
 
 ---
 

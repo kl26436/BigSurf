@@ -273,6 +273,13 @@ export async function completeWorkout() {
         }
     }
 
+    // Auto-sync equipment selections back to template (Phase 16)
+    if (!isEditingHistorical && completedWorkoutData.templateId) {
+        syncEquipmentToTemplate(completedWorkoutData).catch(err => {
+            console.error('Equipment sync failed (non-critical):', err);
+        });
+    }
+
     // Reset state BEFORE showing summary (critical order!)
     AppState.reset();
     AppState.clearTimers();
@@ -523,6 +530,52 @@ async function updateExistingTemplate(workoutData) {
         console.error('Error updating template:', error);
         showNotification('Failed to update template', 'error');
     }
+}
+
+/**
+ * Silently sync equipment selections from a completed workout back to its template.
+ * Only updates equipment fields — does not change reps, weights, or sets.
+ */
+async function syncEquipmentToTemplate(workoutData) {
+    if (!workoutData.templateId || !AppState.currentUser) return;
+
+    const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+    const workoutManager = new FirebaseWorkoutManager(AppState);
+
+    // Load the current template
+    const templates = await workoutManager.getUserWorkoutTemplates();
+    const template = templates.find(t => t.id === workoutData.templateId);
+    if (!template || !template.exercises || template.isDefault) return;
+
+    // Check if any equipment actually changed
+    let hasChanges = false;
+    const updatedExercises = template.exercises.map((ex, i) => {
+        const key = `exercise_${i}`;
+        const actual = workoutData.exercises?.[key];
+        if (!actual) return ex;
+
+        const newEquipment = actual.equipment || '';
+        const newLocation = actual.equipmentLocation || '';
+
+        if (newEquipment && newEquipment !== (ex.equipment || '')) {
+            hasChanges = true;
+            return { ...ex, equipment: newEquipment, equipmentLocation: newLocation || ex.equipmentLocation || '' };
+        }
+        if (newLocation && newLocation !== (ex.equipmentLocation || '')) {
+            hasChanges = true;
+            return { ...ex, equipmentLocation: newLocation };
+        }
+        return ex;
+    });
+
+    if (!hasChanges) return;
+
+    await workoutManager.updateWorkoutTemplate(workoutData.templateId, {
+        exercises: updatedExercises,
+    });
+
+    // Refresh cached plans
+    AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
 }
 
 export function toggleWorkoutOverflowMenu() {
