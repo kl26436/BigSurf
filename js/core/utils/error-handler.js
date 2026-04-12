@@ -61,6 +61,63 @@ export function clearErrorLog() {
 // ===================================================================
 
 /**
+ * Snapshot the current app state for error context.
+ * Tells a developer what the user was doing when the error hit.
+ */
+function getAppContext() {
+    const ctx = {};
+
+    // Which page/section is visible?
+    const sections = [
+        'dashboard', 'active-workout', 'workout-selector', 'stats-section',
+        'workout-history-section', 'workout-management-section', 'exercise-manager-section',
+        'settings-section', 'plate-calculator-section', 'equipment-library-section',
+        'location-management-section',
+    ];
+    for (const id of sections) {
+        const el = document.getElementById(id);
+        if (el && !el.classList.contains('hidden')) {
+            ctx.activePage = id;
+            break;
+        }
+    }
+
+    // Any modal open?
+    const openModal = document.querySelector('dialog[open], .modal:not(.hidden)');
+    if (openModal) {
+        ctx.openModal = openModal.id || openModal.className;
+    }
+
+    // Workout in progress?
+    if (AppState.currentWorkout) {
+        ctx.workoutType = AppState.currentWorkout.day || AppState.currentWorkout.name || null;
+        ctx.workoutStarted = AppState.workoutStartTime ? new Date(AppState.workoutStartTime).toISOString() : null;
+
+        // How many exercises / sets completed?
+        const exercises = AppState.savedData?.exercises;
+        if (exercises) {
+            const keys = Object.keys(exercises);
+            ctx.exerciseCount = keys.length;
+            ctx.completedSets = keys.reduce((sum, k) => {
+                const sets = exercises[k]?.sets || [];
+                return sum + sets.filter(s => s.reps && s.weight).length;
+            }, 0);
+        }
+    }
+
+    // Focused exercise?
+    if (AppState.focusedExerciseIndex !== null && AppState.focusedExerciseIndex !== undefined) {
+        const ex = AppState.savedData?.exercises?.[`exercise_${AppState.focusedExerciseIndex}`];
+        if (ex) ctx.focusedExercise = ex.name;
+    }
+
+    // Online status
+    ctx.online = navigator.onLine;
+
+    return ctx;
+}
+
+/**
  * Log an error entry to the in-memory buffer and optionally persist to Firestore.
  * @param {Object} entry
  * @param {string} entry.message - Human-readable message
@@ -71,6 +128,12 @@ export function clearErrorLog() {
  * @param {Object} [entry.context] - Extra context (e.g., exerciseName, workoutType)
  */
 function logError(entry) {
+    // Merge caller-provided context with auto-captured app context
+    const appContext = getAppContext();
+    const mergedContext = entry.context
+        ? { ...appContext, ...entry.context }
+        : appContext;
+
     const record = {
         id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         timestamp: new Date().toISOString(),
@@ -79,7 +142,7 @@ function logError(entry) {
         source: entry.source || null,
         severity: entry.severity || 'error',
         shownToUser: entry.shownToUser || false,
-        context: entry.context || null,
+        context: mergedContext,
         url: typeof window !== 'undefined' ? window.location.href : null,
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
     };
@@ -94,8 +157,8 @@ function logError(entry) {
     unreadErrorCount++;
     if (onBadgeUpdate) onBadgeUpdate(unreadErrorCount);
 
-    // Persist critical errors to Firestore (non-blocking)
-    if (record.severity === 'error') {
+    // Persist errors and warnings to Firestore (non-blocking)
+    if (record.severity === 'error' || record.severity === 'warn') {
         persistErrorToFirestore(record).catch(() => {
             // Can't do much if persistence itself fails — already logged in memory
         });
@@ -140,21 +203,22 @@ export function captureWarning(message, source, context) {
 // ===================================================================
 
 const FIRESTORE_LOG_COLLECTION = 'errorLogs';
-const MAX_FIRESTORE_LOGS = 50; // Keep last 50 in Firestore
+const MAX_FIRESTORE_LOGS = 200; // Keep last 200 in Firestore (global across all users)
 
 async function persistErrorToFirestore(record) {
     if (!AppState.currentUser) return;
 
     try {
-        const { db, doc, setDoc, collection, query, orderBy, limit, getDocs, deleteDoc } =
+        const { db, doc, setDoc } =
             await import('../data/firebase-config.js');
 
-        const userId = AppState.currentUser.uid;
         const docId = record.id;
 
-        // Write the error doc
-        const errorRef = doc(db, 'users', userId, FIRESTORE_LOG_COLLECTION, docId);
+        // Write to top-level errorLogs collection (all users, one place for devs)
+        const errorRef = doc(db, FIRESTORE_LOG_COLLECTION, docId);
         await setDoc(errorRef, {
+            userId: AppState.currentUser.uid,
+            userEmail: AppState.currentUser.email || null,
             timestamp: record.timestamp,
             message: record.message,
             stack: record.stack,
@@ -165,22 +229,21 @@ async function persistErrorToFirestore(record) {
             userAgent: record.userAgent,
         });
 
-        // Trim old entries (keep MAX_FIRESTORE_LOGS)
-        // Only run cleanup occasionally to avoid extra reads
-        if (Math.random() < 0.1) {
-            await trimFirestoreErrors(userId);
+        // Trim old entries occasionally to avoid unbounded growth
+        if (Math.random() < 0.05) {
+            await trimFirestoreErrors();
         }
     } catch (_) {
         // Silently fail — we still have the in-memory log
     }
 }
 
-async function trimFirestoreErrors(userId) {
+async function trimFirestoreErrors() {
     try {
-        const { db, collection, query, orderBy, getDocs, deleteDoc, doc } =
+        const { db, collection, query, orderBy, getDocs, deleteDoc } =
             await import('../data/firebase-config.js');
 
-        const logsRef = collection(db, 'users', userId, FIRESTORE_LOG_COLLECTION);
+        const logsRef = collection(db, FIRESTORE_LOG_COLLECTION);
         const q = query(logsRef, orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
 
@@ -196,7 +259,7 @@ async function trimFirestoreErrors(userId) {
 }
 
 /**
- * Load persisted errors from Firestore (for viewing across sessions).
+ * Load persisted errors from Firestore (all users — developer view).
  */
 export async function loadPersistedErrors() {
     if (!AppState.currentUser) return [];
@@ -205,8 +268,7 @@ export async function loadPersistedErrors() {
         const { db, collection, query, orderBy, limit, getDocs } =
             await import('../data/firebase-config.js');
 
-        const userId = AppState.currentUser.uid;
-        const logsRef = collection(db, 'users', userId, FIRESTORE_LOG_COLLECTION);
+        const logsRef = collection(db, FIRESTORE_LOG_COLLECTION);
         const q = query(logsRef, orderBy('timestamp', 'desc'), limit(MAX_FIRESTORE_LOGS));
         const snapshot = await getDocs(q);
 
@@ -226,8 +288,7 @@ export async function clearPersistedErrors() {
         const { db, collection, query, getDocs, deleteDoc } =
             await import('../data/firebase-config.js');
 
-        const userId = AppState.currentUser.uid;
-        const logsRef = collection(db, 'users', userId, FIRESTORE_LOG_COLLECTION);
+        const logsRef = collection(db, FIRESTORE_LOG_COLLECTION);
         const snapshot = await getDocs(query(logsRef));
 
         for (const d of snapshot.docs) {
