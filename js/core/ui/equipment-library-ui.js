@@ -295,33 +295,89 @@ export async function saveEquipmentNotes(equipmentId, notes) {
     }, 800);
 }
 
-export async function assignExerciseToEquipment(equipmentId) {
-    const exercises = AppState.exerciseDatabase || [];
+let assigningToEquipmentId = null;
+
+export function assignExerciseToEquipment(equipmentId) {
+    assigningToEquipmentId = equipmentId;
     const equipment = allEquipment.find(e => e.id === equipmentId);
     const existing = new Set(equipment?.exerciseTypes || []);
 
-    // Build a simple picker
-    const available = exercises
-        .map(ex => ex.name || ex.machine)
-        .filter(name => name && !existing.has(name))
-        .sort();
+    const exercises = (AppState.exerciseDatabase || [])
+        .map(ex => ({ name: ex.name || ex.machine, bodyPart: ex.bodyPart || ex.category || '' }))
+        .filter(ex => ex.name && !existing.has(ex.name))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
-    const name = prompt('Exercise name to assign:\n\n' + available.slice(0, 20).join(', ') + (available.length > 20 ? '...' : ''));
-    if (!name?.trim()) return;
+    // Group by body part
+    const groups = new Map();
+    exercises.forEach(ex => {
+        const group = ex.bodyPart || 'Other';
+        if (!groups.has(group)) groups.set(group, []);
+        groups.get(group).push(ex);
+    });
+
+    const container = document.getElementById('equipment-library-content');
+    if (!container) return;
+
+    let listHTML = '';
+    for (const [group, items] of groups) {
+        listHTML += `<div class="equip-lib-group-header" style="margin-top: 12px;"><span>${escapeHtml(group)}</span><span class="equip-lib-group-count">${items.length}</span></div>`;
+        listHTML += items.map(ex => `
+            <div class="row-card equip-lib-item" onclick="confirmAssignExercise('${escapeAttr(ex.name)}')">
+                <div class="row-card__content">
+                    <span class="row-card__title">${escapeHtml(ex.name)}</span>
+                </div>
+                <div class="row-card__action"><i class="fas fa-plus" style="color: var(--primary);"></i></div>
+            </div>
+        `).join('');
+    }
+
+    container.innerHTML = `
+        <div style="padding: var(--pad-page);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <button class="btn-icon" onclick="openEquipmentDetail('${escapeAttr(equipmentId)}')" aria-label="Back">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h3 style="flex: 1; margin: 0;">Assign Exercise</h3>
+            </div>
+            <div class="equip-lib-search" style="margin-bottom: 12px;">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search exercises..." oninput="filterAssignList(this.value)">
+            </div>
+            <div id="assign-exercise-list">
+                ${exercises.length === 0 ? '<div class="empty-state"><p>All exercises already assigned</p></div>' : listHTML}
+            </div>
+        </div>
+    `;
+}
+
+export function filterAssignList(term) {
+    const items = document.querySelectorAll('#assign-exercise-list .equip-lib-item');
+    const lower = term.toLowerCase();
+    items.forEach(item => {
+        const name = item.querySelector('.row-card__title')?.textContent.toLowerCase() || '';
+        item.style.display = name.includes(lower) ? '' : 'none';
+    });
+}
+
+export async function confirmAssignExercise(exerciseName) {
+    if (!assigningToEquipmentId) return;
+    const equipmentId = assigningToEquipmentId;
 
     try {
         const userId = AppState.currentUser.uid;
         await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), {
-            exerciseTypes: arrayUnion(name.trim()),
+            exerciseTypes: arrayUnion(exerciseName),
         });
 
         // Update cache
+        const equipment = allEquipment.find(e => e.id === equipmentId);
         if (equipment) {
             if (!equipment.exerciseTypes) equipment.exerciseTypes = [];
-            equipment.exerciseTypes.push(name.trim());
+            equipment.exerciseTypes.push(exerciseName);
         }
 
-        showNotification(`Assigned "${name.trim()}"`, 'success', 1500);
+        showNotification(`Assigned "${exerciseName}"`, 'success', 1500);
+        assigningToEquipmentId = null;
         openEquipmentDetail(equipmentId);
     } catch (error) {
         console.error('Error assigning exercise:', error);

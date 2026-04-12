@@ -13,7 +13,7 @@ import { exportWorkoutData } from './core/data/data-manager.js';
 import {
     openEquipmentLibrary, openEquipmentDetail, backToEquipmentList,
     filterEquipmentByLocation, filterEquipmentBySearch,
-    assignExerciseToEquipment, unassignExercise,
+    assignExerciseToEquipment, filterAssignList, confirmAssignExercise, unassignExercise,
     editEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
     saveEquipmentNotes, showAddEquipmentFlow,
 } from './core/ui/equipment-library-ui.js';
@@ -663,6 +663,8 @@ window.backToEquipmentList = backToEquipmentList;
 window.filterEquipmentByLocation = filterEquipmentByLocation;
 window.filterEquipmentBySearch = filterEquipmentBySearch;
 window.assignExerciseToEquipment = assignExerciseToEquipment;
+window.filterAssignList = filterAssignList;
+window.confirmAssignExercise = confirmAssignExercise;
 window.unassignExercise = unassignExercise;
 window.editEquipmentExerciseVideoFromLib = editEquipmentExerciseVideoFromLib;
 window.deleteEquipmentFromLibrary = deleteEquipmentFromLibrary;
