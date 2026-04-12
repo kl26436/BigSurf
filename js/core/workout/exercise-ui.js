@@ -28,7 +28,8 @@ import {
     restoreModalRestTimer,
     autoStartRestTimer,
 } from './rest-timer.js';
-import { Config } from '../utils/config.js';
+import { Config, CATEGORY_COLORS } from '../utils/config.js';
+import { getWorkoutCategory } from '../ui/template-selection.js';
 
 // ===================================================================
 // EVENT DELEGATION FOR EXERCISE MODAL
@@ -469,13 +470,25 @@ export function createExerciseCard(exercise, index) {
     progressRow.classList.add('clickable');
     progressRow.addEventListener('click', () => window.focusExercise(index));
 
-    const progressTrack = document.createElement('div');
-    progressTrack.className = 'progress-bar-track';
-    const progressFill = document.createElement('div');
-    progressFill.className = 'progress-bar-fill';
-    progressFill.style.width = `${progressPercent}%`;
-    progressTrack.appendChild(progressFill);
-    progressRow.appendChild(progressTrack);
+    // SVG mini progress ring
+    const category = getWorkoutCategory(AppState.currentWorkout?.workoutType || AppState.savedData?.workoutType || '');
+    const categoryColor = CATEGORY_COLORS[category] || CATEGORY_COLORS.Other;
+    const ringColor = isCompleted ? 'var(--success)' : categoryColor;
+    const circumference = 2 * Math.PI * 18;
+    const offset = circumference - (progressPercent / 100) * circumference;
+
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    ring.setAttribute('class', 'exercise-mini-ring');
+    ring.setAttribute('width', '40');
+    ring.setAttribute('height', '40');
+    ring.setAttribute('viewBox', '0 0 44 44');
+    ring.innerHTML = `
+        <circle cx="22" cy="22" r="18" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/>
+        <circle cx="22" cy="22" r="18" stroke="${ringColor}" stroke-width="3" fill="none"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+            stroke-linecap="round" transform="rotate(-90 22 22)"/>
+    `;
+    progressRow.appendChild(ring);
 
     const progressText = document.createElement('span');
     progressText.className = 'progress-text';
@@ -605,21 +618,16 @@ export async function focusExercise(index) {
     }
     title.appendChild(metaRow);
 
-    // Row 3: Action pills
+    // Row 3: Primary action pills (visible) + overflow menu (hidden)
     const actionsRow = document.createElement('div');
     actionsRow.className = 'exercise-detail-actions';
 
+    // Primary actions — always visible
     const swapBtn = document.createElement('button');
     swapBtn.className = 'btn-text btn-small';
     swapBtn.innerHTML = '<i class="fas fa-exchange-alt"></i> Swap';
     swapBtn.addEventListener('click', () => replaceExercise(index));
     actionsRow.appendChild(swapBtn);
-
-    const editBtn = document.createElement('button');
-    editBtn.className = 'btn-text btn-small';
-    editBtn.innerHTML = '<i class="fas fa-pen"></i> Edit';
-    editBtn.addEventListener('click', () => window.editExerciseDefaults(exerciseName));
-    actionsRow.appendChild(editBtn);
 
     const equipBtn = document.createElement('button');
     equipBtn.className = 'btn-text btn-small';
@@ -627,49 +635,64 @@ export async function focusExercise(index) {
     equipBtn.addEventListener('click', () => window.changeExerciseEquipment(index));
     actionsRow.appendChild(equipBtn);
 
+    // More toggle
+    const moreToggle = document.createElement('button');
+    moreToggle.className = 'btn-text btn-small exercise-more-toggle';
+    moreToggle.innerHTML = '<i class="fas fa-ellipsis-h"></i> More';
+    moreToggle.addEventListener('click', () => {
+        const menu = document.getElementById(`exercise-overflow-${index}`);
+        if (menu) menu.classList.toggle('hidden');
+    });
+    actionsRow.appendChild(moreToggle);
+
+    title.appendChild(actionsRow);
+
+    // Overflow menu — hidden by default
+    const overflowMenu = document.createElement('div');
+    overflowMenu.id = `exercise-overflow-${index}`;
+    overflowMenu.className = 'exercise-overflow-menu hidden';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'exercise-overflow-item';
+    editBtn.innerHTML = '<i class="fas fa-pen"></i> Edit Defaults';
+    editBtn.addEventListener('click', () => window.editExerciseDefaults(exerciseName));
+    overflowMenu.appendChild(editBtn);
+
     // Superset/Ungroup button
     const currentGroup = exercise.group || AppState.savedData.exercises?.[`exercise_${index}`]?.group;
     if (currentGroup) {
         const ungroupBtn = document.createElement('button');
-        ungroupBtn.className = 'btn-text btn-small';
+        ungroupBtn.className = 'exercise-overflow-item';
         ungroupBtn.innerHTML = '<i class="fas fa-unlink"></i> Ungroup';
         ungroupBtn.addEventListener('click', () => window.ungroupExerciseFromWorkout(index));
-        actionsRow.appendChild(ungroupBtn);
+        overflowMenu.appendChild(ungroupBtn);
     } else {
         const nextIdx = index + 1;
         const hasNext = nextIdx < (AppState.currentWorkout?.exercises?.length || 0);
         if (hasNext) {
             const supersetBtn = document.createElement('button');
-            supersetBtn.className = 'btn-text btn-small';
+            supersetBtn.className = 'exercise-overflow-item';
             supersetBtn.innerHTML = '<i class="fas fa-link"></i> Superset';
             supersetBtn.addEventListener('click', () => window.supersetWithNext(index));
-            actionsRow.appendChild(supersetBtn);
+            overflowMenu.appendChild(supersetBtn);
         }
     }
 
-    // Plate calculator button
-    const platesBtn = document.createElement('button');
-    platesBtn.className = 'btn-text btn-small';
-    platesBtn.innerHTML = '<i class="fas fa-calculator"></i> Plates';
-    platesBtn.addEventListener('click', () => window.openPlateCalcPopover(index));
-    actionsRow.appendChild(platesBtn);
-
-    // Always show video button — resolveFormVideo handles equipment + exercise fallback
     const videoBtn = document.createElement('button');
-    videoBtn.className = 'btn-text btn-small';
+    videoBtn.className = 'exercise-overflow-item';
     videoBtn.id = `show-video-btn-${index}`;
-    videoBtn.innerHTML = '<i class="fas fa-play-circle"></i> Video';
+    videoBtn.innerHTML = '<i class="fas fa-play-circle"></i> Form Video';
     videoBtn.addEventListener('click', () => window.showExerciseVideoAndToggleButton(exercise.video || null, exerciseName, index));
-    actionsRow.appendChild(videoBtn);
+    overflowMenu.appendChild(videoBtn);
 
     const hideVideoBtn = document.createElement('button');
-    hideVideoBtn.className = 'btn-text btn-small hidden';
+    hideVideoBtn.className = 'exercise-overflow-item hidden';
     hideVideoBtn.id = `hide-video-btn-${index}`;
     hideVideoBtn.innerHTML = '<i class="fas fa-times"></i> Hide Video';
     hideVideoBtn.addEventListener('click', () => window.hideExerciseVideoAndToggleButton(index));
-    actionsRow.appendChild(hideVideoBtn);
+    overflowMenu.appendChild(hideVideoBtn);
 
-    title.appendChild(actionsRow);
+    title.appendChild(overflowMenu);
 
     // Define currentUnit FIRST
     const currentUnit = AppState.exerciseUnits[index] || AppState.globalUnit;
@@ -867,11 +890,17 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
                        value="${set.reps}"
                        onchange="updateSet(${exerciseIndex}, ${i}, 'reps', this.value)">
             </td>
-            <td>
+            <td class="set-weight-cell">
                 <input type="number" class="set-input" inputmode="decimal"
                        placeholder="${weightPlaceholder}"
                        value="${displayWeight}"
                        onchange="updateSet(${exerciseIndex}, ${i}, 'weight', this.value)">
+                <button class="plate-calc-inline-btn"
+                    onclick="openPlateCalcPopover(${exerciseIndex})"
+                    title="Plate calculator"
+                    aria-label="Calculate plates">
+                    <i class="fas fa-calculator"></i>
+                </button>
             </td>
             <td class="set-complete-cell">
                 <button class="set-check ${isSetDone ? 'checked' : ''}"

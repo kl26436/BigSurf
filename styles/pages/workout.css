@@ -402,24 +402,11 @@
 .exercise-progress-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 8px;
 }
-.progress-bar-track {
-    flex: 1;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
-    overflow: hidden;
-}
-.progress-bar-fill {
-    height: 100%;
-    background: var(--primary);
-    border-radius: 3px;
-    transition: width 0.3s;
-}
-.exercise-card.completed .progress-bar-fill {
-    background: var(--success);
+.exercise-mini-ring {
+    flex-shrink: 0;
 }
 .progress-text {
     font-size: 0.85rem;
@@ -460,6 +447,29 @@
 .set-row-warmup {
     opacity: 0.55;
 }
+
+/* Inline plate calculator button next to weight input */
+.set-weight-cell {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.plate-calc-inline-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 4px 5px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+.plate-calc-inline-btn:active {
+    opacity: 1;
+    color: var(--primary);
+}
+
 .set-type-btn {
     display: inline-flex;
     align-items: center;
