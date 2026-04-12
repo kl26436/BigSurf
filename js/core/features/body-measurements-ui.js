@@ -25,25 +25,26 @@ import {
  * @returns {string} HTML string
  */
 export async function renderBodyWeightCard() {
+    const emptyCard = `
+        <div class="hero-card bodyweight-card">
+            <div class="bodyweight-header">
+                <h3><i class="fas fa-weight-scale"></i> Body Weight</h3>
+            </div>
+            <div class="bodyweight-empty">
+                <p>Track your body weight to see trends over time.</p>
+                <button class="btn btn-primary btn-sm" onclick="showWeightEntryModal()">
+                    <i class="fas fa-plus"></i> Log Weight
+                </button>
+            </div>
+        </div>
+    `;
+
     try {
         const latest = await getLatestBodyWeight();
         const unit = AppState.globalUnit || 'lbs';
 
         if (!latest) {
-            // Empty state — prompt user to log first weight
-            return `
-                <div class="hero-card bodyweight-card">
-                    <div class="bodyweight-header">
-                        <h3><i class="fas fa-weight-scale"></i> Body Weight</h3>
-                    </div>
-                    <div class="bodyweight-empty">
-                        <p>Track your body weight to see trends over time.</p>
-                        <button class="btn btn-primary btn-sm" onclick="showWeightEntryModal()">
-                            <i class="fas fa-plus"></i> Log Weight
-                        </button>
-                    </div>
-                </div>
-            `;
+            return emptyCard;
         }
 
         // Convert to user's preferred unit for display
@@ -84,7 +85,7 @@ export async function renderBodyWeightCard() {
         `;
     } catch (error) {
         console.error('❌ Error rendering body weight card:', error);
-        return '';
+        return emptyCard;
     }
 }
 
