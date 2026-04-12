@@ -77,8 +77,6 @@
     background: var(--primary);
     color: #02100e;
 }
-/* Calendar grid is defined in the Additional Calendar Styles section below */
-
 /* Workout History List */
 .history-list {
     display: flex;
@@ -198,7 +196,26 @@
     font-weight: 600;
     padding: 8px 0;
 }
-/* Calendar grid - duplicate removed, see above */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+.calendar-day {
+    min-height: 42px;
+    padding: 6px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
 .calendar-day:hover {
     background: var(--bg-card-hi);
 }
