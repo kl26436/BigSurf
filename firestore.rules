@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Per-user data: workouts, templates, exercises, equipment, locations, preferences
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Error logs: any authenticated user can create; read/delete for debugging
+    match /errorLogs/{docId} {
+      allow create: if request.auth != null;
+      allow read, delete: if request.auth != null;
+    }
+  }
+}
