@@ -117,17 +117,20 @@ async function exchangeWithingsCode(code, callbackUrl) {
 /**
  * Sync weight data from Withings.
  * @param {number} [days=30] - Number of days to sync
+ * @param {Object} [options] - { silent: true } to suppress notifications (for auto-sync)
  */
-export async function syncWithingsWeight(days = 30) {
+export async function syncWithingsWeight(days = 30, options = {}) {
     if (!AppState.currentUser) return;
 
+    const silent = options.silent || false;
+
     try {
-        showNotification('Syncing from Withings...', 'info', 2000);
+        if (!silent) showNotification('Syncing from Withings...', 'info', 2000);
 
         const sync = httpsCallable(functions, 'withingsSyncWeight');
         const result = await sync({ days });
 
-        if (result.data?.success) {
+        if (result.data?.success && !silent) {
             const count = result.data.synced || 0;
             showNotification(
                 count > 0 ? `Synced ${count} weight entries from Withings` : 'Already up to date',
@@ -137,10 +140,12 @@ export async function syncWithingsWeight(days = 30) {
         }
     } catch (error) {
         console.error('❌ Withings sync error:', error);
-        const msg = error.message?.includes('not connected')
-            ? 'Withings not connected — tap Connect to set up'
-            : 'Withings sync failed';
-        showNotification(msg, 'error');
+        if (!silent) {
+            const msg = error.message?.includes('not connected')
+                ? 'Withings not connected — tap Connect to set up'
+                : 'Withings sync failed';
+            showNotification(msg, 'error');
+        }
     }
 }
 

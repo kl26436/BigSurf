@@ -398,15 +398,24 @@ export function setupAuthenticationListener() {
                     await showDashboard();
                     debugLog('📊 Dashboard should be visible now');
 
-                    // Process pending Withings OAuth callback (if user just came back from Withings auth)
+                    // Process pending Withings OAuth callback + auto-sync on load
                     try {
-                        const { processPendingWithingsCallback, getWithingsStatus } = await import('./features/withings-integration.js');
+                        const { processPendingWithingsCallback, getWithingsStatus, syncWithingsWeight } = await import('./features/withings-integration.js');
                         await processPendingWithingsCallback();
-                        // Update Withings UI status (non-blocking)
-                        getWithingsStatus().then(status => {
+                        // Check status and auto-sync if connected (non-blocking)
+                        getWithingsStatus().then(async (status) => {
                             if (window.updateWithingsUI) {
                                 window._withingsConnected = status.connected;
                                 window.updateWithingsUI(status.connected, status.lastSync);
+                            }
+                            // Auto-sync last 7 days on each app load if connected
+                            if (status.connected && !status.expired) {
+                                try {
+                                    await syncWithingsWeight(7, { silent: true });
+                                } catch (syncErr) {
+                                    // Silent fail — don't bother user if background sync fails
+                                    console.error('❌ Withings auto-sync failed:', syncErr);
+                                }
                             }
                         });
                     } catch (e) {
