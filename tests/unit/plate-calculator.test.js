@@ -2,31 +2,7 @@
 // Verifies greedy plate breakdown algorithm for lbs and kg
 
 import { describe, it, expect } from 'vitest';
-
-/**
- * Calculate plates needed per side given a target weight and bar weight.
- * Uses a greedy algorithm with available plate sizes.
- */
-function calculatePlates(targetWeight, barWeight = 45, availablePlates = [45, 35, 25, 10, 5, 2.5]) {
-    let perSide = (targetWeight - barWeight) / 2;
-    if (perSide < 0) return { plates: [], remainder: 0, error: 'Weight is less than bar' };
-    if (perSide === 0) return { plates: [], remainder: 0 };
-
-    const plates = [];
-    const sorted = [...availablePlates].sort((a, b) => b - a);
-
-    for (const plate of sorted) {
-        while (perSide >= plate) {
-            plates.push(plate);
-            perSide -= plate;
-        }
-    }
-
-    return {
-        plates,
-        remainder: Math.round(perSide * 100) / 100,
-    };
-}
+import { calculatePlates } from '../../js/core/features/plate-calculator.js';
 
 describe('calculatePlates', () => {
     describe('standard lbs plates', () => {

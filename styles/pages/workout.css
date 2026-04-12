@@ -794,3 +794,27 @@
     margin-left: 0.5rem;
 }
 
+/* ============================================
+   SUPERSET / CIRCUIT GROUPS
+   ============================================ */
+.superset-group {
+    border-left: 3px solid var(--superset-color, var(--primary));
+    border-radius: var(--radius-sm);
+    padding-left: 10px;
+    margin-bottom: var(--gap-items);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-items);
+}
+.superset-group-label {
+    font-size: var(--font-xs);
+    color: var(--superset-color, var(--primary));
+    font-weight: 600;
+    padding: 2px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.superset-group .exercise-card {
+    margin-bottom: 0;
+}
+

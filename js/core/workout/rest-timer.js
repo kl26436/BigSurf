@@ -4,6 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { Config } from '../utils/config.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
+import { getNextInGroup, isLastInGroupRound } from '../features/superset-manager.js';
 import {
     scheduleRestNotification,
     cancelRestNotification,
@@ -450,6 +451,29 @@ export function autoStartRestTimer(exerciseIndex, setIndex) {
     const modal = document.getElementById('exercise-modal');
     const modalHidden = modal?.classList.contains('hidden');
     const focusedMatch = AppState.focusedExerciseIndex === exerciseIndex;
+
+    // Superset logic: skip rest timer between exercises in the same group.
+    // Only start rest timer after the last exercise in the group completes its set.
+    const exercises = AppState.savedData.exercises || {};
+    const group = exercises[`exercise_${exerciseIndex}`]?.group
+        || AppState.currentWorkout?.exercises?.[exerciseIndex]?.group;
+
+    if (group) {
+        const lastInRound = isLastInGroupRound(
+            exerciseIndex, setIndex,
+            AppState.currentWorkout?.exercises || [],
+            AppState.savedData
+        );
+
+        if (!lastInRound) {
+            // Navigate to the next exercise in the superset instead of resting
+            const nextIdx = getNextInGroup(exerciseIndex, exercises);
+            if (nextIdx !== null && nextIdx !== exerciseIndex) {
+                window.focusExercise(nextIdx);
+                return;
+            }
+        }
+    }
 
     if (modal && !modalHidden && focusedMatch) {
         startModalRestTimer(exerciseIndex, Config.DEFAULT_REST_TIMER_SECONDS);

@@ -3671,41 +3671,332 @@ Add `tests/unit/social-feed.test.js`:
 
 ---
 
-## Phase 15: Equipment Manager Page
+## Phase 15: Equipment Library
 
-A dedicated page for managing gym equipment inventory across all locations. Adapted from ENHANCEMENTS.md.
+A gym-centric equipment management page. The core idea: tap a gym → see everything there → manage exercise assignments, form videos, and notes for each piece of equipment. This replaces the scattered equipment editing currently buried inside the exercise manager modal.
 
-### 15.1 Equipment manager UI
+### 15.1 Equipment library — top-level navigation
 
-Create `js/core/ui/equipment-manager-ui.js` with a full-page equipment management section:
+Create `js/core/ui/equipment-library-ui.js` as a full-page section accessible from the More menu (bottom sheet) and sidebar.
 
-- List all saved equipment grouped by location
-- Search/filter by equipment name, type, or location
-- Add new equipment with fields: name, type (Barbell/Dumbbell/Machine/Cable/Bodyweight), location(s), notes
-- Edit existing equipment inline
-- Delete with confirmation
-- Bulk operations: assign multiple equipment to a location
+**Entry point — location picker:**
 
-### 15.2 Equipment detail view
+When the user opens the equipment library, they first see their gyms:
 
-Tapping an equipment item shows:
+```html
+<div class="equipment-library">
+  <div class="section-header">
+    <h2 class="section-header__title">Equipment Library</h2>
+    <button class="btn btn-primary btn-small" onclick="showAddEquipmentFlow()">
+      <i class="fas fa-plus"></i> Add
+    </button>
+  </div>
 
-- Equipment name and type
-- Locations where it's available
-- Exercises that use this equipment (cross-reference from exercise library)
-- PR history for this specific equipment
-- Notes/settings (e.g., "Cable machine: use setting 5 for chest fly")
+  <!-- Location tabs / pills -->
+  <div class="location-pills">
+    <button class="category-pill active" onclick="filterEquipmentByLocation('all')">All</button>
+    ${locations.map(loc => `
+      <button class="category-pill" onclick="filterEquipmentByLocation('${loc.name}')">
+        ${loc.name}
+        <span class="pill-count">${loc.equipmentCount}</span>
+      </button>
+    `).join('')}
+  </div>
 
-### 15.3 Navigation integration
+  <!-- Search -->
+  <div class="equipment-search-wrap">
+    <i class="fas fa-search"></i>
+    <input type="text" class="exercise-search" placeholder="Search equipment..."
+           oninput="filterEquipmentBySearch(this.value)">
+  </div>
 
-- Add "Equipment" as an item in the More menu (bottom sheet from Phase 5.2)
-- Or add it as a sub-section within the existing Locations management page
+  <!-- Equipment list -->
+  <div id="equipment-list" class="equipment-list">
+    <!-- Grouped by equipment type: Machines, Barbells, Dumbbells, Cable, Benches, Other -->
+  </div>
+</div>
+```
 
-### 15.4 Sync with workout logging
+**Equipment list items** — use `.row-card` pattern with type icon + name + exercise count + chevron:
 
-When an exercise is logged with a specific piece of equipment during a workout:
-- If that equipment doesn't exist in the equipment list, offer to save it
-- Auto-associate equipment with the current workout location
+```html
+<div class="row-card equipment-item" onclick="openEquipmentDetail('${equipmentId}')">
+  <div class="row-card__icon" style="background: ${typeColor}20; color: ${typeColor}">
+    <i class="fas ${typeIcon}"></i>
+  </div>
+  <div class="row-card__content">
+    <span class="row-card__title">${equipmentName}</span>
+    <span class="row-card__subtitle">
+      ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}
+      ${locations.length > 1 ? ` · ${locations.length} locations` : ''}
+    </span>
+  </div>
+  <div class="row-card__action">
+    <i class="fas fa-chevron-right"></i>
+  </div>
+</div>
+```
+
+Equipment type icon mapping:
+```javascript
+const EQUIPMENT_TYPE_ICONS = {
+  'Machine':    { icon: 'fa-cog',        color: '#4A90D9' },
+  'Barbell':    { icon: 'fa-dumbbell',   color: '#D96A4A' },
+  'Dumbbell':   { icon: 'fa-dumbbell',   color: '#D9A74A' },
+  'Cable':      { icon: 'fa-link',       color: '#7B4AD9' },
+  'Bench':      { icon: 'fa-couch',      color: '#4AD9A7' },
+  'Rack':       { icon: 'fa-border-all', color: '#D94A7A' },
+  'Bodyweight': { icon: 'fa-person',     color: '#4AD9D9' },
+  'Other':      { icon: 'fa-wrench',     color: 'var(--text-muted)' },
+};
+```
+
+### 15.2 Equipment detail view — the hub for managing one piece of equipment
+
+Tapping an equipment item opens a detail view with everything about that equipment in one place:
+
+```html
+<div class="equipment-detail">
+  <!-- Header -->
+  <div class="equipment-detail-header">
+    <button class="btn-icon" onclick="closeEquipmentDetail()">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <h3>${equipmentName}</h3>
+    <button class="btn-icon" onclick="showEquipmentOptions('${equipmentId}')">
+      <i class="fas fa-ellipsis-h"></i>
+    </button>
+  </div>
+
+  <!-- Type + locations summary -->
+  <div class="equipment-detail-meta">
+    <span class="equipment-type-badge" style="background: ${typeColor}20; color: ${typeColor}">
+      <i class="fas ${typeIcon}"></i> ${equipmentType}
+    </span>
+    <div class="equipment-locations-list">
+      ${locations.map(loc => `
+        <span class="location-chip">
+          <i class="fas fa-map-marker-alt"></i> ${loc}
+        </span>
+      `).join('')}
+      <button class="btn-text btn-small" onclick="editEquipmentLocations('${equipmentId}')">
+        <i class="fas fa-plus"></i> Add location
+      </button>
+    </div>
+  </div>
+
+  <!-- === EXERCISES SECTION — the key feature === -->
+  <div class="section-header">
+    <h4 class="section-header__title">Exercises</h4>
+    <button class="section-header__action" onclick="assignExerciseToEquipment('${equipmentId}')">
+      + Assign Exercise
+    </button>
+  </div>
+
+  <div class="equipment-exercises-list">
+    ${exercises.map(ex => `
+      <div class="row-card">
+        <div class="row-card__content">
+          <span class="row-card__title">${ex.name}</span>
+          <span class="row-card__subtitle">
+            ${ex.videoUrl ? '<i class="fas fa-play-circle text-primary"></i> Video set' : '<i class="fas fa-video-slash text-muted"></i> No video'}
+            · Last used ${ex.lastUsed || 'never'}
+            ${ex.prWeight ? ` · PR: ${ex.prWeight} ${ex.prUnit}` : ''}
+          </span>
+        </div>
+        <div class="row-card__actions" style="display: flex; gap: 8px;">
+          <button class="btn-text" onclick="editEquipmentExerciseVideo('${equipmentId}', '${ex.name}')"
+                  title="Set form video">
+            <i class="fas fa-video"></i>
+          </button>
+          <button class="btn-text btn-text-danger" onclick="unassignExercise('${equipmentId}', '${ex.name}')"
+                  title="Remove exercise">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    `).join('')}
+  </div>
+
+  <!-- === FORM VIDEOS SECTION === -->
+  <div class="section-header">
+    <h4 class="section-header__title">Form Videos</h4>
+  </div>
+  <p class="text-muted" style="font-size: var(--font-sm); padding: 0 2px;">
+    Videos are per-exercise. When you view an exercise during a workout with this equipment, the equipment-specific video shows instead of the generic one.
+  </p>
+
+  <!-- === NOTES SECTION === -->
+  <div class="section-header">
+    <h4 class="section-header__title">Notes</h4>
+  </div>
+  <textarea class="form-input equipment-notes" placeholder="e.g., Cable machine: setting 5 for chest fly, setting 8 for tricep pushdown"
+            oninput="debouncedSaveEquipmentNotes('${equipmentId}', this.value)">${notes}</textarea>
+
+  <!-- === PR HISTORY for this equipment === -->
+  <div class="section-header">
+    <h4 class="section-header__title">Personal Records</h4>
+  </div>
+  <div class="equipment-pr-list">
+    ${prs.map(pr => `
+      <div class="row-card">
+        <div class="row-card__icon row-card__icon--warning">
+          <i class="fas fa-trophy"></i>
+        </div>
+        <div class="row-card__content">
+          <span class="row-card__title">${pr.exerciseName}</span>
+          <span class="row-card__subtitle">${pr.weight} ${pr.unit} × ${pr.reps} reps · ${pr.date}</span>
+        </div>
+      </div>
+    `).join('')}
+  </div>
+</div>
+```
+
+### 15.3 Assign exercise to equipment (+ multi-assign)
+
+The "Assign Exercise" button opens the exercise library picker. The user can select one or multiple exercises to link to this equipment:
+
+```javascript
+async function assignExerciseToEquipment(equipmentId) {
+  // Open exercise library in "picker" mode
+  // User can select multiple exercises (checkbox mode)
+  // On confirm, update the equipment document's exerciseTypes array
+  // Also update each selected exercise's equipment field if it doesn't have one
+
+  const selectedExercises = await showExercisePickerMulti();
+  if (!selectedExercises?.length) return;
+
+  const userId = AppState.currentUser.uid;
+  const equipRef = doc(db, 'users', userId, 'equipment', equipmentId);
+
+  await updateDoc(equipRef, {
+    exerciseTypes: arrayUnion(...selectedExercises.map(e => e.name))
+  });
+
+  showNotification(`Assigned ${selectedExercises.length} exercise${selectedExercises.length > 1 ? 's' : ''}`, 'success');
+  renderEquipmentDetail(equipmentId); // Refresh the view
+}
+```
+
+**Unassign** removes the exercise from `exerciseTypes` but does NOT delete historical workout data (the equipment name stays in past workout documents — it's just no longer linked going forward):
+
+```javascript
+async function unassignExercise(equipmentId, exerciseName) {
+  // Confirm: "Remove Leg Curl from Atlantis Leg Curl? Past workout data won't be affected."
+  if (!confirm(`Remove "${exerciseName}" from this equipment? Past workouts won't be affected.`)) return;
+
+  const userId = AppState.currentUser.uid;
+  const equipRef = doc(db, 'users', userId, 'equipment', equipmentId);
+
+  await updateDoc(equipRef, {
+    exerciseTypes: arrayRemove(exerciseName),
+    [`exerciseVideos.${exerciseName}`]: deleteField()  // Also remove exercise-specific video
+  });
+
+  showNotification('Exercise removed', 'success');
+  renderEquipmentDetail(equipmentId);
+}
+```
+
+### 15.4 Reassignment from equipment detail
+
+Integrate Phase 7.4's equipment reassignment directly into the equipment detail view. From the exercise row, add a "Move to..." action:
+
+```html
+<button class="btn-text" onclick="showReassignEquipment('${equipmentId}', '${equipmentName}', '${ex.name}')"
+        title="Reassign to different exercise">
+  <i class="fas fa-exchange-alt"></i>
+</button>
+```
+
+This triggers the same reassignment flow from Phase 7.4 (preview → confirm → batch update historical data), but launched from within the equipment library context instead of the exercise manager.
+
+### 15.5 Add equipment flow
+
+"Add" button at the top of the library opens a quick-add flow:
+
+```html
+<div class="add-equipment-flow">
+  <input class="form-input" id="new-equip-name" placeholder="Equipment name (e.g., Hammer Strength Flat Bench)">
+
+  <div class="equipment-type-grid">
+    ${Object.entries(EQUIPMENT_TYPE_ICONS).map(([type, {icon, color}]) => `
+      <button class="equipment-type-chip ${selected === type ? 'active' : ''}"
+              onclick="selectEquipmentType('${type}')"
+              style="--chip-color: ${color}">
+        <i class="fas ${icon}"></i>
+        <span>${type}</span>
+      </button>
+    `).join('')}
+  </div>
+
+  <div class="form-group">
+    <label>Location</label>
+    <select class="form-input" id="new-equip-location">
+      ${locations.map(l => `<option value="${l.name}">${l.name}</option>`).join('')}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Exercises (optional — you can assign later)</label>
+    <button class="btn btn-secondary btn-full" onclick="pickExercisesForNewEquipment()">
+      <i class="fas fa-plus"></i> Select Exercises
+    </button>
+    <div id="new-equip-exercises" class="selected-exercises-chips"></div>
+  </div>
+
+  <button class="btn btn-primary btn-full" onclick="saveNewEquipment()">
+    <i class="fas fa-check"></i> Save Equipment
+  </button>
+</div>
+```
+
+### 15.6 Auto-discover equipment from workout history
+
+On first visit to the equipment library (or via a "Scan History" button), offer to import equipment from past workouts:
+
+```javascript
+async function discoverEquipmentFromHistory() {
+  const workouts = await loadAllWorkouts();
+  const discovered = new Map(); // equipmentName → { exercises: Set, locations: Set }
+
+  workouts.forEach(w => {
+    if (!w.exercises) return;
+    Object.values(w.exercises).forEach((ex, i) => {
+      if (!ex.equipment) return;
+      const orig = w.originalWorkout?.exercises?.[i];
+      if (!discovered.has(ex.equipment)) {
+        discovered.set(ex.equipment, { exercises: new Set(), locations: new Set() });
+      }
+      const entry = discovered.get(ex.equipment);
+      if (orig?.machine) entry.exercises.add(orig.machine);
+      if (ex.equipmentLocation) entry.locations.add(ex.equipmentLocation);
+    });
+  });
+
+  // Compare with existing equipment records
+  // Show "We found X equipment in your history that isn't in your library yet"
+  // Let user confirm which to import
+}
+```
+
+### 15.7 Sync with workout logging
+
+When a workout is in progress and the user selects equipment for an exercise:
+- If the equipment exists in the library, auto-link and show the equipment-specific form video (Phase 7.5)
+- If the equipment is NEW (not in the library), show a subtle prompt after the workout: "You used 'Life Fitness Lat Pulldown' for the first time. Add to your equipment library?"
+- Auto-associate the equipment with the current GPS-detected location
+
+### 15.8 Navigation integration
+
+- Add "Equipment" item to the More menu bottom sheet (with wrench icon)
+- Add "Equipment" to the sidebar nav under the Settings section
+- Export all functions and assign to `window` in `main.js`:
+  - `openEquipmentLibrary`, `closeEquipmentDetail`, `filterEquipmentByLocation`, `filterEquipmentBySearch`
+  - `openEquipmentDetail`, `assignExerciseToEquipment`, `unassignExercise`
+  - `showAddEquipmentFlow`, `saveNewEquipment`, `discoverEquipmentFromHistory`
+  - `editEquipmentExerciseVideo`, `editEquipmentLocations`, `showEquipmentOptions`
 
 ---
 
@@ -4295,7 +4586,7 @@ Phase 11 (Plate Calculator)   → Depends on Phase 2 (exercise modal) and Phase 
 Phase 12 (Body Weight)        → Depends on Phase 5 (dashboard layout) and Phase 8.3 (settings for unit prefs)
 Phase 13 (Data Export)        → Depends on Phase 8.2 (JSON export foundation) and Phase 8.3 (More menu)
 Phase 14 (Social)             → Depends on Phase 6 (completion summary for share hooks), Phase 9 (performance)
-Phase 15 (Equipment Manager)  → Depends on Phase 5 (dashboard), existing equipment/location modules
+Phase 15 (Equipment Library)  → Depends on Phase 5 (More menu), Phase 7.4 (reassignment), Phase 7.5 (form videos), Phase 7A (design tokens). Moved to Sprint 3.
 Phase 16 (Equipment Planner)  → Depends on Phase 15 (Equipment Manager)
 Phase 17 (AI Coach)           → Rules engine: Depends on Phase 9 (perf). API: Depends on Cloud Functions setup.
 Phase 18 (DEXA Integration)   → Depends on Phase 12 (body measurements), Phase 17 (AI Coach for interpretation)
@@ -4314,27 +4605,27 @@ Phase 19 (Community Gym DB)   → Depends on Phase 15 (Equipment Manager), requi
 5. Phase 4 (template flow)
 6. Phase 6 (completion screen)
 
-**Sprint 3 — Polish, Design System & Core New Features:**
-7. Phase 7 (visual polish — icon fixes, badge fixes, calendar legend)
+**Sprint 3 — Polish, Design System, Equipment & Core New Features:**
+7. Phase 7 (visual polish — icon fixes, badge fixes, calendar legend, equipment reassignment, form videos)
 8. Phase 7A (design system & app-wide visual consistency — CSS split, token migration, per-screen redesigns)
-9. Phase 8 (new features — settings, onboarding, set types, data export)
-10. Phase 9 (performance — ongoing)
+9. Phase 15 (equipment library — gym-centric equipment management, exercise assignment, form videos per equipment)
+10. Phase 8 (new features — settings, onboarding, set types, data export)
+11. Phase 9 (performance — ongoing)
 
 **Sprint 4 — Advanced Training Features:**
-11. Phase 10 (superset & circuit support)
-12. Phase 11 (plate calculator)
+12. Phase 10 (superset & circuit support)
+13. Phase 11 (plate calculator)
 
 **Sprint 5 — Health & Data:**
-13. Phase 12 (body weight & measurements)
-14. Phase 13 (CSV export & JSON import)
+14. Phase 12 (body weight & measurements)
+15. Phase 13 (CSV export & JSON import)
 
 **Sprint 6 — Intelligence & Social:**
-15. Phase 17 (AI Coach — rules engine first, then Claude API integration)
-16. Phase 14 (social features — activity feed, PR sharing, challenges)
+16. Phase 17 (AI Coach — rules engine first, then Claude API integration)
+17. Phase 14 (social features — activity feed, PR sharing, challenges)
 
-**Sprint 7 — Equipment & Ecosystem:**
-17. Phase 15 (equipment manager page)
-18. Phase 16 (equipment-based plan builder)
+**Sprint 7 — Equipment Planner & Ecosystem:**
+18. Phase 16 (equipment-based plan builder — depends on Phase 15)
 
 **Sprint 8 — Body Composition & Community (aspirational):**
 19. Phase 18 (DEXA integration — powered by Phase 17 AI Coach)
@@ -4483,7 +4774,20 @@ After each phase, verify on a 375px mobile viewport:
 - [ ] Activity feed shows own and friends' workouts
 - [ ] Privacy controls work (public/friends/private)
 - [ ] PR celebrations post to feed
-- [ ] Equipment manager page lists all equipment across locations
+- [ ] Equipment library accessible from More menu and sidebar
+- [ ] Equipment library shows location filter pills with equipment counts per gym
+- [ ] Equipment list grouped by type with correct icons (Machine, Barbell, Cable, etc.)
+- [ ] Equipment search filters list in real-time
+- [ ] Equipment detail view shows: exercises, form videos, notes, PRs for that equipment
+- [ ] Can assign one or multiple exercises to equipment from the detail view
+- [ ] Can unassign an exercise from equipment (historical data preserved)
+- [ ] Can reassign equipment to different exercise from detail view (Phase 7.4 flow)
+- [ ] Per-exercise form videos editable from equipment detail view
+- [ ] Equipment notes save with debounce
+- [ ] Add equipment flow: name, type, location, optional exercise assignment
+- [ ] "Scan History" discovers equipment from past workouts not yet in library
+- [ ] New equipment used during workout triggers "Add to library?" prompt after workout
+- [ ] Equipment auto-associated with GPS-detected location during workout
 - [ ] Equipment-based plan builder suggests exercises for current location
 - [ ] DEXA scan data imports and identifies lagging muscle groups
 - [ ] AI Coach interprets DEXA data with training-aware context

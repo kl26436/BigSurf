@@ -1,80 +1,12 @@
 // Tests for exercise grouping / superset logic (Phase 10.5)
-// These functions will live in a superset module once Phase 10 is implemented.
 
 import { describe, it, expect } from 'vitest';
-
-/**
- * Assign exercises to a superset group.
- * @param {number[]} indices - Exercise indices to group
- * @param {Object} exercises - Exercises object keyed by exercise_N
- * @returns {string} The group letter assigned (A, B, C, ...)
- */
-function groupExercises(indices, exercises) {
-    const usedGroups = new Set();
-    for (const key of Object.keys(exercises)) {
-        if (exercises[key].group) usedGroups.add(exercises[key].group);
-    }
-    const nextGroup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find(l => !usedGroups.has(l));
-    if (!nextGroup) return null;
-    for (const idx of indices) {
-        const key = `exercise_${idx}`;
-        if (exercises[key]) exercises[key].group = nextGroup;
-    }
-    return nextGroup;
-}
-
-/**
- * Get map of group letter → array of exercise indices.
- * Exercises with group: null are excluded.
- */
-function getExerciseGroups(exercises) {
-    const groups = {};
-    for (const key of Object.keys(exercises)) {
-        const group = exercises[key].group;
-        if (!group) continue;
-        const idx = parseInt(key.split('_')[1]);
-        if (!groups[group]) groups[group] = [];
-        groups[group].push(idx);
-    }
-    return groups;
-}
-
-/**
- * Get the next exercise index in the same group (wraps around).
- */
-function getNextInGroup(currentIndex, exercises) {
-    const currentKey = `exercise_${currentIndex}`;
-    const group = exercises[currentKey]?.group;
-    if (!group) return null;
-
-    const groupIndices = [];
-    for (const key of Object.keys(exercises)) {
-        if (exercises[key].group === group) {
-            groupIndices.push(parseInt(key.split('_')[1]));
-        }
-    }
-    groupIndices.sort((a, b) => a - b);
-
-    const pos = groupIndices.indexOf(currentIndex);
-    return groupIndices[(pos + 1) % groupIndices.length];
-}
-
-/**
- * Remove an exercise from its group. If only one remains, ungroup it too.
- */
-function ungroupExercise(index, exercises) {
-    const key = `exercise_${index}`;
-    const group = exercises[key]?.group;
-    if (!group) return;
-
-    exercises[key].group = null;
-
-    // Check remaining members
-    const remaining = Object.keys(exercises).filter(k => exercises[k].group === group);
-    if (remaining.length === 1) {
-        exercises[remaining[0]].group = null;
-    }
-}
+import {
+    groupExercises,
+    getExerciseGroups,
+    getNextInGroup,
+    ungroupExercise,
+} from '../../js/core/features/superset-manager.js';
 
 // ===================================================================
 // TESTS

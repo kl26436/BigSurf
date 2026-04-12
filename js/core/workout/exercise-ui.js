@@ -12,6 +12,7 @@ import {
     openModal,
 } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
+import { getExerciseGroups } from '../features/superset-manager.js';
 import { setBottomNavVisible } from '../ui/navigation.js';
 import { saveWorkoutData, debouncedSaveWorkoutData, loadExerciseHistory, getLastSessionDefaults } from '../data/data-manager.js';
 import {
@@ -223,6 +224,9 @@ export function renderExercises() {
         container.appendChild(card);
     });
 
+    // Wrap consecutive same-group cards in superset group containers
+    wrapSupersetGroups(container);
+
     // Show empty state if no exercises
     if (AppState.currentWorkout.exercises.length === 0) {
         container.insertAdjacentHTML('beforeend', `
@@ -238,6 +242,44 @@ export function renderExercises() {
     reorderExercisesByCompletion(container);
 
     updateProgress(AppState);
+}
+
+const SUPERSET_COLORS = ['var(--primary)', 'var(--warning)', 'var(--highlight-warm)', 'var(--cat-push)', 'var(--cat-pull)'];
+
+function wrapSupersetGroups(container) {
+    const cards = Array.from(container.querySelectorAll('.exercise-card[data-group]'));
+    if (!cards.length) return;
+
+    // Collect groups in DOM order
+    const groupMap = {};
+    cards.forEach(card => {
+        const g = card.dataset.group;
+        if (!groupMap[g]) groupMap[g] = [];
+        groupMap[g].push(card);
+    });
+
+    const groupLetters = Object.keys(groupMap).sort();
+
+    groupLetters.forEach((letter, gi) => {
+        const groupCards = groupMap[letter];
+        if (groupCards.length < 2) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'superset-group';
+        wrapper.dataset.group = letter;
+        wrapper.style.setProperty('--superset-color', SUPERSET_COLORS[gi % SUPERSET_COLORS.length]);
+
+        // Label
+        const label = document.createElement('div');
+        label.className = 'superset-group-label';
+        const typeLabel = groupCards.length === 2 ? 'Superset' : 'Circuit';
+        label.textContent = `${typeLabel} ${letter}`;
+        wrapper.appendChild(label);
+
+        // Insert wrapper before first card, move all group cards into it
+        groupCards[0].parentNode.insertBefore(wrapper, groupCards[0]);
+        groupCards.forEach(card => wrapper.appendChild(card));
+    });
 }
 
 function reorderExercisesByCompletion(container) {
@@ -346,6 +388,12 @@ export function createExerciseCard(exercise, index) {
     const card = document.createElement('div');
     card.className = 'exercise-card';
     card.dataset.index = index;
+
+    // Read group from workout exercise or saved data
+    const group = exercise.group || AppState.savedData.exercises?.[`exercise_${index}`]?.group || null;
+    if (group) {
+        card.dataset.group = group;
+    }
 
     const unit = AppState.exerciseUnits[index] || AppState.globalUnit;
     const savedSets = AppState.savedData.exercises?.[`exercise_${index}`]?.sets || [];
