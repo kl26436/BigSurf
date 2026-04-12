@@ -799,7 +799,7 @@ export async function setProgressChartType(chartType) {
 
     // Update button states
     document.querySelectorAll('.chart-type-btn').forEach((btn) => {
-        btn.classList.toggle('active', btn.onclick.toString().includes(`'${chartType}'`));
+        btn.classList.toggle('active', btn.dataset.chartType === chartType);
     });
 
     if (selectedExerciseKey) {

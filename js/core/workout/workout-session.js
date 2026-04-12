@@ -263,6 +263,14 @@ export async function completeWorkout() {
             // PR detection failed — not critical, continue to summary
             console.error('PR detection failed:', err);
         }
+    } else {
+        // Historical edit — rebuild PRs so corrected values (e.g. fixed typos) are reflected
+        try {
+            const { PRTracker } = await import('../features/pr-tracker.js');
+            await PRTracker.rebuildPRsFromHistory();
+        } catch (err) {
+            console.error('PR rebuild after historical edit failed:', err);
+        }
     }
 
     // Reset state BEFORE showing summary (critical order!)
