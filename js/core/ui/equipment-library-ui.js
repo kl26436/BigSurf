@@ -56,14 +56,8 @@ function renderEquipmentLibrary() {
     });
     const locations = Array.from(locationSet).sort();
 
-    // Filter equipment
+    // Filter by search
     let filtered = allEquipment;
-    if (currentLocationFilter !== 'all') {
-        filtered = filtered.filter(eq =>
-            (eq.locations || []).includes(currentLocationFilter) ||
-            eq.location === currentLocationFilter
-        );
-    }
     if (currentSearchTerm) {
         const term = currentSearchTerm.toLowerCase();
         filtered = filtered.filter(eq =>
@@ -72,57 +66,96 @@ function renderEquipmentLibrary() {
         );
     }
 
-    container.innerHTML = `
-        <!-- Location pills -->
-        <div class="category-pills" style="padding: 0 var(--pad-page); margin-bottom: 12px;">
-            <button class="category-pill ${currentLocationFilter === 'all' ? 'active' : ''}"
-                    onclick="filterEquipmentByLocation('all')">All (${allEquipment.length})</button>
-            ${locations.map(loc => {
-                const count = allEquipment.filter(eq =>
-                    (eq.locations || []).includes(loc) || eq.location === loc
-                ).length;
-                return `<button class="category-pill ${currentLocationFilter === loc ? 'active' : ''}"
-                        onclick="filterEquipmentByLocation('${escapeAttr(loc)}')">${escapeHtml(loc)} (${count})</button>`;
-            }).join('')}
-        </div>
+    // Filter by location
+    if (currentLocationFilter !== 'all') {
+        filtered = filtered.filter(eq =>
+            (eq.locations || []).includes(currentLocationFilter) ||
+            eq.location === currentLocationFilter
+        );
+    }
 
-        <!-- Search -->
-        <div style="padding: 0 var(--pad-page); margin-bottom: 12px;">
-            <input type="text" class="form-input" placeholder="Search equipment..."
-                   value="${escapeAttr(currentSearchTerm)}"
-                   oninput="filterEquipmentBySearch(this.value)">
-        </div>
+    // Group equipment by primary location
+    const grouped = new Map();
+    filtered.forEach(eq => {
+        const locs = eq.locations?.length ? eq.locations : (eq.location ? [eq.location] : ['No Location']);
+        // Use first location as primary group
+        const primary = locs[0];
+        if (!grouped.has(primary)) grouped.set(primary, []);
+        grouped.get(primary).push(eq);
+    });
 
-        <!-- Equipment list -->
-        <div class="equipment-list" style="padding: 0 var(--pad-page);">
-            ${filtered.length === 0 ? `
-                <div class="empty-state">
-                    <i class="fas fa-wrench"></i>
-                    <h3>No Equipment</h3>
-                    <p>${currentSearchTerm ? 'No matches found' : 'Add equipment from the workout screen or tap Add above.'}</p>
-                </div>
-            ` : filtered.map(eq => {
-                const typeInfo = EQUIPMENT_TYPE_ICONS[eq.equipmentType] || EQUIPMENT_TYPE_ICONS.Other;
-                const exerciseCount = (eq.exerciseTypes || []).length;
-                const locCount = (eq.locations || []).length;
-                return `
-                    <div class="row-card" style="margin-bottom: 8px;" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">
-                        <div class="row-card__icon" style="background: ${typeInfo.color}20; color: ${typeInfo.color}">
-                            <i class="fas ${typeInfo.icon}"></i>
-                        </div>
-                        <div class="row-card__content">
-                            <span class="row-card__title">${escapeHtml(eq.name)}</span>
-                            <span class="row-card__subtitle">
-                                ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}
-                                ${locCount > 1 ? ` · ${locCount} locations` : ''}
-                            </span>
-                        </div>
-                        <div class="row-card__action">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
+    // Build search + filter bar
+    const searchHTML = `
+        <div class="equip-lib-toolbar">
+            <div class="equip-lib-search">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search equipment..."
+                       value="${escapeAttr(currentSearchTerm)}"
+                       oninput="filterEquipmentBySearch(this.value)">
+            </div>
+            ${locations.length > 1 ? `
+                <select class="equip-lib-filter" onchange="filterEquipmentByLocation(this.value)">
+                    <option value="all" ${currentLocationFilter === 'all' ? 'selected' : ''}>All Gyms (${allEquipment.length})</option>
+                    ${locations.map(loc => {
+                        const count = allEquipment.filter(eq =>
+                            (eq.locations || []).includes(loc) || eq.location === loc
+                        ).length;
+                        return `<option value="${escapeAttr(loc)}" ${currentLocationFilter === loc ? 'selected' : ''}>${escapeHtml(loc)} (${count})</option>`;
+                    }).join('')}
+                </select>
+            ` : ''}
+        </div>
+    `;
+
+    // Build grouped list
+    let listHTML = '';
+    if (filtered.length === 0) {
+        listHTML = `
+            <div class="empty-state">
+                <i class="fas fa-wrench"></i>
+                <h3>No Equipment</h3>
+                <p>${currentSearchTerm ? 'No matches found' : 'Equipment you use during workouts will appear here.'}</p>
+            </div>
+        `;
+    } else {
+        for (const [location, items] of grouped) {
+            // Sort items alphabetically within each group
+            items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+            listHTML += `
+                <div class="equip-lib-group">
+                    <div class="equip-lib-group-header">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>${escapeHtml(location)}</span>
+                        <span class="equip-lib-group-count">${items.length}</span>
                     </div>
-                `;
-            }).join('')}
+                    ${items.map(eq => renderEquipmentRow(eq)).join('')}
+                </div>
+            `;
+        }
+    }
+
+    container.innerHTML = searchHTML + `<div class="equip-lib-list">${listHTML}</div>`;
+}
+
+function renderEquipmentRow(eq) {
+    const typeInfo = EQUIPMENT_TYPE_ICONS[eq.equipmentType] || EQUIPMENT_TYPE_ICONS.Other;
+    const exerciseCount = (eq.exerciseTypes || []).length;
+    const exerciseNames = (eq.exerciseTypes || []).slice(0, 3).join(', ');
+    const extra = exerciseCount > 3 ? ` +${exerciseCount - 3}` : '';
+
+    return `
+        <div class="row-card equip-lib-item" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">
+            <div class="row-card__icon" style="background: ${typeInfo.color}20; color: ${typeInfo.color}">
+                <i class="fas ${typeInfo.icon}"></i>
+            </div>
+            <div class="row-card__content">
+                <span class="row-card__title">${escapeHtml(eq.name)}</span>
+                <span class="row-card__subtitle">${exerciseNames ? escapeHtml(exerciseNames + extra) : 'No exercises assigned'}</span>
+            </div>
+            <div class="row-card__action">
+                <i class="fas fa-chevron-right"></i>
+            </div>
         </div>
     `;
 }

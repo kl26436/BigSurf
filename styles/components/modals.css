@@ -658,6 +658,90 @@ dialog.modal:not([open]) {
     letter-spacing: 0.03em;
 }
 
+/* Equipment Library — grouped list layout */
+.equip-lib-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: var(--pad-page);
+}
+.equip-lib-header h2 {
+    flex: 1;
+    margin: 0;
+    font-size: 1.2rem;
+}
+.equip-lib-toolbar {
+    padding: 0 var(--pad-page);
+    margin-bottom: 12px;
+    display: flex;
+    gap: 8px;
+}
+.equip-lib-search {
+    flex: 1;
+    position: relative;
+}
+.equip-lib-search i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+.equip-lib-search input {
+    width: 100%;
+    padding: 10px 12px 10px 36px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-strong);
+    font-size: 0.9rem;
+}
+.equip-lib-search input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+.equip-lib-filter {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    max-width: 140px;
+}
+.equip-lib-list {
+    padding: 0 var(--pad-page);
+}
+.equip-lib-group {
+    margin-bottom: 20px;
+}
+.equip-lib-group-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 4px 2px 8px;
+}
+.equip-lib-group-header i {
+    color: var(--primary);
+    font-size: 0.75rem;
+}
+.equip-lib-group-count {
+    margin-left: auto;
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.equip-lib-item {
+    margin-bottom: 6px;
+}
+
 /* Settings Page */
 .settings-page {
     padding: 16px;

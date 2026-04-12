@@ -1894,8 +1894,11 @@
 
         <!-- Equipment Library Page -->
         <section id="equipment-library-section" class="app-section hidden">
-            <div class="section-header" style="padding: var(--pad-page); display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="margin: 0;">Equipment Library</h2>
+            <div class="equip-lib-header">
+                <button class="btn-icon" onclick="navigateTo('dashboard')" aria-label="Back to dashboard">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Equipment</h2>
                 <button class="btn btn-primary btn-small" onclick="showAddEquipmentFlow()">
                     <i class="fas fa-plus"></i> Add
                 </button>
