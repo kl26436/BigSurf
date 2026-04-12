@@ -17,6 +17,9 @@ const https = require('https');
 const withingsClientId = defineSecret('WITHINGS_CLIENT_ID');
 const withingsClientSecret = defineSecret('WITHINGS_CLIENT_SECRET');
 
+// AI Coach secret (stored via: firebase functions:secrets:set ANTHROPIC_API_KEY)
+const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
+
 admin.initializeApp();
 
 const db = admin.firestore();
@@ -535,7 +538,7 @@ exports.withingsGetAuthUrl = functions.runWith({ secrets: [withingsClientId] })
             throw new functions.https.HttpsError('invalid-argument', 'Missing callbackUrl');
         }
 
-        const clientId = withingsClientId.value();
+        const clientId = withingsClientId.value().trim();
         const state = context.auth.uid; // Use UID as state for verification
 
         const params = new URLSearchParams({
@@ -565,9 +568,12 @@ exports.withingsExchangeToken = functions.runWith({ secrets: [withingsClientId, 
             throw new functions.https.HttpsError('invalid-argument', 'Missing code or callbackUrl');
         }
 
-        const clientId = withingsClientId.value();
-        const clientSecret = withingsClientSecret.value();
+        const clientId = withingsClientId.value().trim().trim();
+        const clientSecret = withingsClientSecret.value().trim().trim();
         const userId = context.auth.uid;
+
+        console.log(`🔑 Client ID: length=${clientId.length}, ends=${clientId.slice(-4)}`);
+        console.log(`🔗 Redirect URI: ${callbackUrl}`);
 
         try {
             const result = await httpsPost('wbsapi.withings.net', '/v2/oauth2', {
@@ -610,8 +616,8 @@ exports.withingsExchangeToken = functions.runWith({ secrets: [withingsClientId, 
  * Refresh an expired Withings access token.
  */
 async function refreshWithingsToken(userId) {
-    const clientId = withingsClientId.value();
-    const clientSecret = withingsClientSecret.value();
+    const clientId = withingsClientId.value().trim();
+    const clientSecret = withingsClientSecret.value().trim();
 
     const integrationDoc = await db.collection('users').doc(userId)
         .collection('integrations').doc('withings').get();
@@ -798,9 +804,9 @@ exports.withingsDisconnect = functions.https.onCall(async (data, context) => {
  */
 exports.withingsTestConfig = functions.runWith({ secrets: [withingsClientId, withingsClientSecret] })
     .https.onCall(async (data, context) => {
-        const hasClientId = !!withingsClientId.value();
-        const hasClientSecret = !!withingsClientSecret.value();
-        const clientIdPrefix = hasClientId ? withingsClientId.value().substring(0, 6) + '...' : 'NOT SET';
+        const hasClientId = !!withingsClientId.value().trim();
+        const hasClientSecret = !!withingsClientSecret.value().trim();
+        const clientIdPrefix = hasClientId ? withingsClientId.value().trim().substring(0, 6) + '...' : 'NOT SET';
 
         return {
             configured: hasClientId && hasClientSecret,
@@ -808,3 +814,143 @@ exports.withingsTestConfig = functions.runWith({ secrets: [withingsClientId, wit
             hasClientSecret,
         };
     });
+
+// ============================================================================
+// AI TRAINING COACH (Phase 17 — Claude API integration)
+// ============================================================================
+
+const TRAINING_SCIENCE_PROMPT = `You are an expert strength and conditioning coach integrated into the Big Surf workout tracker app. You analyze training data and provide actionable recommendations.
+
+Key principles you follow:
+- Progressive overload is the primary driver of strength and hypertrophy
+- Volume landmarks: MEV ~6-8 sets/muscle/week, MRV ~15-25 sets/muscle/week
+- Most people grow optimally at 10-20 hard sets per muscle group per week
+- Training frequency of 2-3x per muscle group per week is optimal for most
+- Deload every 4-6 weeks of hard training (reduce volume 40-50%)
+- Prioritize compound movements, supplement with isolation
+- When plateau detected, suggest: increase reps, add a set, microload, change variation
+
+Always be specific: name exercises, give exact set/rep/weight targets based on their recent numbers.
+Keep recommendations concise and actionable — these are read on a phone at the gym.
+Format as short bullet points, not paragraphs.`;
+
+/**
+ * AI Coach — on-demand training analysis using Claude API.
+ * Rate limited to 1 call per 24 hours per user.
+ *
+ * Request data:
+ * - question: string — the user's question
+ * - context: string — compact training summary built client-side
+ */
+exports.getTrainingRecommendation = functions.runWith({
+    secrets: [anthropicApiKey],
+    timeoutSeconds: 60,
+    memory: '256MB',
+}).https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const userId = context.auth.uid;
+    const { question, context: trainingContext } = data;
+
+    if (!question) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing question');
+    }
+
+    // Rate limiting: max 1 call per 24 hours per user
+    const lastCallDoc = await db.collection('users').doc(userId)
+        .collection('preferences').doc('coachRateLimit').get();
+
+    if (lastCallDoc.exists) {
+        const lastCall = lastCallDoc.data().timestamp;
+        const hoursSince = (Date.now() - lastCall) / (1000 * 60 * 60);
+        if (hoursSince < 24) {
+            throw new functions.https.HttpsError(
+                'resource-exhausted',
+                'Coach is available once per day. Try again tomorrow.'
+            );
+        }
+    }
+
+    try {
+        const apiKey = anthropicApiKey.value();
+        if (!apiKey) {
+            throw new functions.https.HttpsError(
+                'failed-precondition',
+                'ANTHROPIC_API_KEY not configured. Run: firebase functions:secrets:set ANTHROPIC_API_KEY'
+            );
+        }
+
+        // Call Claude API via HTTPS (no SDK dependency needed)
+        const requestBody = JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1500,
+            system: TRAINING_SCIENCE_PROMPT,
+            messages: [{
+                role: 'user',
+                content: `Here is my training data:\n\n${trainingContext || 'No data provided.'}\n\n${question}`,
+            }],
+        });
+
+        const response = await new Promise((resolve, reject) => {
+            const req = https.request({
+                hostname: 'api.anthropic.com',
+                path: '/v1/messages',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'Content-Length': Buffer.byteLength(requestBody),
+                },
+            }, (res) => {
+                let body = '';
+                res.on('data', chunk => { body += chunk; });
+                res.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(body);
+                        if (res.statusCode === 200) {
+                            resolve(parsed);
+                        } else {
+                            console.error('❌ Claude API error:', res.statusCode, body);
+                            reject(new Error(`Claude API error: ${res.statusCode}`));
+                        }
+                    } catch (e) {
+                        reject(new Error('Failed to parse Claude API response'));
+                    }
+                });
+            });
+            req.on('error', reject);
+            req.write(requestBody);
+            req.end();
+        });
+
+        const recommendation = response.content?.[0]?.text || 'No recommendation generated.';
+
+        // Update rate limit timestamp
+        await db.collection('users').doc(userId)
+            .collection('preferences').doc('coachRateLimit')
+            .set({ timestamp: Date.now() });
+
+        // Save coach response to history
+        await db.collection('users').doc(userId)
+            .collection('coachHistory').add({
+                question,
+                response: recommendation,
+                timestamp: new Date().toISOString(),
+                usage: {
+                    inputTokens: response.usage?.input_tokens || 0,
+                    outputTokens: response.usage?.output_tokens || 0,
+                },
+            });
+
+        console.log(`✅ AI Coach response for user ${userId} (${response.usage?.input_tokens || 0} in, ${response.usage?.output_tokens || 0} out)`);
+
+        return { recommendation };
+    } catch (error) {
+        if (error instanceof functions.https.HttpsError) throw error;
+        console.error('❌ AI Coach error:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to get training recommendation');
+    }
+});
