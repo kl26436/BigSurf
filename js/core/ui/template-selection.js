@@ -2,6 +2,7 @@
 // Handles template browsing, selection, and immediate usage
 
 import { AppState } from '../utils/app-state.js';
+import { getCategoryIcon } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
@@ -24,6 +25,25 @@ function setupTemplateDelegation(container) {
     delegatedContainers.add(container);
 
     container.addEventListener('click', (e) => {
+        // Handle overflow menu toggle
+        const overflowToggle = e.target.closest('.template-overflow-toggle');
+        if (overflowToggle) {
+            e.stopPropagation();
+            const menu = overflowToggle.nextElementSibling;
+            if (!menu) return;
+            // Close any other open menus first
+            container.querySelectorAll('.template-overflow-menu:not(.hidden)').forEach(m => {
+                if (m !== menu) m.classList.add('hidden');
+            });
+            menu.classList.toggle('hidden');
+            return;
+        }
+
+        // Close any open overflow menus on any other click
+        if (!e.target.closest('.template-overflow-wrapper')) {
+            container.querySelectorAll('.template-overflow-menu:not(.hidden)').forEach(m => m.classList.add('hidden'));
+        }
+
         const btn = e.target.closest('[data-action]');
         if (!btn) return;
         const action = btn.dataset.action;
@@ -201,6 +221,114 @@ export function showWorkoutSelector() {
     // Show bottom nav and set workout tab active
     setBottomNavVisible(true);
     updateBottomNavActive('workout');
+
+    // Populate category badges and recent templates (async, non-blocking)
+    updateCategoryBadges();
+    renderRecentTemplates();
+}
+
+// ===================================================================
+// CATEGORY BADGES — show template count on each category card
+// ===================================================================
+
+async function updateCategoryBadges() {
+    const plans = AppState.workoutPlans || [];
+
+    // Also include custom templates
+    let customTemplates = [];
+    try {
+        if (AppState.currentUser) {
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            const wm = new FirebaseWorkoutManager(AppState);
+            customTemplates = (await wm.getUserWorkoutTemplates()).filter(t => t.isCustom);
+        }
+    } catch (_) { /* non-critical */ }
+
+    const all = [...plans, ...customTemplates];
+    const counts = {};
+    all.forEach(t => {
+        const cat = getWorkoutCategory(t.day || t.name).toLowerCase();
+        counts[cat] = (counts[cat] || 0) + 1;
+    });
+
+    document.querySelectorAll('.workout-option[data-category]').forEach(card => {
+        const cat = card.dataset.category;
+        const count = counts[cat] || 0;
+        let badge = card.querySelector('.template-count-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'template-count-badge';
+            card.appendChild(badge);
+        }
+        badge.textContent = `${count} template${count !== 1 ? 's' : ''}`;
+    });
+}
+
+// ===================================================================
+// RECENT TEMPLATES — horizontal chips above category grid
+// ===================================================================
+
+async function renderRecentTemplates() {
+    const container = document.getElementById('recent-templates');
+    if (!container) return;
+
+    if (!AppState.currentUser || !AppState.db) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    try {
+        const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
+        const workoutsRef = collection(db, `users/${AppState.currentUser.uid}/workouts`);
+        const q = query(workoutsRef, orderBy('completedAt', 'desc'), limit(20));
+        const snapshot = await getDocs(q);
+
+        const seen = new Set();
+        const recentTemplates = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.workoutType && !seen.has(data.workoutType) && recentTemplates.length < 5) {
+                seen.add(data.workoutType);
+                recentTemplates.push({ name: data.workoutType, date: data.date });
+            }
+        });
+
+        if (recentTemplates.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        container.classList.remove('hidden');
+        const catKey = (name) => getWorkoutCategory(name).toLowerCase();
+        container.innerHTML = `
+            <div class="section-header" style="margin-top: 0;">
+                <span class="section-header__title">Recent</span>
+            </div>
+            <div class="recent-templates-list">
+                ${recentTemplates.map(t => `
+                    <button class="recent-template-chip" data-workout="${escapeAttr(t.name)}">
+                        <i class="${getCategoryIcon(catKey(t.name))}"></i>
+                        <span>${escapeHtml(t.name)}</span>
+                        <small>${t.date || ''}</small>
+                    </button>
+                `).join('')}
+            </div>
+        `;
+
+        // Delegate clicks on recent chips (guard against duplicate listeners)
+        if (!delegatedContainers.has(container)) {
+            delegatedContainers.add(container);
+            container.addEventListener('click', (e) => {
+                const chip = e.target.closest('.recent-template-chip');
+                if (chip && chip.dataset.workout) {
+                    window.startWorkout(chip.dataset.workout);
+                }
+            });
+        }
+    } catch (err) {
+        console.error('Error loading recent templates:', err);
+        container.classList.add('hidden');
+    }
 }
 
 // ===================================================================
@@ -418,19 +546,19 @@ export function renderTemplateCards(templates, targetContainer = null, available
 
 export function createTemplateCard(template, isDefault = false, availableExercises = null) {
     const card = document.createElement('div');
-    card.className = 'template-card';
+    card.className = 'row-card template-row-card';
 
     // Handle both array and object exercise structures
     const exercisesArray = normalizeExercisesToArray(template.exercises);
     const exerciseCount = exercisesArray.length;
 
-    // Build full exercise list as bullet points
-    const exerciseList =
-        exercisesArray.map((ex) => `<li>${escapeHtml(getExerciseName(ex))}</li>`).join('') || '<li>No exercises</li>';
-
     // Use template.id for custom templates, template.day for default templates
     const templateId = template.id || template.day;
     const templateName = template.name || template.day;
+
+    const category = getWorkoutCategory(templateName);
+    const icon = getCategoryIcon(category);
+    const catKey = category.toLowerCase();
 
     // Equipment compatibility badge
     let compatBadgeHtml = '';
@@ -443,40 +571,42 @@ export function createTemplateCard(template, isDefault = false, availableExercis
         }
     }
 
+    // Exercise summary: first 3 names
+    const exerciseSummary = exercisesArray.length > 0
+        ? exercisesArray.slice(0, 3).map(ex => getExerciseName(ex)).join(', ') + (exerciseCount > 3 ? ` +${exerciseCount - 3} more` : '')
+        : 'No exercises';
+
+    // Secondary actions: reset (if overrides default) and delete/hide
+    let secondaryActions = '';
+    if (template.overridesDefault) {
+        secondaryActions += `<button class="template-overflow-item" data-action="resetToDefault" data-template-id="${escapeAttr(template.overridesDefault)}"><i class="fas fa-undo"></i> Reset to Default</button>`;
+    }
+    secondaryActions += `<button class="template-overflow-item template-overflow-item--danger" data-action="deleteTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}"><i class="fas fa-${isDefault ? 'eye-slash' : 'trash'}"></i> ${isDefault ? 'Hide' : 'Delete'}</button>`;
+
     card.innerHTML = `
-        <div class="template-header">
-            <h4>${escapeHtml(templateName)}</h4>
-            <div class="template-meta">
-                <span class="template-category">${escapeHtml(getWorkoutCategory(templateName))}</span>
-                <small class="template-source">${isDefault ? 'Global' : 'User'}</small>
-            </div>
-            ${compatBadgeHtml}
+        <div class="row-card__icon template-cat-icon--${escapeAttr(catKey)}">
+            <i class="${icon}"></i>
         </div>
-        <div class="template-preview">
-            <div class="exercise-count">${exerciseCount} exercises</div>
-            <ul class="exercise-list-preview">
-                ${exerciseList}
-            </ul>
+        <div class="row-card__content">
+            <div class="row-card__title">${escapeHtml(templateName)}</div>
+            <div class="row-card__subtitle">${exerciseCount} exercises · ${isDefault ? 'Default' : 'Custom'}${compatBadgeHtml ? ' ' + compatBadgeHtml : ''}</div>
+            <div class="row-card__detail">${escapeHtml(exerciseSummary)}</div>
         </div>
-        <div class="template-actions">
-            <button class="btn btn-primary btn-small" data-action="useTemplateFromManagement" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
-                <i class="fas fa-play"></i> Use Today
+        <div class="row-card__action template-row-actions">
+            <button class="btn btn-primary btn-small" data-action="useTemplateFromManagement" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}" title="Start workout">
+                <i class="fas fa-play"></i>
             </button>
-            <button class="btn btn-secondary btn-small" data-action="editTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
-                <i class="fas fa-edit"></i> Edit
+            <button class="btn btn-secondary btn-icon btn-small" data-action="editTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}" title="Edit">
+                <i class="fas fa-edit"></i>
             </button>
-            ${
-                template.overridesDefault
-                    ? `
-                <button class="btn btn-warning btn-small" data-action="resetToDefault" data-template-id="${escapeAttr(template.overridesDefault)}">
-                    <i class="fas fa-undo"></i> Reset
+            <div class="template-overflow-wrapper">
+                <button class="btn btn-icon btn-small template-overflow-toggle" title="More actions">
+                    <i class="fas fa-ellipsis-v"></i>
                 </button>
-            `
-                    : ''
-            }
-            <button class="btn btn-danger btn-small" data-action="deleteTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
-                <i class="fas fa-${isDefault ? 'eye-slash' : 'trash'}"></i> ${isDefault ? 'Hide' : 'Delete'}
-            </button>
+                <div class="template-overflow-menu hidden">
+                    ${secondaryActions}
+                </div>
+            </div>
         </div>
     `;
 

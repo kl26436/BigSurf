@@ -98,6 +98,14 @@
     color: var(--text-muted);
     margin-top: 3px;
 }
+.row-card__detail {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .row-card__action {
     color: var(--text-muted);
     font-size: 1rem;

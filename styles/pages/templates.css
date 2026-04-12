@@ -7,39 +7,6 @@
     gap: 14px;
 }
 
-.template-card {
-    background: var(--bg-card);
-    border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.03);
-    padding: var(--pad-card-x);
-    position: relative;
-    overflow: hidden;
-}
-.template-card::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-    background: var(--primary);
-}
-.template-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
-}
-.template-name {
-    font-size: 1.1rem;
-    font-weight: 600;
-}
-.template-meta {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
-
 .template-exercises {
     margin-bottom: 14px;
     padding: 14px;
@@ -370,112 +337,75 @@
     border-radius: 4px;
 }
 
-/* Template card active state */
-.template-card:active {
-    background: var(--bg-card-hi);
-}
+/* Template row-card category icons */
+.template-cat-icon--push  { background: rgba(74, 144, 217, 0.15); color: var(--cat-push); }
+.template-cat-icon--pull  { background: rgba(217, 74, 122, 0.15); color: var(--cat-pull); }
+.template-cat-icon--legs  { background: rgba(123, 74, 217, 0.15); color: var(--cat-legs); }
+.template-cat-icon--cardio { background: rgba(217, 167, 74, 0.15); color: var(--cat-cardio); }
+.template-cat-icon--other { background: rgba(29, 211, 176, 0.12); color: var(--primary); }
 
-/* Template header styling */
-.template-header h4 {
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: var(--text-strong);
-    margin: 0 0 4px 0;
+/* Template row-card variant */
+.template-row-card {
+    cursor: default;
 }
-.template-category {
-    display: inline-block;
-    background: rgba(29, 211, 176, 0.15);
-    color: var(--primary);
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.template-row-card .row-card__content {
+    cursor: pointer;
 }
-.template-source {
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    margin-left: 8px;
+.template-row-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
 }
-
-/* Template preview section */
-.template-preview {
-    margin: 12px 0;
-    padding: 12px;
-    background: rgba(0, 0, 0, 0.25);
-    border-radius: var(--radius-sm);
-}
-.exercise-count {
+.template-row-actions .btn {
+    padding: 8px 12px;
     font-size: 0.8rem;
+}
+.template-row-actions .btn-icon {
+    padding: 8px 10px;
+    min-width: auto;
+}
+
+/* Template overflow menu (three-dot) */
+.template-overflow-wrapper {
+    position: relative;
+}
+.template-overflow-toggle {
+    background: none;
+    border: none;
     color: var(--text-muted);
-    margin-bottom: 8px;
-    font-weight: 500;
+    cursor: pointer;
 }
-.exercise-list-preview {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+.template-overflow-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    z-index: var(--z-dropdown, 50);
+    min-width: 160px;
+    overflow: hidden;
 }
-.exercise-list-preview li {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    padding: 6px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+.template-overflow-item {
     display: flex;
     align-items: center;
     gap: 8px;
-}
-.exercise-list-preview li:last-child {
-    border-bottom: none;
-}
-.exercise-list-preview li::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background: var(--primary);
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-/* Template actions */
-.template-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 14px;
-}
-.template-actions .btn {
-    white-space: nowrap;
-    padding: 10px 16px;
-    font-size: 0.85rem;
-    border-radius: var(--radius-md);
-}
-.template-actions .btn-primary {
-    flex: 1;
-    background: var(--primary);
-    color: #02100e;
-    font-weight: 600;
-}
-.template-actions .btn-secondary,
-.template-actions .btn-danger {
-    flex: 0 0 auto;
+    width: 100%;
     padding: 10px 14px;
-}
-.template-actions .btn-secondary {
-    background: rgba(255, 255, 255, 0.08);
+    background: none;
+    border: none;
     color: var(--text-secondary);
+    font-size: var(--font-sm);
+    cursor: pointer;
+    text-align: left;
 }
-.template-actions .btn-danger {
-    background: rgba(239, 68, 68, 0.15);
+.template-overflow-item:active {
+    background: rgba(255, 255, 255, 0.05);
+}
+.template-overflow-item--danger {
     color: #ef4444;
-}
-/* Icon-only buttons in tight spaces */
-.template-actions .btn-icon {
-    padding: 10px 12px;
-    min-width: auto;
-}
-.template-actions .btn-icon .btn-text {
-    display: none;
 }
 
 /* ===========================================
@@ -669,5 +599,54 @@
     background: var(--primary);
     color: #02100e;
     border-color: var(--primary);
+}
+
+/* Template count badges on category cards */
+.template-count-badge {
+    display: block;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* Recent templates section */
+.recent-templates-section {
+    margin-bottom: 16px;
+}
+.recent-templates-list {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.recent-templates-list::-webkit-scrollbar {
+    display: none;
+}
+.recent-template-chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    color: var(--text-main);
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: var(--font-sm);
+}
+.recent-template-chip:active {
+    background: var(--bg-card-hi);
+}
+.recent-template-chip i {
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+.recent-template-chip small {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
 }
 

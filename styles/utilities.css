@@ -47,7 +47,6 @@
 .hero-card:active,
 .row-card:active,
 .exercise-card:active,
-.template-card:active,
 .workout-list-item:active,
 .suggested-compact:active {
     transform: scale(0.98);
