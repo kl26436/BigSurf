@@ -18,8 +18,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Frontend**: Vanilla JavaScript (ES6 modules), HTML5, CSS3
 - **Backend**: Firebase (Firestore for data, Firebase Auth for authentication)
+- **Testing**: Vitest (`npm test` to run, `npm run test:watch` for watch mode)
 - **No build process**: Direct ES6 module imports in browser
-- **CDN**: Firebase SDK 10.7.1, Font Awesome 6.0.0
+- **CDN**: Firebase SDK 10.7.1, Font Awesome 6.0.0, Chart.js 4.4.1, Leaflet 1.9.4
 
 ## Application Architecture
 
@@ -43,33 +44,96 @@ js/
     ├── data/                   # Data layer
     │   ├── firebase-config.js      # Firebase SDK init
     │   ├── firebase-workout-manager.js  # Templates, exercises, equipment, locations
-    │   ├── data-manager.js         # Workout save/load operations
-    │   ├── exercise-library.js     # Exercise database
+    │   ├── data-manager.js         # Workout save/load, export, equipment reassignment
+    │   ├── exercise-library.js     # Exercise database with favorites
     │   └── schema-migration.js     # v2 to v3 migration
     ├── features/               # Feature modules
+    │   ├── exercise-progress.js    # Exercise progress charts
     │   ├── location-service.js     # GPS detection, location matching
     │   ├── location-ui.js          # Location management UI
     │   ├── manual-workout.js       # Manual workout entry
     │   ├── pr-tracker.js           # Personal record detection
-    │   ├── stats-tracker.js        # Weekly stats, progress
-    │   └── streak-tracker.js       # Streak calculation
+    │   ├── stats-tracker.js        # Weekly stats (delegates streaks to streak-tracker)
+    │   └── streak-tracker.js       # Canonical streak calculation
     ├── ui/                     # UI components
     │   ├── dashboard-ui.js         # Dashboard rendering
+    │   ├── equipment-library-ui.js # Equipment library page
     │   ├── exercise-manager-ui.js  # Exercise library modal
     │   ├── navigation.js           # Bottom nav, routing
+    │   ├── settings-ui.js          # Settings page, onboarding flow
     │   ├── stats-ui.js             # Stats page
     │   ├── template-selection.js   # Workout picker
-    │   ├── ui-helpers.js           # Notifications, conversions
+    │   ├── ui-helpers.js           # Notifications, conversions, modal helpers
     │   └── workout-history-ui.js   # History modal
     ├── utils/                  # Utilities
     │   ├── app-state.js            # Global state object
+    │   ├── config.js               # Config constants, CATEGORY_ICONS/COLORS, debugLog
     │   ├── debug-utilities.js      # Debug functions
-    │   ├── error-handler.js        # Error handling
+    │   ├── error-handler.js        # Error handling with severity levels
     │   └── notification-helper.js  # UI notifications
     └── workout/                # Workout logic
+        ├── exercise-ui.js          # Exercise cards, modal, set logging
+        ├── rest-timer.js           # Rest timer (modal + header)
         ├── workout-core.js         # Session execution
         ├── workout-history.js      # Calendar, history data
-        └── workout-management-ui.js # Template editor
+        ├── workout-management-ui.js # Template editor
+        └── workout-session.js      # Workout completion, summary modal
+```
+
+### CSS Architecture
+
+CSS is split into modular files under `styles/`:
+
+```
+styles/
+├── index.css              # @import all modules (load order matters)
+├── tokens.css             # :root design tokens (colors, fonts, radius, z-index, animations)
+├── reset.css              # Reset & base styles
+├── components/
+│   ├── cards.css          # .hero-card, .row-card base patterns
+│   ├── buttons.css        # .btn-* system
+│   ├── forms.css          # Inputs, selects, toggles
+│   ├── modals.css         # Modal overlay, content, animations
+│   ├── nav.css            # Bottom nav, sidebar, More menu (bottom sheet)
+│   └── empty-states.css   # Empty state patterns
+├── pages/
+│   ├── app-shell.css      # App container, full-page overlay sections
+│   ├── dashboard.css      # Dashboard widgets, streaks, PRs
+│   ├── workout.css        # Active workout, exercise cards, rest timer
+│   ├── templates.css      # Template selection, workout selector
+│   ├── stats.css          # Stats page, progress charts
+│   ├── history.css        # Calendar, workout history
+│   ├── exercise-lib.css   # Exercise library, equipment editor
+│   └── settings.css       # Settings page, onboarding
+└── utilities.css          # .hidden, animations, responsive, misc utilities
+```
+
+### Test Structure
+
+Tests use Vitest and re-implement pure functions for isolation (no Firebase/DOM dependencies):
+
+```
+tests/
+├── fixtures/              # Mock data for tests
+│   ├── mock-pr-data.js
+│   └── mock-workouts.js
+└── unit/                  # Unit tests (run with `npm test`)
+    ├── config-values.test.js       # Config constants, category icons/colors
+    ├── date-helpers.test.js        # Date parsing, formatting
+    ├── display-weight.test.js      # Unit conversion with 0.5kg rounding
+    ├── exercise-completion.test.js # Set completion, exercise ordering
+    ├── exercise-grouping.test.js   # Superset grouping (Phase 10)
+    ├── id-generation.test.js       # Workout ID generation
+    ├── plate-calculator.test.js    # Plate breakdown algorithm (Phase 11)
+    ├── pr-detection.test.js        # PR detection logic
+    ├── progress-calculations.test.js # 1RM, volume, trends
+    ├── streak-calculation.test.js  # Streak calculation
+    ├── template-management.test.js # Template operations
+    ├── validation.test.js          # Input validation
+    ├── weekly-goal.test.js         # Goal percentage, progress ring
+    ├── weight-conversion.test.js   # Weight unit conversion
+    ├── workout-completion.test.js  # Completion summary stats
+    └── workout-helpers.test.js     # Exercise/workout name helpers
 ```
 
 ### Function Exposure Pattern
@@ -96,8 +160,11 @@ users/{userId}/
   ├── workouts/{docId}         # Workout sessions (unique ID per workout)
   ├── templates/{templateId}   # Custom workout templates
   ├── exercises/{exerciseId}   # Custom exercises created by user
-  ├── equipment/{equipmentId}  # Saved equipment with locations
-  └── locations/{locationId}   # Saved gym locations with GPS
+  ├── equipment/{equipmentId}  # Saved equipment with locations + exerciseVideos map
+  ├── locations/{locationId}   # Saved gym locations with GPS
+  └── preferences/
+      ├── settings             # User settings (weight unit, rest timer, weekly goal, etc.)
+      └── favorites            # Favorite exercises array
 ```
 
 ### Workout Document Structure
@@ -116,9 +183,9 @@ users/{userId}/
       name: "Bench Press",
       equipment: "Hammer Strength Flat",
       sets: [
-        { reps: 10, weight: 135, originalUnit: "lbs" },
-        { reps: 8, weight: 145, originalUnit: "lbs" }
-      ],
+        { reps: 10, weight: 135, originalUnit: "lbs", type: "working", completed: true },
+        { reps: 8, weight: 145, originalUnit: "lbs", type: "working", completed: true }
+      ],  // set.type: "working" | "warmup" | "dropset" | "failure"
       notes: "Felt strong today",
       completed: true
     }
@@ -141,10 +208,12 @@ users/{userId}/
 ### Weight Unit System
 
 The app supports both lbs and kg with per-exercise unit tracking:
-- `AppState.globalUnit` - Default unit for new exercises
+- `AppState.globalUnit` - Default unit for new exercises (configurable in Settings)
 - `AppState.exerciseUnits` - Map of exercise index to unit preference
 - All weights stored in Firestore with `originalUnit` field
-- Use `convertWeight()` from [ui-helpers.js](js/core/ui/ui-helpers.js) for conversions
+- Use `displayWeight(weight, storedUnit, displayUnit)` from [ui-helpers.js](js/core/ui/ui-helpers.js) for display conversion — rounds kg to nearest 0.5
+- Use `convertWeight()` for raw conversion
+- History views and charts always convert to user's preferred unit via `displayWeight()`
 
 ### Equipment & Location Tracking
 
@@ -155,11 +224,29 @@ The app supports both lbs and kg with per-exercise unit tracking:
 
 ### Modal Management
 
-All modals defined in [index.html](index.html) and toggled via CSS classes:
-- Add/remove `hidden` class to show/hide
-- Close on backdrop click and ESC key
-- Modal functions: `show*Modal()`, `close*Modal()`
-- Z-index scale: Sidebar 300, Modals 500, Exercise Library 550, Add Exercise 600
+All modals defined in [index.html](index.html) and managed via `openModal()`/`closeModal()` in [ui-helpers.js](js/core/ui/ui-helpers.js):
+- Accepts element reference or ID string: `openModal('workout-completion-modal')`
+- Handles both `<dialog>` and `<div class="modal">` elements
+- Built-in focus trapping (Tab cycles within modal)
+- Escape key closes modal
+- Restores focus to previously focused element on close
+- Z-index scale defined as CSS tokens: `--z-sticky` (10) through `--z-toast` (700) in [tokens.css](styles/tokens.css)
+
+### Config & Magic Numbers
+
+All hardcoded values centralized in [config.js](js/core/utils/config.js):
+- `Config.ABANDONED_WORKOUT_TIMEOUT_HOURS`, `Config.DEFAULT_REST_TIMER_SECONDS`, `Config.GPS_MATCH_RADIUS_METERS`, etc.
+- `CATEGORY_ICONS` and `CATEGORY_COLORS` for consistent styling across screens
+- `getCategoryIcon(category)` — case-insensitive icon lookup with fallback
+- `debugLog()` — console.log gated behind `?debug` URL param
+- User-configurable values (rest timer, weekly goal, weight unit) load from Firestore via `loadUserSettings()` in [settings-ui.js](js/core/ui/settings-ui.js) and override Config at runtime
+
+### Settings & User Preferences
+
+Settings stored in Firestore: `users/{userId}/preferences/settings`
+- Loaded on auth with `loadUserSettings()`, merged with `DEFAULT_SETTINGS`
+- Each setting saves immediately via debounced Firestore write
+- Onboarding flow runs on first login (checks `hasCompletedOnboarding` flag)
 
 ### In-Progress Workout Detection
 
@@ -204,18 +291,25 @@ console.log(window.AppState)  // Full app state
 
 - Use ES6+ features (arrow functions, destructuring, async/await)
 - All async functions use `async/await`, not raw Promises
-- `console.error()` with emoji prefixes (❌) for visibility
-- Error handling: try/catch with `showNotification()` for user feedback
+- Use `debugLog()` from config.js instead of bare `console.log()` — only outputs with `?debug` URL param
+- Keep `console.error()` with emoji prefixes (❌) for actual errors
+- Error handling: try/catch with `showNotification()` for user feedback; use severity levels ('silent', 'warn', 'error')
 - Comments: Explain "why", not "what"
+- **No inline styles in JS**: Use CSS classes instead of `element.style.*` or `style="..."` attributes. Only exception: truly dynamic values (width %, SVG coordinates)
+- **CSS tokens**: Use `var(--font-*)`, `var(--radius-*)`, `var(--cat-*)` etc. from tokens.css — never hardcode hex colors or rem values
+- **Card patterns**: Use `.hero-card` for dashboard widgets or `.row-card` for list items — don't create one-off card classes
 
 ## Important Notes
 
 - **No bundler/transpiler**: All code must be ES6 module compatible
 - **Firebase SDK version**: Locked to 10.7.1
+- **CSS uses native @import**: `styles/index.css` imports modular files — no CSS bundler needed
 - **Authentication required**: Most features require signed-in user
 - **Local storage not used**: All state in memory or Firebase
 - **Mobile-first**: UI designed for phone use at the gym
 - **Modal-based UI**: Features use integrated modals, not separate pages
+- **Firebase operations use retry**: `withRetry()` in data-manager.js wraps critical saves with exponential backoff
+- **Exercise history cached**: `getLastSessionDefaults()` uses session-level Map cache; cleared on workout start/complete
 
 ## Key Technical Patterns
 
@@ -224,3 +318,12 @@ console.log(window.AppState)  // Full app state
 3. **Query by Date Field**: Use `date` not `completedAt` for workout queries (edited workouts update `completedAt`)
 4. **Unique Day Counting**: Use Set to count workout days, not total workouts
 5. **SVG Progress Rings**: stroke-dasharray/offset for circular progress indicators
+6. **Form Video Resolution**: 3-tier priority: equipment-specific video > equipment general > exercise default > null (see `resolveFormVideo()` in exercise-ui.js)
+7. **Equipment Reassignment**: Batch updates across workouts + templates when moving equipment to a different exercise (see `reassignEquipment()` in data-manager.js)
+8. **Streak Delegation**: `stats-tracker.js` delegates to `streak-tracker.js` as canonical implementation — don't reimplement streak logic
+
+## Roadmap & Implementation Status
+
+See [roadmap.md](roadmap.md) for the full overhaul plan. Current status:
+- **Sprints 1-3 (Phases 0-9, 15)**: Complete
+- **Sprints 4+ (Phases 10-14, 16-19)**: Not yet started — test files pre-written in `tests/unit/`
