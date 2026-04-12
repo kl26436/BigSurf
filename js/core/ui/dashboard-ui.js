@@ -12,6 +12,7 @@ import { Config, CATEGORY_COLORS } from '../utils/config.js';
 import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
+import { renderBodyWeightCard } from '../features/body-measurements-ui.js';
 
 // ===================================================================
 // DASHBOARD DISPLAY
@@ -322,10 +323,12 @@ async function renderDashboard() {
         } else {
             // Build the dashboard - focused on "what to do today" and quick glance stats
             const volumeChip = await renderVolumeComparisonChip();
+            const bodyWeightCard = await renderBodyWeightCard();
             container.innerHTML = `
                 ${renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats)}
                 ${volumeChip}
                 ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
+                ${bodyWeightCard}
                 ${renderDashboardStreakBoxes(streaks)}
                 ${renderDashboardPRsSection(recentPRs)}
                 ${await renderDashboardMiniChart()}

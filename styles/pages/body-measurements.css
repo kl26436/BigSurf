@@ -1,0 +1,369 @@
+/* ===========================================
+   Body Weight & Measurements — Phase 12
+   Dashboard widget, weight entry, measurements, import/export
+   =========================================== */
+
+/* ---- Dashboard Body Weight Card ---- */
+.bodyweight-card {
+    position: relative;
+}
+
+.bodyweight-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.bodyweight-header h3 {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-strong);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bodyweight-header h3 i {
+    color: var(--primary);
+    font-size: var(--font-sm);
+}
+
+.bodyweight-trend {
+    font-size: var(--font-xs);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+}
+
+.bodyweight-trend.up {
+    color: var(--danger);
+    background: rgba(227, 93, 106, 0.1);
+}
+
+.bodyweight-trend.down {
+    color: var(--success);
+    background: rgba(54, 196, 107, 0.1);
+}
+
+.bodyweight-trend.trend-flat {
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.bodyweight-current {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    cursor: pointer;
+    margin-bottom: 12px;
+}
+
+.bodyweight-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    line-height: 1;
+}
+
+.bodyweight-unit {
+    font-size: var(--font-base);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.bodyweight-date {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+.bodyweight-empty {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.bodyweight-empty p {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+/* ---- Weight Entry Modal ---- */
+.weight-entry-form {
+    padding: 8px 0;
+}
+
+.weight-input-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.weight-input-large {
+    font-size: 2.5rem;
+    font-weight: 700;
+    width: 160px;
+    text-align: center;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-strong);
+    padding: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.weight-input-large:focus {
+    border-color: var(--primary);
+}
+
+.weight-input-unit {
+    font-size: var(--font-lg);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.weight-entry-optional {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.weight-entry-optional .form-group label {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    display: block;
+}
+
+.optional-label {
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+/* ---- Weight History ---- */
+.weight-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    margin-bottom: 4px;
+}
+
+.weight-history-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.weight-history-value {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.weight-history-meta {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+
+/* ---- Body Measurements Modal ---- */
+.measurements-hint {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.measurements-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.measurement-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.measurement-label {
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.measurement-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.measurement-input {
+    width: 72px;
+    text-align: center;
+    padding: 6px 8px;
+    font-size: var(--font-sm);
+}
+
+.measurement-unit {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    width: 20px;
+}
+
+/* ---- Stats Page Body Weight Chart ---- */
+#bodyweight-chart-section {
+    margin-top: 16px;
+}
+
+.chart-time-range-pills {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.chart-time-range-pills .pill-btn {
+    flex: 1;
+    padding: 6px 12px;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+}
+
+.chart-time-range-pills .pill-btn.active {
+    background: var(--primary);
+    color: var(--bg-app);
+    border-color: var(--primary);
+}
+
+#bodyweight-chart-container {
+    position: relative;
+    height: 220px;
+    margin-bottom: 12px;
+}
+
+.bodyweight-chart-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.bodyweight-chart-actions .btn-sm {
+    font-size: var(--font-xs);
+    padding: 6px 12px;
+}
+
+/* ---- Import Modal ---- */
+.import-description {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.import-file-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.import-file-label:hover,
+.import-file-label:active {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.import-file-label i {
+    font-size: 1.5rem;
+}
+
+.import-file-selected {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    font-size: var(--font-sm);
+    color: var(--text-main);
+}
+
+.import-file-size {
+    color: var(--text-muted);
+}
+
+.import-preview-stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 16px 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin: 12px 0;
+}
+
+.import-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.import-stat-value {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.import-stat-label {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+
+.import-note {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.import-note i {
+    color: var(--primary);
+}
+
+.import-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(227, 93, 106, 0.1);
+    border-radius: var(--radius-sm);
+    color: var(--danger);
+    font-size: var(--font-sm);
+}
+
+#import-actions {
+    margin-top: 16px;
+}

@@ -8,6 +8,7 @@ import { setBottomNavVisible, navigateTo, updateBottomNavActive } from './naviga
 import { setHeaderMode, escapeHtml, escapeAttr, displayWeight } from './ui-helpers.js';
 import { AppState } from '../utils/app-state.js';
 import { CATEGORY_ICONS } from '../utils/config.js';
+import { renderBodyWeightChartSection, renderBodyWeightChart, destroyBodyWeightChart } from '../features/body-measurements-ui.js';
 
 // ===================================================================
 // STATE
@@ -80,6 +81,7 @@ export function closeStats() {
         weeklyVolumeChart.destroy();
         weeklyVolumeChart = null;
     }
+    destroyBodyWeightChart();
 
     // Restore main header when returning to dashboard
     setHeaderMode(true);
@@ -243,6 +245,9 @@ async function renderProgressView(preSelectedKey = null) {
                 <div id="pr-timeline-section" class="pr-timeline-section">
                     <!-- Populated after data loads -->
                 </div>
+
+                <!-- Body Weight Chart (Phase 12.3) -->
+                ${renderBodyWeightChartSection()}
             </div>
         `;
 
@@ -265,7 +270,7 @@ async function renderProgressView(preSelectedKey = null) {
         }
 
         // Render additional sections
-        await Promise.all([renderWeeklyVolumeChart(), renderBodyPartDistribution(), renderHeatMapCalendar(), renderPRTimeline()]);
+        await Promise.all([renderWeeklyVolumeChart(), renderBodyPartDistribution(), renderHeatMapCalendar(), renderPRTimeline(), renderBodyWeightChart()]);
     } catch (error) {
         console.error('Error rendering progress view:', error);
         container.innerHTML = `

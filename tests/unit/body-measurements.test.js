@@ -3,6 +3,8 @@
 
 import { describe, it, expect } from 'vitest';
 
+// Re-implement pure functions for test isolation (no Firebase/DOM dependencies)
+
 /**
  * Calculate 7-day moving average for body weight entries.
  * @param {Array<{date: string, weight: number}>} entries - Sorted by date ascending

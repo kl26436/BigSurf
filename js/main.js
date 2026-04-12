@@ -219,6 +219,29 @@ import {
 // Location service (GPS-based location detection)
 import { getSessionLocation } from './core/features/location-service.js';
 
+// Body measurements (Phase 12)
+import {
+    showWeightEntryModal,
+    closeWeightEntryModal,
+    saveBodyWeightEntry,
+    showMeasurementsModal,
+    closeMeasurementsModal,
+    saveMeasurementsEntry,
+    showWeightHistory,
+    closeWeightHistory,
+    deleteWeightEntry,
+    setBodyWeightTimeRange,
+} from './core/features/body-measurements-ui.js';
+
+// Data export/import (Phase 13)
+import {
+    exportWorkoutDataAsCSV,
+    showImportModal,
+    closeImportModal,
+    handleImportFileSelect,
+    confirmImport,
+} from './core/data/data-export-import.js';
+
 // UI helpers
 import { setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './core/ui/ui-helpers.js';
 
@@ -672,6 +695,25 @@ window.onboardingNext = onboardingNext;
 window.completeOnboarding = completeOnboarding;
 window.exportWorkoutData = exportWorkoutData;
 window.rebuildPRsFromSettings = rebuildPRsFromSettings;
+
+// Body Measurements (Phase 12)
+window.showWeightEntryModal = showWeightEntryModal;
+window.closeWeightEntryModal = closeWeightEntryModal;
+window.saveBodyWeightEntry = saveBodyWeightEntry;
+window.showMeasurementsModal = showMeasurementsModal;
+window.closeMeasurementsModal = closeMeasurementsModal;
+window.saveMeasurementsEntry = saveMeasurementsEntry;
+window.showWeightHistory = showWeightHistory;
+window.closeWeightHistory = closeWeightHistory;
+window.deleteWeightEntry = deleteWeightEntry;
+window.setBodyWeightTimeRange = setBodyWeightTimeRange;
+
+// Data Export/Import (Phase 13)
+window.exportWorkoutDataAsCSV = exportWorkoutDataAsCSV;
+window.showImportModal = showImportModal;
+window.closeImportModal = closeImportModal;
+window.handleImportFileSelect = handleImportFileSelect;
+window.confirmImport = confirmImport;
 
 // Equipment Library
 window.openEquipmentLibrary = openEquipmentLibrary;
