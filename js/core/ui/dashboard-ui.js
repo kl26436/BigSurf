@@ -20,6 +20,8 @@ import {
     checkTemplateCompatibility,
 } from '../features/equipment-planner.js';
 import { renderDexaCard } from '../features/dexa-scan-ui.js';
+import { showFirstUseTip } from '../features/first-use-tips.js';
+import { updateSetting } from './settings-ui.js';
 
 // ===================================================================
 // DASHBOARD DISPLAY
@@ -333,9 +335,11 @@ async function renderDashboard() {
             // Build the dashboard - focused on "what to do today" and quick glance stats
             const volumeChip = await renderVolumeComparisonChip();
             const insightsHtml = renderTrainingInsights(insightsData);
+            const coachTipHtml = renderCoachTipCard(weekCount, weeklyGoal, streaks, insightsData);
             container.innerHTML = `
                 ${renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats)}
                 ${volumeChip}
+                ${coachTipHtml}
                 ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
                 ${insightsHtml}
                 ${await renderDexaCard()}
@@ -367,6 +371,9 @@ async function renderDashboard() {
         if (hasWorkouts && suggestedWorkouts.length > 0) {
             appendEquipmentBadges(container, suggestedWorkouts, wm);
         }
+
+        // First-use tip — point new users to the More menu
+        showFirstUseTip('more-menu');
     } catch (error) {
         console.error('❌ Error rendering dashboard:', error);
         container.innerHTML = `
@@ -879,6 +886,99 @@ async function renderDashboardMiniChart() {
  * Render the Training Insights dashboard card.
  * Shows top 1-3 actionable insights from the rules engine.
  */
+// ===================================================================
+// COACH TIP CARD
+// ===================================================================
+
+/**
+ * Generate a single contextual coach tip based on workout data.
+ * Shows one tip at a time, dismissible for the rest of the day.
+ */
+function renderCoachTipCard(weekCount, weeklyGoal, streaks, insightsData) {
+    // Don't show if user dismissed today
+    const dismissedDate = AppState.settings?.coachTipDismissedDate;
+    const todayStr = getDateString(new Date());
+    if (dismissedDate === todayStr) return '';
+
+    const tips = [];
+
+    // Check consecutive training days — suggest rest
+    if (streaks && streaks.currentStreak >= 5) {
+        tips.push({
+            icon: 'fa-bed',
+            text: `You've trained ${streaks.currentStreak} days straight. Consider a rest day for recovery.`,
+            action: null,
+        });
+    }
+
+    // Check weekly goal progress — nudge mid-week if behind
+    const dayOfWeek = new Date().getDay(); // 0=Sun
+    if (weeklyGoal > 0 && weekCount === 0 && dayOfWeek >= 3) {
+        tips.push({
+            icon: 'fa-bullseye',
+            text: `No workouts this week yet — ${weeklyGoal} sessions to hit your goal.`,
+            action: 'Start Workout',
+            onclick: "navigateTo('workout')",
+        });
+    } else if (weeklyGoal > 0 && weekCount > 0 && weekCount < weeklyGoal && dayOfWeek >= 5) {
+        const remaining = weeklyGoal - weekCount;
+        tips.push({
+            icon: 'fa-bullseye',
+            text: `${remaining} more workout${remaining > 1 ? 's' : ''} to hit your weekly goal. Weekend push!`,
+            action: 'Start Workout',
+            onclick: "navigateTo('workout')",
+        });
+    }
+
+    // Check for neglected muscle groups from frequency analysis
+    if (insightsData.allWorkouts && insightsData.allWorkouts.length > 0) {
+        const exerciseDatabase = AppState.exerciseDatabase || [];
+        const frequency = TrainingInsights.analyzeFrequency(
+            insightsData.allWorkouts, exerciseDatabase, 4
+        );
+        const neglected = frequency.filter(f => f.status === 'low');
+        if (neglected.length > 0) {
+            const part = neglected[0].bodyPart;
+            tips.push({
+                icon: 'fa-running',
+                text: `${part} is undertrained (${neglected[0].avgPerWeek}x/week). Try adding a ${part.toLowerCase()} session.`,
+                action: null,
+            });
+        }
+    }
+
+    // Show the highest-priority tip
+    const tip = tips[0];
+    if (!tip) return '';
+
+    return `
+        <div class="coach-tip-card hero-card">
+            <button class="coach-tip-dismiss" onclick="dismissCoachTip()" aria-label="Dismiss tip">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="coach-tip-content">
+                <div class="coach-tip-icon"><i class="fas fa-brain"></i></div>
+                <div class="coach-tip-body">
+                    <p class="coach-tip-text">${escapeHtml(tip.text)}</p>
+                    ${tip.action ? `<button class="btn btn-primary btn-small" onclick="${tip.onclick}">${tip.action}</button>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Dismiss the coach tip for the rest of the day.
+ */
+export function dismissCoachTip() {
+    const todayStr = getDateString(new Date());
+    updateSetting('coachTipDismissedDate', todayStr);
+
+    // Remove the card from DOM
+    const card = document.querySelector('.coach-tip-card');
+    if (card) card.remove();
+}
+
 function renderTrainingInsights(insightsData) {
     const exerciseDatabase = AppState.exerciseDatabase || [];
     const insights = TrainingInsights.getTopInsights(

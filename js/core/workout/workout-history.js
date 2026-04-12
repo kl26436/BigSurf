@@ -164,6 +164,7 @@ export function getWorkoutHistory(appState) {
         // Calendar Methods
         async initializeCalendar() {
             await this.loadHistory();
+            this.populateCategoryFilter();
             await this.loadCalendarWorkouts();
             this.updateCalendarDisplay();
         },
@@ -464,12 +465,27 @@ export function getWorkoutHistory(appState) {
             // Get workouts for the displayed month, sorted by date descending
             const year = this.currentCalendarDate.getFullYear();
             const month = this.currentCalendarDate.getMonth();
+            const searchTerm = this.historySearchTerm || '';
+            const catFilter = this.historyCategoryFilter || '';
             const monthWorkouts = this.currentHistory
                 .filter((w) => {
                     if (!w.date) return false;
                     const parts = w.date.split('-');
                     if (parts.length !== 3) return false;
-                    return parseInt(parts[0]) === year && parseInt(parts[1]) - 1 === month;
+                    if (parseInt(parts[0]) !== year || parseInt(parts[1]) - 1 !== month) return false;
+
+                    // Category filter
+                    if (catFilter && w.workoutType !== catFilter) return false;
+
+                    // Search filter — match workout type or exercise names
+                    if (searchTerm) {
+                        const typeMatch = (w.workoutType || '').toLowerCase().includes(searchTerm);
+                        if (typeMatch) return true;
+                        const exercises = Object.values(w.exercises || {});
+                        return exercises.some(ex => (ex.name || '').toLowerCase().includes(searchTerm));
+                    }
+
+                    return true;
                 })
                 .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
@@ -534,6 +550,58 @@ export function getWorkoutHistory(appState) {
         loadMoreRecentWorkouts() {
             this.recentWorkoutsPage++;
             this.renderRecentWorkoutsList();
+        },
+
+        // Search & filter state
+        historySearchTerm: '',
+        historyCategoryFilter: '',
+
+        filterBySearch(queryStr) {
+            this.historySearchTerm = queryStr.toLowerCase().trim();
+            this.recentWorkoutsPage = 1;
+
+            // Show/hide clear button
+            const clearBtn = document.getElementById('history-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !this.historySearchTerm);
+
+            this.renderRecentWorkoutsList();
+        },
+
+        filterByCategory(category) {
+            this.historyCategoryFilter = category;
+            this.recentWorkoutsPage = 1;
+            this.renderRecentWorkoutsList();
+        },
+
+        clearSearch() {
+            this.historySearchTerm = '';
+            this.historyCategoryFilter = '';
+            const input = document.getElementById('history-search-input');
+            const select = document.getElementById('history-category-filter');
+            const clearBtn = document.getElementById('history-search-clear');
+            if (input) input.value = '';
+            if (select) select.value = '';
+            if (clearBtn) clearBtn.classList.add('hidden');
+            this.recentWorkoutsPage = 1;
+            this.renderRecentWorkoutsList();
+        },
+
+        /** Populate the category dropdown from actual workout types */
+        populateCategoryFilter() {
+            const select = document.getElementById('history-category-filter');
+            if (!select) return;
+
+            const types = new Set();
+            this.currentHistory.forEach(w => {
+                if (w.workoutType) types.add(w.workoutType);
+            });
+
+            const sorted = [...types].sort();
+            let html = '<option value="">All Types</option>';
+            sorted.forEach(t => {
+                html += `<option value="${escapeAttr(t)}">${escapeHtml(t)}</option>`;
+            });
+            select.innerHTML = html;
         },
 
         getWorkoutIcon(workouts) {

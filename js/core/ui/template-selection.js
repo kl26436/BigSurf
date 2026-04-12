@@ -7,6 +7,7 @@ import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from 
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { getEquipmentAtLocation, getExercisesAtLocation, checkTemplateCompatibility, categorizeTemplates } from '../features/equipment-planner.js';
+import { showFirstUseTip } from '../features/first-use-tips.js';
 
 // ===================================================================
 // TEMPLATE SELECTION STATE
@@ -225,6 +226,9 @@ export function showWorkoutSelector() {
     // Populate category badges and recent templates (async, non-blocking)
     updateCategoryBadges();
     renderRecentTemplates();
+
+    // First-use tip for new users
+    showFirstUseTip('workout-selector');
 }
 
 // ===================================================================

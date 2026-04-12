@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS = {
 
     // Meta
     hasCompletedOnboarding: false,
+    seenTips: [],
 };
 
 let saveTimeout = null;

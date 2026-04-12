@@ -368,6 +368,22 @@
                         </div>
                     </div>
 
+                    <!-- History Search & Filter -->
+                    <div class="history-search-bar">
+                        <div class="history-search-input-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="history-search-input"
+                                placeholder="Search exercises or workouts..."
+                                oninput="filterWorkoutHistory(this.value)">
+                            <button class="history-search-clear hidden" id="history-search-clear" onclick="clearHistorySearch()" aria-label="Clear search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <select id="history-category-filter" onchange="filterHistoryByCategory(this.value)">
+                            <option value="">All Types</option>
+                        </select>
+                    </div>
+
                     <!-- Recent Workouts List (paginated) -->
                     <div id="recent-workouts-list" class="recent-workouts-section">
                         <!-- Populated by JavaScript -->

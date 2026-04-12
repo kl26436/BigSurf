@@ -1456,3 +1456,67 @@ h3 {
     }
 }
 
+/* ============================================================================
+   COACH TIP CARD
+   ============================================================================ */
+
+.coach-tip-card {
+    position: relative;
+    background: var(--bg-card);
+    border-left: 4px solid var(--primary);
+    margin-bottom: var(--gap-md, 12px);
+}
+
+.coach-tip-dismiss {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    padding: 4px 6px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+}
+
+.coach-tip-dismiss:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+.coach-tip-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.coach-tip-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary-alpha, rgba(99, 102, 241, 0.15));
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.coach-tip-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.coach-tip-text {
+    margin: 0 0 8px;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    color: var(--text-primary);
+}
+
+.coach-tip-body .btn-small {
+    margin-top: 4px;
+}
+

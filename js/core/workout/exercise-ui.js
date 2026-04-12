@@ -30,6 +30,7 @@ import {
 } from './rest-timer.js';
 import { Config, CATEGORY_COLORS } from '../utils/config.js';
 import { getWorkoutCategory } from '../ui/template-selection.js';
+import { showFirstUseTip } from '../features/first-use-tips.js';
 
 // ===================================================================
 // EVENT DELEGATION FOR EXERCISE MODAL
@@ -717,6 +718,9 @@ export async function focusExercise(index) {
     // Hide nav when exercise modal is open (no hamburger needed - has X to close)
     setHeaderMode(false);
     setBottomNavVisible(false);
+
+    // First-use tip for set completion
+    showFirstUseTip('exercise-sets');
 
     // Setup swipe-to-delete on set rows
     setupSwipeToDelete(index);

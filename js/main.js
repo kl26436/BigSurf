@@ -10,6 +10,7 @@ import { getCategoryIcon } from './core/utils/config.js';
 import { startApplication } from './core/app-initialization.js';
 import { updateSetting, onboardingNext, completeOnboarding, rebuildPRsFromSettings } from './core/ui/settings-ui.js';
 import { exportWorkoutData } from './core/data/data-manager.js';
+import { dismissFirstUseTip } from './core/features/first-use-tips.js';
 import {
     openEquipmentLibrary, openEquipmentDetail, backToEquipmentList,
     filterEquipmentByLocation, filterEquipmentBySearch,
@@ -301,6 +302,7 @@ import {
     startSuggestedWorkout,
     toggleDashboardSection,
     toggleDashboardPRBodyPart,
+    dismissCoachTip,
 } from './core/ui/dashboard-ui.js';
 
 // Stats functionality
@@ -537,6 +539,7 @@ window.repeatLastWorkout = repeatLastWorkout;
 window.startSuggestedWorkout = startSuggestedWorkout;
 window.toggleDashboardSection = toggleDashboardSection;
 window.toggleDashboardPRBodyPart = toggleDashboardPRBodyPart;
+window.dismissCoachTip = dismissCoachTip;
 
 // Stats Functions
 window.closeStats = closeStats;
@@ -683,6 +686,15 @@ window.repeatWorkout = repeatWorkout;
 window.deleteWorkout = deleteWorkout;
 window.retryWorkout = retryWorkout;
 window.clearAllHistoryFilters = clearAllHistoryFilters;
+window.filterWorkoutHistory = function (query) {
+    if (window.workoutHistory) window.workoutHistory.filterBySearch(query);
+};
+window.filterHistoryByCategory = function (category) {
+    if (window.workoutHistory) window.workoutHistory.filterByCategory(category);
+};
+window.clearHistorySearch = function () {
+    if (window.workoutHistory) window.workoutHistory.clearSearch();
+};
 window.closeWorkoutDetailModal = function () {
     const modal = document.getElementById('workout-detail-modal');
     if (modal) {
@@ -735,6 +747,7 @@ window.onboardingNext = onboardingNext;
 window.completeOnboarding = completeOnboarding;
 window.exportWorkoutData = exportWorkoutData;
 window.rebuildPRsFromSettings = rebuildPRsFromSettings;
+window.dismissFirstUseTip = dismissFirstUseTip;
 
 // Body Measurements (Phase 12)
 window.showWeightEntryModal = showWeightEntryModal;

@@ -438,3 +438,69 @@
     gap: 6px;
 }
 
+/* ============================================================================
+   HISTORY SEARCH & FILTER BAR
+   ============================================================================ */
+
+.history-search-bar {
+    display: flex;
+    gap: 8px;
+    padding: 0 var(--pad-page, 16px);
+    margin-bottom: 12px;
+}
+
+.history-search-input-wrapper {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.history-search-input-wrapper > i {
+    position: absolute;
+    left: 10px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.history-search-input-wrapper input {
+    width: 100%;
+    padding: 8px 32px 8px 32px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+}
+
+.history-search-input-wrapper input::placeholder {
+    color: var(--text-muted);
+}
+
+.history-search-clear {
+    position: absolute;
+    right: 6px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.history-search-clear:hover {
+    color: var(--text-primary);
+}
+
+#history-category-filter {
+    flex-shrink: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    max-width: 140px;
+}
+
