@@ -185,11 +185,31 @@ export function renderSettings() {
 
                 <div class="settings-item" style="cursor: pointer;" onclick="exportWorkoutData(window.AppState)">
                     <div class="settings-label">
-                        <span class="settings-name">Export Data</span>
-                        <span class="settings-description">Download all workouts as JSON</span>
+                        <span class="settings-name">Export as JSON</span>
+                        <span class="settings-description">Download all workouts, templates & equipment</span>
                     </div>
                     <div class="settings-control">
                         <i class="fas fa-download" style="color: var(--primary);"></i>
+                    </div>
+                </div>
+
+                <div class="settings-item" style="cursor: pointer;" onclick="exportWorkoutDataAsCSV()">
+                    <div class="settings-label">
+                        <span class="settings-name">Export as CSV</span>
+                        <span class="settings-description">Spreadsheet format — one row per set</span>
+                    </div>
+                    <div class="settings-control">
+                        <i class="fas fa-file-csv" style="color: var(--primary);"></i>
+                    </div>
+                </div>
+
+                <div class="settings-item" style="cursor: pointer;" onclick="showImportModal()">
+                    <div class="settings-label">
+                        <span class="settings-name">Import Data</span>
+                        <span class="settings-description">Restore from a Big Surf JSON export</span>
+                    </div>
+                    <div class="settings-control">
+                        <i class="fas fa-upload" style="color: var(--primary);"></i>
                     </div>
                 </div>
 
@@ -210,7 +230,7 @@ export function renderSettings() {
                 <div class="settings-item">
                     <div class="settings-label">
                         <span class="settings-name">Big Surf Workout Tracker</span>
-                        <span class="settings-description">v3.0 — Sprint 3</span>
+                        <span class="settings-description">v3.0 — Sprint 5</span>
                     </div>
                 </div>
             </div>
@@ -316,7 +336,6 @@ export function completeOnboarding() {
  * Rebuild PRs from settings page — recalculates from full workout history.
  */
 export async function rebuildPRsFromSettings() {
-    showNotification('Rebuilding PRs...', 'info', 2000);
     try {
         const { rebuildPRsFromHistory } = await import('../features/pr-tracker.js');
         const result = await rebuildPRsFromHistory();

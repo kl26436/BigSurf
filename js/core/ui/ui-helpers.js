@@ -25,37 +25,44 @@ export function showNotification(message, type = 'info') {
         lastErrorTime = now;
     }
 
+    // Remove any existing notification
+    const existing = document.querySelector('.app-toast');
+    if (existing) existing.remove();
+
+    const isError = type === 'error';
+    const borderColor = type === 'success' ? 'var(--success)' : isError ? 'var(--danger)' : 'var(--primary)';
+    const duration = isError ? 4000 : 1500;
+
     const notification = document.createElement('div');
+    notification.className = 'app-toast';
     notification.setAttribute('role', 'alert');
     notification.style.cssText = `
         position: fixed;
-        top: 20px;
+        bottom: 80px;
         left: 50%;
         transform: translateX(-50%);
-        background: var(--bg-secondary);
-        color: var(--text-primary);
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        border: 1px solid var(--${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'primary'});
+        background: var(--bg-card, #0a0f15);
+        color: var(--text-main, #c4cad4);
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid ${borderColor};
         z-index: 10000;
-        animation: slideDown 0.3s ease;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-size: 0.8rem;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        max-width: 85vw;
+        text-align: center;
+        pointer-events: none;
     `;
+    notification.textContent = message;
 
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-            <span>${escapeHtml(message)}</span>
-        </div>
-    `;
-
-    const container = document.getElementById('notifications-container') || document.body;
-    container.appendChild(notification);
+    document.body.appendChild(notification);
+    requestAnimationFrame(() => { notification.style.opacity = '1'; });
 
     setTimeout(() => {
-        notification.style.animation = 'slideUp 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 200);
+    }, duration);
 }
 
 export function setTodayDisplay() {

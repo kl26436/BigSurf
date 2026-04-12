@@ -1892,6 +1892,34 @@
             </div>
         </dialog>
 
+        <!-- Body Weight Entry Modal (Phase 12.2) -->
+        <dialog id="weight-entry-modal" class="modal" aria-modal="true" aria-label="Log body weight">
+            <div class="modal-content">
+                <!-- Populated by JavaScript -->
+            </div>
+        </dialog>
+
+        <!-- Weight History Modal (Phase 12.2) -->
+        <dialog id="weight-history-modal" class="modal" aria-modal="true" aria-label="Weight history">
+            <div class="modal-content">
+                <!-- Populated by JavaScript -->
+            </div>
+        </dialog>
+
+        <!-- Body Measurements Modal (Phase 12.4) -->
+        <dialog id="measurements-modal" class="modal" aria-modal="true" aria-label="Body measurements">
+            <div class="modal-content">
+                <!-- Populated by JavaScript -->
+            </div>
+        </dialog>
+
+        <!-- Import Data Modal (Phase 13.2) -->
+        <dialog id="import-data-modal" class="modal" aria-modal="true" aria-label="Import data">
+            <div class="modal-content">
+                <!-- Populated by JavaScript -->
+            </div>
+        </dialog>
+
         <!-- Equipment Library Page -->
         <section id="equipment-library-section" class="app-section hidden">
             <div class="equip-lib-header">
@@ -1916,6 +1944,13 @@
         </section>
 
         <section id="settings-section" class="app-section hidden">
+            <div class="equip-lib-header">
+                <button class="btn-icon" onclick="navigateTo('dashboard')" aria-label="Back to dashboard">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Settings</h2>
+                <div style="width: 36px;"></div>
+            </div>
             <div id="settings-content"></div>
         </section>
 
