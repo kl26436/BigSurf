@@ -7,6 +7,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Global default exercises (read-only for authenticated users)
+    match /exercises/{docId} {
+      allow read: if request.auth != null;
+    }
+
+    // Global default workout templates (read-only for authenticated users)
+    match /workouts/{docId} {
+      allow read: if request.auth != null;
+    }
+
     // Error logs: any authenticated user can create; read/delete for debugging
     match /errorLogs/{docId} {
       allow create: if request.auth != null;
