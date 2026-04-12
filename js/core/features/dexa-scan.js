@@ -118,17 +118,16 @@ async function getStorageModule() {
 }
 
 /**
- * Upload a DEXA PDF to Firebase Storage and return its base64 content.
+ * Read a DEXA PDF as base64 for AI extraction.
+ * Storage upload is skipped — PDF is sent directly to the Cloud Function.
  * @param {File} file - PDF file from file input
  * @returns {Promise<{scanId: string, storagePath: string, base64: string}>}
  */
 export async function uploadDexaPdf(file) {
     if (!AppState.currentUser) throw new Error('Not authenticated');
 
-    const userId = AppState.currentUser.uid;
     const date = AppState.getTodayDateString();
     const scanId = `${date}_${Date.now()}`;
-    const storagePath = `users/${userId}/dexa-reports/${scanId}.pdf`;
 
     // Read file as base64 for AI extraction
     const base64 = await new Promise((resolve, reject) => {
@@ -142,14 +141,8 @@ export async function uploadDexaPdf(file) {
         reader.readAsDataURL(file);
     });
 
-    // Upload to Firebase Storage
-    const { getStorage, ref, uploadBytes } = await getStorageModule();
-    const storage = getStorage();
-    const fileRef = ref(storage, storagePath);
-    await uploadBytes(fileRef, file, { contentType: 'application/pdf' });
-
-    debugLog('DEXA PDF uploaded:', storagePath);
-    return { scanId, storagePath, base64 };
+    debugLog('DEXA PDF read as base64, size:', Math.round(base64.length / 1024), 'KB');
+    return { scanId, storagePath: null, base64 };
 }
 
 // ===================================================================

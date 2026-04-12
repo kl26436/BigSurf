@@ -1,0 +1,14 @@
+[
+  {
+    "origin": [
+      "https://bigsurf-dev.web.app",
+      "https://workout-tracker-b94b6.web.app",
+      "https://bigsurf.fit",
+      "http://localhost:5000",
+      "http://localhost:8080"
+    ],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "X-Requested-With"]
+  }
+]

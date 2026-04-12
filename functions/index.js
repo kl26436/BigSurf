@@ -899,20 +899,17 @@ exports.getTrainingRecommendation = functions.runWith({
         throw new functions.https.HttpsError('invalid-argument', 'Missing question');
     }
 
-    // Rate limiting: max 1 call per 24 hours per user
-    const lastCallDoc = await db.collection('users').doc(userId)
-        .collection('preferences').doc('coachRateLimit').get();
-
-    if (lastCallDoc.exists) {
-        const lastCall = lastCallDoc.data().timestamp;
-        const hoursSince = (Date.now() - lastCall) / (1000 * 60 * 60);
-        if (hoursSince < 24) {
-            throw new functions.https.HttpsError(
-                'resource-exhausted',
-                'Coach is available once per day. Try again tomorrow.'
-            );
-        }
-    }
+    // Rate limiting: disabled for testing (was 1 call per 24 hours)
+    // TODO: Re-enable before production
+    // const lastCallDoc = await db.collection('users').doc(userId)
+    //     .collection('preferences').doc('coachRateLimit').get();
+    // if (lastCallDoc.exists) {
+    //     const lastCall = lastCallDoc.data().timestamp;
+    //     const hoursSince = (Date.now() - lastCall) / (1000 * 60 * 60);
+    //     if (hoursSince < 24) {
+    //         throw new functions.https.HttpsError('resource-exhausted', 'Coach is available once per day.');
+    //     }
+    // }
 
     try {
         const apiKey = anthropicApiKey.value();
@@ -1196,20 +1193,17 @@ exports.extractDexaData = functions.runWith({
         throw new functions.https.HttpsError('invalid-argument', 'File too large. Maximum 10 MB.');
     }
 
-    // Rate limiting: max 5 extractions per day per user
-    const rateLimitDoc = await db.collection('users').doc(userId)
-        .collection('preferences').doc('dexaRateLimit').get();
-
-    if (rateLimitDoc.exists) {
-        const { timestamp, count } = rateLimitDoc.data();
-        const hoursSince = (Date.now() - timestamp) / (1000 * 60 * 60);
-        if (hoursSince < 24 && count >= 5) {
-            throw new functions.https.HttpsError(
-                'resource-exhausted',
-                'DEXA extraction limit reached (5 per day). Try again tomorrow.'
-            );
-        }
-    }
+    // Rate limiting: disabled for testing (was 5 extractions per day)
+    // TODO: Re-enable before production
+    // const rateLimitDoc = await db.collection('users').doc(userId)
+    //     .collection('preferences').doc('dexaRateLimit').get();
+    // if (rateLimitDoc.exists) {
+    //     const { timestamp, count } = rateLimitDoc.data();
+    //     const hoursSince = (Date.now() - timestamp) / (1000 * 60 * 60);
+    //     if (hoursSince < 24 && count >= 5) {
+    //         throw new functions.https.HttpsError('resource-exhausted', 'DEXA extraction limit reached.');
+    //     }
+    // }
 
     try {
         const apiKey = anthropicApiKey.value();
@@ -1253,6 +1247,7 @@ exports.extractDexaData = functions.runWith({
                     'Content-Type': 'application/json',
                     'x-api-key': apiKey,
                     'anthropic-version': '2023-06-01',
+                    'anthropic-beta': 'pdfs-2024-09-25',
                     'Content-Length': Buffer.byteLength(requestBody),
                 },
             }, (res) => {
@@ -1294,18 +1289,14 @@ exports.extractDexaData = functions.runWith({
             console.warn('⚠️ DEXA extraction missing totalBodyFat, returning partial data');
         }
 
-        // Update rate limit counter
-        const currentData = rateLimitDoc.exists ? rateLimitDoc.data() : {};
-        const hoursSinceLastCall = currentData.timestamp
-            ? (Date.now() - currentData.timestamp) / (1000 * 60 * 60)
-            : 999;
-
-        await db.collection('users').doc(userId)
-            .collection('preferences').doc('dexaRateLimit')
-            .set({
-                timestamp: Date.now(),
-                count: hoursSinceLastCall < 24 ? (currentData.count || 0) + 1 : 1,
-            });
+        // Rate limit counter: disabled for testing
+        // TODO: Re-enable before production
+        // const currentData = rateLimitDoc.exists ? rateLimitDoc.data() : {};
+        // const hoursSinceLastCall = currentData.timestamp
+        //     ? (Date.now() - currentData.timestamp) / (1000 * 60 * 60) : 999;
+        // await db.collection('users').doc(userId)
+        //     .collection('preferences').doc('dexaRateLimit')
+        //     .set({ timestamp: Date.now(), count: hoursSinceLastCall < 24 ? (currentData.count || 0) + 1 : 1 });
 
         console.log(`✅ DEXA scan extracted for user ${userId}: ${extractedData.totalBodyFat}% body fat`);
 
