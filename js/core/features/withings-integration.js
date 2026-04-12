@@ -50,21 +50,18 @@ export async function handleWithingsCallback() {
     // Only process if we have a code and it looks like a Withings callback
     if (!code || !state) return false;
 
+    console.log('🔗 Withings OAuth callback detected — code:', code.substring(0, 8) + '...');
+
     // Clean the URL immediately so it doesn't re-trigger on refresh
+    const origin = url.origin;
     url.searchParams.delete('code');
     url.searchParams.delete('state');
-    window.history.replaceState({}, '', url.pathname);
+    window.history.replaceState({}, '', url.pathname + url.search);
 
-    // Wait for auth to be ready
-    if (!AppState.currentUser) {
-        // Store callback data and process after auth
-        sessionStorage.setItem('withings_pending_code', code);
-        sessionStorage.setItem('withings_pending_origin', window.location.origin);
-        debugLog('Withings callback stored — waiting for auth');
-        return true;
-    }
-
-    return await exchangeWithingsCode(code);
+    // Store callback data — will be processed after auth is ready
+    sessionStorage.setItem('withings_pending_code', code);
+    sessionStorage.setItem('withings_pending_origin', origin);
+    return true;
 }
 
 /**
@@ -87,12 +84,14 @@ export async function processPendingWithingsCallback() {
  */
 async function exchangeWithingsCode(code, callbackUrl) {
     try {
+        const cbUrl = callbackUrl || window.location.origin;
+        console.log('🔗 Exchanging Withings code, callback:', cbUrl);
         showNotification('Completing Withings setup...', 'info', 3000);
 
         const exchangeToken = httpsCallable(functions, 'withingsExchangeToken');
         const result = await exchangeToken({
             code,
-            callbackUrl: callbackUrl || window.location.origin,
+            callbackUrl: cbUrl,
         });
 
         if (result.data?.success) {

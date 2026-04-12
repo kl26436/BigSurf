@@ -252,6 +252,16 @@ import {
     processPendingWithingsCallback,
 } from './core/features/withings-integration.js';
 
+// AI Coach (Phase 17)
+import {
+    showAICoach,
+    closeAICoach,
+    showCoachFreeform,
+    askCoach,
+    resetCoachUI,
+    showPastCoachSession,
+} from './core/features/ai-coach-ui.js';
+
 // UI helpers
 import { setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './core/ui/ui-helpers.js';
 
@@ -730,6 +740,14 @@ window.connectWithings = connectWithings;
 window.syncWithingsWeight = syncWithingsWeight;
 window.disconnectWithings = disconnectWithings;
 
+// AI Coach (Phase 17)
+window.showAICoach = showAICoach;
+window.closeAICoach = closeAICoach;
+window.showCoachFreeform = showCoachFreeform;
+window.askCoach = askCoach;
+window.resetCoachUI = resetCoachUI;
+window.showPastCoachSession = showPastCoachSession;
+
 // Withings settings action — connects, syncs, or shows disconnect option
 let _withingsConnected = false;
 window.handleWithingsSettingsAction = async function () {
@@ -831,13 +849,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Check for Withings OAuth callback before app starts
         // (cleans URL params so they don't interfere with routing)
-        await handleWithingsCallback();
+        handleWithingsCallback();
 
         await startApplication();
 
-        // After auth is ready, check for pending Withings callback + update UI
+        // After auth is ready, process pending Withings callback + update UI
         if (AppState.currentUser) {
-            processPendingWithingsCallback();
+            try {
+                await processPendingWithingsCallback();
+            } catch (e) {
+                console.error('❌ Withings callback processing failed:', e);
+            }
             // Update Withings status in Settings (non-blocking)
             getWithingsStatus().then(status => {
                 _withingsConnected = status.connected;
