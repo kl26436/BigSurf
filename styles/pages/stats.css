@@ -25,7 +25,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px;
+    padding: var(--pad-card-y) var(--pad-card-x);
 }
 .stat-label {
     font-size: 0.75rem;
@@ -72,7 +72,7 @@
     justify-content: space-between;
     margin: -16px -16px 0 -16px;
     padding: 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-light);
 }
 
 .progress-header h2 {
@@ -92,9 +92,9 @@
 .summary-card {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 16px 12px;
+    padding: var(--pad-card-x);
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
 }
 
 .summary-icon {
@@ -143,7 +143,7 @@
     background: var(--bg-card);
     border-radius: var(--radius-md);
     padding: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
 }
 
 /* Category Pills (Push/Pull/Legs) */
@@ -159,9 +159,9 @@
     align-items: center;
     gap: 6px;
     padding: 10px 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
+    background: var(--border-subtle);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
     color: var(--text-muted);
     font-size: 0.9rem;
     font-weight: 500;
@@ -170,7 +170,7 @@
 }
 
 .category-pill:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--border-light);
     color: var(--text-main);
 }
 
@@ -209,10 +209,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 14px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: var(--radius-sm);
+    padding: var(--space-10) var(--pad-card-x);
+    background: var(--border-subtle);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
     color: var(--text-main);
     font-size: 0.9rem;
     font-weight: 500;
@@ -221,8 +221,8 @@
 }
 
 .equipment-pill:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--border-light);
+    border-color: var(--border-medium);
 }
 
 .equipment-pill.active {
@@ -249,7 +249,7 @@
     background: var(--bg-card);
     border-radius: var(--radius-md);
     padding: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
 }
 
 .selector-label {
@@ -265,7 +265,7 @@
     width: 100%;
     padding: 12px 16px;
     background: var(--bg-input);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     color: var(--text-strong);
     font-size: 1rem;
@@ -299,7 +299,7 @@
     background: var(--bg-card);
     border-radius: var(--radius-md);
     padding: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
 }
 
 /* Time Range Picker */
@@ -311,10 +311,10 @@
 
 .time-range-btn {
     flex: 1;
-    padding: 8px 12px;
+    padding: var(--space-8) var(--space-12);
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
     color: var(--text-muted);
     font-size: 0.85rem;
     font-weight: 500;
@@ -372,8 +372,8 @@
 
 .stat-box {
     text-align: center;
-    padding: 12px 8px;
-    background: rgba(255, 255, 255, 0.03);
+    padding: var(--pad-card-y) var(--pad-card-x);
+    background: var(--border-subtle);
     border-radius: var(--radius-sm);
 }
 
@@ -434,7 +434,7 @@
     background: var(--bg-card);
     border-radius: var(--radius-md);
     padding: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
 }
 
 .history-header {
@@ -462,8 +462,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.03);
+    padding: var(--pad-card-y) var(--pad-card-x);
+    background: var(--border-subtle);
     border-radius: var(--radius-sm);
     flex-wrap: wrap;
     gap: 8px;
@@ -510,9 +510,9 @@
     display: flex;
     gap: 6px;
     margin-bottom: 12px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--border-subtle);
     border-radius: var(--radius-sm);
-    padding: 4px;
+    padding: var(--space-4);
 }
 
 .chart-type-btn {
@@ -534,7 +534,7 @@
 
 .chart-type-btn:hover {
     color: var(--text-main);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--border-subtle);
 }
 
 .chart-type-btn.active {
@@ -595,7 +595,7 @@
 }
 .trend-flat {
     color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--border-subtle);
 }
 
 /* Section Cards (shared style for new sections) */
@@ -603,7 +603,7 @@
     background: var(--bg-card);
     border-radius: var(--radius-md);
     padding: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
     margin-top: 16px;
 }
 
@@ -720,7 +720,7 @@
     width: 18px;
     height: 18px;
     border-radius: 4px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--border-subtle);
     transition: transform 0.1s ease;
 }
 
@@ -729,7 +729,7 @@
 }
 
 .heat-map-cell.intensity-0 {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--border-subtle);
 }
 .heat-map-cell.intensity-1 {
     background: rgba(29, 211, 176, 0.25);
@@ -789,104 +789,4 @@
     top: 8px;
     bottom: 8px;
     width: 2px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 1px;
-}
-
-.pr-timeline-item {
-    position: relative;
-    padding-bottom: 16px;
-}
-
-.pr-timeline-item:last-child {
-    padding-bottom: 0;
-}
-
-.pr-timeline-marker {
-    position: absolute;
-    left: -24px;
-    top: 0;
-    width: 18px;
-    height: 18px;
-    background: var(--bg-card-hi);
-    border: 2px solid rgba(255, 255, 255, 0.15);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.pr-timeline-marker i {
-    font-size: 0.5rem;
-    color: var(--text-muted);
-}
-
-.pr-timeline-item.latest .pr-timeline-marker {
-    background: var(--primary);
-    border-color: var(--primary);
-}
-
-.pr-timeline-item.latest .pr-timeline-marker i {
-    color: #000;
-}
-
-.pr-timeline-content {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: var(--radius-sm);
-    padding: 12px;
-}
-
-.pr-timeline-item.latest .pr-timeline-content {
-    background: rgba(29, 211, 176, 0.08);
-    border: 1px solid rgba(29, 211, 176, 0.15);
-}
-
-.pr-timeline-date {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-}
-
-.pr-timeline-exercise {
-    font-weight: 600;
-    color: var(--text-strong);
-    margin-bottom: 4px;
-}
-
-.pr-timeline-details {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: baseline;
-}
-
-.pr-timeline-weight {
-    font-weight: 700;
-    color: var(--primary);
-}
-
-.pr-timeline-reps {
-    font-size: 0.9rem;
-    color: var(--text-main);
-}
-
-.pr-timeline-equipment {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    padding: 2px 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: var(--radius-sm);
-}
-
-.pr-timeline-empty {
-    text-align: center;
-    padding: 32px 16px;
-    color: var(--text-muted);
-}
-
-.pr-timeline-empty i {
-    font-size: 2rem;
-    margin-bottom: 12px;
-    opacity: 0.4;
-}
-
+    background: rgba(255, 255

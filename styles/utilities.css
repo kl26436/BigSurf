@@ -509,7 +509,7 @@ dialog[open] > .modal-content {
     padding: 6px 12px;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     font-size: 0.85rem;
     cursor: pointer;
 }

@@ -90,7 +90,19 @@
     --z-toast: 700;
     --z-onboarding: 9999;
 
-    /* Spacing */
+    /* Spacing scale (8px base grid) */
+    --space-2: 2px;
+    --space-4: 4px;
+    --space-6: 6px;
+    --space-8: 8px;
+    --space-10: 10px;
+    --space-12: 12px;
+    --space-16: 16px;
+    --space-20: 20px;
+    --space-24: 24px;
+    --space-32: 32px;
+
+    /* Layout spacing */
     --pad-page: 18px;
     --pad-card-y: 14px;
     --pad-card-x: 16px;
@@ -99,6 +111,34 @@
 
     /* Sizing */
     --tap: 44px;
-    --font: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-}
+    --tap-sm: 36px;
+    --input-height: 44px;
 
+    /* Icon size scale */
+    --icon-xs: 20px;
+    --icon-sm: 28px;
+    --icon-md: 40px;
+    --icon-lg: 48px;
+    --icon-xl: 56px;
+
+    /* Border consistency */
+    --border-subtle: rgba(255, 255, 255, 0.04);
+    --border-light: rgba(255, 255, 255, 0.08);
+    --border-medium: rgba(255, 255, 255, 0.12);
+
+    /* Accent bar thickness */
+    --accent-bar: 3px;
+
+    /* Display typography */
+    --font-display: 2rem;
+    --font-display-sm: 1.4rem;
+
+    /* Easing curves */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    /* Background - differentiate tertiary */
+    --bg-tertiary: #1a2028;
+
+    --font: system-ui, -apple-system, Bl

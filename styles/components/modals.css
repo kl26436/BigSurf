@@ -24,8 +24,8 @@
 }
 .modal-close,
 .close-btn {
-    width: 36px;
-    height: 36px;
+    width: var(--tap);
+    height: var(--tap);
     border-radius: 50%;
     background: var(--bg-card);
     border: none;
@@ -37,7 +37,7 @@
     flex-shrink: 0;
 }
 .modal-body {
-    padding: 20px;
+    padding: var(--pad-card-x);
 }
 
 /* Exercise Detail Modal - Full Screen */
@@ -83,8 +83,7 @@
 }
 
 #exercise-modal .modal-header {
-    padding: 16px;
-    padding-top: 20px;
+    padding: var(--pad-card-x);
     border-bottom: 1px solid var(--border);
     background: var(--bg-app);
     display: flex;
@@ -123,16 +122,16 @@
 .exercise-detail-actions {
     display: flex;
     gap: 6px;
-    margin-top: 10px;
+    margin-top: var(--space-12);
     padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    border-top: 1px solid var(--border-subtle);
     flex-wrap: wrap;
 }
 .exercise-detail-actions .btn-text {
     font-size: 0.75rem;
     padding: 4px 10px;
     border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--border-subtle);
     color: var(--text-muted);
     border: none;
     cursor: pointer;
@@ -151,16 +150,16 @@
     flex-direction: column;
     gap: 2px;
     margin-top: 8px;
-    padding: 6px;
+    padding: var(--space-8);
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-light);
 }
 .exercise-overflow-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
+    padding: var(--space-12) var(--pad-card-x);
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
@@ -175,7 +174,7 @@
     color: var(--text-muted);
 }
 .exercise-overflow-item:active {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--border-light);
 }
 .exercise-more-toggle {
     margin-left: auto;
@@ -237,7 +236,7 @@
     white-space: nowrap;
 }
 .exercise-table tbody tr {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-subtle);
 }
 .exercise-table tbody tr:last-child {
     border-bottom: none;
@@ -340,7 +339,7 @@
 .unit-toggle {
     display: inline-flex;
     background: var(--bg-card);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 4px;
 }
 .unit-btn {
@@ -350,7 +349,7 @@
     color: var(--text-muted);
     font-weight: 600;
     cursor: pointer;
-    border-radius: 16px;
+    border-radius: var(--radius-pill);
     transition: all 0.2s;
 }
 .unit-btn.active {
@@ -402,8 +401,8 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
-    width: 36px;
-    height: 36px;
+    width: var(--tap);
+    height: var(--tap);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -466,7 +465,7 @@ dialog.modal:not([open]) {
     max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
     border-bottom: none;
     animation: modalSlideUp 0.25s ease;
     position: relative;
@@ -495,13 +494,13 @@ dialog.modal:not([open]) {
     max-width: 400px;
     margin: auto;
     border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
 }
 .modal-medium {
     max-width: 500px;
     margin: auto;
     border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
 }
 .modal-description {
     color: var(--text-muted);
@@ -612,7 +611,7 @@ dialog.modal:not([open]) {
 }
 .reassign-progress {
     height: 6px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--border-light);
     border-radius: 3px;
     overflow: hidden;
     margin-bottom: 12px;
@@ -688,12 +687,12 @@ dialog.modal:not([open]) {
     font-size: 0.75rem;
     color: var(--text-muted);
     padding: 4px 8px;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--border-subtle);
     border-radius: var(--radius-xs);
 }
 .btn-icon {
-    width: 36px;
-    height: 36px;
+    width: var(--tap);
+    height: var(--tap);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -705,7 +704,7 @@ dialog.modal:not([open]) {
     border-radius: 50%;
 }
 .btn-icon:active {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--border-light);
 }
 .section-header {
     display: flex;
@@ -989,7 +988,7 @@ dialog.modal:not([open]) {
    =========================================== */
 .manual-exercise-card {
     background: var(--bg-card);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
     padding: 18px;
     margin-bottom: 12px;
@@ -1020,8 +1019,8 @@ dialog.modal:not([open]) {
     font-size: 0.75rem;
     background: rgba(29, 211, 176, 0.15);
     color: var(--primary);
-    padding: 2px 8px;
-    border-radius: 4px;
+    padding: var(--space-2) var(--space-8);
+    border-radius: var(--radius-sm);
 }
 .manual-set-row {
     display: grid;

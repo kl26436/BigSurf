@@ -64,7 +64,7 @@
 }
 .btn-small,
 .btn-sm {
-    min-height: 36px;
+    min-height: var(--tap-sm);
     padding: 0 14px;
     font-size: 0.85rem;
 }

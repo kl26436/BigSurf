@@ -164,7 +164,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
+    padding: var(--pad-card-y) var(--pad-card-x);
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -185,14 +185,14 @@
     flex-shrink: 0;
 }
 .equipment-location-item .remove-location-btn {
-    width: 28px;
-    height: 28px;
+    width: var(--tap-sm);
+    height: var(--tap-sm);
     display: flex;
     align-items: center;
     justify-content: center;
     background: transparent;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     color: var(--text-muted);
     cursor: pointer;
     flex-shrink: 0;
@@ -232,7 +232,7 @@
     width: 40px;
     height: 4px;
     background: rgba(255, 255, 255, 0.2);
-    border-radius: 2px;
+    border-radius: var(--space-2);
     margin: 8px auto 12px;
     cursor: grab;
 }

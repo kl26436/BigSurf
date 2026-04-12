@@ -105,7 +105,7 @@
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    padding: 32px 16px;
+    padding: var(--space-32) var(--space-16);
     border: 2px dashed var(--border);
     border-radius: var(--radius-md);
     cursor: pointer;
@@ -137,7 +137,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 12px;
+    padding: var(--space-12);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -179,7 +179,7 @@
     flex-direction: column;
     align-items: center;
     gap: 16px;
-    padding: 40px 20px;
+    padding: var(--space-32) var(--space-20);
     text-align: center;
 }
 
@@ -471,8 +471,8 @@
 .dexa-imbalance-item {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: var(--gap-items);
+    padding: var(--pad-card-y) var(--pad-card-x);
     border-radius: var(--radius-sm);
     margin-bottom: 8px;
     font-size: var(--font-sm);

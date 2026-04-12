@@ -44,7 +44,8 @@
 }
 .plate-calc-bar-btn {
     flex: 1;
-    padding: 10px 12px;
+    padding: var(--space-10) var(--space-12);
+    min-height: var(--tap);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -73,7 +74,8 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 8px 12px;
+    padding: var(--space-8) var(--space-12);
+    min-height: var(--tap);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -99,7 +101,7 @@
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 20px 16px;
+    padding: var(--space-20) var(--space-16);
     text-align: center;
 }
 .plate-calc-empty {

@@ -17,7 +17,7 @@
     display: flex;
     flex-direction: column;
     padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-subtle);
     font-size: 0.9rem;
 }
 .template-exercise-item:last-child {
@@ -35,7 +35,7 @@
     background: none;
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-muted);
-    border-radius: 4px;
+    border-radius: var(--radius-xs);
     padding: 2px 6px;
     font-size: 0.7rem;
     cursor: pointer;
@@ -183,7 +183,7 @@
     gap: 8px;
     padding: 10px 12px;
     cursor: pointer;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-subtle);
     transition: background 0.1s;
 }
 
@@ -261,8 +261,8 @@
     background: rgba(29, 211, 176, 0.1);
     border: 1px solid rgba(29, 211, 176, 0.3);
     color: var(--primary);
-    border-radius: 16px;
-    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    padding: var(--space-6) var(--space-12);
     font-size: 0.8rem;
     cursor: pointer;
     transition: background 0.15s;
@@ -333,8 +333,8 @@
     font-size: 0.75rem;
     background: rgba(29, 211, 176, 0.15);
     color: var(--primary);
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: var(--space-2) var(--space-8);
+    border-radius: var(--radius-sm);
 }
 
 /* Template row-card category icons */
@@ -402,7 +402,7 @@
     text-align: left;
 }
 .template-overflow-item:active {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--border-subtle);
 }
 .template-overflow-item--danger {
     color: #ef4444;
@@ -449,7 +449,7 @@
 .workout-option {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
     padding: 20px;
     text-align: center;
     cursor: pointer;
@@ -486,7 +486,7 @@
     height: 56px;
     margin: 0 auto 14px;
     background: rgba(29, 211, 176, 0.12);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -553,8 +553,8 @@
     display: inline-block;
     font-size: var(--font-xs);
     font-weight: 700;
-    padding: 1px 6px;
-    border-radius: var(--radius-xs);
+    padding: var(--space-2) var(--space-8);
+    border-radius: var(--radius-sm);
     margin-right: 4px;
     vertical-align: middle;
 }
@@ -621,32 +621,4 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 }
-.recent-templates-list::-webkit-scrollbar {
-    display: none;
-}
-.recent-template-chip {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--bg-card);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: var(--radius-md);
-    padding: 10px 14px;
-    color: var(--text-main);
-    cursor: pointer;
-    white-space: nowrap;
-    font-size: var(--font-sm);
-}
-.recent-template-chip:active {
-    background: var(--bg-card-hi);
-}
-.recent-template-chip i {
-    color: var(--primary);
-    font-size: 0.9rem;
-}
-.recent-template-chip small {
-    color: var(--text-muted);
-    font-size: var(--font-xs);
-}
-
+.recent-templates-list::-webkit-scrollbar 

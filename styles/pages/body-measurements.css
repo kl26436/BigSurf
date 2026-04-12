@@ -52,7 +52,7 @@
 
 .bodyweight-trend.trend-flat {
     color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--border-subtle);
 }
 
 .bodyweight-current {
@@ -112,10 +112,10 @@
     width: 160px;
     text-align: center;
     background: var(--bg-secondary);
-    border: 2px solid var(--border);
+    border: 2px solid var(--border-light);
     border-radius: var(--radius-md);
     color: var(--text-strong);
-    padding: 12px;
+    padding: var(--space-12);
     outline: none;
     transition: border-color 0.2s;
 }
@@ -134,7 +134,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    margin-bottom: 20px;
+    margin-bottom: var(--space-20);
 }
 
 .weight-entry-optional .form-group label {
@@ -154,7 +154,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px;
+    padding: var(--pad-card-y) var(--pad-card-x);
     margin-bottom: 4px;
 }
 
@@ -211,7 +211,8 @@
 .measurement-input {
     width: 72px;
     text-align: center;
-    padding: 6px 8px;
+    padding: var(--space-8) var(--space-10);
+    min-height: var(--tap-sm);
     font-size: var(--font-sm);
 }
 
@@ -345,28 +346,4 @@
     font-size: var(--font-xs);
     color: var(--text-muted);
     display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.import-note i {
-    color: var(--primary);
-}
-
-.import-error {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px;
-    background: rgba(227, 93, 106, 0.1);
-    border-radius: var(--radius-sm);
-    color: var(--danger);
-    font-size: var(--font-sm);
-}
-
-#import-actions {
-    margin-top: 16px;
-}
-.measurements-save-btn {
-    margin-top: 16px;
-}
+    align-item

@@ -4,16 +4,16 @@
 .exercise-library-grid {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--gap-items);
 }
 .exercise-library-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 14px;
+    padding: var(--pad-card-y) var(--pad-card-x);
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-sm);
     cursor: pointer;
     transition:
@@ -22,7 +22,7 @@
 }
 .exercise-library-item:hover {
     background: var(--bg-card-hi);
-    border-color: rgba(255, 255, 255, 0.06);
+    border-color: var(--border-light);
 }
 .exercise-library-item:active {
     transform: scale(0.98);
@@ -50,7 +50,7 @@
 /* Filter/Search */
 .search-bar {
     display: flex;
-    gap: 10px;
+    gap: var(--gap-items);
     margin-bottom: 16px;
 }
 .search-input {
@@ -193,7 +193,7 @@
 .filter-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: var(--gap-items);
     margin-bottom: 12px;
 }
 
@@ -206,7 +206,7 @@
 .category-card {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 20px 12px;
+    padding: var(--space-20) var(--space-12);
     text-align: center;
     cursor: pointer;
     border: 1px solid var(--border);
@@ -288,7 +288,7 @@
     padding: 8px 16px;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     color: var(--text-main);
     font-size: 0.85rem;
     white-space: nowrap;
@@ -327,7 +327,7 @@
     gap: 14px;
     padding: 14px 16px;
     background: var(--bg-card);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
     cursor: pointer;
@@ -1060,7 +1060,7 @@
     gap: 14px;
     padding: 16px;
     background: var(--bg-card);
-    border: 1px solid rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
     margin-bottom: 12px;
     cursor: pointer;
@@ -1110,13 +1110,13 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     cursor: pointer;
 }
 .exercise-card-edit:active {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--border-subtle);
 }
 
 /* Quick Add Chips (recent exercises) */
@@ -1161,7 +1161,7 @@
 /* Library Exercise Cards (Add Exercise modal) */
 .library-exercise-card {
     background: var(--bg-card);
-    border: 1px solid rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
     padding: 16px;
     margin-bottom: 12px;
@@ -1356,7 +1356,7 @@
     background: var(--bg-card);
     border-radius: var(--radius-md);
     padding: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
     cursor: pointer;
     transition: all 0.2s ease;
 }

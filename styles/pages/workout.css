@@ -9,7 +9,7 @@
 .active-workout-hero {
     background: var(--bg-card-hi);
     border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
     padding: 16px;
     margin-bottom: 16px;
     /* Removed sticky positioning - was causing iOS scrolling issues */
@@ -42,7 +42,7 @@
     background: rgba(29, 211, 176, 0.15);
     border: 1px solid rgba(29, 211, 176, 0.3);
     padding: 6px 12px;
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     font-weight: 600;
     color: var(--primary);
 }
@@ -51,8 +51,8 @@
     display: flex;
     justify-content: space-around;
     padding: 12px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--border-medium);
+    border-bottom: 1px solid var(--border-medium);
     margin: 12px 0;
 }
 .workout-stat {
@@ -71,7 +71,7 @@
 }
 .workout-stat-divider {
     width: 1px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--border-medium);
 }
 
 #workout-rest-stat.rest-active .workout-stat-value {
@@ -111,8 +111,8 @@
     bottom: 0;
     z-index: 10;
     background: var(--bg-app);
-    padding: 10px 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    padding: var(--pad-card-y) var(--pad-card-x);
+    border-top: 1px solid var(--border-subtle);
     margin: 0 -16px;
 }
 .btn-full {
@@ -195,7 +195,7 @@
     color: var(--text-muted);
 }
 .btn-more {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--border-light);
     color: var(--text-muted);
 }
 
@@ -223,7 +223,7 @@
 .exercise-card {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
     padding: 16px;
     cursor: pointer;
     position: relative;
@@ -264,7 +264,7 @@
 }
 .exercise-title {
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-6);
 }
 .exercise-equipment-tag {
     font-size: 0.75rem;
@@ -340,7 +340,7 @@
     font-size: 0.8rem;
     color: var(--text-muted);
     padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-light);
 }
 .exercise-progress-display {
     margin-top: 8px;
@@ -378,14 +378,14 @@
     touch-action: none;
 }
 .reorder-mode .exercise-card {
-    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border: 1px dashed var(--border-medium);
 }
 .reorder-mode .exercise-actions-row {
     display: none;
 }
 .exercise-card.dragging {
     opacity: 0.85;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-md);
     z-index: 1000;
 }
 .exercise-card-placeholder {
@@ -429,7 +429,12 @@
     cursor: pointer;
     font-size: 1.25rem;
     color: var(--text-muted);
-    padding: 4px;
+    min-width: var(--tap);
+    min-height: var(--tap);
+    padding: var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: color 0.15s ease;
 }
 .set-check.checked {
@@ -458,7 +463,9 @@
     background: transparent;
     border: none;
     color: var(--text-muted);
-    padding: 4px 5px;
+    min-width: var(--tap-sm);
+    min-height: var(--tap-sm);
+    padding: var(--space-4);
     cursor: pointer;
     font-size: 0.7rem;
     opacity: 0.5;
@@ -474,13 +481,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px;
-    height: 24px;
-    padding: 0 4px;
+    min-width: var(--tap-sm);
+    min-height: var(--tap-sm);
+    padding: var(--space-6) var(--space-10);
     font-size: 0.65rem;
     font-weight: 700;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    border-radius: var(--radius-xs);
     background: transparent;
     color: var(--text-muted);
     cursor: pointer;
@@ -597,7 +604,7 @@
 
 /* Section content styling for full-page sections */
 .section-content {
-    padding: 20px 16px;
+    padding: var(--gap-section) var(--pad-card-x);
     background: var(--bg-app);
 }
 .section-header-row {
@@ -606,7 +613,7 @@
     align-items: center;
     margin: -16px -16px 20px -16px; /* Offset parent section padding so header is flush */
     padding: 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-light);
 }
 .section-header-row .section-title {
     font-size: 1.35rem;
@@ -627,7 +634,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--border-light);
     border: none;
     border-radius: var(--radius-sm);
     color: var(--text-main);
@@ -635,7 +642,7 @@
     cursor: pointer;
 }
 .section-header-row .btn-back:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--border-medium);
 }
 .section-header-row .btn {
     white-space: nowrap;
@@ -676,8 +683,8 @@
     font-size: 0.75rem;
     background: rgba(29, 211, 176, 0.15);
     color: var(--primary);
-    padding: 2px 8px;
-    border-radius: 4px;
+    padding: var(--space-2) var(--space-8);
+    border-radius: var(--radius-sm);
 }
 .equipment-change-icon {
     cursor: pointer;
@@ -696,15 +703,16 @@
     display: flex;
     gap: 4px;
     background: var(--bg-card);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 4px;
 }
 .unit-btn {
-    padding: 6px 12px;
+    padding: var(--space-8) var(--space-16);
+    min-height: var(--tap-sm);
     border: none;
     background: transparent;
     color: var(--text-muted);
-    border-radius: 16px;
+    border-radius: var(--radius-pill);
     cursor: pointer;
     font-size: 0.85rem;
     transition: all 0.2s;
@@ -789,42 +797,4 @@
     font-size: 0.75rem;
     border: 1px dashed var(--border);
 }
-.exercise-complete-section {
-    margin-top: 1rem;
-    text-align: center;
-}
-.text-badge-gold { color: var(--badge-gold); }
-.inline-muted-text {
-    color: var(--text-muted);
-    text-align: center;
-    padding: 12px;
-}
-.text-secondary-inline {
-    color: var(--text-secondary);
-    margin-left: 0.5rem;
-}
-
-/* ============================================
-   SUPERSET / CIRCUIT GROUPS
-   ============================================ */
-.superset-group {
-    border-left: 3px solid var(--superset-color, var(--primary));
-    border-radius: var(--radius-sm);
-    padding-left: 10px;
-    margin-bottom: var(--gap-items);
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-items);
-}
-.superset-group-label {
-    font-size: var(--font-xs);
-    color: var(--superset-color, var(--primary));
-    font-weight: 600;
-    padding: 2px 0;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-.superset-group .exercise-card {
-    margin-bottom: 0;
-}
-
+.exercise-comple
