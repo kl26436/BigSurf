@@ -205,7 +205,7 @@ export async function getLastSessionDefaults(exerciseName, equipment = null) {
 
     try {
         const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
-        const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(10));
+        const q = query(workoutsRef, orderBy('completedAt', 'desc'), limit(20));
         const snapshot = await withTimeout(getDocs(q));
 
         const today = state.getTodayDateString();
@@ -600,11 +600,13 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
 
             // Show PR if available (only max weight with 5+ reps counts as a real PR)
             if (prs && prs.maxWeight && prs.maxWeight.reps >= 5) {
+                const prStoredUnit = prs.maxWeight.unit || 'lbs';
+                const prDisplayWeight = convertWeight(prs.maxWeight.weight, prStoredUnit, unit);
                 historyHTML += `
                     <div style="margin-bottom: 0.4rem; padding: 0.3rem 0.5rem; background: rgba(64, 224, 208, 0.1); border-left: 3px solid var(--primary); border-radius: 4px; display: flex; align-items: center; gap: 0.5rem;">
                         <i class="fas fa-trophy" style="color: var(--primary); font-size: 0.9rem;"></i>
                         <span style="color: var(--primary); font-weight: 600;">PR:</span>
-                        <span>${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}</span>
+                        <span>${prDisplayWeight} ${unit} × ${prs.maxWeight.reps}</span>
                     </div>`;
             }
 

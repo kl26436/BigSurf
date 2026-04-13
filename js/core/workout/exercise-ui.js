@@ -1877,6 +1877,13 @@ export async function setExerciseUnit(exerciseIndex, unit) {
     if (content) {
         const exercise = AppState.currentWorkout.exercises[exerciseIndex];
 
+        // Preserve history/progress visibility before re-render
+        const historyEl = document.getElementById(`exercise-history-${exerciseIndex}`);
+        const progressEl = document.getElementById(`exercise-progress-${exerciseIndex}`);
+        const historyWasVisible = historyEl && !historyEl.classList.contains('hidden');
+        const progressWasVisible = progressEl && !progressEl.classList.contains('hidden');
+        const progressContent = progressEl?.innerHTML || '';
+
         if (expandedExerciseIndex === exerciseIndex) {
             // Inline mode: preserve toolbar, regenerate table
             const toolbarHtml = buildInlineToolbar(exercise, exerciseIndex, getExerciseName(exercise));
@@ -1884,6 +1891,25 @@ export async function setExerciseUnit(exerciseIndex, unit) {
             content.innerHTML = toolbarHtml + tableHtml;
         } else {
             content.innerHTML = await generateExerciseTable(exercise, exerciseIndex, unit);
+        }
+
+        // Restore history/progress visibility after re-render
+        if (historyWasVisible) {
+            const newHistoryEl = document.getElementById(`exercise-history-${exerciseIndex}`);
+            if (newHistoryEl) {
+                newHistoryEl.classList.remove('hidden');
+                // Reload with new unit
+                if (typeof window.loadExerciseHistory === 'function') {
+                    window.loadExerciseHistory(getExerciseName(exercise), exerciseIndex);
+                }
+            }
+        }
+        if (progressWasVisible) {
+            const newProgressEl = document.getElementById(`exercise-progress-${exerciseIndex}`);
+            if (newProgressEl) {
+                newProgressEl.innerHTML = progressContent;
+                newProgressEl.classList.remove('hidden');
+            }
         }
 
         // Update active unit toggle buttons

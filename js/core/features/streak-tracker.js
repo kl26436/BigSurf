@@ -28,7 +28,7 @@ export async function calculateStreaks() {
         const workoutDatesSet = new Set(); // Use Set to dedupe multiple workouts per day
         for (const docSnap of snapshot.docs) {
             const workout = docSnap.data();
-            if (workout.completedAt && workout.date) {
+            if (workout.completedAt && workout.date && !workout.cancelledAt) {
                 // workout.date is YYYY-MM-DD format
                 workoutDatesSet.add(workout.date);
             }

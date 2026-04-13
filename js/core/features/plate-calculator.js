@@ -100,13 +100,22 @@ export function initPlateCalculatorPage() {
 }
 
 function getBarOptions(isKg, selectedBar) {
-    const options = isKg
-        ? [{ value: 20, label: '20 kg' }, { value: 15, label: '15 kg' }]
-        : [{ value: 45, label: '45 lbs' }, { value: 35, label: '35 lbs' }];
+    const unit = isKg ? 'kg' : 'lbs';
+    const presets = isKg ? [20, 15, 10, 7] : [45, 35, 30, 25, 15];
+    const isCustom = !presets.includes(selectedBar);
 
-    return options.map(o =>
-        `<button class="plate-calc-bar-btn ${o.value === selectedBar ? 'active' : ''}" data-bar="${o.value}">${o.label}</button>`
+    const buttons = presets.map(v =>
+        `<button class="plate-calc-bar-btn ${v === selectedBar ? 'active' : ''}" data-bar="${v}">${v}</button>`
     ).join('');
+
+    return `${buttons}
+        <div class="plate-calc-bar-custom">
+            <input type="number" id="plate-calc-bar-custom" class="form-input"
+                   inputmode="decimal" placeholder="Custom"
+                   value="${isCustom ? selectedBar : ''}"
+                   style="width: 70px; text-align: center;">
+            <span>${unit}</span>
+        </div>`;
 }
 
 function getPlateCheckboxes(allPlates, activePlates, unit) {
@@ -133,8 +142,20 @@ function bindPlateCalcEvents() {
             if (!btn) return;
             barContainer.querySelectorAll('.plate-calc-bar-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            const customInput = document.getElementById('plate-calc-bar-custom');
+            if (customInput) customInput.value = '';
             runCalculation();
         });
+
+        const customBarInput = document.getElementById('plate-calc-bar-custom');
+        if (customBarInput) {
+            customBarInput.addEventListener('input', () => {
+                if (customBarInput.value) {
+                    barContainer.querySelectorAll('.plate-calc-bar-btn').forEach(b => b.classList.remove('active'));
+                }
+                runCalculation();
+            });
+        }
     }
 
     if (platesGrid) {
@@ -149,6 +170,11 @@ function bindPlateCalcEvents() {
 }
 
 function getActiveBarWeight() {
+    const customInput = document.getElementById('plate-calc-bar-custom');
+    if (customInput && customInput.value) {
+        const custom = parseFloat(customInput.value);
+        if (!isNaN(custom) && custom > 0) return custom;
+    }
     const activeBtn = document.querySelector('.plate-calc-bar-btn.active');
     return activeBtn ? parseFloat(activeBtn.dataset.bar) : (AppState.globalUnit === 'kg' ? KG_BAR : LBS_BAR);
 }
@@ -245,8 +271,13 @@ export function openPlateCalcPopover(exerciseIndex) {
 
     const unit = AppState.exerciseUnits[exerciseIndex] || AppState.globalUnit || 'lbs';
     const isKg = unit === 'kg';
-    const barWeight = isKg ? KG_BAR : LBS_BAR;
-    const availPlates = isKg ? KG_PLATES : LBS_PLATES;
+    const settings = AppState.settings || {};
+    const barWeight = isKg
+        ? (settings.plateBarKg || KG_BAR)
+        : (settings.plateBarLbs || LBS_BAR);
+    const availPlates = isKg
+        ? (settings.plateKg || KG_PLATES)
+        : (settings.plateLbs || LBS_PLATES);
 
     // Read current weight from the focused set input or exercise default
     const savedSets = AppState.savedData.exercises?.[`exercise_${exerciseIndex}`]?.sets || [];
