@@ -48,4 +48,101 @@
     padding: var(--space-6) var(--space-10);
     font-size: var(--font-sm);
 }
-.
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+.toggle-switch input {
+    display: none;
+}
+.toggle-slider {
+    width: 48px;
+    height: 28px;
+    background: var(--border-light);
+    border-radius: var(--radius-md);
+    position: relative;
+    display: inline-block;
+    transition: background 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--primary);
+}
+.toggle-slider::after {
+    content: '';
+    width: 22px;
+    height: 22px;
+    background: white;
+    border-radius: var(--radius-pill);
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider::after {
+    transform: translateX(20px);
+}
+
+/* Onboarding */
+.onboarding-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-onboarding);
+    background: var(--bg-app);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-24);
+}
+.onboarding-card {
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+}
+.onboarding-card h2 {
+    font-size: var(--font-xl);
+    font-weight: 700;
+    margin-bottom: var(--space-8);
+}
+.onboarding-card p {
+    color: var(--text-muted);
+    margin-bottom: var(--space-24);
+    font-size: var(--font-base);
+}
+.onboarding-icon {
+    font-size: var(--font-3xl);
+    margin-bottom: var(--space-16);
+    color: var(--primary);
+}
+.onboarding-choices {
+    display: flex;
+    gap: var(--space-12);
+    justify-content: center;
+}
+.onboarding-choices .btn {
+    flex: 1;
+    padding: var(--space-20) var(--space-16);
+    font-size: var(--font-md);
+}
+.onboarding-goal-picker {
+    display: flex;
+    gap: var(--space-8);
+    justify-content: center;
+}
+.onboarding-goal-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-pill);
+    border: 2px solid var(--border-light);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: var(--font-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.onboarding-goal-btn.active {
+    border-color: var(--primary);
+    background: var(--primary-bg);
+    color: var(--primary);
+}

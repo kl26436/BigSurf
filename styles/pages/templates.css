@@ -683,4 +683,30 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 }
-.recent-templates-list::-webkit-scrollbar
+.recent-templates-list::-webkit-scrollbar {
+    display: none;
+}
+.recent-template-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-10) var(--space-16);
+    color: var(--text-main);
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: var(--font-sm);
+}
+.recent-template-chip:active {
+    background: var(--bg-card-hi);
+}
+.recent-template-chip i {
+    color: var(--primary);
+    font-size: var(--font-base);
+}
+.recent-template-chip small {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+}
