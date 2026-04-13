@@ -1427,6 +1427,291 @@ h3 {
 }
 
 /* ===========================================
+   PHASE 2: DASHBOARD OVERHAUL — New Components
+   =========================================== */
+
+/* Dashboard content — consistent gap, no individual margins */
+#dashboard-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-items);
+    padding-bottom: 80px;
+}
+#dashboard-content > * {
+    margin: 0;
+}
+
+/* Hero Workout Card — Primary Dashboard CTA */
+.hero-workout-card {
+    padding: var(--space-24);
+    cursor: pointer;
+}
+.hero-workout-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-8);
+}
+.hero-workout-category {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--primary);
+}
+.hero-workout-last {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.hero-workout-name {
+    font-size: var(--font-xl);
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: 0 0 var(--space-4);
+}
+.hero-workout-meta {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-20);
+    display: flex;
+    gap: var(--space-16);
+}
+.hero-workout-meta i {
+    margin-right: var(--space-4);
+}
+.btn-hero-start {
+    width: 100%;
+    min-height: 52px;
+    background: var(--primary);
+    color: var(--bg-app);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-md);
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    transition: opacity var(--anim-fast);
+}
+.btn-hero-start:active {
+    opacity: 0.85;
+}
+.btn-hero-secondary {
+    background: var(--bg-card-hi);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+}
+
+/* Remaining workouts below hero card */
+.hero-remaining-workouts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+.hero-remaining-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-16);
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+}
+.hero-remaining-item:active {
+    background: var(--bg-card-hi);
+}
+.hero-remaining-bar {
+    width: 3px;
+    height: 20px;
+    border-radius: var(--radius-pill);
+    flex-shrink: 0;
+}
+.hero-remaining-name {
+    flex: 1;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-main);
+}
+.hero-remaining-item i {
+    color: var(--primary);
+    font-size: var(--font-md);
+}
+
+/* Compact Progress Block */
+.progress-block {
+    padding: var(--space-16) var(--space-20);
+}
+.progress-block-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-12);
+}
+.progress-streak {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.progress-streak i {
+    color: var(--highlight-warm);
+    margin-right: var(--space-4);
+}
+.progress-change {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    border-radius: var(--radius-pill);
+    padding: var(--space-2) var(--space-8);
+}
+.progress-change.up {
+    color: var(--success);
+    background: var(--success-bg);
+}
+.progress-change.down {
+    color: var(--danger);
+    background: var(--danger-bg);
+}
+.progress-bar-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+}
+.progress-bar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--border-light);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+}
+.progress-bar-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: var(--radius-pill);
+    transition: width 0.5s ease-out;
+}
+.progress-bar-fill.complete {
+    background: var(--success);
+}
+.progress-bar-label {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 32px;
+    text-align: right;
+}
+
+/* Single Insight Card */
+.insight-card-compact {
+    padding: var(--space-12) var(--space-16);
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+.insight-dismiss {
+    position: absolute;
+    top: var(--space-8);
+    right: var(--space-8);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--space-4);
+    font-size: var(--font-xs);
+    opacity: 0.5;
+}
+.insight-dismiss:active {
+    opacity: 1;
+}
+.insight-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding-right: var(--space-20);
+}
+.insight-icon {
+    font-size: var(--font-lg);
+    flex-shrink: 0;
+}
+.insight-card-compact .insight-text {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+.insight-card-compact.insight-warning .insight-icon {
+    color: var(--warning);
+}
+.insight-card-compact.insight-info .insight-icon {
+    color: var(--primary);
+}
+.insight-card-compact.insight-success .insight-icon {
+    color: var(--success);
+}
+
+/* Compact Stats Row */
+.stats-row-compact {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: var(--space-12) 0;
+}
+.stat-item-compact {
+    text-align: center;
+}
+.stat-value-compact {
+    display: block;
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.stat-label-compact {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.stat-divider-compact {
+    width: 1px;
+    height: 24px;
+    background: var(--border-light);
+}
+
+/* Collapsible Sections */
+.collapsible-section {
+    /* gap handled by parent */
+}
+.collapsible-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-12) var(--space-16);
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    list-style: none;
+}
+.collapsible-header::-webkit-details-marker {
+    display: none;
+}
+.collapsible-chevron {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    transition: transform var(--anim-normal);
+}
+details[open] .collapsible-chevron {
+    transform: rotate(180deg);
+}
+.collapsible-body {
+    padding: var(--space-12) 0 0;
+}
+
+/* ===========================================
    46. RESPONSIVE
    =========================================== */
 @media (max-width: 480px) {

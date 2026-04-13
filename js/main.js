@@ -320,6 +320,7 @@ import {
     toggleDashboardSection,
     toggleDashboardPRBodyPart,
     dismissCoachTip,
+    dismissInsight,
 } from './core/ui/dashboard-ui.js';
 
 // Stats functionality
@@ -559,6 +560,7 @@ window.startSuggestedWorkout = startSuggestedWorkout;
 window.toggleDashboardSection = toggleDashboardSection;
 window.toggleDashboardPRBodyPart = toggleDashboardPRBodyPart;
 window.dismissCoachTip = dismissCoachTip;
+window.dismissInsight = dismissInsight;
 
 // Stats Functions
 window.closeStats = closeStats;

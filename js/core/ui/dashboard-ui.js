@@ -19,7 +19,6 @@ import {
     getExercisesAtLocation,
     checkTemplateCompatibility,
 } from '../features/equipment-planner.js';
-import { renderDexaCard } from '../features/dexa-scan-ui.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 import { updateSetting } from './settings-ui.js';
 
@@ -288,18 +287,9 @@ async function renderDashboard() {
 
     // Show skeleton loading state
     container.innerHTML = `
-        <div class="skeleton skeleton-card" style="height: 100px;"></div>
-        <div style="display: flex; gap: var(--gap-items); margin-bottom: var(--gap-items);">
-            <div class="skeleton skeleton-ring"></div>
-            <div style="flex: 1;">
-                <div class="skeleton skeleton-line skeleton-line-medium"></div>
-                <div class="skeleton skeleton-line skeleton-line-short"></div>
-                <div class="skeleton skeleton-line skeleton-line-full"></div>
-            </div>
-        </div>
-        <div class="skeleton skeleton-card"></div>
-        <div class="skeleton skeleton-card"></div>
         <div class="skeleton skeleton-card" style="height: 140px;"></div>
+        <div class="skeleton skeleton-card" style="height: 56px;"></div>
+        <div class="skeleton skeleton-card" style="height: 48px;"></div>
     `;
 
     try {
@@ -338,23 +328,40 @@ async function renderDashboard() {
                         <i class="fas fa-play"></i> Start Workout
                     </button>
                 </div>
-                ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
+                ${renderHeroWorkoutCard(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType, [])}
             `;
         } else {
-            // Build the dashboard - focused on "what to do today" and quick glance stats
-            const volumeChip = await renderVolumeComparisonChip();
-            const insightsHtml = renderTrainingInsights(insightsData);
-            const coachTipHtml = renderCoachTipCard(weekCount, weeklyGoal, streaks, insightsData);
+            // Phase 2: Focused dashboard — "What should I do right now?"
+            const volumeChangePercent = await getVolumeChangePercent();
+
+            // Get top single insight
+            const exerciseDatabase = AppState.exerciseDatabase || [];
+            const topInsight = TrainingInsights.getTopInsight(
+                insightsData.recentWorkouts,
+                insightsData.allWorkouts,
+                exerciseDatabase
+            );
+
+            // Check if insight was dismissed today
+            const insightDismissedDate = AppState.settings?.insightDismissedDate;
+            const todayStr = getDateString(new Date());
+            const showInsight = topInsight && insightDismissedDate !== todayStr;
+
+            // Compact stats data
+            const totalPRs = PRTracker.getAllPRs?.()?.length || recentPRs.length;
+            const thisMonthWorkouts = streaks?.workoutsThisMonth || 0;
+            const totalWorkouts = streaks?.totalWorkouts || 0;
+
+            // Collapsible PRs
+            const prListHtml = renderCollapsiblePRList(recentPRs);
+            const collapsiblePRs = prListHtml ? renderCollapsibleSection('Recent PRs', prListHtml) : '';
+
             container.innerHTML = `
-                ${renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats)}
-                ${volumeChip}
-                ${coachTipHtml}
-                ${renderSuggestedWorkoutsNew(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType)}
-                ${insightsHtml}
-                ${await renderDexaCard()}
-                ${renderDashboardStreakBoxes(streaks)}
-                ${renderDashboardPRsSection(recentPRs)}
-                ${await renderDashboardMiniChart()}
+                ${renderHeroWorkoutCard(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType, insightsData.allWorkouts || [])}
+                ${renderCompactProgress(weekCount, weeklyGoal, streaks, volumeChangePercent)}
+                ${showInsight ? renderSingleInsight(topInsight) : ''}
+                ${renderCompactStats(totalPRs, thisMonthWorkouts, totalWorkouts)}
+                ${collapsiblePRs}
             `;
         }
 
@@ -369,14 +376,14 @@ async function renderDashboard() {
             // Non-critical — leave menu item visible on error
         }
 
-        // Event delegation for suggested workout cards
+        // Event delegation for suggested workout cards (hero card + remaining items)
         container.addEventListener('click', (e) => {
             const card = e.target.closest('[data-action="startSuggestedWorkout"]');
             if (!card) return;
             startSuggestedWorkout(card.dataset.templateId, card.dataset.isDefault === 'true');
         });
 
-        // Async-detect location and add equipment badges to suggested workouts (Phase 16)
+        // Async-detect location and add equipment badges to hero card (Phase 16)
         if (hasWorkouts && suggestedWorkouts.length > 0) {
             appendEquipmentBadges(container, suggestedWorkouts, wm);
         }
@@ -412,11 +419,329 @@ async function getTodaysCompletedWorkout() {
 }
 
 // ===================================================================
-// WEEKLY GOAL SECTION (Hero with progress ring)
+// PHASE 2: DASHBOARD OVERHAUL — NEW FOCUSED COMPONENTS
 // ===================================================================
 
 /**
- * Render weekly goal section with progress ring and stats
+ * Hero Workout Card — primary dashboard CTA.
+ * Shows the first suggested workout for today with a big START button.
+ */
+function renderHeroWorkoutCard(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType, allWorkouts) {
+    // Filter out in-progress and completed workouts
+    const available = (suggestedWorkouts || []).filter(w => {
+        const name = w.name || w.day;
+        if (inProgressWorkoutType && name === inProgressWorkoutType) return false;
+        if (completedWorkoutTypes.includes(name)) return false;
+        return true;
+    });
+
+    const suggested = available[0] || null;
+
+    // Check if all today's workouts are done
+    const allScheduled = (suggestedWorkouts || []).filter(w => {
+        const name = w.name || w.day;
+        return !(inProgressWorkoutType && name === inProgressWorkoutType);
+    });
+    const allCompleted = allScheduled.length > 0 && allScheduled.every(w =>
+        completedWorkoutTypes.includes(w.name || w.day)
+    );
+
+    if (allCompleted && allScheduled.length > 0) {
+        const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+        return `
+            <div class="hero-workout-card hero-card">
+                <div class="hero-workout-header">
+                    <span class="hero-workout-category">Complete</span>
+                </div>
+                <h2 class="hero-workout-name">${dayName} Done!</h2>
+                <div class="hero-workout-meta">${allScheduled.length === 1 ? 'You crushed your workout today!' : `All ${allScheduled.length} scheduled workouts complete!`}</div>
+                <button class="btn-hero-start btn-hero-secondary" onclick="navigateTo('workout')">
+                    <i class="fas fa-plus"></i> Add Another
+                </button>
+            </div>
+        `;
+    }
+
+    if (!suggested) {
+        return `
+            <div class="hero-workout-card hero-card">
+                <div class="hero-workout-header">
+                    <span class="hero-workout-category">Today</span>
+                </div>
+                <h2 class="hero-workout-name">Start a Workout</h2>
+                <div class="hero-workout-meta">Pick from your templates</div>
+                <button class="btn-hero-start" onclick="navigateTo('workout')">
+                    <i class="fas fa-play"></i> Choose Workout
+                </button>
+            </div>
+        `;
+    }
+
+    const workoutName = suggested.name || suggested.day;
+    const templateId = suggested.id || suggested.name;
+    const isDefault = suggested.isDefault || false;
+    const exerciseCount = suggested.exercises?.length || 0;
+    const estimatedMinutes = Math.round(exerciseCount * 3.5);
+    const category = getWorkoutCategory(workoutName);
+    const categoryColor = CATEGORY_COLORS[category] || CATEGORY_COLORS['Other'];
+
+    // Find "last X days ago" from loaded workout data
+    let lastDaysAgo = null;
+    if (allWorkouts && allWorkouts.length > 0) {
+        for (const w of allWorkouts) {
+            if (w.workoutType === workoutName && w.date) {
+                const parts = w.date.split('-');
+                const wDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const diff = Math.floor((today - wDate) / (1000 * 60 * 60 * 24));
+                lastDaysAgo = diff;
+                break; // allWorkouts is sorted desc, so first match is most recent
+            }
+        }
+    }
+
+    const lastText = lastDaysAgo !== null
+        ? (lastDaysAgo === 0 ? 'Today' : lastDaysAgo === 1 ? 'Yesterday' : `${lastDaysAgo} days ago`)
+        : null;
+
+    // Remaining suggested workouts (compact list)
+    const remaining = available.slice(1);
+    const remainingHtml = remaining.length > 0 ? `
+        <div class="hero-remaining-workouts">
+            ${remaining.map(w => {
+                const name = w.name || w.day;
+                const tid = w.id || w.name;
+                const def = w.isDefault || false;
+                const cat = getWorkoutCategory(name);
+                const color = CATEGORY_COLORS[cat] || CATEGORY_COLORS['Other'];
+                return `
+                    <div class="hero-remaining-item" data-action="startSuggestedWorkout" data-template-id="${escapeAttr(tid)}" data-is-default="${def}">
+                        <div class="hero-remaining-bar" style="background: ${color}"></div>
+                        <span class="hero-remaining-name">${escapeHtml(name)}</span>
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    ` : '';
+
+    return `
+        <div class="hero-workout-card hero-card" data-action="startSuggestedWorkout" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}">
+            <div class="hero-workout-header">
+                <span class="hero-workout-category" style="color: ${categoryColor}">${escapeHtml(category)}</span>
+                ${lastText ? `<span class="hero-workout-last">Last: ${lastText}</span>` : ''}
+            </div>
+            <h2 class="hero-workout-name">${escapeHtml(workoutName)}</h2>
+            <div class="hero-workout-meta">
+                <span><i class="fas fa-dumbbell"></i> ${exerciseCount} exercises</span>
+                <span><i class="fas fa-clock"></i> ~${estimatedMinutes} min</span>
+            </div>
+            <button class="btn-hero-start" onclick="event.stopPropagation(); startSuggestedWorkout('${escapeAttr(templateId)}', ${isDefault})">
+                <i class="fas fa-play"></i> Start Workout
+            </button>
+        </div>
+        ${remainingHtml}
+    `;
+}
+
+/**
+ * Compact Progress Block — streak + progress bar + week comparison.
+ * Replaces the large weekly goal ring.
+ */
+function renderCompactProgress(weekCount, weeklyGoal, streaks, volumeChangePercent) {
+    const progressPercent = weeklyGoal > 0 ? Math.min((weekCount / weeklyGoal) * 100, 100) : 0;
+    const isComplete = weekCount >= weeklyGoal;
+    const streak = streaks?.currentStreak || 0;
+
+    let changeHtml = '';
+    if (volumeChangePercent !== null) {
+        const isUp = volumeChangePercent >= 0;
+        const changeClass = isUp ? 'up' : 'down';
+        changeHtml = `<span class="progress-change ${changeClass}">${isUp ? '+' : ''}${volumeChangePercent}% vol</span>`;
+    }
+
+    return `
+        <div class="progress-block hero-card hero-card-flat">
+            <div class="progress-block-top">
+                <span class="progress-streak">${streak > 0 ? `<i class="fas fa-fire"></i> ${streak} day streak` : 'No active streak'}</span>
+                ${changeHtml}
+            </div>
+            <div class="progress-bar-row">
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill ${isComplete ? 'complete' : ''}" style="width: ${progressPercent}%"></div>
+                </div>
+                <span class="progress-bar-label">${weekCount}/${weeklyGoal}</span>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Single Insight Card — shows only the top-priority insight with actionable text.
+ */
+function renderSingleInsight(insight) {
+    if (!insight) return '';
+
+    const severityClass = {
+        warning: 'insight-warning',
+        info: 'insight-info',
+        success: 'insight-success',
+    };
+    const cls = severityClass[insight.severity] || 'insight-info';
+
+    return `
+        <div class="insight-card-compact hero-card hero-card-flat ${cls}">
+            <button class="insight-dismiss" onclick="dismissInsight()" aria-label="Dismiss">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="insight-content">
+                <span class="insight-icon"><i class="fas ${insight.icon}"></i></span>
+                <p class="insight-text">${escapeHtml(insight.message)}</p>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Compact Stats Row — single inline row of key stats.
+ */
+function renderCompactStats(totalPRs, thisMonthWorkouts, totalWorkouts) {
+    return `
+        <div class="stats-row-compact">
+            <div class="stat-item-compact">
+                <span class="stat-value-compact">${totalPRs}</span>
+                <span class="stat-label-compact">PRs</span>
+            </div>
+            <div class="stat-divider-compact"></div>
+            <div class="stat-item-compact">
+                <span class="stat-value-compact">${thisMonthWorkouts}</span>
+                <span class="stat-label-compact">This Month</span>
+            </div>
+            <div class="stat-divider-compact"></div>
+            <div class="stat-item-compact">
+                <span class="stat-value-compact">${totalWorkouts}</span>
+                <span class="stat-label-compact">Total</span>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Collapsible section wrapper using <details>.
+ */
+function renderCollapsibleSection(title, contentHtml, defaultOpen = false) {
+    if (!contentHtml || contentHtml.trim() === '') return '';
+    return `
+        <details class="collapsible-section" ${defaultOpen ? 'open' : ''}>
+            <summary class="collapsible-header">
+                <span>${escapeHtml(title)}</span>
+                <i class="fas fa-chevron-down collapsible-chevron"></i>
+            </summary>
+            <div class="collapsible-body">
+                ${contentHtml}
+            </div>
+        </details>
+    `;
+}
+
+/**
+ * Render compact PR list for collapsible section.
+ */
+function renderCollapsiblePRList(recentPRs) {
+    if (!recentPRs || recentPRs.length === 0) return '';
+    return recentPRs.slice(0, 3).map(pr => {
+        const dateDisplay = formatRelativeDateDash(pr.date);
+        return `
+            <div class="pr-achievement-card">
+                <div class="pr-achievement-header">
+                    <i class="fas fa-trophy" style="color: var(--badge-gold);"></i>
+                    <span class="pr-achievement-exercise">${escapeHtml(pr.exercise)}</span>
+                    <span class="pr-achievement-date">${dateDisplay}</span>
+                </div>
+                <div class="pr-achievement-body">
+                    <span class="pr-achievement-value">${pr.weight} lbs</span>
+                    <span class="pr-achievement-detail">&times; ${pr.reps} reps</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Dismiss the insight for the rest of the day.
+ */
+export function dismissInsight() {
+    const todayStr = getDateString(new Date());
+    updateSetting('insightDismissedDate', todayStr);
+    const card = document.querySelector('.insight-card-compact');
+    if (card) card.remove();
+}
+
+/**
+ * Calculate volume change percentage between this week and last week.
+ * Returns null if no comparison data available.
+ */
+async function getVolumeChangePercent() {
+    try {
+        const thisWeek = await StatsTracker.getWeeklyStats();
+        let thisWeekVolume = 0;
+        if (thisWeek.workouts) {
+            thisWeek.workouts.forEach(w => {
+                if (w.exercises) {
+                    Object.values(w.exercises).forEach(ex => {
+                        if (ex.sets) {
+                            ex.sets.forEach(s => {
+                                if (s.reps && s.weight) thisWeekVolume += s.reps * s.weight;
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const startOfLastWeek = new Date(today);
+        startOfLastWeek.setDate(today.getDate() - dayOfWeek - 7);
+        const endOfLastWeek = new Date(today);
+        endOfLastWeek.setDate(today.getDate() - dayOfWeek - 1);
+
+        const { collection, query, where, orderBy, getDocs, db } = await import('../data/firebase-config.js');
+        const startStr = getDateString(startOfLastWeek);
+        const endStr = getDateString(endOfLastWeek);
+        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, where('date', '>=', startStr), where('date', '<=', endStr), orderBy('date', 'desc'));
+        const snapshot = await getDocs(q);
+
+        let lastWeekVolume = 0;
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (!data.completedAt || data.cancelledAt) return;
+            if (data.exercises) {
+                Object.values(data.exercises).forEach(ex => {
+                    if (ex.sets) {
+                        ex.sets.forEach(s => {
+                            if (s.reps && s.weight) lastWeekVolume += s.reps * s.weight;
+                        });
+                    }
+                });
+            }
+        });
+
+        if (lastWeekVolume === 0) return null;
+        return Number(((thisWeekVolume - lastWeekVolume) / lastWeekVolume * 100).toFixed(0));
+    } catch {
+        return null;
+    }
+}
+
+// ===================================================================
+// LEGACY: WEEKLY GOAL SECTION (kept for reference, no longer rendered)
+// ===================================================================
+
+/**
+ * @deprecated Replaced by renderCompactProgress() in Phase 2
  */
 function renderWeeklyGoalSection(weekCount, weeklyGoal, weeklyStats) {
     const percentage = weeklyGoal > 0 ? Math.min((weekCount / weeklyGoal) * 100, 100) : 0;

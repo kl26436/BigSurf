@@ -413,6 +413,36 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
     return insights.slice(0, 3);
 }
 
+/**
+ * Get the single most actionable insight for the dashboard hero view.
+ * Returns only ONE insight with action-oriented text.
+ *
+ * @param {Array} recentWorkouts - Workouts from last 2 weeks
+ * @param {Array} allWorkouts - Workouts from last 6-8 weeks
+ * @param {Array} exerciseDatabase - Exercise library
+ * @returns {Object|null} Top insight or null
+ */
+export function getTopInsight(recentWorkouts, allWorkouts, exerciseDatabase) {
+    const all = getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase);
+    if (all.length === 0) return null;
+
+    const insight = all[0];
+
+    // Rewrite messages to be actionable (suggestion, not observation)
+    const actionableMessages = {
+        'deload': `Take a deload week — you've trained hard for ${insight.message.match(/(\d+) weeks/)?.[1] || 'several'} weeks straight. Cut volume 40-50%.`,
+        'volume-high': `Ease up on ${insight.message.match(/^(.+?) volume/)?.[1] || 'that muscle group'} this week to aid recovery.`,
+        'volume-low': insight.message, // Already has recommendation text
+        'plateau': `Try a drop set or add 5 lbs to ${insight.exerciseName || 'that exercise'} — it's been flat for ${insight.message.match(/(\d+) sessions/)?.[1] || 'a few'} sessions.`,
+        'trend': insight.message, // Positive trends are already good
+    };
+
+    return {
+        ...insight,
+        message: actionableMessages[insight.type] || insight.message,
+    };
+}
+
 // ===================================================================
 // DATA LOADING HELPERS
 // ===================================================================
@@ -482,5 +512,6 @@ export const TrainingInsights = {
     analyzeFrequency,
     detectPositiveTrends,
     getTopInsights,
+    getTopInsight,
     loadInsightsData,
 };
