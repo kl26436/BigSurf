@@ -113,9 +113,9 @@
     --cat-cardio-legacy-bg: rgba(156, 39, 176, 0.12);
 
     /* Stat-specific colors */
-    --stat-exercises: #5856d6;
-    --stat-exercises-bg: rgba(88, 86, 214, 0.15);
-    --stat-negative: #ff6b6b;
+    --stat-exercises: var(--primary);
+    --stat-exercises-bg: var(--primary-bg);
+    --stat-negative: var(--danger);
 
     /* Font size scale */
     --font-2xs: 0.65rem;
@@ -134,9 +134,10 @@
     --cat-legs: #7B4AD9;
     --cat-cardio: #D9A74A;
     --cat-core: #4AD9A7;
-    --cat-arms: #D96A4A;
-    --cat-fullbody: #4AD9D9;
-    --cat-custom: var(--primary);
+    --cat-other: #64748b;
+    --cat-arms: #E06C75;
+    --cat-fullbody: #56B6C2;
+    --cat-custom: #ABB2BF;
 
     /* Badge/achievement colors */
     --badge-gold: #ffd700;
@@ -193,6 +194,7 @@
     --tap-sm: 36px;
     --input-height: 44px;
     --input-padding: 12px 16px;
+    --bg-input: var(--bg-surface);
 
     /* Icon size scale */
     --icon-xs: 20px;
@@ -222,5 +224,11 @@
     /* Background - differentiate tertiary */
     --bg-tertiary: #1a2028;
 
-    --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+
+    /* Interactive state tokens */
+    --bg-card-hover: rgba(255, 255, 255, 0.04);
+
+    /* Warning RGB for rgba() usage */
+    --warning-rgb: 245, 158, 11;
 }
