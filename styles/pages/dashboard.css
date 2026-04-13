@@ -2,15 +2,15 @@
    6. DASHBOARD
    =========================================== */
 .dashboard {
-    padding-top: 8px;
+    padding-top: var(--space-8);
 }
 .dashboard-loading {
     text-align: center;
-    padding: 40px;
+    padding: var(--space-40);
 }
 .dashboard-error {
     text-align: center;
-    padding: 40px;
+    padding: var(--space-40);
     color: var(--text-muted);
 }
 
@@ -26,7 +26,7 @@
     font-weight: 700;
 }
 .view-more-link {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--primary);
     cursor: pointer;
 }
@@ -36,8 +36,8 @@
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle);
-    padding: 20px;
-    margin-bottom: 16px;
+    padding: var(--space-20);
+    margin-bottom: var(--space-16);
     position: relative;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
@@ -53,7 +53,7 @@
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 .weekly-goal-card.compact {
-    padding: 16px;
+    padding: var(--space-16);
 }
 .weekly-goal-card.goal-complete::before {
     background: var(--success);
@@ -61,10 +61,10 @@
 .weekly-goal-content {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: var(--space-20);
 }
 .weekly-goal-status-inline {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
@@ -110,7 +110,7 @@
     line-height: 1;
 }
 .ring-goal {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
 }
 
@@ -119,7 +119,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .weekly-stat-box {
     display: flex;
@@ -127,12 +127,12 @@
     align-items: center;
 }
 .weekly-stat-value {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: 600;
     color: var(--primary);
 }
 .weekly-stat-label {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
@@ -140,7 +140,7 @@
 .weekly-goal-hero {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
-    padding: 24px;
+    padding: var(--space-24);
     text-align: center;
     margin-bottom: var(--gap-section);
 }
@@ -165,29 +165,29 @@
     justify-content: center;
 }
 .weekly-ring-container .ring-count {
-    font-size: 2rem;
+    font-size: var(--font-display);
     font-weight: 700;
     color: var(--text-strong);
 }
 .weekly-ring-container .ring-goal {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
     display: block;
 }
 .week-day-dots {
     display: flex;
     justify-content: center;
-    gap: 10px;
-    margin: 16px 0;
+    gap: var(--space-10);
+    margin: var(--space-16) 0;
 }
 .day-dot {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+    width: var(--space-32);
+    height: var(--space-32);
+    border-radius: var(--radius-pill);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     font-weight: 600;
     color: var(--text-muted);
     background: var(--border-subtle);
@@ -203,20 +203,20 @@
 .weekly-stats-row {
     display: flex;
     justify-content: center;
-    gap: 24px;
-    margin-top: 16px;
+    gap: var(--space-24);
+    margin-top: var(--space-16);
 }
 .weekly-stat {
     text-align: center;
 }
 .weekly-stat .weekly-stat-value {
     display: block;
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: 600;
     color: var(--text-strong);
 }
 .weekly-stat .weekly-stat-label {
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
 }
@@ -249,61 +249,61 @@
 .in-progress-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--space-12);
+    margin-bottom: var(--space-12);
 }
 .in-progress-icon {
-    width: 40px;
-    height: 40px;
-    background: rgba(29, 211, 176, 0.12);
-    border-radius: 10px;
+    width: var(--icon-md);
+    height: var(--icon-md);
+    background: var(--primary-bg);
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--primary);
-    font-size: 1.25rem;
+    font-size: var(--font-lg);
 }
 .in-progress-info {
     flex: 1;
 }
 .in-progress-label {
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 .in-progress-name {
     font-weight: 600;
-    font-size: 1rem;
+    font-size: var(--font-md);
 }
 .in-progress-arrow {
     color: var(--text-muted);
 }
 .in-progress-stats {
     display: flex;
-    gap: 16px;
-    margin-bottom: 12px;
+    gap: var(--space-16);
+    margin-bottom: var(--space-12);
 }
 .progress-stat {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
+    gap: var(--space-6);
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .progress-stat i {
     color: var(--primary);
 }
 .in-progress-bar-wrap {
-    height: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    height: var(--space-6);
+    background: var(--border-light);
+    border-radius: var(--radius-xs);
     overflow: hidden;
 }
 .in-progress-bar {
     height: 100%;
     background: var(--primary);
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     transition: width 0.3s;
 }
 
@@ -311,14 +311,14 @@
 .stats-streak-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-bottom: 16px;
+    gap: var(--space-10);
+    margin-bottom: var(--space-16);
 }
 .streak-box {
     background: var(--bg-card);
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
-    padding: 12px 12px 10px;
+    padding: var(--space-12) var(--space-12) var(--space-10);
     text-align: center;
     box-shadow: var(--shadow-sm);
     position: relative;
@@ -330,27 +330,27 @@
     inset: 0 0 auto 0;
     height: 2px;
     background: var(--border);
-    border-radius: 18px 18px 0 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 /* Current streak - warm highlight */
 .streak-box.active {
     background: var(--bg-card);
-    border-color: rgba(247, 168, 101, 0.3);
+    border-color: var(--warning-border);
     box-shadow: 0 8px 18px rgba(247, 168, 101, 0.15);
 }
 .streak-box.active::before {
     background: linear-gradient(90deg, var(--highlight-warm), var(--highlight-warm-dark));
 }
 .streak-box-icon {
-    width: 36px;
-    height: 36px;
-    margin: 0 auto 8px;
-    border-radius: 10px;
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    margin: 0 auto var(--space-8);
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
-    padding: 2px;
+    font-size: var(--font-md);
+    padding: var(--space-2);
 }
 .streak-box-icon.fire {
     background: rgba(247, 168, 101, 0.15);
@@ -361,18 +361,18 @@
     color: var(--badge-gold);
 }
 .streak-box-icon.total {
-    background: rgba(29, 211, 176, 0.12);
+    background: var(--primary-bg);
     color: var(--primary);
 }
 .streak-box-label {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
 }
 .streak-box-value {
-    font-size: 0.96rem;
+    font-size: var(--font-base);
     font-weight: 600;
 }
 
@@ -383,11 +383,11 @@
 .streak-hero {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 20px;
+    gap: var(--space-16);
+    padding: var(--space-20);
     background: var(--bg-card);
     border-radius: var(--radius-lg);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .streak-hero.active {
     background: linear-gradient(135deg, rgba(247, 168, 101, 0.1), rgba(247, 168, 101, 0.02));
@@ -403,7 +403,7 @@
     flex-shrink: 0;
 }
 .streak-flame {
-    font-size: 2.5rem;
+    font-size: var(--font-3xl);
     color: var(--highlight-warm);
     opacity: 0.3;
 }
@@ -419,58 +419,58 @@
 }
 .streak-count-overlay {
     position: absolute;
-    font-size: 1.4rem;
+    font-size: var(--font-xl);
     font-weight: 700;
     color: var(--text-strong);
 }
 .streak-hero-text {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-2);
 }
 .streak-label {
-    font-size: 1rem;
+    font-size: var(--font-md);
     font-weight: 600;
     color: var(--text-strong);
 }
 .streak-subtext {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .streak-stats-row {
     display: flex;
     justify-content: space-around;
-    padding: 12px;
+    padding: var(--space-12);
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .streak-stat {
     text-align: center;
 }
 .streak-stat-value {
     display: block;
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: 600;
     color: var(--text-strong);
 }
 .streak-stat-label {
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
 }
 .streak-heatmap {
     display: flex;
     flex-wrap: wrap;
-    gap: 3px;
-    padding: 12px;
+    gap: var(--space-4);
+    padding: var(--space-12);
     background: var(--bg-card);
     border-radius: var(--radius-md);
 }
 .heatmap-cell {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
+    width: var(--space-12);
+    height: var(--space-12);
+    border-radius: var(--space-2);
     background: var(--border-subtle);
 }
 .heatmap-cell.active {
@@ -484,25 +484,25 @@
 .insights-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-bottom: 16px;
+    gap: var(--space-10);
+    margin-bottom: var(--space-16);
 }
 .insight-box {
     background: var(--bg-card);
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
-    padding: 12px 14px;
+    padding: var(--space-12) var(--space-16);
     box-shadow: var(--shadow-sm);
 }
 .insight-label {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    margin-bottom: 3px;
+    margin-bottom: var(--space-4);
 }
 .insight-value {
-    font-size: 0.96rem;
+    font-size: var(--font-base);
     font-weight: 600;
 }
 
@@ -512,7 +512,7 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-sm);
-    padding: 1rem;
+    padding: var(--space-16);
     position: relative;
     overflow: hidden;
 }
@@ -521,31 +521,31 @@
     position: absolute;
     inset: 0 0 auto 0;
     height: 3px;
-    background: linear-gradient(90deg, #ffd700, var(--warning));
+    background: linear-gradient(90deg, var(--badge-gold), var(--warning));
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 .badges-row-preview {
     display: flex;
-    gap: 16px;
+    gap: var(--space-16);
     overflow-x: auto;
-    padding: 0.5rem 0;
+    padding: var(--space-8) 0;
     justify-content: flex-start;
 }
 .badge-preview-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
     min-width: 70px;
 }
 .badge-preview-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
+    width: var(--icon-xl);
+    height: var(--icon-xl);
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: var(--font-xl);
     position: relative;
 }
 /* Badge color classes applied to parent item */
@@ -599,40 +599,40 @@
     top: -4px;
     right: -4px;
     background: var(--primary);
-    color: #02100e;
-    font-size: 0.65rem;
+    color: var(--bg-app);
+    font-size: var(--font-2xs);
     font-weight: 700;
-    padding: 2px 5px;
-    border-radius: 10px;
+    padding: var(--space-2) 5px;
+    border-radius: var(--radius-sm);
 }
 .badge-preview-label {
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-align: center;
 }
 .badges-empty-msg {
     color: var(--text-muted);
-    font-size: 0.85rem;
-    padding: 20px;
+    font-size: var(--font-sm);
+    padding: var(--space-20);
     text-align: center;
 }
 .badges-expanded {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .badges-grid-section {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .badges-full-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    gap: var(--space-12);
 }
 .badge-full-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    padding: 12px 8px;
+    gap: var(--space-6);
+    padding: var(--space-12) var(--space-8);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
     text-align: center;
@@ -687,44 +687,44 @@
     color: var(--primary);
 }
 .badge-full-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: var(--font-xl);
     background: var(--bg-card-hi);
     color: var(--text-muted);
 }
 .badge-full-name {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     font-weight: 600;
     color: var(--text-strong);
 }
 .badge-full-desc {
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
 }
 .badge-full-progress {
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
 }
 
 /* Suggested Workouts */
 .suggested-list {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .suggested-card {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
+    gap: var(--space-12);
+    padding: var(--pad-card-y) var(--pad-card-x);
     background: var(--bg-card);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
     cursor: pointer;
-    margin-bottom: 10px;
+    margin-bottom: var(--space-10);
 }
 .suggested-card:active {
     background: var(--bg-card-hi);
@@ -735,42 +735,42 @@
     cursor: default;
 }
 .suggested-icon {
-    width: 44px;
-    height: 44px;
+    width: var(--tap);
+    height: var(--tap);
     border-radius: var(--radius-sm);
-    background: rgba(29, 211, 176, 0.12);
+    background: var(--primary-bg);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--primary-dark);
-    font-size: 1.1rem;
-    padding: 2px;
+    font-size: var(--font-md);
+    padding: var(--space-2);
 }
 .suggested-completed-icon {
-    width: 44px;
-    height: 44px;
+    width: var(--tap);
+    height: var(--tap);
     border-radius: var(--radius-sm);
-    background: rgba(54, 196, 107, 0.12);
+    background: var(--success-bg);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--success);
-    font-size: 1.25rem;
+    font-size: var(--font-lg);
 }
 .suggested-info {
     flex: 1;
 }
 .suggested-name {
     font-weight: 600;
-    font-size: 0.96rem;
+    font-size: var(--font-base);
 }
 .suggested-meta {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: var(--space-2);
 }
 .suggested-status {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--success);
 }
 .suggested-arrow {
@@ -784,11 +784,11 @@
 .suggested-featured {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
-    padding: 20px;
+    padding: var(--space-20);
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 10px;
+    gap: var(--space-16);
+    margin-bottom: var(--space-10);
     position: relative;
     overflow: hidden;
     cursor: pointer;
@@ -808,52 +808,52 @@
     flex: 1;
 }
 .suggested-category-badge {
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    padding: 3px 8px;
-    border-radius: 4px;
+    padding: var(--space-4) var(--space-8);
+    border-radius: var(--radius-xs);
     display: inline-block;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
 }
 .suggested-featured-name {
-    font-size: 1rem;
+    font-size: var(--font-md);
     font-weight: 600;
     color: var(--text-strong);
-    margin: 0 0 6px;
+    margin: 0 0 var(--space-6);
 }
 .suggested-meta-row {
     display: flex;
-    gap: 12px;
-    font-size: 0.75rem;
+    gap: var(--space-12);
+    font-size: var(--font-xs);
     color: var(--text-muted);
 }
 .suggested-meta-row i {
-    margin-right: 3px;
+    margin-right: var(--space-4);
 }
 .suggested-muscle-tags {
-    margin-top: 6px;
+    margin-top: var(--space-6);
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--space-4);
 }
 .muscle-tag {
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     background: var(--border-light);
     color: var(--text-muted);
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: var(--space-2) var(--space-6);
+    border-radius: var(--radius-xs);
 }
 /* Suggested Workouts: Compact Card */
 .suggested-compact {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 14px 16px;
+    padding: var(--pad-card-y) var(--pad-card-x);
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
+    gap: var(--space-12);
+    margin-bottom: var(--space-8);
     cursor: pointer;
     position: relative;
     overflow: hidden;
@@ -870,16 +870,16 @@
 }
 .suggested-compact-info {
     flex: 1;
-    padding-left: 8px;
+    padding-left: var(--space-8);
 }
 .suggested-compact-name {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     color: var(--text-strong);
     display: block;
 }
 .suggested-compact-meta {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
 }
 .suggested-completed-card {
@@ -890,17 +890,17 @@
 /* Equipment Badges on Suggested Workouts (Phase 16.1) */
 .equipment-badge-ok {
     color: var(--success);
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
 }
 .equipment-badge-ok .fa-check-circle {
-    margin-right: 2px;
+    margin-right: var(--space-2);
 }
 .equipment-badge-warn {
     color: var(--warning);
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
 }
 .equipment-badge-warn .fa-exclamation-triangle {
-    margin-right: 2px;
+    margin-right: var(--space-2);
 }
 
 /* All Completed Banner */
@@ -908,9 +908,9 @@
     background: var(--bg-card);
     border: 1px solid rgba(54, 196, 107, 0.2);
     border-radius: var(--radius-lg);
-    padding: 20px;
+    padding: var(--space-20);
     text-align: center;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
     position: relative;
     overflow: hidden;
 }
@@ -922,11 +922,11 @@
     background: var(--success);
 }
 .all-completed-icon {
-    width: 56px;
-    height: 56px;
-    margin: 0 auto 12px;
-    background: rgba(54, 196, 107, 0.12);
-    border-radius: 50%;
+    width: var(--icon-xl);
+    height: var(--icon-xl);
+    margin: 0 auto var(--space-12);
+    background: var(--success-bg);
+    border-radius: var(--radius-pill);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -934,27 +934,27 @@
     font-size: 1.75rem;
 }
 .all-completed-title {
-    font-size: 1.05rem;
+    font-size: var(--font-md);
     font-weight: 700;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
 }
 .all-completed-subtitle {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
 /* Recent Workouts - Row Card Pattern */
 .recent-workouts-list {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-10);
 }
 .recent-workout-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
+    gap: var(--space-12);
+    padding: var(--pad-card-y) var(--pad-card-x);
     background: var(--bg-card);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
@@ -965,19 +965,19 @@
 }
 .recent-workout-date {
     text-align: center;
-    min-width: 48px;
-    padding: 8px;
-    background: rgba(29, 211, 176, 0.1);
+    min-width: var(--icon-lg);
+    padding: var(--space-8);
+    background: var(--primary-bg);
     border-radius: var(--radius-sm);
 }
 .recent-workout-day {
-    font-size: 1.25rem;
+    font-size: var(--font-lg);
     font-weight: 700;
     line-height: 1;
     color: var(--primary);
 }
 .recent-workout-month {
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
 }
@@ -989,7 +989,7 @@
     color: var(--text-strong);
 }
 .recent-workout-meta {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
@@ -997,12 +997,12 @@
 .pr-item-new {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    padding: 14px;
+    gap: var(--space-12);
+    padding: var(--pad-card-y);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-subtle);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
     position: relative;
     overflow: hidden;
 }
@@ -1018,8 +1018,8 @@
 .pr-item-icon {
     width: 38px;
     height: 38px;
-    background: rgba(247, 168, 101, 0.12);
-    border-radius: 10px;
+    background: var(--warning-bg);
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1032,21 +1032,21 @@
 }
 .pr-item-exercise {
     font-weight: 600;
-    font-size: 0.95rem;
-    margin-bottom: 4px;
+    font-size: var(--font-base);
+    margin-bottom: var(--space-4);
 }
 .pr-item-details {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    font-size: 0.8rem;
+    gap: var(--space-6);
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .pr-item-type {
     color: var(--primary);
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
 }
 .pr-item-value {
     font-weight: 500;
@@ -1058,13 +1058,13 @@
 
 /* Legacy section header classes (use .section-header__title/action instead) */
 .section-title {
-    font-size: 1.05rem;
+    font-size: var(--font-md);
     font-weight: 700;
-    margin: 18px 0 8px;
+    margin: var(--pad-page) 0 var(--space-8);
     letter-spacing: -0.01em;
 }
 .section-link {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--primary);
     cursor: pointer;
 }
@@ -1076,12 +1076,12 @@ h3 {
     letter-spacing: -0.01em;
 }
 .card-title {
-    font-size: 0.96rem;
+    font-size: var(--font-base);
     font-weight: 600;
     color: var(--text-strong);
 }
 .card-subtitle {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
     font-weight: 400;
 }
@@ -1091,28 +1091,28 @@ h3 {
    =========================================== */
 .congrats-banner {
     background: var(--bg-card);
-    border: 1px solid rgba(29, 211, 176, 0.3);
+    border: 1px solid var(--primary-border);
     border-radius: var(--radius-md);
-    padding: 20px;
+    padding: var(--space-20);
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: var(--space-20);
 }
 .congrats-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .congrats-icon {
-    font-size: 2rem;
+    font-size: var(--font-display);
 }
 .congrats-title {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: 600;
     color: var(--text-strong);
 }
 .congrats-message {
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     color: var(--text-muted);
 }
 
@@ -1122,33 +1122,33 @@ h3 {
 .badge-full-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
+    gap: var(--space-12);
+    padding: var(--space-12);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .badge-full-icon {
-    width: 48px;
-    height: 48px;
+    width: var(--icon-lg);
+    height: var(--icon-lg);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
-    font-size: 1.5rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-xl);
 }
 .badge-full-name {
     font-weight: 600;
     color: var(--text-strong);
 }
 .badge-full-desc {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .badge-full-progress {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--primary);
-    margin-top: 4px;
+    margin-top: var(--space-4);
 }
 
 /* ===========================================
@@ -1158,7 +1158,7 @@ h3 {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    padding: 18px;
+    padding: var(--pad-page);
     position: relative;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
@@ -1174,50 +1174,50 @@ h3 {
 .prs-list-new {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
 }
 /* PR Achievement Cards (redesigned) */
 .pr-achievement-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
     margin-bottom: var(--gap-section);
 }
 .pr-achievement-card {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 14px 16px;
+    padding: var(--pad-card-y) var(--pad-card-x);
     border-left: 3px solid var(--badge-gold);
 }
 .pr-achievement-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
+    gap: var(--space-8);
+    margin-bottom: var(--space-6);
 }
 .pr-achievement-exercise {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     color: var(--text-strong);
     flex: 1;
 }
 .pr-achievement-date {
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
 }
 .pr-achievement-body {
     display: flex;
     align-items: baseline;
-    gap: 6px;
+    gap: var(--space-6);
     padding-left: 26px;
 }
 .pr-achievement-value {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: 700;
     color: var(--primary);
 }
 .pr-achievement-detail {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
@@ -1226,58 +1226,58 @@ h3 {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 6px 12px;
+    padding: var(--space-6) var(--space-12);
     border-radius: var(--radius-pill);
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     font-weight: 600;
     margin-bottom: var(--gap-section);
 }
 .volume-trend-chip.up {
-    background: rgba(54, 196, 107, 0.1);
+    background: var(--success-bg);
     color: var(--success);
 }
 .volume-trend-chip.down {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    background: var(--danger-bg);
+    color: var(--danger);
 }
 
 /* Workout Completion Summary */
 .completion-summary {
-    padding: 24px 20px;
+    padding: var(--space-24) var(--space-20);
     text-align: center;
 }
 .completion-header {
-    margin-bottom: 24px;
+    margin-bottom: var(--space-24);
 }
 .completion-header h2 {
-    margin: 12px 0 4px;
-    font-size: 1.4rem;
+    margin: var(--space-12) 0 var(--space-4);
+    font-size: var(--font-xl);
     color: var(--text-strong);
 }
 .completion-workout-name {
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     color: var(--text-muted);
 }
 .completion-stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-bottom: 20px;
+    gap: var(--space-8);
+    margin-bottom: var(--space-20);
 }
 .completion-stat {
     text-align: center;
-    padding: 12px 4px;
+    padding: var(--space-12) var(--space-4);
     background: var(--border-subtle);
     border-radius: var(--radius-sm);
 }
 .completion-stat-value {
     display: block;
-    font-size: 1.2rem;
+    font-size: var(--font-lg);
     font-weight: 700;
     color: var(--primary);
 }
 .completion-stat-label {
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
 }
@@ -1285,29 +1285,29 @@ h3 {
     background: rgba(255, 215, 0, 0.05);
     border: 1px solid rgba(255, 215, 0, 0.15);
     border-radius: var(--radius-md);
-    padding: 16px;
-    margin-bottom: 20px;
+    padding: var(--space-16);
+    margin-bottom: var(--space-20);
     text-align: left;
 }
 .completion-prs h3 {
-    font-size: 0.95rem;
-    margin: 0 0 10px;
+    font-size: var(--font-base);
+    margin: 0 0 var(--space-10);
     color: var(--text-strong);
 }
 .completion-pr-item {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-main);
-    padding: 4px 0;
+    padding: var(--space-4) 0;
 }
 .completion-notes-section {
-    margin-bottom: 20px;
+    margin-bottom: var(--space-20);
     text-align: left;
 }
 .completion-notes-section label {
     display: block;
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
 }
 .completion-notes-section textarea {
     width: 100%;
@@ -1315,8 +1315,8 @@ h3 {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-main);
-    padding: 10px 12px;
-    font-size: 0.9rem;
+    padding: var(--space-10) var(--space-12);
+    font-size: var(--font-base);
     resize: none;
     font-family: inherit;
     box-sizing: border-box;
@@ -1324,43 +1324,64 @@ h3 {
 .completion-notes-section textarea::placeholder {
     color: var(--text-muted);
 }
+.completion-template-changes {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-10) var(--space-12);
+    background: rgba(29, 211, 176, 0.08);
+    border: 1px solid rgba(29, 211, 176, 0.2);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-16);
+}
+.template-changes-text {
+    flex: 1;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+}
+.template-changes-text i {
+    color: var(--primary);
+}
 .completion-actions {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
     align-items: center;
 }
 
 .prs-browser {
-    padding: 16px;
+    padding: var(--space-16);
 }
 .prs-empty-new,
 .prs-expanded-empty {
     text-align: center;
-    padding: 20px;
+    padding: var(--space-20);
     color: var(--text-muted);
 }
 .prs-hint {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-top: 8px;
+    margin-top: var(--space-8);
 }
 .pr-exercise-item {
     background: var(--bg-surface);
     border-radius: var(--radius-sm);
-    padding: 12px;
-    margin-bottom: 8px;
+    padding: var(--space-12);
+    margin-bottom: var(--space-8);
 }
 .pr-exercise-title {
     font-weight: 600;
     color: var(--text-strong);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .pr-equipment-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
+    padding: var(--space-8) 0;
     border-bottom: 1px solid var(--border);
 }
 .pr-equipment-item:last-child {
@@ -1374,17 +1395,17 @@ h3 {
     color: var(--primary);
 }
 .pr-equip-date {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
 }
 .pr-bodypart-group {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .pr-bodypart-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
+    padding: var(--space-10) 0;
     cursor: pointer;
 }
 .pr-bodypart-name {
@@ -1393,14 +1414,14 @@ h3 {
 }
 .pr-bodypart-count {
     background: var(--primary);
-    color: #02100e;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 0.75rem;
+    color: var(--bg-app);
+    padding: var(--space-2) var(--space-8);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-xs);
     font-weight: 600;
 }
 .pr-bodypart-content {
-    padding-left: 12px;
+    padding-left: var(--space-12);
 }
 
 /* ===========================================
@@ -1420,7 +1441,7 @@ h3 {
 
     .set-row {
         grid-template-columns: 40px 1fr 1fr auto;
-        gap: 8px;
+        gap: var(--space-8);
     }
 
     .template-actions {
@@ -1447,7 +1468,7 @@ h3 {
 
 @media (min-width: 768px) {
     .app-container {
-        padding: 24px;
+        padding: var(--space-24);
     }
     .modal-content {
         border-radius: var(--radius-lg);

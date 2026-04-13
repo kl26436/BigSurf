@@ -20,6 +20,42 @@ import {
 import { renderExercises, toggleExerciseExpansion } from './exercise-ui.js';
 import { haptic } from '../utils/haptics.js';
 
+// ===================================================================
+// TEMPLATE CHANGE DETECTION
+// ===================================================================
+
+function detectTemplateChanges(workoutData) {
+    const original = workoutData.originalWorkout?.exercises || [];
+    const current = workoutData.currentExercises || [];
+
+    // If no current exercises snapshot, try to reconstruct from saved data
+    const exerciseKeys = Object.keys(workoutData.exercises || {}).sort();
+    const currentNames = exerciseKeys.map(key => {
+        const idx = key.replace('exercise_', '');
+        return workoutData.exerciseNames?.[key]
+            || workoutData.originalWorkout?.exercises?.[idx]?.machine
+            || workoutData.originalWorkout?.exercises?.[idx]?.name
+            || 'Unknown';
+    });
+    const originalNames = original.map(ex => ex.machine || ex.name || 'Unknown');
+
+    // Check for changes
+    const added = currentNames.length - originalNames.length;
+    const reordered = currentNames.length === originalNames.length &&
+        currentNames.some((name, i) => name !== originalNames[i]);
+    const swapped = currentNames.filter(n => !originalNames.includes(n));
+
+    if (added !== 0 || reordered || swapped.length > 0) {
+        const details = [];
+        if (added > 0) details.push(`${added} exercise(s) added`);
+        if (added < 0) details.push(`${Math.abs(added)} exercise(s) removed`);
+        if (reordered) details.push('exercises reordered');
+        if (swapped.length > 0) details.push(`${swapped.length} exercise(s) swapped`);
+        return { hasChanges: true, details };
+    }
+    return null;
+}
+
 // Listen for exercise rename events to refresh active workout UI
 window.addEventListener('exerciseRenamed', (event) => {
     // If we have an active workout, refresh the exercises display
@@ -278,6 +314,12 @@ export async function completeWorkout() {
         });
     }
 
+    // Detect structural changes (reorder, swap, add, remove) for template update prompt
+    let templateChanges = null;
+    if (!isEditingHistorical && completedWorkoutData.originalWorkout?.exercises) {
+        templateChanges = detectTemplateChanges(completedWorkoutData);
+    }
+
     // Reset state BEFORE showing summary (critical order!)
     AppState.reset();
     AppState.clearTimers();
@@ -299,7 +341,7 @@ export async function completeWorkout() {
     if (!isEditingHistorical) {
         haptic('complete');
         window._lastCompletedWorkout = completedWorkoutData;
-        showWorkoutSummary(completedWorkoutData, newPRs);
+        showWorkoutSummary(completedWorkoutData, newPRs, templateChanges);
     } else {
         navigateTo('dashboard');
     }
@@ -308,7 +350,7 @@ export async function completeWorkout() {
 /**
  * Show workout completion summary modal with stats, PRs, and notes
  */
-export function showWorkoutSummary(workoutData, newPRs = []) {
+export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = null) {
     const modal = document.getElementById('workout-completion-modal');
     const content = document.getElementById('workout-completion-content');
     if (!modal || !content) {
@@ -389,6 +431,17 @@ export function showWorkoutSummary(workoutData, newPRs = []) {
 
             ${prsHtml}
 
+            ${templateChanges?.hasChanges && workoutData.templateId && !workoutData.templateIsDefault ? `
+            <div class="completion-template-changes" id="template-changes-banner">
+                <div class="template-changes-text">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Template modified (${templateChanges.details.join(', ')})</span>
+                </div>
+                <button class="btn btn-primary btn-small" id="save-template-changes-btn">Update Template</button>
+                <button class="btn-text" id="dismiss-template-changes-btn"><i class="fas fa-times"></i></button>
+            </div>
+            ` : ''}
+
             <div class="completion-notes-section">
                 <label for="workout-notes">How did it feel?</label>
                 <textarea id="workout-notes" placeholder="Great session, felt strong..." rows="2"></textarea>
@@ -420,7 +473,46 @@ export function showWorkoutSummary(workoutData, newPRs = []) {
         navigateTo('dashboard');
     });
 
-    // Save as Template is available via the workout overflow menu (Phase 6.3)
+    // Template changes: save or dismiss
+    document.getElementById('save-template-changes-btn')?.addEventListener('click', async () => {
+        try {
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            const workoutManager = new FirebaseWorkoutManager(AppState);
+
+            // Build updated exercises from the completed workout
+            const updatedExercises = Object.keys(workoutData.exercises || {})
+                .sort()
+                .map(key => {
+                    const idx = key.replace('exercise_', '');
+                    const orig = workoutData.originalWorkout?.exercises?.[idx] || {};
+                    const savedEx = workoutData.exercises[key];
+                    return {
+                        ...orig,
+                        machine: workoutData.exerciseNames?.[key] || orig.machine || orig.name,
+                        name: workoutData.exerciseNames?.[key] || orig.name || orig.machine,
+                        equipment: savedEx.equipment || orig.equipment,
+                        sets: orig.sets || 3,
+                        reps: orig.reps || 10,
+                        weight: orig.weight || 0,
+                    };
+                });
+
+            await workoutManager.updateWorkoutTemplate(workoutData.templateId, {
+                exercises: updatedExercises,
+            });
+
+            const banner = document.getElementById('template-changes-banner');
+            if (banner) banner.innerHTML = '<i class="fas fa-check" style="color: var(--success);"></i> Template updated!';
+            showNotification('Template updated', 'success');
+        } catch (err) {
+            console.error('Error updating template:', err);
+            showNotification('Failed to update template', 'error');
+        }
+    });
+
+    document.getElementById('dismiss-template-changes-btn')?.addEventListener('click', () => {
+        document.getElementById('template-changes-banner')?.remove();
+    });
 }
 
 function showSaveAsTemplatePrompt(workoutData) {

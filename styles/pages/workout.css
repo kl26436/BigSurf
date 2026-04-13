@@ -19,7 +19,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .workout-hero-top h2 {
     font-size: var(--font-md);
@@ -30,10 +30,10 @@
 .workout-timer-badge {
     display: flex;
     align-items: center;
-    gap: 6px;
-    background: rgba(29, 211, 176, 0.15);
-    border: 1px solid rgba(29, 211, 176, 0.3);
-    padding: 6px 12px;
+    gap: var(--space-6);
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    padding: var(--space-6) var(--space-12);
     border-radius: var(--radius-pill);
     font-size: var(--font-sm);
     font-weight: 500;
@@ -43,10 +43,10 @@
 .workout-hero-stats {
     display: flex;
     justify-content: space-around;
-    padding: 8px 0;
+    padding: var(--space-8) 0;
     border-top: 1px solid var(--border-subtle);
     border-bottom: none;
-    margin: 8px 0 0;
+    margin: var(--space-8) 0 0;
     opacity: 0.8;
 }
 .workout-stat {
@@ -59,7 +59,7 @@
     color: var(--text-secondary);
 }
 .workout-stat-label {
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
 }
@@ -75,23 +75,23 @@
     color: var(--success);
 }
 #workout-rest-stat.timer-active {
-    background: rgba(29, 211, 176, 0.12);
+    background: var(--primary-bg);
     border-radius: var(--radius-sm);
-    padding: 4px 10px;
+    padding: var(--space-4) var(--space-10);
 }
 #workout-rest-stat.timer-active .workout-stat-value {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: 600;
     color: var(--primary);
     animation: timer-pulse 1.5s ease-in-out infinite;
 }
 #workout-rest-stat.timer-done {
-    background: rgba(54, 196, 107, 0.15);
+    background: var(--success-bg);
     border-radius: var(--radius-sm);
-    padding: 4px 10px;
+    padding: var(--space-4) var(--space-10);
 }
 #workout-rest-stat.timer-done .workout-stat-value {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     color: var(--success);
     font-weight: 700;
 }
@@ -107,7 +107,7 @@
     background: var(--bg-app);
     padding: var(--space-24) var(--pad-card-x) var(--space-16);
     border-top: none;
-    margin: 0 -16px;
+    margin: 0 calc(-1 * var(--space-16));
 }
 .workout-action-bar::before {
     content: '';
@@ -124,11 +124,11 @@
     min-height: 44px;
     border-radius: var(--radius-sm);
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: var(--font-base);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .btn-finish {
     background: var(--success);
@@ -141,23 +141,23 @@
 .workout-secondary-actions {
     display: flex;
     justify-content: center;
-    gap: 32px;
-    margin-top: 10px;
+    gap: var(--space-32);
+    margin-top: var(--space-10);
 }
 .btn-icon-label {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: var(--space-4);
     background: none;
     border: none;
     color: var(--text-muted);
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     cursor: pointer;
-    padding: 6px 12px;
+    padding: var(--space-6) var(--space-12);
 }
 .btn-icon-label i {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
 }
 .btn-icon-label:active {
     color: var(--primary);
@@ -171,7 +171,7 @@
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    margin-top: 8px;
+    margin-top: var(--space-8);
     overflow: hidden;
 }
 .workout-overflow-menu.hidden {
@@ -180,13 +180,13 @@
 .workout-overflow-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-10);
     width: 100%;
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
     background: none;
     border: none;
     color: var(--text-main);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     cursor: pointer;
     text-align: left;
 }
@@ -207,10 +207,10 @@
 .workout-location-indicator {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
+    gap: var(--space-8);
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
     cursor: pointer;
 }
 .workout-location-indicator i {
@@ -221,7 +221,7 @@
 .exercise-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-12);
 }
 
 .exercise-card {
@@ -243,7 +243,7 @@
 }
 .exercise-card.completed {
     background: var(--bg-card);
-    border-color: rgba(54, 196, 107, 0.2);
+    border-color: var(--success-border);
 }
 .exercise-card.completed::before {
     background: var(--success);
@@ -347,7 +347,7 @@
 .exercise-overflow-menu {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-2);
     padding: var(--space-8) 0;
     margin-bottom: var(--space-8);
 }
@@ -395,7 +395,7 @@
 .exercise-card-body textarea {
     width: 100%;
     min-height: 60px;
-    padding: 12px;
+    padding: var(--space-12);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -434,23 +434,23 @@
 
 /* Inline exercise progress */
 .inline-progress {
-    padding: 12px 0;
+    padding: var(--space-12) 0;
 }
 .inline-progress-title {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 10px;
+    margin-bottom: var(--space-10);
 }
 .inline-progress-chart {
     display: flex;
     align-items: flex-end;
-    gap: 4px;
+    gap: var(--space-4);
     height: 120px;
-    padding: 0 4px;
-    margin-bottom: 8px;
+    padding: 0 var(--space-4);
+    margin-bottom: var(--space-8);
 }
 .inline-progress-bar-col {
     flex: 1;
@@ -462,42 +462,42 @@
     min-width: 0;
 }
 .inline-progress-bar-label {
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
     white-space: nowrap;
 }
 .inline-progress-bar {
     width: 100%;
     max-width: 28px;
     background: var(--primary);
-    border-radius: 3px 3px 0 0;
+    border-radius: var(--radius-xs) var(--radius-xs) 0 0;
     min-height: 4px;
     transition: height 0.3s ease;
 }
 .inline-progress-bar-date {
-    font-size: 0.55rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
-    margin-top: 4px;
+    margin-top: var(--space-4);
     white-space: nowrap;
 }
 .inline-progress-summary {
     display: flex;
     justify-content: space-between;
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    padding-top: 8px;
+    padding-top: var(--space-8);
     border-top: 1px solid var(--border-light);
 }
 .exercise-progress-display {
-    margin-top: 8px;
+    margin-top: var(--space-8);
 }
 
 /* Completed exercise sorting */
 .completed-separator {
     text-align: center;
-    padding: 8px 0;
-    font-size: 0.7rem;
+    padding: var(--space-8) 0;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -515,8 +515,8 @@
     align-items: center;
     justify-content: center;
     color: var(--text-muted);
-    font-size: 1.1rem;
-    padding: 4px 8px 4px 0;
+    font-size: var(--font-md);
+    padding: var(--space-4) var(--space-8) var(--space-4) 0;
     cursor: grab;
     touch-action: none;
 }
@@ -532,11 +532,65 @@
     border: 2px dashed var(--primary);
     border-radius: var(--radius-md);
     opacity: 0.3;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .btn-reorder {
     background: var(--bg-card-hi);
     color: var(--text-primary);
+}
+
+/* Cardio inputs */
+.cardio-input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-12);
+    padding: var(--space-12) 0;
+}
+.cardio-field label {
+    display: block;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-bottom: var(--space-4);
+}
+.cardio-input-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+}
+.cardio-input-row .set-input {
+    flex: 1;
+}
+.cardio-unit {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    min-width: 24px;
+}
+.cardio-pace {
+    font-size: var(--font-sm);
+    color: var(--primary);
+    padding: var(--space-4) 0 var(--space-8);
+}
+
+/* Swipe-to-delete */
+.exercise-swipe-delete {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 80px;
+    background: var(--danger);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.1rem;
+    z-index: 0;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+.exercise-card-header {
+    position: relative;
+    z-index: 1;
+    background: var(--bg-card);
 }
 
 /* Last session label above set table */
@@ -549,7 +603,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.25rem;
+    font-size: var(--font-lg);
     color: var(--text-muted);
     min-width: var(--tap);
     min-height: var(--tap);
@@ -566,7 +620,7 @@
     transform: scale(1.2);
 }
 .set-row-completed {
-    background: rgba(54, 196, 107, 0.06);
+    background: var(--success-bg);
 }
 .set-row-completed .set-input {
     opacity: 0.7;
@@ -579,7 +633,7 @@
 .set-weight-cell {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: var(--space-2);
 }
 .plate-calc-inline-btn {
     background: transparent;
@@ -589,7 +643,7 @@
     min-height: var(--tap-sm);
     padding: var(--space-4);
     cursor: pointer;
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     opacity: 0.5;
     transition: opacity 0.15s;
     flex-shrink: 0;
@@ -606,9 +660,9 @@
     min-width: var(--tap-sm);
     min-height: var(--tap-sm);
     padding: var(--space-6) var(--space-10);
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     font-weight: 700;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-xs);
     background: transparent;
     color: var(--text-muted);
@@ -621,18 +675,18 @@
 }
 .set-type-btn.warmup {
     color: var(--warning);
-    border-color: rgba(255, 193, 7, 0.3);
+    border-color: var(--warning-border);
 }
 
 /* Last session label above set table */
 .last-session-label {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-bottom: 8px;
-    padding: 4px 0;
+    margin-bottom: var(--space-8);
+    padding: var(--space-4) 0;
 }
 .last-session-label i {
-    margin-right: 4px;
+    margin-right: var(--space-4);
     opacity: 0.6;
 }
 
@@ -647,22 +701,22 @@
     background: var(--bg-card-hi);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: 16px 24px;
+    padding: var(--space-16) var(--space-24);
     box-shadow: var(--shadow-lg);
     z-index: 400;
     text-align: center;
 }
 .timer-display {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 #timer-countdown {
-    font-size: 2.5rem;
+    font-size: var(--font-3xl);
     font-weight: 700;
     color: var(--primary);
 }
 .timer-controls {
     display: flex;
-    gap: 10px;
+    gap: var(--space-10);
     justify-content: center;
 }
 
@@ -686,7 +740,7 @@
     background: var(--bg-app);
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 16px;
+    padding: var(--space-16);
     padding-top: calc(16px + env(safe-area-inset-top, 0px));
     box-sizing: border-box;
 }
@@ -728,22 +782,22 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: -16px -16px 20px -16px; /* Offset parent section padding so header is flush */
-    padding: 16px;
+    margin: calc(-1 * var(--space-16)) calc(-1 * var(--space-16)) var(--space-20) calc(-1 * var(--space-16)); /* Offset parent section padding so header is flush */
+    padding: var(--space-16);
     border-bottom: 1px solid var(--border-light);
 }
 .section-header-row .section-title {
-    font-size: 1.35rem;
+    font-size: var(--font-xl);
     font-weight: 600;
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-12);
     color: var(--text-strong);
 }
 .section-header-row .section-title i {
     color: var(--primary);
-    font-size: 1.1rem;
+    font-size: var(--font-md);
 }
 .section-header-row .btn-back {
     width: 40px;
@@ -755,7 +809,7 @@
     border: none;
     border-radius: var(--radius-sm);
     color: var(--text-main);
-    font-size: 1rem;
+    font-size: var(--font-md);
     cursor: pointer;
 }
 .section-header-row .btn-back:hover {
@@ -772,17 +826,17 @@
    34. EXERCISE CARD DYNAMIC ELEMENTS
    =========================================== */
 .exercise-history-section {
-    margin-top: 16px;
-    padding-top: 12px;
+    margin-top: var(--space-16);
+    padding-top: var(--space-12);
     border-top: 1px solid var(--border);
 }
 .exercise-unit-toggle,
 .unit-toggle {
     display: flex;
-    gap: 4px;
+    gap: var(--space-4);
     background: var(--bg-card);
     border-radius: var(--radius-pill);
-    padding: 4px;
+    padding: var(--space-4);
 }
 .unit-btn {
     padding: var(--space-8) var(--space-16);
@@ -792,7 +846,7 @@
     color: var(--text-muted);
     border-radius: var(--radius-pill);
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     transition: all 0.2s;
 }
 .unit-btn.active {
@@ -801,18 +855,18 @@
     font-weight: 600;
 }
 .exercise-complete-section {
-    margin-top: 16px;
+    margin-top: var(--space-16);
 }
 .exercise-sets {
-    margin: 12px 0;
+    margin: var(--space-12) 0;
 }
 .exercise-table {
     width: 100%;
 }
 .exercise-summary {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-top: 8px;
+    margin-top: var(--space-8);
 }
 
 /* ===========================================
@@ -822,36 +876,36 @@
     background: var(--bg-card-hi);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 10px 14px;
-    margin: 8px 0;
+    padding: var(--space-10) var(--space-16);
+    margin: var(--space-8) 0;
 }
 .modal-rest-content {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--space-12);
 }
 .modal-rest-exercise {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     font-weight: 500;
     color: var(--text-muted);
     flex-shrink: 1;
     min-width: 0;
 }
 .modal-rest-display {
-    font-size: 1.5rem;
+    font-size: var(--font-xl);
     font-weight: 700;
     color: var(--primary);
     flex-shrink: 0;
 }
 .modal-rest-controls {
     display: flex;
-    gap: 6px;
+    gap: var(--space-6);
     flex-shrink: 0;
 }
 .modal-rest-controls .btn {
-    padding: 6px 12px;
-    font-size: 0.85rem;
+    padding: var(--space-6) var(--space-12);
+    font-size: var(--font-sm);
 }
 
 /* Rest timer display color states (replaces inline style.color assignments) */
@@ -863,16 +917,15 @@
     background: var(--success);
     color: white;
     padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    border-radius: var(--radius-xs);
+    font-size: var(--font-xs);
     font-weight: 500;
 }
 .badge--muted {
     background: var(--bg-card-hi, rgba(255,255,255,0.06));
     color: var(--text-secondary);
     padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    border-radius: var(--radius-xs);
+    font-size: var(--font-xs);
     border: 1px dashed var(--border);
 }
-.exercise-comple

@@ -43,6 +43,7 @@ import {
     addSetToExercise,
     removeSetFromExercise,
     saveExerciseNotes,
+    updateCardioField,
     markExerciseComplete,
     deleteExerciseFromWorkout,
     addExerciseToActiveWorkout,
@@ -416,6 +417,7 @@ window.deleteSet = deleteSet;
 window.addSetToExercise = addSetToExercise;
 window.removeSetFromExercise = removeSetFromExercise;
 window.saveExerciseNotes = saveExerciseNotes;
+window.updateCardioField = updateCardioField;
 window.markExerciseComplete = markExerciseComplete;
 window.toggleSetComplete = toggleSetComplete;
 window.deleteExerciseFromWorkout = deleteExerciseFromWorkout;

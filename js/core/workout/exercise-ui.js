@@ -209,6 +209,84 @@ function applyExerciseReorder(newOrder) {
 }
 
 // ===================================================================
+// SWIPE-TO-DELETE
+// ===================================================================
+
+function initSwipeToDelete(card, exerciseIndex) {
+    let startX = 0;
+    let currentX = 0;
+    let swiping = false;
+    const THRESHOLD = 80; // px to trigger delete reveal
+
+    const header = card.querySelector('.exercise-card-header');
+    if (!header) return;
+
+    // Create delete action behind the card
+    const deleteAction = document.createElement('div');
+    deleteAction.className = 'exercise-swipe-delete';
+    deleteAction.innerHTML = '<i class="fas fa-trash-alt"></i>';
+    deleteAction.addEventListener('click', () => {
+        if (confirm('Remove this exercise?')) {
+            deleteExerciseFromWorkout(exerciseIndex);
+        }
+    });
+    card.style.position = 'relative';
+    card.style.overflow = 'hidden';
+    card.insertBefore(deleteAction, card.firstChild);
+
+    header.addEventListener('touchstart', (e) => {
+        // Don't swipe if in reorder mode or if card is expanded
+        if (reorderMode) return;
+        startX = e.touches[0].clientX;
+        currentX = startX;
+        swiping = true;
+    }, { passive: true });
+
+    header.addEventListener('touchmove', (e) => {
+        if (!swiping) return;
+        currentX = e.touches[0].clientX;
+        const diff = currentX - startX;
+
+        // Only allow left swipe (negative diff)
+        if (diff > 10) {
+            // Right swipe - reset
+            header.style.transform = '';
+            return;
+        }
+
+        if (diff < -10) {
+            e.preventDefault();
+            const clampedDiff = Math.max(diff, -120);
+            header.style.transform = `translateX(${clampedDiff}px)`;
+            header.style.transition = 'none';
+        }
+    }, { passive: false });
+
+    header.addEventListener('touchend', () => {
+        if (!swiping) return;
+        swiping = false;
+        const diff = currentX - startX;
+
+        header.style.transition = 'transform 0.2s ease';
+        if (diff < -THRESHOLD) {
+            // Reveal delete button
+            header.style.transform = `translateX(-80px)`;
+        } else {
+            // Snap back
+            header.style.transform = '';
+        }
+    });
+
+    // Tap anywhere else to dismiss swipe
+    document.addEventListener('touchstart', (e) => {
+        if (!card.contains(e.target) && header.style.transform) {
+            header.style.transition = 'transform 0.2s ease';
+            header.style.transform = '';
+        }
+    }, { passive: true });
+}
+
+// ===================================================================
 // EXERCISE RENDERING AND MANAGEMENT
 // ===================================================================
 
@@ -373,14 +451,21 @@ export function createExerciseCard(exercise, index) {
     }
 
     const unit = AppState.exerciseUnits[index] || AppState.globalUnit;
-    const savedSets = AppState.savedData.exercises?.[`exercise_${index}`]?.sets || [];
+    const isCardio = exercise.exerciseType === 'cardio';
+    const savedEx = AppState.savedData.exercises?.[`exercise_${index}`] || {};
+    const savedSets = savedEx.sets || [];
 
     // Calculate completion status
-    const completedSets = savedSets.filter((set) => set && set.reps && set.weight).length;
-    const totalSets = exercise.sets || 3;
-
-    // Use the larger of completedSets or totalSets for display to avoid showing 4/3
-    const displayTotal = Math.max(completedSets, totalSets);
+    let completedSets, totalSets, displayTotal;
+    if (isCardio) {
+        completedSets = savedEx.cardio?.duration ? 1 : 0;
+        totalSets = 1;
+        displayTotal = 1;
+    } else {
+        completedSets = savedSets.filter((set) => set && set.reps && set.weight).length;
+        totalSets = exercise.sets || 3;
+        displayTotal = Math.max(completedSets, totalSets);
+    }
 
     // Fix: Exercise is only completed when ALL sets are done
     const isCompleted = completedSets >= totalSets && completedSets > 0;
@@ -401,15 +486,25 @@ export function createExerciseCard(exercise, index) {
         metaParts.push(exercise.equipment);
     }
     // Information-dense summary: show current or last session set data
-    const setPreview = savedSets
-        .filter(s => s && s.reps && s.weight)
-        .slice(0, 4)
-        .map(s => {
-            let w = s.weight;
-            if (unit === 'kg') w = Math.round(w * 0.453592 * 2) / 2;
-            return `${w}×${s.reps}`;
-        })
-        .join(', ');
+    let setPreview;
+    if (isCardio) {
+        const cardio = savedEx.cardio || {};
+        const parts = [];
+        if (cardio.duration) parts.push(`${cardio.duration}min`);
+        if (cardio.distance) parts.push(`${cardio.distance}mi`);
+        if (cardio.calories) parts.push(`${cardio.calories}cal`);
+        setPreview = parts.join(' · ');
+    } else {
+        setPreview = savedSets
+            .filter(s => s && s.reps && s.weight)
+            .slice(0, 4)
+            .map(s => {
+                let w = s.weight;
+                if (unit === 'kg') w = Math.round(w * 0.453592 * 2) / 2;
+                return `${w}×${s.reps}`;
+            })
+            .join(', ');
+    }
 
     // ── HEADER (always visible) ──
     const header = document.createElement('div');
@@ -482,6 +577,9 @@ export function createExerciseCard(exercise, index) {
 
     header.appendChild(status);
     card.appendChild(header);
+
+    // ── SWIPE-TO-DELETE ──
+    initSwipeToDelete(card, index);
 
     // ── BODY (hidden, populated on expand) ──
     const body = document.createElement('div');
@@ -800,6 +898,13 @@ function getExerciseContentContainer(exerciseIndex) {
 }
 
 export async function generateExerciseTable(exercise, exerciseIndex, unit) {
+    const isCardio = exercise.exerciseType === 'cardio';
+
+    // Cardio exercises get a different input layout
+    if (isCardio) {
+        return generateCardioTable(exercise, exerciseIndex);
+    }
+
     const savedSets = AppState.savedData.exercises?.[`exercise_${exerciseIndex}`]?.sets || [];
     const savedNotes = AppState.savedData.exercises?.[`exercise_${exerciseIndex}`]?.notes || '';
     const convertedWeight = convertWeight(exercise.weight, 'lbs', unit);
@@ -962,6 +1067,72 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
     `;
 
     return html;
+}
+
+/**
+ * Generate cardio-specific input layout (duration, distance, calories).
+ */
+function generateCardioTable(exercise, exerciseIndex) {
+    const saved = AppState.savedData.exercises?.[`exercise_${exerciseIndex}`] || {};
+    const savedNotes = saved.notes || '';
+    const cardioData = saved.cardio || {};
+
+    return `
+        <div class="cardio-input-grid">
+            <div class="cardio-field">
+                <label>Duration</label>
+                <div class="cardio-input-row">
+                    <input type="number" class="set-input" inputmode="numeric"
+                           placeholder="30" value="${cardioData.duration || ''}"
+                           onchange="updateCardioField(${exerciseIndex}, 'duration', this.value)">
+                    <span class="cardio-unit">min</span>
+                </div>
+            </div>
+            <div class="cardio-field">
+                <label>Distance</label>
+                <div class="cardio-input-row">
+                    <input type="number" class="set-input" inputmode="decimal" step="0.1"
+                           placeholder="3.0" value="${cardioData.distance || ''}"
+                           onchange="updateCardioField(${exerciseIndex}, 'distance', this.value)">
+                    <span class="cardio-unit">mi</span>
+                </div>
+            </div>
+            <div class="cardio-field">
+                <label>Calories</label>
+                <div class="cardio-input-row">
+                    <input type="number" class="set-input" inputmode="numeric"
+                           placeholder="300" value="${cardioData.calories || ''}"
+                           onchange="updateCardioField(${exerciseIndex}, 'calories', this.value)">
+                    <span class="cardio-unit">cal</span>
+                </div>
+            </div>
+            <div class="cardio-field">
+                <label>Avg Heart Rate</label>
+                <div class="cardio-input-row">
+                    <input type="number" class="set-input" inputmode="numeric"
+                           placeholder="145" value="${cardioData.heartRate || ''}"
+                           onchange="updateCardioField(${exerciseIndex}, 'heartRate', this.value)">
+                    <span class="cardio-unit">bpm</span>
+                </div>
+            </div>
+        </div>
+
+        ${cardioData.duration ? `
+        <div class="cardio-pace">
+            ${cardioData.distance && cardioData.duration
+                ? `Pace: ${(cardioData.duration / cardioData.distance).toFixed(1)} min/mi`
+                : ''}
+        </div>` : ''}
+
+        <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes..."
+                  onchange="saveExerciseNotes(${exerciseIndex})">${escapeHtml(savedNotes)}</textarea>
+
+        <div class="exercise-complete-section">
+            <button class="btn btn-success" onclick="markExerciseComplete(${exerciseIndex})">
+                <i class="fas fa-check-circle"></i> Mark Complete
+            </button>
+        </div>
+    `;
 }
 
 export { loadExerciseHistory };
@@ -1179,7 +1350,7 @@ export function cycleSetType(exerciseIndex, setIndex) {
     const sets = AppState.savedData.exercises?.[exerciseKey]?.sets;
     if (!sets || !sets[setIndex]) return;
 
-    const types = ['working', 'warmup', 'dropset', 'failure'];
+    const types = ['working', 'warmup'];
     const current = sets[setIndex].type || 'working';
     const nextIdx = (types.indexOf(current) + 1) % types.length;
     sets[setIndex].type = types[nextIdx];
@@ -1453,6 +1624,40 @@ export function removeSetFromExercise(exerciseIndex) {
 
     // Restore timer after re-render
     restoreActiveTimerState(exerciseIndex);
+}
+
+/**
+ * Update a cardio field (duration, distance, calories, heartRate).
+ */
+export function updateCardioField(exerciseIndex, field, value) {
+    if (!AppState.savedData.exercises) AppState.savedData.exercises = {};
+
+    const exerciseKey = `exercise_${exerciseIndex}`;
+    if (!AppState.savedData.exercises[exerciseKey]) {
+        const currentExercise = AppState.currentWorkout?.exercises?.[exerciseIndex];
+        AppState.savedData.exercises[exerciseKey] = {
+            sets: [],
+            name: getExerciseName(currentExercise),
+        };
+    }
+
+    if (!AppState.savedData.exercises[exerciseKey].cardio) {
+        AppState.savedData.exercises[exerciseKey].cardio = {};
+    }
+
+    const numVal = parseFloat(value);
+    if (!isNaN(numVal) && numVal > 0) {
+        AppState.savedData.exercises[exerciseKey].cardio[field] = numVal;
+    } else {
+        delete AppState.savedData.exercises[exerciseKey].cardio[field];
+    }
+
+    // Mark as having data for completion detection
+    if (AppState.savedData.exercises[exerciseKey].cardio.duration) {
+        AppState.savedData.exercises[exerciseKey].completed = true;
+    }
+
+    debouncedSaveWorkoutData(AppState);
 }
 
 export function saveExerciseNotes(exerciseIndex) {
