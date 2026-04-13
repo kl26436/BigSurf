@@ -1005,15 +1005,9 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
             }
         }
 
-        const setType = set.type || 'working';
-        const setTypeLabel = { working: 'W', warmup: 'WU', dropset: 'D', failure: 'F' }[setType] || 'W';
-        const isWarmup = setType === 'warmup';
-
         html += `
-        <tr class="${isSetDone ? 'set-row-completed' : ''} ${isWarmup ? 'set-row-warmup' : ''}">
-            <td>
-                <button class="set-type-btn ${isWarmup ? 'warmup' : ''}" onclick="cycleSetType(${exerciseIndex}, ${i})" title="Set type: ${setType}">${setTypeLabel}</button>
-            </td>
+        <tr class="${isSetDone ? 'set-row-completed' : ''}">
+            <td class="set-number-cell">${i + 1}</td>
             <td>
                 <input type="number" class="set-input" inputmode="numeric"
                        placeholder="${repsPlaceholder}"

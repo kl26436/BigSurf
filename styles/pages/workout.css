@@ -583,7 +583,7 @@
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     z-index: 0;
     border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
@@ -625,8 +625,12 @@
 .set-row-completed .set-input {
     opacity: 0.7;
 }
-.set-row-warmup {
-    opacity: 0.55;
+.set-number-cell {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    font-weight: 600;
+    text-align: center;
+    width: 28px;
 }
 
 /* Inline plate calculator button next to weight input */
@@ -653,30 +657,7 @@
     color: var(--primary);
 }
 
-.set-type-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: var(--tap-sm);
-    min-height: var(--tap-sm);
-    padding: var(--space-6) var(--space-10);
-    font-size: var(--font-2xs);
-    font-weight: 700;
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-xs);
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-.set-type-btn:active {
-    transform: scale(0.92);
-}
-.set-type-btn.warmup {
-    color: var(--warning);
-    border-color: var(--warning-border);
-}
+/* set-type-btn removed — set types eliminated for simplicity */
 
 /* Last session label above set table */
 .last-session-label {
