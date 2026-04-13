@@ -27,7 +27,7 @@
     background: linear-gradient(90deg, var(--highlight-warm), var(--highlight-warm-dark));
 }
 .hero-card-warm {
-    border-color: rgba(247, 168, 101, 0.15);
+    border-color: var(--warning-border);
 }
 
 /* Success accent */
@@ -52,8 +52,8 @@
 .row-card {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 14px 16px;
+    gap: var(--space-16);
+    padding: var(--pad-card-y) var(--pad-card-x);
     background: var(--bg-card);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
@@ -67,20 +67,20 @@
     width: var(--icon-md);
     height: var(--icon-md);
     border-radius: var(--radius-sm);
-    background: rgba(29, 211, 176, 0.12);
+    background: var(--primary-bg);
     color: var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: 1.1rem;
+    font-size: var(--font-md);
 }
 .row-card__icon--warning {
     background: rgba(var(--warning-rgb), 0.12);
     color: var(--highlight-warm);
 }
 .row-card__icon--success {
-    background: rgba(54, 196, 107, 0.12);
+    background: var(--success-bg);
     color: var(--success);
 }
 .row-card__content {
@@ -89,26 +89,26 @@
 }
 .row-card__title {
     font-weight: 600;
-    font-size: 1rem;
+    font-size: var(--font-md);
     color: var(--text-strong);
     letter-spacing: -0.01em;
 }
 .row-card__subtitle {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-top: 3px;
+    margin-top: var(--space-4);
 }
 .row-card__detail {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: var(--space-2);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .row-card__action {
     color: var(--text-muted);
-    font-size: 1rem;
+    font-size: var(--font-md);
 }
 
 /* ===========================================
@@ -129,7 +129,7 @@
 .section-header__action {
     color: var(--primary);
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     font-weight: 500;
 }
 .section-header__action:hover {
@@ -138,4 +138,4 @@
 
 /* ===========================================
    4. CARDS (Base flat style)
-   ============================
+   =========================================== */

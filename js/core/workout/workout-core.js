@@ -62,6 +62,7 @@ export {
     ungroupExerciseFromWorkout,
     toggleExerciseExpansion,
     replaceExercise,
+    updateCardioField,
 } from './exercise-ui.js';
 
 // === Rest Timer ===

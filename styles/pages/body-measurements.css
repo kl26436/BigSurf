@@ -12,8 +12,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--space-8);
+    margin-bottom: var(--space-12);
 }
 
 .bodyweight-header h3 {
@@ -22,7 +22,7 @@
     color: var(--text-strong);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 .bodyweight-header h3 i {
@@ -35,19 +35,19 @@
     font-weight: 500;
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-8);
     border-radius: var(--radius-pill);
 }
 
 .bodyweight-trend.up {
     color: var(--danger);
-    background: rgba(227, 93, 106, 0.1);
+    background: var(--danger-bg);
 }
 
 .bodyweight-trend.down {
     color: var(--success);
-    background: rgba(54, 196, 107, 0.1);
+    background: var(--success-bg);
 }
 
 .bodyweight-trend.trend-flat {
@@ -58,13 +58,13 @@
 .bodyweight-current {
     display: flex;
     align-items: baseline;
-    gap: 6px;
+    gap: var(--space-6);
     cursor: pointer;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 
 .bodyweight-value {
-    font-size: 2rem;
+    font-size: var(--font-display);
     font-weight: 700;
     color: var(--text-strong);
     line-height: 1;
@@ -84,30 +84,30 @@
 
 .bodyweight-empty {
     text-align: center;
-    padding: 8px 0;
+    padding: var(--space-8) 0;
 }
 
 .bodyweight-empty p {
     font-size: var(--font-sm);
     color: var(--text-secondary);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 
 /* ---- Weight Entry Modal ---- */
 .weight-entry-form {
-    padding: 8px 0;
+    padding: var(--space-8) 0;
 }
 
 .weight-input-row {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    margin-bottom: 24px;
+    gap: var(--space-12);
+    margin-bottom: var(--space-24);
 }
 
 .weight-input-large {
-    font-size: 2.5rem;
+    font-size: var(--font-3xl);
     font-weight: 700;
     width: 160px;
     text-align: center;
@@ -133,14 +133,14 @@
 .weight-entry-optional {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-12);
     margin-bottom: var(--space-20);
 }
 
 .weight-entry-optional .form-group label {
     font-size: var(--font-sm);
     color: var(--text-secondary);
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
     display: block;
 }
 
@@ -155,13 +155,13 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--pad-card-y) var(--pad-card-x);
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
 }
 
 .weight-history-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-2);
 }
 
 .weight-history-value {
@@ -179,20 +179,20 @@
 .measurements-hint {
     font-size: var(--font-sm);
     color: var(--text-secondary);
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 
 .measurements-form {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 .measurement-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 0;
+    padding: var(--space-8) 0;
     border-bottom: 1px solid var(--border);
 }
 
@@ -205,7 +205,7 @@
 .measurement-input-wrap {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
 }
 
 .measurement-input {
@@ -224,18 +224,18 @@
 
 /* ---- Stats Page Body Weight Chart ---- */
 #bodyweight-chart-section {
-    margin-top: 16px;
+    margin-top: var(--space-16);
 }
 
 .chart-time-range-pills {
     display: flex;
-    gap: 6px;
-    margin-bottom: 12px;
+    gap: var(--space-6);
+    margin-bottom: var(--space-12);
 }
 
 .chart-time-range-pills .pill-btn {
     flex: 1;
-    padding: 6px 12px;
+    padding: var(--space-6) var(--space-12);
     font-size: var(--font-xs);
     font-weight: 600;
     border: 1px solid var(--border);
@@ -256,26 +256,26 @@
 #bodyweight-chart-container {
     position: relative;
     height: 220px;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 
 .bodyweight-chart-actions {
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
     justify-content: center;
     flex-wrap: wrap;
 }
 
 .bodyweight-chart-actions .btn-sm {
     font-size: var(--font-xs);
-    padding: 6px 12px;
+    padding: var(--space-6) var(--space-12);
 }
 
 /* ---- Import Modal ---- */
 .import-description {
     font-size: var(--font-sm);
     color: var(--text-secondary);
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
     line-height: 1.5;
 }
 
@@ -283,8 +283,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 24px;
+    gap: var(--space-8);
+    padding: var(--space-24);
     border: 2px dashed var(--border);
     border-radius: var(--radius-md);
     cursor: pointer;
@@ -299,14 +299,14 @@
 }
 
 .import-file-label i {
-    font-size: 1.5rem;
+    font-size: var(--font-xl);
 }
 
 .import-file-selected {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 0;
+    gap: var(--space-8);
+    padding: var(--space-8) 0;
     font-size: var(--font-sm);
     color: var(--text-main);
 }
@@ -318,17 +318,17 @@
 .import-preview-stats {
     display: flex;
     justify-content: space-around;
-    padding: 16px 0;
+    padding: var(--space-16) 0;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    margin: 12px 0;
+    margin: var(--space-12) 0;
 }
 
 .import-stat {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-4);
 }
 
 .import-stat-value {

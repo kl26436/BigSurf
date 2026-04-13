@@ -5,9 +5,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 16px;
+    gap: var(--space-12);
+    margin-bottom: var(--space-16);
+    padding: var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
@@ -26,12 +26,12 @@
     text-align: center;
 }
 .calendar-title h1 {
-    font-size: 1.2rem;
+    font-size: var(--font-lg);
     margin: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: var(--space-10);
     color: var(--text-strong);
 }
 .calendar-title h1 i {
@@ -39,29 +39,29 @@
 }
 .header-actions {
     display: flex;
-    gap: 10px;
+    gap: var(--space-10);
     justify-content: center;
 }
 .calendar-actions {
     text-align: center;
-    margin-top: 16px;
+    margin-top: var(--space-16);
 }
 .month-navigation {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    gap: var(--space-16);
 }
 .month-nav {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: var(--space-20);
 }
 .month-nav button {
     background: var(--border-light);
     border: none;
     color: var(--text-main);
-    font-size: 1rem;
+    font-size: var(--font-md);
     cursor: pointer;
     width: var(--tap);
     height: var(--tap);
@@ -75,18 +75,18 @@
 }
 .month-nav button:hover {
     background: var(--primary);
-    color: #02100e;
+    color: var(--bg-app);
 }
 /* Workout History List */
 .history-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-12);
 }
 .history-card {
     display: flex;
-    gap: 14px;
-    padding: 16px;
+    gap: var(--space-16);
+    padding: var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
@@ -114,22 +114,22 @@
 .history-date {
     text-align: center;
     min-width: 54px;
-    padding: 8px;
-    background: rgba(29, 211, 176, 0.1);
+    padding: var(--space-8);
+    background: var(--primary-bg-subtle);
     border-radius: var(--radius-sm);
 }
 .history-date-day {
-    font-size: 1.6rem;
+    font-size: var(--font-xl);
     font-weight: 700;
     color: var(--primary);
     line-height: 1;
 }
 .history-date-month {
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     font-weight: 600;
-    margin-top: 2px;
+    margin-top: var(--space-2);
 }
 .history-info {
     flex: 1;
@@ -139,13 +139,13 @@
 }
 .history-name {
     font-weight: 600;
-    font-size: 1rem;
+    font-size: var(--font-md);
     color: var(--text-strong);
 }
 .history-meta {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-top: 4px;
+    margin-top: var(--space-4);
 }
 
 /* ===========================================
@@ -154,7 +154,7 @@
 .month-navigation {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-12);
 }
 .nav-button {
     width: var(--tap);
@@ -173,7 +173,7 @@
     color: var(--primary);
 }
 .current-month {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: 600;
     min-width: 140px;
     text-align: center;
@@ -182,35 +182,35 @@
 .calendar-container {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: var(--space-16);
 }
 .calendar-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .weekday {
     text-align: center;
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     font-weight: 600;
-    padding: 8px 0;
+    padding: var(--space-8) 0;
 }
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+    gap: var(--space-4);
 }
 .calendar-day {
     min-height: 42px;
-    padding: 6px 2px;
+    padding: var(--space-6) var(--space-2);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-sm);
     background: var(--bg-card);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
@@ -224,16 +224,16 @@
     opacity: 0.4;
 }
 .calendar-day.today {
-    background: rgba(29, 211, 176, 0.15);
+    background: var(--primary-bg);
     border: 1px solid var(--primary);
 }
 .calendar-day.has-workout {
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--primary-bg-subtle);
     cursor: pointer;
 }
 .calendar-day.has-workout:active {
     transform: scale(0.95);
-    background: rgba(29, 211, 176, 0.2);
+    background: var(--primary-bg-strong);
 }
 .calendar-day .day-number {
     font-weight: 500;
@@ -243,11 +243,11 @@
     height: 6px;
     background: var(--primary);
     border-radius: 50%;
-    margin-top: 2px;
+    margin-top: var(--space-2);
 }
 .calendar-day .workout-status-icon {
-    font-size: 0.65rem;
-    margin-top: 2px;
+    font-size: var(--font-2xs);
+    margin-top: var(--space-2);
 }
 .calendar-day .workout-status-icon.completed {
     color: var(--success);
@@ -261,8 +261,8 @@
 
 /* Calendar workout icons */
 .calendar-day .workout-icon {
-    font-size: 0.75rem;
-    margin-top: 2px;
+    font-size: var(--font-xs);
+    margin-top: var(--space-2);
 }
 .calendar-day .workout-icon.status-completed {
     color: var(--success);
@@ -282,9 +282,9 @@
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 12px;
-    padding: 8px 0 4px;
-    font-size: 0.7rem;
+    gap: var(--space-12);
+    padding: var(--space-8) 0 var(--space-4);
+    font-size: var(--font-xs);
     color: var(--text-muted);
 }
 .legend-item {
@@ -321,7 +321,7 @@
     right: -4px;
     background: var(--primary);
     color: var(--bg-app);
-    font-size: 0.6rem;
+    font-size: var(--font-2xs);
     font-weight: 700;
     width: 16px;
     height: 16px;
@@ -339,8 +339,8 @@
 .history-search-bar {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: var(--space-8);
+    margin-bottom: var(--space-16);
 }
 
 .history-search-input-wrapper {
@@ -351,9 +351,9 @@
 
 .history-search-input-wrapper i.fa-search {
     position: absolute;
-    left: 12px;
+    left: var(--space-12);
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     pointer-events: none;
 }
 
@@ -381,13 +381,13 @@
 
 .history-search-clear {
     position: absolute;
-    right: 8px;
+    right: var(--space-8);
     background: none;
     border: none;
     color: var(--text-muted);
     cursor: pointer;
-    padding: 4px 8px;
-    font-size: 0.85rem;
+    padding: var(--space-4) var(--space-8);
+    font-size: var(--font-sm);
 }
 
 .history-search-bar select {
@@ -405,8 +405,8 @@
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
-    padding-right: 32px;
+    background-position: right var(--space-12) center;
+    padding-right: var(--space-32);
 }
 
 .history-search-bar select:focus {
@@ -420,7 +420,7 @@
 .recent-workouts-items {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-2);
 }
 .recent-workout-item {
     display: flex;
@@ -437,14 +437,14 @@
 }
 .recent-workout-name {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     color: var(--text-strong);
     display: flex;
     align-items: center;
     gap: 0.4rem;
 }
 .recent-workout-meta {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     margin-top: 0.15rem;
 }
@@ -453,13 +453,13 @@
 .workout-picker {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px 0;
+    gap: var(--space-12);
+    padding: var(--space-16) 0;
 }
 .workout-picker-item {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: var(--space-16);
     padding: var(--pad-card-y) var(--pad-card-x);
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -474,12 +474,12 @@
 .workout-picker-icon {
     width: var(--icon-md);
     height: var(--icon-md);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
-    background: rgba(29, 211, 176, 0.12);
+    font-size: var(--font-md);
+    background: var(--primary-bg);
     color: var(--primary);
     flex-shrink: 0;
 }
@@ -506,13 +506,12 @@
 .workout-picker-name {
     font-weight: 600;
     color: var(--text-strong);
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
 }
 .workout-picker-meta {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
 }
-

@@ -8,15 +8,15 @@
 .insights-card {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
     margin-bottom: var(--gap-section);
 }
 
 .insight-item {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    padding: 14px 16px;
+    gap: var(--space-12);
+    padding: var(--pad-card-y) var(--pad-card-x);
     background: var(--bg-card);
     border-radius: var(--radius-md);
     font-size: var(--font-sm);
@@ -32,7 +32,7 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-sm);
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
 }
 
 .insight-text {
@@ -47,15 +47,15 @@
     font-weight: 600;
     color: var(--primary);
     cursor: pointer;
-    padding: 4px 10px;
+    padding: var(--space-4) var(--space-10);
     border-radius: var(--radius-pill);
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--border-light);
     border: none;
     white-space: nowrap;
 }
 
 .insight-coach-btn:active {
-    background: rgba(29, 211, 176, 0.2);
+    background: var(--primary-bg-strong);
 }
 
 /* Severity: warning — warm amber */
@@ -63,7 +63,7 @@
     border-left-color: var(--warning);
 }
 .insight-warning .insight-icon {
-    background: rgba(240, 194, 75, 0.12);
+    background: var(--warning-bg);
     color: var(--warning);
 }
 
@@ -72,7 +72,7 @@
     border-left-color: var(--primary);
 }
 .insight-info .insight-icon {
-    background: rgba(29, 211, 176, 0.12);
+    background: var(--primary-bg);
     color: var(--primary);
 }
 
@@ -81,14 +81,14 @@
     border-left-color: var(--success);
 }
 .insight-success .insight-icon {
-    background: rgba(54, 196, 107, 0.12);
+    background: var(--success-bg);
     color: var(--success);
 }
 
 /* Section header icon tint */
 .stats-section-title .fa-brain {
     color: var(--primary);
-    margin-right: 4px;
+    margin-right: var(--space-4);
 }
 
 /* ===== AI Coach Modal ===== */
@@ -99,12 +99,12 @@
 }
 
 .coach-header i {
-    font-size: 2rem;
+    font-size: var(--font-display);
     color: var(--primary);
 }
 
 .coach-header h2 {
-    margin: 8px 0 0;
+    margin: var(--space-8) 0 0;
     font-size: var(--font-xl);
     color: var(--text-strong);
 }
@@ -112,7 +112,7 @@
 .coach-subtitle {
     color: var(--text-muted);
     font-size: var(--font-sm);
-    margin-top: 4px;
+    margin-top: var(--space-4);
 }
 
 /* Prompt cards grid */
@@ -127,7 +127,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
     padding: var(--pad-card-x);
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -145,13 +145,13 @@
 }
 
 .coach-prompt-card i {
-    font-size: 1.4rem;
+    font-size: var(--font-xl);
     color: var(--primary);
 }
 
 /* Freeform input */
 .coach-freeform {
-    padding: 16px;
+    padding: var(--space-16);
     display: flex;
     flex-direction: column;
     gap: var(--gap-items);
@@ -177,7 +177,7 @@
 
 /* Response area */
 .coach-response {
-    padding: 16px;
+    padding: var(--space-16);
 }
 
 .coach-loading {
@@ -185,14 +185,14 @@
     align-items: center;
     justify-content: center;
     gap: var(--gap-items);
-    padding: 32px 16px;
+    padding: var(--space-32) var(--space-16);
     color: var(--text-muted);
     font-size: var(--font-sm);
 }
 
 .coach-loading i {
     color: var(--primary);
-    font-size: 1.25rem;
+    font-size: var(--font-lg);
 }
 
 .coach-recommendation {
@@ -204,13 +204,13 @@
 .coach-recommendation ul {
     list-style: none;
     padding: 0;
-    margin: 10px 0;
+    margin: var(--space-10) 0;
 }
 
 .coach-recommendation li {
     position: relative;
     padding-left: 1.25rem;
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
 }
 
 .coach-recommendation li::before {
@@ -228,7 +228,7 @@
 .coach-meta {
     padding-top: var(--space-12);
     border-top: 1px solid var(--border);
-    margin-top: 16px;
+    margin-top: var(--space-16);
 }
 
 .coach-timestamp {
@@ -237,7 +237,7 @@
 }
 
 .coach-ask-another {
-    margin-top: 16px;
+    margin-top: var(--space-16);
     width: 100%;
 }
 
@@ -245,14 +245,14 @@
 .coach-rate-limit,
 .coach-error {
     text-align: center;
-    padding: 24px;
+    padding: var(--space-24);
     color: var(--text-muted);
 }
 
 .coach-rate-limit i,
 .coach-error i {
-    font-size: 2rem;
-    margin-bottom: 10px;
+    font-size: var(--font-display);
+    margin-bottom: var(--space-10);
     display: block;
 }
 
@@ -266,12 +266,12 @@
 
 .coach-error-detail {
     font-size: var(--font-xs);
-    margin-top: 8px;
+    margin-top: var(--space-8);
 }
 
 .coach-error-detail code {
     background: var(--bg-card);
-    padding: 2px 6px;
+    padding: var(--space-2) var(--space-6);
     border-radius: var(--radius-xs);
     font-size: var(--font-xs);
 }
@@ -280,31 +280,31 @@
 .coach-past-label {
     font-size: var(--font-xs);
     color: var(--text-muted);
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
 }
 
 .coach-past-question {
     font-style: italic;
     color: var(--text-secondary);
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
     font-size: var(--font-sm);
 }
 
 /* Coach history section */
 .coach-history-section {
-    padding: 16px;
+    padding: var(--space-16);
     border-top: 1px solid var(--border);
-    margin-top: 16px;
+    margin-top: var(--space-16);
 }
 
 .coach-history-header {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
     font-size: var(--font-sm);
     font-weight: 600;
     color: var(--text-muted);
-    margin-bottom: 10px;
+    margin-bottom: var(--space-10);
 }
 
 .coach-history-item {
@@ -336,7 +336,7 @@
     font-size: var(--font-xs);
     color: var(--text-muted);
     flex-shrink: 0;
-    margin-left: 10px;
+    margin-left: var(--space-10);
 }
 
 /* ===== Workout Builder — Focus Picker ===== */
@@ -344,22 +344,22 @@
 .builder-title {
     font-size: var(--font-lg);
     color: var(--text-strong);
-    margin-bottom: 14px;
+    margin-bottom: var(--space-16);
     text-align: center;
 }
 
 .builder-focus-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: var(--space-8);
+    margin-bottom: var(--space-16);
 }
 
 .builder-focus-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-4);
     padding: var(--pad-card-y) var(--space-8);
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -377,7 +377,7 @@
 }
 
 .builder-focus-btn i {
-    font-size: 1.2rem;
+    font-size: var(--font-lg);
     color: var(--primary);
 }
 
@@ -391,13 +391,13 @@
 
 .builder-custom-wrap {
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
     align-items: center;
 }
 
 .builder-custom-wrap input {
     flex: 1;
-    padding: 10px 14px;
+    padding: var(--space-10) var(--space-16);
     font-size: var(--font-sm);
 }
 
@@ -411,7 +411,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 
 .preview-template-name {
@@ -429,15 +429,15 @@
 .preview-exercise-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 20px;
+    gap: var(--space-8);
+    margin-bottom: var(--space-20);
 }
 
 .preview-exercise-card {
     position: relative;
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 12px 40px 12px 14px;
+    padding: var(--space-12) 40px var(--space-12) var(--space-16);
     border-left: 3px solid var(--primary);
 }
 
@@ -448,14 +448,14 @@
 .preview-exercise-header {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-10);
 }
 
 .preview-exercise-num {
     width: 24px;
     height: 24px;
-    border-radius: 50%;
-    background: rgba(29, 211, 176, 0.12);
+    border-radius: var(--radius-pill);
+    background: var(--primary-bg);
     color: var(--primary);
     font-size: var(--font-xs);
     font-weight: 700;
@@ -466,7 +466,7 @@
 }
 
 .preview-exercise-new .preview-exercise-num {
-    background: rgba(247, 168, 101, 0.12);
+    background: var(--warning-bg);
     color: var(--highlight-warm);
 }
 
@@ -481,7 +481,7 @@
     color: var(--text-strong);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
 }
 
 .preview-exercise-meta {
@@ -513,8 +513,8 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--highlight-warm);
-    background: rgba(247, 168, 101, 0.12);
-    padding: 1px 6px;
+    background: var(--warning-bg);
+    padding: 1px var(--space-6);
     border-radius: var(--radius-pill);
 }
 
@@ -522,9 +522,9 @@
 .preview-alts {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-top: 8px;
-    padding-top: 8px;
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+    padding-top: var(--space-8);
     border-top: 1px solid var(--border);
     flex-wrap: wrap;
 }
@@ -539,7 +539,7 @@
     font-size: var(--font-xs);
     color: var(--text-main);
     background: var(--bg-card-hi);
-    padding: 3px 8px;
+    padding: var(--space-4) var(--space-8);
     border-radius: var(--radius-pill);
     border: 1px solid var(--border);
 }
@@ -547,31 +547,31 @@
 /* Remove button */
 .preview-remove-btn {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: var(--space-10);
+    right: var(--space-10);
     width: 24px;
     height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     background: transparent;
     color: var(--text-muted);
     border: none;
     cursor: pointer;
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     transition: color var(--anim-fast), background var(--anim-fast);
 }
 
 .preview-remove-btn:active {
-    background: rgba(227, 93, 106, 0.15);
+    background: var(--danger-bg);
     color: var(--danger);
 }
 
 /* Action buttons */
 .preview-actions {
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 .preview-actions .btn-primary {

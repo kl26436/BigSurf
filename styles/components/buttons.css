@@ -3,17 +3,17 @@
    =========================================== */
 .btn {
     min-height: var(--tap);
-    padding: 0 18px;
+    padding: 0 var(--pad-page);
     border-radius: var(--radius-sm);
     border: none;
     background: var(--bg-card-hi);
     color: var(--text-strong);
-    font: 600 0.9rem var(--font);
+    font: 600 var(--font-base) var(--font);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-8);
     transition: background 0.15s ease;
 }
 .btn:active {
@@ -23,7 +23,7 @@
 
 .btn-primary {
     background: var(--primary);
-    color: #02100e;
+    color: var(--bg-app);
 }
 .btn-primary:active {
     background: var(--primary-dark);
@@ -47,9 +47,9 @@
 .btn-text {
     background: none;
     border: none;
-    padding: 8px;
+    padding: var(--space-8);
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     cursor: pointer;
 }
 .btn-text:active {
@@ -65,7 +65,6 @@
 .btn-small,
 .btn-sm {
     min-height: var(--tap);
-    padding: 0 14px;
-    font-size: 0.85rem;
+    padding: 0 var(--space-16);
+    font-size: var(--font-sm);
 }
-

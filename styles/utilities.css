@@ -58,7 +58,7 @@
     to { transform: translateY(0); opacity: 1; }
 }
 dialog[open]::backdrop {
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--overlay-medium);
 }
 dialog[open] > .modal-content {
     animation: modal-slide-up var(--anim-slow) ease forwards;
@@ -81,7 +81,7 @@ dialog[open] > .modal-content {
     animation: flash-green var(--anim-slow) ease;
 }
 @keyframes flash-green {
-    0% { background-color: rgba(54, 196, 107, 0.2); }
+    0% { background-color: var(--success-bg); }
     100% { background-color: transparent; }
 }
 
@@ -118,42 +118,42 @@ dialog[open] > .modal-content {
     justify-content: space-between;
 }
 .gap-sm {
-    gap: 8px;
+    gap: var(--space-8);
 }
 .gap-md {
-    gap: 12px;
+    gap: var(--space-12);
 }
 .gap-lg {
-    gap: 16px;
+    gap: var(--space-16);
 }
 
 .mt-sm {
-    margin-top: 8px;
+    margin-top: var(--space-8);
 }
 .mt-md {
-    margin-top: 12px;
+    margin-top: var(--space-12);
 }
 .mt-lg {
-    margin-top: 16px;
+    margin-top: var(--space-16);
 }
 .mb-sm {
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .mb-md {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .mb-lg {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 
 .p-sm {
-    padding: 8px;
+    padding: var(--space-8);
 }
 .p-md {
-    padding: 12px;
+    padding: var(--space-12);
 }
 .p-lg {
-    padding: 16px;
+    padding: var(--space-16);
 }
 
 .text-center {
@@ -175,7 +175,7 @@ dialog[open] > .modal-content {
 }
 .focused {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(29, 211, 176, 0.2);
+    box-shadow: 0 0 0 3px var(--primary-bg-strong);
 }
 .disabled {
     opacity: 0.5;
@@ -197,39 +197,39 @@ dialog[open] > .modal-content {
 /* Sign-in prompt */
 .sign-in-prompt {
     text-align: center;
-    padding: 40px 20px;
+    padding: var(--space-40) var(--space-20);
 }
 .sign-in-prompt h2 {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .sign-in-prompt p {
     color: var(--text-muted);
-    margin-bottom: 24px;
+    margin-bottom: var(--space-24);
 }
 
 /* Auth section */
 .auth-section {
-    padding: 20px;
+    padding: var(--space-20);
 }
 .user-profile {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
+    gap: var(--space-12);
+    padding: var(--space-16);
     background: var(--bg-card);
     border-radius: var(--radius-md);
 }
 .user-avatar {
     width: 48px;
     height: 48px;
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     object-fit: cover;
 }
 .user-name {
     font-weight: 600;
 }
 .user-email {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
@@ -245,40 +245,40 @@ dialog[open] > .modal-content {
 }
 .loading-content {
     text-align: center;
-    padding: 20px;
+    padding: var(--space-20);
 }
 .loading-logo {
     width: 80px;
     height: 80px;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .loading-logo.loading-logo-large {
     width: 200px;
     height: 200px;
-    margin-bottom: 24px;
+    margin-bottom: var(--space-24);
 }
 .loading-title {
-    font-size: 1.5rem;
-    margin-bottom: 20px;
+    font-size: var(--font-xl);
+    margin-bottom: var(--space-20);
 }
 .loading-spinner {
     width: 40px;
     height: 40px;
     border: 3px solid var(--border);
     border-top-color: var(--primary);
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     animation: spin 1s linear infinite;
-    margin: 0 auto 16px;
+    margin: 0 auto var(--space-16);
 }
 .loading-message {
     color: var(--text-muted);
 }
 .loading-signin-prompt {
-    margin-top: 24px;
+    margin-top: var(--space-24);
 }
 .loading-signin-prompt p {
     color: var(--text-muted);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 
 /* Header */
@@ -286,7 +286,7 @@ dialog[open] > .modal-content {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
+    padding: var(--space-16);
     background: var(--bg-app);
     border-bottom: 1px solid var(--border);
     position: relative;
@@ -304,10 +304,10 @@ dialog[open] > .modal-content {
     width: 80px;
     height: 80px;
     background: var(--primary);
-    color: #02100e;
-    border-radius: 12px;
+    color: var(--bg-app);
+    border-radius: var(--radius-sm);
     font-weight: 700;
-    font-size: 1.5rem;
+    font-size: var(--font-xl);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -315,14 +315,14 @@ dialog[open] > .modal-content {
 
 /* Workout controls / Auth section */
 .workout-controls {
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
     display: flex;
     justify-content: center;
 }
 .user-display {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-12);
 }
 
 /* Resume banner styles */
@@ -330,18 +330,18 @@ dialog[open] > .modal-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .stats-section-title {
-    font-size: 1rem;
+    font-size: var(--font-md);
     font-weight: 600;
 }
 /* Redesigned resume banner */
 .resume-banner {
-    background: linear-gradient(135deg, rgba(29, 211, 176, 0.08), rgba(29, 211, 176, 0.02));
-    border: 1px solid rgba(29, 211, 176, 0.2);
+    background: linear-gradient(135deg, var(--primary-bg-subtle), var(--primary-bg-subtle));
+    border: 1px solid var(--primary-bg-strong);
     border-radius: var(--radius-lg);
-    padding: 20px;
+    padding: var(--space-20);
     margin-bottom: var(--gap-section);
     position: relative;
     overflow: hidden;
@@ -349,11 +349,11 @@ dialog[open] > .modal-content {
 .resume-banner-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--space-8);
+    margin-bottom: var(--space-12);
 }
 .resume-banner-header h3 {
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     font-weight: 600;
     color: var(--text-strong);
     flex: 1;
@@ -363,7 +363,7 @@ dialog[open] > .modal-content {
     width: 8px;
     height: 8px;
     background: var(--success);
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     display: inline-block;
     animation: pulse-dot 2s ease-in-out infinite;
 }
@@ -372,20 +372,20 @@ dialog[open] > .modal-content {
     50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(54, 196, 107, 0); }
 }
 .resume-time-label {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
 }
 .resume-workout-name {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: 700;
     color: var(--text-strong);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .resume-ring-row {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: var(--space-16);
+    margin-bottom: var(--space-16);
 }
 .resume-ring {
     flex-shrink: 0;
@@ -396,8 +396,8 @@ dialog[open] > .modal-content {
 .resume-stats-compact {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    font-size: 0.85rem;
+    gap: var(--space-4);
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .resume-stats-compact strong {
@@ -407,16 +407,16 @@ dialog[open] > .modal-content {
 .resume-banner-actions {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
     align-items: center;
 }
 .btn-text-small {
     background: none;
     border: none;
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     cursor: pointer;
-    padding: 4px 8px;
+    padding: var(--space-4) var(--space-8);
 }
 .btn-text-small:active {
     color: var(--danger);
@@ -439,7 +439,7 @@ dialog[open] > .modal-content {
 
     .set-row {
         grid-template-columns: 40px 1fr 1fr auto;
-        gap: 8px;
+        gap: var(--space-8);
     }
 
     .template-actions {
@@ -460,69 +460,69 @@ dialog[open] > .modal-content {
 .separator {
     height: 1px;
     background: var(--border);
-    margin: 16px 0;
+    margin: var(--space-16) 0;
 }
 .error-state {
     color: var(--danger);
     text-align: center;
-    padding: 20px;
+    padding: var(--space-20);
 }
 .error-message {
     color: var(--danger);
-    font-size: 0.85rem;
-    margin-top: 8px;
+    font-size: var(--font-sm);
+    margin-top: var(--space-8);
 }
 /* Empty state styles consolidated in components/empty-states.css */
 .empty-state .btn {
-    margin-top: 4px;
+    margin-top: var(--space-4);
 }
 .modal-footer {
-    padding: 16px;
+    padding: var(--space-16);
     border-top: 1px solid var(--border);
     display: flex;
-    gap: 10px;
+    gap: var(--space-10);
     justify-content: flex-end;
 }
 .quick-sets-row {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--space-8);
     flex-wrap: wrap;
 }
 .exercise-actions-bar {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--space-8);
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-16);
     flex-wrap: wrap;
 }
 .set-controls {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--space-8);
     justify-content: center;
-    margin: 1rem 0;
+    margin: var(--space-16) 0;
 }
 .set-summary {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .filter-pill {
-    padding: 6px 12px;
+    padding: var(--space-6) var(--space-12);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-pill);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     cursor: pointer;
 }
 .filter-pill.active {
     background: var(--primary);
-    color: #02100e;
+    color: var(--bg-app);
     border-color: var(--primary);
 }
 .saved-locations-list {
-    margin-top: 12px;
+    margin-top: var(--space-12);
 }
 .view-more-link {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--primary);
     cursor: pointer;
 }

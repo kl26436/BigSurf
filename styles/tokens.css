@@ -15,9 +15,9 @@
 
     /* Backgrounds - darker, softer, less contrasty (Apple Health style) */
     --bg-app: #05070b;
-    --bg-surface: #0a0e14;
-    --bg-card: #0a0f15;
-    --bg-card-hi: #0e1319;
+    --bg-surface: #0d1218;
+    --bg-card: #111820;
+    --bg-card-hi: #172030;
     --bg-secondary: #0e1319;
 
     /* Text - high contrast for readability */
@@ -43,7 +43,27 @@
     --shadow-md: 0 8px 14px rgba(0, 0, 0, 0.55);
     --shadow-lg: 0 12px 20px rgba(0, 0, 0, 0.6);
 
+    /* Semantic color tokens */
+    --primary-bg-subtle: rgba(29, 211, 176, 0.05);
+    --primary-bg: rgba(29, 211, 176, 0.12);
+    --primary-bg-strong: rgba(29, 211, 176, 0.2);
+    --primary-border: rgba(29, 211, 176, 0.3);
+
+    --success-bg: rgba(54, 196, 107, 0.12);
+    --success-border: rgba(54, 196, 107, 0.25);
+
+    --danger-bg: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.3);
+
+    --warning-bg: rgba(247, 168, 101, 0.12);
+    --warning-border: rgba(247, 168, 101, 0.3);
+
+    --overlay-subtle: rgba(0, 0, 0, 0.15);
+    --overlay-light: rgba(0, 0, 0, 0.25);
+    --overlay-medium: rgba(0, 0, 0, 0.5);
+
     /* Font size scale */
+    --font-2xs: 0.65rem;
     --font-xs: 0.7rem;
     --font-sm: 0.8rem;
     --font-base: 0.9rem;
@@ -68,6 +88,7 @@
     --badge-silver: #c0c0c0;
     --badge-bronze: #cd7f32;
     --badge-purple: #9370db;
+    --badge-orange: #ff8c00;
 
     /* Superset group accent colors */
     --superset-a: var(--primary);
@@ -101,6 +122,8 @@
     --space-20: 20px;
     --space-24: 24px;
     --space-32: 32px;
+    --space-40: 40px;
+    --space-48: 48px;
 
     /* Layout spacing */
     --pad-page: 18px;
@@ -123,9 +146,9 @@
     --icon-xl: 56px;
 
     /* Border consistency */
-    --border-subtle: rgba(255, 255, 255, 0.04);
-    --border-light: rgba(255, 255, 255, 0.08);
-    --border-medium: rgba(255, 255, 255, 0.12);
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-light: rgba(255, 255, 255, 0.10);
+    --border-medium: rgba(255, 255, 255, 0.15);
 
     /* Accent bar thickness */
     --accent-bar: 3px;

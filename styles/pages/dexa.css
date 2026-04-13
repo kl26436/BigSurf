@@ -12,7 +12,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 
 .dexa-card-header h3 {
@@ -21,7 +21,7 @@
     color: var(--text-strong);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 .dexa-card-header h3 i {
@@ -35,20 +35,20 @@
 
 .dexa-card-empty {
     text-align: center;
-    padding: 8px 0;
+    padding: var(--space-8) 0;
 }
 
 .dexa-card-empty p {
     font-size: var(--font-sm);
     color: var(--text-secondary);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 
 .dexa-card-stats {
     display: flex;
-    gap: 16px;
+    gap: var(--space-16);
     justify-content: center;
-    padding: 12px 0;
+    padding: var(--space-12) 0;
     cursor: pointer;
 }
 
@@ -56,7 +56,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: var(--space-2);
 }
 
 .dexa-stat-value {
@@ -76,17 +76,17 @@
     font-size: var(--font-xs);
     color: var(--warning);
     text-align: center;
-    padding: 6px 0 4px;
+    padding: var(--space-6) 0 var(--space-4);
 }
 
 .dexa-imbalance-hint i {
-    margin-right: 4px;
+    margin-right: var(--space-4);
 }
 
 .dexa-card-actions {
     display: flex;
-    gap: 8px;
-    margin-top: 12px;
+    gap: var(--space-8);
+    margin-top: var(--space-12);
 }
 
 .dexa-card-actions .btn {
@@ -97,14 +97,14 @@
 .dexa-upload-form {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--space-16);
 }
 
 .dexa-upload-zone {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
     padding: var(--space-32) var(--space-16);
     border: 2px dashed var(--border);
     border-radius: var(--radius-md);
@@ -136,7 +136,7 @@
 .dexa-file-selected {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
     padding: var(--space-12);
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -160,7 +160,7 @@
 .dexa-upload-divider {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-12);
     color: var(--text-muted);
     font-size: var(--font-xs);
 }
@@ -178,7 +178,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
+    gap: var(--space-16);
     padding: var(--space-32) var(--space-20);
     text-align: center;
 }
@@ -188,7 +188,7 @@
     height: 40px;
     border: 3px solid var(--border);
     border-top-color: var(--primary);
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     animation: dexaSpin 0.8s linear infinite;
 }
 
@@ -212,8 +212,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
-    padding: 24px 0;
+    gap: var(--space-16);
+    padding: var(--space-24) 0;
     text-align: center;
 }
 
@@ -231,18 +231,18 @@
 .dexa-review-form {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-12);
 }
 
 .dexa-review-hint {
     font-size: var(--font-sm);
     color: var(--text-secondary);
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
 }
 
 .dexa-form-row {
     display: flex;
-    gap: 12px;
+    gap: var(--space-12);
 }
 
 .dexa-form-row .form-group {
@@ -253,7 +253,7 @@
 .low-confidence {
     position: relative;
     border-left: 3px solid var(--warning);
-    padding-left: 8px;
+    padding-left: var(--space-8);
 }
 
 .confidence-badge {
@@ -261,10 +261,10 @@
     font-size: var(--font-xs);
     font-weight: 600;
     color: var(--warning);
-    background: rgba(255, 193, 7, 0.12);
-    padding: 1px 6px;
+    background: var(--warning-bg);
+    padding: 1px var(--space-6);
     border-radius: var(--radius-sm);
-    margin-left: 4px;
+    margin-left: var(--space-4);
     vertical-align: middle;
 }
 
@@ -280,7 +280,7 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
     background: var(--bg-card);
     border: none;
     color: var(--text-main);
@@ -302,12 +302,12 @@
 }
 
 .dexa-field-group-content {
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
     border-top: 1px solid var(--border);
 }
 
 .dexa-regional-section {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 
 .dexa-regional-section:last-child {
@@ -320,13 +320,13 @@
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 
 .dexa-regional-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 .dexa-regional-grid .dexa-regional-item:last-child:nth-child(odd) {
@@ -337,11 +337,11 @@
     display: block;
     font-size: var(--font-xs);
     color: var(--text-muted);
-    margin-bottom: 2px;
+    margin-bottom: var(--space-2);
 }
 
 .dexa-regional-item .form-input {
-    padding: 8px 10px;
+    padding: var(--space-8) var(--space-10);
     font-size: var(--font-sm);
 }
 
@@ -351,7 +351,7 @@
     align-items: center;
     justify-content: space-between;
     cursor: pointer;
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
 }
 
 .dexa-history-item:active {
@@ -361,7 +361,7 @@
 .dexa-history-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-2);
 }
 
 .dexa-history-date {
@@ -383,7 +383,7 @@
 .dexa-history-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 .dexa-history-right i {
@@ -395,18 +395,18 @@
 .dexa-delta {
     font-size: var(--font-xs);
     font-weight: 600;
-    padding: 2px 6px;
+    padding: var(--space-2) var(--space-6);
     border-radius: var(--radius-sm);
 }
 
 .dexa-delta.delta-positive {
     color: var(--success);
-    background: rgba(76, 175, 80, 0.12);
+    background: var(--success-bg);
 }
 
 .dexa-delta.delta-negative {
     color: var(--danger);
-    background: rgba(244, 67, 54, 0.12);
+    background: var(--danger-bg);
 }
 
 /* ---- Detail Modal ---- */
@@ -414,27 +414,27 @@
     font-size: var(--font-base);
     font-weight: 600;
     color: var(--text-strong);
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
 }
 
 .dexa-detail-comparison {
     font-size: var(--font-xs);
     color: var(--text-muted);
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 
 .dexa-detail-summary {
     display: flex;
     flex-direction: column;
     gap: 0;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 
 .dexa-detail-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 0;
+    padding: var(--space-10) 0;
     border-bottom: 1px solid var(--border);
 }
 
@@ -453,18 +453,18 @@
     color: var(--text-strong);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 .dexa-detail-section {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 
 .dexa-detail-section h4 {
     font-size: var(--font-sm);
     font-weight: 600;
     color: var(--text-strong);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 
 /* ---- Imbalance Analysis ---- */
@@ -474,7 +474,7 @@
     gap: var(--gap-items);
     padding: var(--pad-card-y) var(--pad-card-x);
     border-radius: var(--radius-sm);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
     font-size: var(--font-sm);
     color: var(--text-main);
 }
@@ -484,7 +484,7 @@
 }
 
 .dexa-imbalance-mild {
-    background: rgba(255, 193, 7, 0.08);
+    background: var(--warning-bg);
     border-left: 3px solid var(--warning);
 }
 
@@ -503,7 +503,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.3px;
-    margin-left: 4px;
+    margin-left: var(--space-4);
     opacity: 0.7;
 }
 
@@ -518,7 +518,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 0;
+    padding: var(--space-8) 0;
     border-bottom: 1px solid var(--border);
 }
 
@@ -537,19 +537,19 @@
     color: var(--text-strong);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
 }
 
 /* ---- Detail Notes & Actions ---- */
 .dexa-detail-notes {
     font-size: var(--font-sm);
     color: var(--text-secondary);
-    padding: 12px 0;
+    padding: var(--space-12) 0;
     border-top: 1px solid var(--border);
 }
 
 .dexa-detail-actions {
-    padding-top: 16px;
+    padding-top: var(--space-16);
     display: flex;
     justify-content: center;
 }

@@ -46,7 +46,7 @@
 .plate-calc-bar-custom {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-4);
 }
 .plate-calc-bar-custom input {
     width: 64px;

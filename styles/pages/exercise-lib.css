@@ -9,7 +9,7 @@
 .exercise-library-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-12);
     padding: var(--pad-card-y) var(--pad-card-x);
     background: var(--bg-card);
     border-radius: var(--radius-md);
@@ -31,7 +31,7 @@
     width: 40px;
     height: 40px;
     border-radius: var(--radius-sm);
-    background: rgba(29, 211, 176, 0.12);
+    background: var(--primary-bg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -43,7 +43,7 @@
     color: var(--text-strong);
 }
 .exercise-library-meta {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
@@ -51,18 +51,18 @@
 .search-bar {
     display: flex;
     gap: var(--gap-items);
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .search-input {
     flex: 1;
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     color: var(--text-strong);
 }
 .filter-btn {
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -80,13 +80,13 @@
 .location-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .location-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px;
+    padding: var(--space-16);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
 }
@@ -94,16 +94,16 @@
     font-weight: 500;
 }
 .location-meta {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
 /* Location Selector Modal */
 .location-option {
-    padding: 14px;
+    padding: var(--space-16);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
     cursor: pointer;
     transition: background 0.2s;
 }
@@ -112,7 +112,7 @@
 }
 .location-option.selected {
     border: 2px solid var(--primary);
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--primary-bg-subtle);
 }
 
 /* ===========================================
@@ -121,10 +121,10 @@
 .equipment-grid {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .equipment-option {
-    padding: 14px;
+    padding: var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -135,13 +135,13 @@
 }
 .equipment-option.selected {
     border-color: var(--primary);
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--primary-bg-subtle);
 }
 .equipment-name {
     font-weight: 500;
 }
 .equipment-location {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
@@ -149,16 +149,16 @@
    23. EXERCISE MANAGER & LIBRARY
    =========================================== */
 .exercise-library-view {
-    padding: 16px;
+    padding: var(--space-16);
 }
 .exercise-library-header {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .exercise-library-controls {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .exercise-search-row {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .exercise-search-wrapper {
     position: relative;
@@ -170,17 +170,17 @@
 }
 .exercise-search-wrapper i {
     position: absolute;
-    left: 14px;
+    left: var(--space-16);
     color: var(--text-muted);
 }
 .exercise-search-input {
     width: 100%;
-    padding: 12px 16px 12px 42px;
+    padding: var(--space-12) var(--space-16) var(--space-12) 42px;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     color: var(--text-strong);
-    font-size: 1rem;
+    font-size: var(--font-md);
 }
 .exercise-search-input:focus {
     outline: none;
@@ -188,20 +188,20 @@
 }
 
 .search-container {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .filter-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--gap-items);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 
 /* Category Grid */
 .category-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    gap: var(--space-12);
 }
 .category-card {
     background: var(--bg-card);
@@ -217,22 +217,22 @@
     background: var(--bg-card-hi);
 }
 .category-icon {
-    font-size: 1.5rem;
+    font-size: var(--font-xl);
     color: var(--primary);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
     display: block;
 }
 .category-name {
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
 }
 
 /* Exercise List View */
 .exercise-list-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: var(--space-12);
+    margin-bottom: var(--space-16);
 }
 .btn-back-category {
     width: var(--tap);
@@ -244,53 +244,53 @@
     cursor: pointer;
 }
 .exercise-list-title {
-    font-size: 1.25rem;
+    font-size: var(--font-lg);
     margin: 0;
 }
 .exercise-list-search {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .exercise-list-container {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .exercise-list-footer {
     position: sticky;
     bottom: 0;
-    padding: 16px 0;
+    padding: var(--space-16) 0;
     background: linear-gradient(transparent, var(--bg-app) 20%);
 }
 .btn-add-exercise-bottom {
     width: 100%;
-    padding: 14px;
+    padding: var(--space-16);
     background: var(--primary);
     border: none;
     border-radius: var(--radius-md);
-    color: #02100e;
+    color: var(--bg-app);
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 /* Equipment Filter Pills */
 .equipment-filter-pills {
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
     overflow-x: auto;
-    padding-bottom: 8px;
-    margin-bottom: 16px;
+    padding-bottom: var(--space-8);
+    margin-bottom: var(--space-16);
 }
 .filter-pill {
-    padding: 8px 16px;
+    padding: var(--space-8) var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-pill);
     color: var(--text-main);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     white-space: nowrap;
     cursor: pointer;
     transition: all 0.2s;
@@ -301,14 +301,14 @@
 .filter-pill.active {
     background: var(--primary);
     border-color: var(--primary);
-    color: #02100e;
+    color: var(--bg-app);
 }
 
 /* ===========================================
    WORKOUT LIBRARY (Category Grid + List View)
    =========================================== */
 .workout-library-view {
-    padding: 16px;
+    padding: var(--space-16);
 }
 .workout-library-view.hidden {
     display: none;
@@ -317,15 +317,15 @@
 .workout-list-container {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-10);
 }
 
 /* Workout List Item (like exercise library items) */
 .workout-list-item {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 14px 16px;
+    gap: var(--space-16);
+    padding: var(--space-16) var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
@@ -346,12 +346,12 @@
     width: 48px;
     height: 48px;
     border-radius: var(--radius-sm);
-    background: rgba(29, 211, 176, 0.12);
+    background: var(--primary-bg);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--primary);
-    font-size: 1.2rem;
+    font-size: var(--font-lg);
     flex-shrink: 0;
 }
 
@@ -363,18 +363,18 @@
 .workout-item-name {
     font-weight: 600;
     color: var(--text-strong);
-    font-size: 1rem;
-    margin-bottom: 2px;
+    font-size: var(--font-md);
+    margin-bottom: var(--space-2);
 }
 
 .workout-item-meta {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
 }
 
 .workout-item-exercises {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
@@ -382,12 +382,12 @@
 }
 
 .workout-item-edit {
-    padding: 8px 14px;
+    padding: var(--space-8) var(--space-16);
     background: none;
     border: none;
     color: var(--text-muted);
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     cursor: pointer;
     flex-shrink: 0;
 }
@@ -399,22 +399,22 @@
    24. EDIT EXERCISE SECTION
    =========================================== */
 .edit-exercise-container {
-    padding: 0 16px 32px;
+    padding: 0 var(--space-16) var(--space-32);
 }
 .edit-exercise-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
     border-bottom: 1px solid var(--border);
-    margin: 0 -16px 16px;
+    margin: 0 calc(-1 * var(--space-16)) var(--space-16);
     position: sticky;
     top: 0;
     background: var(--bg-app);
     z-index: 10;
 }
 .edit-exercise-header h2 {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     margin: 0;
     flex: 1;
     text-align: center;
@@ -422,7 +422,7 @@
 .btn-back,
 .btn-save {
     min-width: 60px;
-    padding: 8px 12px;
+    padding: var(--space-8) var(--space-12);
     background: none;
     border: none;
     color: var(--primary);
@@ -430,7 +430,7 @@
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
 }
 .btn-back {
     color: var(--text-muted);
@@ -439,19 +439,19 @@
 .edit-section {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 16px;
-    margin-bottom: 16px;
+    padding: var(--space-16);
+    margin-bottom: var(--space-16);
 }
 .edit-section-title {
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     font-weight: 600;
-    margin: 0 0 12px;
+    margin: 0 0 var(--space-12);
     color: var(--text-strong);
 }
 .edit-section-hint {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin: -8px 0 12px;
+    margin: calc(-1 * var(--space-8)) 0 var(--space-12);
 }
 .optional-tag {
     font-weight: 400;
@@ -465,7 +465,7 @@
 }
 .input-with-icon i {
     position: absolute;
-    left: 14px;
+    left: var(--space-16);
     color: var(--text-muted);
     z-index: 1;
 }
@@ -476,12 +476,12 @@
 .edit-input-large,
 .edit-input-full {
     width: 100%;
-    padding: 12px 16px 12px 42px;
+    padding: var(--space-12) var(--space-16) var(--space-12) 42px;
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-strong);
-    font-size: 1rem;
+    font-size: var(--font-md);
 }
 .edit-input-large:focus,
 .edit-input-full:focus {
@@ -492,50 +492,50 @@
 .edit-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--space-12);
+    margin-bottom: var(--space-12);
 }
 .edit-row-three {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
+    gap: var(--space-12);
 }
 .edit-field label {
     display: block;
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
 }
 .edit-select,
 .edit-input-number {
     width: 100%;
-    padding: 10px 12px;
+    padding: var(--space-10) var(--space-12);
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-strong);
-    font-size: 1rem;
+    font-size: var(--font-md);
 }
 .edit-select {
     appearance: none;
 }
 
 .edit-subsection-title {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin: 16px 0 8px;
+    margin: var(--space-16) 0 var(--space-8);
 }
 .edit-equipment-list {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-10);
 }
 .edit-equipment-empty {
     text-align: center;
-    padding: 16px;
+    padding: var(--space-16);
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: var(--font-base);
 }
 
 /* Equipment item cards in edit exercise section */
@@ -543,7 +543,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
+    padding: var(--space-12) var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -558,7 +558,7 @@
 }
 .edit-equipment-item.selected {
     border-color: var(--primary);
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--primary-bg-subtle);
 }
 .edit-equipment-item-info {
     flex: 1;
@@ -567,10 +567,10 @@
 .edit-equipment-item-name {
     font-weight: 600;
     color: var(--text-strong);
-    margin-bottom: 2px;
+    margin-bottom: var(--space-2);
 }
 .edit-equipment-item-location {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .edit-equipment-item-edit {
@@ -585,7 +585,7 @@
     color: var(--text-muted);
     cursor: pointer;
     flex-shrink: 0;
-    margin-left: 12px;
+    margin-left: var(--space-12);
     transition:
         border-color 0.2s,
         color 0.2s;
@@ -595,15 +595,15 @@
     color: var(--primary);
 }
 .edit-add-equipment {
-    margin-top: 16px;
+    margin-top: var(--space-16);
 }
 .edit-equipment-form {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-10);
 }
 .btn-add-equipment {
-    padding: 12px;
+    padding: var(--space-12);
     background: var(--bg-card-hi);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -613,7 +613,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .btn-add-equipment:hover {
     border-color: var(--primary);
@@ -621,11 +621,11 @@
 }
 
 .edit-delete-container {
-    margin-top: 24px;
+    margin-top: var(--space-24);
     text-align: center;
 }
 .btn-delete-exercise {
-    padding: 12px 24px;
+    padding: var(--space-12) var(--space-24);
     background: transparent;
     border: 1px solid var(--danger);
     border-radius: var(--radius-sm);
@@ -634,18 +634,18 @@
     cursor: pointer;
 }
 .btn-delete-exercise:hover {
-    background: rgba(227, 93, 106, 0.1);
+    background: var(--danger-bg);
 }
 
 .edit-selected-equipment {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px;
-    background: rgba(29, 211, 176, 0.1);
+    gap: var(--space-10);
+    padding: var(--space-12);
+    background: var(--primary-bg-subtle);
     border: 1px solid var(--primary);
     border-radius: var(--radius-sm);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .edit-selected-equipment i {
     color: var(--primary);
@@ -662,26 +662,26 @@
    27. LOCATION MANAGEMENT
    =========================================== */
 .location-management-content {
-    padding: 16px;
+    padding: var(--space-16);
 }
 .current-location-card {
     background: var(--bg-card);
     border: 1px solid var(--primary);
     border-radius: var(--radius-md);
-    padding: 16px;
-    margin-bottom: 20px;
+    padding: var(--space-16);
+    margin-bottom: var(--space-20);
 }
 .current-location-label {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .current-location-display {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 1.1rem;
+    gap: var(--space-10);
+    font-size: var(--font-md);
     font-weight: 600;
 }
 .current-location-display i {
@@ -692,7 +692,7 @@
     background: var(--bg-card);
     border-radius: var(--radius-md);
     height: 200px;
-    margin-bottom: 20px;
+    margin-bottom: var(--space-20);
     overflow: hidden;
     position: relative;
 }
@@ -705,21 +705,21 @@
     color: var(--text-muted);
 }
 .location-map-placeholder i {
-    font-size: 2rem;
-    margin-bottom: 8px;
+    font-size: var(--font-display);
+    margin-bottom: var(--space-8);
 }
 .map-hint {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
 }
 .map-location-label {
     position: absolute;
-    bottom: 10px;
-    left: 10px;
+    bottom: var(--space-10);
+    left: var(--space-10);
     background: rgba(0, 0, 0, 0.7);
     color: white;
-    padding: 6px 12px;
+    padding: var(--space-6) var(--space-12);
     border-radius: var(--radius-sm);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     font-weight: 500;
 }
 
@@ -727,18 +727,18 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .location-list-header h3 {
     margin: 0;
-    font-size: 1rem;
+    font-size: var(--font-md);
 }
 .location-count {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .location-management-list {
-    margin-bottom: 20px;
+    margin-bottom: var(--space-20);
 }
 
 /* Location Items */
@@ -746,12 +746,12 @@
 .location-management-item {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 14px;
-    margin-bottom: 10px;
+    padding: var(--space-16);
+    margin-bottom: var(--space-10);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--space-12);
 }
 .location-management-item.active {
     border: 1px solid var(--primary);
@@ -759,15 +759,15 @@
 }
 .location-item-info {
     display: flex;
-    gap: 12px;
+    gap: var(--space-12);
     flex: 1;
     cursor: pointer;
 }
 .location-item-icon {
     width: 40px;
     height: 40px;
-    background: rgba(29, 211, 176, 0.15);
-    border-radius: 10px;
+    background: var(--primary-bg);
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -779,30 +779,30 @@
 }
 .location-item-name {
     font-weight: 600;
-    margin-bottom: 2px;
+    margin-bottom: var(--space-2);
 }
 .location-item-name .current-badge {
     background: var(--primary);
-    color: #02100e;
-    font-size: 0.65rem;
+    color: var(--bg-app);
+    font-size: var(--font-2xs);
     font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-left: 8px;
+    padding: var(--space-2) var(--space-6);
+    border-radius: var(--radius-xs);
+    margin-left: var(--space-8);
     text-transform: uppercase;
 }
 .location-item-address {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-bottom: 2px;
+    margin-bottom: var(--space-2);
 }
 .location-item-meta {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
 }
 .location-item-actions {
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .location-item-actions button {
     width: 36px;
@@ -829,27 +829,27 @@
 .add-location-form {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: var(--space-16);
 }
 .add-location-form h4 {
-    margin: 0 0 12px;
-    font-size: 0.9rem;
+    margin: 0 0 var(--space-12);
+    font-size: var(--font-base);
 }
 .add-location-inputs {
     display: flex;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: var(--space-10);
+    margin-bottom: var(--space-12);
 }
 .add-location-inputs .input-field {
     flex: 1;
 }
 .input-field {
-    padding: 12px;
+    padding: var(--space-12);
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-strong);
-    font-size: 1rem;
+    font-size: var(--font-md);
 }
 .input-field:focus {
     outline: none;
@@ -859,24 +859,24 @@
 /* Add Location Modal Enhancements */
 .location-method-tabs {
     display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: var(--space-8);
+    margin-bottom: var(--space-16);
     flex-wrap: wrap;
 }
 .method-tab {
     flex: 1;
     min-width: 100px;
-    padding: 10px 12px;
+    padding: var(--space-10) var(--space-12);
     background: var(--bg-card-hi);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: var(--space-6);
     transition: all 0.2s;
 }
 .method-tab:hover {
@@ -884,7 +884,7 @@
     color: var(--text-strong);
 }
 .method-tab.active {
-    background: rgba(29, 211, 176, 0.15);
+    background: var(--primary-bg);
     border-color: var(--primary);
     color: var(--primary);
 }
@@ -894,23 +894,23 @@
 .gps-status-box {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
+    gap: var(--space-12);
+    padding: var(--space-16);
     background: var(--bg-card-hi);
     border-radius: var(--radius-md);
     color: var(--text-muted);
 }
 .gps-status-box.success {
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--primary-bg-subtle);
     color: var(--primary);
 }
 .gps-status-box.error {
-    background: rgba(255, 107, 107, 0.1);
+    background: var(--danger-bg);
     color: var(--danger);
 }
 .search-input-wrapper {
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .search-input-wrapper .form-input {
     flex: 1;
@@ -927,16 +927,16 @@
     opacity: 0.9;
 }
 .address-results {
-    margin-top: 12px;
+    margin-top: var(--space-12);
     max-height: 200px;
     overflow-y: auto;
 }
 .address-result-item {
-    padding: 12px;
+    padding: var(--space-12);
     background: var(--bg-card-hi);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -945,21 +945,21 @@
 }
 .address-result-item.selected {
     border-color: var(--primary);
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--primary-bg-subtle);
 }
 .address-result-name {
     font-weight: 500;
     color: var(--text-strong);
 }
 .address-result-address {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-top: 4px;
+    margin-top: var(--space-4);
 }
 .method-description {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .add-location-map {
     height: 200px;
@@ -977,47 +977,47 @@
     color: var(--text-muted);
 }
 .map-placeholder i {
-    font-size: 2rem;
-    margin-bottom: 8px;
+    font-size: var(--font-display);
+    margin-bottom: var(--space-8);
 }
 .pin-coords {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
     text-align: center;
-    margin-top: 8px;
+    margin-top: var(--space-8);
 }
 .selected-coords {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px;
-    background: rgba(29, 211, 176, 0.1);
+    gap: var(--space-8);
+    padding: var(--space-12);
+    background: var(--primary-bg-subtle);
     border: 1px solid var(--primary);
     border-radius: var(--radius-sm);
-    margin-top: 16px;
+    margin-top: var(--space-16);
     color: var(--primary);
-    font-size: 0.9rem;
+    font-size: var(--font-base);
 }
 
 /* ===========================================
    28. EQUIPMENT PICKER
    =========================================== */
 .equipment-picker-subtitle {
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     color: var(--text-muted);
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .equipment-picker-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: var(--space-8);
+    margin-bottom: var(--space-16);
 }
 .equipment-picker-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
+    gap: var(--space-12);
+    padding: var(--space-12);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -1028,15 +1028,15 @@
 }
 .equipment-picker-item.selected {
     border-color: var(--primary);
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--primary-bg-subtle);
 }
 .form-section-divider {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 16px 0;
+    gap: var(--space-12);
+    margin: var(--space-16) 0;
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
 }
 .form-section-divider::before,
 .form-section-divider::after {
@@ -1048,7 +1048,7 @@
 .equipment-picker-add-form {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-10);
 }
 
 /* ===========================================
@@ -1057,12 +1057,12 @@
 .exercise-card-new {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 16px;
+    gap: var(--space-16);
+    padding: var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
     cursor: pointer;
     position: relative;
     overflow: hidden;
@@ -1079,10 +1079,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(29, 211, 176, 0.12);
+    background: var(--primary-bg);
     border-radius: var(--radius-sm);
     color: var(--primary);
-    font-size: 1.2rem;
+    font-size: var(--font-lg);
     flex-shrink: 0;
 }
 .exercise-card-info {
@@ -1093,15 +1093,15 @@
     display: block;
     font-weight: 600;
     color: var(--text-strong);
-    font-size: 1rem;
+    font-size: var(--font-md);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .exercise-card-meta {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-top: 3px;
+    margin-top: var(--space-4);
 }
 .exercise-card-edit {
     width: 36px;
@@ -1125,7 +1125,7 @@
     border-bottom: 1px solid var(--border-color);
 }
 .quick-add-label {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -1143,7 +1143,7 @@
     border: 1px solid var(--border-color);
     border-radius: var(--radius-pill);
     padding: 0.35rem 0.75rem;
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
     white-space: nowrap;
@@ -1163,8 +1163,8 @@
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    padding: 16px;
-    margin-bottom: 12px;
+    padding: var(--space-16);
+    margin-bottom: var(--space-12);
     position: relative;
     overflow: hidden;
 }
@@ -1178,15 +1178,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .favorite-toggle {
     background: none;
     border: none;
-    padding: 4px 8px;
+    padding: var(--space-4) var(--space-8);
     cursor: pointer;
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     opacity: 0.4;
     transition: opacity 0.15s, color 0.15s;
 }
@@ -1198,28 +1198,28 @@
     transform: scale(1.2);
 }
 .favorites-section {
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .favorite-chip {
     border-color: rgba(255, 215, 0, 0.3) !important;
 }
 .library-exercise-card h5 {
-    margin: 0 0 8px 0;
-    font-size: 1.05rem;
+    margin: 0 0 var(--space-8) 0;
+    font-size: var(--font-md);
     font-weight: 600;
     color: var(--text-strong);
 }
 .library-exercise-info {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .library-exercise-stats {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
-    margin-bottom: 12px;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.15);
+    margin-bottom: var(--space-12);
+    padding: var(--space-10);
+    background: var(--overlay-subtle);
     border-radius: var(--radius-sm);
 }
 .library-exercise-card .btn {
@@ -1235,7 +1235,7 @@
     z-index: 700;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 /* ===========================================
@@ -1244,20 +1244,20 @@
 .equipment-option {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
+    gap: var(--space-12);
+    padding: var(--space-12);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .equipment-option:hover {
     border-color: var(--primary);
 }
 .equipment-option.selected {
     border-color: var(--primary);
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--primary-bg-subtle);
 }
 .equipment-option-radio {
     width: 20px;
@@ -1278,17 +1278,17 @@
     color: var(--text-strong);
 }
 .equipment-option-location {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .equipment-info {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .equipment-locations-empty,
 .equipment-picker-empty {
     text-align: center;
-    padding: 16px;
+    padding: var(--space-16);
     color: var(--text-muted);
 }
 
@@ -1296,34 +1296,34 @@
    42. LIBRARY & WORKOUT ITEMS
    =========================================== */
 .library-group {
-    margin-bottom: 20px;
+    margin-bottom: var(--space-20);
 }
 .library-group-header {
     font-weight: 600;
     color: var(--text-strong);
-    padding: 8px 0;
+    padding: var(--space-8) 0;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .library-group-items {
-    padding-left: 8px;
+    padding-left: var(--space-8);
 }
 .library-item-name {
     font-weight: 500;
     color: var(--text-strong);
 }
 .library-item-meta {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .workout-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
+    gap: var(--space-12);
+    padding: var(--space-12);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
     cursor: pointer;
 }
 .workout-item:hover {
@@ -1332,17 +1332,17 @@
 .workout-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .workout-date {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 .workout-category {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     background: var(--bg-surface);
-    padding: 2px 8px;
-    border-radius: 4px;
+    padding: var(--space-2) var(--space-8);
+    border-radius: var(--radius-xs);
     color: var(--text-muted);
 }
 .workout-icon {
@@ -1355,36 +1355,36 @@
 .mini-chart-card {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: var(--space-16);
     border: 1px solid var(--border-subtle);
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .mini-chart-card:hover {
-    border-color: rgba(29, 211, 176, 0.2);
+    border-color: var(--primary-bg-strong);
 }
 
 .mini-chart-header {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 
 .mini-chart-exercise {
-    font-size: 0.95rem;
+    font-size: var(--font-base);
     font-weight: 600;
     color: var(--text-main);
 }
 
 .mini-chart-equipment {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: var(--space-2);
 }
 
 .mini-chart-body {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: var(--space-16);
 }
 
 .mini-chart-sparkline {
@@ -1397,22 +1397,22 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 2px;
+    gap: var(--space-2);
     flex-shrink: 0;
 }
 
 .mini-chart-current {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: 700;
     color: var(--text-main);
 }
 
 .mini-chart-change {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     font-weight: 500;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-4);
 }
 
 .mini-chart-change.positive {
@@ -1424,19 +1424,18 @@
 }
 
 .mini-chart-period {
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
 }
 
 .mini-chart-tap-hint {
-    margin-top: 10px;
+    margin-top: var(--space-10);
     text-align: center;
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     opacity: 0.6;
 }
 
 .mini-chart-tap-hint i {
-    margin-right: 4px;
+    margin-right: var(--space-4);
 }
-

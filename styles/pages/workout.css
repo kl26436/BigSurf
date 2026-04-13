@@ -832,7 +832,7 @@
 }
 .unit-btn.active {
     background: var(--primary);
-    color: #02100e;
+    color: var(--bg-app);
     font-weight: 600;
 }
 .exercise-complete-section {
@@ -897,7 +897,7 @@
 .badge--success {
     background: var(--success);
     color: white;
-    padding: 0.25rem 0.5rem;
+    padding: var(--space-4) var(--space-8);
     border-radius: var(--radius-xs);
     font-size: var(--font-xs);
     font-weight: 500;
@@ -905,7 +905,7 @@
 .badge--muted {
     background: var(--bg-card-hi, rgba(255,255,255,0.06));
     color: var(--text-secondary);
-    padding: 0.25rem 0.5rem;
+    padding: var(--space-4) var(--space-8);
     border-radius: var(--radius-xs);
     font-size: var(--font-xs);
     border: 1px dashed var(--border);

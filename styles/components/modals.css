@@ -4,7 +4,7 @@
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--overlay-medium);
     z-index: 500;
     display: flex;
     align-items: flex-end;
@@ -14,19 +14,19 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
+    padding: var(--space-16);
     border-bottom: 1px solid var(--border);
     background: var(--bg-surface);
 }
 .modal-title {
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: 600;
 }
 .modal-close,
 .close-btn {
     width: var(--tap);
     height: var(--tap);
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     background: var(--bg-card);
     border: none;
     color: var(--text-muted);
@@ -47,34 +47,34 @@
 
 /* Exercise History Section */
 .exercise-history-section {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .exercise-history-section > div:first-child {
     display: flex;
-    gap: 10px;
+    gap: var(--space-10);
     flex-wrap: wrap;
 }
 .exercise-history-display {
-    margin-top: 12px;
-    padding: 12px;
+    margin-top: var(--space-12);
+    padding: var(--space-12);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
 }
 
 /* Exercise Unit Toggle in Modal */
 .exercise-unit-toggle {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 
 /* Exercise Table Styling */
 .exercise-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .exercise-table thead th {
-    padding: 10px 8px;
-    font-size: 0.8rem;
+    padding: var(--space-10) var(--space-8);
+    font-size: var(--font-sm);
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -87,13 +87,13 @@
     width: 60px;
 }
 .exercise-table tbody td {
-    padding: 8px;
+    padding: var(--space-8);
     vertical-align: middle;
 }
 .exercise-table tbody td:first-child {
     font-weight: 600;
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     white-space: nowrap;
 }
 .exercise-table tbody tr {
@@ -104,46 +104,46 @@
 }
 .exercise-table input[type='number'] {
     width: 100%;
-    padding: 12px 8px;
+    padding: var(--space-12) var(--space-8);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-strong);
-    font-size: 1rem;
+    font-size: var(--font-md);
     font-weight: 500;
     text-align: center;
 }
 .exercise-table input[type='number']:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(29, 211, 176, 0.2);
+    box-shadow: 0 0 0 2px var(--primary-bg-strong);
 }
 
 /* Set Action Buttons */
 .set-actions {
     display: flex;
-    gap: 10px;
-    margin-bottom: 16px;
+    gap: var(--space-10);
+    margin-bottom: var(--space-16);
 }
 .set-actions button {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 12px 16px;
+    gap: var(--space-6);
+    padding: var(--space-12) var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     color: var(--text-main);
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s;
 }
 .set-actions button:last-child {
-    background: rgba(29, 211, 176, 0.15);
-    border-color: rgba(29, 211, 176, 0.3);
+    background: var(--primary-bg);
+    border-color: var(--primary-border);
     color: var(--primary);
 }
 .set-actions button:hover {
@@ -154,15 +154,15 @@
 .exercise-notes {
     width: 100%;
     min-height: 60px;
-    padding: 12px;
+    padding: var(--space-12);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-strong);
     font-family: var(--font);
-    font-size: 1rem;
+    font-size: var(--font-md);
     resize: vertical;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .exercise-notes:focus {
     outline: none;
@@ -175,32 +175,32 @@
 /* Mark Complete Button */
 .complete-exercise-btn {
     width: 100%;
-    padding: 16px;
+    padding: var(--space-16);
     background: var(--success);
     border: none;
     border-radius: var(--radius-md);
     color: white;
-    font-size: 1rem;
+    font-size: var(--font-md);
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 /* Unit Toggle */
 .unit-toggle-container {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .unit-toggle {
     display: inline-flex;
     background: var(--bg-card);
     border-radius: var(--radius-pill);
-    padding: 4px;
+    padding: var(--space-4);
 }
 .unit-btn {
-    padding: 8px 20px;
+    padding: var(--space-8) var(--space-20);
     border: none;
     background: none;
     color: var(--text-muted);
@@ -211,48 +211,48 @@
 }
 .unit-btn.active {
     background: var(--primary);
-    color: #02100e;
+    color: var(--bg-app);
 }
 
 /* Rest Timer */
 .modal-rest-timer {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: var(--space-16);
     text-align: center;
-    margin-top: 16px;
+    margin-top: var(--space-16);
 }
 .modal-rest-display {
-    font-size: 2.5rem;
+    font-size: var(--font-3xl);
     font-weight: 700;
     color: var(--primary);
 }
 .modal-rest-controls {
     display: flex;
-    gap: 10px;
+    gap: var(--space-10);
     justify-content: center;
-    margin-top: 12px;
+    margin-top: var(--space-12);
 }
 
 /* Mark Complete Button */
 .complete-exercise-btn {
     width: 100%;
-    padding: 16px;
+    padding: var(--space-16);
     background: var(--success);
     border: none;
     border-radius: var(--radius-md);
     color: white;
-    font-size: 1rem;
+    font-size: var(--font-md);
     font-weight: 600;
     cursor: pointer;
-    margin-top: 20px;
+    margin-top: var(--space-20);
 }
 
 /* Fallback close button — visible when JS fails to populate modal content */
 .modal-fallback-close {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: var(--space-12);
+    right: var(--space-12);
     z-index: 5;
     background: var(--bg-card-hi);
     border: 1px solid var(--border);
@@ -361,8 +361,8 @@ dialog.modal:not([open]) {
 }
 .modal-description {
     color: var(--text-muted);
-    font-size: 0.9rem;
-    margin-bottom: 16px;
+    font-size: var(--font-base);
+    margin-bottom: var(--space-16);
     line-height: 1.5;
 }
 .close-btn:active {
@@ -371,14 +371,14 @@ dialog.modal:not([open]) {
 .modal-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: var(--space-10);
     justify-content: center;
-    margin-top: 16px;
+    margin-top: var(--space-16);
 }
 .modal-actions-top {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 
 /* Full-screen modals (no dead space at top) */
@@ -408,30 +408,30 @@ dialog.modal:not([open]) {
 
 /* Equipment Reassignment Modal */
 .reassign-header-info {
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .reassign-current {
-    margin-bottom: 6px;
-    font-size: 0.9rem;
+    margin-bottom: var(--space-6);
+    font-size: var(--font-base);
 }
 .reassign-current .text-muted {
-    margin-right: 4px;
+    margin-right: var(--space-4);
 }
 .reassign-preview {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 12px;
+    gap: var(--space-4);
+    padding: var(--space-12);
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    margin-top: 8px;
+    margin-top: var(--space-8);
 }
 .reassign-exercise-option {
-    padding: 12px;
+    padding: var(--space-12);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
     cursor: pointer;
     border: 2px solid transparent;
     transition: border-color 0.15s ease;
@@ -441,52 +441,52 @@ dialog.modal:not([open]) {
 }
 .reassign-exercise-option.selected {
     border-color: var(--primary);
-    background: rgba(29, 211, 176, 0.06);
+    background: var(--border-subtle);
 }
 .reassign-exercise-name {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: var(--font-base);
 }
 .reassign-exercise-meta {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: var(--space-2);
 }
 .reassign-impact {
-    padding: 16px;
+    padding: var(--space-16);
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .reassign-impact p {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: var(--font-base);
 }
 .reassign-progress {
     height: 6px;
     background: var(--border-light);
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     overflow: hidden;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
     position: relative;
 }
 .reassign-progress-bar {
     height: 100%;
     background: var(--primary);
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     transition: width 0.3s ease;
 }
 .reassign-progress-text {
     display: block;
     text-align: center;
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
-    margin-top: 4px;
+    margin-top: var(--space-4);
 }
 .reassign-confirm-actions {
     display: flex;
-    gap: 8px;
-    margin-top: 16px;
+    gap: var(--space-8);
+    margin-top: var(--space-16);
 }
 .reassign-confirm-actions .btn {
     flex: 1;
@@ -494,16 +494,16 @@ dialog.modal:not([open]) {
 
 /* Equipment exercise videos list */
 .equipment-exercise-videos-list {
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .equipment-video-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 12px;
+    padding: var(--space-10) var(--space-12);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
 }
 .equipment-video-info {
     flex: 1;
@@ -512,11 +512,11 @@ dialog.modal:not([open]) {
 .equipment-video-exercise {
     display: block;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
 }
 .equipment-video-url {
     display: block;
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -527,19 +527,19 @@ dialog.modal:not([open]) {
 .equipment-type-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 0.75rem;
+    gap: var(--space-4);
+    font-size: var(--font-xs);
     font-weight: 600;
-    padding: 4px 10px;
+    padding: var(--space-4) var(--space-10);
     border-radius: var(--radius-xs);
 }
 .location-chip {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 0.75rem;
+    gap: var(--space-4);
+    font-size: var(--font-xs);
     color: var(--text-muted);
-    padding: 4px 8px;
+    padding: var(--space-4) var(--space-8);
     background: var(--border-subtle);
     border-radius: var(--radius-xs);
 }
@@ -552,9 +552,9 @@ dialog.modal:not([open]) {
     background: transparent;
     border: none;
     color: var(--text-muted);
-    font-size: 1rem;
+    font-size: var(--font-md);
     cursor: pointer;
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
 }
 .btn-icon:active {
     background: var(--border-light);
@@ -565,7 +565,7 @@ dialog.modal:not([open]) {
     align-items: center;
 }
 .section-header__title {
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -576,19 +576,19 @@ dialog.modal:not([open]) {
 .equip-lib-header {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-12);
     padding: var(--pad-page);
 }
 .equip-lib-header h2 {
     flex: 1;
     margin: 0;
-    font-size: 1.2rem;
+    font-size: var(--font-lg);
 }
 .equip-lib-toolbar {
     padding: 0 var(--pad-page);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .equip-lib-search {
     flex: 1;
@@ -596,21 +596,21 @@ dialog.modal:not([open]) {
 }
 .equip-lib-search i {
     position: absolute;
-    left: 12px;
+    left: var(--space-12);
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     pointer-events: none;
 }
 .equip-lib-search input {
     width: 100%;
-    padding: 10px 12px 10px 36px;
+    padding: var(--space-10) var(--space-12) var(--space-10) 36px;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     color: var(--text-strong);
-    font-size: 0.9rem;
+    font-size: var(--font-base);
 }
 .equip-lib-search input:focus {
     outline: none;
@@ -621,53 +621,53 @@ dialog.modal:not([open]) {
     color: var(--text-primary);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 8px 10px;
-    font-size: 0.8rem;
+    padding: var(--space-8) var(--space-10);
+    font-size: var(--font-sm);
     max-width: 140px;
 }
 .equip-lib-list {
     padding: 0 var(--pad-page);
 }
 .equip-lib-group {
-    margin-bottom: 20px;
+    margin-bottom: var(--space-20);
 }
 .equip-lib-group-header {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.8rem;
+    gap: var(--space-6);
+    font-size: var(--font-sm);
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    padding: 4px 2px 8px;
+    padding: var(--space-4) var(--space-2) var(--space-8);
 }
 .equip-lib-group-header i {
     color: var(--primary);
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
 }
 .equip-lib-group-count {
     margin-left: auto;
     font-weight: 400;
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     color: var(--text-secondary);
 }
 .equip-lib-item {
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
 }
 
 /* Equipment brand grouping within location */
 .equip-brand-group {
-    margin-left: 8px;
-    margin-bottom: 8px;
+    margin-left: var(--space-8);
+    margin-bottom: var(--space-8);
 }
 
 .equip-brand-header {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 0 4px;
-    font-size: 0.75rem;
+    gap: var(--space-6);
+    padding: var(--space-6) 0 var(--space-4);
+    font-size: var(--font-xs);
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -676,7 +676,7 @@ dialog.modal:not([open]) {
 
 .equip-brand-count {
     font-weight: 400;
-    font-size: 0.7rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     margin-left: auto;
 }
@@ -685,68 +685,68 @@ dialog.modal:not([open]) {
 .workout-detail-summary {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 14px;
-    margin-bottom: 20px;
+    padding: var(--pad-card-y);
+    margin-bottom: var(--space-20);
 }
 .workout-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: var(--space-16);
 }
 .workout-meta div {
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     color: var(--text-main);
 }
 .workout-meta strong {
     color: var(--text-muted);
 }
 .workout-exercises {
-    margin-bottom: 20px;
+    margin-bottom: var(--space-20);
 }
 .workout-exercises > h3 {
-    font-size: 1rem;
-    margin-bottom: 12px;
+    font-size: var(--font-md);
+    margin-bottom: var(--space-12);
     color: var(--text-strong);
-    padding-bottom: 8px;
+    padding-bottom: var(--space-8);
     border-bottom: 1px solid var(--border);
 }
 .workout-exercises h5,
 .exercise-detail-item h5 {
     color: var(--primary);
-    margin: 0 0 10px 0;
-    font-size: 0.95rem;
+    margin: 0 0 var(--space-10) 0;
+    font-size: var(--font-base);
 }
 .exercise-detail-item {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 14px;
-    margin-bottom: 12px;
+    padding: var(--pad-card-y);
+    margin-bottom: var(--space-12);
     border-left: 3px solid var(--primary);
 }
 .exercise-detail-item:last-child {
     margin-bottom: 0;
 }
 .exercise-notes {
-    margin-top: 8px;
+    margin-top: var(--space-8);
     font-style: italic;
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
 }
 .sets-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .set-badge {
     background: var(--bg-surface);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.85rem;
+    padding: var(--space-4) var(--space-10);
+    border-radius: var(--radius-xs);
+    font-size: var(--font-sm);
     color: var(--text-main);
 }
 .no-sets-text {
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: var(--font-base);
 }
 
 /* ===========================================
@@ -756,33 +756,33 @@ dialog.modal:not([open]) {
     max-height: 95vh;
 }
 .manual-step {
-    padding: 20px;
+    padding: var(--space-20);
 }
 .manual-step.hidden {
     display: none;
 }
 
 .manual-workout-source-section {
-    margin-top: 20px;
+    margin-top: var(--space-20);
 }
 .section-label {
     display: block;
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .workout-source-option {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
     overflow: hidden;
 }
 .source-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px;
+    gap: var(--space-12);
+    padding: var(--pad-card-y);
     cursor: pointer;
 }
 .source-header i:first-child {
@@ -797,7 +797,7 @@ dialog.modal:not([open]) {
     transition: transform 0.2s;
 }
 .source-content {
-    padding: 0 14px 14px;
+    padding: 0 var(--pad-card-y) var(--pad-card-y);
 }
 .source-content.hidden {
     display: none;
@@ -806,58 +806,58 @@ dialog.modal:not([open]) {
 .step-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
+    gap: var(--space-12);
+    margin-bottom: var(--space-20);
 }
 .step-info {
     flex: 1;
 }
 .step-info h4 {
-    margin: 0 0 4px;
+    margin: 0 0 var(--space-4);
 }
 .step-info p {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
 .step-actions {
     display: flex;
-    gap: 10px;
+    gap: var(--space-10);
     justify-content: space-between;
-    margin-top: 20px;
-    padding-top: 16px;
+    margin-top: var(--space-20);
+    padding-top: var(--space-16);
     border-top: 1px solid var(--border);
 }
 
 .manual-location-section {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .manual-location-row {
     display: flex;
-    gap: 10px;
+    gap: var(--space-10);
 }
 .manual-exercises-container {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .manual-add-exercise-section {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 .manual-final-details {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: 16px;
-    margin-bottom: 16px;
+    padding: var(--space-16);
+    margin-bottom: var(--space-16);
 }
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: var(--space-12);
 }
 
 .library-loading {
     text-align: center;
-    padding: 20px;
+    padding: var(--space-20);
     color: var(--text-muted);
 }
 
@@ -868,8 +868,8 @@ dialog.modal:not([open]) {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    padding: 18px;
-    margin-bottom: 12px;
+    padding: var(--pad-page);
+    margin-bottom: var(--space-12);
     position: relative;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
@@ -886,16 +886,16 @@ dialog.modal:not([open]) {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .manual-exercise-title-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
 }
 .manual-exercise-equipment {
-    font-size: 0.75rem;
-    background: rgba(29, 211, 176, 0.15);
+    font-size: var(--font-xs);
+    background: var(--primary-bg);
     color: var(--primary);
     padding: var(--space-2) var(--space-8);
     border-radius: var(--radius-sm);
@@ -903,21 +903,21 @@ dialog.modal:not([open]) {
 .manual-set-row {
     display: grid;
     grid-template-columns: 40px 1fr 1fr auto;
-    gap: 8px;
+    gap: var(--space-8);
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .manual-sets-grid {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
 }
 .manual-library-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px;
+    padding: var(--space-12);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
     cursor: pointer;
 }
 .manual-library-item:hover {
@@ -955,4 +955,3 @@ dialog.modal[open] {
 dialog.modal[open] .modal-content {
     transform: translateY(0);
 }
-
