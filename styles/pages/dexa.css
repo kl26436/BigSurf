@@ -184,8 +184,8 @@
 }
 
 .dexa-analyzing-spinner {
-    width: 40px;
-    height: 40px;
+    width: var(--icon-md);
+    height: var(--icon-md);
     border: 3px solid var(--border);
     border-top-color: var(--primary);
     border-radius: var(--radius-pill);
@@ -489,12 +489,12 @@
 }
 
 .dexa-imbalance-moderate {
-    background: rgba(255, 152, 0, 0.08);
-    border-left: 3px solid #ff9800;
+    background: var(--warning-moderate-bg);
+    border-left: var(--accent-bar) solid var(--warning-moderate);
 }
 
 .dexa-imbalance-significant {
-    background: rgba(244, 67, 54, 0.08);
+    background: var(--danger-moderate-bg);
     border-left: 3px solid var(--danger);
 }
 

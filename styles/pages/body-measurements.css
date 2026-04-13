@@ -109,7 +109,7 @@
 .weight-input-large {
     font-size: var(--font-3xl);
     font-weight: 700;
-    width: 160px;
+    width: 160px; /* weight input sizing */
     text-align: center;
     background: var(--bg-secondary);
     border: 2px solid var(--border-light);
@@ -209,7 +209,7 @@
 }
 
 .measurement-input {
-    width: 72px;
+    width: 72px; /* measurement input sizing */
     text-align: center;
     padding: var(--space-8) var(--space-10);
     min-height: var(--tap-sm);
@@ -219,7 +219,7 @@
 .measurement-unit {
     font-size: var(--font-xs);
     color: var(--text-muted);
-    width: 20px;
+    width: var(--icon-xs);
 }
 
 /* ---- Stats Page Body Weight Chart ---- */
@@ -255,7 +255,7 @@
 
 #bodyweight-chart-container {
     position: relative;
-    height: 220px;
+    height: 220px; /* chart library constraint */
     margin-bottom: var(--space-12);
 }
 

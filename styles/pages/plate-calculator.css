@@ -49,7 +49,7 @@
     gap: var(--space-4);
 }
 .plate-calc-bar-custom input {
-    width: 64px;
+    width: 64px; /* bar weight input constraint */
     padding: var(--space-8);
     min-height: var(--tap);
     background: var(--bg-card);
@@ -182,8 +182,8 @@
 }
 .barbell-bar-only {
     background: var(--text-muted);
-    height: 8px;
-    width: 120px;
+    height: var(--space-8);
+    width: 120px; /* barbell diagram constraint */
     border-radius: var(--radius-xs);
     position: relative;
     color: var(--text-secondary);
@@ -205,22 +205,22 @@
     flex-direction: row;
 }
 .barbell-bar {
-    width: 40px;
-    height: 8px;
+    width: var(--icon-md);
+    height: var(--space-8);
     background: var(--text-muted);
     border-radius: var(--space-2);
     flex-shrink: 0;
 }
 .barbell-collar {
-    width: 8px;
-    height: 16px;
+    width: var(--space-8);
+    height: var(--space-16);
     background: var(--text-secondary);
     border-radius: var(--space-2);
     flex-shrink: 0;
 }
 .barbell-plate {
-    width: 16px;
-    min-width: 16px;
+    width: var(--space-16);
+    min-width: var(--space-16);
     border-radius: var(--radius-xs);
     display: flex;
     align-items: center;
@@ -228,7 +228,7 @@
     flex-shrink: 0;
 }
 .barbell-plate span {
-    font-size: 8px;
+    font-size: 8px; /* plate label micro-text */
     font-weight: 700;
     color: #fff;
     writing-mode: vertical-rl;
@@ -283,5 +283,5 @@
 .plate-calc-popover-unit {
     font-size: var(--font-sm);
     color: var(--text-secondary);
-    min-width: 30px;
+    min-width: var(--space-32);
 }

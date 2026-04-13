@@ -78,8 +78,8 @@
 /* Progress Ring */
 .weekly-progress-ring-wrap {
     position: relative;
-    width: 80px;
-    height: 80px;
+    width: var(--space-80);
+    height: var(--space-80);
     flex-shrink: 0;
 }
 .weekly-progress-ring {
@@ -147,8 +147,8 @@
 }
 .weekly-ring-container {
     position: relative;
-    width: 120px;
-    height: 120px;
+    width: 120px; /* SVG viewBox constraint */
+    height: 120px; /* SVG viewBox constraint */
     margin: 0 auto;
 }
 .weekly-ring {
@@ -337,7 +337,7 @@
 .streak-box.active {
     background: var(--bg-card);
     border-color: var(--warning-border);
-    box-shadow: 0 8px 18px rgba(247, 168, 101, 0.15);
+    box-shadow: 0 8px 18px var(--highlight-warm-bg);
 }
 .streak-box.active::before {
     background: linear-gradient(90deg, var(--highlight-warm), var(--highlight-warm-dark));
@@ -354,11 +354,11 @@
     padding: var(--space-2);
 }
 .streak-box-icon.fire {
-    background: rgba(247, 168, 101, 0.15);
+    background: var(--highlight-warm-bg);
     color: var(--highlight-warm);
 }
 .streak-box-icon.trophy {
-    background: rgba(255, 215, 0, 0.15);
+    background: var(--badge-gold-bg);
     color: var(--badge-gold);
 }
 .streak-box-icon.total {
@@ -391,13 +391,13 @@
     margin-bottom: var(--space-12);
 }
 .streak-hero.active {
-    background: linear-gradient(135deg, rgba(247, 168, 101, 0.1), rgba(247, 168, 101, 0.02));
-    border: 1px solid rgba(247, 168, 101, 0.15);
+    background: linear-gradient(135deg, var(--highlight-warm-bg-gradient-start), var(--highlight-warm-bg-gradient-end));
+    border: 1px solid var(--highlight-warm-border);
 }
 .streak-flame-wrap {
     position: relative;
-    width: 56px;
-    height: 56px;
+    width: var(--icon-xl);
+    height: var(--icon-xl);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -415,8 +415,8 @@
     animation: flame-glow 2s ease-in-out infinite;
 }
 @keyframes flame-glow {
-    0%, 100% { filter: drop-shadow(0 0 4px rgba(247, 168, 101, 0.4)); }
-    50% { filter: drop-shadow(0 0 12px rgba(247, 168, 101, 0.6)); }
+    0%, 100% { filter: drop-shadow(0 0 4px var(--highlight-warm-glow-lo)); }
+    50% { filter: drop-shadow(0 0 12px var(--highlight-warm-glow-hi)); }
 }
 .streak-count-overlay {
     position: absolute;
@@ -537,7 +537,7 @@
     flex-direction: column;
     align-items: center;
     gap: var(--space-8);
-    min-width: 70px;
+    min-width: 70px; /* badge layout constraint */
 }
 .badge-preview-icon {
     width: var(--icon-xl);
@@ -555,7 +555,7 @@
     color: var(--primary);
 }
 .badge-gold .badge-preview-icon {
-    background: rgba(255, 215, 0, 0.2);
+    background: var(--badge-gold-bg);
     color: var(--badge-gold);
 }
 .badge-teal .badge-preview-icon {
@@ -563,32 +563,32 @@
     color: var(--primary);
 }
 .badge-purple .badge-preview-icon {
-    background: rgba(138, 43, 226, 0.2);
+    background: var(--badge-purple-bg);
     color: var(--badge-purple);
 }
 .badge-orange .badge-preview-icon {
-    background: rgba(255, 140, 0, 0.2);
+    background: var(--badge-orange-bg);
     color: var(--badge-orange);
 }
 .badge-silver .badge-preview-icon {
-    background: rgba(192, 192, 192, 0.2);
+    background: var(--badge-silver-bg);
     color: var(--badge-silver);
 }
 .badge-bronze .badge-preview-icon {
-    background: rgba(205, 127, 50, 0.2);
+    background: var(--badge-bronze-bg);
     color: var(--badge-bronze);
 }
 /* Direct icon classes for legacy */
 .badge-preview-icon.gold {
-    background: rgba(255, 215, 0, 0.2);
+    background: var(--badge-gold-bg);
     color: var(--badge-gold);
 }
 .badge-preview-icon.silver {
-    background: rgba(192, 192, 192, 0.2);
+    background: var(--badge-silver-bg);
     color: var(--badge-silver);
 }
 .badge-preview-icon.bronze {
-    background: rgba(205, 127, 50, 0.2);
+    background: var(--badge-bronze-bg);
     color: var(--badge-bronze);
 }
 .badge-preview-icon.teal {
@@ -647,7 +647,7 @@
     color: var(--primary);
 }
 .badge-full-item.badge-gold .badge-full-icon {
-    background: rgba(255, 215, 0, 0.2);
+    background: var(--badge-gold-bg);
     color: var(--badge-gold);
 }
 .badge-full-item.badge-teal .badge-full-icon {
@@ -655,32 +655,32 @@
     color: var(--primary);
 }
 .badge-full-item.badge-purple .badge-full-icon {
-    background: rgba(138, 43, 226, 0.2);
+    background: var(--badge-purple-bg);
     color: var(--badge-purple);
 }
 .badge-full-item.badge-orange .badge-full-icon {
-    background: rgba(255, 140, 0, 0.2);
+    background: var(--badge-orange-bg);
     color: var(--badge-orange);
 }
 .badge-full-item.badge-silver .badge-full-icon {
-    background: rgba(192, 192, 192, 0.2);
+    background: var(--badge-silver-bg);
     color: var(--badge-silver);
 }
 .badge-full-item.badge-bronze .badge-full-icon {
-    background: rgba(205, 127, 50, 0.2);
+    background: var(--badge-bronze-bg);
     color: var(--badge-bronze);
 }
 /* Legacy direct classes */
 .badge-full-item.gold .badge-full-icon {
-    background: rgba(255, 215, 0, 0.2);
+    background: var(--badge-gold-bg);
     color: var(--badge-gold);
 }
 .badge-full-item.silver .badge-full-icon {
-    background: rgba(192, 192, 192, 0.2);
+    background: var(--badge-silver-bg);
     color: var(--badge-silver);
 }
 .badge-full-item.bronze .badge-full-icon {
-    background: rgba(205, 127, 50, 0.2);
+    background: var(--badge-bronze-bg);
     color: var(--badge-bronze);
 }
 .badge-full-item.teal .badge-full-icon {
@@ -1017,8 +1017,8 @@
     background: var(--highlight-warm);
 }
 .pr-item-icon {
-    width: 38px;
-    height: 38px;
+    width: var(--tap-sm);
+    height: var(--tap-sm);
     background: var(--warning-bg);
     border-radius: var(--radius-sm);
     display: flex;
@@ -1211,7 +1211,7 @@ h3 {
     display: flex;
     align-items: baseline;
     gap: var(--space-6);
-    padding-left: 26px;
+    padding-left: var(--space-24);
 }
 .pr-achievement-value {
     font-size: var(--font-md);
@@ -1284,8 +1284,8 @@ h3 {
     text-transform: uppercase;
 }
 .completion-prs {
-    background: rgba(255, 215, 0, 0.05);
-    border: 1px solid rgba(255, 215, 0, 0.15);
+    background: var(--achievement-gold-bg-subtle);
+    border: 1px solid var(--achievement-gold-border);
     border-radius: var(--radius-md);
     padding: var(--space-16);
     margin-bottom: var(--space-20);

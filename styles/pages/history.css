@@ -113,7 +113,7 @@
 }
 .history-date {
     text-align: center;
-    min-width: 54px;
+    min-width: var(--icon-xl);
     padding: var(--space-8);
     background: var(--primary-bg-subtle);
     border-radius: var(--radius-sm);
@@ -175,7 +175,7 @@
 .current-month {
     font-size: var(--font-md);
     font-weight: 600;
-    min-width: 140px;
+    min-width: 140px; /* month name display constraint */
     text-align: center;
 }
 /* Calendar title/header-actions moved to section 10 above */
@@ -202,7 +202,7 @@
     gap: var(--space-4);
 }
 .calendar-day {
-    min-height: 42px;
+    min-height: var(--tap);
     padding: var(--space-6) var(--space-2);
     display: flex;
     flex-direction: column;
@@ -239,8 +239,8 @@
     font-weight: 500;
 }
 .calendar-day .workout-indicator {
-    width: 6px;
-    height: 6px;
+    width: var(--space-6);
+    height: var(--space-6);
     background: var(--primary);
     border-radius: 50%;
     margin-top: var(--space-2);
@@ -290,11 +290,11 @@
 .legend-item {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: var(--space-4);
 }
 .legend-dot {
-    width: 8px;
-    height: 8px;
+    width: var(--space-8);
+    height: var(--space-8);
     border-radius: 50%;
     display: inline-block;
 }
@@ -310,8 +310,8 @@
 .legend-dot-today {
     background: transparent;
     border: 2px solid var(--highlight-warm);
-    width: 6px;
-    height: 6px;
+    width: var(--space-6);
+    height: var(--space-6);
 }
 
 /* Schema v3.0: Multiple workouts per day - count badge */
@@ -323,8 +323,8 @@
     color: var(--bg-app);
     font-size: var(--font-2xs);
     font-weight: 700;
-    width: 16px;
-    height: 16px;
+    width: var(--space-16);
+    height: var(--space-16);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -360,7 +360,7 @@
 .history-search-input-wrapper input {
     width: 100%;
     padding: var(--input-padding, 10px 14px);
-    padding-left: 36px;
+    padding-left: var(--tap-sm);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -415,7 +415,7 @@
 
 /* Recent workouts list below calendar */
 .recent-workouts-section {
-    margin-top: 0.5rem;
+    margin-top: var(--space-8);
 }
 .recent-workouts-items {
     display: flex;
@@ -441,12 +441,12 @@
     color: var(--text-strong);
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: var(--space-6);
 }
 .recent-workout-meta {
     font-size: var(--font-xs);
     color: var(--text-muted);
-    margin-top: 0.15rem;
+    margin-top: var(--space-2);
 }
 
 /* Schema v3.0: Workout picker for multiple workouts */
@@ -484,20 +484,20 @@
     flex-shrink: 0;
 }
 .workout-picker-icon.push {
-    background: rgba(244, 67, 54, 0.12);
-    color: #f44336;
+    background: var(--cat-push-legacy-bg);
+    color: var(--cat-push-legacy);
 }
 .workout-picker-icon.pull {
-    background: rgba(33, 150, 243, 0.12);
-    color: #2196f3;
+    background: var(--cat-pull-legacy-bg);
+    color: var(--cat-pull-legacy);
 }
 .workout-picker-icon.legs {
-    background: rgba(255, 152, 0, 0.12);
-    color: #ff9800;
+    background: var(--cat-legs-legacy-bg);
+    color: var(--cat-legs-legacy);
 }
 .workout-picker-icon.cardio {
-    background: rgba(156, 39, 176, 0.12);
-    color: #9c27b0;
+    background: var(--cat-cardio-legacy-bg);
+    color: var(--cat-cardio-legacy);
 }
 .workout-picker-info {
     flex: 1;

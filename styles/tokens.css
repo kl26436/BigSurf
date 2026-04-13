@@ -48,19 +48,74 @@
     --primary-bg: rgba(29, 211, 176, 0.12);
     --primary-bg-strong: rgba(29, 211, 176, 0.2);
     --primary-border: rgba(29, 211, 176, 0.3);
+    --primary-bg-hover: rgba(29, 211, 176, 0.25);
+    --primary-bg-intensity-1: rgba(29, 211, 176, 0.25);
+    --primary-bg-intensity-2: rgba(29, 211, 176, 0.45);
+    --primary-bg-intensity-3: rgba(29, 211, 176, 0.7);
 
     --success-bg: rgba(54, 196, 107, 0.12);
     --success-border: rgba(54, 196, 107, 0.25);
 
     --danger-bg: rgba(239, 68, 68, 0.12);
     --danger-border: rgba(239, 68, 68, 0.3);
+    --danger-bg-hover: rgba(255, 82, 82, 0.15);
+    --danger-moderate-bg: rgba(244, 67, 54, 0.08);
 
     --warning-bg: rgba(247, 168, 101, 0.12);
     --warning-border: rgba(247, 168, 101, 0.3);
+    --warning-bg-subtle: rgba(240, 194, 75, 0.12);
+    --warning-moderate: #ff9800;
+    --warning-moderate-bg: rgba(255, 152, 0, 0.08);
 
     --overlay-subtle: rgba(0, 0, 0, 0.15);
     --overlay-light: rgba(0, 0, 0, 0.25);
     --overlay-medium: rgba(0, 0, 0, 0.5);
+    --overlay-heavy: rgba(0, 0, 0, 0.7);
+
+    /* Badge background tokens */
+    --badge-gold-bg: rgba(255, 215, 0, 0.2);
+    --badge-silver-bg: rgba(192, 192, 192, 0.2);
+    --badge-bronze-bg: rgba(205, 127, 50, 0.2);
+    --badge-purple-bg: rgba(138, 43, 226, 0.2);
+    --badge-orange-bg: rgba(255, 140, 0, 0.2);
+
+    /* Streak/highlight background tokens */
+    --highlight-warm-bg: rgba(247, 168, 101, 0.15);
+    --highlight-warm-glow-lo: rgba(247, 168, 101, 0.4);
+    --highlight-warm-glow-hi: rgba(247, 168, 101, 0.6);
+    --highlight-warm-bg-gradient-start: rgba(247, 168, 101, 0.1);
+    --highlight-warm-bg-gradient-end: rgba(247, 168, 101, 0.02);
+    --highlight-warm-border: rgba(247, 168, 101, 0.15);
+
+    /* Achievement/PR tokens */
+    --achievement-gold: #f0a500;
+    --achievement-gold-bg: rgba(240, 165, 0, 0.06);
+    --achievement-gold-border: rgba(255, 215, 0, 0.15);
+    --achievement-gold-bg-subtle: rgba(255, 215, 0, 0.05);
+
+    /* Favorite chip border */
+    --favorite-border: rgba(255, 215, 0, 0.3);
+
+    /* Category background tokens (for workout picker, template icons) */
+    --cat-push-bg: rgba(74, 144, 217, 0.15);
+    --cat-pull-bg: rgba(217, 74, 122, 0.15);
+    --cat-legs-bg: rgba(123, 74, 217, 0.15);
+    --cat-cardio-bg: rgba(217, 167, 74, 0.15);
+
+    /* History workout picker category colors (legacy Material colors) */
+    --cat-push-legacy: #f44336;
+    --cat-push-legacy-bg: rgba(244, 67, 54, 0.12);
+    --cat-pull-legacy: #2196f3;
+    --cat-pull-legacy-bg: rgba(33, 150, 243, 0.12);
+    --cat-legs-legacy: #ff9800;
+    --cat-legs-legacy-bg: rgba(255, 152, 0, 0.12);
+    --cat-cardio-legacy: #9c27b0;
+    --cat-cardio-legacy-bg: rgba(156, 39, 176, 0.12);
+
+    /* Stat-specific colors */
+    --stat-exercises: #5856d6;
+    --stat-exercises-bg: rgba(88, 86, 214, 0.15);
+    --stat-negative: #ff6b6b;
 
     /* Font size scale */
     --font-2xs: 0.65rem;
@@ -124,6 +179,7 @@
     --space-32: 32px;
     --space-40: 40px;
     --space-48: 48px;
+    --space-80: 80px;
 
     /* Layout spacing */
     --pad-page: 18px;

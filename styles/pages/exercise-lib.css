@@ -28,8 +28,8 @@
     transform: scale(0.98);
 }
 .exercise-library-icon {
-    width: 40px;
-    height: 40px;
+    width: var(--icon-md);
+    height: var(--icon-md);
     border-radius: var(--radius-sm);
     background: var(--primary-bg);
     display: flex;
@@ -175,7 +175,7 @@
 }
 .exercise-search-input {
     width: 100%;
-    padding: var(--space-12) var(--space-16) var(--space-12) 42px;
+    padding: var(--space-12) var(--space-16) var(--space-12) var(--space-40);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -343,8 +343,8 @@
 }
 
 .workout-item-icon {
-    width: 48px;
-    height: 48px;
+    width: var(--icon-lg);
+    height: var(--icon-lg);
     border-radius: var(--radius-sm);
     background: var(--primary-bg);
     display: flex;
@@ -421,7 +421,7 @@
 }
 .btn-back,
 .btn-save {
-    min-width: 60px;
+    min-width: 60px; /* button label constraint */
     padding: var(--space-8) var(--space-12);
     background: none;
     border: none;
@@ -471,12 +471,12 @@
 }
 /* Any input inside icon wrapper needs left padding for the icon */
 .input-with-icon input {
-    padding-left: 42px !important;
+    padding-left: var(--space-40) !important;
 }
 .edit-input-large,
 .edit-input-full {
     width: 100%;
-    padding: var(--space-12) var(--space-16) var(--space-12) 42px;
+    padding: var(--space-12) var(--space-16) var(--space-12) var(--space-40);
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -574,8 +574,8 @@
     color: var(--text-muted);
 }
 .edit-equipment-item-edit {
-    width: 36px;
-    height: 36px;
+    width: var(--tap-sm);
+    height: var(--tap-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -691,7 +691,7 @@
 .location-map-container {
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    height: 200px;
+    height: 200px; /* map display constraint */
     margin-bottom: var(--space-20);
     overflow: hidden;
     position: relative;
@@ -715,7 +715,7 @@
     position: absolute;
     bottom: var(--space-10);
     left: var(--space-10);
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--overlay-heavy);
     color: white;
     padding: var(--space-6) var(--space-12);
     border-radius: var(--radius-sm);
@@ -764,8 +764,8 @@
     cursor: pointer;
 }
 .location-item-icon {
-    width: 40px;
-    height: 40px;
+    width: var(--icon-md);
+    height: var(--icon-md);
     background: var(--primary-bg);
     border-radius: var(--radius-sm);
     display: flex;
@@ -805,8 +805,8 @@
     gap: var(--space-8);
 }
 .location-item-actions button {
-    width: 36px;
-    height: 36px;
+    width: var(--tap-sm);
+    height: var(--tap-sm);
     background: var(--bg-card-hi);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -865,7 +865,7 @@
 }
 .method-tab {
     flex: 1;
-    min-width: 100px;
+    min-width: 100px; /* method tab min constraint */
     padding: var(--space-10) var(--space-12);
     background: var(--bg-card-hi);
     border: 1px solid var(--border);
@@ -889,7 +889,7 @@
     color: var(--primary);
 }
 .location-method-content {
-    min-height: 120px;
+    min-height: 120px; /* method content min constraint */
 }
 .gps-status-box {
     display: flex;
@@ -916,11 +916,11 @@
     flex: 1;
 }
 .search-btn {
-    width: 44px;
+    width: var(--tap);
     background: var(--primary);
     border: none;
     border-radius: var(--radius-sm);
-    color: #000;
+    color: var(--bg-app);
     cursor: pointer;
 }
 .search-btn:hover {
@@ -928,7 +928,7 @@
 }
 .address-results {
     margin-top: var(--space-12);
-    max-height: 200px;
+    max-height: 200px; /* results scroll constraint */
     overflow-y: auto;
 }
 .address-result-item {
@@ -962,7 +962,7 @@
     margin-bottom: var(--space-12);
 }
 .add-location-map {
-    height: 200px;
+    height: 200px; /* map display constraint */
     background: var(--bg-card-hi);
     border-radius: var(--radius-md);
     overflow: hidden;
@@ -1074,8 +1074,8 @@
     background: var(--bg-card-hi);
 }
 .exercise-card-icon {
-    width: 44px;
-    height: 44px;
+    width: var(--tap);
+    height: var(--tap);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1104,8 +1104,8 @@
     margin-top: var(--space-4);
 }
 .exercise-card-edit {
-    width: 36px;
-    height: 36px;
+    width: var(--tap-sm);
+    height: var(--tap-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1121,8 +1121,8 @@
 
 /* Quick Add Chips (recent exercises) */
 .quick-add-section {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--border-color);
+    padding: var(--space-12) var(--space-16);
+    border-bottom: 1px solid var(--border);
 }
 .quick-add-label {
     font-size: var(--font-xs);
@@ -1130,19 +1130,19 @@
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-8);
 }
 .quick-add-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: var(--space-6);
 }
 .quick-add-chip {
     background: var(--bg-secondary);
     color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: var(--radius-pill);
-    padding: 0.35rem 0.75rem;
+    padding: var(--space-6) var(--space-12);
     font-size: var(--font-sm);
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
@@ -1201,7 +1201,7 @@
     margin-bottom: var(--space-8);
 }
 .favorite-chip {
-    border-color: rgba(255, 215, 0, 0.3) !important;
+    border-color: var(--favorite-border) !important;
 }
 .library-exercise-card h5 {
     margin: 0 0 var(--space-8) 0;
@@ -1260,8 +1260,8 @@
     background: var(--primary-bg-subtle);
 }
 .equipment-option-radio {
-    width: 20px;
-    height: 20px;
+    width: var(--icon-xs);
+    height: var(--icon-xs);
     border: 2px solid var(--border);
     border-radius: 50%;
     flex-shrink: 0;

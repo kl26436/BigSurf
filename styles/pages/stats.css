@@ -98,8 +98,8 @@
 }
 
 .summary-icon {
-    width: 36px;
-    height: 36px;
+    width: var(--tap-sm);
+    height: var(--tap-sm);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -119,8 +119,8 @@
 }
 
 .summary-icon.exercises {
-    background: rgba(88, 86, 214, 0.15);
-    color: #5856d6;
+    background: var(--stat-exercises-bg);
+    color: var(--stat-exercises);
 }
 
 .summary-value {
@@ -335,7 +335,7 @@
 
 /* Chart Container */
 .chart-container {
-    height: 220px;
+    height: 220px; /* chart library constraint */
     position: relative;
     margin-bottom: var(--space-16);
 }
@@ -349,7 +349,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 180px;
+    height: 180px; /* chart library constraint */
     color: var(--text-muted);
     gap: var(--space-12);
 }
@@ -397,7 +397,7 @@
 }
 
 .stat-value.negative {
-    color: #ff6b6b;
+    color: var(--stat-negative);
 }
 
 .stat-value i {
@@ -555,13 +555,13 @@
 }
 
 .weekly-volume-chart-container {
-    height: 180px;
+    height: 180px; /* chart library constraint */
 }
 
 /* PR badges in session history */
 .history-item--pr {
-    border-left: 3px solid #f0a500;
-    background: rgba(240, 165, 0, 0.06);
+    border-left: var(--accent-bar) solid var(--achievement-gold);
+    background: var(--achievement-gold-bg);
 }
 .pr-badge {
     display: inline-flex;
@@ -569,7 +569,7 @@
     gap: var(--space-4);
     font-size: var(--font-xs);
     font-weight: 600;
-    color: #f0a500;
+    color: var(--achievement-gold);
     margin-left: var(--space-6);
 }
 .history-weight--best {
@@ -579,8 +579,8 @@
 /* Trend indicator */
 .trend-indicator {
     text-align: center;
-    padding: 0.5rem;
-    margin-top: 0.5rem;
+    padding: var(--space-8);
+    margin-top: var(--space-8);
     font-size: var(--font-sm);
     font-weight: 500;
     border-radius: var(--radius-sm);
@@ -637,8 +637,8 @@
 }
 
 .donut-chart-container {
-    width: 140px;
-    height: 140px;
+    width: 140px; /* SVG viewBox constraint */
+    height: 140px; /* SVG viewBox constraint */
     flex-shrink: 0;
 }
 
@@ -656,8 +656,8 @@
 }
 
 .legend-color {
-    width: 12px;
-    height: 12px;
+    width: var(--space-12);
+    height: var(--space-12);
     border-radius: var(--radius-xs);
     flex-shrink: 0;
 }
@@ -683,7 +683,7 @@
 .heat-map-container {
     display: flex;
     justify-content: center;
-    gap: 5px;
+    gap: var(--space-4);
     overflow-x: auto;
     padding-bottom: var(--space-8);
 }
@@ -696,8 +696,8 @@
 }
 
 .heat-map-day-label {
-    width: 18px;
-    height: 18px;
+    width: var(--space-20);
+    height: var(--space-20);
     font-size: var(--font-xs);
     color: var(--text-muted);
     display: flex;
@@ -717,8 +717,8 @@
 }
 
 .heat-map-cell {
-    width: 18px;
-    height: 18px;
+    width: var(--space-20);
+    height: var(--space-20);
     border-radius: var(--radius-xs);
     background: var(--border-subtle);
     transition: transform 0.1s ease;
@@ -732,13 +732,13 @@
     background: var(--border-subtle);
 }
 .heat-map-cell.intensity-1 {
-    background: rgba(29, 211, 176, 0.25);
+    background: var(--primary-bg-intensity-1);
 }
 .heat-map-cell.intensity-2 {
-    background: rgba(29, 211, 176, 0.45);
+    background: var(--primary-bg-intensity-2);
 }
 .heat-map-cell.intensity-3 {
-    background: rgba(29, 211, 176, 0.7);
+    background: var(--primary-bg-intensity-3);
 }
 .heat-map-cell.intensity-4 {
     background: var(--primary);
@@ -762,8 +762,8 @@
 }
 
 .heat-map-legend .heat-map-cell {
-    width: 12px;
-    height: 12px;
+    width: var(--space-12);
+    height: var(--space-12);
 }
 
 .heat-map-legend .heat-map-cell:hover {
@@ -785,10 +785,10 @@
 .pr-timeline::before {
     content: '';
     position: absolute;
-    left: 9px;
+    left: var(--space-10);
     top: var(--space-12);
     bottom: var(--space-12);
-    width: 2px;
+    width: var(--space-2);
     background: linear-gradient(180deg, var(--primary), var(--primary-bg-strong));
     border-radius: 1px;
 }
@@ -807,10 +807,10 @@
 
 .pr-timeline-marker {
     position: absolute;
-    left: -28px;
-    top: 14px;
-    width: 20px;
-    height: 20px;
+    left: calc(-1 * var(--space-32) + var(--space-4));
+    top: var(--pad-card-y);
+    width: var(--icon-xs);
+    height: var(--icon-xs);
     border-radius: 50%;
     background: var(--bg-card);
     border: 2px solid var(--border-light);

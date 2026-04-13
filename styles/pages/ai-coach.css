@@ -26,8 +26,8 @@
 
 .insight-icon {
     flex-shrink: 0;
-    width: 28px;
-    height: 28px;
+    width: var(--icon-sm);
+    height: var(--icon-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -209,7 +209,7 @@
 
 .coach-recommendation li {
     position: relative;
-    padding-left: 1.25rem;
+    padding-left: var(--space-20);
     margin-bottom: var(--space-6);
 }
 
@@ -437,7 +437,7 @@
     position: relative;
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    padding: var(--space-12) 40px var(--space-12) var(--space-16);
+    padding: var(--space-12) var(--icon-md) var(--space-12) var(--space-16);
     border-left: 3px solid var(--primary);
 }
 
@@ -452,8 +452,8 @@
 }
 
 .preview-exercise-num {
-    width: 24px;
-    height: 24px;
+    width: var(--space-24);
+    height: var(--space-24);
     border-radius: var(--radius-pill);
     background: var(--primary-bg);
     color: var(--primary);
@@ -508,7 +508,7 @@
 }
 
 .preview-new-badge {
-    font-size: 0.6rem;
+    font-size: var(--font-2xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -549,8 +549,8 @@
     position: absolute;
     top: var(--space-10);
     right: var(--space-10);
-    width: 24px;
-    height: 24px;
+    width: var(--space-24);
+    height: var(--space-24);
     display: flex;
     align-items: center;
     justify-content: center;

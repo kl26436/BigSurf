@@ -45,8 +45,8 @@
     z-index: 800;
 }
 .spinner {
-    width: 40px;
-    height: 40px;
+    width: var(--icon-md);
+    height: var(--icon-md);
     border: 3px solid var(--border);
     border-top-color: var(--primary);
     border-radius: 50%;
@@ -107,7 +107,7 @@
 .exercise-modal {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--overlay-heavy);
     z-index: 500;
     display: none; /* Hidden by default */
     align-items: flex-end;
@@ -123,7 +123,7 @@
     background: var(--bg-surface);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     width: 100%;
-    max-width: 500px;
+    max-width: 500px; /* modal width constraint */
     max-height: 90vh;
     overflow-y: auto;
 }
@@ -199,7 +199,7 @@
     transition: all 0.2s;
 }
 .equipment-location-item .remove-location-btn:hover {
-    background: rgba(255, 82, 82, 0.15);
+    background: var(--danger-bg-hover);
     border-color: var(--danger);
     color: var(--danger);
 }
@@ -229,8 +229,8 @@
    32. MORE MENU (Bottom Nav Enhancement)
    =========================================== */
 .bottom-sheet-handle {
-    width: 40px;
-    height: 4px;
+    width: var(--icon-md);
+    height: var(--space-4);
     background: var(--border-medium);
     border-radius: var(--space-2);
     margin: var(--space-8) auto var(--space-12);

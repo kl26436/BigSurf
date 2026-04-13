@@ -84,7 +84,7 @@
 }
 .exercise-table thead th:first-child {
     text-align: left;
-    width: 60px;
+    width: 60px; /* table column constraint */
 }
 .exercise-table tbody td {
     padding: var(--space-8);
@@ -153,7 +153,7 @@
 /* Exercise Notes Textarea */
 .exercise-notes {
     width: 100%;
-    min-height: 60px;
+    min-height: 60px; /* textarea min constraint */
     padding: var(--space-12);
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -280,7 +280,7 @@
 .modal {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--overlay-heavy);
     z-index: 500;
     display: flex;
     align-items: flex-end;
@@ -309,7 +309,7 @@ dialog.modal {
     justify-content: center;
 }
 dialog.modal::backdrop {
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--overlay-medium);
 }
 dialog.modal:not([open]) {
     display: none;
@@ -319,7 +319,7 @@ dialog.modal:not([open]) {
     background: var(--bg-app);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     width: 100%;
-    max-width: 500px;
+    max-width: 500px; /* modal width constraint */
     max-height: 90vh;
     overflow-y: auto;
     border: 1px solid var(--border-subtle);
@@ -348,13 +348,13 @@ dialog.modal:not([open]) {
 }
 .modal-content-small,
 .modal-small {
-    max-width: 400px;
+    max-width: 400px; /* small modal constraint */
     margin: auto;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle);
 }
 .modal-medium {
-    max-width: 500px;
+    max-width: 500px; /* medium modal constraint */
     margin: auto;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle);
