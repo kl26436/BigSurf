@@ -395,8 +395,8 @@ function renderMetricsGrid(streakDays, weekCompleted, weekGoal) {
  * Week timeline — day dots (M-S) with checkmarks + volume trend chip.
  */
 function renderWeekTimeline(weeklyStats, volumeDeltaPct) {
-    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    const todayIdx = (new Date().getDay() + 6) % 7; // Monday=0
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const todayIdx = new Date().getDay(); // Sunday=0
 
     // Build set of which day-of-week indices had workouts this week
     const workoutDayIndices = new Set();
@@ -405,8 +405,7 @@ function renderWeekTimeline(weeklyStats, volumeDeltaPct) {
             if (w.date) {
                 const parts = w.date.split('-');
                 const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-                const idx = (d.getDay() + 6) % 7; // Monday=0
-                workoutDayIndices.add(idx);
+                workoutDayIndices.add(d.getDay()); // Sunday=0
             }
         });
     }
