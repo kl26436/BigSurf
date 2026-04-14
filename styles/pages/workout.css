@@ -250,7 +250,8 @@
     opacity: 1;
 }
 .btn-finish-footer:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
+    transition: transform 0.1s;
 }
 
 /* Exercise List */
@@ -824,13 +825,9 @@
     color: var(--success);
 }
 
-/* Just-completed flash animation */
+/* Just-completed flash animation — keyframe lives in animations.css (rowFlash) */
 .set-row-just-completed {
-    animation: set-flash 0.6s ease;
-}
-@keyframes set-flash {
-    0% { background: rgba(29, 211, 176, 0.15); }
-    100% { background: transparent; }
+    animation: rowFlash 600ms ease-out;
 }
 
 /* Set controls (Add/Remove) */

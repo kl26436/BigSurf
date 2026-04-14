@@ -34,9 +34,9 @@
 
 /* Row flash on set completion */
 @keyframes rowFlash {
-    0%   { background: transparent; }
-    30%  { background: rgba(29, 211, 176, 0.1); }
-    100% { background: transparent; }
+    0%   { background-color: transparent; }
+    30%  { background-color: var(--success-bg); }
+    100% { background-color: transparent; }
 }
 
 .set-row-just-completed {

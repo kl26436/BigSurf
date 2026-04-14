@@ -983,7 +983,10 @@ function createTemplateExerciseItem(exercise, index) {
                 <div class="exercise-details">
                     ${exercise.sets} sets × ${exercise.reps} reps @ ${exercise.weight} lbs
                     ${exercise.bodyPart ? ` • ${escapeHtml(exercise.bodyPart)}` : ''}
-                    ${exercise.equipment ? ` • ${escapeHtml(exercise.equipment)}` : ''}
+                </div>
+                <div class="exercise-equipment-line">
+                    <i class="fas fa-${exercise.equipment ? 'cogs' : 'plus-circle'}"></i>
+                    ${exercise.equipment ? escapeHtml(exercise.equipment) : '<span class="text-muted">Tap to set equipment</span>'}
                 </div>
             </div>
             <div class="exercise-item-actions">
@@ -1145,9 +1148,13 @@ export function moveTemplateExercise(index, direction) {
 export function removeTemplateExercise(index) {
     if (!currentEditingTemplate) return;
 
+    const exercise = currentEditingTemplate.exercises[index];
+    const name = exercise?.name || 'this exercise';
+
+    if (!confirm(`Remove "${name}" from this template?`)) return;
+
     currentEditingTemplate.exercises.splice(index, 1);
     renderTemplateExercises();
-    // Removed notification - UI update is self-evident
 }
 
 // Exercise Library functions

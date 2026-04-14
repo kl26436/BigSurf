@@ -522,6 +522,11 @@ dialog.modal:not([open]) {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.equipment-video-input {
+    margin-top: var(--space-4);
+    font-size: var(--font-xs);
+    padding: var(--space-6) var(--space-8);
+}
 
 /* Equipment Library Page */
 .equipment-type-badge {
@@ -628,57 +633,218 @@ dialog.modal:not([open]) {
 .equip-lib-list {
     padding: 0 var(--pad-page);
 }
-.equip-lib-group {
+/* ===========================================
+   EQUIPMENT LIBRARY — Body Part → Exercise → Equipment Hierarchy
+   =========================================== */
+
+/* Filter row with location pills */
+.equip-filter-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-6) var(--pad-page);
+}
+.equip-location-pills {
+    display: flex;
+    gap: var(--space-6);
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1;
+}
+.equip-location-pills::-webkit-scrollbar { display: none; }
+
+/* Search bar (hidden by default) */
+.equip-search-bar {
+    padding: 0 var(--pad-page) var(--space-8);
+}
+.equip-search-bar.hidden {
+    display: none;
+}
+.equip-assign-search {
+    margin-bottom: var(--space-12);
+}
+
+/* Body part group header — sticky */
+.equip-group-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-10) var(--space-16);
+    background: var(--bg-app);
+    border-bottom: 1px solid var(--border-light);
+}
+.equip-group-header__left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--font-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+.equip-group-header__left i {
+    font-size: var(--font-sm);
+}
+.equip-group-header__count {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Exercise row (collapsible) */
+.equip-exercise-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-12) var(--space-16);
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.equip-exercise-row:active {
+    background: var(--bg-card-hi);
+}
+.equip-exercise-row__name {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.equip-exercise-row__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+.equip-exercise-row__count {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    background: var(--border-light);
+    padding: var(--space-2) var(--space-6);
+    border-radius: var(--radius-pill);
+}
+.equip-exercise-chevron {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+/* Nested equipment list under an exercise */
+.equip-nested-list {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-subtle);
+}
+.equip-nested-item {
+    margin: 0;
+    padding: var(--space-10) var(--space-16) var(--space-10) var(--space-32);
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: 0;
+    cursor: pointer;
+}
+.equip-nested-item:last-child {
+    border-bottom: none;
+}
+.equip-nested-item:active {
+    background: var(--bg-card-hi);
+}
+.equip-nested-item__info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
+}
+
+/* Equipment detail page */
+.equipment-detail {
+    padding: var(--pad-page);
+}
+.equip-detail-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    margin-bottom: var(--space-16);
+}
+.equip-detail-header h3 {
+    flex: 1;
+    margin: 0;
+    font-size: var(--font-lg);
+    color: var(--text-strong);
+}
+.equip-detail-page {
+    padding: var(--pad-page);
+}
+.equip-detail-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
     margin-bottom: var(--space-20);
 }
-.equip-lib-group-header {
+.equip-detail-section-header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: var(--space-6);
-    font-size: var(--font-sm);
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: var(--space-4) var(--space-2) var(--space-8);
-}
-.equip-lib-group-header i {
-    color: var(--primary);
-    font-size: var(--font-xs);
-}
-.equip-lib-group-count {
-    margin-left: auto;
-    font-weight: 400;
-    font-size: var(--font-xs);
-    color: var(--text-secondary);
-}
-.equip-lib-item {
-    margin-bottom: var(--space-6);
-}
-
-/* Equipment brand grouping within location */
-.equip-brand-group {
-    margin-left: var(--space-8);
     margin-bottom: var(--space-8);
 }
-
-.equip-brand-header {
+.equip-detail-section-header h4 {
+    margin: 0;
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.equip-detail-notes-header {
+    margin-top: var(--space-20);
+}
+.equip-detail-notes {
+    width: 100%;
+    min-height: 80px;
+    resize: vertical;
+}
+.equip-detail-exercise-row {
     display: flex;
-    align-items: center;
-    gap: var(--space-6);
-    padding: var(--space-6) 0 var(--space-4);
-    font-size: var(--font-xs);
+    align-items: flex-start;
+    gap: var(--space-8);
+    padding: var(--space-10) 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.equip-detail-exercise-info {
+    flex: 1;
+    min-width: 0;
+}
+.equip-detail-exercise-name {
+    display: block;
     font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
+    font-size: var(--font-sm);
+    color: var(--text-strong);
+    margin-bottom: var(--space-4);
 }
 
-.equip-brand-count {
-    font-weight: 400;
+/* Empty state (compact) */
+.empty-state-compact {
+    text-align: center;
+    padding: var(--space-24) var(--space-16);
+    color: var(--text-muted);
+}
+.empty-state-compact i {
+    font-size: var(--font-xl);
+    opacity: 0.3;
+    margin-bottom: var(--space-12);
+    display: block;
+}
+.empty-state-compact p {
+    font-size: var(--font-sm);
+    margin: 0 0 var(--space-8);
+}
+.empty-state-hint {
     font-size: var(--font-xs);
     color: var(--text-muted);
-    margin-left: auto;
+    opacity: 0.7;
+}
+
+/* Legacy — keep for equip-lib-item if used elsewhere */
+.equip-lib-item {
+    margin-bottom: var(--space-6);
 }
 
 /* Workout Detail Modal */

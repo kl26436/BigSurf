@@ -19,6 +19,7 @@ let editingEquipmentLocations = []; // Locations being edited
 let currentBodyPartFilter = ''; // Current body part category selected
 let currentEquipmentFilter = ''; // Current equipment filter
 let exerciseGridDelegationSetup = false;
+let exerciseUsageCounts = null; // Cache: exercise name → usage count
 
 // Equipment type to icon mapping
 const equipmentIcons = {
@@ -268,12 +269,35 @@ export function closeExerciseManager() {
     }
 }
 
+// Build exercise usage cache from workout history
+async function buildUsageCache() {
+    if (exerciseUsageCounts) return; // Already built
+    exerciseUsageCounts = {};
+    try {
+        if (!workoutManager) workoutManager = new FirebaseWorkoutManager(AppState);
+        const workouts = await workoutManager.getUserWorkouts();
+        workouts.forEach(w => {
+            if (w.exercises) {
+                Object.values(w.exercises).forEach(ex => {
+                    const name = ex.name || '';
+                    if (name) exerciseUsageCounts[name] = (exerciseUsageCounts[name] || 0) + 1;
+                });
+            }
+        });
+    } catch {
+        // Silently fail — usage counts are cosmetic
+    }
+}
+
 // Load exercises from AppState
 async function loadExercises() {
     // Initialize workout manager if needed
     if (!workoutManager) {
         workoutManager = new FirebaseWorkoutManager(AppState);
     }
+
+    // Build usage cache in parallel (non-blocking)
+    buildUsageCache();
 
     if (!AppState.exerciseDatabase || AppState.exerciseDatabase.length === 0) {
         allExercises = [];
@@ -321,14 +345,29 @@ function renderExercises() {
         return;
     }
 
-    // Sort exercises alphabetically by name
-    const sortedExercises = [...filteredExercises].sort((a, b) => a.name.localeCompare(b.name));
+    // Sort by relevance: favorites first, then usage count, then alphabetical
+    const isFav = (name) => window.exerciseLibrary?.isFavorite?.(name) ? 1 : 0;
+    const sortedExercises = [...filteredExercises].sort((a, b) => {
+        const aFav = isFav(a.name);
+        const bFav = isFav(b.name);
+        if (aFav !== bFav) return bFav - aFav;
+
+        const aCount = exerciseUsageCounts?.[a.name] || 0;
+        const bCount = exerciseUsageCounts?.[b.name] || 0;
+        if (aCount !== bCount) return bCount - aCount;
+
+        return a.name.localeCompare(b.name);
+    });
 
     // Render exercise cards (flat list, no grouping in list view)
     grid.innerHTML = sortedExercises
         .map((exercise) => {
             const iconClass = getEquipmentIcon(exercise.equipmentType);
             const eid = escapeAttr(exercise.id);
+            const usageCount = exerciseUsageCounts?.[exercise.name] || 0;
+            const usageBadge = usageCount > 0
+                ? `<span class="exercise-usage-badge">&times;${usageCount}</span>`
+                : '';
 
             return `
             <div class="exercise-card-new" data-action="exerciseCardClick" data-exercise-id="${eid}">
@@ -337,7 +376,9 @@ function renderExercises() {
                 </div>
                 <div class="exercise-card-info">
                     <span class="exercise-card-name">${escapeHtml(exercise.name)}</span>
+                    <span class="exercise-card-meta">${escapeHtml(exercise.bodyPart)}${exercise.equipmentType ? ' · ' + escapeHtml(exercise.equipmentType) : ''}</span>
                 </div>
+                ${usageBadge}
                 <button class="exercise-card-edit" data-action="editExercise" data-exercise-id="${eid}" title="Edit">
                     EDIT
                 </button>
@@ -1314,7 +1355,7 @@ function renderEquipmentEditorLocations() {
 
 /**
  * Render per-exercise video list in equipment editor.
- * Shows each exercise this equipment is used with and its video URL.
+ * Shows each exercise this equipment is used with and an inline video URL input.
  */
 function renderEquipmentExerciseVideos() {
     const container = document.getElementById('equipment-exercise-videos');
@@ -1330,43 +1371,44 @@ function renderEquipmentExerciseVideos() {
 
     container.innerHTML = exerciseTypes.map(exName => {
         const videoUrl = exerciseVideos[exName] || '';
+        const safeExName = escapeAttr(exName);
         return `
             <div class="equipment-video-row">
                 <div class="equipment-video-info">
                     <span class="equipment-video-exercise">${escapeHtml(exName)}</span>
-                    <span class="equipment-video-url ${videoUrl ? '' : 'text-muted'}">${videoUrl ? escapeHtml(videoUrl.substring(0, 40)) + (videoUrl.length > 40 ? '...' : '') : 'No video set'}</span>
+                    <input type="url" class="form-input equipment-video-input"
+                           id="equip-video-${safeExName}"
+                           data-exercise="${safeExName}"
+                           value="${escapeAttr(videoUrl)}"
+                           placeholder="YouTube URL"
+                           onchange="editEquipmentExerciseVideo('${safeExName}', this.value)">
                 </div>
-                <button type="button" class="btn-text" onclick="editEquipmentExerciseVideo('${escapeAttr(exName)}')">
-                    <i class="fas fa-${videoUrl ? 'pen' : 'plus'}"></i>
-                </button>
+                ${videoUrl ? `<button type="button" class="btn-text" onclick="editEquipmentExerciseVideo('${safeExName}', ''); this.closest('.equipment-video-row').querySelector('input').value='';" title="Clear video">
+                    <i class="fas fa-times"></i>
+                </button>` : ''}
             </div>
         `;
     }).join('');
 }
 
 /**
- * Edit the video URL for a specific exercise on this equipment.
+ * Update the video URL for a specific exercise on this equipment (inline input).
  */
-export function editEquipmentExerciseVideo(exerciseName) {
+export function editEquipmentExerciseVideo(exerciseName, newUrl) {
     if (!editingEquipmentData) return;
-
-    const exerciseVideos = editingEquipmentData.exerciseVideos || {};
-    const currentUrl = exerciseVideos[exerciseName] || '';
-
-    const newUrl = prompt(`YouTube URL for ${exerciseName}:`, currentUrl);
-    if (newUrl === null) return; // Cancelled
 
     // Update local state
     if (!editingEquipmentData.exerciseVideos) {
         editingEquipmentData.exerciseVideos = {};
     }
 
-    if (newUrl.trim() === '') {
+    if (!newUrl || newUrl.trim() === '') {
         delete editingEquipmentData.exerciseVideos[exerciseName];
     } else {
         editingEquipmentData.exerciseVideos[exerciseName] = newUrl.trim();
     }
 
+    // Re-render to update clear button visibility
     renderEquipmentExerciseVideos();
 }
 

@@ -8,7 +8,7 @@ import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 
 let workoutManager = null;
 let allEquipment = [];
-let currentLocationFilter = 'all';
+let currentLocationFilter = null;
 let currentSearchTerm = '';
 let currentDetailId = null;
 
@@ -28,6 +28,58 @@ const EQUIPMENT_TYPE_ICONS = {
     Other:      { icon: 'fa-wrench',     color: 'var(--text-muted)' },
 };
 
+// Body part classification + display config
+const BODY_PART_CONFIG = {
+    'Chest':     { icon: 'fas fa-compress-arrows-alt', color: 'var(--cat-push)' },
+    'Back':      { icon: 'fas fa-arrows-alt-v',        color: 'var(--cat-pull)' },
+    'Shoulders': { icon: 'fas fa-arrow-up',             color: 'var(--cat-push)' },
+    'Arms':      { icon: 'fas fa-hand-rock',            color: 'var(--cat-pull)' },
+    'Legs':      { icon: 'fas fa-shoe-prints',          color: 'var(--cat-legs)' },
+    'Core':      { icon: 'fas fa-bullseye',             color: 'var(--cat-core)' },
+    'Cardio':    { icon: 'fas fa-heartbeat',            color: 'var(--danger)' },
+    'Multi-Use': { icon: 'fas fa-th',                   color: 'var(--text-secondary)' },
+};
+
+const BODY_PART_ORDER = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Cardio', 'Multi-Use'];
+
+/**
+ * Classify an exercise name into a body part group.
+ */
+function classifyExerciseBodyPart(exerciseName) {
+    const name = exerciseName.toLowerCase();
+    if (/chest press|bench press|pec deck|pec fly|fly.*chest|incline press|decline press|push.?up|dips.*press|chest/.test(name)) return 'Chest';
+    if (/row|lat pull|pull.?down|pull.?up|chin.?up|deadlift|back ext|reverse fly|shrug|face pull/.test(name)) return 'Back';
+    if (/shoulder press|overhead press|military press|lateral raise|front raise|rear delt|arnold|upright row/.test(name)) return 'Shoulders';
+    if (/curl|tricep|bicep|pushdown|skull crush|hammer curl|preacher|dip(?!.*press)|kickback|extension.*arm/.test(name)) return 'Arms';
+    if (/squat|leg press|leg curl|leg ext|lunge|calf|glute|hip|hamstring|quad|romanian|hack squat|step.?up/.test(name)) return 'Legs';
+    if (/ab|crunch|plank|sit.?up|core|oblique|wood.?chop|cable twist|russian twist|hanging leg/.test(name)) return 'Core';
+    if (/treadmill|bike|elliptical|rower|run|sprint|stair|jump rope|cardio/.test(name)) return 'Cardio';
+    return 'Multi-Use';
+}
+
+/**
+ * Build Body Part → Exercise → Equipment[] hierarchy.
+ * Inverts the equipment.exerciseTypes array to group by exercise first.
+ */
+function buildEquipmentHierarchy(equipment) {
+    const exerciseToEquipment = {};
+    for (const equip of equipment) {
+        const exercises = equip.exerciseTypes || [];
+        for (const exName of exercises) {
+            if (!exerciseToEquipment[exName]) exerciseToEquipment[exName] = [];
+            exerciseToEquipment[exName].push(equip);
+        }
+    }
+
+    const hierarchy = {};
+    for (const [exName, equips] of Object.entries(exerciseToEquipment)) {
+        const bodyPart = classifyExerciseBodyPart(exName);
+        if (!hierarchy[bodyPart]) hierarchy[bodyPart] = {};
+        hierarchy[bodyPart][exName] = equips;
+    }
+    return hierarchy;
+}
+
 // ===================================================================
 // EQUIPMENT LIST PAGE
 // ===================================================================
@@ -37,10 +89,7 @@ export async function openEquipmentLibrary() {
     if (!section) return;
 
     section.classList.remove('hidden');
-
-    // Load data
     allEquipment = await getManager().getUserEquipment();
-
     renderEquipmentLibrary();
 }
 
@@ -48,7 +97,7 @@ function renderEquipmentLibrary() {
     const container = document.getElementById('equipment-library-content');
     if (!container) return;
 
-    // Collect all locations
+    // Collect all locations for filter pills
     const locationSet = new Set();
     allEquipment.forEach(eq => {
         (eq.locations || []).forEach(l => locationSet.add(l));
@@ -56,138 +105,191 @@ function renderEquipmentLibrary() {
     });
     const locations = Array.from(locationSet).sort();
 
-    // Filter by search
+    // Apply search filter
     let filtered = allEquipment;
     if (currentSearchTerm) {
         const term = currentSearchTerm.toLowerCase();
         filtered = filtered.filter(eq =>
             eq.name?.toLowerCase().includes(term) ||
             eq.brand?.toLowerCase().includes(term) ||
-            eq.model?.toLowerCase().includes(term) ||
-            eq.function?.toLowerCase().includes(term) ||
             (eq.exerciseTypes || []).some(t => t.toLowerCase().includes(term))
         );
     }
 
-    // Filter by location
-    if (currentLocationFilter !== 'all') {
+    // Apply location filter
+    if (currentLocationFilter) {
         filtered = filtered.filter(eq =>
             (eq.locations || []).includes(currentLocationFilter) ||
             eq.location === currentLocationFilter
         );
     }
 
-    // Group equipment by primary location
-    const grouped = new Map();
-    filtered.forEach(eq => {
-        const locs = eq.locations?.length ? eq.locations : (eq.location ? [eq.location] : ['No Location']);
-        // Use first location as primary group
-        const primary = locs[0];
-        if (!grouped.has(primary)) grouped.set(primary, []);
-        grouped.get(primary).push(eq);
-    });
+    // Build location filter pills
+    const filterHTML = locations.length > 0 ? `
+        <div class="equip-filter-row">
+            <button class="btn-icon-sm" onclick="toggleEquipmentSearch()" aria-label="Search">
+                <i class="fas fa-search"></i>
+            </button>
+            <div class="equip-location-pills">
+                <button class="filter-pill ${!currentLocationFilter ? 'active' : ''}"
+                        onclick="filterEquipmentByLocation(null)">All Gyms</button>
+                ${locations.map(loc => `
+                    <button class="filter-pill ${currentLocationFilter === loc ? 'active' : ''}"
+                            onclick="filterEquipmentByLocation('${escapeAttr(loc)}')">${escapeHtml(loc)}</button>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
 
-    // Build search + filter bar
+    // Search bar (hidden by default)
     const searchHTML = `
-        <div class="equip-lib-toolbar">
+        <div class="equip-search-bar hidden" id="equip-search-bar">
             <div class="equip-lib-search">
                 <i class="fas fa-search"></i>
-                <input type="text" placeholder="Search equipment..."
+                <input type="text" placeholder="Search equipment or exercises..."
                        value="${escapeAttr(currentSearchTerm)}"
                        oninput="filterEquipmentBySearch(this.value)">
             </div>
-            ${locations.length > 1 ? `
-                <select class="equip-lib-filter" onchange="filterEquipmentByLocation(this.value)">
-                    <option value="all" ${currentLocationFilter === 'all' ? 'selected' : ''}>All Gyms (${allEquipment.length})</option>
-                    ${locations.map(loc => {
-                        const count = allEquipment.filter(eq =>
-                            (eq.locations || []).includes(loc) || eq.location === loc
-                        ).length;
-                        return `<option value="${escapeAttr(loc)}" ${currentLocationFilter === loc ? 'selected' : ''}>${escapeHtml(loc)} (${count})</option>`;
-                    }).join('')}
-                </select>
-            ` : ''}
         </div>
     `;
 
-    // Build grouped list
+    // Build hierarchy
+    const hierarchy = buildEquipmentHierarchy(filtered);
+
     let listHTML = '';
     if (filtered.length === 0) {
         listHTML = `
-            <div class="empty-state">
+            <div class="empty-state-compact">
                 <i class="fas fa-wrench"></i>
-                <h3>No Equipment</h3>
-                <p>${currentSearchTerm ? 'No matches found' : 'Equipment you use during workouts will appear here.'}</p>
+                <p>${currentSearchTerm ? 'No matches found' : 'No equipment found'}</p>
+                <p class="empty-state-hint">Equipment is auto-saved when you use it in a workout</p>
             </div>
         `;
     } else {
-        for (const [location, items] of grouped) {
-            // Group by brand within each location
-            const byBrand = {};
-            items.forEach(eq => {
-                const brand = eq.brand || 'Other';
-                if (!byBrand[brand]) byBrand[brand] = [];
-                byBrand[brand].push(eq);
-            });
+        let hasAnyExercise = false;
+        for (const bodyPart of BODY_PART_ORDER) {
+            const exercises = hierarchy[bodyPart];
+            if (!exercises) continue;
+            hasAnyExercise = true;
 
-            // Sort brands alphabetically, "Other" last
-            const sortedBrands = Object.keys(byBrand).sort((a, b) => {
-                if (a === 'Other') return 1;
-                if (b === 'Other') return -1;
-                return a.localeCompare(b);
-            });
+            const exerciseNames = Object.keys(exercises).sort();
+            const totalEquipment = exerciseNames.reduce((sum, ex) => sum + exercises[ex].length, 0);
+            const config = BODY_PART_CONFIG[bodyPart];
 
-            // Sort items within each brand alphabetically
-            sortedBrands.forEach(brand => {
-                byBrand[brand].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-            });
-
-            const hasBrands = sortedBrands.length > 1 || (sortedBrands.length === 1 && sortedBrands[0] !== 'Other');
-
+            // Body part header (sticky)
             listHTML += `
-                <div class="equip-lib-group">
-                    <div class="equip-lib-group-header">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>${escapeHtml(location)}</span>
-                        <span class="equip-lib-group-count">${items.length}</span>
+                <div class="equip-group-header">
+                    <div class="equip-group-header__left">
+                        <i class="${config.icon}"></i>
+                        <span>${bodyPart}</span>
                     </div>
-                    ${hasBrands ? sortedBrands.map(brand => `
-                        <div class="equip-brand-group">
-                            <div class="equip-brand-header">
-                                <span class="equip-brand-name">${escapeHtml(brand)}</span>
-                                <span class="equip-brand-count">${byBrand[brand].length}</span>
-                            </div>
-                            ${byBrand[brand].map(eq => renderEquipmentRow(eq)).join('')}
+                    <span class="equip-group-header__count">${exerciseNames.length} exercise${exerciseNames.length !== 1 ? 's' : ''} · ${totalEquipment} machine${totalEquipment !== 1 ? 's' : ''}</span>
+                </div>
+            `;
+
+            // Exercise rows (collapsible)
+            for (const exName of exerciseNames) {
+                const equips = exercises[exName];
+                const equipId = exName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+
+                listHTML += `
+                    <div class="equip-exercise-row" onclick="toggleEquipmentExercise('${equipId}')">
+                        <div class="equip-exercise-row__name">${escapeHtml(exName)}</div>
+                        <div class="equip-exercise-row__meta">
+                            <span class="equip-exercise-row__count">${equips.length}</span>
+                            <i class="fas fa-chevron-down equip-exercise-chevron" id="chevron-${equipId}"></i>
                         </div>
-                    `).join('') : items.map(eq => renderEquipmentRow(eq)).join('')}
+                    </div>
+                    <div class="equip-nested-list" id="equip-list-${equipId}" style="display: none;">
+                `;
+
+                for (const equip of equips) {
+                    const locationNames = (equip.locations || []).join(', ') || '';
+                    const brandLabel = equip.brand || '';
+                    const subtitle = [brandLabel, locationNames].filter(Boolean).join(' · ');
+
+                    listHTML += `
+                        <div class="row-card equip-nested-item" onclick="event.stopPropagation(); openEquipmentDetail('${escapeAttr(equip.id)}')">
+                            <div class="equip-nested-item__info">
+                                <span class="row-card__title">${escapeHtml(equip.name)}</span>
+                                ${subtitle ? `<span class="row-card__subtitle">${escapeHtml(subtitle)}</span>` : ''}
+                            </div>
+                            <div class="row-card__action"><i class="fas fa-chevron-right"></i></div>
+                        </div>
+                    `;
+                }
+
+                listHTML += `</div>`; // close equip-nested-list
+            }
+        }
+
+        // Equipment with no exercise associations
+        const unlinked = filtered.filter(eq => !eq.exerciseTypes || eq.exerciseTypes.length === 0);
+        if (unlinked.length > 0) {
+            listHTML += `
+                <div class="equip-group-header">
+                    <div class="equip-group-header__left">
+                        <i class="fas fa-unlink"></i>
+                        <span>Unlinked</span>
+                    </div>
+                    <span class="equip-group-header__count">${unlinked.length} machine${unlinked.length !== 1 ? 's' : ''}</span>
+                </div>
+            `;
+            for (const equip of unlinked) {
+                const locationNames = (equip.locations || []).join(', ') || '';
+                const brandLabel = equip.brand || '';
+                const subtitle = [brandLabel, locationNames].filter(Boolean).join(' · ');
+
+                listHTML += `
+                    <div class="row-card equip-nested-item" onclick="openEquipmentDetail('${escapeAttr(equip.id)}')">
+                        <div class="equip-nested-item__info">
+                            <span class="row-card__title">${escapeHtml(equip.name)}</span>
+                            ${subtitle ? `<span class="row-card__subtitle">${escapeHtml(subtitle)}</span>` : ''}
+                        </div>
+                        <div class="row-card__action"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                `;
+            }
+        }
+
+        if (!hasAnyExercise && unlinked.length === 0) {
+            listHTML = `
+                <div class="empty-state-compact">
+                    <i class="fas fa-wrench"></i>
+                    <p>No equipment found</p>
+                    <p class="empty-state-hint">Equipment is auto-saved when you use it in a workout</p>
                 </div>
             `;
         }
     }
 
-    container.innerHTML = searchHTML + `<div class="equip-lib-list">${listHTML}</div>`;
+    container.innerHTML = filterHTML + searchHTML + `<div class="equip-lib-list">${listHTML}</div>`;
 }
 
-function renderEquipmentRow(eq) {
-    const typeInfo = EQUIPMENT_TYPE_ICONS[eq.equipmentType] || EQUIPMENT_TYPE_ICONS.Other;
-    const exerciseCount = (eq.exerciseTypes || []).length;
-    const exerciseNames = (eq.exerciseTypes || []).slice(0, 3).join(', ');
-    const extra = exerciseCount > 3 ? ` +${exerciseCount - 3}` : '';
+/**
+ * Toggle search bar visibility
+ */
+export function toggleEquipmentSearch() {
+    const bar = document.getElementById('equip-search-bar');
+    if (bar) {
+        bar.classList.toggle('hidden');
+        if (!bar.classList.contains('hidden')) {
+            bar.querySelector('input')?.focus();
+        }
+    }
+}
 
-    return `
-        <div class="row-card equip-lib-item" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">
-            <div class="row-card__icon" style="background: ${typeInfo.color}20; color: ${typeInfo.color}">
-                <i class="fas ${typeInfo.icon}"></i>
-            </div>
-            <div class="row-card__content">
-                <span class="row-card__title">${escapeHtml(eq.name)}</span>
-                <span class="row-card__subtitle">${exerciseNames ? escapeHtml(exerciseNames + extra) : 'No exercises assigned'}</span>
-            </div>
-            <div class="row-card__action">
-                <i class="fas fa-chevron-right"></i>
-            </div>
-        </div>
-    `;
+/**
+ * Toggle exercise expand/collapse in the hierarchy
+ */
+export function toggleEquipmentExercise(equipId) {
+    const list = document.getElementById(`equip-list-${equipId}`);
+    const chevron = document.getElementById(`chevron-${equipId}`);
+    if (!list) return;
+
+    const isOpen = list.style.display !== 'none';
+    list.style.display = isOpen ? 'none' : 'block';
+    if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 export function filterEquipmentByLocation(location) {
@@ -230,21 +332,21 @@ export async function openEquipmentDetail(equipmentId) {
     if (!container) return;
 
     container.innerHTML = `
-        <div class="equipment-detail" style="padding: var(--pad-page);">
+        <div class="equipment-detail">
             <!-- Back + name -->
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <div class="equip-detail-header">
                 <button class="btn-icon" onclick="backToEquipmentList()" aria-label="Back">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h3 style="flex: 1; margin: 0;">${escapeHtml(equipment.name)}</h3>
-                <button class="btn-icon" onclick="deleteEquipmentFromLibrary('${escapeAttr(equipmentId)}')" aria-label="Delete" title="Delete equipment">
-                    <i class="fas fa-trash" style="color: var(--danger);"></i>
+                <h3>${escapeHtml(equipment.name)}</h3>
+                <button class="btn-icon btn-icon-danger" onclick="deleteEquipmentFromLibrary('${escapeAttr(equipmentId)}')" aria-label="Delete" title="Delete equipment">
+                    <i class="fas fa-trash"></i>
                 </button>
             </div>
 
             <!-- Type + locations -->
-            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px;">
-                <span class="equipment-type-badge" style="background: ${typeInfo.color}20; color: ${typeInfo.color}">
+            <div class="equip-detail-badges">
+                <span class="equipment-type-badge">
                     <i class="fas ${typeInfo.icon}"></i> ${equipment.equipmentType || 'Other'}
                 </span>
                 ${locations.map(loc => `
@@ -255,44 +357,40 @@ export async function openEquipmentDetail(equipmentId) {
             </div>
 
             <!-- Exercises section -->
-            <div class="section-header" style="margin-bottom: 8px;">
-                <h4 class="section-header__title" style="margin: 0;">Exercises</h4>
+            <div class="equip-detail-section-header">
+                <h4>Exercises</h4>
                 <button class="btn-text btn-small" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">
                     <i class="fas fa-plus"></i> Assign
                 </button>
             </div>
 
             ${exercises.length === 0 ? `
-                <div class="empty-state" style="padding: 24px 0;">
+                <div class="empty-state-compact">
                     <p>No exercises assigned yet</p>
                     <button class="btn btn-secondary btn-small" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">
                         <i class="fas fa-plus"></i> Assign Exercise
                     </button>
                 </div>
             ` : exercises.map(ex => `
-                <div class="row-card" style="margin-bottom: 6px;">
-                    <div class="row-card__content">
-                        <span class="row-card__title">${escapeHtml(ex.name)}</span>
-                        <span class="row-card__subtitle">
-                            ${ex.videoUrl ? '<i class="fas fa-play-circle" style="color: var(--primary);"></i> Video set' : '<i class="fas fa-video-slash"></i> No video'}
-                        </span>
+                <div class="equip-detail-exercise-row">
+                    <div class="equip-detail-exercise-info">
+                        <span class="equip-detail-exercise-name">${escapeHtml(ex.name)}</span>
+                        <input type="url" class="form-input equipment-video-input"
+                               value="${escapeAttr(ex.videoUrl || '')}"
+                               placeholder="YouTube video URL"
+                               onchange="saveEquipmentExerciseVideoFromLib('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}', this.value)">
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn-text" onclick="editEquipmentExerciseVideoFromLib('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')" title="Set form video">
-                            <i class="fas fa-video"></i>
-                        </button>
-                        <button class="btn-text btn-text-danger" onclick="unassignExercise('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')" title="Remove">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
+                    <button class="btn-text btn-text-danger" onclick="unassignExercise('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')" title="Remove">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
             `).join('')}
 
             <!-- Notes section -->
-            <div class="section-header" style="margin: 20px 0 8px;">
-                <h4 class="section-header__title" style="margin: 0;">Notes</h4>
+            <div class="equip-detail-section-header equip-detail-notes-header">
+                <h4>Notes</h4>
             </div>
-            <textarea class="form-input" style="width: 100%; min-height: 80px; resize: vertical;"
+            <textarea class="form-input equip-detail-notes"
                       placeholder="e.g., Setting 5 for chest fly, setting 8 for pushdown"
                       oninput="saveEquipmentNotes('${escapeAttr(equipmentId)}', this.value)">${escapeHtml(notes)}</textarea>
         </div>
@@ -350,31 +448,29 @@ export function assignExerciseToEquipment(equipmentId) {
 
     let listHTML = '';
     for (const [group, items] of groups) {
-        listHTML += `<div class="equip-lib-group-header" style="margin-top: 12px;"><span>${escapeHtml(group)}</span><span class="equip-lib-group-count">${items.length}</span></div>`;
+        listHTML += `<div class="equip-group-header"><div class="equip-group-header__left"><span>${escapeHtml(group)}</span></div><span class="equip-group-header__count">${items.length}</span></div>`;
         listHTML += items.map(ex => `
-            <div class="row-card equip-lib-item" onclick="confirmAssignExercise('${escapeAttr(ex.name)}')">
-                <div class="row-card__content">
-                    <span class="row-card__title">${escapeHtml(ex.name)}</span>
-                </div>
-                <div class="row-card__action"><i class="fas fa-plus" style="color: var(--primary);"></i></div>
+            <div class="equip-exercise-row" onclick="confirmAssignExercise('${escapeAttr(ex.name)}')">
+                <div class="equip-exercise-row__name">${escapeHtml(ex.name)}</div>
+                <div class="row-card__action"><i class="fas fa-plus"></i></div>
             </div>
         `).join('');
     }
 
     container.innerHTML = `
-        <div style="padding: var(--pad-page);">
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div class="equip-detail-page">
+            <div class="equip-detail-header">
                 <button class="btn-icon" onclick="openEquipmentDetail('${escapeAttr(equipmentId)}')" aria-label="Back">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h3 style="flex: 1; margin: 0;">Assign Exercise</h3>
+                <h3>Assign Exercise</h3>
             </div>
-            <div class="equip-lib-search" style="margin-bottom: 12px;">
+            <div class="equip-lib-search equip-assign-search">
                 <i class="fas fa-search"></i>
                 <input type="text" placeholder="Search exercises..." oninput="filterAssignList(this.value)">
             </div>
             <div id="assign-exercise-list">
-                ${exercises.length === 0 ? '<div class="empty-state"><p>All exercises already assigned</p></div>' : listHTML}
+                ${exercises.length === 0 ? '<div class="empty-state-compact"><p>All exercises already assigned</p></div>' : listHTML}
             </div>
         </div>
     `;
@@ -445,18 +541,21 @@ export async function unassignExercise(equipmentId, exerciseName) {
     }
 }
 
+// Legacy export kept for backwards compat
 export async function editEquipmentExerciseVideoFromLib(equipmentId, exerciseName) {
+    // Now handled by inline input via saveEquipmentExerciseVideoFromLib
+}
+
+/**
+ * Save video URL from inline input in equipment detail view
+ */
+export async function saveEquipmentExerciseVideoFromLib(equipmentId, exerciseName, newUrl) {
     const equipment = allEquipment.find(e => e.id === equipmentId);
-    const currentUrl = equipment?.exerciseVideos?.[exerciseName] || '';
-
-    const newUrl = prompt(`YouTube URL for ${exerciseName}:`, currentUrl);
-    if (newUrl === null) return;
-
     try {
         const userId = AppState.currentUser.uid;
         const equipRef = doc(db, 'users', userId, 'equipment', equipmentId);
 
-        if (newUrl.trim() === '') {
+        if (!newUrl || newUrl.trim() === '') {
             await updateDoc(equipRef, { [`exerciseVideos.${exerciseName}`]: deleteField() });
             if (equipment?.exerciseVideos) delete equipment.exerciseVideos[exerciseName];
         } else {
@@ -464,9 +563,6 @@ export async function editEquipmentExerciseVideoFromLib(equipmentId, exerciseNam
             if (!equipment.exerciseVideos) equipment.exerciseVideos = {};
             equipment.exerciseVideos[exerciseName] = newUrl.trim();
         }
-
-        showNotification('Video updated', 'success', 1500);
-        openEquipmentDetail(equipmentId);
     } catch (error) {
         console.error('Error saving video:', error);
         showNotification('Failed to save video', 'error');

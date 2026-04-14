@@ -591,8 +591,8 @@
     transition: transform 0.15s, opacity 0.15s;
 }
 .btn-start-small:active {
-    transform: scale(0.9);
-    opacity: 0.8;
+    transform: scale(0.97);
+    transition: transform 0.1s;
 }
 
 /* ── Inline template editor (expanded state) ── */

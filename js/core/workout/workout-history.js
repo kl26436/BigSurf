@@ -431,20 +431,9 @@ export function getWorkoutHistory(appState) {
 
             calendarGrid.innerHTML = html;
 
-            // Add calendar legend below the grid
-            let legendEl = document.getElementById('calendar-legend');
-            if (!legendEl) {
-                legendEl = document.createElement('div');
-                legendEl.id = 'calendar-legend';
-                legendEl.className = 'calendar-legend';
-                calendarGrid.parentNode.insertBefore(legendEl, calendarGrid.nextSibling);
-            }
-            legendEl.innerHTML = `
-                <span class="legend-item"><span class="legend-dot legend-dot-completed"></span> Completed</span>
-                <span class="legend-item"><span class="legend-dot legend-dot-incomplete"></span> Incomplete</span>
-                <span class="legend-item"><span class="legend-dot legend-dot-cancelled"></span> Cancelled</span>
-                <span class="legend-item"><span class="legend-dot legend-dot-today"></span> Today</span>
-            `;
+            // Remove legacy legend if it exists
+            const legendEl = document.getElementById('calendar-legend');
+            if (legendEl) legendEl.remove();
 
             // ADDED: Setup click events after rendering
             this.setupCalendarClickEvents();
@@ -505,35 +494,49 @@ export function getWorkoutHistory(appState) {
             const hasMore = monthWorkouts.length > visibleCount;
 
             let html =
-                '<h3 class="section-title" style="margin-top: 1.5rem; padding: 0 0.25rem;">Workouts This Month</h3>';
+                '<h3 class="recent-workouts-heading">Workouts This Month</h3>';
             html += '<div class="recent-workouts-items">';
 
             visibleWorkouts.forEach((workout) => {
                 const workoutType = workout.workoutType || 'Workout';
-                const displayDate = workout.date
-                    ? new Date(workout.date + 'T12:00:00').toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                      })
-                    : '';
+                const displayDate = this.formatRelativeDate(workout.date);
                 const exerciseCount = workout.exercises ? Object.keys(workout.exercises).length : 0;
                 const durationMin = workout.totalDuration ? Math.floor(workout.totalDuration / 60) : 0;
                 const docId = workout.docId || workout.id || workout.date;
                 const status = workout.cancelledAt ? 'cancelled' : workout.completedAt ? 'completed' : 'incomplete';
-                const statusIcon =
-                    status === 'completed'
-                        ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>'
-                        : status === 'cancelled'
-                          ? '<i class="fas fa-times-circle" style="color: var(--danger);"></i>'
-                          : '<i class="fas fa-clock" style="color: var(--warning);"></i>';
+
+                // Get exercise names for subtitle
+                const exerciseNames = workout.exercises
+                    ? Object.values(workout.exercises).map(ex => ex.name || '').filter(Boolean).slice(0, 3).join(', ')
+                    : '';
+                const extraCount = exerciseCount > 3 ? exerciseCount - 3 : 0;
+
+                // Count total sets
+                const setCount = workout.exercises
+                    ? Object.values(workout.exercises).reduce((sum, ex) => sum + (ex.sets?.length || 0), 0)
+                    : 0;
+
+                // Determine category for dot color
+                const wt = (workoutType || '').toLowerCase();
+                let cat = 'other';
+                if (wt.includes('push') || wt.includes('chest') || wt.includes('shoulder') || wt.includes('tricep')) cat = 'push';
+                else if (wt.includes('pull') || wt.includes('back') || wt.includes('bicep')) cat = 'pull';
+                else if (wt.includes('leg') || wt.includes('quad') || wt.includes('glute') || wt.includes('hamstring')) cat = 'legs';
+                else if (wt.includes('cardio') || wt.includes('core')) cat = 'cardio';
 
                 html += `
-                    <div class="recent-workout-item" data-action="showFixedWorkout" data-doc-id="${escapeAttr(docId)}" style="cursor: pointer;">
+                    <div class="recent-workout-item" data-action="showFixedWorkout" data-doc-id="${escapeAttr(docId)}">
+                        <span class="cal-dot cal-dot--${cat}" style="width: 10px; height: 10px; flex-shrink: 0;"></span>
                         <div class="recent-workout-info">
-                            <div class="recent-workout-name">${escapeHtml(workoutType)} ${statusIcon}</div>
-                            <div class="recent-workout-meta">${displayDate}${durationMin > 0 ? ' &middot; ' + durationMin + ' min' : ''}${exerciseCount > 0 ? ' &middot; ' + exerciseCount + ' exercises' : ''}</div>
+                            <div class="recent-workout-name">${escapeHtml(workoutType)}</div>
+                            ${exerciseNames ? `<div class="recent-workout-exercises">${escapeHtml(exerciseNames)}${extraCount > 0 ? ' +' + extraCount : ''}</div>` : ''}
+                            <div class="recent-workout-meta">${displayDate}${durationMin > 0 ? ' · ' + durationMin + 'm' : ''}${setCount > 0 ? ' · ' + setCount + ' sets' : ''}</div>
                         </div>
-                        <i class="fas fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                        <div class="history-workout-status history-workout-status--${status}">
+                            ${status === 'completed' ? '<i class="fas fa-check"></i>' :
+                              status === 'cancelled' ? '<i class="fas fa-times"></i>' :
+                              '<i class="fas fa-minus"></i>'}
+                        </div>
                     </div>
                 `;
             });
@@ -586,6 +589,17 @@ export function getWorkoutHistory(appState) {
             this.renderRecentWorkoutsList();
         },
 
+        toggleHistorySearch() {
+            const searchBar = document.getElementById('history-search-bar');
+            if (searchBar) {
+                searchBar.classList.toggle('hidden');
+                if (!searchBar.classList.contains('hidden')) {
+                    const input = document.getElementById('history-search-input');
+                    if (input) input.focus();
+                }
+            }
+        },
+
         /** Populate the category dropdown from actual workout types */
         populateCategoryFilter() {
             const select = document.getElementById('history-category-filter');
@@ -605,19 +619,21 @@ export function getWorkoutHistory(appState) {
         },
 
         getWorkoutIcon(workouts) {
-            // Schema v3.0: workouts is now an array
+            // Schema v3.0: workouts is now an array — render colored dots instead of emoji icons
             const workoutArray = Array.isArray(workouts) ? workouts : [workouts];
-            const firstWorkout = workoutArray[0];
 
-            const cat = (firstWorkout.category || 'other').toLowerCase();
-            const iconClass = CATEGORY_ICONS[cat] || CATEGORY_ICONS.other;
-            const icon = `<i class="fas ${iconClass}"></i>`;
+            const dots = workoutArray.slice(0, 3).map(w => {
+                const cat = (w.category || 'other').toLowerCase();
+                const statusClass = w.status === 'cancelled' ? 'cancelled' :
+                                   w.status === 'completed' ? 'completed' : 'incomplete';
+                return `<span class="cal-dot cal-dot--${cat} cal-dot--${statusClass}"></span>`;
+            }).join('');
 
-            // Show count badge if multiple workouts on same day
-            const countBadge =
-                workoutArray.length > 1 ? `<span class="workout-count-badge">${workoutArray.length}</span>` : '';
+            const overflow = workoutArray.length > 3
+                ? `<span class="cal-dot-overflow">+${workoutArray.length - 3}</span>`
+                : '';
 
-            return `<div class="workout-icon ${firstWorkout.category} status-${firstWorkout.status}">${icon}${countBadge}</div>`;
+            return `<div class="cal-dot-row">${dots}${overflow}</div>`;
         },
 
         showWorkoutDetail(date, workoutName, workoutIndex = 0) {
@@ -1382,6 +1398,23 @@ export function getWorkoutHistory(appState) {
 
             return 0;
         },
+        formatRelativeDate(dateStr) {
+            if (!dateStr) return '';
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+            if (dateStr === todayStr) return 'Today';
+            if (dateStr === yesterdayStr) return 'Yesterday';
+
+            return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+            });
+        },
+
         formatDuration(durationMs) {
             if (!durationMs || durationMs <= 0) return 'N/A';
 

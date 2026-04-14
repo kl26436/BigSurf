@@ -897,3 +897,121 @@
     margin: 0;
     font-size: var(--font-sm);
 }
+
+/* ===========================================
+   HEADLINE STAT (Section 7b)
+   =========================================== */
+.headline-stat {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-12);
+    padding: var(--space-8) 0 var(--space-16);
+}
+.headline-value {
+    font-size: var(--font-display-sm);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.headline-trend {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    padding: var(--space-2) var(--space-8);
+    border-radius: var(--radius-pill);
+}
+.headline-trend.up {
+    color: var(--success);
+    background: var(--success-bg);
+}
+.headline-trend.down {
+    color: var(--danger);
+    background: var(--danger-bg);
+}
+.headline-range {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+/* ===========================================
+   COLLAPSIBLE EQUIPMENT FILTER (Section 7c)
+   =========================================== */
+.equipment-filter-details {
+    margin-top: var(--space-8);
+}
+.equipment-filter-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--space-8) 0;
+    list-style: none;
+}
+.equipment-filter-toggle::-webkit-details-marker {
+    display: none;
+}
+.equipment-filter-count {
+    background: var(--primary-bg);
+    color: var(--primary);
+    font-size: var(--font-2xs);
+    padding: var(--space-2) var(--space-6);
+    border-radius: var(--radius-pill);
+}
+.equipment-filter-toggle i {
+    margin-left: auto;
+    font-size: var(--font-2xs);
+    transition: transform 0.2s ease;
+}
+details[open] .equipment-filter-toggle i {
+    transform: rotate(180deg);
+}
+.equipment-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+    padding: var(--space-8) 0;
+}
+
+/* ===========================================
+   STATS COLLAPSIBLE SECTIONS (Section 7e)
+   =========================================== */
+.stats-collapsible {
+    margin-bottom: var(--gap-items, 12px);
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    overflow: hidden;
+}
+.stats-collapsible-header {
+    display: flex;
+    align-items: center;
+    padding: var(--space-16) var(--pad-card-x);
+    cursor: pointer;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    list-style: none;
+    gap: var(--space-8);
+}
+.stats-collapsible-header::-webkit-details-marker {
+    display: none;
+}
+.stats-collapsible-meta {
+    font-size: var(--font-xs);
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: auto;
+    margin-right: var(--space-8);
+}
+.stats-collapsible-chevron {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+details[open] > .stats-collapsible-header .stats-collapsible-chevron {
+    transform: rotate(180deg);
+}
+.stats-collapsible-body {
+    padding: 0 var(--pad-card-x) var(--pad-card-x);
+}

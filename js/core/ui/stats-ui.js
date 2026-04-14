@@ -25,6 +25,55 @@ let selectedCategory = null;
 let selectedExercise = null;
 
 // ===================================================================
+// SMART DEFAULTS
+// ===================================================================
+
+/**
+ * Find the most frequently logged exercise based on session counts in the hierarchy.
+ * Uses the sessionCount already computed by ExerciseProgress.getExerciseHierarchy().
+ */
+function getMostFrequentExercise(hierarchy, exList) {
+    let bestExercise = null;
+    let bestCount = 0;
+
+    for (const [category, exercises] of Object.entries(hierarchy)) {
+        for (const [exerciseName, variants] of Object.entries(exercises)) {
+            // Sum session counts across all equipment variants
+            const totalSessions = variants.reduce((sum, v) => sum + (v.sessionCount || 0), 0);
+            if (totalSessions > bestCount) {
+                bestCount = totalSessions;
+                bestExercise = {
+                    category,
+                    exerciseName,
+                    equipmentKey: variants[0]?.key,
+                };
+            }
+        }
+    }
+
+    return bestExercise;
+}
+
+/**
+ * Calculate a simple linear regression trend line for chart data.
+ */
+function calculateTrendLine(data) {
+    if (!data || data.length < 2) return [];
+
+    const n = data.length;
+    const values = data.map(d => (typeof d === 'object' ? d.y || d : d));
+    const sumX = n * (n - 1) / 2;
+    const sumY = values.reduce((a, b) => a + b, 0);
+    const sumXY = values.reduce((sum, y, i) => sum + i * y, 0);
+    const sumX2 = values.reduce((sum, _, i) => sum + i * i, 0);
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+
+    return values.map((_, i) => Math.round((slope * i + intercept) * 10) / 10);
+}
+
+// ===================================================================
 // MAIN VIEW
 // ===================================================================
 
@@ -146,9 +195,17 @@ async function renderProgressView(preSelectedKey = null) {
             return;
         }
 
-        // Auto-select first category and exercise if none selected
+        // Smart default: pick the most frequently logged exercise in the last 30 days
         if (!selectedCategory && Object.keys(exerciseHierarchy).length > 0) {
-            selectedCategory = Object.keys(exerciseHierarchy)[0];
+            const best = getMostFrequentExercise(exerciseHierarchy, exerciseList);
+            if (best) {
+                selectedCategory = best.category;
+                selectedExercise = best.exerciseName;
+                selectedExerciseKey = best.equipmentKey;
+            } else {
+                // Fallback to first category/exercise
+                selectedCategory = Object.keys(exerciseHierarchy)[0];
+            }
         }
         if (selectedCategory && !selectedExercise) {
             const exercises = Object.keys(exerciseHierarchy[selectedCategory] || {});
@@ -176,6 +233,9 @@ async function renderProgressView(preSelectedKey = null) {
 
                 <!-- Exercise Selector -->
                 ${renderExerciseSelector()}
+
+                <!-- Headline Stat (populated after chart loads) -->
+                <div id="headline-stat-container"></div>
 
                 <!-- Chart Section -->
                 <div class="progress-chart-section">
@@ -214,34 +274,25 @@ async function renderProgressView(preSelectedKey = null) {
                     <div class="chart-container">
                         <canvas id="progress-chart"></canvas>
                     </div>
-
-                    <!-- Stats Below Chart -->
-                    <div id="exercise-stats-summary" class="exercise-stats-summary">
-                        <!-- Populated after chart loads -->
-                    </div>
                 </div>
 
-                <!-- Session History -->
+                <!-- Collapsible secondary sections -->
                 <div id="session-history" class="session-history">
                     <!-- Populated after exercise selection -->
                 </div>
 
-                <!-- Weekly Volume Bar Chart -->
                 <div id="weekly-volume-section" class="weekly-volume-section">
                     <!-- Populated after data loads -->
                 </div>
 
-                <!-- Body Part Distribution -->
                 <div id="body-part-section" class="body-part-section">
                     <!-- Populated after data loads -->
                 </div>
 
-                <!-- Consistency Heat Map -->
                 <div id="heat-map-section" class="heat-map-section">
                     <!-- Populated after data loads -->
                 </div>
 
-                <!-- PR Timeline -->
                 <div id="pr-timeline-section" class="pr-timeline-section">
                     <!-- Populated after data loads -->
                 </div>
@@ -387,13 +438,17 @@ function renderExerciseSelector() {
                     : ''
             }
 
-            <!-- Equipment Pills -->
+            <!-- Equipment Pills (collapsed when >1 variant) -->
             ${
-                equipmentList.length > 0
+                equipmentList.length > 1
                     ? `
-                <div class="equipment-section">
-                    <label class="selector-label">Equipment</label>
-                    <div class="equipment-pills">
+                <details class="equipment-filter-details">
+                    <summary class="equipment-filter-toggle">
+                        <span>Equipment: ${escapeHtml(equipmentList.find(eq => eq.key === selectedExerciseKey)?.equipment || 'All')}</span>
+                        <span class="equipment-filter-count">${equipmentList.length}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </summary>
+                    <div class="equipment-pill-row">
                         ${equipmentList
                             .map(
                                 (eq) => `
@@ -406,8 +461,10 @@ function renderExerciseSelector() {
                             )
                             .join('')}
                     </div>
-                </div>
+                </details>
             `
+                    : equipmentList.length === 1
+                    ? '' // Only one equipment option — don't show the filter
                     : ''
             }
         </div>
@@ -484,26 +541,45 @@ async function renderExerciseChart(exerciseKey, timeRange) {
 
     const config = chartConfigs[selectedChartType] || chartConfigs.weight;
 
+    // Calculate trend line for line charts
+    const trendData = config.type === 'line' ? calculateTrendLine(chartData.data) : [];
+
+    const datasets = [
+        {
+            label: config.label,
+            data: chartData.data,
+            borderColor: config.color,
+            backgroundColor: config.bgColor,
+            borderWidth: 2,
+            fill: config.type === 'line',
+            tension: 0.3,
+            pointRadius: config.type === 'line' ? 4 : undefined,
+            pointBackgroundColor: config.type === 'line' ? config.color : undefined,
+            pointBorderColor: config.type === 'line' ? config.color : undefined,
+            pointHoverRadius: config.type === 'line' ? 6 : undefined,
+            borderRadius: config.type === 'bar' ? 4 : undefined,
+        },
+    ];
+
+    // Add trend line as second dataset for line charts
+    if (trendData.length > 0) {
+        datasets.push({
+            label: 'Trend',
+            data: trendData,
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            borderWidth: 1,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false,
+            tension: 0,
+        });
+    }
+
     currentChart = new Chart(ctx, {
         type: config.type,
         data: {
             labels: chartData.labels,
-            datasets: [
-                {
-                    label: config.label,
-                    data: chartData.data,
-                    borderColor: config.color,
-                    backgroundColor: config.bgColor,
-                    borderWidth: 2,
-                    fill: config.type === 'line',
-                    tension: 0.3,
-                    pointRadius: config.type === 'line' ? 4 : undefined,
-                    pointBackgroundColor: config.type === 'line' ? config.color : undefined,
-                    pointBorderColor: config.type === 'line' ? config.color : undefined,
-                    pointHoverRadius: config.type === 'line' ? 6 : undefined,
-                    borderRadius: config.type === 'bar' ? 4 : undefined,
-                },
-            ],
+            datasets,
         },
         options: {
             responsive: true,
@@ -564,28 +640,54 @@ async function renderExerciseChart(exerciseKey, timeRange) {
         },
     });
 
-    // Render stats summary
-    renderExerciseStatsSummary(chartData.stats);
+    // Render headline stat above chart
+    renderHeadlineStat(chartData);
 
     // Render session history
     await renderSessionHistory(exerciseKey, timeRange);
 }
 
 function renderNoDataMessage() {
-    const container = document.getElementById('exercise-stats-summary');
-    if (container) {
-        container.innerHTML = `
-            <div class="no-chart-data">
-                <i class="fas fa-chart-line"></i>
-                <p>No data for selected time range</p>
-            </div>
-        `;
-    }
+    // Clear headline stat
+    const headline = document.getElementById('headline-stat-container');
+    if (headline) headline.innerHTML = '';
 
     const history = document.getElementById('session-history');
-    if (history) {
-        history.innerHTML = '';
+    if (history) history.innerHTML = '';
+}
+
+// ===================================================================
+// HEADLINE STAT
+// ===================================================================
+
+function renderHeadlineStat(chartData) {
+    const container = document.getElementById('headline-stat-container');
+    if (!container) return;
+
+    if (!chartData || !chartData.data || chartData.data.length === 0) {
+        container.innerHTML = '';
+        return;
     }
+
+    const u = AppState.globalUnit || 'lbs';
+    const current = chartData.data[chartData.data.length - 1];
+    const oldest = chartData.data[0];
+    const currentVal = typeof current === 'object' ? current.y || current : current;
+    const oldestVal = typeof oldest === 'object' ? oldest.y || oldest : oldest;
+
+    const currentDisplay = displayWeight(currentVal, 'lbs', u).value;
+    const percentChange = oldestVal > 0 ? Math.round(((currentVal - oldestVal) / oldestVal) * 100) : 0;
+    const direction = percentChange >= 0 ? 'up' : 'down';
+    const arrow = percentChange >= 0 ? '↑' : '↓';
+    const rangeLabel = getTimeRangeLabel(selectedTimeRange);
+
+    container.innerHTML = `
+        <div class="headline-stat">
+            <span class="headline-value">${currentDisplay} ${u}</span>
+            <span class="headline-trend ${direction}">${arrow} ${Math.abs(percentChange)}%</span>
+            <span class="headline-range">${rangeLabel}</span>
+        </div>
+    `;
 }
 
 // ===================================================================
@@ -662,39 +764,42 @@ async function renderSessionHistory(exerciseKey, timeRange) {
     const allTimeMax = progressData.stats?.maxWeight || 0;
 
     container.innerHTML = `
-        <div class="history-section">
-            <div class="history-header">
+        <details class="stats-collapsible" id="session-history-details">
+            <summary class="stats-collapsible-header">
                 <span>Recent Sessions</span>
-                <span class="history-count">${progressData.sessions.length} total</span>
-            </div>
-            <div class="history-list">
-                ${sessions
-                    .map(
-                        (session) => `
-                    <div class="history-item ${prDates.has(session.date) ? 'history-item--pr' : ''}">
-                        <div class="history-date">
-                            ${formatDate(session.date)}
-                            ${prDates.has(session.date) ? '<span class="pr-badge"><i class="fas fa-trophy"></i> PR</span>' : ''}
-                        </div>
-                        <div class="history-details">
-                            <span class="history-weight ${session.maxWeight === allTimeMax ? 'history-weight--best' : ''}">${displayWeight(session.maxWeight, 'lbs', AppState.globalUnit || 'lbs').value} ${AppState.globalUnit || 'lbs'}</span>
-                            <span class="history-reps">&times; ${session.maxReps}</span>
-                        </div>
-                        ${
-                            session.location && session.location !== 'Unknown'
-                                ? `
-                            <div class="history-location">
-                                <i class="fas fa-map-marker-alt"></i> ${escapeHtml(session.location)}
+                <span class="stats-collapsible-meta">${progressData.sessions.length} total</span>
+                <i class="fas fa-chevron-down stats-collapsible-chevron"></i>
+            </summary>
+            <div class="stats-collapsible-body">
+                <div class="history-list">
+                    ${sessions
+                        .map(
+                            (session) => `
+                        <div class="history-item ${prDates.has(session.date) ? 'history-item--pr' : ''}">
+                            <div class="history-date">
+                                ${formatDate(session.date)}
+                                ${prDates.has(session.date) ? '<span class="pr-badge"><i class="fas fa-trophy"></i> PR</span>' : ''}
                             </div>
-                        `
-                                : ''
-                        }
-                    </div>
-                `
-                    )
-                    .join('')}
+                            <div class="history-details">
+                                <span class="history-weight ${session.maxWeight === allTimeMax ? 'history-weight--best' : ''}">${displayWeight(session.maxWeight, 'lbs', AppState.globalUnit || 'lbs').value} ${AppState.globalUnit || 'lbs'}</span>
+                                <span class="history-reps">&times; ${session.maxReps}</span>
+                            </div>
+                            ${
+                                session.location && session.location !== 'Unknown'
+                                    ? `
+                                <div class="history-location">
+                                    <i class="fas fa-map-marker-alt"></i> ${escapeHtml(session.location)}
+                                </div>
+                            `
+                                    : ''
+                            }
+                        </div>
+                    `
+                        )
+                        .join('')}
+                </div>
             </div>
-        </div>
+        </details>
     `;
 }
 
@@ -833,17 +938,32 @@ async function renderWeeklyVolumeChart() {
     }
 
     container.innerHTML = `
-        <div class="section-card">
-            <div class="section-card-header">
-                <h3><i class="fas fa-chart-bar"></i> Weekly Volume</h3>
-                <span class="heat-map-label">${getTimeRangeLabel(selectedTimeRange)}</span>
+        <details class="stats-collapsible" id="weekly-volume-details">
+            <summary class="stats-collapsible-header">
+                <span>Weekly Volume</span>
+                <span class="stats-collapsible-meta">${getTimeRangeLabel(selectedTimeRange)}</span>
+                <i class="fas fa-chevron-down stats-collapsible-chevron"></i>
+            </summary>
+            <div class="stats-collapsible-body">
+                <div class="chart-container weekly-volume-chart-container">
+                    <canvas id="weekly-volume-chart"></canvas>
+                </div>
             </div>
-            <div class="chart-container weekly-volume-chart-container">
-                <canvas id="weekly-volume-chart"></canvas>
-            </div>
-        </div>
+        </details>
     `;
 
+    // Lazy-init chart on first open (canvas has 0 dimensions when collapsed)
+    const details = document.getElementById('weekly-volume-details');
+    if (details) {
+        const initChart = () => {
+            details.removeEventListener('toggle', initChart);
+            createWeeklyVolumeChart(volumeData);
+        };
+        details.addEventListener('toggle', initChart);
+    }
+}
+
+function createWeeklyVolumeChart(volumeData) {
     const canvas = document.getElementById('weekly-volume-chart');
     if (!canvas) return;
 
@@ -939,32 +1059,46 @@ async function renderBodyPartDistribution() {
     }
 
     container.innerHTML = `
-        <div class="section-card">
-            <div class="section-card-header">
-                <h3><i class="fas fa-chart-pie"></i> Volume by Muscle Group</h3>
-            </div>
-            <div class="body-part-content">
-                <div class="donut-chart-container">
-                    <canvas id="body-part-chart"></canvas>
+        <details class="stats-collapsible" id="body-part-details">
+            <summary class="stats-collapsible-header">
+                <span>Volume by Muscle Group</span>
+                <i class="fas fa-chevron-down stats-collapsible-chevron"></i>
+            </summary>
+            <div class="stats-collapsible-body">
+                <div class="body-part-content">
+                    <div class="donut-chart-container">
+                        <canvas id="body-part-chart"></canvas>
+                    </div>
+                    <div class="body-part-legend">
+                        ${distribution.labels
+                            .map(
+                                (label, i) => `
+                            <div class="legend-item">
+                                <span class="legend-color" style="background: ${distribution.colors[i]}"></span>
+                                <span class="legend-label">${escapeHtml(label)}</span>
+                                <span class="legend-value">${distribution.percentages[i]}%</span>
+                            </div>
+                        `
+                            )
+                            .join('')}
+                    </div>
                 </div>
-                <div class="body-part-legend">
-                    ${distribution.labels
-                        .map(
-                            (label, i) => `
-                        <div class="legend-item">
-                            <span class="legend-color" style="background: ${distribution.colors[i]}"></span>
-                            <span class="legend-label">${escapeHtml(label)}</span>
-                            <span class="legend-value">${distribution.percentages[i]}%</span>
-                        </div>
-                    `
-                        )
-                        .join('')}
-                </div>
             </div>
-        </div>
+        </details>
     `;
 
-    // Render donut chart
+    // Lazy-init chart on first open
+    const details = document.getElementById('body-part-details');
+    if (details) {
+        const initChart = () => {
+            details.removeEventListener('toggle', initChart);
+            createBodyPartChart(distribution);
+        };
+        details.addEventListener('toggle', initChart);
+    }
+}
+
+function createBodyPartChart(distribution) {
     const canvas = document.getElementById('body-part-chart');
     if (!canvas) return;
 
@@ -1031,45 +1165,48 @@ async function renderHeatMapCalendar() {
     const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     container.innerHTML = `
-        <div class="section-card">
-            <div class="section-card-header">
-                <h3><i class="fas fa-fire"></i> Consistency</h3>
-                <span class="heat-map-label">${getTimeRangeLabel(selectedTimeRange)}</span>
-            </div>
-            <div class="heat-map-container">
-                <div class="heat-map-days">
-                    ${dayLabels.map((d) => `<div class="heat-map-day-label">${d}</div>`).join('')}
+        <details class="stats-collapsible" id="heat-map-details">
+            <summary class="stats-collapsible-header">
+                <span>Consistency</span>
+                <span class="stats-collapsible-meta">${getTimeRangeLabel(selectedTimeRange)}</span>
+                <i class="fas fa-chevron-down stats-collapsible-chevron"></i>
+            </summary>
+            <div class="stats-collapsible-body">
+                <div class="heat-map-container">
+                    <div class="heat-map-days">
+                        ${dayLabels.map((d) => `<div class="heat-map-day-label">${d}</div>`).join('')}
+                    </div>
+                    <div class="heat-map-grid">
+                        ${heatMapData.weeks
+                            .map(
+                                (week) => `
+                            <div class="heat-map-week">
+                                ${week
+                                    .map(
+                                        (day) => `
+                                    <div class="heat-map-cell intensity-${day.intensity} ${day.isToday ? 'today' : ''} ${day.isFuture ? 'future' : ''}"
+                                         title="${day.date}: ${day.sets} sets">
+                                    </div>
+                                `
+                                    )
+                                    .join('')}
+                            </div>
+                        `
+                            )
+                            .join('')}
+                    </div>
                 </div>
-                <div class="heat-map-grid">
-                    ${heatMapData.weeks
-                        .map(
-                            (week) => `
-                        <div class="heat-map-week">
-                            ${week
-                                .map(
-                                    (day) => `
-                                <div class="heat-map-cell intensity-${day.intensity} ${day.isToday ? 'today' : ''} ${day.isFuture ? 'future' : ''}"
-                                     title="${day.date}: ${day.sets} sets">
-                                </div>
-                            `
-                                )
-                                .join('')}
-                        </div>
-                    `
-                        )
-                        .join('')}
+                <div class="heat-map-legend">
+                    <span class="heat-map-legend-label">Less</span>
+                    <div class="heat-map-cell intensity-0"></div>
+                    <div class="heat-map-cell intensity-1"></div>
+                    <div class="heat-map-cell intensity-2"></div>
+                    <div class="heat-map-cell intensity-3"></div>
+                    <div class="heat-map-cell intensity-4"></div>
+                    <span class="heat-map-legend-label">More</span>
                 </div>
             </div>
-            <div class="heat-map-legend">
-                <span class="heat-map-legend-label">Less</span>
-                <div class="heat-map-cell intensity-0"></div>
-                <div class="heat-map-cell intensity-1"></div>
-                <div class="heat-map-cell intensity-2"></div>
-                <div class="heat-map-cell intensity-3"></div>
-                <div class="heat-map-cell intensity-4"></div>
-                <span class="heat-map-legend-label">More</span>
-            </div>
-        </div>
+        </details>
     `;
 }
 
@@ -1084,54 +1221,48 @@ async function renderPRTimeline() {
     const timeline = await ExerciseProgress.getPRTimeline(8, selectedTimeRange);
 
     if (timeline.length === 0) {
-        container.innerHTML = `
-            <div class="section-card">
-                <div class="section-card-header">
-                    <h3><i class="fas fa-trophy"></i> PR Timeline</h3>
-                </div>
-                <div class="pr-timeline-empty">
-                    <i class="fas fa-medal"></i>
-                    <p>Complete workouts to set PRs!</p>
-                </div>
-            </div>
-        `;
+        container.innerHTML = '';
         return;
     }
 
     container.innerHTML = `
-        <div class="section-card">
-            <div class="section-card-header">
-                <h3><i class="fas fa-trophy"></i> PR Timeline</h3>
-            </div>
-            <div class="pr-timeline">
-                ${timeline
-                    .map(
-                        (pr, i) => `
-                    <div class="pr-timeline-item ${i === 0 ? 'latest' : ''}">
-                        <div class="pr-timeline-marker">
-                            <i class="fas fa-star"></i>
-                        </div>
-                        <div class="pr-timeline-content">
-                            <div class="pr-timeline-date">${formatDateRelative(pr.date)}</div>
-                            <div class="pr-timeline-exercise">${escapeHtml(pr.exercise)}</div>
-                            <div class="pr-timeline-details">
-                                <span class="pr-timeline-weight">${displayWeight(pr.weight, 'lbs', AppState.globalUnit || 'lbs').value} ${AppState.globalUnit || 'lbs'}</span>
-                                <span class="pr-timeline-reps">× ${pr.reps}</span>
-                                ${
-                                    pr.equipment && pr.equipment !== 'Unknown'
-                                        ? `
-                                    <span class="pr-timeline-equipment">${escapeHtml(pr.equipment)}</span>
-                                `
-                                        : ''
-                                }
+        <details class="stats-collapsible" id="pr-timeline-details">
+            <summary class="stats-collapsible-header">
+                <span>PR Timeline</span>
+                <span class="stats-collapsible-meta">${timeline.length} PRs</span>
+                <i class="fas fa-chevron-down stats-collapsible-chevron"></i>
+            </summary>
+            <div class="stats-collapsible-body">
+                <div class="pr-timeline">
+                    ${timeline
+                        .map(
+                            (pr, i) => `
+                        <div class="pr-timeline-item ${i === 0 ? 'latest' : ''}">
+                            <div class="pr-timeline-marker">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="pr-timeline-content">
+                                <div class="pr-timeline-date">${formatDateRelative(pr.date)}</div>
+                                <div class="pr-timeline-exercise">${escapeHtml(pr.exercise)}</div>
+                                <div class="pr-timeline-details">
+                                    <span class="pr-timeline-weight">${displayWeight(pr.weight, 'lbs', AppState.globalUnit || 'lbs').value} ${AppState.globalUnit || 'lbs'}</span>
+                                    <span class="pr-timeline-reps">× ${pr.reps}</span>
+                                    ${
+                                        pr.equipment && pr.equipment !== 'Unknown'
+                                            ? `
+                                        <span class="pr-timeline-equipment">${escapeHtml(pr.equipment)}</span>
+                                    `
+                                            : ''
+                                    }
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `
-                    )
-                    .join('')}
+                    `
+                        )
+                        .join('')}
+                </div>
             </div>
-        </div>
+        </details>
     `;
 }
 

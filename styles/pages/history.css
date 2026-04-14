@@ -515,3 +515,201 @@
     align-items: center;
     gap: var(--space-6);
 }
+
+/* ===========================================
+   SECTION 8: HISTORY PAGE CLEANUP
+   =========================================== */
+
+/* 8a: Calendar workout dots (replaces emoji icons) */
+.cal-dot-row {
+    display: flex;
+    justify-content: center;
+    gap: 3px;
+    margin-top: var(--space-2);
+    min-height: 8px;
+}
+.cal-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-pill);
+    flex-shrink: 0;
+}
+/* Category colors */
+.cal-dot--push { background: var(--cat-push); }
+.cal-dot--pull { background: var(--cat-pull); }
+.cal-dot--legs { background: var(--cat-legs); }
+.cal-dot--core { background: var(--cat-core); }
+.cal-dot--cardio { background: var(--cat-cardio, var(--danger)); }
+.cal-dot--other { background: var(--cat-other, var(--text-muted)); }
+/* Status modifiers */
+.cal-dot--cancelled { opacity: 0.3; }
+.cal-dot--incomplete {
+    background: transparent;
+    border: 1.5px solid currentColor;
+}
+.cal-dot--incomplete.cal-dot--push { border-color: var(--cat-push); }
+.cal-dot--incomplete.cal-dot--pull { border-color: var(--cat-pull); }
+.cal-dot--incomplete.cal-dot--legs { border-color: var(--cat-legs); }
+.cal-dot--incomplete.cal-dot--cardio { border-color: var(--cat-cardio, var(--danger)); }
+.cal-dot--incomplete.cal-dot--other { border-color: var(--cat-other, var(--text-muted)); }
+.cal-dot-overflow {
+    font-size: 8px;
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+/* 8c: Collapsible search bar */
+.history-header-actions {
+    display: flex;
+    gap: var(--space-8);
+    align-items: center;
+}
+.btn-icon-sm {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: var(--font-sm);
+}
+.btn-icon-sm:active {
+    background: var(--bg-card-hi);
+    color: var(--primary);
+}
+.history-search-bar.hidden {
+    display: none;
+}
+.history-search-bar:not(.hidden) {
+    animation: slide-down-search 0.2s ease-out;
+}
+@keyframes slide-down-search {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 8d: Improved workout list items */
+.recent-workout-item {
+    gap: var(--space-12);
+}
+.recent-workout-exercises {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+}
+.history-workout-status {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-pill);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+}
+.history-workout-status--completed {
+    background: var(--success-bg);
+    color: var(--success);
+}
+.history-workout-status--cancelled {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+.history-workout-status--incomplete {
+    background: var(--warning-bg);
+    color: var(--warning);
+}
+
+/* 8e: Compact calendar grid */
+.calendar-container {
+    padding: var(--space-8) var(--space-12);
+    border-radius: var(--radius-md);
+}
+.calendar-weekdays {
+    margin-bottom: var(--space-4);
+}
+.weekday {
+    padding: var(--space-4) 0;
+}
+.calendar-grid {
+    gap: 2px;
+}
+.calendar-day {
+    min-height: 38px;
+    padding: var(--space-4) var(--space-2);
+    background: transparent;
+    border-radius: var(--radius-sm);
+}
+.calendar-day:hover {
+    background: var(--bg-card-hi);
+}
+.calendar-day.today {
+    background: var(--primary-bg);
+}
+.calendar-day.has-workout {
+    background: transparent;
+}
+.calendar-day.has-workout:active {
+    background: var(--primary-bg-subtle);
+}
+.calendar-day .day-number {
+    font-size: var(--font-sm);
+    font-weight: 500;
+    line-height: 1;
+}
+
+/* Month nav tighter */
+.month-navigation {
+    margin-bottom: var(--space-8);
+    gap: var(--space-8);
+}
+.nav-button {
+    width: 36px;
+    height: 36px;
+}
+
+/* Workout list items — borderless rows */
+.recent-workouts-section {
+    margin-top: var(--space-4);
+}
+.recent-workouts-items {
+    gap: 0;
+}
+.recent-workout-item {
+    border: none;
+    border-radius: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    background: transparent;
+    padding: var(--space-12) var(--space-8);
+    cursor: pointer;
+}
+.recent-workout-item:first-child {
+    border-top: 1px solid var(--border-subtle);
+}
+.recent-workout-item:active {
+    background: var(--bg-card-hi);
+}
+.recent-workout-name {
+    font-size: var(--font-sm);
+    font-weight: 600;
+}
+.recent-workout-exercises {
+    max-width: 60vw;
+}
+.recent-workouts-heading {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-12) var(--space-8) var(--space-8);
+    margin: 0;
+}

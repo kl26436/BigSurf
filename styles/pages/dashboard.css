@@ -1016,7 +1016,8 @@ h3 {
     transition: opacity var(--anim-fast);
 }
 .btn-hero-start:active {
-    opacity: 0.85;
+    transform: scale(0.97);
+    transition: transform 0.1s;
 }
 .btn-hero-secondary {
     background: var(--bg-card-hi);
@@ -1162,7 +1163,7 @@ h3 {
     height: 100%;
     background: var(--primary);
     border-radius: var(--radius-pill);
-    transition: width 0.5s ease-out;
+    transition: width 0.8s var(--ease-out-expo);
 }
 .progress-bar-fill.complete {
     background: var(--success);

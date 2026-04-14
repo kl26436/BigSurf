@@ -1439,3 +1439,60 @@
 .mini-chart-tap-hint i {
     margin-right: var(--space-4);
 }
+
+/* ===========================================
+   SECTION 9: EXERCISE LIBRARY POLISH
+   =========================================== */
+
+/* 9a: Exercise usage badge */
+.exercise-usage-badge {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--border-light);
+    padding: var(--space-2) var(--space-6);
+    border-radius: var(--radius-pill);
+    flex-shrink: 0;
+    margin-right: var(--space-8);
+}
+
+/* 9a: Exercise card meta line (body part + equipment type) */
+.exercise-card-meta {
+    display: block;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-2);
+}
+
+/* 9b: Tighten category group spacing */
+.exercise-group-header,
+.exercise-category-title {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-strong);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-16) 0 var(--space-8);
+    margin: 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.exercise-card-new:last-child {
+    margin-bottom: 0;
+}
+
+/* 9c: Quick Add chip styling */
+.quick-add-chip {
+    padding: var(--space-6) var(--space-12);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-xs);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.quick-add-chip:active {
+    background: var(--primary-bg);
+    border-color: var(--primary);
+    color: var(--primary);
+}
