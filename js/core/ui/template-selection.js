@@ -2,7 +2,7 @@
 // Handles template browsing, selection, and immediate usage
 
 import { AppState } from '../utils/app-state.js';
-import { getCategoryIcon } from '../utils/config.js';
+import { getCategoryIcon, CATEGORY_COLORS } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
@@ -223,116 +223,251 @@ export function showWorkoutSelector() {
     setBottomNavVisible(true);
     updateBottomNavActive('workout');
 
-    // Populate category badges and recent templates (async, non-blocking)
-    updateCategoryBadges();
-    renderRecentTemplates();
+    // Render the new flat template list UI
+    renderWorkoutSelectorUI();
 
     // First-use tip for new users
     showFirstUseTip('workout-selector');
 }
 
 // ===================================================================
-// CATEGORY BADGES — show template count on each category card
+// WORKOUT SELECTOR — flat template list with filter pills
 // ===================================================================
 
-async function updateCategoryBadges() {
-    const plans = AppState.workoutPlans || [];
+/** Active category filter for the workout selector (null = "All") */
+let activeSelectorCategory = null;
 
-    // Also include custom templates
-    let customTemplates = [];
+/** Cached recent workout history for template recency sorting */
+let cachedWorkoutHistory = null;
+
+/**
+ * Main render function for the workout selector page.
+ * Loads all templates (default + custom), renders filter pills and flat rows.
+ */
+async function renderWorkoutSelectorUI() {
+    const pillsContainer = document.getElementById('category-pills');
+    const listContainer = document.getElementById('template-list');
+    if (!pillsContainer || !listContainer) return;
+
+    // Load all templates (default + custom)
+    let allTemplates = (AppState.workoutPlans || []).map(t => ({
+        ...t,
+        _id: t.id || t.day,
+        _name: t.name || t.day,
+        _isDefault: true,
+    }));
+
     try {
         if (AppState.currentUser) {
             const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
             const wm = new FirebaseWorkoutManager(AppState);
-            customTemplates = (await wm.getUserWorkoutTemplates()).filter(t => t.isCustom);
+            const customs = (await wm.getUserWorkoutTemplates()).filter(t => t.isCustom);
+            customs.forEach(t => {
+                allTemplates.push({
+                    ...t,
+                    _id: t.id,
+                    _name: t.name,
+                    _isDefault: false,
+                });
+            });
         }
     } catch (_) { /* non-critical */ }
 
-    const all = [...plans, ...customTemplates];
-    const counts = {};
-    all.forEach(t => {
-        const cat = getWorkoutCategory(t.day || t.name).toLowerCase();
-        counts[cat] = (counts[cat] || 0) + 1;
-    });
-
-    document.querySelectorAll('.workout-option[data-category]').forEach(card => {
-        const cat = card.dataset.category;
-        const count = counts[cat] || 0;
-        let badge = card.querySelector('.template-count-badge');
-        if (!badge) {
-            badge = document.createElement('span');
-            badge.className = 'template-count-badge';
-            card.appendChild(badge);
+    // Load workout history for recency sorting (cached)
+    if (!cachedWorkoutHistory && AppState.currentUser) {
+        try {
+            const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
+            const ref = collection(db, `users/${AppState.currentUser.uid}/workouts`);
+            const q = query(ref, orderBy('completedAt', 'desc'), limit(50));
+            const snapshot = await getDocs(q);
+            cachedWorkoutHistory = [];
+            snapshot.forEach(doc => cachedWorkoutHistory.push(doc.data()));
+        } catch (_) {
+            cachedWorkoutHistory = [];
         }
-        badge.textContent = `${count} template${count !== 1 ? 's' : ''}`;
+    }
+
+    // Collect unique categories
+    const categories = [...new Set(allTemplates.map(t => getWorkoutCategory(t._name)))];
+
+    // Render filter pills
+    renderCategoryPills(pillsContainer, categories);
+
+    // Filter by active category
+    let filtered = allTemplates;
+    if (activeSelectorCategory) {
+        filtered = allTemplates.filter(t => getWorkoutCategory(t._name) === activeSelectorCategory);
+    }
+
+    // Sort: most recently used first, then alphabetical
+    filtered = sortTemplatesByRecency(filtered);
+
+    // Render template rows
+    renderTemplateRows(listContainer, filtered, activeSelectorCategory !== null);
+
+    // Set up delegation for clicks
+    setupSelectorDelegation(listContainer);
+}
+
+function renderCategoryPills(container, categories) {
+    const pills = categories.map(cat => {
+        const color = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other;
+        const isActive = activeSelectorCategory === cat;
+        return `
+            <button class="category-pill ${isActive ? 'active' : ''}"
+                    ${isActive ? `style="background: ${color}; border-color: ${color};"` : ''}
+                    data-category="${escapeAttr(cat)}">
+                <i class="${getCategoryIcon(cat.toLowerCase())}"></i> ${escapeHtml(cat)}
+            </button>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <button class="category-pill ${!activeSelectorCategory ? 'active' : ''}" data-category="all">All</button>
+        ${pills}
+    `;
+
+    // Delegate pill clicks
+    if (!delegatedContainers.has(container)) {
+        delegatedContainers.add(container);
+        container.addEventListener('click', (e) => {
+            const pill = e.target.closest('.category-pill');
+            if (!pill) return;
+            const cat = pill.dataset.category;
+            activeSelectorCategory = cat === 'all' ? null : cat;
+            renderWorkoutSelectorUI();
+        });
+    }
+}
+
+function sortTemplatesByRecency(templates) {
+    return [...templates].sort((a, b) => {
+        const aDate = getLastWorkoutDate(a._name);
+        const bDate = getLastWorkoutDate(b._name);
+        if (aDate && bDate) return bDate.localeCompare(aDate);
+        if (aDate) return -1;
+        if (bDate) return 1;
+        return a._name.localeCompare(b._name);
     });
 }
 
-// ===================================================================
-// RECENT TEMPLATES — horizontal chips above category grid
-// ===================================================================
+function getLastWorkoutForTemplate(templateName) {
+    if (!cachedWorkoutHistory) return null;
+    return cachedWorkoutHistory.find(w => w.workoutType === templateName && w.completedAt) || null;
+}
 
-async function renderRecentTemplates() {
-    const container = document.getElementById('recent-templates');
-    if (!container) return;
+function getLastWorkoutDate(templateName) {
+    const last = getLastWorkoutForTemplate(templateName);
+    return last?.date || null;
+}
 
-    if (!AppState.currentUser || !AppState.db) {
-        container.classList.add('hidden');
+function formatTimeAgo(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr + 'T00:00:00');
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+}
+
+function renderTemplateRows(container, templates, isFiltered) {
+    if (templates.length === 0) {
+        if (isFiltered) {
+            container.innerHTML = `
+                <div class="template-empty-state">
+                    <div class="template-empty-state__icon"><i class="fas fa-filter"></i></div>
+                    <div class="template-empty-state__text">No templates in this category</div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="template-empty-state">
+                    <div class="template-empty-state__icon"><i class="fas fa-dumbbell"></i></div>
+                    <div class="template-empty-state__text">Create your first workout template to get started</div>
+                    <button class="template-empty-state__cta" onclick="createNewTemplate()">
+                        <i class="fas fa-plus"></i> Create Template
+                    </button>
+                </div>
+            `;
+        }
         return;
     }
 
-    try {
-        const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
-        const workoutsRef = collection(db, `users/${AppState.currentUser.uid}/workouts`);
-        const q = query(workoutsRef, orderBy('completedAt', 'desc'), limit(20));
-        const snapshot = await getDocs(q);
+    container.innerHTML = templates.map(t => renderSingleTemplateRow(t)).join('');
+}
 
-        const seen = new Set();
-        const recentTemplates = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.workoutType && !seen.has(data.workoutType) && recentTemplates.length < 5) {
-                seen.add(data.workoutType);
-                recentTemplates.push({ name: data.workoutType, date: data.date });
-            }
-        });
+function renderSingleTemplateRow(template) {
+    const category = getWorkoutCategory(template._name);
+    const color = CATEGORY_COLORS[category] || CATEGORY_COLORS.Other;
+    const exercisesArray = normalizeExercisesToArray(template.exercises);
+    const exerciseCount = exercisesArray.length;
+    const templateId = template._id;
+    const templateName = template._name;
 
-        if (recentTemplates.length === 0) {
-            container.classList.add('hidden');
+    // Build detail line: ghost preview from last session or relative time
+    let detailHtml = '';
+    const lastWorkout = getLastWorkoutForTemplate(templateName);
+    if (lastWorkout) {
+        const exercises = lastWorkout.exercises || {};
+        const firstEx = Object.values(exercises)[0];
+        const sets = firstEx?.sets?.filter(s => s && s.reps && s.weight).slice(0, 3) || [];
+        if (sets.length > 0) {
+            const preview = sets.map(s => `${s.weight}×${s.reps}`).join(', ');
+            detailHtml = `<div class="template-row__detail">Last: ${escapeHtml(preview)}</div>`;
+        } else {
+            detailHtml = `<div class="template-row__detail">${formatTimeAgo(lastWorkout.date)}</div>`;
+        }
+    } else {
+        detailHtml = `<div class="template-row__detail template-row__detail--new">Ready to start</div>`;
+    }
+
+    return `
+        <div class="row-card template-row" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}" data-action="editTemplateRow">
+            <div class="template-row__indicator" style="background: ${color};"></div>
+            <div class="row-card__content">
+                <div class="row-card__title">${escapeHtml(templateName)}</div>
+                <div class="row-card__subtitle">${exerciseCount} exercises · ${escapeHtml(category)}</div>
+                ${detailHtml}
+            </div>
+            <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
+                <i class="fas fa-play"></i>
+            </button>
+        </div>
+    `;
+}
+
+/** Set up event delegation on the template list container */
+function setupSelectorDelegation(container) {
+    if (!container || delegatedContainers.has(container)) return;
+    delegatedContainers.add(container);
+
+    container.addEventListener('click', (e) => {
+        // Start button
+        const startBtn = e.target.closest('[data-action="startTemplateRow"]');
+        if (startBtn) {
+            e.stopPropagation();
+            const workoutName = startBtn.dataset.workout;
+            if (workoutName) window.startWorkout(workoutName);
             return;
         }
 
-        container.classList.remove('hidden');
-        const catKey = (name) => getWorkoutCategory(name).toLowerCase();
-        container.innerHTML = `
-            <div class="section-header" style="margin-top: 0;">
-                <span class="section-header__title">Recent</span>
-            </div>
-            <div class="recent-templates-list">
-                ${recentTemplates.map(t => `
-                    <button class="recent-template-chip" data-workout="${escapeAttr(t.name)}">
-                        <i class="${getCategoryIcon(catKey(t.name))}"></i>
-                        <span>${escapeHtml(t.name)}</span>
-                        <small>${t.date || ''}</small>
-                    </button>
-                `).join('')}
-            </div>
-        `;
-
-        // Delegate clicks on recent chips (guard against duplicate listeners)
-        if (!delegatedContainers.has(container)) {
-            delegatedContainers.add(container);
-            container.addEventListener('click', (e) => {
-                const chip = e.target.closest('.recent-template-chip');
-                if (chip && chip.dataset.workout) {
-                    window.startWorkout(chip.dataset.workout);
-                }
-            });
+        // Row tap = edit template
+        const row = e.target.closest('[data-action="editTemplateRow"]');
+        if (row) {
+            const templateId = row.dataset.templateId;
+            const isDefault = row.dataset.isDefault === 'true';
+            if (templateId) window.editTemplate(templateId, isDefault);
         }
-    } catch (err) {
-        console.error('Error loading recent templates:', err);
-        container.classList.add('hidden');
-    }
+    });
+}
+
+/** Clear cached workout history (call on workout complete/start) */
+export function clearSelectorCache() {
+    cachedWorkoutHistory = null;
 }
 
 // ===================================================================

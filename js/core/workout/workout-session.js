@@ -210,6 +210,9 @@ export async function startWorkout(workoutType) {
     // Render exercises
     renderExercises();
 
+    // Initialize compact hero progress bar
+    updateWorkoutProgress();
+
     // Update location indicator
     updateLocationIndicator(getSessionLocation(), isLocationLocked());
 
@@ -670,16 +673,85 @@ async function syncEquipmentToTemplate(workoutData) {
 }
 
 export function toggleWorkoutOverflowMenu() {
-    const menu = document.getElementById('workout-overflow-menu');
-    if (menu) {
-        menu.classList.toggle('hidden');
-    }
+    toggleWorkoutOverflow();
 }
 
 export function closeWorkoutOverflowMenu() {
+    closeWorkoutOverflow();
+}
+
+export function toggleWorkoutOverflow() {
+    const menu = document.getElementById('workout-overflow-menu');
+    if (!menu) return;
+
+    const isHidden = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden');
+
+    if (isHidden) {
+        // Close on outside tap
+        const closeHandler = (e) => {
+            if (!menu.contains(e.target) && !e.target.closest('.compact-hero__overflow')) {
+                menu.classList.add('hidden');
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeHandler), 10);
+    }
+}
+
+export function closeWorkoutOverflow() {
     const menu = document.getElementById('workout-overflow-menu');
     if (menu) {
         menu.classList.add('hidden');
+    }
+}
+
+/**
+ * Update the compact hero progress bar and stats.
+ * Call after each set completion, exercise completion, or set count change.
+ */
+export function updateWorkoutProgress() {
+    const exercises = AppState.currentWorkout?.exercises || [];
+    const saved = AppState.savedData?.exercises || {};
+
+    let totalSets = 0;
+    let completedSets = 0;
+    let completedExercises = 0;
+
+    exercises.forEach((ex, i) => {
+        const sets = saved[`exercise_${i}`]?.sets || [];
+        const exSets = ex.sets || 3;
+        totalSets += exSets;
+        const done = sets.filter(s => s.reps && s.weight).length;
+        completedSets += done;
+        if (done >= exSets && done > 0) completedExercises++;
+    });
+
+    const percent = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+
+    const fill = document.getElementById('workout-progress-fill');
+    if (fill) fill.style.width = `${percent}%`;
+
+    const setCount = document.getElementById('set-count');
+    const setTotal = document.getElementById('set-total');
+    const exDone = document.getElementById('exercise-done-count');
+    const exTotal = document.getElementById('exercise-total');
+
+    if (setCount) setCount.textContent = completedSets;
+    if (setTotal) setTotal.textContent = totalSets;
+    if (exDone) exDone.textContent = completedExercises;
+    if (exTotal) exTotal.textContent = exercises.length;
+
+    // Also update legacy elements if they exist
+    const progressDisplay = document.getElementById('workout-progress-display');
+    if (progressDisplay) progressDisplay.textContent = `${completedSets}/${totalSets}`;
+    const exercisesCount = document.getElementById('workout-exercises-count');
+    if (exercisesCount) exercisesCount.textContent = `${completedExercises}/${exercises.length}`;
+
+    // Make footer prominent when at least one exercise is done
+    const footer = document.getElementById('workout-footer');
+    if (footer) {
+        footer.classList.toggle('workout-footer--ready', completedExercises > 0);
     }
 }
 

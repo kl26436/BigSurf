@@ -194,140 +194,97 @@
                         </button>
                     </div>
 
-                    <div id="recent-templates" class="recent-templates-section hidden">
-                        <!-- Populated by renderRecentTemplates() -->
+                    <!-- Category filter pills -->
+                    <div id="category-pills" class="category-pill-row">
+                        <!-- Populated by renderWorkoutSelectorUI() -->
                     </div>
 
-                    <div class="workout-grid" id="workout-type-grid">
-                        <div class="workout-option" onclick="showTemplatesByCategory('push')" data-category="push">
-                            <i class="fas fa-hand-paper"></i>
-                            <span>Push Workouts</span>
-                            <p>Chest, Shoulders, Triceps</p>
-                        </div>
-
-                        <div class="workout-option" onclick="showTemplatesByCategory('pull')" data-category="pull">
-                            <i class="fas fa-fist-raised"></i>
-                            <span>Pull Workouts</span>
-                            <p>Back, Biceps, Rear Delts</p>
-                        </div>
-
-                        <div class="workout-option" onclick="showTemplatesByCategory('legs')" data-category="legs">
-                            <i class="fas fa-running"></i>
-                            <span>Leg Workouts</span>
-                            <p>Quads, Glutes, Hamstrings, Calves</p>
-                        </div>
-
-                        <div class="workout-option" onclick="showTemplatesByCategory('cardio')" data-category="cardio">
-                            <i class="fas fa-heartbeat"></i>
-                            <span>Cardio & Core</span>
-                            <p>Heart Health, Core Strength</p>
-                        </div>
-
-                        <div class="workout-option" onclick="showTemplatesByCategory('other')" data-category="other">
-                            <i class="fas fa-dumbbell"></i>
-                            <span>Other Workouts</span>
-                            <p>Full Body, Mixed Training</p>
-                        </div>
+                    <!-- Flat template list -->
+                    <div id="template-list" class="template-list">
+                        <!-- Populated by renderWorkoutSelectorUI() -->
                     </div>
                 </section>
 
                 <!-- Active Workout -->
                 <section id="active-workout" class="content-section hidden">
-                    <!-- Section Header (consistent with other pages) -->
-                    <div class="section-header-row">
-                        <h2 id="active-workout-title" class="section-title">
-                            <i class="fas fa-dumbbell"></i> Active Workout
-                        </h2>
-                        <button
-                            id="edit-workout-close-btn"
-                            class="close-btn hidden"
-                            onclick="discardEditedWorkout()"
-                            title="Close without saving"
-                            aria-label="Close without saving"
-                        >
-                            <i class="fas fa-times"></i>
-                        </button>
+                    <!-- Edit-mode close button (hidden during normal workout) -->
+                    <button
+                        id="edit-workout-close-btn"
+                        class="close-btn compact-hero__close hidden"
+                        onclick="discardEditedWorkout()"
+                        title="Close without saving"
+                        aria-label="Close without saving"
+                    >
+                        <i class="fas fa-times"></i>
+                    </button>
+
+                    <!-- Compact Hero Header -->
+                    <div class="compact-hero" id="workout-hero">
+                        <!-- Row 1: Identity + Timer -->
+                        <div class="compact-hero__row1">
+                            <div class="compact-hero__identity">
+                                <h2 class="compact-hero__title" id="current-workout-name">Current Workout</h2>
+                                <span class="compact-hero__location hidden" id="workout-location-indicator" onclick="changeWorkoutLocation()">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span id="workout-location-name">Unknown</span>
+                                    <i id="workout-location-lock" class="fas fa-lock" style="display: none" title="Location locked"></i>
+                                </span>
+                            </div>
+                            <div class="compact-hero__actions">
+                                <button class="compact-hero__overflow" onclick="toggleWorkoutOverflow()" aria-label="More options">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <div class="compact-hero__timer" id="workout-timer-badge">
+                                    <i class="fas fa-stopwatch"></i>
+                                    <span id="workout-duration">0:00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Progress bar + Stats -->
+                        <div class="compact-hero__row2">
+                            <div class="compact-hero__progress-bar">
+                                <div class="compact-hero__progress-fill" id="workout-progress-fill" style="width: 0%"></div>
+                            </div>
+                            <div class="compact-hero__stats">
+                                <span><strong id="set-count">0</strong>/<strong id="set-total">0</strong> sets</span>
+                                <span class="stat-dot">&middot;</span>
+                                <span><strong id="exercise-done-count">0</strong>/<strong id="exercise-total">0</strong> done</span>
+                                <span class="stat-dot">&middot;</span>
+                                <span class="compact-hero__rest" id="workout-rest-stat" onclick="skipHeaderRestTimer()" style="cursor: pointer;">
+                                    <span id="workout-rest-timer"></span>
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Workout Header - Hero Card Style -->
-                    <div class="active-workout-hero">
-                        <!-- Top Row: Name + Timer -->
-                        <div class="workout-hero-top">
-                            <h2 id="current-workout-name">Current Workout</h2>
-                            <div class="workout-timer-badge">
-                                <i class="fas fa-clock"></i>
-                                <span id="workout-duration">0:00</span>
-                            </div>
-                        </div>
-
-                        <!-- Location Indicator -->
-                        <div
-                            id="workout-location-indicator"
-                            class="workout-location-indicator hidden"
-                            onclick="changeWorkoutLocation()"
-                        >
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span id="workout-location-name">Unknown Location</span>
-                            <i
-                                id="workout-location-lock"
-                                class="fas fa-lock"
-                                style="display: none"
-                                title="Location locked"
-                            ></i>
-                        </div>
-
-                        <!-- Stats Row -->
-                        <div class="workout-hero-stats">
-                            <div class="workout-stat">
-                                <span class="workout-stat-value" id="workout-progress-display">0/16</span>
-                                <span class="workout-stat-label">Sets</span>
-                            </div>
-                            <div class="workout-stat-divider"></div>
-                            <div class="workout-stat">
-                                <span class="workout-stat-value" id="workout-exercises-count">0/4</span>
-                                <span class="workout-stat-label">Exercises</span>
-                            </div>
-                            <div class="workout-stat-divider"></div>
-                            <div class="workout-stat" id="workout-rest-stat" onclick="skipHeaderRestTimer()" style="cursor: pointer;">
-                                <span class="workout-stat-value" id="workout-rest-timer">--</span>
-                                <span class="workout-stat-label">Rest</span>
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div class="workout-action-bar">
-                            <button class="btn btn-primary btn-full btn-finish" onclick="completeWorkout()">
-                                <i class="fas fa-check"></i> Finish Workout
-                            </button>
-                            <div class="workout-secondary-actions">
-                                <button class="btn-icon-label" onclick="addExerciseToActiveWorkout()">
-                                    <i class="fas fa-plus"></i>
-                                    <span>Add</span>
-                                </button>
-                                <button class="btn-icon-label" onclick="toggleWorkoutOverflowMenu()">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                    <span>More</span>
-                                </button>
-                                <button class="btn-icon-label btn-icon-label--danger" onclick="cancelWorkout()">
-                                    <i class="fas fa-times"></i>
-                                    <span>Cancel</span>
-                                </button>
-                            </div>
-                        </div>
-                        <!-- Workout overflow menu -->
-                        <div id="workout-overflow-menu" class="workout-overflow-menu hidden">
-                            <button class="workout-overflow-item" onclick="saveActiveWorkoutAsTemplate(); closeWorkoutOverflowMenu();">
-                                <i class="fas fa-bookmark"></i> Save as Template
-                            </button>
-                            <button id="btn-reorder" class="workout-overflow-item" onclick="toggleReorderMode(); closeWorkoutOverflowMenu();">
-                                <i class="fas fa-arrows-alt-v"></i> Reorder Exercises
-                            </button>
-                        </div>
+                    <!-- Overflow menu (hidden by default) -->
+                    <div id="workout-overflow-menu" class="workout-overflow-menu hidden">
+                        <button class="workout-overflow-item" onclick="addExerciseToActiveWorkout(); closeWorkoutOverflow();">
+                            <i class="fas fa-plus"></i> Add Exercise
+                        </button>
+                        <button class="workout-overflow-item" onclick="saveActiveWorkoutAsTemplate(); closeWorkoutOverflow();">
+                            <i class="fas fa-bookmark"></i> Save as Template
+                        </button>
+                        <button id="btn-reorder" class="workout-overflow-item" onclick="toggleReorderMode(); closeWorkoutOverflow();">
+                            <i class="fas fa-arrows-alt-v"></i> Reorder Exercises
+                        </button>
+                        <div class="workout-overflow-divider"></div>
+                        <button class="workout-overflow-item workout-overflow-item--danger" onclick="cancelWorkout()">
+                            <i class="fas fa-times"></i> Cancel Workout
+                        </button>
                     </div>
 
                     <!-- Exercise List -->
                     <div id="exercise-list" class="exercise-list">
                         <!-- Populated by JavaScript -->
+                    </div>
+
+                    <!-- Sticky Finish Footer -->
+                    <div class="workout-footer-bar" id="workout-footer">
+                        <button class="btn-finish-footer" onclick="completeWorkout()">
+                            <i class="fas fa-check"></i> Finish Workout
+                        </button>
                     </div>
                 </section>
 

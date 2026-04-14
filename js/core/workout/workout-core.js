@@ -24,6 +24,9 @@ export {
     saveActiveWorkoutAsTemplate,
     toggleWorkoutOverflowMenu,
     closeWorkoutOverflowMenu,
+    toggleWorkoutOverflow,
+    closeWorkoutOverflow,
+    updateWorkoutProgress,
     showWorkoutSummary,
 } from './workout-session.js';
 
@@ -35,7 +38,6 @@ export {
     generateExerciseTable,
     loadExerciseHistory,
     updateSet,
-    cycleSetType,
     addSet,
     deleteSet,
     addSetToExercise,

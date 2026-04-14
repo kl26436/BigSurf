@@ -6,92 +6,156 @@
     z-index: 40;
 }
 
-.active-workout-hero {
-    background: transparent;
-    border-radius: var(--radius-lg);
-    border: none;
-    padding: var(--space-12) var(--pad-card-x) var(--space-8);
-    margin-bottom: var(--space-8);
-    box-shadow: none;
-    overflow: hidden;
+/* ── Compact Hero ── */
+.compact-hero {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky, 10);
+    background: var(--bg-app);
+    padding: var(--space-8) var(--pad-card-x) var(--space-6);
+    border-bottom: 1px solid var(--border-light);
 }
-.workout-hero-top {
+.compact-hero__close {
+    position: absolute;
+    top: var(--space-8);
+    right: var(--space-8);
+    z-index: 11;
+}
+
+/* Row 1: Identity + Timer */
+.compact-hero__row1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-8);
+    min-height: 36px;
 }
-.workout-hero-top h2 {
-    font-size: var(--font-md);
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin: 0;
-}
-.workout-timer-badge {
+.compact-hero__identity {
     display: flex;
-    align-items: center;
-    gap: var(--space-6);
-    background: var(--primary-bg);
-    border: 1px solid var(--primary-border);
-    padding: var(--space-6) var(--space-12);
-    border-radius: var(--radius-pill);
-    font-size: var(--font-sm);
-    font-weight: 500;
-    color: var(--primary);
-}
-
-.workout-hero-stats {
-    display: flex;
-    justify-content: space-around;
-    padding: var(--space-8) 0;
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: none;
-    margin: var(--space-8) 0 0;
-    opacity: 0.8;
-}
-.workout-stat {
-    text-align: center;
+    align-items: baseline;
+    gap: var(--space-10);
+    min-width: 0;
     flex: 1;
 }
-.workout-stat-value {
+.compact-hero__title {
     font-size: var(--font-md);
-    font-weight: 600;
-    color: var(--text-secondary);
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.workout-stat-label {
-    font-size: var(--font-2xs);
+.compact-hero__location {
+    font-size: var(--font-xs);
     color: var(--text-muted);
-    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
 }
-.workout-stat-divider {
-    width: 1px;
-    background: var(--border-medium);
+.compact-hero__location i {
+    color: var(--primary);
+}
+.compact-hero__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    flex-shrink: 0;
+}
+.compact-hero__overflow {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+}
+.compact-hero__overflow:active {
+    background: var(--bg-card-hover, rgba(255,255,255,0.06));
 }
 
-#workout-rest-stat.rest-active .workout-stat-value {
+/* Timer badge */
+.compact-hero__timer {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-10);
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.06);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.compact-hero__timer i {
+    font-size: var(--font-xs);
+    opacity: 0.7;
+}
+/* Rest timer state — pulsing accent color */
+.compact-hero__timer--resting {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    animation: timer-pulse 1s ease-in-out infinite;
+}
+
+/* Row 2: Progress bar + Stats */
+.compact-hero__row2 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    padding-top: var(--space-6);
+}
+.compact-hero__progress-bar {
+    flex: 1;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.compact-hero__progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    min-width: 0;
+}
+.compact-hero__stats {
+    display: flex;
+    gap: var(--space-6);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.compact-hero__stats strong {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+.stat-dot {
+    opacity: 0.3;
+}
+.compact-hero__rest {
+    cursor: pointer;
+}
+#workout-rest-stat.rest-active {
     color: var(--warning);
 }
-#workout-rest-stat.rest-ready .workout-stat-value {
+#workout-rest-stat.rest-ready {
     color: var(--success);
 }
 #workout-rest-stat.timer-active {
-    background: var(--primary-bg);
-    border-radius: var(--radius-sm);
-    padding: var(--space-4) var(--space-10);
-}
-#workout-rest-stat.timer-active .workout-stat-value {
-    font-size: var(--font-md);
-    font-weight: 600;
     color: var(--primary);
+    font-weight: 600;
     animation: timer-pulse 1.5s ease-in-out infinite;
 }
 #workout-rest-stat.timer-done {
-    background: var(--success-bg);
-    border-radius: var(--radius-sm);
-    padding: var(--space-4) var(--space-10);
-}
-#workout-rest-stat.timer-done .workout-stat-value {
-    font-size: var(--font-md);
     color: var(--success);
     font-weight: 700;
 }
@@ -100,79 +164,18 @@
     50% { opacity: 0.5; }
 }
 
-.workout-action-bar {
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    background: var(--bg-app);
-    padding: var(--space-24) var(--pad-card-x) var(--space-16);
-    border-top: none;
-    margin: 0 calc(-1 * var(--space-16));
-}
-.workout-action-bar::before {
-    content: '';
-    position: absolute;
-    top: -32px;
-    left: 0;
-    right: 0;
-    height: 32px;
-    background: linear-gradient(to bottom, transparent, var(--bg-app));
-    pointer-events: none;
-}
-.btn-full {
-    width: 100%;
-    min-height: 44px;
-    border-radius: var(--radius-sm);
-    font-weight: 700;
-    font-size: var(--font-base);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-8);
-}
-.btn-finish {
-    background: var(--success);
-    color: white;
-}
-.btn-finish:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-.workout-secondary-actions {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-32);
-    margin-top: var(--space-10);
-}
-.btn-icon-label {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-4);
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: var(--font-2xs);
-    cursor: pointer;
-    padding: var(--space-6) var(--space-12);
-}
-.btn-icon-label i {
-    font-size: var(--font-md);
-}
-.btn-icon-label:active {
-    color: var(--primary);
-}
-.btn-icon-label--danger:active {
-    color: var(--danger);
-}
-
-/* Workout overflow menu */
+/* ── Workout overflow menu ── */
 .workout-overflow-menu {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    margin-top: var(--space-8);
-    overflow: hidden;
+    position: absolute;
+    right: var(--pad-card-x);
+    top: 52px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: var(--space-4) 0;
+    z-index: var(--z-dropdown, 20);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    min-width: 200px;
 }
 .workout-overflow-menu.hidden {
     display: none;
@@ -180,41 +183,70 @@
 .workout-overflow-item {
     display: flex;
     align-items: center;
-    gap: var(--space-10);
+    gap: var(--space-12);
     width: 100%;
     padding: var(--space-12) var(--space-16);
-    background: none;
     border: none;
-    color: var(--text-main);
+    background: none;
+    color: var(--text-primary, var(--text-main));
     font-size: var(--font-sm);
     cursor: pointer;
     text-align: left;
 }
 .workout-overflow-item:active {
-    background: var(--bg-card-hi);
+    background: var(--bg-card-hover, var(--bg-card-hi));
+}
+.workout-overflow-item--danger {
+    color: var(--danger);
 }
 .workout-overflow-item i {
     width: var(--space-20);
     text-align: center;
     color: var(--text-muted);
 }
-.btn-more {
+.workout-overflow-item--danger i {
+    color: var(--danger);
+}
+.workout-overflow-divider {
+    height: 1px;
     background: var(--border-light);
-    color: var(--text-muted);
+    margin: var(--space-4) 0;
 }
 
-/* Location Indicator */
-.workout-location-indicator {
+/* ── Finish Workout footer ── */
+.workout-footer-bar {
+    position: sticky;
+    bottom: 60px; /* above bottom nav */
+    z-index: var(--z-sticky, 10);
+    padding: var(--space-16) var(--pad-card-x) var(--space-12);
+    background: linear-gradient(to bottom, transparent 0%, var(--bg-app) 40%);
+    pointer-events: none;
+}
+.workout-footer-bar > * {
+    pointer-events: auto;
+}
+.btn-finish-footer {
+    width: 100%;
+    min-height: 48px;
+    background: var(--success);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-md);
+    font-weight: 700;
+    cursor: pointer;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: var(--space-8);
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-    margin-bottom: var(--space-8);
-    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.3s, transform 0.15s;
 }
-.workout-location-indicator i {
-    color: var(--primary);
+.workout-footer--ready .btn-finish-footer {
+    opacity: 1;
+}
+.btn-finish-footer:active {
+    transform: scale(0.98);
 }
 
 /* Exercise List */
@@ -222,6 +254,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-12);
+    padding: var(--space-8) var(--pad-card-x);
+    padding-bottom: 80px; /* Room for sticky footer */
 }
 
 .exercise-card {
@@ -331,44 +365,79 @@
     border-top: 1px solid var(--border-subtle);
 }
 
-/* ── Inline toolbar (Swap | Equipment | More) ── */
-.exercise-inline-toolbar {
+/* ── Exercise header overflow button ── */
+.exercise-header-overflow {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    cursor: pointer;
     display: flex;
-    gap: var(--space-8);
-    padding: var(--space-8) 0;
-    border-bottom: 1px solid var(--border-subtle);
-    margin-bottom: var(--space-12);
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
 }
-.exercise-inline-toolbar .btn-text {
-    font-size: var(--font-xs);
+.exercise-header-overflow:active {
+    background: var(--bg-card-hover, rgba(255,255,255,0.06));
 }
 
 /* Overflow menu inside expanded card */
 .exercise-overflow-menu {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-8) 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: var(--space-4) 0;
     margin-bottom: var(--space-8);
 }
 .exercise-overflow-item {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
-    padding: var(--space-8) var(--space-12);
+    gap: var(--space-12);
+    width: 100%;
+    padding: var(--space-10) var(--space-16);
     border: none;
     background: none;
-    color: var(--text-main);
+    color: var(--text-primary, var(--text-main));
     font-size: var(--font-sm);
     cursor: pointer;
-    border-radius: var(--radius-xs);
     text-align: left;
 }
 .exercise-overflow-item:active {
-    background: var(--bg-card-hi);
+    background: var(--bg-card-hover, var(--bg-card-hi));
 }
 .exercise-overflow-item--danger {
     color: var(--danger);
+}
+
+/* ── Compact notes field ── */
+.notes-area {
+    min-height: 36px;
+    max-height: 36px;
+    padding: var(--space-8) var(--space-12);
+    font-size: var(--font-sm);
+    line-height: 1.4;
+    transition: min-height 0.3s, max-height 0.3s;
+    overflow: hidden;
+    resize: none;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary, var(--text-main));
+    width: 100%;
+    font-family: inherit;
+}
+.notes-area:focus {
+    min-height: 72px;
+    max-height: 120px;
+    overflow-y: auto;
+    border-color: var(--primary);
+    outline: none;
+}
+.notes-area::placeholder {
+    color: var(--text-muted);
 }
 
 /* Inline video section */
@@ -593,71 +662,184 @@
     background: var(--bg-card);
 }
 
-/* Last session label above set table */
-/* Per-set completion checkboxes */
-.set-complete-cell {
-    width: var(--icon-md);
-    text-align: center;
+/* ── Set table ── */
+.exercise-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: var(--space-4);
 }
-.set-check {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: var(--font-lg);
+.exercise-table thead th {
+    font-size: var(--font-xs);
+    font-weight: 500;
     color: var(--text-muted);
-    min-width: var(--tap);
-    min-height: var(--tap);
-    padding: var(--space-4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: var(--space-4) var(--space-8);
+    border-bottom: 1px solid var(--border-light);
+}
+.exercise-table tbody td {
+    padding: var(--space-6) var(--space-4);
+    vertical-align: middle;
+}
+
+/* Equalize reps and weight columns */
+.exercise-table td:nth-child(2),
+.exercise-table td:nth-child(3) {
+    width: 35%;
+}
+
+/* Set number */
+.set-number-cell {
+    width: 28px;
+    text-align: center;
+    font-size: var(--font-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+    padding: 0;
+}
+
+/* Set inputs */
+.exercise-table .set-input {
+    width: 100%;
+    text-align: center;
+    min-height: var(--input-height, 40px);
+    font-size: var(--font-md);
+    font-weight: 600;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    padding: var(--space-8);
+}
+.exercise-table .set-input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+.exercise-table .set-input::placeholder {
+    color: var(--text-muted);
+    font-weight: 400;
+    opacity: 0.6;
+}
+
+/* Weight input wrapper — plate calc overlays the right edge */
+.weight-input-wrapper {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+}
+.weight-input-wrapper .set-input {
+    width: 100%;
+    padding-right: 28px; /* room for plate calc icon */
+}
+.plate-calc-inline-btn {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.15s ease;
-}
-.set-check.checked {
-    color: var(--success);
-}
-.set-check:active {
-    transform: scale(1.2);
-}
-.set-row-completed {
-    background: var(--success-bg);
-}
-.set-row-completed .set-input {
-    opacity: 0.7;
-}
-.set-number-cell {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    font-weight: 600;
-    text-align: center;
-    width: var(--icon-sm);
-}
-
-/* Inline plate calculator button next to weight input */
-.set-weight-cell {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-}
-.plate-calc-inline-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    min-width: var(--tap-sm);
-    min-height: var(--tap-sm);
-    padding: var(--space-4);
-    cursor: pointer;
-    font-size: var(--font-xs);
     opacity: 0.5;
-    transition: opacity 0.15s;
-    flex-shrink: 0;
 }
 .plate-calc-inline-btn:active {
     opacity: 1;
     color: var(--primary);
 }
 
-/* set-type-btn removed — set types eliminated for simplicity */
+/* Completion check button */
+.set-complete-cell {
+    width: 32px;
+    text-align: center;
+}
+.set-check {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-md);
+    color: var(--text-muted);
+    padding: 0;
+}
+.set-check.checked {
+    color: var(--success);
+}
+.set-check:active {
+    transform: scale(0.9);
+}
+.set-check.just-checked {
+    animation: check-bounce 0.3s ease;
+}
+@keyframes check-bounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+/* Completed set row */
+.set-row-completed {
+    opacity: 0.7;
+}
+.set-row-completed .set-input {
+    color: var(--text-muted);
+    border-color: transparent;
+    background: var(--bg-card-hover, rgba(255, 255, 255, 0.03));
+}
+.set-row-completed .set-number-cell {
+    color: var(--success);
+}
+
+/* Just-completed flash animation */
+.set-row-just-completed {
+    animation: set-flash 0.6s ease;
+}
+@keyframes set-flash {
+    0% { background: rgba(29, 211, 176, 0.15); }
+    100% { background: transparent; }
+}
+
+/* Set controls (Add/Remove) */
+.set-controls {
+    display: flex;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-12);
+}
+.btn-set-control {
+    flex: 1;
+    padding: var(--space-10);
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-6);
+    background: none;
+}
+.btn-set-control--add:active {
+    background: rgba(29, 211, 176, 0.1);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+.btn-set-control--remove:active {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border-color: var(--danger);
+}
 
 /* Last session label above set table */
 .last-session-label {
@@ -840,9 +1022,6 @@
 }
 .exercise-sets {
     margin: var(--space-12) 0;
-}
-.exercise-table {
-    width: 100%;
 }
 .exercise-summary {
     font-size: var(--font-sm);

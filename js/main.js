@@ -36,8 +36,10 @@ import {
     saveActiveWorkoutAsTemplate,
     toggleWorkoutOverflowMenu,
     closeWorkoutOverflowMenu,
+    toggleWorkoutOverflow,
+    closeWorkoutOverflow,
+    updateWorkoutProgress,
     updateSet,
-    cycleSetType,
     addSet,
     deleteSet,
     addSetToExercise,
@@ -85,6 +87,7 @@ import {
     deleteCustomTemplate,
     toggleEquipmentFilter,
     clearEquipmentFilterCache,
+    clearSelectorCache,
 } from './core/ui/template-selection.js';
 
 // Workout history UI functionality
@@ -386,6 +389,9 @@ window.editHistoricalWorkout = editHistoricalWorkout;
 window.saveActiveWorkoutAsTemplate = saveActiveWorkoutAsTemplate;
 window.toggleWorkoutOverflowMenu = toggleWorkoutOverflowMenu;
 window.closeWorkoutOverflowMenu = closeWorkoutOverflowMenu;
+window.toggleWorkoutOverflow = toggleWorkoutOverflow;
+window.closeWorkoutOverflow = closeWorkoutOverflow;
+window.updateWorkoutProgress = updateWorkoutProgress;
 window.startWorkoutFromModal = function (workoutName) {
     // Close the modal (hide it, don't remove it from DOM)
     const modal = document.getElementById('template-selection-modal');
@@ -412,7 +418,7 @@ window.startWorkoutFromModal = function (workoutName) {
 window.toggleExerciseExpansion = toggleExerciseExpansion;
 window.replaceExercise = replaceExercise;
 window.updateSet = updateSet;
-window.cycleSetType = cycleSetType;
+// cycleSetType removed — set types not used in UI
 window.addSet = addSet;
 window.deleteSet = deleteSet;
 window.addSetToExercise = addSetToExercise;
@@ -584,108 +590,7 @@ window.copyTemplateToCustom = copyTemplateToCustom;
 window.deleteCustomTemplate = deleteCustomTemplate;
 window.toggleEquipmentFilter = toggleEquipmentFilter;
 window.clearEquipmentFilterCache = clearEquipmentFilterCache;
-window.showTemplatesByCategory = function (category) {
-    // Helper to derive category from workout name
-    function getWorkoutCategory(dayName) {
-        if (!dayName) return 'other';
-        const dayLower = dayName.toLowerCase();
-        if (dayLower.includes('push') || dayLower.includes('chest')) return 'push';
-        if (dayLower.includes('pull') || dayLower.includes('back')) return 'pull';
-        if (dayLower.includes('leg') || dayLower.includes('lower')) return 'legs';
-        if (dayLower.includes('cardio') || dayLower.includes('core')) return 'cardio';
-        return 'other';
-    }
-
-    // Filter workouts by category
-    const filteredWorkouts = window.AppState.workoutPlans.filter((workout) => {
-        // Check explicit category field first, then derive from name
-        const workoutCategory =
-            workout.category?.toLowerCase() ||
-            workout.type?.toLowerCase() ||
-            getWorkoutCategory(workout.day || workout.name || '');
-        return workoutCategory === category.toLowerCase();
-    });
-
-    const categoryIcon = getCategoryIcon(category);
-
-    // Use the existing modal in HTML
-    const modal = document.getElementById('template-selection-modal');
-    const titleEl = document.getElementById('template-modal-title');
-    const gridEl = document.getElementById('template-selection-grid');
-
-    if (!modal || !gridEl) return;
-
-    // Update title
-    const categoryDisplay = category.charAt(0).toUpperCase() + category.slice(1);
-    if (titleEl) {
-        titleEl.textContent = `${categoryDisplay} Workouts`;
-    }
-
-    // Clear and populate grid with workout-list-item style cards
-    gridEl.innerHTML = '';
-    gridEl.className = 'workout-list-container';
-
-    if (filteredWorkouts.length === 0) {
-        gridEl.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
-                <div class="empty-state-title">No ${categoryDisplay} Workouts</div>
-                <div class="empty-state-description">Create a workout to get started.</div>
-            </div>
-        `;
-    } else {
-        filteredWorkouts.forEach((workout) => {
-            const workoutName = workout.name || workout.day || 'Unnamed Workout';
-
-            // Normalize exercises to array format
-            let exercisesArray = [];
-            if (workout.exercises) {
-                if (Array.isArray(workout.exercises)) {
-                    exercisesArray = workout.exercises;
-                } else if (typeof workout.exercises === 'object') {
-                    const keys = Object.keys(workout.exercises).sort();
-                    exercisesArray = keys.map((key) => workout.exercises[key]).filter((ex) => ex);
-                }
-            }
-            const exerciseCount = exercisesArray.length;
-
-            // Create exercise summary
-            let exerciseSummary = 'No exercises';
-            if (exerciseCount > 0) {
-                const names = exercisesArray.slice(0, 3).map((ex) => ex.name || ex.machine);
-                exerciseSummary = names.join(', ');
-                if (exerciseCount > 3) {
-                    exerciseSummary += ` +${exerciseCount - 3} more`;
-                }
-            }
-
-            const card = document.createElement('div');
-            card.className = 'workout-list-item';
-            card.innerHTML = `
-                <div class="workout-item-icon">
-                    <i class="${categoryIcon}"></i>
-                </div>
-                <div class="workout-item-content">
-                    <div class="workout-item-name">${escapeHtml(workoutName)}</div>
-                    <div class="workout-item-meta">${exerciseCount} exercises</div>
-                    <div class="workout-item-exercises">${escapeHtml(exerciseSummary)}</div>
-                </div>
-                <button class="btn btn-primary btn-sm start-workout-btn">
-                    <i class="fas fa-play"></i> Start
-                </button>
-            `;
-
-            card.addEventListener('click', () => {
-                window.startWorkoutFromModal(workoutName);
-            });
-
-            gridEl.appendChild(card);
-        });
-    }
-
-    // Show the modal
-    openModal(modal);
-};
+window.clearSelectorCache = clearSelectorCache;
 
 window.closeTemplateModal = function () {
     const modal = document.getElementById('template-selection-modal');

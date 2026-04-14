@@ -542,9 +542,20 @@ export function createExerciseCard(exercise, index) {
     headerInfo.appendChild(meta);
     header.appendChild(headerInfo);
 
-    // Right side: count + chevron
+    // Right side: overflow + count + chevron
     const status = document.createElement('div');
     status.className = 'exercise-card-status';
+
+    // Overflow button (⋯) — opens exercise overflow menu
+    const overflowBtn = document.createElement('button');
+    overflowBtn.className = 'exercise-header-overflow';
+    overflowBtn.innerHTML = '<i class="fas fa-ellipsis-h"></i>';
+    overflowBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Don't trigger expand/collapse
+        const menu = document.getElementById(`exercise-overflow-${index}`);
+        if (menu) menu.classList.toggle('hidden');
+    });
+    status.appendChild(overflowBtn);
 
     // SVG mini progress ring
     const category = getWorkoutCategory(AppState.currentWorkout?.workoutType || AppState.savedData?.workoutType || '');
@@ -743,35 +754,46 @@ function collapseExercise(index) {
 function buildInlineToolbar(exercise, index, exerciseName) {
     const currentGroup = exercise.group || AppState.savedData.exercises?.[`exercise_${index}`]?.group;
     const hasNext = (index + 1) < (AppState.currentWorkout?.exercises?.length || 0);
+    const unit = AppState.exerciseUnits[index] || AppState.globalUnit;
+    const otherUnit = unit === 'lbs' ? 'kg' : 'lbs';
 
-    let overflowItems = '';
+    let items = '';
+
+    // Primary actions (previously top-level toolbar buttons)
+    items += `<button class="exercise-overflow-item" onclick="replaceExercise(${index})"><i class="fas fa-exchange-alt"></i> Swap Exercise</button>`;
+    items += `<button class="exercise-overflow-item" onclick="changeExerciseEquipment(${index})"><i class="fas fa-sync-alt"></i> Change Equipment</button>`;
+
+    // History/progress (previously always-visible buttons in generateExerciseTable)
+    items += `<button class="exercise-overflow-item" data-action="loadExerciseHistory" data-exercise="${escapeAttr(exerciseName)}" data-index="${index}"><i class="fas fa-history"></i> Show Last Workout</button>`;
+    items += `<button class="exercise-overflow-item" data-action="toggleInlineProgress" data-exercise="${escapeAttr(exerciseName)}" data-equipment="${escapeAttr(exercise.equipment || '')}" data-index="${index}"><i class="fas fa-chart-line"></i> View Progress</button>`;
+
+    // Unit toggle (previously always-visible toggle)
+    items += `<button class="exercise-overflow-item" onclick="setExerciseUnit(${index}, '${otherUnit}')"><i class="fas fa-weight"></i> Switch to ${otherUnit}</button>`;
 
     // Edit defaults
-    overflowItems += `<button class="exercise-overflow-item" onclick="editExerciseDefaults('${escapeAttr(exerciseName)}')"><i class="fas fa-pen"></i> Edit Defaults</button>`;
+    items += `<button class="exercise-overflow-item" onclick="editExerciseDefaults('${escapeAttr(exerciseName)}')"><i class="fas fa-pen"></i> Edit Defaults</button>`;
 
     // Superset/Ungroup
     if (currentGroup) {
-        overflowItems += `<button class="exercise-overflow-item" onclick="ungroupExerciseFromWorkout(${index})"><i class="fas fa-unlink"></i> Ungroup</button>`;
+        items += `<button class="exercise-overflow-item" onclick="ungroupExerciseFromWorkout(${index})"><i class="fas fa-unlink"></i> Ungroup</button>`;
     } else if (hasNext) {
-        overflowItems += `<button class="exercise-overflow-item" onclick="supersetWithNext(${index})"><i class="fas fa-link"></i> Superset</button>`;
+        items += `<button class="exercise-overflow-item" onclick="supersetWithNext(${index})"><i class="fas fa-link"></i> Superset</button>`;
     }
 
     // Video
-    overflowItems += `<button class="exercise-overflow-item" id="show-video-btn-${index}" onclick="showExerciseVideoAndToggleButton(${exercise.video ? `'${escapeAttr(exercise.video)}'` : 'null'}, '${escapeAttr(exerciseName)}', ${index})"><i class="fas fa-play-circle"></i> Form Video</button>`;
-    overflowItems += `<button class="exercise-overflow-item hidden" id="hide-video-btn-${index}" onclick="hideExerciseVideoAndToggleButton(${index})"><i class="fas fa-times"></i> Hide Video</button>`;
+    items += `<button class="exercise-overflow-item" id="show-video-btn-${index}" onclick="showExerciseVideoAndToggleButton(${exercise.video ? `'${escapeAttr(exercise.video)}'` : 'null'}, '${escapeAttr(exerciseName)}', ${index})"><i class="fas fa-play-circle"></i> Form Video</button>`;
+    items += `<button class="exercise-overflow-item hidden" id="hide-video-btn-${index}" onclick="hideExerciseVideoAndToggleButton(${index})"><i class="fas fa-times"></i> Hide Video</button>`;
 
     // Delete
-    overflowItems += `<button class="exercise-overflow-item exercise-overflow-item--danger" onclick="deleteExerciseFromWorkout(${index})"><i class="fas fa-trash-alt"></i> Delete</button>`;
+    items += `<button class="exercise-overflow-item exercise-overflow-item--danger" onclick="deleteExerciseFromWorkout(${index})"><i class="fas fa-trash-alt"></i> Delete</button>`;
 
+    // No visible toolbar row — only the hidden overflow menu + video section
     return `
-        <div class="exercise-inline-toolbar">
-            <button class="btn-text btn-small" onclick="replaceExercise(${index})"><i class="fas fa-exchange-alt"></i> Swap</button>
-            <button class="btn-text btn-small" onclick="changeExerciseEquipment(${index})"><i class="fas fa-sync-alt"></i> Equipment</button>
-            <button class="btn-text btn-small exercise-more-toggle" onclick="document.getElementById('exercise-overflow-${index}').classList.toggle('hidden')"><i class="fas fa-ellipsis-h"></i> More</button>
-        </div>
         <div id="exercise-overflow-${index}" class="exercise-overflow-menu hidden">
-            ${overflowItems}
+            ${items}
         </div>
+        <div id="exercise-history-${index}" class="exercise-history-display hidden"></div>
+        <div id="exercise-progress-${index}" class="exercise-progress-display hidden"></div>
         <div id="exercise-video-section-inline-${index}" class="video-section hidden">
             <iframe id="exercise-video-iframe-inline-${index}" class="exercise-video-iframe" allow="autoplay; encrypted-media" allowfullscreen></iframe>
         </div>
@@ -929,45 +951,6 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
     }
 
     let html = `
-        <!-- Exercise History Reference -->
-        <div class="exercise-history-section">
-            <div class="exercise-actions-bar">
-                <button class="btn btn-secondary btn-small" data-action="loadExerciseHistory" data-exercise="${escapeAttr(modalExerciseName)}" data-index="${exerciseIndex}">
-                    <i class="fas fa-history"></i> Show Last Workout
-                </button>
-                <button class="btn btn-secondary btn-small" data-action="toggleInlineProgress" data-exercise="${escapeAttr(modalExerciseName)}" data-equipment="${escapeAttr(exercise.equipment || '')}" data-index="${exerciseIndex}">
-                    <i class="fas fa-chart-line"></i> View Progress
-                </button>
-                <span id="video-source-label-${exerciseIndex}" class="video-source-label hidden"></span>
-            </div>
-            <div id="exercise-history-${exerciseIndex}" class="exercise-history-display hidden"></div>
-            <div id="exercise-progress-${exerciseIndex}" class="exercise-progress-display hidden"></div>
-        </div>
-
-        <!-- Exercise Unit Toggle -->
-        <div class="exercise-unit-toggle">
-            <div class="unit-toggle">
-                <button class="unit-btn ${unit === 'lbs' ? 'active' : ''}" data-unit="lbs">lbs</button>
-                <button class="unit-btn ${unit === 'kg' ? 'active' : ''}" data-unit="kg">kg</button>
-            </div>
-        </div>
-
-        <!-- In-Modal Rest Timer -->
-        <div id="modal-rest-timer-${exerciseIndex}" class="modal-rest-timer hidden">
-            <div class="modal-rest-content">
-                <div class="modal-rest-exercise">Rest Period</div>
-                <div class="modal-rest-display">${Config.DEFAULT_REST_TIMER_SECONDS}s</div>
-                <div class="modal-rest-controls">
-                    <button class="btn btn-small" onclick="toggleModalRestTimer(${exerciseIndex})" aria-label="Pause timer">
-                        <i class="fas fa-pause"></i>
-                    </button>
-                    <button class="btn btn-small" onclick="skipModalRestTimer(${exerciseIndex})" aria-label="Skip timer">
-                        <i class="fas fa-forward"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
         ${lastSessionLabel ? `<div class="last-session-label"><i class="fas fa-history"></i> Last session: ${lastSessionLabel}</div>` : ''}
 
         <table class="exercise-table">
@@ -1015,16 +998,18 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
                        onchange="updateSet(${exerciseIndex}, ${i}, 'reps', this.value)">
             </td>
             <td class="set-weight-cell">
-                <input type="number" class="set-input" inputmode="decimal"
-                       placeholder="${weightPlaceholder}"
-                       value="${displayWeight}"
-                       onchange="updateSet(${exerciseIndex}, ${i}, 'weight', this.value)">
-                <button class="plate-calc-inline-btn"
-                    onclick="openPlateCalcPopover(${exerciseIndex})"
-                    title="Plate calculator"
-                    aria-label="Calculate plates">
-                    <i class="fas fa-calculator"></i>
-                </button>
+                <div class="weight-input-wrapper">
+                    <input type="number" class="set-input" inputmode="decimal"
+                           placeholder="${weightPlaceholder}"
+                           value="${displayWeight}"
+                           onchange="updateSet(${exerciseIndex}, ${i}, 'weight', this.value)">
+                    <button class="plate-calc-inline-btn"
+                        onclick="openPlateCalcPopover(${exerciseIndex})"
+                        title="Plate calculator"
+                        aria-label="Calculate plates">
+                        <i class="fas fa-calculator"></i>
+                    </button>
+                </div>
             </td>
             <td class="set-complete-cell">
                 <button class="set-check ${isSetDone ? 'checked' : ''}"
@@ -1042,10 +1027,10 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
         </table>
 
         <div class="set-controls">
-            <button class="btn btn-secondary btn-small" onclick="removeSetFromExercise(${exerciseIndex})" title="Remove last set">
-                <i class="fas fa-minus"></i> Remove Set
+            <button class="btn-set-control btn-set-control--remove" onclick="removeSetFromExercise(${exerciseIndex})" title="Remove last set">
+                <i class="fas fa-minus"></i> Remove
             </button>
-            <button class="btn btn-primary btn-small" onclick="addSetToExercise(${exerciseIndex})" title="Add new set">
+            <button class="btn-set-control btn-set-control--add" onclick="addSetToExercise(${exerciseIndex})" title="Add new set">
                 <i class="fas fa-plus"></i> Add Set
             </button>
         </div>
@@ -1339,39 +1324,7 @@ async function checkSetForPR(exerciseIndex, setIndex) {
 /**
  * Cycle set type: working → warmup → dropset → failure → working
  */
-export function cycleSetType(exerciseIndex, setIndex) {
-    const exerciseKey = `exercise_${exerciseIndex}`;
-    const sets = AppState.savedData.exercises?.[exerciseKey]?.sets;
-    if (!sets || !sets[setIndex]) return;
-
-    const types = ['working', 'warmup'];
-    const current = sets[setIndex].type || 'working';
-    const nextIdx = (types.indexOf(current) + 1) % types.length;
-    sets[setIndex].type = types[nextIdx];
-
-    // Re-render the exercise table in the appropriate container
-    const exercise = AppState.currentWorkout.exercises[exerciseIndex];
-    const unit = AppState.exerciseUnits[exerciseIndex] || AppState.globalUnit;
-    const content = getExerciseContentContainer(exerciseIndex);
-    if (content && exercise) {
-        generateExerciseTable(exercise, exerciseIndex, unit).then(html => {
-            if (expandedExerciseIndex === exerciseIndex) {
-                // Preserve the toolbar when re-rendering inline
-                const toolbar = content.querySelector('.exercise-inline-toolbar');
-                const overflow = content.querySelector('.exercise-overflow-menu');
-                const videoSection = content.querySelector('.video-section');
-                const toolbarHtml = (toolbar ? toolbar.outerHTML : '') +
-                    (overflow ? overflow.outerHTML : '') +
-                    (videoSection ? videoSection.outerHTML : '');
-                content.innerHTML = toolbarHtml + html;
-            } else {
-                content.innerHTML = html;
-            }
-        });
-    }
-
-    debouncedSaveWorkoutData(AppState);
-}
+// cycleSetType removed — set types (warmup/dropset/failure) are not used in the UI
 
 export async function updateSet(exerciseIndex, setIndex, field, value) {
     if (!AppState.currentWorkout || !AppState.savedData.exercises) {
@@ -1540,6 +1493,9 @@ export function toggleSetComplete(exerciseIndex, setIndex) {
     } else {
         AppState.savedData.exercises[exerciseKey].completed = false;
     }
+
+    // Update compact hero progress
+    if (window.updateWorkoutProgress) window.updateWorkoutProgress();
 }
 
 export function addSet(exerciseIndex) {
@@ -1581,6 +1537,9 @@ export function addSetToExercise(exerciseIndex) {
 
     // Restore timer after re-render
     restoreActiveTimerState(exerciseIndex);
+
+    // Update compact hero progress
+    if (window.updateWorkoutProgress) window.updateWorkoutProgress();
 }
 
 // Remove last set from exercise (refreshes inline card or modal)
@@ -1618,6 +1577,9 @@ export function removeSetFromExercise(exerciseIndex) {
 
     // Restore timer after re-render
     restoreActiveTimerState(exerciseIndex);
+
+    // Update compact hero progress
+    if (window.updateWorkoutProgress) window.updateWorkoutProgress();
 }
 
 /**
@@ -1710,6 +1672,9 @@ export function markExerciseComplete(exerciseIndex) {
     // Collapse the inline card and re-sort completed exercises to bottom
     collapseExercise(exerciseIndex);
     reorderExercisesByCompletion();
+
+    // Update compact hero progress
+    if (window.updateWorkoutProgress) window.updateWorkoutProgress();
 }
 
 function markSetComplete(exerciseIndex, setIndex) {
