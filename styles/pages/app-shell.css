@@ -97,11 +97,12 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: var(--z-modal);
+    z-index: 100; /* Below bottom-nav (200) so nav stays visible */
     background: var(--bg-app);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); /* Room for bottom nav */
 }
 .full-page-section.hidden {
     display: none;

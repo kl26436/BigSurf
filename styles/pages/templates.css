@@ -468,7 +468,7 @@
 #workout-selector .section-header-row {
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: var(--z-sticky, 10);
     background: var(--bg-app);
     padding-top: calc(16px + env(safe-area-inset-top, 0px));
 }
@@ -520,6 +520,10 @@
     flex-direction: column;
     gap: var(--space-8);
     padding-top: var(--space-8);
+    transition: opacity var(--anim-fast);
+}
+.template-list.filtering {
+    opacity: 0.5;
 }
 
 /* ── Template row cards ── */

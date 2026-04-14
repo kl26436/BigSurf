@@ -306,6 +306,8 @@ export function openPlateCalcPopover(exerciseIndex) {
 
     const result = targetWeight > 0 ? calculatePlates(targetWeight, barWeight, availPlates) : null;
 
+    const barPresets = isKg ? [20, 15, 10, 7] : [45, 35, 30, 25, 15];
+
     popover.innerHTML = `
         <div class="plate-calc-popover-header">
             <h3>Plate Calculator</h3>
@@ -316,6 +318,11 @@ export function openPlateCalcPopover(exerciseIndex) {
                 <input type="number" id="popover-plate-target" class="form-input"
                        inputmode="decimal" value="${targetWeight || ''}" placeholder="Weight">
                 <span class="plate-calc-popover-unit">${unit}</span>
+            </div>
+            <div class="popover-bar-row">
+                <span class="popover-bar-label">Bar:</span>
+                ${barPresets.map(v => `<button class="popover-bar-btn ${v === barWeight ? 'active' : ''}" data-bar="${v}">${v}</button>`).join('')}
+                <input type="number" id="popover-bar-custom" class="popover-bar-input" inputmode="decimal" placeholder="Other" style="width:50px;">
             </div>
             <div id="popover-plate-result">
                 ${result && !result.error ? `
@@ -332,33 +339,63 @@ export function openPlateCalcPopover(exerciseIndex) {
 
     document.body.appendChild(popover);
 
-    // Bind input for live recalculation
+    // Mutable bar weight for recalculation
+    let currentBar = barWeight;
+
+    function recalcPopover() {
+        const val = parseFloat(input?.value);
+        const container = document.getElementById('popover-plate-result');
+        if (!container) return;
+        if (!val || isNaN(val)) {
+            container.innerHTML = '<div class="plate-calc-empty">Enter weight</div>';
+            return;
+        }
+        const r = calculatePlates(val, currentBar, availPlates);
+        if (r.error) {
+            container.innerHTML = `<div class="plate-calc-error">${r.error}</div>`;
+            return;
+        }
+        container.innerHTML = `
+            ${renderBarbellDiagram(r.plates)}
+            <div class="plate-calc-per-side">
+                Per side: ${r.plates.length ? r.plates.join(' + ') + ' ' + unit : 'Just the bar'}
+            </div>
+            <div class="plate-calc-bar-label">Bar: ${currentBar} ${unit}</div>
+            ${r.remainder > 0 ? `<div class="plate-calc-remainder">${r.remainder} ${unit} remainder</div>` : ''}
+        `;
+    }
+
+    // Weight input
     const input = document.getElementById('popover-plate-target');
     if (input) {
-        input.addEventListener('input', () => {
-            const val = parseFloat(input.value);
-            const container = document.getElementById('popover-plate-result');
-            if (!container) return;
-            if (!val || isNaN(val)) {
-                container.innerHTML = '<div class="plate-calc-empty">Enter weight</div>';
-                return;
-            }
-            const r = calculatePlates(val, barWeight, availPlates);
-            if (r.error) {
-                container.innerHTML = `<div class="plate-calc-error">${r.error}</div>`;
-                return;
-            }
-            container.innerHTML = `
-                ${renderBarbellDiagram(r.plates)}
-                <div class="plate-calc-per-side">
-                    Per side: ${r.plates.length ? r.plates.join(' + ') + ' ' + unit : 'Just the bar'}
-                </div>
-                <div class="plate-calc-bar-label">Bar: ${barWeight} ${unit}</div>
-                ${r.remainder > 0 ? `<div class="plate-calc-remainder">${r.remainder} ${unit} remainder</div>` : ''}
-            `;
-        });
+        input.addEventListener('input', recalcPopover);
         input.focus();
         input.select();
+    }
+
+    // Bar weight buttons
+    popover.querySelectorAll('.popover-bar-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            popover.querySelectorAll('.popover-bar-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentBar = parseFloat(btn.dataset.bar);
+            const customInput = document.getElementById('popover-bar-custom');
+            if (customInput) customInput.value = '';
+            recalcPopover();
+        });
+    });
+
+    // Custom bar weight input
+    const customBar = document.getElementById('popover-bar-custom');
+    if (customBar) {
+        customBar.addEventListener('input', () => {
+            const val = parseFloat(customBar.value);
+            if (!isNaN(val) && val > 0) {
+                currentBar = val;
+                popover.querySelectorAll('.popover-bar-btn').forEach(b => b.classList.remove('active'));
+            }
+            recalcPopover();
+        });
     }
 }
 

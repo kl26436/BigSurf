@@ -970,9 +970,8 @@ export function getWorkoutHistory(appState) {
         setupCalendarClickEvents() {
             // Wait a bit for the calendar to render, then add click events
             setTimeout(() => {
-                document.querySelectorAll('.calendar-day').forEach((day) => {
-                    const hasWorkout = day.querySelector('.workout-icon');
-                    if (hasWorkout) {
+                document.querySelectorAll('.calendar-day.has-workout').forEach((day) => {
+                    if (day) {
                         day.addEventListener('click', (event) => {
                             event.preventDefault();
                             const dateStr = day.getAttribute('data-date');
