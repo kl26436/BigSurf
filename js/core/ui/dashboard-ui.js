@@ -9,16 +9,9 @@ import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { Config, CATEGORY_COLORS, getCategoryIcon } from '../utils/config.js';
-import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
 import { TrainingInsights } from '../features/training-insights.js';
-import { detectLocation, getSessionLocation } from '../features/location-service.js';
-import {
-    getEquipmentAtLocation,
-    getExercisesAtLocation,
-    checkTemplateCompatibility,
-} from '../features/equipment-planner.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 import { updateSetting } from './settings-ui.js';
 
@@ -239,44 +232,6 @@ async function checkForInProgressWorkout() {
 }
 
 
-/**
- * Start live rest timer updates on dashboard
- */
-function startDashboardRestTimer() {
-    const updateRestDisplay = () => {
-        const statRest = document.getElementById('resume-stat-rest');
-        if (!statRest) {
-            stopDashboardRestTimer();
-            return;
-        }
-
-        if (AppState.activeRestTimer && !AppState.activeRestTimer.completed) {
-            const { startTime, pausedTime, duration, isPaused } = AppState.activeRestTimer;
-            const elapsed = isPaused ? 0 : Math.floor((Date.now() - startTime - pausedTime) / 1000);
-            const timeLeft = Math.max(0, duration - elapsed);
-
-            if (timeLeft > 0) {
-                statRest.textContent = `${timeLeft}s`;
-            } else {
-                statRest.textContent = 'Go!';
-                AppState.activeRestTimer.completed = true;
-            }
-        } else if (AppState.activeRestTimer?.completed) {
-            statRest.textContent = 'Go!';
-        } else {
-            statRest.textContent = '--';
-        }
-    };
-
-    registerRestDisplayUpdater('dashboard', updateRestDisplay);
-}
-
-/**
- * Stop dashboard rest timer updates
- */
-function stopDashboardRestTimer() {
-    unregisterRestDisplayUpdater('dashboard');
-}
 
 /**
  * Render dashboard content - Unified stats page layout
@@ -382,19 +337,6 @@ async function renderDashboard() {
     }
 }
 
-/**
- * Get today's completed workout (if any)
- */
-async function getTodaysCompletedWorkout() {
-    try {
-        const { AppState } = await import('../utils/app-state.js');
-        const { loadTodaysWorkout } = await import('../data/data-manager.js');
-        const workout = await loadTodaysWorkout(AppState);
-        return workout && workout.completedAt ? workout : null;
-    } catch {
-        return null;
-    }
-}
 
 // ===================================================================
 // PHASE 2 REVISED: METRICS-FIRST DASHBOARD COMPONENTS
@@ -413,7 +355,7 @@ function renderGreetingHeader() {
                 <h2>${greeting}</h2>
                 <span>${dateStr}</span>
             </div>
-            <div class="dash-greeting__avatar" onclick="showSettings()"></div>
+            <div class="dash-greeting__avatar" onclick="navigateTo('settings')"></div>
         </div>
     `;
 }
@@ -644,7 +586,6 @@ function renderSingleInsight(insight) {
     `;
 }
 
-// ── DEAD CODE REMOVED ──
 /**
  * Dismiss the insight for the rest of the day.
  */
@@ -713,308 +654,3 @@ async function getVolumeChangePercent() {
     }
 }
 
-
-// ===================================================================
-// IN-PROGRESS WORKOUT CARD
-// ===================================================================
-
-/**
- * Get in-progress workout data for display
- */
-async function getInProgressWorkoutData() {
-    try {
-        const { loadTodaysWorkout } = await import('../data/data-manager.js');
-
-        // Check today first
-        let workoutData = await loadTodaysWorkout(AppState);
-
-        // If no incomplete workout today, check yesterday
-        if (!workoutData || workoutData.completedAt || workoutData.cancelledAt) {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = getDateString(yesterday);
-
-            const { getDoc, doc, db } = await import('../data/firebase-config.js');
-            const yesterdayRef = doc(db, 'users', AppState.currentUser.uid, 'workouts', yesterdayStr);
-            const yesterdaySnap = await getDoc(yesterdayRef);
-
-            if (yesterdaySnap.exists()) {
-                const yesterdayData = { id: yesterdaySnap.id, ...yesterdaySnap.data() };
-                if (!yesterdayData.completedAt && !yesterdayData.cancelledAt) {
-                    workoutData = yesterdayData;
-                }
-            }
-        }
-
-        if (workoutData && !workoutData.completedAt && !workoutData.cancelledAt) {
-            // Check if too old (> 3 hours)
-            const workoutStart = new Date(workoutData.startedAt);
-            const hoursSinceStart = (Date.now() - workoutStart.getTime()) / (1000 * 60 * 60);
-
-            if (hoursSinceStart > Config.ABANDONED_WORKOUT_TIMEOUT_HOURS) {
-                return null; // Will be auto-handled by checkForInProgressWorkout
-            }
-
-            // Calculate sets info
-            let completedSets = 0;
-            let totalSets = 0;
-
-            const exerciseSource = workoutData.originalWorkout?.exercises || [];
-            exerciseSource.forEach((exercise) => {
-                totalSets += exercise.sets || 3;
-            });
-
-            if (workoutData.exercises) {
-                Object.values(workoutData.exercises).forEach((exercise) => {
-                    if (exercise.sets) {
-                        completedSets += exercise.sets.filter((set) => set.reps && set.weight).length;
-                    }
-                });
-            }
-
-            return {
-                ...workoutData,
-                completedSets,
-                totalSets,
-                minutesElapsed: Math.floor(hoursSinceStart * 60),
-            };
-        }
-
-        return null;
-    } catch (error) {
-        console.error('Error getting in-progress workout:', error);
-        return null;
-    }
-}
-
-/**
- * Render in-progress workout section with header and card
- */
-function renderInProgressSection(workout) {
-    const percentage = workout.totalSets > 0 ? Math.round((workout.completedSets / workout.totalSets) * 100) : 0;
-
-    const timeDisplay =
-        workout.minutesElapsed < 60 ? `${workout.minutesElapsed} min` : `${(workout.minutesElapsed / 60).toFixed(1)}h`;
-
-    const workoutName = workout.workoutType || 'Workout';
-
-    return `
-        <div class="stats-section-header">
-            <span class="stats-section-title">In Progress</span>
-        </div>
-
-        <div class="in-progress-card" onclick="continueInProgressWorkout()">
-            <div class="in-progress-header">
-                <div class="in-progress-icon">
-                    <i class="fas fa-play-circle"></i>
-                </div>
-                <div class="in-progress-info">
-                    <div class="in-progress-label">IN PROGRESS</div>
-                    <div class="in-progress-name">${escapeHtml(workoutName)}</div>
-                </div>
-                <div class="in-progress-arrow">
-                    <i class="fas fa-chevron-right"></i>
-                </div>
-            </div>
-            <div class="in-progress-stats">
-                <div class="progress-stat">
-                    <i class="fas fa-check-circle"></i>
-                    <span>${workout.completedSets}/${workout.totalSets} sets</span>
-                </div>
-                <div class="progress-stat">
-                    <i class="fas fa-clock"></i>
-                    <span>${timeDisplay}</span>
-                </div>
-            </div>
-            <div class="in-progress-bar-wrap">
-                <div class="in-progress-bar" style="width: ${percentage}%"></div>
-            </div>
-        </div>
-    `;
-}
-
-
-
-
-
-// ===================================================================
-// HELPERS
-// ===================================================================
-
-function formatRelativeDateDash(dateStr) {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const dateOnly = getDateString(date);
-    const todayOnly = getDateString(today);
-    const yesterdayOnly = getDateString(yesterday);
-
-    if (dateOnly === todayOnly) return 'Today';
-    if (dateOnly === yesterdayOnly) return 'Yesterday';
-
-    const diffDays = Math.floor((today - date) / (1000 * 60 * 60 * 24));
-    if (diffDays < 7) return `${diffDays} days ago`;
-
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-/**
- * Repeat last workout
- */
-export async function repeatLastWorkout(workoutId) {
-    if (!workoutId) {
-        const lastWorkout = await StatsTracker.getLastWorkout();
-        if (!lastWorkout) {
-            showNotification('No workout history found', 'warning');
-            return;
-        }
-        workoutId = lastWorkout.id;
-    }
-
-    // Use existing showWorkoutDetail and repeat functionality
-    const { showWorkoutDetail } = await import('./workout-history-ui.js');
-    showWorkoutDetail(workoutId);
-
-    // Trigger repeat button after modal opens
-    setTimeout(() => {
-        const repeatBtn = document.querySelector('[onclick^="repeatWorkout"]');
-        if (repeatBtn) {
-            repeatBtn.click();
-        }
-    }, 500);
-}
-
-// ===================================================================
-// EQUIPMENT BADGES ON SUGGESTED WORKOUTS (Phase 16.1)
-// ===================================================================
-
-/**
- * Async-detect location and add equipment availability badges to today's suggested workout cards.
- * Non-blocking — cards render immediately, badges appear when GPS resolves.
- */
-async function appendEquipmentBadges(container, suggestedWorkouts, wm) {
-    try {
-        const [savedLocations, savedEquipment] = await Promise.all([
-            wm.getUserLocations(),
-            wm.getUserEquipment(),
-        ]);
-
-        if (!savedLocations.length || !savedEquipment.length) return;
-
-        // Detect current gym
-        let locationName = getSessionLocation();
-        if (!locationName) {
-            const result = await detectLocation(savedLocations);
-            if (result.location) {
-                locationName = result.location.name;
-            }
-        }
-        if (!locationName) return;
-
-        const locationEquipment = getEquipmentAtLocation(savedEquipment, locationName);
-        if (locationEquipment.length === 0) return;
-
-        const availableExercises = getExercisesAtLocation(locationEquipment);
-        if (availableExercises.size === 0) return;
-
-        // Check each suggested workout and inject a badge
-        for (const workout of suggestedWorkouts) {
-            const compatibility = checkTemplateCompatibility(workout, availableExercises);
-            const templateId = workout.id || workout.name;
-
-            // Find the card in the DOM by template ID
-            const card = container.querySelector(
-                `[data-action="startSuggestedWorkout"][data-template-id="${CSS.escape(templateId)}"]`
-            );
-            if (!card) continue;
-
-            // Find the meta row to append the badge (Phase 2: hero card uses .hero-workout-meta)
-            const metaRow = card.querySelector('.hero-workout-meta') || card.querySelector('.suggested-meta-row');
-            const compactMeta = card.querySelector('.hero-remaining-name');
-
-            if (compatibility.compatible) {
-                if (metaRow) {
-                    metaRow.insertAdjacentHTML('beforeend',
-                        `<span class="equipment-badge-ok"><i class="fas fa-check-circle"></i> ${escapeHtml(locationName)}</span>`
-                    );
-                } else if (compactMeta) {
-                    compactMeta.insertAdjacentHTML('beforeend',
-                        ` · <span class="equipment-badge-ok"><i class="fas fa-check-circle"></i> ${escapeHtml(locationName)}</span>`
-                    );
-                }
-            } else if (compatibility.missing > 0) {
-                const msg = `${compatibility.missing} exercise${compatibility.missing !== 1 ? 's' : ''} need other equipment`;
-                if (metaRow) {
-                    metaRow.insertAdjacentHTML('beforeend',
-                        `<span class="equipment-badge-warn"><i class="fas fa-exclamation-triangle"></i> ${msg}</span>`
-                    );
-                } else if (compactMeta) {
-                    compactMeta.insertAdjacentHTML('beforeend',
-                        ` · <span class="equipment-badge-warn"><i class="fas fa-exclamation-triangle"></i> ${msg}</span>`
-                    );
-                }
-            }
-        }
-    } catch (error) {
-        // Non-critical — cards work fine without badges
-        console.error('❌ Error adding equipment badges:', error);
-    }
-}
-
-// ===================================================================
-// SUGGESTED WORKOUTS FOR TODAY
-// ===================================================================
-
-/**
- * Get workouts suggested for today's day of the week
- */
-async function getSuggestedWorkoutsForToday() {
-    const today = new Date();
-    const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-
-    try {
-        // Load all user templates (this already filters out hidden templates)
-        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-        const workoutManager = new FirebaseWorkoutManager(AppState);
-        const allTemplates = await workoutManager.getUserWorkoutTemplates();
-
-        // Filter to templates with today in suggestedDays array
-        // Also ensure we skip any hidden or deleted templates
-        const suggested = allTemplates.filter((template) => {
-            // Skip hidden templates (double check)
-            if (template.isHidden || template.deleted) {
-                return false;
-            }
-
-            // Check new array format (suggestedDays)
-            if (template.suggestedDays && Array.isArray(template.suggestedDays)) {
-                return template.suggestedDays.includes(dayOfWeek);
-            }
-            // Backwards compatibility: check old single-day format
-            if (template.suggestedDay) {
-                return template.suggestedDay === dayOfWeek;
-            }
-            return false;
-        });
-        return suggested;
-    } catch (error) {
-        console.error('❌ Error loading suggested workouts:', error);
-        return [];
-    }
-}
-
-/**
- * Start a suggested workout
- */
-export async function startSuggestedWorkout(templateId, isDefault = false) {
-    try {
-        const { selectTemplate } = await import('./template-selection.js');
-        await selectTemplate(templateId, isDefault);
-    } catch (error) {
-        console.error('❌ Error starting suggested workout:', error);
-        showNotification('Error starting workout', 'error');
-    }
-}

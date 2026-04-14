@@ -323,8 +323,6 @@ import {
 
 // Dashboard functionality
 import {
-    repeatLastWorkout,
-    startSuggestedWorkout,
     startWorkoutFromHistory,
     dismissInsight,
 } from './core/ui/dashboard-ui.js';
@@ -566,8 +564,6 @@ window.closeMoreMenu = closeMoreMenu;
 window.setHeaderMode = setHeaderMode;
 
 // Dashboard Functions
-window.repeatLastWorkout = repeatLastWorkout;
-window.startSuggestedWorkout = startSuggestedWorkout;
 window.dismissInsight = dismissInsight;
 window.startWorkoutFromHistory = startWorkoutFromHistory;
 
