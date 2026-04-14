@@ -425,8 +425,9 @@ export function updateExerciseCard(exerciseIndex) {
         const existingHeader = existingCard.querySelector('.exercise-card-header');
         if (newHeader && existingHeader) {
             existingHeader.replaceWith(newHeader);
-            // Re-add expanded class since the new header doesn't have it
             existingCard.classList.add('expanded');
+            // Sync completed class from the newly created card
+            existingCard.classList.toggle('completed', newCard.classList.contains('completed'));
         }
         updateProgress(AppState);
         return;
@@ -528,7 +529,8 @@ export function createExerciseCard(exercise, index) {
         eqSpan.textContent = exercise.equipment;
         meta.appendChild(eqSpan);
     }
-    if (setPreview) {
+    // Show cardio summary on card (but not strength set previews — too noisy)
+    if (isCardio && setPreview) {
         const previewSpan = document.createElement('span');
         previewSpan.className = 'exercise-card-last';
         previewSpan.textContent = setPreview;
@@ -970,10 +972,11 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
         const set = savedSets[i] || { reps: '', weight: '' };
         const isSetDone = !!(set.completed || (set.reps && set.weight));
 
-        // Convert stored lbs weight to display unit
-        let displayWeight = set.weight || '';
-        if (displayWeight && unit === 'kg') {
-            displayWeight = Math.round(displayWeight * 0.453592 * 2) / 2; // Round kg to nearest 0.5
+        // Convert stored lbs weight to display unit (keep empty if not set)
+        let displayWeight = (set.weight !== '' && set.weight !== null && set.weight !== undefined && set.weight !== 0)
+            ? set.weight : '';
+        if (displayWeight !== '' && unit === 'kg') {
+            displayWeight = Math.round(displayWeight * 0.453592 * 2) / 2;
         }
 
         // Determine placeholder from last session or template defaults
@@ -1026,6 +1029,20 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
     html += `
             </tbody>
         </table>
+
+        <!-- Rest Timer (hidden until triggered by set completion) -->
+        <div id="modal-rest-timer-${exerciseIndex}" class="modal-rest-timer hidden">
+            <div class="modal-rest-exercise"></div>
+            <div class="modal-rest-display">--:--</div>
+            <div class="modal-rest-controls">
+                <button class="btn btn-secondary btn-small" onclick="toggleModalRestTimer(${exerciseIndex})" aria-label="Pause timer">
+                    <i class="fas fa-pause"></i>
+                </button>
+                <button class="btn btn-secondary btn-small" onclick="skipModalRestTimer(${exerciseIndex})" aria-label="Skip timer">
+                    <i class="fas fa-forward"></i> Skip
+                </button>
+            </div>
+        </div>
 
         <div class="set-controls">
             <button class="btn-set-control btn-set-control--remove" onclick="removeSetFromExercise(${exerciseIndex})" title="Remove last set">
@@ -1489,7 +1506,11 @@ export function toggleSetComplete(exerciseIndex, setIndex) {
     const completedCount = allSets.filter(s => s && (s.completed || (s.reps && s.weight))).length;
     if (completedCount >= totalSets) {
         AppState.savedData.exercises[exerciseKey].completed = true;
-        // Re-sort exercise list to move completed to bottom
+        // Collapse the card, update it, then re-sort to move completed to bottom
+        if (expandedExerciseIndex === exerciseIndex) {
+            collapseExercise(exerciseIndex);
+        }
+        updateExerciseCard(exerciseIndex);
         reorderExercisesByCompletion();
     } else {
         AppState.savedData.exercises[exerciseKey].completed = false;

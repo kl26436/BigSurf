@@ -24,22 +24,13 @@ import { haptic } from '../utils/haptics.js';
 // TEMPLATE CHANGE DETECTION
 // ===================================================================
 
-function detectTemplateChanges(workoutData) {
-    const original = workoutData.originalWorkout?.exercises || [];
-    const current = workoutData.currentExercises || [];
+function detectTemplateChanges(currentExercises, originalWorkout) {
+    const original = originalWorkout?.exercises || [];
+    if (!currentExercises || original.length === 0) return null;
 
-    // If no current exercises snapshot, try to reconstruct from saved data
-    const exerciseKeys = Object.keys(workoutData.exercises || {}).sort();
-    const currentNames = exerciseKeys.map(key => {
-        const idx = key.replace('exercise_', '');
-        return workoutData.exerciseNames?.[key]
-            || workoutData.originalWorkout?.exercises?.[idx]?.machine
-            || workoutData.originalWorkout?.exercises?.[idx]?.name
-            || 'Unknown';
-    });
+    const currentNames = currentExercises.map(ex => ex.machine || ex.name || 'Unknown');
     const originalNames = original.map(ex => ex.machine || ex.name || 'Unknown');
 
-    // Check for changes
     const added = currentNames.length - originalNames.length;
     const reordered = currentNames.length === originalNames.length &&
         currentNames.some((name, i) => name !== originalNames[i]);
@@ -318,9 +309,11 @@ export async function completeWorkout() {
     }
 
     // Detect structural changes (reorder, swap, add, remove) for template update prompt
+    // Must read currentWorkout.exercises BEFORE AppState.reset() clears it
     let templateChanges = null;
     if (!isEditingHistorical && completedWorkoutData.originalWorkout?.exercises) {
-        templateChanges = detectTemplateChanges(completedWorkoutData);
+        const currentExercises = AppState.currentWorkout?.exercises || [];
+        templateChanges = detectTemplateChanges(currentExercises, completedWorkoutData.originalWorkout);
     }
 
     // Reset state BEFORE showing summary (critical order!)

@@ -273,13 +273,11 @@ export function updateLocationIndicator(locationName, locked = false) {
 
     if (locationName) {
         if (nameSpan) nameSpan.textContent = locationName;
-        if (lockIcon) {
-            lockIcon.style.display = locked ? 'inline' : 'none';
-        }
     } else {
         if (nameSpan) nameSpan.textContent = 'Tap to set location';
-        if (lockIcon) lockIcon.style.display = 'none';
     }
+    // Hide lock icon — adds visual noise without value
+    if (lockIcon) lockIcon.style.display = 'none';
 }
 
 // Export for use in other modules
