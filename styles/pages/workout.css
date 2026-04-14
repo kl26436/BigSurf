@@ -577,30 +577,40 @@
     animation: slideToBottom 0.4s ease;
 }
 
-/* Reorder mode */
-.exercise-drag-handle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    font-size: var(--font-md);
-    padding: var(--space-4) var(--space-8) var(--space-4) 0;
-    cursor: grab;
-    touch-action: none;
-}
+/* Reorder mode — up/down buttons */
 .reorder-mode .exercise-card {
     border: 1px dashed var(--border-medium);
 }
-.exercise-card.dragging {
-    opacity: 0.85;
-    box-shadow: var(--shadow-md);
-    z-index: 1000;
+.reorder-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-right: var(--space-8);
+    flex-shrink: 0;
 }
-.exercise-card-placeholder {
-    border: 2px dashed var(--primary);
-    border-radius: var(--radius-md);
-    opacity: 0.3;
-    margin-bottom: var(--space-12);
+.reorder-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 28px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    cursor: pointer;
+    transition: all 0.1s;
+}
+.reorder-btn:active:not(:disabled) {
+    background: var(--primary);
+    color: var(--bg-app);
+    transform: scale(0.9);
+}
+.reorder-btn:disabled {
+    opacity: 0.25;
+    cursor: default;
+}
 }
 .btn-reorder {
     background: var(--bg-card-hi);

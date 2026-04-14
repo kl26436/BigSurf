@@ -137,6 +137,93 @@ export async function copyErrorLog() {
 }
 
 // ===================================================================
+// BUG REPORTING
+// ===================================================================
+
+/**
+ * Open bug report form — captures app context, recent errors, and user description.
+ */
+export async function showBugReport() {
+    const modal = document.getElementById('error-log-modal');
+    const list = document.getElementById('error-log-list');
+    if (!list) return;
+
+    // Import captureError for context snapshot
+    const { getErrorLog: getLog } = await import('../utils/error-handler.js');
+    const recentErrors = getLog().slice(0, 5);
+
+    list.innerHTML = `
+        <div class="bug-report-form">
+            <h3 class="bug-report-title"><i class="fas fa-bug"></i> Report a Bug</h3>
+            <p class="bug-report-desc">Describe what happened and what you expected. App context and recent errors will be attached automatically.</p>
+
+            <textarea id="bug-report-text" class="bug-report-textarea" rows="4"
+                      placeholder="What went wrong? What were you trying to do?"></textarea>
+
+            <div class="bug-report-context">
+                <div class="bug-report-context-label">Auto-captured:</div>
+                <ul>
+                    <li>Current page & workout state</li>
+                    <li>Last ${recentErrors.length} error(s) from this session</li>
+                    <li>Device info & timestamp</li>
+                </ul>
+            </div>
+
+            <div class="bug-report-actions">
+                <button class="btn btn-primary" id="bug-report-submit-btn">
+                    <i class="fas fa-paper-plane"></i> Submit Report
+                </button>
+                <button class="btn btn-secondary" id="bug-report-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('bug-report-submit-btn')?.addEventListener('click', async () => {
+        const text = document.getElementById('bug-report-text')?.value?.trim();
+        if (!text) {
+            document.getElementById('bug-report-text')?.focus();
+            return;
+        }
+
+        const { captureError } = await import('../utils/error-handler.js');
+        const { AppState } = await import('../utils/app-state.js');
+
+        // Build rich context
+        const context = {
+            type: 'user-bug-report',
+            description: text,
+            recentErrors: recentErrors.map(e => ({
+                message: e.message,
+                source: e.source,
+                timestamp: e.timestamp,
+            })),
+            user: AppState.currentUser?.email || 'unknown',
+        };
+
+        // Log as an error so it persists to Firestore
+        captureError(
+            new Error(`[BUG REPORT] ${text.substring(0, 100)}`),
+            'user-bug-report',
+            context
+        );
+
+        list.innerHTML = `
+            <div class="error-log-empty">
+                <i class="fas fa-check-circle"></i>
+                <p>Bug report submitted! It's been saved with your app context.</p>
+            </div>
+        `;
+
+        // Return to log view after a moment
+        setTimeout(() => renderErrorLogContent(), 2000);
+    });
+
+    document.getElementById('bug-report-cancel-btn')?.addEventListener('click', () => {
+        renderErrorLogContent();
+    });
+}
+
+// ===================================================================
 // RENDERING
 // ===================================================================
 

@@ -14,8 +14,9 @@ import { dismissFirstUseTip } from './core/features/first-use-tips.js';
 import {
     openEquipmentLibrary, openEquipmentDetail, backToEquipmentList,
     filterEquipmentByLocation, filterEquipmentBySearch,
+    toggleEquipmentSearch, toggleEquipmentExercise,
     assignExerciseToEquipment, filterAssignList, confirmAssignExercise, unassignExercise,
-    editEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
+    editEquipmentExerciseVideoFromLib, saveEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
     saveEquipmentNotes, showAddEquipmentFlow,
     selectEquipType, updateEquipNamePreview, confirmAddEquipment,
 } from './core/ui/equipment-library-ui.js';
@@ -299,6 +300,7 @@ import {
     clearAllErrors,
     copyErrorLog,
     toggleErrorDetail,
+    showBugReport,
 } from './core/ui/error-log-ui.js';
 
 // Error handler — public capture APIs
@@ -615,6 +617,9 @@ window.filterHistoryByCategory = function (category) {
 window.clearHistorySearch = function () {
     if (window.workoutHistory) window.workoutHistory.clearSearch();
 };
+window.toggleHistorySearch = function () {
+    if (window.workoutHistory) window.workoutHistory.toggleHistorySearch();
+};
 window.closeWorkoutDetailModal = function () {
     const modal = document.getElementById('workout-detail-section');
     if (modal) {
@@ -763,11 +768,14 @@ window.openEquipmentDetail = openEquipmentDetail;
 window.backToEquipmentList = backToEquipmentList;
 window.filterEquipmentByLocation = filterEquipmentByLocation;
 window.filterEquipmentBySearch = filterEquipmentBySearch;
+window.toggleEquipmentSearch = toggleEquipmentSearch;
+window.toggleEquipmentExercise = toggleEquipmentExercise;
 window.assignExerciseToEquipment = assignExerciseToEquipment;
 window.filterAssignList = filterAssignList;
 window.confirmAssignExercise = confirmAssignExercise;
 window.unassignExercise = unassignExercise;
 window.editEquipmentExerciseVideoFromLib = editEquipmentExerciseVideoFromLib;
+window.saveEquipmentExerciseVideoFromLib = saveEquipmentExerciseVideoFromLib;
 window.deleteEquipmentFromLibrary = deleteEquipmentFromLibrary;
 window.saveEquipmentNotes = saveEquipmentNotes;
 window.showAddEquipmentFlow = showAddEquipmentFlow;
@@ -782,6 +790,7 @@ window.toggleErrorLogSource = toggleErrorLogSource;
 window.clearAllErrors = clearAllErrors;
 window.copyErrorLog = copyErrorLog;
 window.toggleErrorDetail = toggleErrorDetail;
+window.showBugReport = showBugReport;
 window.captureError = captureError;
 window.captureWarning = captureWarning;
 

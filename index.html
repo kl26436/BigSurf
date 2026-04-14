@@ -290,12 +290,33 @@
 
                 <!-- Workout History -->
                 <section id="workout-history-section" class="content-section hidden">
-                    <!-- Section Header (consistent with other pages) -->
+                    <!-- Section Header with search toggle -->
                     <div class="section-header-row">
                         <h2 class="section-title"><i class="fas fa-calendar-alt"></i> History</h2>
-                        <button class="btn btn-primary" onclick="showAddManualWorkoutModal()">
-                            <i class="fas fa-plus"></i> Add Missing
-                        </button>
+                        <div class="history-header-actions">
+                            <button class="btn-icon-sm" onclick="toggleHistorySearch()" aria-label="Search">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button class="btn btn-primary" onclick="showAddManualWorkoutModal()">
+                                <i class="fas fa-plus"></i> Add Missing
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- History Search & Filter (hidden by default) -->
+                    <div class="history-search-bar hidden" id="history-search-bar">
+                        <div class="history-search-input-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="history-search-input"
+                                placeholder="Search exercises or workouts..."
+                                oninput="filterWorkoutHistory(this.value)">
+                            <button class="history-search-clear hidden" id="history-search-clear" onclick="clearHistorySearch()" aria-label="Clear search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <select id="history-category-filter" onchange="filterHistoryByCategory(this.value)">
+                            <option value="">All Types</option>
+                        </select>
                     </div>
 
                     <!-- Month Navigation -->
@@ -323,22 +344,6 @@
                         <div class="calendar-grid" id="calendar-grid">
                             <!-- Populated by JavaScript -->
                         </div>
-                    </div>
-
-                    <!-- History Search & Filter -->
-                    <div class="history-search-bar">
-                        <div class="history-search-input-wrapper">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="history-search-input"
-                                placeholder="Search exercises or workouts..."
-                                oninput="filterWorkoutHistory(this.value)">
-                            <button class="history-search-clear hidden" id="history-search-clear" onclick="clearHistorySearch()" aria-label="Clear search">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <select id="history-category-filter" onchange="filterHistoryByCategory(this.value)">
-                            <option value="">All Types</option>
-                        </select>
                     </div>
 
                     <!-- Recent Workouts List (paginated) -->
@@ -1831,6 +1836,9 @@
                         <button id="error-log-saved-btn" class="error-log-tab" onclick="toggleErrorLogSource()">Saved</button>
                     </div>
                     <div class="error-log-actions">
+                        <button class="btn btn-small btn-secondary" onclick="showBugReport()" title="Report a bug">
+                            <i class="fas fa-bug"></i> Report
+                        </button>
                         <button id="error-log-copy-btn" class="btn-icon" onclick="copyErrorLog()" title="Copy to clipboard">
                             <i class="fas fa-copy"></i>
                         </button>

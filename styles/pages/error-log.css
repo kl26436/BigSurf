@@ -202,6 +202,71 @@
     font-size: var(--font-2xs);
 }
 
+/* --- Bug report form --- */
+.bug-report-form {
+    padding: var(--space-16);
+}
+.bug-report-title {
+    font-size: var(--font-md);
+    color: var(--text-strong);
+    margin-bottom: var(--space-8);
+}
+.bug-report-title i {
+    color: var(--danger);
+    margin-right: var(--space-6);
+}
+.bug-report-desc {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-16);
+    line-height: 1.4;
+}
+.bug-report-textarea {
+    width: 100%;
+    background: var(--bg-app);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    padding: var(--space-10) var(--space-12);
+    font-size: var(--font-base);
+    font-family: inherit;
+    resize: none;
+    box-sizing: border-box;
+}
+.bug-report-textarea::placeholder {
+    color: var(--text-muted);
+}
+.bug-report-context {
+    margin: var(--space-12) 0;
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+.bug-report-context-label {
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+}
+.bug-report-context ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.bug-report-context li::before {
+    content: "\f00c";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    color: var(--success);
+    margin-right: var(--space-6);
+    font-size: var(--font-2xs);
+}
+.bug-report-actions {
+    display: flex;
+    gap: var(--space-8);
+    margin-top: var(--space-16);
+}
+.bug-report-actions .btn {
+    flex: 1;
+}
+
 /* --- Error badge (More menu) --- */
 .error-badge {
     background: var(--danger);

@@ -80,92 +80,76 @@ export function toggleReorderMode() {
     if (!container) return;
 
     if (reorderMode) {
+        // Collapse any expanded exercise first
+        if (expandedExerciseIndex !== null) {
+            collapseExercise(expandedExerciseIndex);
+        }
         container.classList.add('reorder-mode');
         if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Done';
-        initTouchReorder(container);
+        addReorderButtons(container);
     } else {
         container.classList.remove('reorder-mode');
         if (btn) btn.innerHTML = '<i class="fas fa-arrows-alt-v"></i> Reorder';
+        removeReorderButtons(container);
     }
 }
 
-function initTouchReorder(container) {
+function addReorderButtons(container) {
     const cards = container.querySelectorAll('.exercise-card');
-    cards.forEach((card) => {
-        const handle = document.createElement('div');
-        handle.className = 'exercise-drag-handle';
-        handle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
-        card.insertBefore(handle, card.firstChild);
+    const total = cards.length;
+    cards.forEach((card, visualIdx) => {
+        // Remove existing reorder controls if any
+        card.querySelector('.reorder-controls')?.remove();
 
-        let startY = 0;
-        let currentY = 0;
-        let dragging = false;
-        let placeholder = null;
+        const exerciseIndex = parseInt(card.dataset.index);
+        const controls = document.createElement('div');
+        controls.className = 'reorder-controls';
 
-        handle.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            dragging = true;
-            startY = e.touches[0].clientY;
-            card.classList.add('dragging');
-
-            placeholder = document.createElement('div');
-            placeholder.className = 'exercise-card-placeholder';
-            placeholder.style.height = card.offsetHeight + 'px';
-            card.parentNode.insertBefore(placeholder, card.nextSibling);
-
-            card.style.position = 'fixed';
-            card.style.left = '16px';
-            card.style.right = '16px';
-            card.style.width = container.offsetWidth - 32 + 'px';
-            card.style.top = card.getBoundingClientRect().top + 'px';
-            card.style.zIndex = '1000';
-        }, { passive: false });
-
-        handle.addEventListener('touchmove', (e) => {
-            if (!dragging) return;
-            e.preventDefault();
-            currentY = e.touches[0].clientY;
-            const diff = currentY - startY;
-            const rect = card.getBoundingClientRect();
-            card.style.top = (rect.top + diff) + 'px';
-            startY = currentY;
-
-            // Find which card we're hovering over
-            const siblings = [...container.querySelectorAll('.exercise-card:not(.dragging)')];
-            for (const sibling of siblings) {
-                const sibRect = sibling.getBoundingClientRect();
-                const sibMiddle = sibRect.top + sibRect.height / 2;
-                if (currentY < sibMiddle && placeholder.nextSibling !== sibling) {
-                    container.insertBefore(placeholder, sibling);
-                    break;
-                } else if (currentY > sibMiddle && placeholder !== sibling.nextSibling) {
-                    container.insertBefore(placeholder, sibling.nextSibling);
-                }
-            }
-        }, { passive: false });
-
-        handle.addEventListener('touchend', () => {
-            if (!dragging) return;
-            dragging = false;
-            card.classList.remove('dragging');
-            card.style.position = '';
-            card.style.left = '';
-            card.style.right = '';
-            card.style.width = '';
-            card.style.top = '';
-            card.style.zIndex = '';
-
-            // Insert card where placeholder is
-            if (placeholder && placeholder.parentNode) {
-                container.insertBefore(card, placeholder);
-                placeholder.remove();
-            }
-
-            // Read new order from DOM and update AppState
-            const newOrder = [...container.querySelectorAll('.exercise-card')].map(c => parseInt(c.dataset.index));
-            applyExerciseReorder(newOrder);
+        const upBtn = document.createElement('button');
+        upBtn.className = 'reorder-btn';
+        upBtn.innerHTML = '<i class="fas fa-chevron-up"></i>';
+        upBtn.disabled = visualIdx === 0;
+        upBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            moveExercise(exerciseIndex, -1);
         });
+
+        const downBtn = document.createElement('button');
+        downBtn.className = 'reorder-btn';
+        downBtn.innerHTML = '<i class="fas fa-chevron-down"></i>';
+        downBtn.disabled = visualIdx === total - 1;
+        downBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            moveExercise(exerciseIndex, 1);
+        });
+
+        controls.appendChild(upBtn);
+        controls.appendChild(downBtn);
+        card.querySelector('.exercise-card-header')?.prepend(controls);
     });
+}
+
+function removeReorderButtons(container) {
+    container.querySelectorAll('.reorder-controls').forEach(el => el.remove());
+}
+
+/**
+ * Move an exercise up or down by one position.
+ * @param {number} exerciseIndex - The exercise's current index in AppState
+ * @param {number} direction - -1 for up, +1 for down
+ */
+function moveExercise(exerciseIndex, direction) {
+    if (!AppState.currentWorkout) return;
+    const exercises = AppState.currentWorkout.exercises;
+    const newIndex = exerciseIndex + direction;
+    if (newIndex < 0 || newIndex >= exercises.length) return;
+
+    // Build the new order array
+    const order = exercises.map((_, i) => i);
+    // Swap
+    [order[exerciseIndex], order[newIndex]] = [order[newIndex], order[exerciseIndex]];
+
+    applyExerciseReorder(order);
 }
 
 function applyExerciseReorder(newOrder) {
@@ -203,7 +187,7 @@ function applyExerciseReorder(newOrder) {
         const container = document.getElementById('exercise-list');
         if (container) {
             container.classList.add('reorder-mode');
-            initTouchReorder(container);
+            addReorderButtons(container);
         }
     }
 }
@@ -428,6 +412,12 @@ export function updateExerciseCard(exerciseIndex) {
             existingCard.classList.add('expanded');
             // Sync completed class from the newly created card
             existingCard.classList.toggle('completed', newCard.classList.contains('completed'));
+            // Sync data-group attribute (superset tag)
+            if (newCard.dataset.group) {
+                existingCard.dataset.group = newCard.dataset.group;
+            } else {
+                delete existingCard.dataset.group;
+            }
         }
         updateProgress(AppState);
         return;
