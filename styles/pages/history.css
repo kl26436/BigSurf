@@ -201,6 +201,32 @@
     grid-template-columns: repeat(7, 1fr);
     gap: var(--space-4);
 }
+.calendar-legend {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-16);
+    padding: var(--space-8) 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+}
+.legend-dot.has-workout {
+    background: var(--primary);
+}
+.legend-dot.today {
+    background: var(--highlight-warm);
+}
+
 .calendar-day {
     min-height: var(--tap);
     padding: var(--space-6) var(--space-2);
@@ -277,42 +303,6 @@
     color: var(--text-muted);
 }
 
-/* Calendar legend */
-.calendar-legend {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: var(--space-12);
-    padding: var(--space-8) 0 var(--space-4);
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-}
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-}
-.legend-dot {
-    width: var(--space-8);
-    height: var(--space-8);
-    border-radius: 50%;
-    display: inline-block;
-}
-.legend-dot-completed {
-    background: var(--success);
-}
-.legend-dot-incomplete {
-    background: var(--warning);
-}
-.legend-dot-cancelled {
-    background: var(--text-muted);
-}
-.legend-dot-today {
-    background: transparent;
-    border: 2px solid var(--highlight-warm);
-    width: var(--space-6);
-    height: var(--space-6);
-}
 
 /* Schema v3.0: Multiple workouts per day - count badge */
 .workout-count-badge {

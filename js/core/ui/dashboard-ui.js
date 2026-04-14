@@ -329,7 +329,7 @@ async function renderDashboard() {
             <div class="dashboard-error">
                 <i class="fas fa-exclamation-triangle"></i>
                 <p>Error loading dashboard</p>
-                <button class="btn btn-primary" onclick="showDashboard()">
+                <button class="btn btn-primary" onclick="navigateTo('dashboard')">
                     <i class="fas fa-redo"></i> Retry
                 </button>
             </div>

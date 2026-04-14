@@ -302,6 +302,7 @@ import {
     toggleErrorLogSource,
     clearAllErrors,
     copyErrorLog,
+    exportErrorLog,
     toggleErrorDetail,
     showBugReport,
 } from './core/ui/error-log-ui.js';
@@ -555,6 +556,10 @@ window.searchLocationAddress = searchLocationAddress;
 window.selectAddressResult = selectAddressResult;
 window.applyManualCoords = applyManualCoords;
 
+// Modal helpers (used by inline onclick in HTML)
+window.openModal = openModal;
+window.closeModal = closeModal;
+
 // Navigation Functions
 window.navigateTo = navigateTo;
 window.navigateBack = navigateBack;
@@ -794,6 +799,7 @@ window.clearAllErrors = clearAllErrors;
 window.copyErrorLog = copyErrorLog;
 window.toggleErrorDetail = toggleErrorDetail;
 window.showBugReport = showBugReport;
+window.exportErrorLog = exportErrorLog;
 window.captureError = captureError;
 window.captureWarning = captureWarning;
 

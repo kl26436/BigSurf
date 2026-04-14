@@ -399,19 +399,14 @@ export function getWorkoutHistory(appState) {
 
                 let dayClass = 'calendar-day';
                 if (!isCurrentMonth) {
-                    dayClass += ' other-month empty-day'; // Add empty-day class for styling
+                    dayClass += ' other-month empty-day';
                 }
                 if (isToday) dayClass += ' today';
-
-                // UPDATED: Remove the old onclick and add data attributes instead
-                html += `<div class="${dayClass}" data-date="${dateStr}"`;
-
-                // Add tappable class for days with workouts
                 if (workout && isCurrentMonth) {
                     dayClass += ' has-workout';
                 }
 
-                html += `>`;
+                html += `<div class="${dayClass}" data-date="${dateStr}">`;
 
                 // Only show content for current month days
                 if (isCurrentMonth) {
@@ -431,9 +426,18 @@ export function getWorkoutHistory(appState) {
 
             calendarGrid.innerHTML = html;
 
-            // Remove legacy legend if it exists
-            const legendEl = document.getElementById('calendar-legend');
-            if (legendEl) legendEl.remove();
+            // Render calendar legend
+            let legendEl = document.getElementById('calendar-legend');
+            if (!legendEl) {
+                legendEl = document.createElement('div');
+                legendEl.id = 'calendar-legend';
+                legendEl.className = 'calendar-legend';
+                calendarGrid.parentNode?.insertBefore(legendEl, calendarGrid.nextSibling);
+            }
+            legendEl.innerHTML = `
+                <span class="legend-item"><span class="legend-dot has-workout"></span> Workout</span>
+                <span class="legend-item"><span class="legend-dot today"></span> Today</span>
+            `;
 
             // ADDED: Setup click events after rendering
             this.setupCalendarClickEvents();
