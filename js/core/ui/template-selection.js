@@ -255,29 +255,13 @@ async function renderWorkoutSelectorUI() {
     const listContainer = document.getElementById('template-list');
     if (!pillsContainer || !listContainer) return;
 
-    // Load all templates (default + custom)
+    // Use AppState.workoutPlans as the single source of truth (already deduped)
     let allTemplates = (AppState.workoutPlans || []).map(t => ({
         ...t,
         _id: t.id || t.day,
         _name: t.name || t.day,
-        _isDefault: true,
+        _isDefault: !t.isCustom,
     }));
-
-    try {
-        if (AppState.currentUser) {
-            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-            const wm = new FirebaseWorkoutManager(AppState);
-            const customs = (await wm.getUserWorkoutTemplates()).filter(t => t.isCustom);
-            customs.forEach(t => {
-                allTemplates.push({
-                    ...t,
-                    _id: t.id,
-                    _name: t.name,
-                    _isDefault: false,
-                });
-            });
-        }
-    } catch (_) { /* non-critical */ }
 
     // Load workout history for recency sorting (cached)
     if (!cachedWorkoutHistory && AppState.currentUser) {
@@ -846,9 +830,12 @@ export function filterTemplates(category) {
         btn.classList.toggle('active', btn.dataset.category === category);
     });
 
-    // Filter and render
+    // Filter and render with brief visual feedback
     const container = document.getElementById('workout-cards-container');
     if (!container) return;
+
+    const list = container.querySelector('.template-list');
+    if (list) list.classList.add('filtering');
 
     let filteredWorkouts;
     if (category === 'all') {
@@ -859,7 +846,9 @@ export function filterTemplates(category) {
         );
     }
 
-    renderWorkoutCards(filteredWorkouts);
+    requestAnimationFrame(() => {
+        renderWorkoutCards(filteredWorkouts);
+    });
 }
 
 export function searchTemplates(query) {
