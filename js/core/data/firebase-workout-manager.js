@@ -702,7 +702,26 @@ export class FirebaseWorkoutManager {
 
             const allTemplates = [...visibleDefaults, ...customTemplates];
 
-            return allTemplates;
+            // Deduplicate by name — keep custom over default, keep first of same source
+            const seen = new Map();
+            const deduplicated = [];
+            for (const t of allTemplates) {
+                const key = (t.name || t.day || '').toLowerCase().trim();
+                if (!key) { deduplicated.push(t); continue; }
+                const existing = seen.get(key);
+                if (!existing) {
+                    seen.set(key, t);
+                    deduplicated.push(t);
+                } else if (t.isCustom && !existing.isCustom) {
+                    // Custom overrides default — swap
+                    const idx = deduplicated.indexOf(existing);
+                    if (idx >= 0) deduplicated[idx] = t;
+                    seen.set(key, t);
+                }
+                // Otherwise skip the duplicate
+            }
+
+            return deduplicated;
         } catch (error) {
             console.error('❌ Error loading user workout templates:', error);
             return [];
