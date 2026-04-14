@@ -1009,6 +1009,16 @@
     background: var(--bg-app);
     z-index: var(--z-sticky, 10);
 }
+/* Cover any gap above the sticky header so content can't bleed through */
+.section-header-row::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: var(--bg-app);
+}
 .section-header-row .section-title {
     font-size: var(--font-xl);
     font-weight: 600;

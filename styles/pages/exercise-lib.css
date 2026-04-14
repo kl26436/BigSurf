@@ -424,6 +424,15 @@
     background: var(--bg-app);
     z-index: var(--z-sticky, 10);
 }
+.edit-exercise-header::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: var(--bg-app);
+}
 
 /* Ensure edit section scrolls independently so sticky header works */
 #edit-exercise-section {
