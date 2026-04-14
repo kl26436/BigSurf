@@ -221,7 +221,7 @@
 /* ── Finish Workout footer ── */
 .workout-footer-bar {
     position: fixed;
-    bottom: calc(60px + env(safe-area-inset-bottom, 8px)); /* above bottom nav + safe area */
+    bottom: calc(68px + env(safe-area-inset-bottom, 8px)); /* above bottom nav + safe area */
     left: 0;
     right: 0;
     z-index: var(--z-sticky, 10);
