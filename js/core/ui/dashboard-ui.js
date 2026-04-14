@@ -654,3 +654,28 @@ async function getVolumeChangePercent() {
     }
 }
 
+// ===================================================================
+// HELPERS
+// ===================================================================
+
+function formatRelativeDateDash(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const dateOnly = getDateString(date);
+    const todayOnly = getDateString(today);
+    const yesterdayOnly = getDateString(yesterday);
+
+    if (dateOnly === todayOnly) return 'Today';
+    if (dateOnly === yesterdayOnly) return 'Yesterday';
+
+    const diffDays = Math.floor((today - date) / (1000 * 60 * 60 * 24));
+    if (diffDays < 7) return `${diffDays} days ago`;
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
