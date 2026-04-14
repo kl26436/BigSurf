@@ -701,26 +701,39 @@ export class FirebaseWorkoutManager {
             );
 
             const allTemplates = [...visibleDefaults, ...customTemplates];
+            console.log(`📋 Templates: ${visibleDefaults.length} defaults, ${customTemplates.length} custom, ${allTemplates.length} total before dedup`);
 
-            // Deduplicate by name — keep custom over default, keep first of same source
-            const seen = new Map();
+            // Deduplicate by name AND id — keep custom over default, keep first of same source
+            const seenNames = new Map();
+            const seenIds = new Set();
             const deduplicated = [];
             for (const t of allTemplates) {
-                const key = (t.name || t.day || '').toLowerCase().trim();
-                if (!key) { deduplicated.push(t); continue; }
-                const existing = seen.get(key);
+                // Dedup by doc id first
+                if (t.id && seenIds.has(t.id)) continue;
+                if (t.id) seenIds.add(t.id);
+
+                // Dedup by name (case-insensitive, trimmed)
+                const nameKey = (t.name || t.day || '').toLowerCase().trim();
+                const dayKey = (t.day || '').toLowerCase().trim();
+                const matchKey = nameKey || dayKey;
+                if (!matchKey) { deduplicated.push(t); continue; }
+
+                const existing = seenNames.get(matchKey);
                 if (!existing) {
-                    seen.set(key, t);
+                    seenNames.set(matchKey, t);
+                    // Also register the day key if different from name key
+                    if (dayKey && dayKey !== matchKey) seenNames.set(dayKey, t);
                     deduplicated.push(t);
                 } else if (t.isCustom && !existing.isCustom) {
                     // Custom overrides default — swap
                     const idx = deduplicated.indexOf(existing);
                     if (idx >= 0) deduplicated[idx] = t;
-                    seen.set(key, t);
+                    seenNames.set(matchKey, t);
                 }
                 // Otherwise skip the duplicate
             }
 
+            console.log(`📋 After dedup: ${deduplicated.length} templates`, deduplicated.map(t => `${t.name || t.day} [${t.source}]`));
             return deduplicated;
         } catch (error) {
             console.error('❌ Error loading user workout templates:', error);
