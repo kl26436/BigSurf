@@ -701,7 +701,6 @@ export class FirebaseWorkoutManager {
             );
 
             const allTemplates = [...visibleDefaults, ...customTemplates];
-            console.log(`📋 Templates: ${visibleDefaults.length} defaults, ${customTemplates.length} custom, ${allTemplates.length} total before dedup`);
 
             // Deduplicate by name AND id — keep custom over default, keep first of same source
             const seenNames = new Map();
@@ -733,7 +732,6 @@ export class FirebaseWorkoutManager {
                 // Otherwise skip the duplicate
             }
 
-            console.log(`📋 After dedup: ${deduplicated.length} templates`, deduplicated.map(t => `${t.name || t.day} [${t.source}]`));
             return deduplicated;
         } catch (error) {
             console.error('❌ Error loading user workout templates:', error);
