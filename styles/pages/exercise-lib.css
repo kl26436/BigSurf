@@ -233,6 +233,12 @@
     align-items: center;
     gap: var(--space-12);
     margin-bottom: var(--space-16);
+    position: sticky;
+    top: 56px; /* Below section-header-row */
+    background: var(--bg-app);
+    z-index: calc(var(--z-sticky, 10) - 1);
+    padding: var(--space-8) 0;
+    margin-top: calc(-1 * var(--space-8));
 }
 .btn-back-category {
     width: var(--tap);
@@ -283,6 +289,10 @@
     overflow-x: auto;
     padding-bottom: var(--space-8);
     margin-bottom: var(--space-16);
+    position: sticky;
+    top: 100px; /* Below section-header-row + exercise-list-header */
+    background: var(--bg-app);
+    z-index: calc(var(--z-sticky, 10) - 2);
 }
 .filter-pill {
     padding: var(--space-8) var(--space-16);
