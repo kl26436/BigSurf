@@ -16,7 +16,7 @@ import {
     filterEquipmentByLocation, filterEquipmentBySearch,
     toggleEquipmentSearch, toggleEquipmentExercise,
     assignExerciseToEquipment, filterAssignList, confirmAssignExercise, unassignExercise,
-    editEquipmentExerciseVideoFromLib, saveEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
+    saveEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
     saveEquipmentNotes, showAddEquipmentFlow,
     selectEquipType, updateEquipNamePreview, confirmAddEquipment,
 } from './core/ui/equipment-library-ui.js';
@@ -40,6 +40,7 @@ import {
     toggleWorkoutOverflow,
     closeWorkoutOverflow,
     updateWorkoutProgress,
+    showMidWorkoutSummary,
     updateSet,
     addSet,
     deleteSet,
@@ -65,6 +66,7 @@ import {
     toggleSetComplete,
     skipHeaderRestTimer,
     toggleReorderMode,
+    toggleExerciseOverflow,
     supersetWithNext,
     ungroupExerciseFromWorkout,
     toggleExerciseExpansion,
@@ -323,6 +325,7 @@ import {
 import {
     repeatLastWorkout,
     startSuggestedWorkout,
+    startWorkoutFromHistory,
     dismissInsight,
 } from './core/ui/dashboard-ui.js';
 
@@ -392,6 +395,7 @@ window.closeWorkoutOverflowMenu = closeWorkoutOverflowMenu;
 window.toggleWorkoutOverflow = toggleWorkoutOverflow;
 window.closeWorkoutOverflow = closeWorkoutOverflow;
 window.updateWorkoutProgress = updateWorkoutProgress;
+window.showMidWorkoutSummary = showMidWorkoutSummary;
 window.startWorkoutFromModal = function (workoutName) {
     // Close the modal (hide it, don't remove it from DOM)
     const modal = document.getElementById('template-selection-modal');
@@ -452,6 +456,7 @@ window.skipModalRestTimer = skipModalRestTimer;
 window.autoStartRestTimer = autoStartRestTimer;
 window.skipHeaderRestTimer = skipHeaderRestTimer;
 window.toggleReorderMode = toggleReorderMode;
+window.toggleExerciseOverflow = toggleExerciseOverflow;
 window.supersetWithNext = supersetWithNext;
 window.ungroupExerciseFromWorkout = ungroupExerciseFromWorkout;
 
@@ -564,6 +569,7 @@ window.setHeaderMode = setHeaderMode;
 window.repeatLastWorkout = repeatLastWorkout;
 window.startSuggestedWorkout = startSuggestedWorkout;
 window.dismissInsight = dismissInsight;
+window.startWorkoutFromHistory = startWorkoutFromHistory;
 
 // Stats Functions
 window.closeStats = closeStats;
@@ -776,7 +782,6 @@ window.assignExerciseToEquipment = assignExerciseToEquipment;
 window.filterAssignList = filterAssignList;
 window.confirmAssignExercise = confirmAssignExercise;
 window.unassignExercise = unassignExercise;
-window.editEquipmentExerciseVideoFromLib = editEquipmentExerciseVideoFromLib;
 window.saveEquipmentExerciseVideoFromLib = saveEquipmentExerciseVideoFromLib;
 window.deleteEquipmentFromLibrary = deleteEquipmentFromLibrary;
 window.saveEquipmentNotes = saveEquipmentNotes;

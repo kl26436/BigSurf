@@ -270,6 +270,13 @@
                             <i class="fas fa-arrows-alt-v"></i> Reorder Exercises
                         </button>
                         <div class="workout-overflow-divider"></div>
+                        <button class="workout-overflow-item" onclick="showMidWorkoutSummary(); closeWorkoutOverflow();">
+                            <i class="fas fa-chart-bar"></i> Session Summary
+                        </button>
+                        <button class="workout-overflow-item" onclick="exportWorkoutDataAsCSV(); closeWorkoutOverflow();">
+                            <i class="fas fa-file-export"></i> Export Session
+                        </button>
+                        <div class="workout-overflow-divider"></div>
                         <button class="workout-overflow-item workout-overflow-item--danger" onclick="cancelWorkout()">
                             <i class="fas fa-times"></i> Cancel Workout
                         </button>
@@ -1672,34 +1679,22 @@
 
         <!-- Bottom Navigation Bar -->
         <nav id="bottom-nav" class="bottom-nav" role="navigation" aria-label="Quick navigation">
-            <button
-                class="bottom-nav-item active"
-                data-tab="dashboard"
-                onclick="bottomNavTo('dashboard')"
-                aria-current="page"
-            >
+            <button class="bottom-nav-item active" data-tab="dashboard" onclick="bottomNavTo('dashboard')" aria-current="page">
                 <i class="fas fa-home" aria-hidden="true"></i>
-                <span>Dashboard</span>
-            </button>
-            <button class="bottom-nav-item" data-tab="workout" onclick="bottomNavTo('workout')">
-                <i class="fas fa-dumbbell" aria-hidden="true"></i>
-                <span>Workout</span>
-            </button>
-            <button class="bottom-nav-item" data-tab="history" onclick="bottomNavTo('history')">
-                <i class="fas fa-history" aria-hidden="true"></i>
-                <span>History</span>
+                <span>Home</span>
             </button>
             <button class="bottom-nav-item" data-tab="stats" onclick="bottomNavTo('stats')">
                 <i class="fas fa-chart-line" aria-hidden="true"></i>
                 <span>Stats</span>
             </button>
-            <button
-                class="bottom-nav-item"
-                data-tab="more"
-                onclick="toggleMoreMenu()"
-                aria-expanded="false"
-                aria-haspopup="true"
-            >
+            <button class="bottom-nav-item bottom-nav-fab" data-tab="workout" onclick="bottomNavTo('workout')" aria-label="Start workout">
+                <i class="fas fa-plus" aria-hidden="true"></i>
+            </button>
+            <button class="bottom-nav-item" data-tab="history" onclick="bottomNavTo('history')">
+                <i class="fas fa-calendar" aria-hidden="true"></i>
+                <span>History</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="more" onclick="toggleMoreMenu()" aria-expanded="false" aria-haspopup="true">
                 <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
                 <span>More</span>
             </button>
