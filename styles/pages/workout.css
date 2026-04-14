@@ -8,17 +8,17 @@
 
 /* ── Compact Hero ── */
 .compact-hero {
-    position: sticky;
-    top: -1px; /* prevent sub-pixel gap */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
     z-index: var(--z-sticky, 10);
     background: var(--bg-app);
-    padding: var(--space-12) var(--pad-card-x) var(--space-6);
+    padding: var(--space-12) var(--pad-page) var(--space-6);
+    padding-top: calc(var(--space-12) + env(safe-area-inset-top, 0px));
     border-bottom: 1px solid var(--border-light);
-    /* Extend into parent (.app-container) padding so no content peeks above */
-    margin: calc(-1 * var(--pad-page)) calc(-1 * var(--pad-page)) 0;
-    padding-left: var(--pad-page);
-    padding-right: var(--pad-page);
-    padding-top: calc(var(--space-12) + var(--pad-page));
+    max-width: 600px; /* match .app-container */
+    margin: 0 auto;
 }
 .compact-hero__close {
     position: absolute;
@@ -171,9 +171,9 @@
 
 /* ── Workout overflow menu ── */
 .workout-overflow-menu {
-    position: absolute;
-    right: var(--pad-card-x);
-    top: 52px;
+    position: fixed;
+    right: var(--pad-page);
+    top: calc(72px + env(safe-area-inset-top, 0px)); /* below fixed compact hero */
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
@@ -259,7 +259,8 @@
     flex-direction: column;
     gap: var(--space-12);
     padding: var(--space-8) var(--pad-card-x);
-    padding-bottom: 200px; /* Room for sticky finish footer + bottom nav + expanded card content */
+    padding-top: 80px; /* Clear fixed compact hero */
+    padding-bottom: 200px; /* Room for fixed finish footer + bottom nav */
 }
 
 .exercise-card {
