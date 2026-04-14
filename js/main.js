@@ -320,9 +320,6 @@ import {
 import {
     repeatLastWorkout,
     startSuggestedWorkout,
-    toggleDashboardSection,
-    toggleDashboardPRBodyPart,
-    dismissCoachTip,
     dismissInsight,
 } from './core/ui/dashboard-ui.js';
 
@@ -563,9 +560,6 @@ window.setHeaderMode = setHeaderMode;
 // Dashboard Functions
 window.repeatLastWorkout = repeatLastWorkout;
 window.startSuggestedWorkout = startSuggestedWorkout;
-window.toggleDashboardSection = toggleDashboardSection;
-window.toggleDashboardPRBodyPart = toggleDashboardPRBodyPart;
-window.dismissCoachTip = dismissCoachTip;
 window.dismissInsight = dismissInsight;
 
 // Stats Functions
