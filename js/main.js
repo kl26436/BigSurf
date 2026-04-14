@@ -89,6 +89,7 @@ import {
     toggleEquipmentFilter,
     clearEquipmentFilterCache,
     clearSelectorCache,
+    toggleTemplateEdit,
 } from './core/ui/template-selection.js';
 
 // Workout history UI functionality
@@ -587,6 +588,7 @@ window.deleteCustomTemplate = deleteCustomTemplate;
 window.toggleEquipmentFilter = toggleEquipmentFilter;
 window.clearEquipmentFilterCache = clearEquipmentFilterCache;
 window.clearSelectorCache = clearSelectorCache;
+window.toggleTemplateEdit = toggleTemplateEdit;
 
 window.closeTemplateModal = function () {
     const modal = document.getElementById('template-selection-modal');

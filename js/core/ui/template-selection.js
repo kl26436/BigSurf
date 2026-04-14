@@ -240,6 +240,12 @@ let activeSelectorCategory = null;
 /** Cached recent workout history for template recency sorting */
 let cachedWorkoutHistory = null;
 
+/** Currently expanded template ID for inline editing (null = all collapsed) */
+let expandedTemplateId = null;
+
+/** All loaded templates (cached for inline editor access) */
+let loadedTemplates = [];
+
 /**
  * Main render function for the workout selector page.
  * Loads all templates (default + custom), renders filter pills and flat rows.
@@ -301,6 +307,9 @@ async function renderWorkoutSelectorUI() {
 
     // Sort: most recently used first, then alphabetical
     filtered = sortTemplatesByRecency(filtered);
+
+    // Cache for inline editor access
+    loadedTemplates = allTemplates;
 
     // Render template rows
     renderTemplateRows(listContainer, filtered, activeSelectorCategory !== null);
@@ -407,6 +416,7 @@ function renderSingleTemplateRow(template) {
     const exerciseCount = exercisesArray.length;
     const templateId = template._id;
     const templateName = template._name;
+    const isExpanded = expandedTemplateId === templateId;
 
     // Build detail line: ghost preview from last session or relative time
     let detailHtml = '';
@@ -425,8 +435,49 @@ function renderSingleTemplateRow(template) {
         detailHtml = `<div class="template-row__detail template-row__detail--new">Ready to start</div>`;
     }
 
+    // Inline editor HTML (shown when expanded)
+    let editorHtml = '';
+    if (isExpanded) {
+        const exerciseListHtml = exercisesArray.map((ex, i) => {
+            const exName = getExerciseName(ex);
+            const sets = ex.sets || 3;
+            return `
+                <div class="template-editor__exercise">
+                    <span class="template-editor__drag-handle"><i class="fas fa-grip-vertical"></i></span>
+                    <span class="template-editor__exercise-name">${escapeHtml(exName)}</span>
+                    <span class="template-editor__exercise-sets">${sets} sets</span>
+                    <button class="template-editor__remove-btn" data-action="removeTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-index="${i}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
+
+        editorHtml = `
+            <div class="template-editor" data-stop-propagation>
+                <div class="template-editor__exercise-list">
+                    ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet</div>'}
+                    <button class="template-editor__add-btn" data-action="addTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
+                        <i class="fas fa-plus"></i> Add Exercise
+                    </button>
+                </div>
+                <div class="template-editor__actions">
+                    <button class="template-editor__action" data-action="editTemplateFull" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
+                        <i class="fas fa-pen"></i> Edit
+                    </button>
+                    <button class="template-editor__action" data-action="duplicateTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
+                        <i class="fas fa-copy"></i> Duplicate
+                    </button>
+                    <button class="template-editor__action template-editor__action--danger" data-action="deleteTemplateInline" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
     return `
-        <div class="row-card template-row" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}" data-action="editTemplateRow">
+        <div class="row-card template-row ${isExpanded ? 'expanded' : ''}" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}" data-action="toggleTemplateRow">
             <div class="template-row__indicator" style="background: ${color};"></div>
             <div class="row-card__content">
                 <div class="row-card__title">${escapeHtml(templateName)}</div>
@@ -437,7 +488,16 @@ function renderSingleTemplateRow(template) {
                 <i class="fas fa-play"></i>
             </button>
         </div>
+        ${editorHtml}
     `;
+}
+
+/**
+ * Toggle inline template editor expansion.
+ */
+export function toggleTemplateEdit(templateId) {
+    expandedTemplateId = (expandedTemplateId === templateId) ? null : templateId;
+    renderWorkoutSelectorUI();
 }
 
 /** Set up event delegation on the template list container */
@@ -446,6 +506,29 @@ function setupSelectorDelegation(container) {
     delegatedContainers.add(container);
 
     container.addEventListener('click', (e) => {
+        // Stop propagation on editor actions so row toggle doesn't fire
+        if (e.target.closest('[data-stop-propagation]')) {
+            const actionEl = e.target.closest('[data-action]');
+            if (!actionEl) return;
+            const action = actionEl.dataset.action;
+            const templateId = actionEl.dataset.templateId;
+            const isDefault = actionEl.dataset.isDefault === 'true';
+            const index = parseInt(actionEl.dataset.index, 10);
+
+            if (action === 'removeTemplateExercise') {
+                window.removeTemplateExercise(templateId, index);
+            } else if (action === 'addTemplateExercise') {
+                window.editTemplate(templateId, isDefault);
+            } else if (action === 'editTemplateFull') {
+                window.editTemplate(templateId, isDefault);
+            } else if (action === 'duplicateTemplate') {
+                window.copyTemplateToCustom(templateId);
+            } else if (action === 'deleteTemplateInline') {
+                window.deleteTemplate(templateId, isDefault);
+            }
+            return;
+        }
+
         // Start button
         const startBtn = e.target.closest('[data-action="startTemplateRow"]');
         if (startBtn) {
@@ -455,12 +538,11 @@ function setupSelectorDelegation(container) {
             return;
         }
 
-        // Row tap = edit template
-        const row = e.target.closest('[data-action="editTemplateRow"]');
+        // Row tap = toggle inline editor
+        const row = e.target.closest('[data-action="toggleTemplateRow"]');
         if (row) {
             const templateId = row.dataset.templateId;
-            const isDefault = row.dataset.isDefault === 'true';
-            if (templateId) window.editTemplate(templateId, isDefault);
+            if (templateId) toggleTemplateEdit(templateId);
         }
     });
 }
