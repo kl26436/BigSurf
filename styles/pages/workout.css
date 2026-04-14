@@ -216,10 +216,10 @@
 /* ── Finish Workout footer ── */
 .workout-footer-bar {
     position: sticky;
-    bottom: 60px; /* above bottom nav */
+    bottom: 56px; /* above bottom nav */
     z-index: var(--z-sticky, 10);
-    padding: var(--space-16) var(--pad-card-x) var(--space-12);
-    background: linear-gradient(to bottom, transparent 0%, var(--bg-app) 40%);
+    padding: var(--space-12) var(--pad-card-x);
+    background: linear-gradient(to bottom, transparent 0%, var(--bg-app) 60%);
     pointer-events: none;
 }
 .workout-footer-bar > * {
@@ -255,7 +255,7 @@
     flex-direction: column;
     gap: var(--space-12);
     padding: var(--space-8) var(--pad-card-x);
-    padding-bottom: 80px; /* Room for sticky footer */
+    padding-bottom: 140px; /* Room for sticky finish footer + bottom nav */
 }
 
 .exercise-card {
@@ -363,6 +363,7 @@
 .exercise-card.expanded .exercise-card-body {
     padding-bottom: var(--pad-card-x);
     border-top: 1px solid var(--border-subtle);
+    overflow: visible;
 }
 
 /* ── Exercise header overflow button ── */
@@ -428,6 +429,7 @@
     color: var(--text-primary, var(--text-main));
     width: 100%;
     font-family: inherit;
+    margin-bottom: var(--space-12);
 }
 .notes-area:focus {
     min-height: 72px;
@@ -460,27 +462,7 @@
     font-style: italic;
 }
 
-/* Inline card body form elements */
-.exercise-card-body textarea {
-    width: 100%;
-    min-height: 60px; /* textarea min constraint */
-    padding: var(--space-12);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-strong);
-    font-family: var(--font);
-    font-size: var(--font-base);
-    resize: vertical;
-    margin-bottom: var(--space-12);
-}
-.exercise-card-body textarea:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-.exercise-card-body textarea::placeholder {
-    color: var(--text-muted);
-}
+/* notes-area styles handle textarea — see .notes-area rules below */
 .exercise-card-body .btn-success {
     width: 100%;
     padding: var(--space-16);
@@ -661,12 +643,19 @@
     z-index: 1;
     background: var(--bg-card);
 }
+/* Card body must also sit above the swipe-to-delete background */
+.exercise-card-body {
+    position: relative;
+    z-index: 1;
+    background: var(--bg-card);
+}
 
 /* ── Set table ── */
 .exercise-table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: var(--space-4);
+    table-layout: fixed;
 }
 .exercise-table thead th {
     font-size: var(--font-xs);
@@ -674,23 +663,35 @@
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    padding: var(--space-4) var(--space-8);
+    padding: var(--space-4) var(--space-4);
     border-bottom: 1px solid var(--border-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .exercise-table tbody td {
     padding: var(--space-6) var(--space-4);
     vertical-align: middle;
 }
 
-/* Equalize reps and weight columns */
+/* Fixed column widths: Set(32px) | Reps(flex) | Weight(flex) | Check(36px) */
+.exercise-table th:first-child,
+.exercise-table td:first-child {
+    width: 32px;
+}
+.exercise-table th:nth-child(2),
 .exercise-table td:nth-child(2),
+.exercise-table th:nth-child(3),
 .exercise-table td:nth-child(3) {
-    width: 35%;
+    width: calc((100% - 32px - 36px) / 2);
+}
+.exercise-table th:last-child,
+.exercise-table td:last-child {
+    width: 36px;
 }
 
 /* Set number */
 .set-number-cell {
-    width: 28px;
     text-align: center;
     font-size: var(--font-sm);
     font-weight: 500;
