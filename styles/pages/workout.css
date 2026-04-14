@@ -215,15 +215,15 @@
 
 /* ── Finish Workout footer ── */
 .workout-footer-bar {
-    position: sticky;
+    position: fixed;
     bottom: 56px; /* above bottom nav */
+    left: 0;
+    right: 0;
     z-index: var(--z-sticky, 10);
-    padding: var(--space-12) var(--pad-card-x);
-    background: linear-gradient(to bottom, transparent 0%, var(--bg-app) 60%);
-    pointer-events: none;
-}
-.workout-footer-bar > * {
-    pointer-events: auto;
+    padding: var(--space-8) var(--pad-card-x);
+    padding-bottom: calc(var(--space-8) + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-app);
+    border-top: 1px solid var(--border-subtle);
 }
 .btn-finish-footer {
     width: 100%;
@@ -255,7 +255,7 @@
     flex-direction: column;
     gap: var(--space-12);
     padding: var(--space-8) var(--pad-card-x);
-    padding-bottom: 140px; /* Room for sticky finish footer + bottom nav */
+    padding-bottom: 200px; /* Room for sticky finish footer + bottom nav + expanded card content */
 }
 
 .exercise-card {
@@ -363,7 +363,7 @@
 .exercise-card.expanded .exercise-card-body {
     padding-bottom: var(--pad-card-x);
     border-top: 1px solid var(--border-subtle);
-    overflow: visible;
+    overflow: hidden;
 }
 
 /* ── Exercise header overflow button ── */
@@ -380,6 +380,16 @@
     justify-content: center;
     border-radius: var(--radius-sm);
     flex-shrink: 0;
+}
+/* Hide overflow button on collapsed cards — declutters the header */
+.exercise-header-overflow {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--anim-fast);
+}
+.exercise-card.expanded .exercise-header-overflow {
+    opacity: 1;
+    pointer-events: auto;
 }
 .exercise-header-overflow:active {
     background: var(--bg-card-hover, rgba(255,255,255,0.06));
@@ -649,6 +659,10 @@
     z-index: 1;
     background: var(--bg-card);
 }
+/* Hide swipe-delete layer when card is expanded — prevents red bleed-through */
+.exercise-card.expanded .exercise-swipe-delete {
+    display: none;
+}
 
 /* ── Set table ── */
 .exercise-table {
@@ -674,16 +688,19 @@
     vertical-align: middle;
 }
 
-/* Fixed column widths: Set(32px) | Reps(flex) | Weight(flex) | Check(36px) */
+/* Fixed column widths: Set(28px) | Reps(~40%) | Weight(~60%) | Check(36px)
+   Weight column is wider to fit "WEIGHT (LB)" header + plate-calc icon */
 .exercise-table th:first-child,
 .exercise-table td:first-child {
-    width: 32px;
+    width: 28px;
 }
 .exercise-table th:nth-child(2),
-.exercise-table td:nth-child(2),
+.exercise-table td:nth-child(2) {
+    width: calc((100% - 28px - 36px) * 0.42);
+}
 .exercise-table th:nth-child(3),
 .exercise-table td:nth-child(3) {
-    width: calc((100% - 32px - 36px) / 2);
+    width: calc((100% - 28px - 36px) * 0.58);
 }
 .exercise-table th:last-child,
 .exercise-table td:last-child {
@@ -816,6 +833,8 @@
     gap: var(--space-8);
     margin-top: var(--space-8);
     margin-bottom: var(--space-12);
+    max-width: 100%;
+    overflow: hidden;
 }
 .btn-set-control {
     flex: 1;
@@ -842,7 +861,39 @@
     border-color: var(--danger);
 }
 
-/* Last session label above set table */
+/* Exercise complete section — ensure it's not hidden behind sticky footer */
+.exercise-complete-section {
+    scroll-margin-bottom: 120px;
+    padding-bottom: var(--space-8);
+}
+
+/* Exercise table header — last session + unit toggle side by side */
+.exercise-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-8);
+    padding: var(--space-4) 0;
+}
+.exercise-table-header .last-session-label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.exercise-table-header .last-session-label i {
+    margin-right: var(--space-4);
+}
+/* Compact unit toggle inside exercise card */
+.exercise-table-header .unit-toggle {
+    display: inline-flex;
+    background: var(--bg-card-hi, rgba(255,255,255,0.06));
+    border-radius: var(--radius-pill);
+    padding: 2px;
+}
+.exercise-table-header .unit-btn {
+    padding: var(--space-4) var(--space-12);
+    font-size: var(--font-xs);
+}
+/* Legacy standalone label (keep for backward compat) */
 .last-session-label {
     font-size: var(--font-sm);
     color: var(--text-muted);

@@ -679,7 +679,7 @@ async function expandExercise(index) {
     body.innerHTML = toolbarHtml + tableHtml;
 
     // Setup unit toggle event listeners
-    const unitToggle = body.querySelector('.exercise-unit-toggle .unit-toggle');
+    const unitToggle = body.querySelector('.unit-toggle');
     if (unitToggle) {
         unitToggle.querySelectorAll('.unit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -766,9 +766,6 @@ function buildInlineToolbar(exercise, index, exerciseName) {
     // History/progress (previously always-visible buttons in generateExerciseTable)
     items += `<button class="exercise-overflow-item" data-action="loadExerciseHistory" data-exercise="${escapeAttr(exerciseName)}" data-index="${index}"><i class="fas fa-history"></i> Show Last Workout</button>`;
     items += `<button class="exercise-overflow-item" data-action="toggleInlineProgress" data-exercise="${escapeAttr(exerciseName)}" data-equipment="${escapeAttr(exercise.equipment || '')}" data-index="${index}"><i class="fas fa-chart-line"></i> View Progress</button>`;
-
-    // Unit toggle (previously always-visible toggle)
-    items += `<button class="exercise-overflow-item" onclick="setExerciseUnit(${index}, '${otherUnit}')"><i class="fas fa-weight"></i> Switch to ${otherUnit}</button>`;
 
     // Edit defaults
     items += `<button class="exercise-overflow-item" onclick="editExerciseDefaults('${escapeAttr(exerciseName)}')"><i class="fas fa-pen"></i> Edit Defaults</button>`;
@@ -951,7 +948,13 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
     }
 
     let html = `
-        ${lastSessionLabel ? `<div class="last-session-label"><i class="fas fa-history"></i> Last session: ${lastSessionLabel}</div>` : ''}
+        <div class="exercise-table-header">
+            ${lastSessionLabel ? `<span class="last-session-label"><i class="fas fa-history"></i> ${lastSessionLabel}</span>` : '<span></span>'}
+            <div class="unit-toggle">
+                <button class="unit-btn ${unit === 'lbs' ? 'active' : ''}" data-unit="lbs">lbs</button>
+                <button class="unit-btn ${unit === 'kg' ? 'active' : ''}" data-unit="kg">kg</button>
+            </div>
+        </div>
 
         <table class="exercise-table">
             <thead>
@@ -2082,7 +2085,7 @@ export async function setExerciseUnit(exerciseIndex, unit) {
         });
 
         // Re-setup unit toggle event listeners
-        const unitToggle = content.querySelector('.exercise-unit-toggle .unit-toggle');
+        const unitToggle = content.querySelector('.unit-toggle');
         if (unitToggle) {
             unitToggle.querySelectorAll('.unit-btn').forEach((btn) => {
                 btn.addEventListener('click', (e) => {
