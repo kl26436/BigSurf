@@ -312,7 +312,10 @@ async function renderDashboard() {
         const weekCount = weeklyStats.uniqueDays || weeklyStats.workouts.length;
         const weeklyGoal = AppState.settings?.weeklyGoal || 5;
         const completedWorkoutTypes = todaysWorkout ? [todaysWorkout.workoutType] : [];
-        const inProgressWorkoutType = inProgressWorkout?.workoutType || null;
+
+        // Hide the HTML resume banner — the hero card handles in-progress state now
+        const resumeBanner = document.getElementById('resume-workout-banner');
+        if (resumeBanner) resumeBanner.classList.add('hidden');
 
         // Check if user has any workout history
         const hasWorkouts = streaks && streaks.totalWorkouts > 0;
@@ -328,7 +331,7 @@ async function renderDashboard() {
                         <i class="fas fa-play"></i> Start Workout
                     </button>
                 </div>
-                ${renderHeroWorkoutCard(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType, [])}
+                ${renderHeroWorkoutCard(suggestedWorkouts, completedWorkoutTypes, null, [])}
             `;
         } else {
             // Phase 2: Focused dashboard — "What should I do right now?"
@@ -357,7 +360,7 @@ async function renderDashboard() {
             const collapsiblePRs = prListHtml ? renderCollapsibleSection('Recent PRs', prListHtml) : '';
 
             container.innerHTML = `
-                ${renderHeroWorkoutCard(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType, insightsData.allWorkouts || [])}
+                ${renderHeroWorkoutCard(suggestedWorkouts, completedWorkoutTypes, inProgressWorkout, insightsData.allWorkouts || [])}
                 ${renderCompactProgress(weekCount, weeklyGoal, streaks, volumeChangePercent)}
                 ${showInsight ? renderSingleInsight(topInsight) : ''}
                 ${renderCompactStats(totalPRs, thisMonthWorkouts, totalWorkouts)}
@@ -423,25 +426,83 @@ async function getTodaysCompletedWorkout() {
 // ===================================================================
 
 /**
- * Hero Workout Card — primary dashboard CTA.
- * Shows the first suggested workout for today with a big START button.
+ * Hero Workout Card — the single primary dashboard CTA.
+ *
+ * Priority order:
+ * 1. In-progress workout → "Continue Workout" (absorbs resume banner)
+ * 2. Suggested workouts → first uncompleted, sorted by least-recently-done
+ * 3. All complete → "Day Done!" with option to add another
+ * 4. No suggestions → "Choose a Workout" generic CTA
  */
-function renderHeroWorkoutCard(suggestedWorkouts, completedWorkoutTypes, inProgressWorkoutType, allWorkouts) {
-    // Filter out in-progress and completed workouts
+function renderHeroWorkoutCard(suggestedWorkouts, completedWorkoutTypes, inProgressWorkout, allWorkouts) {
+    // ── Priority 1: In-progress workout IS the hero ──
+    if (inProgressWorkout) {
+        const workoutName = inProgressWorkout.workoutType || 'Workout';
+        const percentage = inProgressWorkout.totalSets > 0
+            ? Math.round((inProgressWorkout.completedSets / inProgressWorkout.totalSets) * 100) : 0;
+        const timeDisplay = inProgressWorkout.minutesElapsed < 60
+            ? `${inProgressWorkout.minutesElapsed}m`
+            : `${(inProgressWorkout.minutesElapsed / 60).toFixed(1)}h`;
+
+        return `
+            <div class="hero-workout-card hero-card hero-in-progress" onclick="continueInProgressWorkout()">
+                <div class="hero-workout-header">
+                    <span class="hero-workout-category hero-pulse">In Progress</span>
+                    <span class="hero-workout-last">${timeDisplay} elapsed</span>
+                </div>
+                <h2 class="hero-workout-name">${escapeHtml(workoutName)}</h2>
+                <div class="hero-workout-meta">
+                    <span><i class="fas fa-check-circle"></i> ${inProgressWorkout.completedSets}/${inProgressWorkout.totalSets} sets</span>
+                    <span><i class="fas fa-percent"></i> ${percentage}% done</span>
+                </div>
+                <div class="hero-progress-bar-wrap">
+                    <div class="hero-progress-bar" style="width: ${percentage}%"></div>
+                </div>
+                <button class="btn-hero-start" onclick="event.stopPropagation(); continueInProgressWorkout()">
+                    <i class="fas fa-play"></i> Continue Workout
+                </button>
+                <button class="btn-hero-discard" onclick="event.stopPropagation(); discardInProgressWorkout()">
+                    Discard
+                </button>
+            </div>
+        `;
+    }
+
+    // ── Priority 2-4: No active session — show suggestions ──
+    const inProgressWorkoutType = null; // not needed, already handled above
+
+    // Filter out completed workouts
     const available = (suggestedWorkouts || []).filter(w => {
         const name = w.name || w.day;
-        if (inProgressWorkoutType && name === inProgressWorkoutType) return false;
-        if (completedWorkoutTypes.includes(name)) return false;
-        return true;
+        return !completedWorkoutTypes.includes(name);
     });
 
-    const suggested = available[0] || null;
+    // Sort by least-recently-done (longest since last session first)
+    if (available.length > 1 && allWorkouts && allWorkouts.length > 0) {
+        const lastDoneMap = new Map();
+        for (const w of allWorkouts) {
+            if (w.workoutType && w.date && !lastDoneMap.has(w.workoutType)) {
+                const parts = w.date.split('-');
+                const wDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                lastDoneMap.set(w.workoutType, wDate);
+            }
+        }
+
+        available.sort((a, b) => {
+            const nameA = a.name || a.day;
+            const nameB = b.name || b.day;
+            const dateA = lastDoneMap.get(nameA);
+            const dateB = lastDoneMap.get(nameB);
+            // Never done → top priority (Infinity days ago)
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return -1;
+            if (!dateB) return 1;
+            return dateA - dateB; // oldest first
+        });
+    }
 
     // Check if all today's workouts are done
-    const allScheduled = (suggestedWorkouts || []).filter(w => {
-        const name = w.name || w.day;
-        return !(inProgressWorkoutType && name === inProgressWorkoutType);
-    });
+    const allScheduled = suggestedWorkouts || [];
     const allCompleted = allScheduled.length > 0 && allScheduled.every(w =>
         completedWorkoutTypes.includes(w.name || w.day)
     );
@@ -461,6 +522,8 @@ function renderHeroWorkoutCard(suggestedWorkouts, completedWorkoutTypes, inProgr
             </div>
         `;
     }
+
+    const suggested = available[0] || null;
 
     if (!suggested) {
         return `

@@ -1023,6 +1023,59 @@ h3 {
     color: var(--text-main);
     border: 1px solid var(--border);
 }
+.btn-hero-discard {
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    padding: var(--space-8) 0 0;
+    cursor: pointer;
+}
+.btn-hero-discard:active {
+    color: var(--danger);
+}
+
+/* Hero card — in-progress state */
+.hero-in-progress {
+    border: 1px solid var(--primary-border);
+}
+.hero-in-progress .hero-workout-category {
+    color: var(--primary);
+}
+.hero-pulse {
+    position: relative;
+    padding-left: var(--space-16);
+}
+.hero-pulse::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-pill);
+    background: var(--primary);
+    animation: hero-pulse-dot 2s ease-in-out infinite;
+}
+@keyframes hero-pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+.hero-progress-bar-wrap {
+    height: 6px;
+    background: var(--border-light);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    margin-bottom: var(--space-16);
+}
+.hero-progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: var(--radius-pill);
+    transition: width 0.3s;
+}
 
 /* Remaining workouts below hero card */
 .hero-remaining-workouts {
