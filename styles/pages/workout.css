@@ -9,11 +9,16 @@
 /* ── Compact Hero ── */
 .compact-hero {
     position: sticky;
-    top: 0;
+    top: -1px; /* prevent sub-pixel gap */
     z-index: var(--z-sticky, 10);
     background: var(--bg-app);
-    padding: var(--space-8) var(--pad-card-x) var(--space-6);
+    padding: var(--space-12) var(--pad-card-x) var(--space-6);
     border-bottom: 1px solid var(--border-light);
+    /* Extend into parent (.app-container) padding so no content peeks above */
+    margin: calc(-1 * var(--pad-page)) calc(-1 * var(--pad-page)) 0;
+    padding-left: var(--pad-page);
+    padding-right: var(--pad-page);
+    padding-top: calc(var(--space-12) + var(--pad-page));
 }
 .compact-hero__close {
     position: absolute;
@@ -216,12 +221,11 @@
 /* ── Finish Workout footer ── */
 .workout-footer-bar {
     position: fixed;
-    bottom: 56px; /* above bottom nav */
+    bottom: calc(52px + env(safe-area-inset-bottom, 16px)); /* above bottom nav + safe area */
     left: 0;
     right: 0;
     z-index: var(--z-sticky, 10);
-    padding: var(--space-8) var(--pad-card-x);
-    padding-bottom: calc(var(--space-8) + env(safe-area-inset-bottom, 0px));
+    padding: var(--space-10) var(--pad-card-x);
     background: var(--bg-app);
     border-top: 1px solid var(--border-subtle);
 }
