@@ -278,6 +278,7 @@
 .exercise-card.completed {
     background: var(--bg-card);
     border-color: var(--success-border);
+    opacity: 0.55;
 }
 .exercise-card.completed::before {
     background: var(--success);
@@ -301,6 +302,9 @@
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     gap: var(--space-8);
+    position: relative;
+    z-index: 1;
+    background: var(--bg-card);
 }
 .exercise-card-header:active {
     background: var(--bg-card-hi);
@@ -359,6 +363,9 @@
     overflow: hidden;
     transition: max-height var(--anim-slow) var(--ease-out-expo);
     padding: 0 var(--pad-card-x);
+    position: relative;
+    z-index: 1;
+    background: var(--bg-card);
 }
 .exercise-card.expanded .exercise-card-body {
     padding-bottom: var(--pad-card-x);
@@ -367,6 +374,7 @@
 }
 
 /* ── Exercise header overflow button ── */
+/* Hidden on collapsed cards, fades in when expanded */
 .exercise-header-overflow {
     width: 28px;
     height: 28px;
@@ -380,9 +388,6 @@
     justify-content: center;
     border-radius: var(--radius-sm);
     flex-shrink: 0;
-}
-/* Hide overflow button on collapsed cards — declutters the header */
-.exercise-header-overflow {
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--anim-fast);
@@ -563,9 +568,6 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
-.exercise-card.completed {
-    opacity: 0.55;
-}
 .exercise-card.just-completed {
     animation: slideToBottom 0.4s ease;
 }
@@ -647,17 +649,6 @@
     font-size: var(--font-md);
     z-index: 0;
     border-radius: 0 var(--radius-md) var(--radius-md) 0;
-}
-.exercise-card-header {
-    position: relative;
-    z-index: 1;
-    background: var(--bg-card);
-}
-/* Card body must also sit above the swipe-to-delete background */
-.exercise-card-body {
-    position: relative;
-    z-index: 1;
-    background: var(--bg-card);
 }
 /* Hide swipe-delete layer when card is expanded — prevents red bleed-through */
 .exercise-card.expanded .exercise-swipe-delete {

@@ -754,8 +754,6 @@ function collapseExercise(index) {
 function buildInlineToolbar(exercise, index, exerciseName) {
     const currentGroup = exercise.group || AppState.savedData.exercises?.[`exercise_${index}`]?.group;
     const hasNext = (index + 1) < (AppState.currentWorkout?.exercises?.length || 0);
-    const unit = AppState.exerciseUnits[index] || AppState.globalUnit;
-    const otherUnit = unit === 'lbs' ? 'kg' : 'lbs';
 
     let items = '';
 
