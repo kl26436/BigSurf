@@ -406,12 +406,21 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--space-12) var(--space-16);
+    padding-top: calc(var(--space-12) + env(safe-area-inset-top, 0px));
     border-bottom: 1px solid var(--border);
     margin: 0 calc(-1 * var(--space-16)) var(--space-16);
     position: sticky;
     top: 0;
     background: var(--bg-app);
-    z-index: 10;
+    z-index: var(--z-sticky, 10);
+}
+
+/* Ensure edit section scrolls independently so sticky header works */
+#edit-exercise-section {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: 100vh;
+    max-height: 100dvh;
 }
 .edit-exercise-header h2 {
     font-size: var(--font-md);
