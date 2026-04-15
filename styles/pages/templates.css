@@ -465,7 +465,40 @@
     padding: var(--pad-page);
     padding-top: 0; /* Header handles its own top padding */
 }
-/* section-header-row sticky is now global in workout.css */
+.section-subtitle {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-2);
+}
+
+/* ── Search bar ── */
+.template-search-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-10) var(--space-16);
+    margin-bottom: var(--space-4);
+}
+.template-search-bar i {
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    flex-shrink: 0;
+}
+.template-search-bar input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-strong);
+    font-size: var(--font-sm);
+    outline: none;
+    min-width: 0;
+}
+.template-search-bar input::placeholder {
+    color: var(--text-muted);
+}
 
 /* ── Category filter pills (Bar 2: top=56, z=99) ── */
 .category-pill-row {
@@ -542,12 +575,12 @@
     box-shadow: none;
 }
 
-/* Category color indicator — thin left border accent */
-.template-row__indicator {
-    width: 3px;
-    border-radius: 3px;
+/* Category color dot */
+.template-row__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
     flex-shrink: 0;
-    align-self: stretch;
 }
 
 /* Row content layout */
@@ -608,11 +641,19 @@
 .template-editor {
     background: var(--bg-surface, var(--bg-card-hi));
     border: 1px solid var(--primary-border);
-    border-top: none;
+    border-top: 1px solid var(--border-subtle);
     border-radius: 0 0 var(--radius-md) var(--radius-md);
     padding: var(--space-12) var(--space-16);
     margin-bottom: var(--space-8);
     box-shadow: var(--shadow-md);
+}
+.template-editor__section-label {
+    font-size: var(--font-2xs, 10px);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--space-8);
 }
 .template-editor__exercise-list {
     display: flex;
@@ -623,17 +664,19 @@
 .template-editor__exercise {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
-    padding: var(--space-8) var(--space-12);
+    gap: var(--space-10);
+    padding: var(--space-10) var(--space-12);
     background: var(--bg-card);
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-subtle);
 }
-.template-editor__drag-handle {
+.template-editor__number {
     color: var(--text-muted);
-    font-size: var(--font-xs);
-    cursor: grab;
-    opacity: 0.5;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    min-width: 18px;
+    text-align: center;
+    flex-shrink: 0;
 }
 .template-editor__exercise-name {
     flex: 1;
@@ -644,14 +687,9 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.template-editor__exercise-sets {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    flex-shrink: 0;
-}
 .template-editor__remove-btn {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border: none;
     background: none;
     color: var(--text-muted);
@@ -660,7 +698,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.5;
+    opacity: 0.4;
     flex-shrink: 0;
 }
 .template-editor__remove-btn:active {
@@ -676,6 +714,7 @@
     border: 1px dashed var(--border-light);
     border-radius: var(--radius-sm);
     background: none;
+    margin-bottom: var(--space-12);
     color: var(--primary);
     font-size: var(--font-sm);
     cursor: pointer;
@@ -714,6 +753,33 @@
 }
 .template-editor__action--danger {
     color: var(--danger);
+}
+.template-editor__empty {
+    text-align: center;
+    padding: var(--space-12);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+}
+/* Big Start Workout button at bottom of expanded editor */
+.template-editor__start-btn {
+    width: 100%;
+    padding: var(--space-12);
+    margin-top: var(--space-12);
+    background: var(--primary);
+    color: var(--bg-app);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-md);
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+}
+.template-editor__start-btn:active {
+    opacity: 0.85;
+    transform: scale(0.98);
 }
 
 /* ── Empty state ── */

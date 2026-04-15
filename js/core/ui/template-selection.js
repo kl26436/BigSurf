@@ -402,21 +402,11 @@ function renderSingleTemplateRow(template) {
     const templateName = template._name;
     const isExpanded = expandedTemplateId === templateId;
 
-    // Build detail line: ghost preview from last session or relative time
-    let detailHtml = '';
+    // Build subtitle: exercise count + relative time
     const lastWorkout = getLastWorkoutForTemplate(templateName);
-    if (lastWorkout) {
-        const exercises = lastWorkout.exercises || {};
-        const firstEx = Object.values(exercises)[0];
-        const sets = firstEx?.sets?.filter(s => s && s.reps && s.weight).slice(0, 3) || [];
-        if (sets.length > 0) {
-            const preview = sets.map(s => `${s.weight}×${s.reps}`).join(', ');
-            detailHtml = `<div class="template-row__detail">Last: ${escapeHtml(preview)}</div>`;
-        } else {
-            detailHtml = `<div class="template-row__detail">${formatTimeAgo(lastWorkout.date)}</div>`;
-        }
-    } else {
-        detailHtml = `<div class="template-row__detail template-row__detail--new">Ready to start</div>`;
+    let timeInfo = '';
+    if (lastWorkout?.date) {
+        timeInfo = ` · ${formatTimeAgo(lastWorkout.date)}`;
     }
 
     // Inline editor HTML (shown when expanded)
@@ -424,12 +414,10 @@ function renderSingleTemplateRow(template) {
     if (isExpanded) {
         const exerciseListHtml = exercisesArray.map((ex, i) => {
             const exName = getExerciseName(ex);
-            const sets = ex.sets || 3;
             return `
                 <div class="template-editor__exercise">
-                    <span class="template-editor__drag-handle"><i class="fas fa-grip-vertical"></i></span>
+                    <span class="template-editor__number">${i + 1}</span>
                     <span class="template-editor__exercise-name">${escapeHtml(exName)}</span>
-                    <span class="template-editor__exercise-sets">${sets} sets</span>
                     <button class="template-editor__remove-btn" data-action="removeTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-index="${i}">
                         <i class="fas fa-times"></i>
                     </button>
@@ -439,15 +427,16 @@ function renderSingleTemplateRow(template) {
 
         editorHtml = `
             <div class="template-editor" data-stop-propagation>
+                <div class="template-editor__section-label">EXERCISES</div>
                 <div class="template-editor__exercise-list">
                     ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet</div>'}
-                    <button class="template-editor__add-btn" data-action="addTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
-                        <i class="fas fa-plus"></i> Add Exercise
-                    </button>
                 </div>
+                <button class="template-editor__add-btn" data-action="addTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
+                    <i class="fas fa-plus"></i> Add Exercise
+                </button>
                 <div class="template-editor__actions">
                     <button class="template-editor__action" data-action="editTemplateFull" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
-                        <i class="fas fa-pen"></i> Edit
+                        <i class="fas fa-pen"></i> Rename
                     </button>
                     <button class="template-editor__action" data-action="duplicateTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
                         <i class="fas fa-copy"></i> Duplicate
@@ -456,17 +445,19 @@ function renderSingleTemplateRow(template) {
                         <i class="fas fa-trash"></i> Delete
                     </button>
                 </div>
+                <button class="template-editor__start-btn" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}">
+                    <i class="fas fa-play"></i> Start Workout
+                </button>
             </div>
         `;
     }
 
     return `
         <div class="row-card template-row ${isExpanded ? 'expanded' : ''}" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}" data-action="toggleTemplateRow">
-            <div class="template-row__indicator" style="background: ${color};"></div>
+            <div class="template-row__dot" style="background: ${color};"></div>
             <div class="row-card__content">
                 <div class="row-card__title">${escapeHtml(templateName)}</div>
-                <div class="row-card__subtitle">${exerciseCount} exercises · ${escapeHtml(category)}</div>
-                ${detailHtml}
+                <div class="row-card__subtitle">${exerciseCount} exercises${timeInfo}</div>
             </div>
             <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
                 <i class="fas fa-play"></i>
@@ -499,7 +490,10 @@ function setupSelectorDelegation(container) {
             const isDefault = actionEl.dataset.isDefault === 'true';
             const index = parseInt(actionEl.dataset.index, 10);
 
-            if (action === 'removeTemplateExercise') {
+            if (action === 'startTemplateRow') {
+                const workoutName = actionEl.dataset.workout;
+                if (workoutName) window.startWorkout(workoutName);
+            } else if (action === 'removeTemplateExercise') {
                 window.removeTemplateExercise(templateId, index);
             } else if (action === 'addTemplateExercise') {
                 window.editTemplate(templateId, isDefault);
@@ -529,6 +523,34 @@ function setupSelectorDelegation(container) {
             if (templateId) toggleTemplateEdit(templateId);
         }
     });
+}
+
+/** Search templates by name or exercise name */
+export function searchWorkoutTemplates(query) {
+    const listContainer = document.getElementById('template-list');
+    if (!listContainer) return;
+
+    if (!query || !query.trim()) {
+        // Re-render full list
+        let filtered = loadedTemplates;
+        if (activeSelectorCategory) {
+            filtered = loadedTemplates.filter(t => getWorkoutCategory(t._name) === activeSelectorCategory);
+        }
+        filtered = sortTemplatesByRecency(filtered);
+        renderTemplateRows(listContainer, filtered, false);
+        return;
+    }
+
+    const term = query.toLowerCase().trim();
+    const matched = loadedTemplates.filter(t => {
+        // Match template name
+        if (t._name.toLowerCase().includes(term)) return true;
+        // Match exercise names
+        const exercises = normalizeExercisesToArray(t.exercises);
+        return exercises.some(ex => getExerciseName(ex).toLowerCase().includes(term));
+    });
+
+    renderTemplateRows(listContainer, sortTemplatesByRecency(matched), false);
 }
 
 /** Clear cached workout history (call on workout complete/start) */

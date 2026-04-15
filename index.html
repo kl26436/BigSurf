@@ -188,10 +188,21 @@
                 <!-- Workout Selector -->
                 <section id="workout-selector" class="content-section hidden">
                     <div class="section-header-row">
-                        <h2 class="section-title"><i class="fas fa-play-circle"></i> Start Workout</h2>
+                        <div>
+                            <h2 class="section-title">Workouts</h2>
+                            <p class="section-subtitle">Tap a row to edit, play to start</p>
+                        </div>
                         <button class="btn btn-primary" onclick="createNewTemplate()">
                             <i class="fas fa-plus"></i> New
                         </button>
+                    </div>
+
+                    <!-- Search bar -->
+                    <div class="template-search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="template-search-input"
+                            placeholder="Search templates & exercises"
+                            oninput="searchWorkoutTemplates(this.value)">
                     </div>
 
                     <!-- Category filter pills -->
