@@ -117,14 +117,13 @@ export function showWeightEntryModal() {
     ];
 
     modal.querySelector('.modal-content').innerHTML = `
-        <div class="page-header">
-            <div class="header-left">
-                <button class="back-btn" onclick="closeWeightEntryModal()"><i class="fas fa-chevron-left"></i></button>
-                <div class="page-title">Log Measurements</div>
-            </div>
-            <button class="btn-save" onclick="saveBodyWeightEntry()">Save</button>
+        <div class="modal-header">
+            <h3>Log Measurements</h3>
+            <button class="modal-close-btn" onclick="closeWeightEntryModal()">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        <div style="padding: 14px 16px 80px; overflow-y: auto;">
+        <div class="modal-body" style="padding: 14px 16px 24px;">
             <!-- Hero weight card -->
             <div class="sec-head"><h4>Weight</h4></div>
             <div class="bw-hero-card">
@@ -188,6 +187,10 @@ export function showWeightEntryModal() {
                     <div class="srow-right"><span style="color: var(--primary); font-size: 0.74rem; font-weight: 600;">Upload</span></div>
                 </div>
             </div>
+
+            <button class="btn btn-primary" style="width: 100%; margin-top: 16px;" onclick="saveBodyWeightEntry()">
+                <i class="fas fa-check"></i> Save Entry
+            </button>
         </div>
     `;
 

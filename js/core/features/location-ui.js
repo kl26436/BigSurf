@@ -50,6 +50,17 @@ export async function showLocationManagement() {
     const section = document.getElementById('location-management-section');
     if (section) {
         section.classList.remove('hidden');
+
+        // Restore the static header for list view (in case we're returning from detail)
+        const staticHeader = section.querySelector('.section-header-row');
+        if (staticHeader) {
+            staticHeader.innerHTML = `
+                <h2 class="section-title"><i class="fas fa-map-marker-alt"></i> Locations</h2>
+                <button class="btn btn-primary" onclick="detectAndAddLocation()">
+                    <i class="fas fa-plus"></i> New
+                </button>
+            `;
+        }
     }
 
     // Clear stale GPS coords first
@@ -774,6 +785,19 @@ export function showLocationDetail(locationId) {
     const mapContainer = document.getElementById('location-map-container');
     if (mapContainer) mapContainer.classList.add('hidden');
 
+    // Update the static section header for detail view
+    const section = document.getElementById('location-management-section');
+    const staticHeader = section?.querySelector('.section-header-row');
+    if (staticHeader) {
+        staticHeader.innerHTML = `
+            <button class="btn-icon" onclick="showLocationManagement()" aria-label="Back" style="margin-right: 8px;">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2 class="section-title" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(location.name)}</h2>
+            <button class="btn-save" onclick="showLocationManagement()">Done</button>
+        `;
+    }
+
     const hasGPS = location.latitude && location.longitude;
     const address = location.cityState || (hasGPS ? `${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° W` : 'No GPS data');
     const radius = location.radius || 500;
@@ -786,14 +810,6 @@ export function showLocationDetail(locationId) {
     );
 
     container.innerHTML = `
-        <div class="page-header" style="margin: -14px -16px 14px; position: static;">
-            <div class="header-left">
-                <button class="back-btn" onclick="showLocationManagement()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
-                <div class="page-title">${escapeHtml(location.name)}</div>
-            </div>
-            <button class="btn-save" onclick="showLocationManagement()">Done</button>
-        </div>
-
         <!-- Name -->
         <div class="field">
             <div class="field-label">Name</div>

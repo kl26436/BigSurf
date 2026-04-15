@@ -532,18 +532,19 @@ function showTemplateEditor() {
         { value: 'other', label: 'Mixed', icon: 'fa-th', color: 'var(--text-secondary)' },
     ];
 
-    // Build the workout editor form — redesigned
-    editorContent.innerHTML = `
-        <!-- Sticky header -->
-        <div class="page-header">
-            <div class="header-left">
-                <button class="back-btn" onclick="closeTemplateEditor()"><i class="fas fa-chevron-left"></i></button>
-                <div class="page-title">${currentEditingTemplate.name ? 'Edit Workout' : 'Create Workout'}</div>
-            </div>
-            <button class="btn-save" onclick="saveCurrentTemplate()">Save</button>
-        </div>
+    // Update the existing full-page header (defined in index.html)
+    const headerTitle = templateEditor.querySelector('#template-editor-title');
+    if (headerTitle) headerTitle.textContent = currentEditingTemplate.name ? 'Edit Workout' : 'Create Workout';
 
-        <div style="padding: 14px 16px 100px; overflow-y: auto; flex: 1;">
+    // Replace the header action slot with a Save button
+    const headerAction = templateEditor.querySelector('.full-page-header-action');
+    if (headerAction) {
+        headerAction.innerHTML = `<button class="btn-save" onclick="saveCurrentTemplate()">Save</button>`;
+    }
+
+    // Build the workout editor form — redesigned (no duplicate header)
+    editorContent.innerHTML = `
+        <div style="padding: 14px 16px 100px;">
             <div class="field">
                 <div class="field-label">Name</div>
                 <input class="field-input" id="template-name"
@@ -604,11 +605,6 @@ function showTemplateEditor() {
             </div>
         </div>
 
-        <div class="page-footer">
-            <button class="btn-redesign" onclick="saveCurrentTemplate()">
-                <i class="fas fa-check"></i> Save Workout
-            </button>
-        </div>
     `;
 
     // Show as full-page section

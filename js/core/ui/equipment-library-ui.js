@@ -333,21 +333,23 @@ export async function openEquipmentDetail(equipmentId) {
     const container = document.getElementById('equipment-library-content');
     if (!container) return;
 
+    // Update the static header for detail view
+    const section = document.getElementById('equipment-library-section');
+    const staticHeader = section?.querySelector('.equip-lib-header');
+    if (staticHeader) {
+        staticHeader.innerHTML = `
+            <button class="btn-icon" onclick="backToEquipmentList()" aria-label="Back">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2 style="font-size: 1rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(equipment.name)}</h2>
+            <button class="btn-save" onclick="backToEquipmentList()">Done</button>
+        `;
+    }
+
     const currentType = equipment.equipmentType || 'Other';
 
     container.innerHTML = `
         <div class="equipment-detail">
-            <!-- Sticky header -->
-            <div class="page-header">
-                <div class="header-left">
-                    <button class="back-btn" onclick="backToEquipmentList()" aria-label="Back">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <div class="page-title">${escapeHtml(equipment.name)}</div>
-                </div>
-                <button class="btn-save" onclick="backToEquipmentList()">Done</button>
-            </div>
-
             <div style="padding: 14px 16px 80px;">
                 <!-- Name -->
                 <div class="field">
@@ -445,6 +447,22 @@ export async function openEquipmentDetail(equipmentId) {
 
 export function backToEquipmentList() {
     currentDetailId = null;
+
+    // Restore the static header for list view
+    const section = document.getElementById('equipment-library-section');
+    const staticHeader = section?.querySelector('.equip-lib-header');
+    if (staticHeader) {
+        staticHeader.innerHTML = `
+            <button class="btn-icon" onclick="navigateTo('dashboard')" aria-label="Back to dashboard">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2>Equipment</h2>
+            <button class="btn btn-primary btn-small" onclick="showAddEquipmentFlow()">
+                <i class="fas fa-plus"></i> Add
+            </button>
+        `;
+    }
+
     renderEquipmentLibrary();
 }
 
