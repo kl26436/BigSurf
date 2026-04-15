@@ -486,6 +486,40 @@ export function toggleTemplateEdit(templateId) {
 }
 
 /**
+ * Save a modified template to Firebase (handles both default and custom).
+ * For default templates, saves as a custom override with `overridesDefault` set.
+ */
+async function saveTemplateInline(template, exercises) {
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const wm = new FirebaseWorkoutManager(AppState);
+
+        const saveData = {
+            name: template._name,
+            exercises,
+            category: getWorkoutCategory(template._name),
+        };
+
+        // If editing a default template, mark it as an override so the
+        // deduplication in getUserWorkoutTemplates replaces the default
+        if (template._isDefault) {
+            saveData.overridesDefault = template._id;
+        }
+
+        // Use the template's existing ID so it overwrites (not duplicates)
+        saveData.id = template._id;
+
+        await wm.saveWorkoutTemplate(saveData);
+
+        // Refresh workoutPlans so the updated template shows immediately
+        AppState.workoutPlans = await wm.getUserWorkoutTemplates();
+    } catch (err) {
+        console.error('Error saving template:', err);
+        showNotification('Failed to save changes', 'error');
+    }
+}
+
+/**
  * Move an exercise up or down within a template's exercise list (inline editor).
  */
 export async function moveTemplateExerciseInline(templateId, index, direction) {
@@ -500,15 +534,7 @@ export async function moveTemplateExerciseInline(templateId, index, direction) {
     [exercises[index], exercises[targetIndex]] = [exercises[targetIndex], exercises[index]];
     template.exercises = exercises;
 
-    // Save to Firebase
-    try {
-        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-        const wm = new FirebaseWorkoutManager(AppState);
-        await wm.saveWorkoutTemplate({ ...template, id: template._id, exercises });
-    } catch (err) {
-        console.error('Error reordering exercise:', err);
-    }
-
+    await saveTemplateInline(template, exercises);
     renderWorkoutSelectorUI();
 }
 
@@ -526,15 +552,7 @@ export async function removeTemplateExerciseInline(templateId, index) {
     exercises.splice(index, 1);
     template.exercises = exercises;
 
-    // Save to Firebase
-    try {
-        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-        const wm = new FirebaseWorkoutManager(AppState);
-        await wm.saveWorkoutTemplate({ ...template, id: template._id, exercises });
-    } catch (err) {
-        console.error('Error removing exercise:', err);
-    }
-
+    await saveTemplateInline(template, exercises);
     renderWorkoutSelectorUI();
 }
 
