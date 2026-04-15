@@ -4,6 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { db, collection, query, where, getDocs, orderBy } from '../data/firebase-config.js';
 import { getDateString } from '../utils/date-helpers.js';
+import { getSetTotalWeight } from '../utils/weight-calculations.js';
 
 // ===================================================================
 // DATA STRUCTURES
@@ -111,16 +112,19 @@ export async function loadExerciseProgress(forceRefresh = false) {
                 let bestSet = null;
 
                 for (const set of exerciseData.sets) {
-                    if (!set.reps || !set.weight) continue;
+                    if (!set.reps) continue;
+                    // For bodyweight sets, weight may be 0 but totalWeight includes BW
+                    const setTotalWeight = getSetTotalWeight(set);
+                    if (!setTotalWeight && !set.isBodyweight) continue;
 
-                    const volume = set.reps * set.weight;
+                    const volume = set.reps * setTotalWeight;
                     totalVolume += volume;
 
                     // Track max weight (primary metric for strength)
-                    if (set.weight > maxWeight) {
-                        maxWeight = set.weight;
+                    if (setTotalWeight > maxWeight) {
+                        maxWeight = setTotalWeight;
                         maxReps = set.reps;
-                        bestSet = { weight: set.weight, reps: set.reps };
+                        bestSet = { weight: setTotalWeight, reps: set.reps };
                     }
                 }
 

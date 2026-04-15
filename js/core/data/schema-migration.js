@@ -3,7 +3,7 @@
 // - Old schema: document ID = date (YYYY-MM-DD), one workout per day
 // - New schema: document ID = unique ID, date stored as field, multiple workouts per day
 
-import { db, doc, setDoc, getDoc, deleteDoc, collection, getDocs } from './firebase-config.js';
+import { db, doc, setDoc, getDoc, deleteDoc, collection, getDocs, updateDoc, writeBatch } from './firebase-config.js';
 import { debugLog } from '../utils/config.js';
 
 /**
@@ -165,5 +165,58 @@ export async function checkAndMigrateOnLogin(userId) {
     } catch (error) {
         console.error('❌ Error during login migration check:', error);
         return { success: false, migrated: 0, errors: [error.message] };
+    }
+}
+
+// ===================================================================
+// EQUIPMENT BASE WEIGHT MIGRATION (Schema v3.1)
+// ===================================================================
+
+/** Default base weights by equipment type */
+const BASE_WEIGHT_DEFAULTS = {
+    Barbell: { baseWeight: 45, baseWeightUnit: 'lbs' },
+    Cable:   { baseWeight: 5,  baseWeightUnit: 'lbs' },
+};
+
+/**
+ * Migrate existing equipment docs to include baseWeight / baseWeightUnit.
+ * Only touches documents that don't already have a baseWeight field.
+ * Safe to run multiple times (idempotent).
+ *
+ * @param {string} userId
+ * @returns {Promise<number>} Number of documents updated
+ */
+export async function migrateEquipmentBaseWeight(userId) {
+    if (!userId) return 0;
+
+    try {
+        const eqRef = collection(db, 'users', userId, 'equipment');
+        const snap = await getDocs(eqRef);
+        const batch = writeBatch(db);
+        let touched = 0;
+
+        snap.forEach((docSnap) => {
+            const eq = docSnap.data();
+            if (eq.baseWeight !== undefined) return; // already migrated
+
+            const defaults = BASE_WEIGHT_DEFAULTS[eq.equipmentType] || {
+                baseWeight: 0,
+                baseWeightUnit: 'lbs',
+            };
+            batch.update(docSnap.ref, {
+                baseWeight: defaults.baseWeight,
+                baseWeightUnit: defaults.baseWeightUnit,
+            });
+            touched++;
+        });
+
+        if (touched > 0) {
+            await batch.commit();
+            debugLog(`✅ Equipment base weight migration: ${touched} docs updated`);
+        }
+        return touched;
+    } catch (error) {
+        console.error('❌ Equipment base weight migration failed:', error);
+        return 0;
     }
 }

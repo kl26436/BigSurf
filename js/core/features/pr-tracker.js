@@ -5,6 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { db, doc, setDoc, getDoc } from '../data/firebase-config.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { Config } from '../utils/config.js';
+import { getSetTotalWeight } from '../utils/weight-calculations.js';
 
 // ===================================================================
 // PR CUTOFF DATE - Only count PRs from this date onwards
@@ -582,14 +583,17 @@ export async function rebuildPRsFromHistory() {
 
                     // Process each set (skip warmup sets)
                     for (const set of exerciseData.sets) {
-                        if (!set.reps || !set.weight) continue;
+                        if (!set.reps) continue;
+                        // Use total weight (handles bodyweight + added weight)
+                        const totalWeight = getSetTotalWeight(set);
+                        if (!totalWeight && !set.isBodyweight) continue;
                         if (set.type === 'warmup') continue;
 
                         // Record PR with correct date and location
                         await recordPR(
                             exerciseName,
                             set.reps,
-                            set.weight,
+                            totalWeight,
                             equipment,
                             workoutLocation,
                             workoutDate,

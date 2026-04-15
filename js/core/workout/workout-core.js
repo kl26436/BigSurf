@@ -28,6 +28,7 @@ export {
     closeWorkoutOverflow,
     updateWorkoutProgress,
     showWorkoutSummary,
+    showMidWorkoutSummary,
 } from './workout-session.js';
 
 // === Exercise UI: Rendering, Set Management, Equipment, Video, Units ===
@@ -60,11 +61,13 @@ export {
     loadLastWorkoutHint,
     toggleSetComplete,
     toggleReorderMode,
+    toggleExerciseOverflow,
     supersetWithNext,
     ungroupExerciseFromWorkout,
     toggleExerciseExpansion,
     replaceExercise,
     updateCardioField,
+    updateBodyweightSet,
 } from './exercise-ui.js';
 
 // === Rest Timer ===

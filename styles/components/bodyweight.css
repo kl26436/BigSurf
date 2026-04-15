@@ -1,0 +1,338 @@
+/* ============================================================================
+   BODYWEIGHT EXERCISE COMPONENTS
+   - BW prompt modal
+   - BW banner (auto-filled weight)
+   - Added weight row
+   - Bodyweight set table variant
+   - Equipment base weight field
+   ============================================================================ */
+
+/* ── BW PROMPT OVERLAY ── */
+.bw-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal, 500);
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 200ms ease;
+}
+
+.bw-prompt-overlay.bw-prompt-closing {
+    animation: fadeOut 200ms ease forwards;
+}
+
+.bw-prompt {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 28px 24px;
+    max-width: 340px;
+    width: 100%;
+    text-align: center;
+}
+
+.bw-prompt__icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(86, 182, 194, 0.15);
+    color: var(--cat-shoulders);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 14px;
+    font-size: 1.4rem;
+}
+
+.bw-prompt__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    margin-bottom: 6px;
+}
+
+.bw-prompt__desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.bw-prompt__input-card {
+    background: var(--bg-app);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.bw-prompt__input {
+    background: transparent;
+    border: none;
+    color: var(--text-strong);
+    font-size: 2rem;
+    font-weight: 800;
+    outline: none;
+    width: 140px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.bw-prompt__input.input-error {
+    animation: shake 300ms ease;
+}
+
+.bw-prompt__unit {
+    color: var(--cat-shoulders);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.bw-prompt__hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.bw-prompt__save {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.bw-prompt__skip {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 8px;
+    cursor: pointer;
+}
+
+/* ── BW BANNER (inside exercise card) ── */
+.bw-banner {
+    background: rgba(86, 182, 194, 0.08);
+    border: 1px solid rgba(86, 182, 194, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: var(--space-12, 12px);
+}
+
+.bw-banner > i {
+    color: var(--cat-shoulders);
+    font-size: 0.9rem;
+}
+
+.bw-banner__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.bw-banner__weight {
+    font-size: var(--font-sm, 0.82rem);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.bw-banner__hint {
+    font-size: var(--font-2xs, 0.68rem);
+    color: var(--text-muted);
+}
+
+.bw-banner__edit {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-size: var(--font-xs, 0.74rem);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+/* ── ADDED WEIGHT ROW ── */
+.bw-added-weight-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: var(--space-12, 12px);
+}
+
+.bw-added-weight-row > i {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.bw-added-weight-row--active {
+    background: var(--primary-bg);
+    border-color: var(--primary-border);
+}
+
+.bw-added-weight-row--active > i {
+    color: var(--primary);
+}
+
+.bw-added-weight-row__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.bw-added-weight-row__name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.bw-added-weight-row__hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.bw-added-weight-input {
+    width: 72px;
+    background: var(--bg-app);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 8px;
+    color: var(--text-strong);
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+}
+
+.bw-added-weight-row--active .bw-added-weight-input {
+    border-color: var(--primary-border);
+}
+
+.bw-added-weight-unit {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ── BODYWEIGHT SET TABLE VARIANT ── */
+.exercise-table--bodyweight .bw-total-cell {
+    font-size: var(--font-sm, 0.82rem);
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.bw-total-hint {
+    font-size: var(--font-2xs, 0.68rem);
+    color: var(--text-muted);
+}
+
+.bw-volume-row {
+    margin-top: var(--space-10, 10px);
+    padding-top: var(--space-10, 10px);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-xs, 0.74rem);
+    color: var(--text-muted);
+}
+
+.bw-volume-row strong {
+    color: var(--text-strong);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── EQUIPMENT BASE WEIGHT (detail view) ── */
+.equip-base-weight-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.equip-base-weight-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-strong);
+    font-size: 1.1rem;
+    font-weight: 700;
+    outline: none;
+    font-variant-numeric: tabular-nums;
+    min-width: 0;
+}
+
+.equip-base-weight-unit-toggle {
+    display: flex;
+    gap: 6px;
+}
+
+.unit-chip {
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill, 999px);
+    padding: 5px 12px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.unit-chip.active {
+    background: var(--primary-bg);
+    border-color: var(--primary-border);
+    color: var(--primary);
+}
+
+.equip-base-weight-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    padding-left: 2px;
+}
+
+.equip-detail-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* ── PLATE CALC EQUIPMENT HINT ── */
+.popover-equip-hint {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    padding: 4px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.popover-equip-hint i {
+    color: var(--primary);
+    font-size: 0.68rem;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}

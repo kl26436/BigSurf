@@ -29,6 +29,30 @@ import {
 import { Config, CATEGORY_COLORS } from '../utils/config.js';
 import { haptic } from '../utils/haptics.js';
 import { getWorkoutCategory } from '../ui/template-selection.js';
+import { getSetTotalWeight, getSetVolume } from '../utils/weight-calculations.js';
+
+// ===================================================================
+// BODYWEIGHT EXERCISE DETECTION
+// ===================================================================
+
+/** Common bodyweight exercise name patterns */
+const BODYWEIGHT_PATTERNS = /pull.?up|chin.?up|dip(?!.*press)|push.?up|bodyweight|body weight|muscle.?up|inverted row|pistol squat|burpee|plank|l-sit|handstand|toes.?to.?bar|hanging/i;
+
+/**
+ * Determine if an exercise is a bodyweight exercise.
+ * Checks: (1) equipment type on the cached equipment doc, (2) exercise name pattern.
+ */
+function isBodyweightExercise(exercise) {
+    // Check equipment type from cached equipment list
+    if (exercise.equipment) {
+        const list = AppState._cachedEquipment || [];
+        const eq = list.find(e => e.name?.toLowerCase() === exercise.equipment.toLowerCase());
+        if (eq?.equipmentType === 'Bodyweight') return true;
+    }
+    // Fallback: pattern match on exercise name
+    const name = exercise.machine || exercise.name || '';
+    return BODYWEIGHT_PATTERNS.test(name);
+}
 
 // ===================================================================
 // INLINE CARD EVENT DELEGATION
@@ -453,7 +477,12 @@ export function createExerciseCard(exercise, index) {
         totalSets = 1;
         displayTotal = 1;
     } else {
-        completedSets = savedSets.filter((set) => set && set.reps && set.weight).length;
+        completedSets = savedSets.filter((set) => {
+            if (!set) return false;
+            // Bodyweight sets are complete when reps are entered (no weight required)
+            if (set.isBodyweight) return !!set.reps;
+            return set.reps && set.weight;
+        }).length;
         totalSets = exercise.sets || 3;
         displayTotal = Math.max(completedSets, totalSets);
     }
@@ -544,8 +573,7 @@ export function createExerciseCard(exercise, index) {
     overflowBtn.innerHTML = '<i class="fas fa-ellipsis-h"></i>';
     overflowBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // Don't trigger expand/collapse
-        const menu = document.getElementById(`exercise-overflow-${index}`);
-        if (menu) menu.classList.toggle('hidden');
+        toggleExerciseOverflow(index);
     });
     status.appendChild(overflowBtn);
 
@@ -662,13 +690,36 @@ async function expandExercise(index) {
     const unit = AppState.exerciseUnits[index] || AppState.globalUnit;
     const exerciseName = getExerciseName(exercise);
 
+    // If bodyweight exercise, ensure fresh body weight before rendering
+    const isBW = isBodyweightExercise(exercise);
+    if (isBW && AppState.currentSessionBodyWeightLbs === null) {
+        try {
+            const { ensureFreshBodyWeight } = await import('../features/bodyweight-prompt.js');
+            await ensureFreshBodyWeight();
+        } catch (e) {
+            console.error('BW prompt error:', e);
+        }
+    }
+
     // Build inline toolbar (Swap | Equipment | More)
     const toolbarHtml = buildInlineToolbar(exercise, index, exerciseName);
 
     // Generate the set table (reuse existing function)
-    const tableHtml = await generateExerciseTable(exercise, index, unit);
+    const tableHtml = isBW
+        ? await generateBodyweightExerciseTable(exercise, index, unit)
+        : await generateExerciseTable(exercise, index, unit);
 
     body.innerHTML = toolbarHtml + tableHtml;
+
+    // Wire up bodyweight added-weight input
+    if (isBW) {
+        const addedInput = body.querySelector('.bw-added-weight-input');
+        if (addedInput) {
+            addedInput.addEventListener('input', () => {
+                updateBodyweightTotals(index);
+            });
+        }
+    }
 
     // Setup unit toggle event listeners
     const unitToggle = body.querySelector('.unit-toggle');
@@ -741,6 +792,11 @@ function collapseExercise(index) {
 
     // Update the card header to reflect changes
     updateExerciseCard(index);
+}
+
+export function toggleExerciseOverflow(index) {
+    const menu = document.getElementById(`exercise-overflow-${index}`);
+    if (menu) menu.classList.toggle('hidden');
 }
 
 function buildInlineToolbar(exercise, index, exerciseName) {
@@ -1056,6 +1112,319 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
     return html;
 }
 
+// ===================================================================
+// BODYWEIGHT EXERCISE TABLE
+// ===================================================================
+
+/**
+ * Generate the exercise table variant for bodyweight exercises.
+ * Shows: BW banner, optional added-weight row, set table with Total/rep column.
+ */
+async function generateBodyweightExerciseTable(exercise, exerciseIndex, unit) {
+    const bwLbs = AppState.currentSessionBodyWeightLbs;
+    const bwSkipped = bwLbs === 0; // user explicitly skipped
+    const displayUnit = unit || 'lbs';
+    const isKg = displayUnit === 'kg';
+
+    // Convert BW to display unit
+    const bwDisplay = bwLbs && !bwSkipped
+        ? (isKg ? Math.round(bwLbs * 0.453592 * 2) / 2 : Math.round(bwLbs * 10) / 10)
+        : null;
+    const unitLabel = isKg ? 'kg' : 'lb';
+
+    // Read saved added weight for this exercise (stored on exercise-level, not per-set)
+    const exerciseKey = `exercise_${exerciseIndex}`;
+    const savedEx = AppState.savedData.exercises?.[exerciseKey] || {};
+    const savedAddedWeight = savedEx.addedWeight || 0;
+    const savedSets = savedEx.sets || [];
+    const savedNotes = savedEx.notes || '';
+
+    // Ensure enough set slots
+    while (savedSets.length < exercise.sets) {
+        savedSets.push({ reps: '', weight: '' });
+    }
+
+    // Fetch last session for placeholders
+    const exerciseName = getExerciseName(exercise);
+    let lastSession = null;
+    try {
+        lastSession = await getLastSessionDefaults(exerciseName, exercise.equipment || null);
+    } catch (_) { /* ignore */ }
+
+    let lastSessionLabel = '';
+    if (lastSession?.date) {
+        const d = new Date(lastSession.date + 'T00:00:00');
+        lastSessionLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    // BW banner
+    const bannerHtml = bwDisplay ? `
+        <div class="bw-banner">
+            <i class="fas fa-weight"></i>
+            <div class="bw-banner__info">
+                <div class="bw-banner__weight">Body weight: ${bwDisplay} ${unitLabel}</div>
+                <div class="bw-banner__hint">Auto-filled · used for total volume</div>
+            </div>
+            <button class="bw-banner__edit" onclick="editBodyWeight()">Edit</button>
+        </div>
+    ` : (bwSkipped ? '' : '');
+
+    // Added weight row
+    const addedWeightHtml = `
+        <div class="bw-added-weight-row ${savedAddedWeight > 0 ? 'bw-added-weight-row--active' : ''}">
+            <i class="fas fa-plus"></i>
+            <div class="bw-added-weight-row__info">
+                <div class="bw-added-weight-row__name">Added weight (optional)</div>
+                <div class="bw-added-weight-row__hint">Belt + plate, weighted vest, dip belt</div>
+            </div>
+            <input type="number" inputmode="decimal" step="0.5"
+                   class="bw-added-weight-input"
+                   data-exercise="${exerciseIndex}"
+                   value="${savedAddedWeight || ''}" placeholder="0">
+            <span class="bw-added-weight-unit">${unitLabel}</span>
+        </div>
+    `;
+
+    // Compute totals
+    const addedInLbs = savedAddedWeight
+        ? (isKg ? Math.round(savedAddedWeight * 2.20462) : savedAddedWeight)
+        : 0;
+    const totalPerRepLbs = (bwLbs || 0) + addedInLbs;
+    const totalPerRepDisplay = isKg
+        ? Math.round(totalPerRepLbs * 0.453592 * 2) / 2
+        : Math.round(totalPerRepLbs * 10) / 10;
+
+    // Set table
+    let tableHtml = `
+        <div class="exercise-table-header">
+            ${lastSessionLabel ? `<span class="last-session-label"><i class="fas fa-history"></i> ${lastSessionLabel}</span>` : '<span></span>'}
+            <span class="bw-total-hint">Total / rep = BW + added</span>
+        </div>
+
+        <table class="exercise-table exercise-table--bodyweight" id="exercise-${exerciseIndex}">
+            <thead>
+                <tr>
+                    <th>Set</th>
+                    <th>Reps</th>
+                    <th>Total / rep</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let runningVolume = 0;
+
+    for (let i = 0; i < exercise.sets; i++) {
+        const set = savedSets[i] || { reps: '' };
+        const isSetDone = !!(set.completed || set.reps);
+
+        // Placeholder from last session
+        let repsPlaceholder = exercise.reps || 10;
+        if (lastSession?.sets?.[i]?.reps) {
+            repsPlaceholder = lastSession.sets[i].reps;
+        }
+
+        // Volume calculation
+        if (isSetDone && set.reps) {
+            runningVolume += set.reps * totalPerRepLbs;
+        }
+
+        tableHtml += `
+        <tr class="${isSetDone ? 'set-row-completed' : ''}">
+            <td class="set-number-cell">${i + 1}</td>
+            <td>
+                <input type="number" class="set-input bw-reps-input" inputmode="numeric"
+                       placeholder="${repsPlaceholder}"
+                       value="${set.reps || ''}"
+                       data-exercise="${exerciseIndex}" data-set="${i}"
+                       onchange="updateBodyweightSet(${exerciseIndex}, ${i}, this.value)">
+            </td>
+            <td class="bw-total-cell" data-set="${i}">
+                ${totalPerRepDisplay > 0 ? `${totalPerRepDisplay} ${unitLabel}` : '—'}
+            </td>
+            <td class="set-complete-cell">
+                <button class="set-check ${isSetDone ? 'checked' : ''}"
+                        onclick="toggleSetComplete(${exerciseIndex}, ${i})"
+                        aria-label="Mark set ${i + 1} complete">
+                    <i class="fas ${isSetDone ? 'fa-check-circle' : 'fa-circle'}"></i>
+                </button>
+            </td>
+        </tr>
+        `;
+    }
+
+    const volumeDisplay = isKg
+        ? Math.round(runningVolume * 0.453592)
+        : Math.round(runningVolume);
+    const volumeUnit = isKg ? 'kg' : 'lb';
+
+    tableHtml += `
+            </tbody>
+        </table>
+
+        <div class="bw-volume-row">
+            <span>Volume so far</span>
+            <strong class="bw-volume-value">${volumeDisplay.toLocaleString()} ${volumeUnit}</strong>
+        </div>
+    `;
+
+    // Rest timer + controls + notes (same as standard exercises)
+    const controlsHtml = `
+        <div id="modal-rest-timer-${exerciseIndex}" class="modal-rest-timer hidden">
+            <div class="modal-rest-exercise"></div>
+            <div class="modal-rest-display">--:--</div>
+            <div class="modal-rest-controls">
+                <button class="btn btn-secondary btn-small" onclick="toggleModalRestTimer(${exerciseIndex})" aria-label="Pause timer">
+                    <i class="fas fa-pause"></i>
+                </button>
+                <button class="btn btn-secondary btn-small" onclick="skipModalRestTimer(${exerciseIndex})" aria-label="Skip timer">
+                    <i class="fas fa-forward"></i> Skip
+                </button>
+            </div>
+        </div>
+
+        <div class="set-controls">
+            <button class="btn-set-control btn-set-control--remove" onclick="removeSetFromExercise(${exerciseIndex})" title="Remove last set">
+                <i class="fas fa-minus"></i> Remove
+            </button>
+            <button class="btn-set-control btn-set-control--add" onclick="addSetToExercise(${exerciseIndex})" title="Add new set">
+                <i class="fas fa-plus"></i> Add Set
+            </button>
+        </div>
+
+        <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes..."
+                  onchange="saveExerciseNotes(${exerciseIndex})">${escapeHtml(savedNotes)}</textarea>
+
+        <div class="exercise-complete-section">
+            <button class="btn btn-success" onclick="markExerciseComplete(${exerciseIndex})">
+                <i class="fas fa-check-circle"></i> Mark Exercise Complete
+            </button>
+        </div>
+    `;
+
+    return bannerHtml + addedWeightHtml + tableHtml + controlsHtml;
+}
+
+/**
+ * Update the bodyweight set (reps only — weight is computed from BW + added).
+ */
+export async function updateBodyweightSet(exerciseIndex, setIndex, repsValue) {
+    if (!AppState.currentWorkout || !AppState.savedData.exercises) {
+        AppState.savedData.exercises = {};
+    }
+
+    const exerciseKey = `exercise_${exerciseIndex}`;
+    if (!AppState.savedData.exercises[exerciseKey]) {
+        const exercise = AppState.currentWorkout?.exercises?.[exerciseIndex];
+        AppState.savedData.exercises[exerciseKey] = {
+            sets: [],
+            notes: '',
+            name: exercise?.machine || exercise?.name || null,
+            equipment: exercise?.equipment || null,
+        };
+    }
+
+    if (!AppState.savedData.exercises[exerciseKey].sets[setIndex]) {
+        AppState.savedData.exercises[exerciseKey].sets[setIndex] = {};
+    }
+
+    const reps = parseInt(repsValue, 10);
+    const set = AppState.savedData.exercises[exerciseKey].sets[setIndex];
+
+    // Read added weight from the input
+    const addedInput = document.querySelector(`.bw-added-weight-input[data-exercise="${exerciseIndex}"]`);
+    const addedRaw = parseFloat(addedInput?.value) || 0;
+    const displayUnit = AppState.exerciseUnits[exerciseIndex] || AppState.globalUnit;
+    const isKg = displayUnit === 'kg';
+    const addedLbs = isKg ? Math.round(addedRaw * 2.20462) : addedRaw;
+
+    const bwLbs = AppState.currentSessionBodyWeightLbs || 0;
+
+    if (!isNaN(reps) && reps > 0) {
+        set.reps = reps;
+        set.bodyWeight = bwLbs;
+        set.bodyWeightUnit = 'lbs';
+        set.addedWeight = addedLbs;
+        set.weight = addedLbs; // legacy compat — `weight` = externally-loaded weight
+        set.isBodyweight = true;
+        set.originalUnit = 'lbs';
+    } else {
+        set.reps = null;
+    }
+
+    // Store added weight at exercise level too (for re-renders)
+    AppState.savedData.exercises[exerciseKey].addedWeight = addedRaw;
+
+    debouncedSaveWorkoutData(AppState);
+    updateExerciseCard(exerciseIndex);
+
+    // Check for PR
+    if (set.reps && bwLbs > 0) {
+        const totalWeight = bwLbs + addedLbs;
+        await checkSetForPR(exerciseIndex, setIndex);
+
+        if (!isLocationLocked()) {
+            lockLocation();
+            updateLocationIndicator(getSessionLocation(), true);
+        }
+        autoStartRestTimer(exerciseIndex, setIndex);
+    }
+}
+
+/**
+ * Recalculate and update Total/rep cells when added weight changes.
+ */
+function updateBodyweightTotals(exerciseIndex) {
+    const displayUnit = AppState.exerciseUnits[exerciseIndex] || AppState.globalUnit;
+    const isKg = displayUnit === 'kg';
+    const unitLabel = isKg ? 'kg' : 'lb';
+
+    const addedInput = document.querySelector(`.bw-added-weight-input[data-exercise="${exerciseIndex}"]`);
+    const addedRaw = parseFloat(addedInput?.value) || 0;
+    const addedLbs = isKg ? Math.round(addedRaw * 2.20462) : addedRaw;
+    const bwLbs = AppState.currentSessionBodyWeightLbs || 0;
+    const totalPerRepLbs = bwLbs + addedLbs;
+    const totalPerRepDisplay = isKg
+        ? Math.round(totalPerRepLbs * 0.453592 * 2) / 2
+        : Math.round(totalPerRepLbs * 10) / 10;
+
+    // Update all total cells
+    const table = document.querySelector(`#exercise-${exerciseIndex}`);
+    if (!table) return;
+    table.querySelectorAll('.bw-total-cell').forEach(cell => {
+        cell.textContent = totalPerRepDisplay > 0 ? `${totalPerRepDisplay} ${unitLabel}` : '—';
+    });
+
+    // Update added weight row active state
+    const row = addedInput?.closest('.bw-added-weight-row');
+    if (row) {
+        row.classList.toggle('bw-added-weight-row--active', addedRaw > 0);
+    }
+
+    // Store exercise-level added weight
+    const exerciseKey = `exercise_${exerciseIndex}`;
+    if (AppState.savedData.exercises?.[exerciseKey]) {
+        AppState.savedData.exercises[exerciseKey].addedWeight = addedRaw;
+    }
+
+    // Recalculate volume
+    const savedSets = AppState.savedData.exercises?.[exerciseKey]?.sets || [];
+    let runningVolume = 0;
+    for (const set of savedSets) {
+        if (set?.reps) {
+            runningVolume += set.reps * totalPerRepLbs;
+        }
+    }
+    const volumeDisplay = isKg
+        ? Math.round(runningVolume * 0.453592)
+        : Math.round(runningVolume);
+    const volumeEl = document.querySelector(`.bw-volume-value`);
+    if (volumeEl) {
+        volumeEl.textContent = `${volumeDisplay.toLocaleString()} ${unitLabel}`;
+    }
+}
+
 /**
  * Generate cardio-specific input layout (duration, distance, calories).
  */
@@ -1258,11 +1627,16 @@ async function checkSetForPR(exerciseIndex, setIndex) {
         const exerciseKey = `exercise_${exerciseIndex}`;
         const set = AppState.savedData.exercises[exerciseKey].sets[setIndex];
 
-        if (!set || !set.reps || !set.weight) return false;
+        if (!set || !set.reps) return false;
+        // For bodyweight exercises, weight can be 0 — only require reps
+        if (!set.isBodyweight && !set.weight) return false;
         if (set.type === 'warmup') return false;
 
+        // Use total weight (includes base weight for plated or BW+added for bodyweight)
+        const totalWeight = getSetTotalWeight(set);
+
         // Create unique key for this set to track if we've already notified
-        const setKey = `${exerciseIndex}-${setIndex}-${set.reps}-${set.weight}`;
+        const setKey = `${exerciseIndex}-${setIndex}-${set.reps}-${totalWeight}`;
 
         // Skip if we've already notified about this exact set
         if (prNotifiedSets.has(setKey)) {
@@ -1270,7 +1644,7 @@ async function checkSetForPR(exerciseIndex, setIndex) {
         }
 
         const { PRTracker } = await import('../features/pr-tracker.js');
-        const prCheck = PRTracker.checkForNewPR(exerciseName, set.reps, set.weight, equipment);
+        const prCheck = PRTracker.checkForNewPR(exerciseName, set.reps, totalWeight, equipment);
 
         if (prCheck.isNewPR) {
             haptic('pr');
@@ -1442,16 +1816,37 @@ export function toggleSetComplete(exerciseIndex, setIndex) {
     }
 
     const set = AppState.savedData.exercises[exerciseKey].sets[setIndex];
-    const wasCompleted = !!(set.completed || (set.reps && set.weight));
+    const exercise = AppState.currentWorkout.exercises[exerciseIndex];
+    const isBW = isBodyweightExercise(exercise);
+    const wasCompleted = isBW
+        ? !!(set.completed || set.reps)
+        : !!(set.completed || (set.reps && set.weight));
 
     if (wasCompleted) {
         // Uncomplete: clear the completed flag
         set.completed = false;
     } else {
         // Complete: use entered values or placeholder defaults
-        const exercise = AppState.currentWorkout.exercises[exerciseIndex];
         if (!set.reps) set.reps = exercise.reps || 10;
-        if (!set.weight) set.weight = exercise.weight || 0;
+
+        if (isBW) {
+            // Bodyweight completion: populate BW + added weight fields
+            const bwLbs = AppState.currentSessionBodyWeightLbs || 0;
+            const addedInput = document.querySelector(`.bw-added-weight-input[data-exercise="${exerciseIndex}"]`);
+            const addedRaw = parseFloat(addedInput?.value) || 0;
+            const displayUnit = AppState.exerciseUnits[exerciseIndex] || AppState.globalUnit;
+            const addedLbs = displayUnit === 'kg' ? Math.round(addedRaw * 2.20462) : addedRaw;
+
+            set.bodyWeight = bwLbs;
+            set.bodyWeightUnit = 'lbs';
+            set.addedWeight = addedLbs;
+            set.weight = addedLbs; // legacy compat
+            set.isBodyweight = true;
+            set.originalUnit = 'lbs';
+        } else {
+            if (!set.weight) set.weight = exercise.weight || 0;
+        }
+
         set.completed = true;
 
         // Haptic feedback on completion
@@ -1468,7 +1863,9 @@ export function toggleSetComplete(exerciseIndex, setIndex) {
     const contentContainer = getExerciseContentContainer(exerciseIndex);
     const row = contentContainer?.querySelector(`.exercise-table tbody tr:nth-child(${setIndex + 1})`);
     if (row) {
-        const isNowDone = !!(set.completed || (set.reps && set.weight));
+        const isNowDone = isBW
+            ? !!(set.completed || set.reps)
+            : !!(set.completed || (set.reps && set.weight));
         row.classList.toggle('set-row-completed', isNowDone);
 
         // Animation on completion
@@ -1491,9 +1888,12 @@ export function toggleSetComplete(exerciseIndex, setIndex) {
 
     // Check if all sets are completed — auto-mark exercise complete
     const allSets = AppState.savedData.exercises[exerciseKey].sets;
-    const exercise = AppState.currentWorkout.exercises[exerciseIndex];
     const totalSets = exercise.sets || 3;
-    const completedCount = allSets.filter(s => s && (s.completed || (s.reps && s.weight))).length;
+    const completedCount = allSets.filter(s => {
+        if (!s) return false;
+        if (s.isBodyweight) return !!(s.completed || s.reps);
+        return !!(s.completed || (s.reps && s.weight));
+    }).length;
     if (completedCount >= totalSets) {
         AppState.savedData.exercises[exerciseKey].completed = true;
         // Collapse the card, update it, then re-sort to move completed to bottom

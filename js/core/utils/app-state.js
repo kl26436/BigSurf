@@ -14,6 +14,12 @@ export const AppState = {
     globalUnit: 'lbs',
     exerciseUnits: {},
     focusedExerciseIndex: null,
+    dashboardRange: 'W',
+    activeMetricDetail: null,
+
+    // Bodyweight tracking — resolved once per session via ensureFreshBodyWeight()
+    currentSessionBodyWeight: null,      // { weight, unit, ageInDays }
+    currentSessionBodyWeightLbs: null,   // converted to lbs for calculations
 
     // Timers
     globalRestTimer: null,
@@ -48,6 +54,8 @@ export const AppState = {
         this.workoutStartTime = null;
         this.exerciseUnits = {};
         this.focusedExerciseIndex = null;
+        this.currentSessionBodyWeight = null;
+        this.currentSessionBodyWeightLbs = null;
 
         // Clear timers
         this.clearTimers();

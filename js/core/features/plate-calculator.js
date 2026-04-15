@@ -4,6 +4,32 @@
 
 import { AppState } from '../utils/app-state.js';
 
+/**
+ * Look up equipment doc by name from AppState._cachedEquipment.
+ * Populated by equipment-library-ui and also lazily loaded on first plate calc use.
+ * Falls back to null if not found.
+ */
+function resolveEquipmentDoc(equipmentName) {
+    if (!equipmentName) return null;
+    const list = AppState._cachedEquipment || [];
+    const lower = equipmentName.toLowerCase();
+    return list.find(e => e.name?.toLowerCase() === lower) || null;
+}
+
+/**
+ * Ensure equipment cache is populated (lazy load on first plate calc open).
+ */
+async function ensureEquipmentCache() {
+    if (AppState._cachedEquipment?.length) return;
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        AppState._cachedEquipment = await mgr.getUserEquipment();
+    } catch (_) {
+        AppState._cachedEquipment = [];
+    }
+}
+
 export const LBS_PLATES = [45, 35, 25, 10, 5, 2.5];
 export const KG_PLATES = [20, 15, 10, 5, 2.5, 1.25];
 export const LBS_BAR = 45;
@@ -262,19 +288,37 @@ function plateEl(weight, maxPlate) {
 // IN-MODAL POPOVER (for exercise detail view)
 // ===================================================================
 
-export function openPlateCalcPopover(exerciseIndex) {
+export async function openPlateCalcPopover(exerciseIndex) {
     // Ensure close function is on window for inline onclick
     window.closePlateCalcPopover = closePlateCalcPopover;
 
     const exercise = AppState.currentWorkout?.exercises?.[exerciseIndex];
     if (!exercise) return;
 
+    // Ensure equipment cache is populated for base weight lookup
+    await ensureEquipmentCache();
+
     const unit = AppState.exerciseUnits[exerciseIndex] || AppState.globalUnit || 'lbs';
     const isKg = unit === 'kg';
     const settings = AppState.settings || {};
-    const barWeight = isKg
-        ? (settings.plateBarKg || KG_BAR)
-        : (settings.plateBarLbs || LBS_BAR);
+
+    // Try to resolve bar/base weight from the exercise's equipment record
+    let barWeight;
+    const equipmentDoc = resolveEquipmentDoc(exercise.equipment);
+    if (equipmentDoc && equipmentDoc.baseWeight > 0) {
+        // Convert equipment base weight to display unit
+        const { convertWeight } = window; // available globally via ui-helpers
+        const baseUnit = equipmentDoc.baseWeightUnit || 'lbs';
+        barWeight = baseUnit === unit
+            ? equipmentDoc.baseWeight
+            : (isKg
+                ? Math.round(equipmentDoc.baseWeight * 0.453592 * 2) / 2
+                : Math.round(equipmentDoc.baseWeight * 2.20462));
+    } else {
+        barWeight = isKg
+            ? (settings.plateBarKg || KG_BAR)
+            : (settings.plateBarLbs || LBS_BAR);
+    }
     const availPlates = isKg
         ? (settings.plateKg || KG_PLATES)
         : (settings.plateLbs || LBS_PLATES);
@@ -307,6 +351,7 @@ export function openPlateCalcPopover(exerciseIndex) {
     const result = targetWeight > 0 ? calculatePlates(targetWeight, barWeight, availPlates) : null;
 
     const barPresets = isKg ? [20, 15, 10, 7] : [45, 35, 30, 25, 15];
+    const equipBarLabel = equipmentDoc?.baseWeight > 0 ? ` (${equipmentDoc.name || 'equipment'})` : '';
 
     popover.innerHTML = `
         <div class="plate-calc-popover-header">
@@ -319,6 +364,7 @@ export function openPlateCalcPopover(exerciseIndex) {
                        inputmode="decimal" value="${targetWeight || ''}" placeholder="Weight">
                 <span class="plate-calc-popover-unit">${unit}</span>
             </div>
+            ${equipBarLabel ? `<div class="popover-equip-hint"><i class="fas fa-info-circle"></i> Base: ${barWeight} ${unit}${equipBarLabel}</div>` : ''}
             <div class="popover-bar-row">
                 <span class="popover-bar-label">Bar:</span>
                 ${barPresets.map(v => `<button class="popover-bar-btn ${v === barWeight ? 'active' : ''}" data-bar="${v}">${v}</button>`).join('')}

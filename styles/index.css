@@ -16,6 +16,11 @@
 @import url('components/modals.css');
 @import url('components/nav.css');
 @import url('components/empty-states.css');
+@import url('components/active-pill.css');
+@import url('components/range-filter.css');
+@import url('components/metric-card.css');
+@import url('components/charts.css');
+@import url('components/bodyweight.css');
 
 /* 4. Page-specific layouts */
 @import url('pages/app-shell.css');
@@ -31,6 +36,7 @@
 @import url('pages/ai-coach.css');
 @import url('pages/dexa.css');
 @import url('pages/error-log.css');
+@import url('pages/metric-detail.css');
 
 /* 5. Animations (centralized keyframes) */
 @import url('animations.css');

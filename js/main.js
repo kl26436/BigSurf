@@ -19,6 +19,7 @@ import {
     saveEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
     saveEquipmentNotes, showAddEquipmentFlow,
     selectEquipType, updateEquipNamePreview, confirmAddEquipment,
+    saveEquipmentBaseWeight, setEquipmentBaseWeightUnit,
 } from './core/ui/equipment-library-ui.js';
 
 // Authentication functions
@@ -77,6 +78,7 @@ import {
     selectWorkoutLocationOption,
     closeWorkoutLocationSelector,
     confirmWorkoutLocationChange,
+    updateBodyweightSet,
 } from './core/workout/workout-core.js';
 
 // Template selection functionality
@@ -245,6 +247,9 @@ import {
     setBodyWeightTimeRange,
 } from './core/features/body-measurements-ui.js';
 
+// Bodyweight exercise prompt
+import { ensureFreshBodyWeight, editBodyWeight } from './core/features/bodyweight-prompt.js';
+
 // Data export/import (Phase 13)
 import {
     exportWorkoutDataAsCSV,
@@ -323,13 +328,23 @@ import {
     bottomNavTo,
     toggleMoreMenu,
     closeMoreMenu,
+    setWorkoutActiveState,
 } from './core/ui/navigation.js';
 
 // Dashboard functionality
 import {
     startWorkoutFromHistory,
     dismissInsight,
+    resumeActiveWorkout,
+    confirmCancelActiveWorkout,
 } from './core/ui/dashboard-ui.js';
+
+// Metric detail (drill-down from dashboard cards)
+import { openMetricDetail, closeMetricDetail, setDetailRange } from './core/ui/metric-detail-ui.js';
+
+// Range filter
+import { setRange } from './core/features/metrics/range-filter.js';
+import { showDashboard } from './core/ui/dashboard-ui.js';
 
 // Stats functionality
 import {
@@ -574,6 +589,15 @@ window.setHeaderMode = setHeaderMode;
 // Dashboard Functions
 window.dismissInsight = dismissInsight;
 window.startWorkoutFromHistory = startWorkoutFromHistory;
+window.resumeActiveWorkout = resumeActiveWorkout;
+window.confirmCancelActiveWorkout = confirmCancelActiveWorkout;
+window.setWorkoutActiveState = setWorkoutActiveState;
+
+// Metric Detail Functions
+window.openMetricDetail = openMetricDetail;
+window.closeMetricDetail = closeMetricDetail;
+window.setDetailRange = setDetailRange;
+window.setDashboardRange = (r) => { setRange(r); showDashboard(); };
 
 // Stats Functions
 window.closeStats = closeStats;
@@ -697,6 +721,13 @@ window.showWeightHistory = showWeightHistory;
 window.closeWeightHistory = closeWeightHistory;
 window.deleteWeightEntry = deleteWeightEntry;
 window.setBodyWeightTimeRange = setBodyWeightTimeRange;
+
+// Bodyweight Exercises + Equipment Base Weight
+window.ensureFreshBodyWeight = ensureFreshBodyWeight;
+window.editBodyWeight = editBodyWeight;
+window.updateBodyweightSet = updateBodyweightSet;
+window.saveEquipmentBaseWeight = saveEquipmentBaseWeight;
+window.setEquipmentBaseWeightUnit = setEquipmentBaseWeightUnit;
 
 // Data Export/Import (Phase 13)
 window.exportWorkoutDataAsCSV = exportWorkoutDataAsCSV;

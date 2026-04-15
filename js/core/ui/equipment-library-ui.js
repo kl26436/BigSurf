@@ -90,6 +90,8 @@ export async function openEquipmentLibrary() {
 
     section.classList.remove('hidden');
     allEquipment = await getManager().getUserEquipment();
+    // Cache for cross-module access (plate calculator, weight calculations)
+    AppState._cachedEquipment = allEquipment;
     renderEquipmentLibrary();
 }
 
@@ -356,6 +358,30 @@ export async function openEquipmentDetail(equipmentId) {
                 `).join('')}
             </div>
 
+            <!-- Base weight (bar / carriage / cable starting weight) -->
+            ${BASE_WEIGHT_TYPES.includes(equipment.equipmentType) ? `
+            <div class="equip-detail-section-header" style="margin-top: var(--space-12);">
+                <h4>Base Weight</h4>
+                <span class="equip-detail-hint">Empty bar / machine carriage</span>
+            </div>
+            <div class="equip-base-weight-row">
+                <input type="number" inputmode="decimal" step="0.5"
+                       class="equip-base-weight-input"
+                       id="equip-base-weight-input"
+                       value="${equipment.baseWeight || 0}"
+                       onchange="saveEquipmentBaseWeight('${escapeAttr(equipmentId)}', this.value)">
+                <div class="equip-base-weight-unit-toggle">
+                    <button class="unit-chip ${(equipment.baseWeightUnit || 'lbs') === 'lbs' ? 'active' : ''}"
+                            onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'lbs', this)">lb</button>
+                    <button class="unit-chip ${(equipment.baseWeightUnit || 'lbs') === 'kg' ? 'active' : ''}"
+                            onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'kg', this)">kg</button>
+                </div>
+            </div>
+            <div class="equip-base-weight-hint">
+                Added to plate weight when logging sets and shown in the plate calculator.
+            </div>
+            ` : ''}
+
             <!-- Exercises section -->
             <div class="equip-detail-section-header">
                 <h4>Exercises</h4>
@@ -541,11 +567,6 @@ export async function unassignExercise(equipmentId, exerciseName) {
     }
 }
 
-// Legacy export kept for backwards compat
-export async function editEquipmentExerciseVideoFromLib(equipmentId, exerciseName) {
-    // Now handled by inline input via saveEquipmentExerciseVideoFromLib
-}
-
 /**
  * Save video URL from inline input in equipment detail view
  */
@@ -597,6 +618,15 @@ const KNOWN_BRANDS = [
 ];
 
 const EQUIPMENT_TYPES_LIST = ['Machine', 'Barbell', 'Dumbbell', 'Cable', 'Bench', 'Rack', 'Bodyweight', 'Other'];
+
+/** Equipment types that have a meaningful base/bar weight */
+const BASE_WEIGHT_TYPES = ['Machine', 'Barbell', 'Cable', 'Bench', 'Rack'];
+
+/** Suggested default base weights when switching type */
+const BASE_WEIGHT_SUGGESTIONS = {
+    Barbell: 45,
+    Cable: 5,
+};
 
 function getExistingBrands() {
     const brands = [...new Set(allEquipment.map(e => e.brand).filter(Boolean))];
@@ -716,12 +746,17 @@ export async function confirmAddEquipment() {
         return;
     }
 
+    // Set default base weight based on equipment type
+    const defaultBW = BASE_WEIGHT_SUGGESTIONS[selectedEquipType] || 0;
+
     try {
         const result = await getManager().getOrCreateEquipment(name, {
             brand: brand || null,
             model: model || null,
             function: func || null,
             equipmentType: selectedEquipType,
+            baseWeight: defaultBW,
+            baseWeightUnit: 'lbs',
         });
         if (result) {
             allEquipment = await getManager().getUserEquipment();
@@ -733,6 +768,50 @@ export async function confirmAddEquipment() {
         showNotification('Failed to add equipment', 'error');
     }
 }
+
+// ===================================================================
+// BASE WEIGHT ACTIONS
+// ===================================================================
+
+let baseWeightSaveTimeout = null;
+
+export async function saveEquipmentBaseWeight(equipmentId, value) {
+    const numValue = parseFloat(value);
+    const baseWeight = (!isNaN(numValue) && numValue >= 0) ? numValue : 0;
+
+    if (baseWeightSaveTimeout) clearTimeout(baseWeightSaveTimeout);
+    baseWeightSaveTimeout = setTimeout(async () => {
+        try {
+            const userId = AppState.currentUser.uid;
+            await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { baseWeight });
+            const eq = allEquipment.find(e => e.id === equipmentId);
+            if (eq) eq.baseWeight = baseWeight;
+        } catch (error) {
+            console.error('Error saving base weight:', error);
+            showNotification('Failed to save base weight', 'error');
+        }
+    }, 600);
+}
+
+export async function setEquipmentBaseWeightUnit(equipmentId, unit, btn) {
+    try {
+        const userId = AppState.currentUser.uid;
+        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { baseWeightUnit: unit });
+        const eq = allEquipment.find(e => e.id === equipmentId);
+        if (eq) eq.baseWeightUnit = unit;
+
+        // Update toggle UI
+        const parent = btn.parentElement;
+        parent.querySelectorAll('.unit-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    } catch (error) {
+        console.error('Error saving base weight unit:', error);
+    }
+}
+
+// ===================================================================
+// AUTO-PARSE EQUIPMENT NAME
+// ===================================================================
 
 export function autoParseEquipmentName(name) {
     let brand = null, model = null, func = name;

@@ -328,11 +328,13 @@ export function setupAuthenticationListener() {
 
             // Check and run schema migration if needed (v3.0 - multiple workouts per day)
             try {
-                const { checkAndMigrateOnLogin } = await import('./data/schema-migration.js');
+                const { checkAndMigrateOnLogin, migrateEquipmentBaseWeight } = await import('./data/schema-migration.js');
                 const migrationResult = await checkAndMigrateOnLogin(user.uid);
                 if (migrationResult.migrated > 0) {
                     debugLog(`✅ Migrated ${migrationResult.migrated} workouts to schema v3.0`);
                 }
+                // Equipment base weight migration (v3.1) — idempotent, safe to run every login
+                await migrateEquipmentBaseWeight(user.uid);
             } catch (migrationError) {
                 // Migration errors shouldn't block login - just log them
                 console.error('Migration check failed:', migrationError);
