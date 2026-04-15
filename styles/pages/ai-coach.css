@@ -91,110 +91,205 @@
     margin-right: var(--space-4);
 }
 
-/* ===== AI Coach Modal ===== */
+/* ===== AI Coach Modal — Chat UI ===== */
 
-.coach-header {
-    text-align: center;
-    padding: var(--space-20) 0 var(--space-24);
-}
-
-.coach-header i {
-    font-size: var(--font-display);
-    color: var(--primary);
-}
-
-.coach-header h2 {
-    margin: var(--space-8) 0 0;
-    font-size: var(--font-xl);
-    color: var(--text-strong);
-}
-
-.coach-subtitle {
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-    margin-top: var(--space-4);
-}
-
-/* Prompt cards grid */
-.coach-prompts {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--gap-items);
-    padding: 0 var(--pad-card-x);
-}
-
-.coach-prompt-card {
+/* Ensure coach-content fills modal for flex layout */
+.coach-content {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: var(--space-8);
-    padding: var(--pad-card-x);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    cursor: pointer;
-    transition: background var(--anim-fast), border-color var(--anim-fast);
-    text-align: center;
-    font-size: var(--font-sm);
-    color: var(--text-main);
+    min-height: 0;
+    overflow: hidden;
 }
 
-.coach-prompt-card:active {
-    background: var(--bg-card-hi);
-    border-color: var(--primary);
-}
-
-.coach-prompt-card i {
-    font-size: var(--font-xl);
-    color: var(--primary);
-}
-
-/* Freeform input */
-.coach-freeform {
-    padding: var(--space-16);
+/* Chat container fills the modal content area */
+.coach-chat-container {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-items);
+    height: 100%;
+    min-height: 0;
 }
 
-.coach-textarea {
-    width: 100%;
-    padding: var(--space-10) var(--pad-card-y);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-main);
-    font-family: var(--font);
-    font-size: var(--font-sm);
-    resize: vertical;
-    box-sizing: border-box;
+.coach-chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 var(--pad-card-x) 80px;
 }
 
-.coach-textarea:focus {
-    outline: none;
-    border-color: var(--primary);
+/* Empty state hero */
+.coach-empty-state {
+    padding-top: var(--space-20);
 }
 
-/* Response area */
-.coach-response {
-    padding: var(--space-16);
+.coach-hero {
+    text-align: center;
+    padding: 0 0 var(--space-24);
 }
 
-.coach-loading {
+.coach-hero-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--primary-bg);
+    color: var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--gap-items);
-    padding: var(--space-32) var(--space-16);
+    margin: 0 auto var(--space-12);
+    font-size: 1.5rem;
+}
+
+.coach-hero-title {
+    font-size: 1.1rem;
+    color: var(--text-strong);
+    font-weight: 700;
+    margin-bottom: var(--space-4);
+}
+
+.coach-hero-sub {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+/* Prompt cards (vertical stack) */
+.coach-prompt-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.prompt-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background var(--anim-fast);
+}
+
+.prompt-card:active {
+    background: var(--bg-card-hi);
+}
+
+.prompt-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--primary-bg);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+}
+
+.prompt-txt {
+    font-size: 0.82rem;
+    color: var(--text-main);
+    line-height: 1.4;
+}
+
+.prompt-txt strong {
+    color: var(--text-strong);
+}
+
+/* Chat bubbles */
+.chat-wrap {
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-msg {
+    max-width: 80%;
+    padding: 12px 14px;
+    border-radius: 18px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+.chat-msg.user {
+    background: var(--primary);
+    color: #04201a;
+    align-self: flex-end;
+    border-bottom-right-radius: 6px;
+}
+
+.chat-msg.bot {
+    background: var(--bg-card);
+    color: var(--text-main);
+    align-self: flex-start;
+    border-bottom-left-radius: 6px;
+    border: 1px solid var(--border-subtle);
+}
+
+/* Chat input bar */
+.chat-input {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-app);
+    border-top: 1px solid var(--border-subtle);
+    padding: 12px 14px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.chat-input input {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
+    padding: 10px 16px;
+    color: var(--text-strong);
+    font-size: 0.9rem;
+    outline: none;
+    font-family: var(--font);
+}
+
+.chat-input input:focus {
+    border-color: var(--primary);
+}
+
+.chat-send {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #04201a;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.chat-send:active {
+    opacity: 0.8;
+}
+
+/* Loading state inside bot bubble */
+.chat-msg .coach-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
     color: var(--text-muted);
     font-size: var(--font-sm);
 }
 
-.coach-loading i {
+.chat-msg .coach-loading i {
     color: var(--primary);
     font-size: var(--font-lg);
 }
 
+/* Coach recommendation inside bot bubble */
 .coach-recommendation {
     font-size: var(--font-sm);
     line-height: 1.6;
@@ -225,118 +320,30 @@
     color: var(--text-strong);
 }
 
-.coach-meta {
-    padding-top: var(--space-12);
-    border-top: 1px solid var(--border);
-    margin-top: var(--space-16);
-}
-
-.coach-timestamp {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-}
-
-.coach-ask-another {
-    margin-top: var(--space-16);
-    width: 100%;
-}
-
-/* Rate limit & error */
-.coach-rate-limit,
-.coach-error {
-    text-align: center;
-    padding: var(--space-24);
-    color: var(--text-muted);
-}
-
-.coach-rate-limit i,
-.coach-error i {
-    font-size: var(--font-display);
-    margin-bottom: var(--space-10);
-    display: block;
-}
-
-.coach-rate-limit i {
-    color: var(--warning);
-}
-
-.coach-error i {
-    color: var(--text-muted);
-}
-
-.coach-error-detail {
-    font-size: var(--font-xs);
-    margin-top: var(--space-8);
-}
-
-.coach-error-detail code {
-    background: var(--bg-card);
-    padding: var(--space-2) var(--space-6);
-    border-radius: var(--radius-xs);
-    font-size: var(--font-xs);
-}
-
-/* Past session display */
+/* Past session label */
 .coach-past-label {
     font-size: var(--font-xs);
     color: var(--text-muted);
     margin-bottom: var(--space-6);
 }
 
-.coach-past-question {
-    font-style: italic;
-    color: var(--text-secondary);
-    margin-bottom: var(--space-16);
-    font-size: var(--font-sm);
-}
-
-/* Coach history section */
-.coach-history-section {
-    padding: var(--space-16);
-    border-top: 1px solid var(--border);
-    margin-top: var(--space-16);
-}
-
-.coach-history-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-6);
-    font-size: var(--font-sm);
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: var(--space-10);
-}
-
-.coach-history-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--pad-card-y) var(--pad-card-x);
+/* Freeform textarea (used in workout builder) */
+.coach-textarea {
+    width: 100%;
+    padding: var(--space-10) var(--pad-card-y);
     background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    margin-bottom: var(--space-8);
-    cursor: pointer;
-    transition: background var(--anim-fast);
-}
-
-.coach-history-item:active {
-    background: var(--bg-card-hi);
-}
-
-.coach-history-question {
-    font-size: var(--font-sm);
     color: var(--text-main);
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-family: var(--font);
+    font-size: var(--font-sm);
+    resize: vertical;
+    box-sizing: border-box;
 }
 
-.coach-history-date {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    flex-shrink: 0;
-    margin-left: var(--space-10);
+.coach-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
 }
 
 /* ===== Workout Builder — Focus Picker ===== */

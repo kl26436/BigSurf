@@ -94,53 +94,105 @@ export async function renderBodyWeightCard() {
 // ===================================================================
 
 /**
- * Show the weight entry modal for quick daily logging.
+ * Show the redesigned weight entry modal — hero weight card + body composition + circumference.
  */
 export function showWeightEntryModal() {
     const modal = document.getElementById('weight-entry-modal');
     if (!modal) return;
 
     const unit = AppState.globalUnit || 'lbs';
+    const unitLabel = unit === 'kg' ? 'kg' : 'lb';
+    const circumUnit = unit === 'kg' ? 'cm' : 'in';
+
+    // Get latest weight for pre-fill hint
+    const lastEntry = AppState._lastBodyWeight;
+    const lastHint = lastEntry
+        ? `Last: ${lastEntry.weight} ${lastEntry.unit} · ${lastEntry.date || 'recent'}`
+        : '';
+
+    const circumFields = [
+        { key: 'chest', label: 'Chest', icon: 'fa-ruler-horizontal' },
+        { key: 'waist', label: 'Waist', icon: 'fa-ruler-horizontal' },
+        { key: 'bicepLeft', label: 'Arm (L/R avg)', icon: 'fa-ruler-horizontal' },
+    ];
 
     modal.querySelector('.modal-content').innerHTML = `
-        <div class="modal-header">
-            <h3>Log Body Weight</h3>
-            <button class="modal-close-btn" onclick="closeWeightEntryModal()">
-                <i class="fas fa-times"></i>
-            </button>
+        <div class="page-header">
+            <div class="header-left">
+                <button class="back-btn" onclick="closeWeightEntryModal()"><i class="fas fa-chevron-left"></i></button>
+                <div class="page-title">Log Measurements</div>
+            </div>
+            <button class="btn-save" onclick="saveBodyWeightEntry()">Save</button>
         </div>
-        <div class="modal-body">
-            <div class="weight-entry-form">
-                <div class="weight-input-row">
-                    <input type="number" id="body-weight-input" class="weight-input-large"
-                           placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
-                           autofocus>
-                    <span class="weight-input-unit">${unit}</span>
-                </div>
-
-                <div class="weight-entry-optional">
-                    <div class="form-group">
-                        <label>Body Fat % <span class="optional-label">(optional)</span></label>
-                        <input type="number" id="body-fat-input" class="form-input"
-                               placeholder="e.g. 15" step="0.1" min="0" max="100" inputmode="decimal">
-                    </div>
-                    <div class="form-group">
-                        <label>Notes <span class="optional-label">(optional)</span></label>
-                        <input type="text" id="body-weight-notes" class="form-input"
-                               placeholder="e.g. Morning, fasted">
+        <div style="padding: 14px 16px 80px; overflow-y: auto;">
+            <!-- Hero weight card -->
+            <div class="sec-head"><h4>Weight</h4></div>
+            <div class="bw-hero-card">
+                <div class="bw-hero-input-row">
+                    <input type="number" id="body-weight-input" class="bw-hero-input"
+                           placeholder="${unit === 'kg' ? '83.0' : '184.0'}"
+                           step="0.1" min="0" max="999" inputmode="decimal" autofocus>
+                    <span class="bw-hero-unit">${unitLabel}</span>
+                    <div class="bw-hero-last">
+                        ${lastHint ? `
+                            <div class="bw-hero-last-label">Last</div>
+                            <div class="bw-hero-last-value">${escapeHtml(lastHint)}</div>
+                        ` : ''}
                     </div>
                 </div>
+                <div class="chips" style="margin-top: 10px;">
+                    <div class="chip ${unit === 'lbs' ? 'active' : ''}" onclick="setBodyWeightUnit('lbs')">lb</div>
+                    <div class="chip ${unit === 'kg' ? 'active' : ''}" onclick="setBodyWeightUnit('kg')">kg</div>
+                </div>
+            </div>
 
-                <button class="btn btn-primary btn-block" onclick="saveBodyWeightEntry()">
-                    <i class="fas fa-check"></i> Save
-                </button>
+            <!-- Body composition -->
+            <div class="sec-head"><h4>Body composition <span class="count">(optional)</span></h4></div>
+            <div class="meas-row">
+                <div class="meas-icon"><i class="fas fa-percent"></i></div>
+                <div class="meas-info"><div class="meas-name">Body fat</div></div>
+                <input type="number" id="body-fat-input" class="meas-input"
+                       placeholder="—" step="0.1" min="0" max="100" inputmode="decimal">
+                <div class="meas-unit">%</div>
+            </div>
+
+            <!-- Circumference -->
+            <div class="sec-head"><h4>Circumference <span class="count">(optional)</span></h4></div>
+            ${circumFields.map(f => `
+                <div class="meas-row">
+                    <div class="meas-icon"><i class="fas ${f.icon}"></i></div>
+                    <div class="meas-info"><div class="meas-name">${f.label}</div></div>
+                    <input type="number" id="measure-${f.key}" class="meas-input"
+                           placeholder="—" step="0.1" min="0" max="200" inputmode="decimal">
+                    <div class="meas-unit">${circumUnit}</div>
+                </div>
+            `).join('')}
+
+            <!-- Connected sources -->
+            <div class="sec-head"><h4>Or import from</h4></div>
+            <div class="group">
+                <div class="srow srow--clickable" onclick="handleWithingsSettingsAction()">
+                    <div class="srow-icon ic-blue"><i class="fas fa-link"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Withings</div>
+                        <div class="srow-desc" id="bm-withings-status">Weight & body composition</div>
+                    </div>
+                    <div class="srow-right"><span style="color: var(--primary); font-size: 0.74rem; font-weight: 600;">Sync</span></div>
+                </div>
+                <div class="srow srow--clickable" onclick="showDexaUploadModal()">
+                    <div class="srow-icon ic-warm"><i class="fas fa-x-ray"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Upload DEXA scan</div>
+                        <div class="srow-desc">PDF or CSV from your facility</div>
+                    </div>
+                    <div class="srow-right"><span style="color: var(--primary); font-size: 0.74rem; font-weight: 600;">Upload</span></div>
+                </div>
             </div>
         </div>
     `;
 
     openModal(modal);
 
-    // Focus the input after modal opens
     setTimeout(() => {
         const input = document.getElementById('body-weight-input');
         if (input) input.focus();

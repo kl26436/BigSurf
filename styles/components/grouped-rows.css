@@ -1,0 +1,168 @@
+/* ============================================================================
+   GROUPED ROWS — Settings-style grouped card rows
+   Pattern: .group-label + .group > .srow
+   ============================================================================ */
+
+/* Section label above a group */
+.group-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin: 18px 2px 8px;
+}
+
+.group-label--danger {
+    color: var(--danger);
+}
+
+/* Group card container */
+.group {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+/* Single row inside a group */
+.srow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.srow:last-child {
+    border-bottom: none;
+}
+
+/* Icon square (left side of row) */
+.srow-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+/* Icon tint variants */
+.ic-primary { background: rgba(29, 211, 176, 0.12); color: var(--primary); }
+.ic-warning { background: rgba(240, 194, 75, 0.12); color: var(--warning); }
+.ic-warm    { background: rgba(247, 168, 101, 0.12); color: var(--highlight-warm); }
+.ic-danger  { background: rgba(227, 93, 106, 0.12); color: var(--danger); }
+.ic-blue    { background: rgba(74, 144, 217, 0.12); color: var(--cat-push); }
+.ic-purple  { background: rgba(123, 74, 217, 0.12); color: var(--cat-legs); }
+.ic-muted   { background: var(--bg-card-hi); color: var(--text-secondary); }
+
+/* Row info section (center) */
+.srow-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.srow-name {
+    font-size: 0.9rem;
+    color: var(--text-strong);
+    font-weight: 500;
+}
+
+.srow-desc {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Right side content */
+.srow-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.srow-value {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+
+.srow-chev {
+    font-size: 0.72rem;
+}
+
+/* Clickable row variant */
+.srow--clickable {
+    cursor: pointer;
+}
+
+.srow--clickable:active {
+    background: var(--bg-card-hi);
+}
+
+/* Toggle button (pure CSS, no hidden checkbox) */
+.toggle {
+    width: 44px;
+    height: 26px;
+    background: var(--bg-card-hi);
+    border-radius: 999px;
+    position: relative;
+    flex-shrink: 0;
+    border: none;
+    transition: background 150ms;
+    cursor: pointer;
+}
+
+.toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    transition: transform 150ms;
+}
+
+.toggle.on {
+    background: var(--primary);
+}
+
+.toggle.on::after {
+    background: #04201a;
+    transform: translateX(18px);
+}
+
+/* Link row (for equipment/exercise lists inside groups) */
+.link-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.link-row-info {
+    flex: 1;
+    font-size: 0.84rem;
+    color: var(--text-strong);
+    font-weight: 500;
+}
+
+.link-row-action {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+}

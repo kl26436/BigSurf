@@ -93,6 +93,28 @@ function debouncedSaveSettings() {
 }
 
 /**
+ * Helper: build a segmented control HTML string.
+ * @param {string} settingKey - The setting to update
+ * @param {Array<{value:*, label:string}>} options
+ * @param {*} currentValue
+ * @param {string} [parseType] - 'int' to parseInt the value
+ */
+function segmented(settingKey, options, currentValue, parseType) {
+    const parse = parseType === 'int' ? 'parseInt(this.dataset.val)' : `this.dataset.val`;
+    return `<div class="segmented">${options.map(o =>
+        `<button class="${o.value === currentValue ? 'active' : ''}" data-val="${o.value}"
+            onclick="updateSetting('${settingKey}', ${parseType === 'int' ? o.value : `'${o.value}'`}); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">${escapeHtml(o.label)}</button>`
+    ).join('')}</div>`;
+}
+
+/**
+ * Helper: build a toggle button HTML string.
+ */
+function toggleBtn(settingKey, isOn) {
+    return `<button class="toggle ${isOn ? 'on' : ''}" onclick="this.classList.toggle('on'); updateSetting('${settingKey}', this.classList.contains('on'));"></button>`;
+}
+
+/**
  * Render the settings page into #settings-content.
  */
 export function renderSettings() {
@@ -100,184 +122,146 @@ export function renderSettings() {
     if (!container) return;
 
     const s = AppState.settings || DEFAULT_SETTINGS;
+    const user = AppState.currentUser;
+    const displayName = user?.displayName || 'User';
+    const email = user?.email || '';
+    const photoURL = user?.photoURL || '';
 
     container.innerHTML = `
-        <div class="settings-page">
-            <div class="settings-group">
-                <h3 class="settings-group-title">Workout</h3>
+        <div class="settings-page" style="padding: 14px 16px 80px;">
 
-                <div class="settings-item">
-                    <div class="settings-label">
-                        <span class="settings-name">Weight Unit</span>
-                        <span class="settings-description">Default unit for new exercises</span>
-                    </div>
-                    <div class="settings-control">
-                        <select onchange="updateSetting('weightUnit', this.value)">
-                            <option value="lbs" ${s.weightUnit === 'lbs' ? 'selected' : ''}>lbs</option>
-                            <option value="kg" ${s.weightUnit === 'kg' ? 'selected' : ''}>kg</option>
-                        </select>
-                    </div>
+            <!-- Profile card -->
+            <div class="profile-card">
+                <div class="profile-avatar">
+                    ${photoURL ? `<img src="${escapeAttr(photoURL)}" alt="">` : ''}
                 </div>
-
-                <div class="settings-item">
-                    <div class="settings-label">
-                        <span class="settings-name">Rest Timer</span>
-                        <span class="settings-description">Default duration between sets</span>
-                    </div>
-                    <div class="settings-control">
-                        <select onchange="updateSetting('restTimerDuration', parseInt(this.value))">
-                            <option value="30" ${s.restTimerDuration === 30 ? 'selected' : ''}>30s</option>
-                            <option value="60" ${s.restTimerDuration === 60 ? 'selected' : ''}>1 min</option>
-                            <option value="90" ${s.restTimerDuration === 90 ? 'selected' : ''}>1:30</option>
-                            <option value="120" ${s.restTimerDuration === 120 ? 'selected' : ''}>2 min</option>
-                            <option value="180" ${s.restTimerDuration === 180 ? 'selected' : ''}>3 min</option>
-                            <option value="300" ${s.restTimerDuration === 300 ? 'selected' : ''}>5 min</option>
-                        </select>
-                    </div>
+                <div class="profile-info">
+                    <div class="profile-name">${escapeHtml(displayName)}</div>
+                    <div class="profile-email">${escapeHtml(email)}</div>
                 </div>
+                <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
+            </div>
 
-                <div class="settings-item">
-                    <div class="settings-label">
-                        <span class="settings-name">Auto-start Timer</span>
-                        <span class="settings-description">Start rest timer after completing a set</span>
-                    </div>
-                    <div class="settings-control">
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${s.restTimerAutoStart ? 'checked' : ''} onchange="updateSetting('restTimerAutoStart', this.checked)">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
+            <!-- Preferences -->
+            <div class="group-label">Preferences</div>
+            <div class="group">
+                <div class="srow">
+                    <div class="srow-icon ic-blue"><i class="fas fa-weight-hanging"></i></div>
+                    <div class="srow-info"><div class="srow-name">Weight unit</div></div>
+                    ${segmented('weightUnit', [
+                        { value: 'lbs', label: 'lb' },
+                        { value: 'kg', label: 'kg' },
+                    ], s.weightUnit)}
                 </div>
+                <div class="srow">
+                    <div class="srow-icon ic-primary"><i class="fas fa-stopwatch"></i></div>
+                    <div class="srow-info"><div class="srow-name">Rest timer</div></div>
+                    ${segmented('restTimerDuration', [
+                        { value: 60, label: '60s' },
+                        { value: 90, label: '90s' },
+                        { value: 120, label: '120s' },
+                    ], s.restTimerDuration, 'int')}
+                </div>
+                <div class="srow">
+                    <div class="srow-icon ic-warm"><i class="fas fa-bullseye"></i></div>
+                    <div class="srow-info"><div class="srow-name">Weekly goal</div></div>
+                    ${segmented('weeklyGoal', [
+                        { value: 3, label: '3' },
+                        { value: 4, label: '4' },
+                        { value: 5, label: '5' },
+                        { value: 6, label: '6' },
+                    ], s.weeklyGoal, 'int')}
+                </div>
+            </div>
 
-                <div class="settings-item">
-                    <div class="settings-label">
-                        <span class="settings-name">Timer Vibration</span>
-                        <span class="settings-description">Vibrate when rest timer expires</span>
+            <!-- Training -->
+            <div class="group-label">Training</div>
+            <div class="group">
+                <div class="srow">
+                    <div class="srow-icon ic-primary"><i class="fas fa-bell"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Rest timer sound</div>
+                        <div class="srow-desc">Chime when rest period ends</div>
                     </div>
-                    <div class="settings-control">
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${s.restTimerVibration ? 'checked' : ''} onchange="updateSetting('restTimerVibration', this.checked)">
-                            <span class="toggle-slider"></span>
-                        </label>
+                    ${toggleBtn('restTimerSound', s.restTimerSound)}
+                </div>
+                <div class="srow">
+                    <div class="srow-icon ic-primary"><i class="fas fa-play-circle"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Auto-start timer</div>
+                        <div class="srow-desc">Start rest timer after completing a set</div>
+                    </div>
+                    ${toggleBtn('restTimerAutoStart', s.restTimerAutoStart)}
+                </div>
+                <div class="srow">
+                    <div class="srow-icon ic-warning"><i class="fas fa-mobile-alt"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Timer vibration</div>
+                        <div class="srow-desc">Vibrate when rest timer expires</div>
+                    </div>
+                    ${toggleBtn('restTimerVibration', s.restTimerVibration)}
+                </div>
+                <div class="srow">
+                    <div class="srow-icon ic-purple"><i class="fas fa-map-marker-alt"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Auto-detect gym</div>
+                        <div class="srow-desc">Use GPS to match saved locations</div>
+                    </div>
+                    ${toggleBtn('autoDetectLocation', s.autoDetectLocation !== false)}
+                </div>
+            </div>
+
+            <!-- Connections -->
+            <div class="group-label">Connections</div>
+            <div class="group">
+                <div id="withings-settings-item" class="srow srow--clickable" onclick="handleWithingsSettingsAction()">
+                    <div class="srow-icon ic-blue"><i class="fas fa-link"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Withings</div>
+                        <div class="srow-desc" id="withings-status-text">Weight & body composition</div>
+                    </div>
+                    <div class="srow-right" id="withings-status-icon">
+                        <span style="color: var(--primary); font-size: 0.74rem; font-weight: 600;">Connect</span>
                     </div>
                 </div>
             </div>
 
-            <div class="settings-group">
-                <h3 class="settings-group-title">Goals</h3>
-
-                <div class="settings-item">
-                    <div class="settings-label">
-                        <span class="settings-name">Weekly Workout Goal</span>
-                        <span class="settings-description">Days per week</span>
+            <!-- Data -->
+            <div class="group-label">Data</div>
+            <div class="group">
+                <div class="srow srow--clickable" onclick="exportWorkoutData(window.AppState)">
+                    <div class="srow-icon ic-muted"><i class="fas fa-download"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Export workouts</div>
+                        <div class="srow-desc">Download CSV or JSON</div>
                     </div>
-                    <div class="settings-control">
-                        <select onchange="updateSetting('weeklyGoal', parseInt(this.value))">
-                            ${[1, 2, 3, 4, 5, 6, 7].map(n =>
-                                `<option value="${n}" ${s.weeklyGoal === n ? 'selected' : ''}>${n}</option>`
-                            ).join('')}
-                        </select>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
+                <div class="srow srow--clickable" onclick="showImportModal()">
+                    <div class="srow-icon ic-muted"><i class="fas fa-upload"></i></div>
+                    <div class="srow-info"><div class="srow-name">Import</div></div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
+            </div>
+
+            <!-- Danger zone -->
+            <div class="group-label group-label--danger">Danger zone</div>
+            <div class="group">
+                <div class="srow srow--clickable" onclick="signOutUser()">
+                    <div class="srow-icon ic-danger"><i class="fas fa-sign-out-alt"></i></div>
+                    <div class="srow-info"><div class="srow-name" style="color: var(--danger);">Sign out</div></div>
+                </div>
+                <div class="srow srow--clickable" onclick="rebuildPRsFromSettings()">
+                    <div class="srow-icon ic-muted"><i class="fas fa-sync-alt"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Rebuild PRs</div>
+                        <div class="srow-desc">Recalculate from workout history</div>
                     </div>
                 </div>
             </div>
 
-            <div class="settings-group">
-                <h3 class="settings-group-title">Body & Metrics</h3>
-
-                <div class="settings-item" style="cursor: pointer;" onclick="showWeightEntryModal()">
-                    <div class="settings-label">
-                        <span class="settings-name">Log Body Weight</span>
-                        <span class="settings-description">Record today's body weight</span>
-                    </div>
-                    <div class="settings-control">
-                        <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
-                    </div>
-                </div>
-
-                <div class="settings-item" style="cursor: pointer;" onclick="showWeightHistory()">
-                    <div class="settings-label">
-                        <span class="settings-name">Weight History</span>
-                        <span class="settings-description">View and manage past entries</span>
-                    </div>
-                    <div class="settings-control">
-                        <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
-                    </div>
-                </div>
-
-                <div class="settings-item" style="cursor: pointer;" onclick="showDexaHistory()">
-                    <div class="settings-label">
-                        <span class="settings-name">DEXA Scans</span>
-                        <span class="settings-description">Body composition tracking</span>
-                    </div>
-                    <div class="settings-control">
-                        <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
-                    </div>
-                </div>
-
-                <div id="withings-settings-item" class="settings-item" style="cursor: pointer;" onclick="handleWithingsSettingsAction()">
-                    <div class="settings-label">
-                        <span class="settings-name">Withings</span>
-                        <span class="settings-description" id="withings-status-text">Tap to connect your Withings scale</span>
-                    </div>
-                    <div class="settings-control" id="withings-status-icon">
-                        <i class="fas fa-link" style="color: var(--primary);"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="settings-group">
-                <h3 class="settings-group-title">Data</h3>
-
-                <div class="settings-item" style="cursor: pointer;" onclick="exportWorkoutData(window.AppState)">
-                    <div class="settings-label">
-                        <span class="settings-name">Export as JSON</span>
-                        <span class="settings-description">Download all workouts, templates & equipment</span>
-                    </div>
-                    <div class="settings-control">
-                        <i class="fas fa-download" style="color: var(--primary);"></i>
-                    </div>
-                </div>
-
-                <div class="settings-item" style="cursor: pointer;" onclick="exportWorkoutDataAsCSV()">
-                    <div class="settings-label">
-                        <span class="settings-name">Export as CSV</span>
-                        <span class="settings-description">Spreadsheet format — one row per set</span>
-                    </div>
-                    <div class="settings-control">
-                        <i class="fas fa-file-csv" style="color: var(--primary);"></i>
-                    </div>
-                </div>
-
-                <div class="settings-item" style="cursor: pointer;" onclick="showImportModal()">
-                    <div class="settings-label">
-                        <span class="settings-name">Import Data</span>
-                        <span class="settings-description">Restore from a Big Surf JSON export</span>
-                    </div>
-                    <div class="settings-control">
-                        <i class="fas fa-upload" style="color: var(--primary);"></i>
-                    </div>
-                </div>
-
-                <div class="settings-item" style="cursor: pointer;" onclick="rebuildPRsFromSettings()">
-                    <div class="settings-label">
-                        <span class="settings-name">Rebuild PRs</span>
-                        <span class="settings-description">Recalculate personal records from workout history</span>
-                    </div>
-                    <div class="settings-control">
-                        <i class="fas fa-sync-alt" style="color: var(--primary);"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="settings-group">
-                <h3 class="settings-group-title">About</h3>
-
-                <div class="settings-item">
-                    <div class="settings-label">
-                        <span class="settings-name">Big Surf Workout Tracker</span>
-                        <span class="settings-description">v3.0 — Sprint 5</span>
-                    </div>
-                </div>
+            <div style="text-align: center; margin-top: 20px; font-size: 0.7rem; color: var(--text-muted);">
+                Big Surf v3.1 · Equipment Weight + Bodyweight Tracking
             </div>
         </div>
     `;
@@ -286,7 +270,6 @@ export function renderSettings() {
     if (window._withingsConnected !== undefined && window.updateWithingsUI) {
         window.updateWithingsUI(window._withingsConnected);
     } else {
-        // Fetch status if not yet loaded
         import('../features/withings-integration.js').then(({ getWithingsStatus }) => {
             getWithingsStatus().then(status => {
                 if (window.updateWithingsUI) {
@@ -330,58 +313,136 @@ function renderOnboardingStep() {
     if (!overlay) return;
 
     const s = AppState.settings || {};
+    const totalSteps = 4;
+
+    // Progress dots
+    const dots = Array.from({ length: totalSteps }, (_, i) =>
+        `<div class="onb-dot ${i <= onboardingStep ? 'active' : ''}"></div>`
+    ).join('');
+
+    const goalOptions = [
+        { value: 3, label: 'Casual · 3x / week', desc: 'Just getting started' },
+        { value: 4, label: 'Balanced · 4x / week', desc: 'Most lifters' },
+        { value: 5, label: 'Serious · 5x / week', desc: 'PPL split or Upper/Lower' },
+        { value: 6, label: 'Hard · 6x / week', desc: 'Advanced training' },
+    ];
+
+    const experienceOptions = [
+        { value: 'beginner', label: 'Beginner', desc: '< 1 year consistent training', icon: 'fa-seedling' },
+        { value: 'intermediate', label: 'Intermediate', desc: '1–3 years training', icon: 'fa-fire' },
+        { value: 'advanced', label: 'Advanced', desc: '3+ years, know your lifts', icon: 'fa-bolt' },
+    ];
+
+    function chipHTML(options, settingKey, currentValue, isNumeric) {
+        return options.map(o => {
+            const selected = (isNumeric ? o.value === (currentValue || 5) : o.value === currentValue);
+            const parseVal = isNumeric ? o.value : `'${o.value}'`;
+            return `
+                <div class="onb-chip ${selected ? 'selected' : ''}"
+                     onclick="updateSetting('${settingKey}', ${parseVal}); document.querySelectorAll('.onb-chip').forEach(c=>c.classList.remove('selected')); this.classList.add('selected');">
+                    <div class="onb-chip-icon ${selected ? 'ic-primary' : 'ic-muted'}">
+                        ${o.icon ? `<i class="fas ${o.icon}"></i>` : o.value}
+                    </div>
+                    <div class="onb-chip-info">
+                        <div class="onb-chip-name">${o.label}</div>
+                        <div class="onb-chip-desc">${o.desc}</div>
+                    </div>
+                    ${selected ? '<div class="onb-chip-check"><i class="fas fa-check"></i></div>' : ''}
+                </div>
+            `;
+        }).join('');
+    }
 
     const steps = [
         // Step 0: Welcome
-        `<div class="onboarding-card">
-            <div class="onboarding-icon"><i class="fas fa-water"></i></div>
-            <h2>Welcome to Big Surf</h2>
-            <p>Let's set up your gym in under 30 seconds.</p>
-            <button class="btn btn-primary btn-full" onclick="onboardingNext()">Get Started</button>
-        </div>`,
+        {
+            body: `
+                <div style="flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;">
+                    <img src="BigSurfNoBG.png" alt="Big Surf" style="width:120px;height:120px;object-fit:contain;margin:0 auto 18px;" onerror="this.style.display='none'">
+                    <div class="onb-title">Welcome to<br>Big Surf</div>
+                    <div class="onb-desc">Track your lifts, hit PRs, see trends. Let's set up your profile in under a minute.</div>
+                </div>
+            `,
+            footer: `<button class="btn-redesign" style="flex:1;" onclick="onboardingNext()">Get Started <i class="fas fa-arrow-right"></i></button>`,
+        },
 
-        // Step 1: Unit preference
-        `<div class="onboarding-card">
-            <h2>How do you track weight?</h2>
-            <div class="onboarding-choices">
-                <button class="btn ${s.weightUnit === 'lbs' ? 'btn-primary' : 'btn-secondary'} btn-large" onclick="updateSetting('weightUnit', 'lbs'); onboardingNext()">
-                    <strong>lbs</strong><br><span style="font-size: 0.8rem;">Pounds</span>
-                </button>
-                <button class="btn ${s.weightUnit === 'kg' ? 'btn-primary' : 'btn-secondary'} btn-large" onclick="updateSetting('weightUnit', 'kg'); onboardingNext()">
-                    <strong>kg</strong><br><span style="font-size: 0.8rem;">Kilograms</span>
-                </button>
-            </div>
-        </div>`,
+        // Step 1: Weekly Goal
+        {
+            body: `
+                <div class="onb-icon-hero ic-warm"><i class="fas fa-bullseye"></i></div>
+                <div class="onb-title">How often?</div>
+                <div class="onb-desc">How many workouts per week are you aiming for? You can change this anytime.</div>
+                <div class="onb-chips">${chipHTML(goalOptions, 'weeklyGoal', s.weeklyGoal, true)}</div>
+            `,
+            footer: `
+                <button class="btn-ghost" onclick="onboardingBack()">Back</button>
+                <button class="btn-redesign" style="flex:2;" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
+            `,
+        },
 
-        // Step 2: Weekly goal
-        `<div class="onboarding-card">
-            <h2>Weekly workout goal?</h2>
-            <p>How many days per week do you want to train?</p>
-            <div class="onboarding-goal-picker">
-                ${[3, 4, 5, 6, 7].map(n => `
-                    <button class="onboarding-goal-btn ${(s.weeklyGoal || 5) === n ? 'active' : ''}"
-                            onclick="updateSetting('weeklyGoal', ${n}); document.querySelectorAll('.onboarding-goal-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
-                        ${n}
-                    </button>
-                `).join('')}
-            </div>
-            <button class="btn btn-primary btn-full" style="margin-top: 20px;" onclick="onboardingNext()">Continue</button>
-        </div>`,
+        // Step 2: Experience
+        {
+            body: `
+                <div class="onb-icon-hero ic-warning"><i class="fas fa-star"></i></div>
+                <div class="onb-title">Experience level</div>
+                <div class="onb-desc">We'll use this to suggest starting weights and form tips.</div>
+                <div class="onb-chips">${chipHTML(experienceOptions, 'experienceLevel', s.experienceLevel || 'intermediate', false)}</div>
+            `,
+            footer: `
+                <button class="btn-ghost" onclick="onboardingBack()">Back</button>
+                <button class="btn-redesign" style="flex:2;" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
+            `,
+        },
 
-        // Step 3: Ready
-        `<div class="onboarding-card">
-            <div class="onboarding-icon"><i class="fas fa-check-circle" style="color: var(--success);"></i></div>
-            <h2>You're all set!</h2>
-            <p>Start your first workout from the dashboard.</p>
-            <button class="btn btn-primary btn-full" onclick="completeOnboarding()">Let's Go</button>
-        </div>`,
+        // Step 3: Units & Preferences
+        {
+            body: `
+                <div class="onb-icon-hero ic-blue"><i class="fas fa-sliders-h"></i></div>
+                <div class="onb-title">Your units</div>
+                <div class="onb-desc">Set defaults. Changeable later in Settings.</div>
+
+                <div style="margin-bottom:12px;">
+                    <div class="group-label" style="margin-top:0;">Weight</div>
+                    <div class="segmented" style="background:var(--bg-card);padding:4px;">
+                        <button style="padding:10px;" class="${s.weightUnit === 'lbs' ? 'active' : ''}" onclick="updateSetting('weightUnit','lbs'); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">Pounds (lb)</button>
+                        <button style="padding:10px;" class="${s.weightUnit === 'kg' ? 'active' : ''}" onclick="updateSetting('weightUnit','kg'); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">Kilograms (kg)</button>
+                    </div>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <div class="group-label" style="margin-top:0;">Rest timer default</div>
+                    <div class="segmented" style="background:var(--bg-card);padding:4px;">
+                        ${[60, 90, 120, 180].map(v => {
+                            const label = v < 120 ? `${v}s` : `${v / 60} min`;
+                            return `<button style="padding:10px;" class="${s.restTimerDuration === v ? 'active' : ''}" onclick="updateSetting('restTimerDuration',${v}); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">${label}</button>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `,
+            footer: `
+                <button class="btn-ghost" onclick="onboardingBack()">Back</button>
+                <button class="btn-redesign" style="flex:2;" onclick="completeOnboarding()"><i class="fas fa-check"></i> All set!</button>
+            `,
+        },
     ];
 
-    overlay.innerHTML = steps[onboardingStep] || '';
+    const step = steps[onboardingStep] || steps[0];
+
+    overlay.innerHTML = `
+        <div class="onb-content">
+            <div class="onb-progress">${dots}</div>
+            ${step.body}
+        </div>
+        <div class="onb-footer">${step.footer}</div>
+    `;
 }
 
 export function onboardingNext() {
     onboardingStep++;
+    renderOnboardingStep();
+}
+
+export function onboardingBack() {
+    if (onboardingStep > 0) onboardingStep--;
     renderOnboardingStep();
 }
 

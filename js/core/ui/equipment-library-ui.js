@@ -333,92 +333,112 @@ export async function openEquipmentDetail(equipmentId) {
     const container = document.getElementById('equipment-library-content');
     if (!container) return;
 
+    const currentType = equipment.equipmentType || 'Other';
+
     container.innerHTML = `
         <div class="equipment-detail">
-            <!-- Back + name -->
-            <div class="equip-detail-header">
-                <button class="btn-icon" onclick="backToEquipmentList()" aria-label="Back">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <h3>${escapeHtml(equipment.name)}</h3>
-                <button class="btn-icon btn-icon-danger" onclick="deleteEquipmentFromLibrary('${escapeAttr(equipmentId)}')" aria-label="Delete" title="Delete equipment">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-
-            <!-- Type + locations -->
-            <div class="equip-detail-badges">
-                <span class="equipment-type-badge">
-                    <i class="fas ${typeInfo.icon}"></i> ${equipment.equipmentType || 'Other'}
-                </span>
-                ${locations.map(loc => `
-                    <span class="location-chip">
-                        <i class="fas fa-map-marker-alt"></i> ${escapeHtml(loc)}
-                    </span>
-                `).join('')}
-            </div>
-
-            <!-- Base weight (bar / carriage / cable starting weight) -->
-            ${BASE_WEIGHT_TYPES.includes(equipment.equipmentType) ? `
-            <div class="equip-detail-section-header" style="margin-top: var(--space-12);">
-                <h4>Base Weight</h4>
-                <span class="equip-detail-hint">Empty bar / machine carriage</span>
-            </div>
-            <div class="equip-base-weight-row">
-                <input type="number" inputmode="decimal" step="0.5"
-                       class="equip-base-weight-input"
-                       id="equip-base-weight-input"
-                       value="${equipment.baseWeight || 0}"
-                       onchange="saveEquipmentBaseWeight('${escapeAttr(equipmentId)}', this.value)">
-                <div class="equip-base-weight-unit-toggle">
-                    <button class="unit-chip ${(equipment.baseWeightUnit || 'lbs') === 'lbs' ? 'active' : ''}"
-                            onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'lbs', this)">lb</button>
-                    <button class="unit-chip ${(equipment.baseWeightUnit || 'lbs') === 'kg' ? 'active' : ''}"
-                            onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'kg', this)">kg</button>
-                </div>
-            </div>
-            <div class="equip-base-weight-hint">
-                Added to plate weight when logging sets and shown in the plate calculator.
-            </div>
-            ` : ''}
-
-            <!-- Exercises section -->
-            <div class="equip-detail-section-header">
-                <h4>Exercises</h4>
-                <button class="btn-text btn-small" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">
-                    <i class="fas fa-plus"></i> Assign
-                </button>
-            </div>
-
-            ${exercises.length === 0 ? `
-                <div class="empty-state-compact">
-                    <p>No exercises assigned yet</p>
-                    <button class="btn btn-secondary btn-small" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">
-                        <i class="fas fa-plus"></i> Assign Exercise
+            <!-- Sticky header -->
+            <div class="page-header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="backToEquipmentList()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
                     </button>
+                    <div class="page-title">${escapeHtml(equipment.name)}</div>
                 </div>
-            ` : exercises.map(ex => `
-                <div class="equip-detail-exercise-row">
-                    <div class="equip-detail-exercise-info">
-                        <span class="equip-detail-exercise-name">${escapeHtml(ex.name)}</span>
-                        <input type="url" class="form-input equipment-video-input"
-                               value="${escapeAttr(ex.videoUrl || '')}"
-                               placeholder="YouTube video URL"
-                               onchange="saveEquipmentExerciseVideoFromLib('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}', this.value)">
+                <button class="btn-save" onclick="backToEquipmentList()">Done</button>
+            </div>
+
+            <div style="padding: 14px 16px 80px;">
+                <!-- Name -->
+                <div class="field">
+                    <div class="field-label">Name</div>
+                    <input class="field-input" value="${escapeAttr(equipment.name)}"
+                           onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'name', this.value)">
+                </div>
+
+                <!-- Brand -->
+                <div class="field">
+                    <div class="field-label">Brand</div>
+                    <input class="field-input" value="${escapeAttr(equipment.brand || '')}" placeholder="e.g., Hammer Strength"
+                           onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'brand', this.value)">
+                </div>
+
+                <!-- Type chips -->
+                <div class="field">
+                    <div class="field-label">Type</div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        ${EQUIPMENT_TYPES_LIST.map(t => `
+                            <div class="chip ${currentType === t ? 'active' : ''}"
+                                 onclick="saveEquipmentField('${escapeAttr(equipmentId)}', 'equipmentType', '${t}'); openEquipmentDetail('${escapeAttr(equipmentId)}');">
+                                ${t}
+                            </div>
+                        `).join('')}
                     </div>
-                    <button class="btn-text btn-text-danger" onclick="unassignExercise('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')" title="Remove">
-                        <i class="fas fa-times"></i>
+                </div>
+
+                <!-- Base weight (conditional) -->
+                ${BASE_WEIGHT_TYPES.includes(currentType) ? `
+                <div class="field">
+                    <div class="field-label">Base weight <span style="color: var(--text-muted); text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 0.7rem;">(empty machine / bar)</span></div>
+                    <div class="equip-base-weight-row">
+                        <input type="number" inputmode="decimal" step="0.5"
+                               class="equip-base-weight-input"
+                               value="${equipment.baseWeight || 0}"
+                               onchange="saveEquipmentBaseWeight('${escapeAttr(equipmentId)}', this.value)">
+                        <div class="equip-base-weight-unit-toggle">
+                            <button class="unit-chip ${(equipment.baseWeightUnit || 'lbs') === 'lbs' ? 'active' : ''}"
+                                    onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'lbs', this)">lb</button>
+                            <button class="unit-chip ${(equipment.baseWeightUnit || 'lbs') === 'kg' ? 'active' : ''}"
+                                    onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'kg', this)">kg</button>
+                        </div>
+                    </div>
+                    <div class="equip-base-weight-hint">Added to plate weight when logging sets and shown in the plate calculator.</div>
+                </div>
+                ` : ''}
+
+                <!-- Locations -->
+                <div class="sec-head">
+                    <h4>Locations <span class="count">${locations.length}</span></h4>
+                    <span style="color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer;"
+                          onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Add</span>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                    ${locations.map(loc => `
+                        <div class="chip active" style="padding-right: 6px;">
+                            <i class="fas fa-map-marker-alt"></i> ${escapeHtml(loc)}
+                        </div>
+                    `).join('')}
+                    ${locations.length === 0 ? '<span style="font-size: 0.78rem; color: var(--text-muted);">No locations yet</span>' : ''}
+                </div>
+
+                <!-- Used for exercises -->
+                <div class="sec-head">
+                    <h4>Used for <span class="count">${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}</span></h4>
+                    <span style="color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer;"
+                          onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Assign</span>
+                </div>
+                ${exercises.map(ex => `
+                    <div class="link-row">
+                        <div class="srow-icon ic-blue"><i class="fas fa-dumbbell"></i></div>
+                        <div class="link-row-info">${escapeHtml(ex.name)}</div>
+                        <button class="link-row-action" onclick="unassignExercise('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')">Remove</button>
+                    </div>
+                `).join('')}
+
+                <!-- Notes -->
+                <div class="sec-head"><h4>Notes</h4></div>
+                <textarea class="form-input" style="resize: none; min-height: 60px;"
+                          placeholder="e.g., Setting 5 for chest fly, setting 8 for pushdown"
+                          oninput="saveEquipmentNotes('${escapeAttr(equipmentId)}', this.value)">${escapeHtml(notes)}</textarea>
+
+                <!-- Delete -->
+                <div style="margin-top: 24px; text-align: center;">
+                    <button style="background: transparent; border: none; color: var(--danger); font-size: 0.82rem; font-weight: 600; cursor: pointer;"
+                            onclick="deleteEquipmentFromLibrary('${escapeAttr(equipmentId)}')">
+                        <i class="fas fa-trash"></i> Delete equipment
                     </button>
                 </div>
-            `).join('')}
-
-            <!-- Notes section -->
-            <div class="equip-detail-section-header equip-detail-notes-header">
-                <h4>Notes</h4>
             </div>
-            <textarea class="form-input equip-detail-notes"
-                      placeholder="e.g., Setting 5 for chest fly, setting 8 for pushdown"
-                      oninput="saveEquipmentNotes('${escapeAttr(equipmentId)}', this.value)">${escapeHtml(notes)}</textarea>
         </div>
     `;
 }
@@ -772,6 +792,22 @@ export async function confirmAddEquipment() {
 // ===================================================================
 // BASE WEIGHT ACTIONS
 // ===================================================================
+
+let fieldSaveTimeout = null;
+
+export async function saveEquipmentField(equipmentId, field, value) {
+    if (fieldSaveTimeout) clearTimeout(fieldSaveTimeout);
+    fieldSaveTimeout = setTimeout(async () => {
+        try {
+            const userId = AppState.currentUser.uid;
+            await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { [field]: value });
+            const eq = allEquipment.find(e => e.id === equipmentId);
+            if (eq) eq[field] = value;
+        } catch (error) {
+            console.error(`Error saving equipment ${field}:`, error);
+        }
+    }, 600);
+}
 
 let baseWeightSaveTimeout = null;
 

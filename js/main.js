@@ -8,7 +8,7 @@
 import { AppState } from './core/utils/app-state.js';
 import { getCategoryIcon } from './core/utils/config.js';
 import { startApplication } from './core/app-initialization.js';
-import { updateSetting, onboardingNext, completeOnboarding, rebuildPRsFromSettings } from './core/ui/settings-ui.js';
+import { updateSetting, onboardingNext, onboardingBack, completeOnboarding, rebuildPRsFromSettings } from './core/ui/settings-ui.js';
 import { exportWorkoutData } from './core/data/data-manager.js';
 import { dismissFirstUseTip } from './core/features/first-use-tips.js';
 import {
@@ -19,7 +19,7 @@ import {
     saveEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
     saveEquipmentNotes, showAddEquipmentFlow,
     selectEquipType, updateEquipNamePreview, confirmAddEquipment,
-    saveEquipmentBaseWeight, setEquipmentBaseWeightUnit,
+    saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField,
 } from './core/ui/equipment-library-ui.js';
 
 // Authentication functions
@@ -227,6 +227,8 @@ import {
     editLocationName,
     deleteLocation,
     showLocationOnMapById,
+    showLocationDetail,
+    updateLocationRadius,
     switchLocationMethod,
     searchLocationAddress,
     selectAddressResult,
@@ -273,7 +275,7 @@ import {
 import {
     showAICoach,
     closeAICoach,
-    showCoachFreeform,
+    sendCoachMessage,
     askCoach,
     resetCoachUI,
     showPastCoachSession,
@@ -291,6 +293,8 @@ import {
     handleDexaFileSelect,
     clearDexaFile,
     handleDexaUpload,
+    handleDexaContinue,
+    selectDexaUnit,
     showDexaManualEntry,
     showDexaReviewForm,
     toggleDexaSection,
@@ -569,6 +573,8 @@ window.closeAddLocationModal = closeAddLocationModal;
 window.saveNewLocationFromModal = saveNewLocationFromModal;
 window.editLocationName = editLocationName;
 window.deleteLocation = deleteLocation;
+window.showLocationDetail = showLocationDetail;
+window.updateLocationRadius = updateLocationRadius;
 window.switchLocationMethod = switchLocationMethod;
 window.searchLocationAddress = searchLocationAddress;
 window.selectAddressResult = selectAddressResult;
@@ -708,6 +714,7 @@ window.signOutUser = signOutUser;
 // Settings
 window.updateSetting = updateSetting;
 window.onboardingNext = onboardingNext;
+window.onboardingBack = onboardingBack;
 window.completeOnboarding = completeOnboarding;
 window.exportWorkoutData = exportWorkoutData;
 window.rebuildPRsFromSettings = rebuildPRsFromSettings;
@@ -727,6 +734,7 @@ window.ensureFreshBodyWeight = ensureFreshBodyWeight;
 window.editBodyWeight = editBodyWeight;
 window.updateBodyweightSet = updateBodyweightSet;
 window.saveEquipmentBaseWeight = saveEquipmentBaseWeight;
+window.saveEquipmentField = saveEquipmentField;
 window.setEquipmentBaseWeightUnit = setEquipmentBaseWeightUnit;
 
 // Data Export/Import (Phase 13)
@@ -744,7 +752,7 @@ window.disconnectWithings = disconnectWithings;
 // AI Coach (Phase 17)
 window.showAICoach = showAICoach;
 window.closeAICoach = closeAICoach;
-window.showCoachFreeform = showCoachFreeform;
+window.sendCoachMessage = sendCoachMessage;
 window.askCoach = askCoach;
 window.resetCoachUI = resetCoachUI;
 window.showPastCoachSession = showPastCoachSession;
@@ -760,6 +768,8 @@ window.closeDexaUploadModal = closeDexaUploadModal;
 window.handleDexaFileSelect = handleDexaFileSelect;
 window.clearDexaFile = clearDexaFile;
 window.handleDexaUpload = handleDexaUpload;
+window.handleDexaContinue = handleDexaContinue;
+window.selectDexaUnit = selectDexaUnit;
 window.showDexaManualEntry = showDexaManualEntry;
 window.showDexaReviewForm = showDexaReviewForm;
 window.toggleDexaSection = toggleDexaSection;

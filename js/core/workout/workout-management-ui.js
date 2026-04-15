@@ -1669,68 +1669,218 @@ async function finalizeExerciseAddition(equipmentName, equipmentLocation, equipm
 // Create Exercise functions - uses the add-exercise-modal
 let creatingFromLibraryModal = false;
 
+// Category definitions for chip row
+const CREATE_EXERCISE_CATEGORIES = [
+    { key: 'Push', css: 'cat-push', icon: 'fa-hand-paper' },
+    { key: 'Pull', css: 'cat-pull', icon: 'fa-fist-raised' },
+    { key: 'Legs', css: 'cat-legs', icon: 'fa-walking' },
+    { key: 'Core', css: 'cat-core', icon: 'fa-bullseye' },
+    { key: 'Cardio', css: 'cat-cardio', icon: 'fa-heartbeat' },
+    { key: 'Arms', css: 'cat-arms', icon: 'fa-hand-rock' },
+];
+
+let _createExSelectedCategory = '';
+let _createExSelectedEquipment = '';
+let _createExMoreDetailsOpen = false;
+
+function updateCreateExerciseSaveState() {
+    const name = document.getElementById('new-exercise-name')?.value.trim();
+    const headerSave = document.getElementById('create-ex-header-save');
+    const footerSave = document.getElementById('create-ex-footer-save');
+    const canSave = !!(name && _createExSelectedCategory);
+    if (headerSave) headerSave.disabled = !canSave;
+    if (footerSave) footerSave.disabled = !canSave;
+}
+
+function selectCreateExCategory(key) {
+    _createExSelectedCategory = key;
+    document.querySelectorAll('#create-ex-chips .chip').forEach((chip) => {
+        const isActive = chip.dataset.category === key;
+        chip.classList.toggle('active', isActive);
+    });
+    updateCreateExerciseSaveState();
+}
+
+function adjustStepper(inputId, delta) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const min = parseInt(input.min) || 1;
+    const max = parseInt(input.max) || 99;
+    const current = parseInt(input.value) || 0;
+    input.value = Math.max(min, Math.min(max, current + delta));
+}
+
+function toggleCreateExMoreDetails() {
+    _createExMoreDetailsOpen = !_createExMoreDetailsOpen;
+    const section = document.getElementById('create-ex-more-details');
+    const toggle = document.getElementById('create-ex-more-toggle');
+    if (section) section.classList.toggle('hidden', !_createExMoreDetailsOpen);
+    if (toggle) {
+        toggle.innerHTML = _createExMoreDetailsOpen
+            ? '<i class="fas fa-chevron-up"></i> Less details'
+            : '+ More details (notes, video URL)';
+    }
+}
+
 export function showCreateExerciseForm() {
     // Set flag so we know to refresh library modal after save
     creatingFromLibraryModal = true;
 
-    // Use the existing add-exercise-modal
-    const modal = document.getElementById('add-exercise-modal');
-    const title = document.getElementById('add-exercise-modal-title');
-    const form = document.getElementById('add-exercise-form');
+    // Reset state
+    _createExSelectedCategory = '';
+    _createExSelectedEquipment = '';
+    _createExMoreDetailsOpen = false;
 
-    if (title) title.textContent = 'Create New Exercise';
-    if (form) form.reset();
+    const modal = document.getElementById('add-exercise-modal');
+    const content = document.getElementById('add-exercise-modal-content');
+    if (!content) return;
+
+    // Build category chips
+    const chipHtml = CREATE_EXERCISE_CATEGORIES.map(
+        (cat) =>
+            `<div class="chip ${cat.css}" data-category="${cat.key}" onclick="window._createExSelectCategory('${cat.key}')"><i class="fas ${cat.icon}"></i> ${cat.key}</div>`
+    ).join('');
+
+    content.innerHTML = `
+        <div class="page-header">
+            <div class="header-left">
+                <button class="back-btn" aria-label="Back" onclick="closeCreateExerciseModal()"><i class="fas fa-chevron-left"></i></button>
+                <div class="page-title">New Exercise</div>
+            </div>
+            <button class="btn-save" id="create-ex-header-save" disabled onclick="createNewExercise(event)">Save</button>
+        </div>
+        <div style="padding:16px;padding-bottom:100px;overflow-y:auto;flex:1;">
+            <div class="field">
+                <div class="field-label">Name</div>
+                <input class="field-input" type="text" id="new-exercise-name" placeholder="e.g. Bulgarian Split Squat" oninput="window._createExUpdateSave()">
+            </div>
+            <div class="field">
+                <div class="field-label">Category</div>
+                <div class="chips" id="create-ex-chips">${chipHtml}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Default sets &amp; reps</div>
+                <div class="stepper-card">
+                    <div class="stepper-row">
+                        <div class="stepper-label">Sets</div>
+                        <div class="stepper">
+                            <button type="button" onclick="window._createExAdjustStepper('new-exercise-sets',-1)">\u2212</button>
+                            <input type="number" id="new-exercise-sets" value="3" min="1" max="10" inputmode="numeric">
+                            <button type="button" onclick="window._createExAdjustStepper('new-exercise-sets',1)">+</button>
+                        </div>
+                    </div>
+                    <div class="stepper-row">
+                        <div class="stepper-label">Reps</div>
+                        <div class="stepper">
+                            <button type="button" onclick="window._createExAdjustStepper('new-exercise-reps',-1)">\u2212</button>
+                            <input type="number" id="new-exercise-reps" value="10" min="1" max="50" inputmode="numeric">
+                            <button type="button" onclick="window._createExAdjustStepper('new-exercise-reps',1)">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sec-head"><h3>Equipment</h3></div>
+            <div id="create-ex-equipment-area">
+                <div class="empty-state-card" style="text-align:center;padding:24px 16px;">
+                    <div style="font-size:1.4rem;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-cog"></i></div>
+                    <div style="font-size:0.86rem;font-weight:600;color:var(--text-main);margin-bottom:4px;">Pick equipment</div>
+                    <div style="font-size:0.74rem;color:var(--text-muted);margin-bottom:12px;">Bodyweight, barbell, or pick a specific machine</div>
+                    <button class="btn-redesign" style="width:auto;display:inline-flex;padding:10px 18px;font-size:0.82rem;" onclick="window._createExChooseEquipment()"><i class="fas fa-dumbbell"></i> Choose equipment</button>
+                </div>
+            </div>
+            <button class="more-details-toggle" id="create-ex-more-toggle" type="button" onclick="window._createExToggleMore()">+ More details (notes, video URL)</button>
+            <div id="create-ex-more-details" class="hidden">
+                <div class="field">
+                    <div class="field-label">Notes</div>
+                    <textarea class="field-input" id="new-exercise-notes" rows="2" placeholder="Form cues, tips..."></textarea>
+                </div>
+                <div class="field">
+                    <div class="field-label">Form video URL (optional)</div>
+                    <input class="field-input" type="url" id="new-exercise-video" placeholder="YouTube or direct video link">
+                </div>
+            </div>
+        </div>
+        <div class="page-footer">
+            <button class="btn-redesign" id="create-ex-footer-save" disabled onclick="createNewExercise(event)"><i class="fas fa-check"></i> Save Exercise</button>
+        </div>
+    `;
+
+    // Expose helpers to window for onclick handlers
+    window._createExSelectCategory = selectCreateExCategory;
+    window._createExUpdateSave = updateCreateExerciseSaveState;
+    window._createExAdjustStepper = adjustStepper;
+    window._createExToggleMore = toggleCreateExMoreDetails;
+    window._createExChooseEquipment = () => {
+        // Placeholder for future equipment picker integration
+        showNotification('Equipment picker coming soon', 'info');
+    };
 
     if (modal) {
         openModal(modal);
     }
 
-    document.getElementById('new-exercise-name')?.focus();
+    // Focus name field after modal opens
+    setTimeout(() => document.getElementById('new-exercise-name')?.focus(), 100);
 }
 
 export function closeCreateExerciseModal() {
     const modal = document.getElementById('add-exercise-modal');
-    const form = document.getElementById('add-exercise-form');
-
     if (modal) {
         closeModal(modal);
     }
-    if (form) form.reset();
+    _createExSelectedCategory = '';
+    _createExSelectedEquipment = '';
     creatingFromLibraryModal = false;
 }
 
 export async function createNewExercise(event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
 
     const name = document.getElementById('new-exercise-name')?.value.trim();
-    const bodyPart = document.getElementById('new-exercise-body-part')?.value;
-    const equipment = document.getElementById('new-exercise-equipment')?.value;
+    const category = _createExSelectedCategory;
     const sets = parseInt(document.getElementById('new-exercise-sets')?.value) || 3;
     const reps = parseInt(document.getElementById('new-exercise-reps')?.value) || 10;
-    const weight = parseInt(document.getElementById('new-exercise-weight')?.value) || 50;
-    const video = document.getElementById('new-exercise-video')?.value.trim();
+    const video = document.getElementById('new-exercise-video')?.value?.trim() || '';
+    const notes = document.getElementById('new-exercise-notes')?.value?.trim() || '';
 
     if (!name) {
         showNotification('Please enter an exercise name', 'warning');
         return;
     }
+    if (!category) {
+        showNotification('Please select a category', 'warning');
+        return;
+    }
+
+    // Map category to bodyPart for backward compatibility
+    const categoryToBodyPart = {
+        Push: 'Chest',
+        Pull: 'Back',
+        Legs: 'Legs',
+        Core: 'Core',
+        Cardio: 'Cardio',
+        Arms: 'Arms',
+    };
+    const bodyPart = categoryToBodyPart[category] || category;
+    const equipmentType = _createExSelectedEquipment || 'Bodyweight';
 
     const exerciseData = {
         name,
         machine: name,
         bodyPart,
-        equipmentType: equipment,
-        tags: [bodyPart.toLowerCase(), equipment.toLowerCase()],
+        category,
+        equipmentType,
+        tags: [bodyPart.toLowerCase(), equipmentType.toLowerCase()],
         sets,
         reps,
-        weight,
+        weight: 0,
         video,
+        notes,
     };
 
     const success = await workoutManager.createExercise(exerciseData);
 
     if (success) {
-        // Close the add-exercise-modal
         const modal = document.getElementById('add-exercise-modal');
         if (modal) {
             closeModal(modal);
@@ -1747,7 +1897,6 @@ export async function createNewExercise(event) {
         }
 
         creatingFromLibraryModal = false;
-        // Silent success - exercise appears immediately in library
     }
 }
 

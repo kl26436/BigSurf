@@ -153,6 +153,13 @@
                     </div>
                 </section>
 
+                <!-- Metric Detail (drill-down from dashboard cards) -->
+                <section id="metric-detail-section" class="content-section hidden">
+                    <div id="metric-detail-content">
+                        <!-- Metric detail content rendered dynamically -->
+                    </div>
+                </section>
+
                 <!-- Stats & Records -->
                 <section id="stats-section" class="content-section hidden">
                     <div id="stats-content">
@@ -524,113 +531,8 @@
 
                 <!-- Add/Create Exercise Modal -->
                 <dialog id="add-exercise-modal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3 id="add-exercise-modal-title">Create New Exercise</h3>
-                            <button class="close-btn" aria-label="Close" onclick="closeCreateExerciseModal()">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="add-exercise-form" onsubmit="createNewExercise(event)">
-                                <div class="form-group">
-                                    <label for="new-exercise-name">Exercise Name *</label>
-                                    <input
-                                        type="text"
-                                        id="new-exercise-name"
-                                        class="form-input"
-                                        placeholder="e.g., Incline Dumbbell Press"
-                                        required
-                                    />
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="new-exercise-body-part">Body Part</label>
-                                        <select id="new-exercise-body-part" class="form-input">
-                                            <option value="Chest">Chest</option>
-                                            <option value="Back">Back</option>
-                                            <option value="Shoulders">Shoulders</option>
-                                            <option value="Arms">Arms</option>
-                                            <option value="Legs">Legs</option>
-                                            <option value="Core">Core</option>
-                                            <option value="Calves">Calves</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="new-exercise-equipment">Equipment Type</label>
-                                        <select id="new-exercise-equipment" class="form-input">
-                                            <option value="Machine">Machine</option>
-                                            <option value="Dumbbell">Dumbbell</option>
-                                            <option value="Barbell">Barbell</option>
-                                            <option value="Cable">Cable</option>
-                                            <option value="Bodyweight">Bodyweight</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="new-exercise-sets">Default Sets</label>
-                                        <input
-                                            type="number"
-                                            id="new-exercise-sets"
-                                            class="form-input"
-                                            value="3"
-                                            min="1"
-                                            max="10"
-                                            inputmode="numeric"
-                                        />
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="new-exercise-reps">Default Reps</label>
-                                        <input
-                                            type="number"
-                                            id="new-exercise-reps"
-                                            class="form-input"
-                                            value="10"
-                                            min="1"
-                                            max="50"
-                                            inputmode="numeric"
-                                        />
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="new-exercise-weight">Default Weight</label>
-                                        <input
-                                            type="number"
-                                            id="new-exercise-weight"
-                                            class="form-input"
-                                            value="50"
-                                            min="0"
-                                            inputmode="decimal"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="new-exercise-video">Video URL (optional)</label>
-                                    <input
-                                        type="url"
-                                        id="new-exercise-video"
-                                        class="form-input"
-                                        placeholder="https://youtube.com/..."
-                                    />
-                                </div>
-
-                                <div class="modal-actions">
-                                    <button
-                                        type="button"
-                                        class="btn btn-secondary"
-                                        onclick="closeCreateExerciseModal()"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-plus"></i> Create Exercise
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                    <div class="modal-content" id="add-exercise-modal-content">
+                        <!-- Populated dynamically by showCreateExerciseForm() -->
                     </div>
                 </dialog>
 
@@ -1699,24 +1601,20 @@
 
         <!-- Bottom Navigation Bar -->
         <nav id="bottom-nav" class="bottom-nav" role="navigation" aria-label="Quick navigation">
-            <button class="bottom-nav-item active" data-tab="dashboard" onclick="bottomNavTo('dashboard')" aria-current="page">
-                <i class="fas fa-home" aria-hidden="true"></i>
-                <span>Home</span>
+            <button class="bottom-nav__btn active" data-tab="dashboard" onclick="bottomNavTo('dashboard')" aria-current="page">
+                <i class="fas fa-home" aria-hidden="true"></i><span>Home</span>
             </button>
-            <button class="bottom-nav-item" data-tab="stats" onclick="bottomNavTo('stats')">
-                <i class="fas fa-chart-line" aria-hidden="true"></i>
-                <span>Stats</span>
+            <button class="bottom-nav__btn" data-tab="stats" onclick="bottomNavTo('stats')">
+                <i class="fas fa-chart-line" aria-hidden="true"></i><span>Stats</span>
             </button>
-            <button class="bottom-nav-item bottom-nav-fab" data-tab="workout" onclick="bottomNavTo('workout')" aria-label="Start workout">
-                <i class="fas fa-plus" aria-hidden="true"></i>
+            <button class="bottom-nav__fab" data-tab="workout" onclick="bottomNavTo('workout')" aria-label="Workouts">
+                <i class="fas fa-dumbbell" aria-hidden="true"></i>
             </button>
-            <button class="bottom-nav-item" data-tab="history" onclick="bottomNavTo('history')">
-                <i class="fas fa-calendar" aria-hidden="true"></i>
-                <span>History</span>
+            <button class="bottom-nav__btn" data-tab="history" onclick="bottomNavTo('history')">
+                <i class="fas fa-calendar" aria-hidden="true"></i><span>History</span>
             </button>
-            <button class="bottom-nav-item" data-tab="more" onclick="toggleMoreMenu()" aria-expanded="false" aria-haspopup="true">
-                <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
-                <span>More</span>
+            <button class="bottom-nav__btn" data-tab="more" onclick="toggleMoreMenu()" aria-expanded="false" aria-haspopup="true">
+                <i class="fas fa-ellipsis-h" aria-hidden="true"></i><span>More</span>
             </button>
         </nav>
 
@@ -1757,15 +1655,21 @@
         </section>
 
 
-        <!-- DEXA Scan Upload Modal (Phase 18) -->
-        <dialog id="dexa-upload-modal" class="modal" aria-modal="true" aria-label="DEXA scan upload">
-            <div class="modal-content">
-                <button class="modal-fallback-close" onclick="closeModal('dexa-upload-modal')" aria-label="Close">
-                    <i class="fas fa-times"></i>
+        <!-- DEXA Scan Upload (Full-Page Section) -->
+        <section id="dexa-upload-section" class="full-page-section hidden" aria-label="DEXA scan upload">
+            <div class="full-page-header">
+                <button class="btn-icon" onclick="closeDexaUploadModal()" aria-label="Back">
+                    <i class="fas fa-chevron-left"></i>
                 </button>
+                <h3>New DEXA Scan</h3>
+                <div class="full-page-header-action">
+                    <button id="dexa-save-btn" class="btn btn-primary btn-sm" disabled onclick="confirmDexaSave()">Save</button>
+                </div>
+            </div>
+            <div class="full-page-body" id="dexa-upload-content">
                 <!-- Populated by JavaScript -->
             </div>
-        </dialog>
+        </section>
 
         <!-- DEXA Scan History (Full-Page Section) -->
         <section id="dexa-history-section" class="full-page-section hidden" aria-label="DEXA scan history">
@@ -1785,10 +1689,14 @@
         <section id="dexa-detail-section" class="full-page-section hidden" aria-label="DEXA scan detail">
             <div class="full-page-header">
                 <button class="btn-icon" onclick="closeDexaDetail()" aria-label="Back">
-                    <i class="fas fa-arrow-left"></i>
+                    <i class="fas fa-chevron-left"></i>
                 </button>
-                <h3>DEXA Scan Details</h3>
-                <div class="full-page-header-action"></div>
+                <h3 id="dexa-detail-title">DEXA Scan</h3>
+                <div class="full-page-header-action">
+                    <button class="btn-icon" id="dexa-detail-overflow" aria-label="More options">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
             </div>
             <div class="full-page-body" id="dexa-detail-content">
                 <!-- Populated by JavaScript -->

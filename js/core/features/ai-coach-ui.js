@@ -13,7 +13,7 @@ import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 // ===================================================================
 
 /**
- * Show the AI Coach modal with analysis options.
+ * Show the AI Coach modal with chat UI.
  * @param {string} [prefillContext] - Optional exercise name for pre-filled plateau context
  */
 export function showAICoach(prefillContext) {
@@ -24,45 +24,45 @@ export function showAICoach(prefillContext) {
     if (!content) return;
 
     content.innerHTML = `
-        <div class="coach-header">
-            <i class="fas fa-brain"></i>
-            <h2>AI Coach</h2>
-            <p class="coach-subtitle">Powered by your training data</p>
+        <div class="coach-chat-container">
+            <div id="coach-chat-area" class="coach-chat-area">
+                <div id="coach-empty-state" class="coach-empty-state">
+                    <div class="coach-hero">
+                        <div class="coach-hero-icon"><i class="fas fa-robot"></i></div>
+                        <div class="coach-hero-title">Ask anything</div>
+                        <div class="coach-hero-sub">I know your training history. Try:</div>
+                    </div>
+
+                    <div class="coach-prompt-list">
+                        <div class="prompt-card" onclick="askCoach('Why has my bench press stalled? Suggest a deload strategy.')">
+                            <div class="prompt-icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="prompt-txt">Why has my <strong>bench press</strong> stalled? Suggest a deload.</div>
+                        </div>
+                        <div class="prompt-card" onclick="askCoach('Analyze my volume distribution and identify any muscle groups I am neglecting or overtraining.')">
+                            <div class="prompt-icon" style="background:rgba(240,194,75,0.1);color:var(--warning);"><i class="fas fa-balance-scale"></i></div>
+                            <div class="prompt-txt">Check my <strong>push / pull volume</strong> balance this month.</div>
+                        </div>
+                        <div class="prompt-card" onclick="askCoach('Plan a 5-day training split optimized for my goals and recent performance.')">
+                            <div class="prompt-icon" style="background:rgba(247,168,101,0.1);color:var(--highlight-warm);"><i class="fas fa-calendar-alt"></i></div>
+                            <div class="prompt-txt">Plan a <strong>5-day split</strong> for my goals.</div>
+                        </div>
+                        <div class="prompt-card" onclick="askCoach('Help me plan a deload week. I am feeling beat up and need recovery.')">
+                            <div class="prompt-icon" style="background:rgba(74,217,167,0.1);color:var(--cat-core);"><i class="fas fa-running"></i></div>
+                            <div class="prompt-txt">Help me deload next week — I'm feeling beat up.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="coach-chat-messages" class="chat-wrap"></div>
+            </div>
+
+            <div class="chat-input">
+                <input id="coach-chat-input" type="text" placeholder="Ask your coach anything\u2026"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();sendCoachMessage();}">
+                <button class="chat-send" onclick="sendCoachMessage()"><i class="fas fa-arrow-up"></i></button>
+            </div>
         </div>
-
-        <div class="coach-prompts">
-            <button class="coach-prompt-card" onclick="askCoach('Review my training and suggest what to focus on next week.')">
-                <i class="fas fa-calendar-week"></i>
-                <span>Plan next week</span>
-            </button>
-            <button class="coach-prompt-card" onclick="askCoach('Analyze my volume distribution and identify any muscle groups I am neglecting or overtraining.')">
-                <i class="fas fa-chart-pie"></i>
-                <span>Volume check</span>
-            </button>
-            <button class="coach-prompt-card" onclick="askCoach('Identify exercises where I have plateaued and suggest strategies to break through.')">
-                <i class="fas fa-arrow-trend-up"></i>
-                <span>Break plateaus</span>
-            </button>
-            <button class="coach-prompt-card" onclick="showWorkoutBuilder()">
-                <i class="fas fa-hammer"></i>
-                <span>Build a workout</span>
-            </button>
-        </div>
-
-        <div id="coach-freeform" class="coach-freeform hidden">
-            <textarea id="coach-question" class="coach-textarea" placeholder="Ask your coach anything..." rows="3"></textarea>
-            <button class="btn btn-primary" onclick="askCoach(document.getElementById('coach-question').value)">
-                <i class="fas fa-paper-plane"></i> Ask
-            </button>
-        </div>
-
-        <div id="coach-response" class="coach-response hidden"></div>
-
-        <div id="coach-history-section" class="coach-history-section hidden"></div>
     `;
-
-    // Load past coaching sessions
-    loadCoachHistory();
 
     openModal(modal);
 
@@ -83,15 +83,15 @@ export function closeAICoach() {
 }
 
 /**
- * Show the freeform question input.
+ * Send a message from the chat input bar.
  */
-export function showCoachFreeform() {
-    const freeform = document.getElementById('coach-freeform');
-    if (freeform) {
-        freeform.classList.remove('hidden');
-        const textarea = document.getElementById('coach-question');
-        if (textarea) textarea.focus();
-    }
+export function sendCoachMessage() {
+    const input = document.getElementById('coach-chat-input');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    askCoach(text);
 }
 
 // ===================================================================
@@ -99,7 +99,32 @@ export function showCoachFreeform() {
 // ===================================================================
 
 /**
- * Call the Cloud Function and display the response.
+ * Add a chat bubble to the conversation area.
+ * @param {'user'|'bot'} role
+ * @param {string} html - innerHTML for the bubble
+ */
+function addChatBubble(role, html) {
+    // Hide empty state on first message
+    const emptyState = document.getElementById('coach-empty-state');
+    if (emptyState) emptyState.classList.add('hidden');
+
+    const wrap = document.getElementById('coach-chat-messages');
+    if (!wrap) return;
+
+    const bubble = document.createElement('div');
+    bubble.className = `chat-msg ${role}`;
+    bubble.innerHTML = html;
+    wrap.appendChild(bubble);
+
+    // Scroll to bottom
+    const chatArea = document.getElementById('coach-chat-area');
+    if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
+
+    return bubble;
+}
+
+/**
+ * Call the Cloud Function and display the response as chat bubbles.
  * @param {string} question - The user's question
  */
 export async function askCoach(question) {
@@ -108,22 +133,16 @@ export async function askCoach(question) {
         return;
     }
 
-    const responseDiv = document.getElementById('coach-response');
-    if (!responseDiv) return;
+    // Add user bubble
+    addChatBubble('user', escapeHtml(question.trim()));
 
-    responseDiv.classList.remove('hidden');
-    responseDiv.innerHTML = `
+    // Add loading bubble
+    const loadingBubble = addChatBubble('bot', `
         <div class="coach-loading">
             <i class="fas fa-spinner fa-spin"></i>
             <span>Analyzing your training data...</span>
         </div>
-    `;
-
-    // Hide prompt cards while loading
-    const prompts = document.querySelector('.coach-prompts');
-    if (prompts) prompts.classList.add('hidden');
-    const freeform = document.getElementById('coach-freeform');
-    if (freeform) freeform.classList.add('hidden');
+    `);
 
     try {
         // Build training context locally
@@ -142,17 +161,10 @@ export async function askCoach(question) {
 
         const recommendation = result.data.recommendation;
 
-        responseDiv.innerHTML = `
-            <div class="coach-recommendation">
-                ${formatCoachResponse(recommendation)}
-            </div>
-            <div class="coach-meta">
-                <span class="coach-timestamp">Analysis based on your data as of today</span>
-            </div>
-            <button class="btn btn-secondary coach-ask-another" onclick="resetCoachUI()">
-                <i class="fas fa-redo"></i> Ask another question
-            </button>
-        `;
+        // Replace loading bubble with actual response
+        if (loadingBubble) {
+            loadingBubble.innerHTML = formatCoachResponse(recommendation);
+        }
 
         // Save to history
         await saveCoachSession(question.trim(), recommendation);
@@ -161,57 +173,31 @@ export async function askCoach(question) {
         console.error('AI Coach error:', error);
 
         const errorMessage = error.message || '';
+        let errorHtml;
 
         if (errorMessage.includes('once per day') || errorMessage.includes('rate limit')) {
-            responseDiv.innerHTML = `
-                <div class="coach-rate-limit">
-                    <i class="fas fa-clock"></i>
-                    <p>Coach is available once per day. Check back tomorrow, or review your training insights on the dashboard.</p>
-                </div>
-                <button class="btn btn-secondary coach-ask-another" onclick="resetCoachUI()">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-            `;
+            errorHtml = `<i class="fas fa-clock" style="color:var(--warning);margin-right:6px;"></i> Coach is available once per day. Check back tomorrow, or review your training insights on the dashboard.`;
         } else if (errorMessage.includes('not-found') || errorMessage.includes('internal')) {
-            // Cloud Function not deployed yet — show helpful message
-            responseDiv.innerHTML = `
-                <div class="coach-error">
-                    <i class="fas fa-cloud-slash"></i>
-                    <p>AI Coach requires Cloud Functions to be deployed. The rules-based insights on your dashboard are always available.</p>
-                    <p class="coach-error-detail">Deploy the Cloud Function with: <code>firebase deploy --only functions</code></p>
-                </div>
-                <button class="btn btn-secondary coach-ask-another" onclick="resetCoachUI()">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-            `;
+            errorHtml = `<i class="fas fa-cloud" style="color:var(--text-muted);margin-right:6px;"></i> AI Coach requires Cloud Functions to be deployed. The rules-based insights on your dashboard are always available.`;
         } else {
-            responseDiv.innerHTML = `
-                <div class="coach-error">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <p>Unable to reach coach. Check your connection and try again.</p>
-                </div>
-                <button class="btn btn-secondary coach-ask-another" onclick="resetCoachUI()">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-            `;
+            errorHtml = `<i class="fas fa-exclamation-circle" style="color:var(--text-muted);margin-right:6px;"></i> Unable to reach coach. Check your connection and try again.`;
+        }
+
+        if (loadingBubble) {
+            loadingBubble.innerHTML = errorHtml;
         }
     }
 }
 
 /**
- * Reset the coach UI to show prompt cards again.
+ * Reset the coach UI to show empty state again.
  */
 export function resetCoachUI() {
-    const prompts = document.querySelector('.coach-prompts');
-    const freeform = document.getElementById('coach-freeform');
-    const responseDiv = document.getElementById('coach-response');
+    const emptyState = document.getElementById('coach-empty-state');
+    const chatMessages = document.getElementById('coach-chat-messages');
 
-    if (prompts) prompts.classList.remove('hidden');
-    if (freeform) freeform.classList.add('hidden');
-    if (responseDiv) {
-        responseDiv.classList.add('hidden');
-        responseDiv.innerHTML = '';
-    }
+    if (emptyState) emptyState.classList.remove('hidden');
+    if (chatMessages) chatMessages.innerHTML = '';
 }
 
 // ===================================================================
@@ -397,25 +383,22 @@ export function showPastCoachSession(sessionId) {
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
 
-    const responseDiv = document.getElementById('coach-response');
-    if (!responseDiv) return;
+    // Hide empty state and clear current chat
+    const emptyState = document.getElementById('coach-empty-state');
+    if (emptyState) emptyState.classList.add('hidden');
+    const chatMessages = document.getElementById('coach-chat-messages');
+    if (chatMessages) chatMessages.innerHTML = '';
 
-    const prompts = document.querySelector('.coach-prompts');
-    if (prompts) prompts.classList.add('hidden');
-
-    responseDiv.classList.remove('hidden');
-    responseDiv.innerHTML = `
-        <div class="coach-past-label">
-            <i class="fas fa-history"></i> From ${formatCoachDate(session.timestamp)}
-        </div>
-        <div class="coach-past-question">"${escapeHtml(session.question)}"</div>
-        <div class="coach-recommendation">
-            ${formatCoachResponse(session.response)}
-        </div>
-        <button class="btn btn-secondary coach-ask-another" onclick="resetCoachUI()">
-            <i class="fas fa-arrow-left"></i> Back
-        </button>
-    `;
+    // Show past session as chat bubbles
+    addChatBubble('user', escapeHtml(session.question));
+    const botBubble = addChatBubble('bot', formatCoachResponse(session.response));
+    if (botBubble) {
+        // Prepend a timestamp label
+        const label = document.createElement('div');
+        label.className = 'coach-past-label';
+        label.innerHTML = `<i class="fas fa-history"></i> From ${formatCoachDate(session.timestamp)}`;
+        botBubble.insertBefore(label, botBubble.firstChild);
+    }
 }
 
 // ===================================================================
@@ -426,17 +409,15 @@ export function showPastCoachSession(sessionId) {
 let _pendingTemplate = null;
 
 /**
- * Show the workout focus picker.
+ * Show the workout focus picker inside a bot chat bubble.
  */
 export function showWorkoutBuilder() {
-    const responseDiv = document.getElementById('coach-response');
-    if (!responseDiv) return;
+    // Hide empty state
+    const emptyState = document.getElementById('coach-empty-state');
+    if (emptyState) emptyState.classList.add('hidden');
 
-    const prompts = document.querySelector('.coach-prompts');
-    if (prompts) prompts.classList.add('hidden');
-
-    responseDiv.classList.remove('hidden');
-    responseDiv.innerHTML = `
+    addChatBubble('user', 'Build me a workout');
+    addChatBubble('bot', `
         <div class="builder-focus-picker">
             <h3 class="builder-title">What kind of workout?</h3>
             <div class="builder-focus-grid">
@@ -478,10 +459,7 @@ export function showWorkoutBuilder() {
                 </button>
             </div>
         </div>
-        <button class="btn btn-secondary coach-ask-another" onclick="resetCoachUI()">
-            <i class="fas fa-arrow-left"></i> Back
-        </button>
-    `;
+    `);
 }
 
 /**
@@ -494,15 +472,13 @@ export async function generateWorkoutTemplate(focus) {
         return;
     }
 
-    const responseDiv = document.getElementById('coach-response');
-    if (!responseDiv) return;
-
-    responseDiv.innerHTML = `
+    // Add loading bubble
+    const loadingBubble = addChatBubble('bot', `
         <div class="coach-loading">
             <i class="fas fa-spinner fa-spin"></i>
             <span>Building your ${escapeHtml(focus)} workout...</span>
         </div>
-    `;
+    `);
 
     try {
         // Build exercise library context
@@ -524,19 +500,13 @@ export async function generateWorkoutTemplate(focus) {
         });
 
         _pendingTemplate = result.data.template;
-        renderTemplatePreview(responseDiv);
+        if (loadingBubble) renderTemplatePreview(loadingBubble);
 
     } catch (error) {
         console.error('Template generation error:', error);
-        responseDiv.innerHTML = `
-            <div class="coach-error">
-                <i class="fas fa-exclamation-circle"></i>
-                <p>Failed to generate workout. ${error.message || 'Try again.'}</p>
-            </div>
-            <button class="btn btn-secondary coach-ask-another" onclick="showWorkoutBuilder()">
-                <i class="fas fa-arrow-left"></i> Try again
-            </button>
-        `;
+        if (loadingBubble) {
+            loadingBubble.innerHTML = `<i class="fas fa-exclamation-circle" style="color:var(--text-muted);margin-right:6px;"></i> Failed to generate workout. ${escapeHtml(error.message || 'Try again.')}`;
+        }
     }
 }
 
@@ -636,8 +606,12 @@ export function removePreviewExercise(index) {
     if (!_pendingTemplate || !_pendingTemplate.exercises) return;
     _pendingTemplate.exercises.splice(index, 1);
 
-    const responseDiv = document.getElementById('coach-response');
-    if (responseDiv) renderTemplatePreview(responseDiv);
+    // Find the last bot bubble that contains the template preview
+    const wrap = document.getElementById('coach-chat-messages');
+    if (!wrap) return;
+    const botBubbles = wrap.querySelectorAll('.chat-msg.bot');
+    const lastBot = botBubbles[botBubbles.length - 1];
+    if (lastBot) renderTemplatePreview(lastBot);
 }
 
 /**

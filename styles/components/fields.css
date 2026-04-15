@@ -1,0 +1,185 @@
+/* ============================================================================
+   FIELD LAYOUT — light label + input pattern for redesigned forms
+   ============================================================================ */
+
+.field {
+    margin-bottom: 16px;
+}
+
+.field-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.field-input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: 0.92rem;
+    font-family: inherit;
+}
+
+.field-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.field-input::placeholder {
+    color: var(--text-muted);
+}
+
+textarea.field-input {
+    resize: none;
+}
+
+/* ============================================================================
+   STEPPER — minus / value / plus row for numeric inputs
+   ============================================================================ */
+
+.stepper-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stepper-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.stepper-label {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.stepper button {
+    width: 38px;
+    height: 36px;
+    background: var(--bg-card-hi);
+    border: none;
+    color: var(--text-main);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stepper button:active {
+    background: var(--primary-bg);
+}
+
+.stepper input {
+    width: 44px;
+    height: 36px;
+    text-align: center;
+    border: none;
+    border-left: 1px solid var(--border-subtle);
+    border-right: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    color: var(--text-strong);
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: inherit;
+}
+
+.stepper input:focus {
+    outline: none;
+}
+
+/* Remove number spinners in steppers */
+.stepper input::-webkit-inner-spin-button,
+.stepper input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.stepper input {
+    -moz-appearance: textfield;
+}
+
+/* ============================================================================
+   EQUIPMENT CARD — selected equipment display inside create form
+   ============================================================================ */
+
+.equipment-selected-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.equipment-selected-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.equipment-selected-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.equipment-selected-name {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.equipment-selected-sub {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.equipment-change-btn {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ============================================================================
+   MORE DETAILS TOGGLE — collapsible section trigger
+   ============================================================================ */
+
+.more-details-toggle {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px;
+    background: none;
+    border: none;
+    width: 100%;
+}

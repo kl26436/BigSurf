@@ -393,6 +393,13 @@ dialog.modal:not([open]) {
     /* min-height removed (Phase 1.1) — only outermost wrapper should set viewport height */
     border-radius: 0;
 }
+#add-exercise-modal > .modal-content {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: hidden;
+}
 
 /* Modals that appear above exercise library modal (which gets z-index 1100 inline) */
 #location-selector-modal,

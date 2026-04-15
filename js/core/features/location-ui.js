@@ -762,6 +762,128 @@ export async function saveNewLocationFromModal() {
 /**
  * Edit a location name
  */
+/**
+ * Show a single-location detail/edit view (mockup-style).
+ * Replaces the list view with name field, map, radius chips, equipment list.
+ */
+export function showLocationDetail(locationId) {
+    const location = cachedLocations.find(loc => loc.id === locationId);
+    if (!location) return;
+
+    const container = document.getElementById('location-management-list');
+    const mapContainer = document.getElementById('location-map-container');
+    if (mapContainer) mapContainer.classList.add('hidden');
+
+    const hasGPS = location.latitude && location.longitude;
+    const address = location.cityState || (hasGPS ? `${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° W` : 'No GPS data');
+    const radius = location.radius || 500;
+
+    // Find equipment at this location
+    const allEquip = AppState._cachedEquipment || [];
+    const locationEquip = allEquip.filter(e =>
+        (e.locations || []).some(l => l.toLowerCase() === location.name.toLowerCase()) ||
+        (e.location && e.location.toLowerCase() === location.name.toLowerCase())
+    );
+
+    container.innerHTML = `
+        <div class="page-header" style="margin: -14px -16px 14px; position: static;">
+            <div class="header-left">
+                <button class="back-btn" onclick="showLocationManagement()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+                <div class="page-title">${escapeHtml(location.name)}</div>
+            </div>
+            <button class="btn-save" onclick="showLocationManagement()">Done</button>
+        </div>
+
+        <!-- Name -->
+        <div class="field">
+            <div class="field-label">Name</div>
+            <input class="field-input" id="loc-detail-name" value="${escapeAttr(location.name)}">
+        </div>
+
+        <!-- Map card -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;margin-bottom:14px;">
+            <div style="height:100px;background:linear-gradient(135deg,#1a2838,#0d1218);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:10px;">
+                <i class="fas fa-map-marker-alt" style="color:var(--primary);font-size:1.8rem;"></i>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-size:0.8rem;color:var(--text-strong);font-weight:600;">${escapeHtml(address)}</div>
+                    ${hasGPS ? `<div style="font-size:0.7rem;color:var(--text-muted);">${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° W</div>` : ''}
+                </div>
+                <button style="background:var(--primary-bg);border:1px solid var(--primary-border);color:var(--primary);padding:6px 12px;border-radius:var(--radius-pill);font-size:0.72rem;font-weight:600;cursor:pointer;" onclick="detectAndAddLocation()">
+                    <i class="fas fa-crosshairs"></i> Use current
+                </button>
+            </div>
+        </div>
+
+        <!-- Match radius -->
+        <div class="field">
+            <div class="field-label">Match radius</div>
+            <div style="display:flex;gap:8px;">
+                <div class="chip ${radius <= 200 ? 'active' : ''}" onclick="updateLocationRadius('${escapeAttr(locationId)}', 100)">100m</div>
+                <div class="chip ${radius > 200 && radius <= 700 ? 'active' : ''}" onclick="updateLocationRadius('${escapeAttr(locationId)}', 500)">500m</div>
+                <div class="chip ${radius > 700 ? 'active' : ''}" onclick="updateLocationRadius('${escapeAttr(locationId)}', 1000)">1 km</div>
+            </div>
+        </div>
+
+        <!-- Equipment at this location -->
+        <div class="sec-head"><h4>Equipment here <span class="count">${locationEquip.length} items</span></h4></div>
+        ${locationEquip.slice(0, 5).map(eq => `
+            <div class="link-row">
+                <div class="srow-icon ic-muted"><i class="fas fa-dumbbell"></i></div>
+                <div class="link-row-info">${escapeHtml(eq.name)}</div>
+                <button class="link-row-action" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">View</button>
+            </div>
+        `).join('')}
+        ${locationEquip.length > 5 ? `<div style="text-align:center;margin-top:4px;"><button style="background:transparent;border:none;color:var(--primary);font-size:0.78rem;font-weight:600;cursor:pointer;">View all ${locationEquip.length} →</button></div>` : ''}
+        ${locationEquip.length === 0 ? '<div style="font-size:0.78rem;color:var(--text-muted);padding:8px 0;">No equipment linked to this location</div>' : ''}
+
+        <!-- Delete -->
+        <div style="margin-top:24px;text-align:center;">
+            <button style="background:transparent;border:none;color:var(--danger);font-size:0.82rem;font-weight:600;cursor:pointer;" onclick="deleteLocation('${escapeAttr(locationId)}')">
+                <i class="fas fa-trash"></i> Delete location
+            </button>
+        </div>
+    `;
+
+    // Save name on change
+    const nameInput = document.getElementById('loc-detail-name');
+    if (nameInput) {
+        nameInput.addEventListener('change', async () => {
+            const newName = nameInput.value.trim();
+            if (newName && newName !== location.name) {
+                try {
+                    const manager = getWorkoutManager();
+                    await manager.updateLocation(locationId, { name: newName });
+                    if (currentLocationName === location.name) {
+                        setSessionLocation(newName);
+                        currentLocationName = newName;
+                    }
+                    await loadLocations();
+                    showNotification(`Renamed to ${newName}`, 'success', 1500);
+                } catch (e) {
+                    console.error('Error renaming location:', e);
+                }
+            }
+        });
+    }
+}
+
+/**
+ * Update a location's match radius.
+ */
+export async function updateLocationRadius(locationId, radius) {
+    try {
+        const manager = getWorkoutManager();
+        await manager.updateLocation(locationId, { radius });
+        const loc = cachedLocations.find(l => l.id === locationId);
+        if (loc) loc.radius = radius;
+        showLocationDetail(locationId); // Re-render
+    } catch (error) {
+        console.error('Error updating radius:', error);
+    }
+}
+
 export async function editLocationName(locationId) {
     const location = cachedLocations.find((loc) => loc.id === locationId);
     if (!location) return;

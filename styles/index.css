@@ -21,6 +21,11 @@
 @import url('components/metric-card.css');
 @import url('components/charts.css');
 @import url('components/bodyweight.css');
+@import url('components/segmented-control.css');
+@import url('components/chips.css');
+@import url('components/grouped-rows.css');
+@import url('components/page-header.css');
+@import url('components/fields.css');
 
 /* 4. Page-specific layouts */
 @import url('pages/app-shell.css');

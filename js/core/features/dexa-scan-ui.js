@@ -110,70 +110,122 @@ export async function renderDexaCard() {
 }
 
 // ===================================================================
-// UPLOAD MODAL
+// UPLOAD SECTION (Full-Page)
 // ===================================================================
 
 let _selectedFile = null;
 
 /**
- * Show the DEXA scan upload modal.
+ * Show the DEXA scan upload as a full-page section.
  */
 export function showDexaUploadModal() {
-    const modal = document.getElementById('dexa-upload-modal');
-    if (!modal) return;
+    const section = document.getElementById('dexa-upload-section');
+    if (!section) return;
 
     _selectedFile = null;
 
-    modal.querySelector('.modal-content').innerHTML = `
-        <div class="modal-header">
-            <h3>Upload DEXA Scan</h3>
-            <button class="modal-close-btn" onclick="closeDexaUploadModal()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="dexa-upload-form">
-                <label class="dexa-upload-zone" for="dexa-file-input">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <span class="dexa-upload-text">Tap to select your DEXA scan PDF</span>
-                    <span class="dexa-upload-hint">Works with any provider (Bodyspec, DexaFit, etc.)</span>
-                </label>
-                <input type="file" id="dexa-file-input" class="hidden"
-                       accept=".pdf" onchange="handleDexaFileSelect()">
+    const body = document.getElementById('dexa-upload-content');
+    if (!body) return;
 
-                <div id="dexa-file-selected" class="dexa-file-selected hidden">
-                    <i class="fas fa-file-pdf"></i>
-                    <span id="dexa-file-name"></span>
-                    <button class="btn-icon" onclick="clearDexaFile()" title="Remove">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
+    const unit = AppState.globalUnit || 'lbs';
+    const isLbs = unit === 'lbs';
 
-                <button id="dexa-upload-btn" class="btn btn-primary btn-block hidden" onclick="handleDexaUpload()">
-                    <i class="fas fa-magic"></i> Extract Data with AI
-                </button>
+    body.innerHTML = `
+        <div class="dexa-upload-form">
+            <!-- Drop zone -->
+            <label class="drop-zone" for="dexa-file-input">
+                <div class="drop-icon"><i class="fas fa-file-upload"></i></div>
+                <div class="drop-title">Upload scan results</div>
+                <div class="drop-desc">PDF or CSV from your DEXA facility</div>
+                <span class="drop-btn">Choose file</span>
+            </label>
+            <input type="file" id="dexa-file-input" class="hidden"
+                   accept=".pdf,.csv,.xlsx" onchange="handleDexaFileSelect()">
 
-                <div class="dexa-upload-divider">
-                    <span>or</span>
-                </div>
-
-                <button class="btn btn-outline btn-block" onclick="showDexaManualEntry()">
-                    <i class="fas fa-keyboard"></i> Enter Manually
+            <div id="dexa-file-selected" class="dexa-file-selected hidden">
+                <i class="fas fa-file-pdf"></i>
+                <span id="dexa-file-name"></span>
+                <button class="btn-icon" onclick="clearDexaFile()" title="Remove">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
+
+            <!-- File format pills -->
+            <div class="dexa-file-pills">
+                <div class="file-pill"><i class="fas fa-file-pdf"></i> Supports PDF</div>
+                <div class="file-pill file-pill--muted"><i class="fas fa-file-csv"></i> CSV / Excel</div>
+            </div>
+
+            <!-- Manual entry section -->
+            <div class="sec-head"><h3>Or enter manually</h3></div>
+
+            <div class="form-group">
+                <label class="form-label">Scan date</label>
+                <input type="date" id="dexa-date" class="form-input" value="${AppState.getTodayDateString()}">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Facility <span class="optional-label">(optional)</span></label>
+                <input type="text" id="dexa-provider" class="form-input"
+                       placeholder="e.g. DexaFit Boston" value="">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Units</label>
+                <div class="chips">
+                    <button class="chip ${isLbs ? 'active' : ''}" onclick="selectDexaUnit('lbs')" id="dexa-unit-lbs">
+                        ${isLbs ? '<i class="fas fa-check"></i> ' : ''}lb / inches
+                    </button>
+                    <button class="chip ${!isLbs ? 'active' : ''}" onclick="selectDexaUnit('kg')" id="dexa-unit-kg">
+                        ${!isLbs ? '<i class="fas fa-check"></i> ' : ''}kg / cm
+                    </button>
+                </div>
+                <input type="hidden" id="dexa-unit" value="${unit}">
+            </div>
+        </div>
+
+        <!-- Footer button -->
+        <div class="dexa-upload-footer">
+            <button class="btn btn-primary btn-block" id="dexa-continue-btn" onclick="handleDexaContinue()">
+                <i class="fas fa-arrow-right"></i> Continue to results
+            </button>
         </div>
     `;
 
-    openModal(modal);
+    // Reset save button state
+    const saveBtn = document.getElementById('dexa-save-btn');
+    if (saveBtn) saveBtn.disabled = true;
+
+    section.classList.remove('hidden');
 }
 
 /**
- * Close the upload modal.
+ * Handle unit chip selection.
+ */
+export function selectDexaUnit(unit) {
+    const hiddenInput = document.getElementById('dexa-unit');
+    if (hiddenInput) hiddenInput.value = unit;
+
+    const lbsChip = document.getElementById('dexa-unit-lbs');
+    const kgChip = document.getElementById('dexa-unit-kg');
+
+    if (lbsChip) {
+        lbsChip.classList.toggle('active', unit === 'lbs');
+        lbsChip.innerHTML = unit === 'lbs' ? '<i class="fas fa-check"></i> lb / inches' : 'lb / inches';
+    }
+    if (kgChip) {
+        kgChip.classList.toggle('active', unit === 'kg');
+        kgChip.innerHTML = unit === 'kg' ? '<i class="fas fa-check"></i> kg / cm' : 'kg / cm';
+    }
+}
+
+/**
+ * Close the upload section.
  */
 export function closeDexaUploadModal() {
     _selectedFile = null;
-    const modal = document.getElementById('dexa-upload-modal');
-    if (modal) closeModal(modal);
+    const section = document.getElementById('dexa-upload-section');
+    if (section) section.classList.add('hidden');
 }
 
 /**
@@ -185,9 +237,12 @@ export function handleDexaFileSelect() {
 
     const file = input.files[0];
 
-    // Validate file
-    if (file.type !== 'application/pdf') {
-        showNotification('Please select a PDF file', 'warning');
+    // Validate file type
+    const validTypes = ['application/pdf', 'text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+    const validExts = ['.pdf', '.csv', '.xlsx'];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
+        showNotification('Please select a PDF, CSV, or Excel file', 'warning');
         input.value = '';
         return;
     }
@@ -199,16 +254,14 @@ export function handleDexaFileSelect() {
 
     _selectedFile = file;
 
-    // Show file name and upload button
+    // Show file name, hide drop zone
     const selectedDiv = document.getElementById('dexa-file-selected');
     const nameSpan = document.getElementById('dexa-file-name');
-    const uploadBtn = document.getElementById('dexa-upload-btn');
-    const uploadZone = document.querySelector('.dexa-upload-zone');
+    const dropZone = document.querySelector('.drop-zone');
 
     if (nameSpan) nameSpan.textContent = file.name;
     if (selectedDiv) selectedDiv.classList.remove('hidden');
-    if (uploadBtn) uploadBtn.classList.remove('hidden');
-    if (uploadZone) uploadZone.classList.add('hidden');
+    if (dropZone) dropZone.classList.add('hidden');
 }
 
 /**
@@ -220,12 +273,22 @@ export function clearDexaFile() {
     if (input) input.value = '';
 
     const selectedDiv = document.getElementById('dexa-file-selected');
-    const uploadBtn = document.getElementById('dexa-upload-btn');
-    const uploadZone = document.querySelector('.dexa-upload-zone');
+    const dropZone = document.querySelector('.drop-zone');
 
     if (selectedDiv) selectedDiv.classList.add('hidden');
-    if (uploadBtn) uploadBtn.classList.add('hidden');
-    if (uploadZone) uploadZone.classList.remove('hidden');
+    if (dropZone) dropZone.classList.remove('hidden');
+}
+
+/**
+ * Handle "Continue to results" — either upload+extract or go to manual form.
+ */
+export async function handleDexaContinue() {
+    if (_selectedFile) {
+        await handleDexaUpload();
+    } else {
+        // Manual entry — go directly to review form
+        showDexaManualEntry();
+    }
 }
 
 /**
@@ -237,20 +300,15 @@ export async function handleDexaUpload() {
         return;
     }
 
-    const modal = document.getElementById('dexa-upload-modal');
-    if (!modal) return;
+    const body = document.getElementById('dexa-upload-content');
+    if (!body) return;
 
     // Show loading state
-    modal.querySelector('.modal-content').innerHTML = `
-        <div class="modal-header">
-            <h3>Analyzing Scan</h3>
-        </div>
-        <div class="modal-body">
-            <div class="dexa-analyzing">
-                <div class="dexa-analyzing-spinner"></div>
-                <p class="dexa-analyzing-status" id="dexa-status">Uploading PDF...</p>
-                <p class="dexa-analyzing-hint">This may take 15-30 seconds</p>
-            </div>
+    body.innerHTML = `
+        <div class="dexa-analyzing">
+            <div class="dexa-analyzing-spinner"></div>
+            <p class="dexa-analyzing-status" id="dexa-status">Uploading file...</p>
+            <p class="dexa-analyzing-hint">This may take 15-30 seconds</p>
         </div>
     `;
 
@@ -276,21 +334,13 @@ export async function handleDexaUpload() {
         const errorMsg = error?.message || error?.details || 'Extraction failed';
         const isRateLimit = errorMsg.includes('limit reached') || errorMsg.includes('resource-exhausted');
 
-        modal.querySelector('.modal-content').innerHTML = `
-            <div class="modal-header">
-                <h3>Extraction Failed</h3>
-                <button class="modal-close-btn" onclick="closeDexaUploadModal()">
-                    <i class="fas fa-times"></i>
+        body.innerHTML = `
+            <div class="dexa-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <p>${isRateLimit ? 'Daily extraction limit reached. You can still enter data manually.' : 'Could not extract data from this PDF. Try entering manually.'}</p>
+                <button class="btn btn-primary btn-block" onclick="showDexaManualEntry()">
+                    <i class="fas fa-keyboard"></i> Enter Manually
                 </button>
-            </div>
-            <div class="modal-body">
-                <div class="dexa-error">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <p>${isRateLimit ? 'Daily extraction limit reached. You can still enter data manually.' : 'Could not extract data from this PDF. Try entering manually.'}</p>
-                    <button class="btn btn-primary btn-block" onclick="showDexaManualEntry()">
-                        <i class="fas fa-keyboard"></i> Enter Manually
-                    </button>
-                </div>
             </div>
         `;
     }
@@ -307,18 +357,24 @@ export async function handleDexaUpload() {
  * @param {boolean} isManual - true if user chose manual entry
  */
 export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
-    const modal = document.getElementById('dexa-upload-modal');
-    if (!modal) return;
+    const body = document.getElementById('dexa-upload-content');
+    if (!body) return;
 
     const data = prefillData;
     const confidence = data.confidence || {};
-    const unit = data.massUnit || AppState.globalUnit || 'lbs';
+    // Use the unit from the hidden field if already set (manual flow), else from data
+    const existingUnit = document.getElementById('dexa-unit')?.value;
+    const unit = existingUnit || data.massUnit || AppState.globalUnit || 'lbs';
 
     // Generate a new scanId for manual entry if needed
     if (isManual && !scanId) {
-        const date = AppState.getTodayDateString();
+        const date = document.getElementById('dexa-date')?.value || AppState.getTodayDateString();
         scanId = `${date}_${Date.now()}`;
     }
+
+    // Carry over date/provider from the upload form if present
+    const dateVal = data.date || document.getElementById('dexa-date')?.value || AppState.getTodayDateString();
+    const providerVal = data.provider || document.getElementById('dexa-provider')?.value || '';
 
     const lowConf = (field) => {
         const score = confidence[field];
@@ -332,26 +388,9 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
         return '<span class="confidence-badge">Review</span>';
     };
 
-    modal.querySelector('.modal-content').innerHTML = `
-        <div class="modal-header">
-            <h3>${isManual ? 'Enter DEXA Data' : 'Review Extracted Data'}</h3>
-            <button class="modal-close-btn" onclick="closeDexaUploadModal()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body dexa-review-form">
-            ${!isManual ? '<p class="dexa-review-hint">AI extracted these values from your scan. Review and correct any highlighted fields.</p>' : ''}
-
-            <div class="form-group">
-                <label>Scan Date</label>
-                <input type="date" id="dexa-date" class="form-input" value="${data.date || AppState.getTodayDateString()}">
-            </div>
-
-            <div class="form-group">
-                <label>Provider <span class="optional-label">(optional)</span></label>
-                <input type="text" id="dexa-provider" class="form-input"
-                       placeholder="e.g. Bodyspec, DexaFit" value="${escapeAttr(data.provider || '')}">
-            </div>
+    body.innerHTML = `
+        <div class="dexa-review-form">
+            ${!isManual ? '<p class="dexa-review-hint">AI extracted these values. Review and correct any highlighted fields.</p>' : ''}
 
             <div class="form-group ${lowConf('totalBodyFat')}">
                 <label>Total Body Fat % ${reviewBadge('totalBodyFat')}</label>
@@ -362,32 +401,31 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
 
             <div class="dexa-form-row">
                 <div class="form-group ${lowConf('totalWeight')}">
-                    <label>Total Weight ${reviewBadge('totalWeight')}</label>
+                    <label>Total Weight (${unit}) ${reviewBadge('totalWeight')}</label>
                     <input type="number" id="dexa-total-weight" class="form-input"
                            placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
                            value="${data.totalWeight ?? ''}">
                 </div>
                 <div class="form-group">
-                    <label>Unit</label>
-                    <select id="dexa-unit" class="form-input">
-                        <option value="lbs" ${unit === 'lbs' ? 'selected' : ''}>lbs</option>
-                        <option value="kg" ${unit === 'kg' ? 'selected' : ''}>kg</option>
-                    </select>
+                    <label>Lean Mass (${unit})</label>
+                    <input type="number" id="dexa-total-lean" class="form-input"
+                           placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
+                           value="${data.totalLeanMass ?? ''}">
                 </div>
             </div>
 
             <div class="dexa-form-row">
                 <div class="form-group">
-                    <label>Total Lean Mass</label>
-                    <input type="number" id="dexa-total-lean" class="form-input"
-                           placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
-                           value="${data.totalLeanMass ?? ''}">
-                </div>
-                <div class="form-group">
-                    <label>Total Fat Mass</label>
+                    <label>Fat Mass (${unit})</label>
                     <input type="number" id="dexa-total-fat" class="form-input"
                            placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
                            value="${data.totalFatMass ?? ''}">
+                </div>
+                <div class="form-group">
+                    <label>Bone Mass (${unit})</label>
+                    <input type="number" id="dexa-bone-mass" class="form-input"
+                           placeholder="0" step="0.1" min="0" max="99" inputmode="decimal"
+                           value="${data.boneMass ?? ''}">
                 </div>
             </div>
 
@@ -443,17 +481,21 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
             </div>
 
             <input type="hidden" id="dexa-scan-id" value="${escapeAttr(scanId)}">
+            <input type="hidden" id="dexa-date" value="${escapeAttr(dateVal)}">
+            <input type="hidden" id="dexa-provider" value="${escapeAttr(providerVal)}">
+            <input type="hidden" id="dexa-unit" value="${escapeAttr(unit)}">
             <input type="hidden" id="dexa-report-url" value="${escapeAttr(data.reportUrl || '')}">
             <input type="hidden" id="dexa-confidence" value='${JSON.stringify(confidence)}'>
-
-            <button class="btn btn-primary btn-block" onclick="confirmDexaSave()">
-                <i class="fas fa-check"></i> Save Scan
-            </button>
         </div>
     `;
 
-    // Open modal if not already open (manual entry flow)
-    if (!modal.open) openModal(modal);
+    // Enable the Save button in the header
+    const saveBtn = document.getElementById('dexa-save-btn');
+    if (saveBtn) saveBtn.disabled = false;
+
+    // Ensure section is visible
+    const section = document.getElementById('dexa-upload-section');
+    if (section) section.classList.remove('hidden');
 }
 
 /**
@@ -545,6 +587,7 @@ export async function confirmDexaSave() {
         totalWeight: parseFloatOrNull('dexa-total-weight'),
         totalLeanMass: parseFloatOrNull('dexa-total-lean'),
         totalFatMass: parseFloatOrNull('dexa-total-fat'),
+        boneMass: parseFloatOrNull('dexa-bone-mass'),
         massUnit: document.getElementById('dexa-unit')?.value || 'lbs',
         leanMass: readRegional('leanMass'),
         fatMass: readRegional('fatMass'),
@@ -645,8 +688,8 @@ export function closeDexaHistory() {
  * @param {string} scanId
  */
 export async function showDexaDetail(scanId) {
-    const modal = document.getElementById('dexa-detail-section');
-    if (!modal) return;
+    const section = document.getElementById('dexa-detail-section');
+    if (!section) return;
 
     const scans = await loadDexaHistory();
     const scan = scans.find(s => s.id === scanId);
@@ -656,79 +699,161 @@ export async function showDexaDetail(scanId) {
     }
 
     const unit = scan.massUnit || 'lbs';
-    const dateStr = formatDateFull(scan.date);
     const imbalances = analyzeImbalances(scan);
+
+    // Update page title with short date
+    const titleEl = document.getElementById('dexa-detail-title');
+    const shortDate = formatShortMonthDay(scan.date);
+    if (titleEl) titleEl.textContent = `DEXA \u00B7 ${shortDate}`;
+
+    // Overflow menu handler
+    const overflowBtn = document.getElementById('dexa-detail-overflow');
+    if (overflowBtn) {
+        overflowBtn.onclick = () => {
+            if (confirm('Delete this scan?')) {
+                deleteDexaEntry(scan.id);
+            }
+        };
+    }
 
     // Find previous scan for comparison
     const scanIndex = scans.indexOf(scan);
     const prevScan = scans[scanIndex + 1];
     const delta = prevScan ? compareDexaScans(prevScan, scan) : null;
 
-    // Summary section
-    let summaryHTML = '<div class="dexa-detail-summary">';
-    summaryHTML += renderDetailRow('Body Fat', scan.totalBodyFat != null ? `${scan.totalBodyFat}%` : '—', delta?.totalBodyFat, '%');
-    summaryHTML += renderDetailRow('Total Weight', scan.totalWeight != null ? `${scan.totalWeight} ${unit}` : '—', delta?.totalWeight, ` ${unit}`);
-    summaryHTML += renderDetailRow('Lean Mass', scan.totalLeanMass != null ? `${scan.totalLeanMass} ${unit}` : '—', delta?.totalLeanMass, ` ${unit}`);
-    summaryHTML += renderDetailRow('Fat Mass', scan.totalFatMass != null ? `${scan.totalFatMass} ${unit}` : '—', delta?.totalFatMass, ` ${unit}`, true);
-    if (scan.vat != null) summaryHTML += renderDetailRow('VAT', `${scan.vat} ${unit}`, null, '');
-    if (scan.boneDensity?.tScore != null) summaryHTML += renderDetailRow('Bone T-Score', `${scan.boneDensity.tScore}`, null, '');
-    summaryHTML += '</div>';
+    // Summary — 2x2 stat card grid
+    const statCards = [
+        { label: 'Body fat', val: scan.totalBodyFat, unitStr: '%', delta: delta?.totalBodyFat, deltaUnit: '%', invertColor: true },
+        { label: 'Lean mass', val: scan.totalLeanMass, unitStr: unit, delta: delta?.totalLeanMass, deltaUnit: ` ${unit}`, invertColor: false },
+        { label: 'Fat mass', val: scan.totalFatMass, unitStr: unit, delta: delta?.totalFatMass, deltaUnit: ` ${unit}`, invertColor: true },
+        { label: 'Bone', val: scan.boneMass ?? scan.boneDensity?.tScore, unitStr: scan.boneMass != null ? unit : '', delta: null, deltaUnit: '', invertColor: false },
+    ];
 
-    // Imbalance section
-    let imbalanceHTML = '';
-    if (imbalances.length > 0) {
-        imbalanceHTML = `
-            <div class="dexa-detail-section">
-                <h4>Imbalance Analysis</h4>
-                ${imbalances.map(imb => `
-                    <div class="dexa-imbalance-item dexa-imbalance-${imb.severity}">
-                        <i class="fas ${imb.severity === 'significant' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
-                        <div>
-                            <strong>${imb.region}</strong>: ${imb.weaker} side is ${imb.percentDiff}% weaker
-                            <span class="dexa-imbalance-severity">${imb.severity}</span>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
+    const summaryHTML = `
+        <div class="sec-head">
+            <h3>Summary</h3>
+            ${delta ? `<span class="sec-head-sub">vs ${formatShortMonthDay(prevScan.date)}</span>` : ''}
+        </div>
+        <div class="stat-card-grid">
+            ${statCards.map(s => renderStatCard(s)).join('')}
+        </div>
+    `;
+
+    // Insight card — contextual text based on data
+    let insightHTML = '';
+    if (delta) {
+        const insightText = generateInsight(scan, delta, unit);
+        if (insightText) {
+            insightHTML = `
+                <div class="dexa-insight-card">
+                    <i class="fas fa-lightbulb"></i>
+                    <div>${insightText}</div>
+                </div>
+            `;
+        }
     }
 
-    // Regional breakdown
+    // Regional lean mass — horizontal bar chart rows
     let regionalHTML = '';
     if (scan.leanMass) {
+        const trunk = scan.leanMass.trunk ?? 0;
+        const arms = (scan.leanMass.leftArm ?? 0) + (scan.leanMass.rightArm ?? 0);
+        const legs = (scan.leanMass.leftLeg ?? 0) + (scan.leanMass.rightLeg ?? 0);
+        const maxVal = Math.max(trunk, arms, legs, 1);
+
+        // L/R balance
+        const leftTotal = (scan.leanMass.leftArm ?? 0) + (scan.leanMass.leftLeg ?? 0);
+        const rightTotal = (scan.leanMass.rightArm ?? 0) + (scan.leanMass.rightLeg ?? 0);
+        const balancePct = leftTotal + rightTotal > 0
+            ? Math.abs((leftTotal - rightTotal) / ((leftTotal + rightTotal) / 2) * 100).toFixed(1)
+            : 0;
+        const isBalanced = balancePct < 3;
+
+        const barRows = [
+            { label: 'Trunk', value: trunk, pct: (trunk / maxVal * 100).toFixed(0), color: 'var(--cat-push)' },
+            { label: 'Arms', value: arms, pct: (arms / maxVal * 100).toFixed(0), color: 'var(--cat-arms)' },
+            { label: 'Legs', value: legs, pct: (legs / maxVal * 100).toFixed(0), color: 'var(--cat-legs)' },
+        ];
+
         regionalHTML = `
-            <div class="dexa-detail-section">
-                <h4>Regional Lean Mass (${unit})</h4>
-                <div class="dexa-regional-detail">
-                    ${renderRegionalDetail(scan.leanMass, delta?.leanMass, unit)}
+            <div class="sec-head"><h3>Regional lean mass</h3></div>
+            <div class="stat-card">
+                <div class="regional-bars">
+                    ${barRows.map(r => `
+                        <div class="regional-bar-row">
+                            <div class="regional-bar-label">${r.label}</div>
+                            <div class="regional-bar-track">
+                                <div class="regional-bar-fill" style="width:${r.pct}%;background:${r.color};"></div>
+                            </div>
+                            <div class="regional-bar-value">${r.value.toFixed(1)} ${unit}</div>
+                        </div>
+                    `).join('')}
+                    <div class="regional-bar-row">
+                        <div class="regional-bar-label">L/R bal.</div>
+                        <div class="regional-balance-status ${isBalanced ? 'balanced' : 'imbalanced'}">
+                            ${isBalanced ? 'Balanced' : 'Imbalanced'}
+                        </div>
+                        <div class="regional-bar-value ${isBalanced ? 'balanced' : 'imbalanced'}">${balancePct}%</div>
+                    </div>
                 </div>
             </div>
         `;
     }
 
-    // Populate the full-page body content
-    const body = document.getElementById('dexa-detail-content') || modal.querySelector('.full-page-body');
-    if (body) {
-        body.innerHTML = `
-            <div class="dexa-detail-date">
-                ${escapeHtml(dateStr)}
-                ${scan.provider ? ` — ${escapeHtml(scan.provider)}` : ''}
+    // Imbalance detail (if any significant)
+    let imbalanceHTML = '';
+    if (imbalances.length > 0) {
+        imbalanceHTML = imbalances.map(imb => `
+            <div class="dexa-insight-card dexa-insight-card--warn">
+                <i class="fas ${imb.severity === 'significant' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
+                <div><strong>${imb.region}</strong>: ${imb.weaker} side is ${imb.percentDiff}% weaker</div>
             </div>
-            ${delta ? `<p class="dexa-detail-comparison">Compared to previous scan (${delta.daysBetween} days ago)</p>` : ''}
-            ${summaryHTML}
-            ${imbalanceHTML}
-            ${regionalHTML}
-            ${scan.notes ? `<div class="dexa-detail-notes"><strong>Notes:</strong> ${escapeHtml(scan.notes)}</div>` : ''}
-            <div class="dexa-detail-actions">
-                <button class="btn btn-sm btn-danger" onclick="deleteDexaEntry('${escapeAttr(scan.id)}')">
-                    <i class="fas fa-trash"></i> Delete Scan
-                </button>
+        `).join('');
+    }
+
+    // Visceral fat section
+    let vatHTML = '';
+    if (scan.vat != null) {
+        const vatLevel = scan.vat < 1.5 ? 'Low' : scan.vat < 3 ? 'Moderate' : 'High';
+        const vatStatus = scan.vat < 1.5 ? 'healthy range' : scan.vat < 3 ? 'monitor' : 'elevated';
+        const vatColor = scan.vat < 1.5 ? 'var(--success)' : scan.vat < 3 ? 'var(--warning)' : 'var(--danger)';
+
+        vatHTML = `
+            <div class="sec-head"><h3>Visceral fat</h3></div>
+            <div class="stat-card">
+                <div class="vat-row">
+                    <div class="vat-info">
+                        <div class="stat-val vat-val">${scan.vat}<span class="stat-unit">${unit}</span></div>
+                        <div class="vat-status" style="color:${vatColor};">${vatLevel} \u00B7 ${vatStatus}</div>
+                    </div>
+                    <svg class="vat-sparkline" width="80" height="40" viewBox="0 0 80 40">
+                        <path d="M0,30 L15,28 L30,24 L45,20 L60,14 L80,8" fill="none" stroke="${vatColor}" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
             </div>
         `;
     }
 
-    // Show as full-page section
-    modal.classList.remove('hidden');
+    // Notes
+    let notesHTML = '';
+    if (scan.notes) {
+        notesHTML = `<div class="dexa-detail-notes"><strong>Notes:</strong> ${escapeHtml(scan.notes)}</div>`;
+    }
+
+    // Populate body
+    const body = document.getElementById('dexa-detail-content') || section.querySelector('.full-page-body');
+    if (body) {
+        body.innerHTML = `
+            ${summaryHTML}
+            ${insightHTML}
+            ${regionalHTML}
+            ${imbalanceHTML}
+            ${vatHTML}
+            ${notesHTML}
+        `;
+    }
+
+    section.classList.remove('hidden');
 }
 
 /**
@@ -754,51 +879,77 @@ export async function deleteDexaEntry(scanId) {
 // HELPERS
 // ===================================================================
 
-function renderDetailRow(label, value, delta, deltaUnit, invertColor = false) {
+/**
+ * Render a single stat card for the 2x2 grid.
+ */
+function renderStatCard({ label, val, unitStr, delta, deltaUnit, invertColor }) {
+    if (val == null) {
+        return `
+            <div class="stat-card">
+                <div class="stat-label">${label}</div>
+                <div class="stat-val">\u2014</div>
+            </div>
+        `;
+    }
+
     let deltaHTML = '';
-    if (delta != null) {
-        const sign = delta > 0 ? '+' : '';
-        // For fat mass, increase is negative (bad); for lean mass, increase is positive (good)
-        let cls = '';
-        if (delta !== 0) {
-            const isGood = invertColor ? delta < 0 : delta > 0;
-            cls = isGood ? 'delta-positive' : 'delta-negative';
-        }
-        deltaHTML = `<span class="dexa-delta ${cls}">${sign}${delta}${deltaUnit}</span>`;
+    if (delta != null && delta !== 0) {
+        // For body fat / fat mass, decrease is good; for lean / bone, increase is good
+        const isGood = invertColor ? delta < 0 : delta > 0;
+        const arrow = delta > 0 ? '\u2191' : '\u2193';
+        const cls = isGood ? 'down' : 'up'; // "down" = green (good), "up" = red (bad) per mockup convention
+        // Actually: mockup uses "down" class with down arrow for BF decrease (green) and "up" for lean increase (green)
+        // So: .stat-delta.up = green (positive change), .stat-delta.down = green (decrease that's good)
+        const deltaClass = isGood ? (delta < 0 ? 'down' : 'up') : (delta < 0 ? 'up' : 'down');
+        deltaHTML = `<div class="stat-delta ${deltaClass}">${arrow} ${Math.abs(delta)}${deltaUnit}</div>`;
     }
 
     return `
-        <div class="dexa-detail-row">
-            <span class="dexa-detail-label">${label}</span>
-            <span class="dexa-detail-value">${value} ${deltaHTML}</span>
+        <div class="stat-card">
+            <div class="stat-label">${label}</div>
+            <div class="stat-val">${val}<span class="stat-unit">${unitStr}</span></div>
+            ${deltaHTML}
         </div>
     `;
 }
 
-function renderRegionalDetail(leanMass, deltas, unit) {
-    const regions = [
-        ['leftArm', 'L Arm'], ['rightArm', 'R Arm'],
-        ['leftLeg', 'L Leg'], ['rightLeg', 'R Leg'],
-        ['trunk', 'Trunk'],
-    ];
+/**
+ * Generate a contextual insight string from scan data and deltas.
+ */
+function generateInsight(scan, delta, unit) {
+    const parts = [];
+    if (delta.totalLeanMass != null && delta.totalLeanMass > 0) {
+        parts.push(`added <strong>${delta.totalLeanMass} ${unit} of lean mass</strong>`);
+    }
+    if (delta.totalFatMass != null && delta.totalFatMass < 0) {
+        parts.push(`lost <strong>${Math.abs(delta.totalFatMass)} ${unit} of fat</strong>`);
+    }
 
-    return regions.map(([key, name]) => {
-        const val = leanMass[key];
-        if (val == null) return '';
-        const delta = deltas?.[key];
-        let deltaHTML = '';
-        if (delta != null) {
-            const sign = delta > 0 ? '+' : '';
-            const cls = delta > 0 ? 'delta-positive' : delta < 0 ? 'delta-negative' : '';
-            deltaHTML = `<span class="dexa-delta ${cls}">${sign}${delta}</span>`;
-        }
-        return `
-            <div class="dexa-regional-detail-item">
-                <span class="dexa-regional-detail-label">${name}</span>
-                <span class="dexa-regional-detail-value">${val} ${unit} ${deltaHTML}</span>
-            </div>
-        `;
-    }).join('');
+    if (parts.length === 2) {
+        const months = Math.round(delta.daysBetween / 30);
+        const timeStr = months > 0 ? `${months} month${months > 1 ? 's' : ''}` : `${delta.daysBetween} days`;
+        return `Strong recomp trend: you ${parts[0]} while ${parts[1].replace('lost', 'losing')} in ${timeStr}.`;
+    }
+    if (parts.length === 1) {
+        return `You ${parts[0]} since your last scan.`;
+    }
+
+    // Fallback: body fat change
+    if (delta.totalBodyFat != null && delta.totalBodyFat !== 0) {
+        const dir = delta.totalBodyFat < 0 ? 'dropped' : 'increased';
+        return `Body fat ${dir} by ${Math.abs(delta.totalBodyFat)}% since your last scan.`;
+    }
+
+    return null;
+}
+
+/**
+ * Format date as "Apr 3" style.
+ */
+function formatShortMonthDay(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function parseFloatOrNull(elementId) {

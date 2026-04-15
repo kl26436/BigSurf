@@ -1,0 +1,94 @@
+/* ============================================================================
+   CHIP SELECTORS — pill-shaped selection buttons
+   Used for category, equipment type, location, unit, radius, etc.
+   ============================================================================ */
+
+.chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.chips::-webkit-scrollbar { display: none; }
+
+.chip {
+    flex-shrink: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 150ms, border-color 150ms, color 150ms;
+}
+
+.chip i { font-size: 0.85rem; }
+
+.chip.active {
+    background: var(--primary-bg);
+    border-color: var(--primary-border);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Category-colored active states */
+.chip.cat-push.active {
+    background: rgba(74, 144, 217, 0.12);
+    border-color: rgba(74, 144, 217, 0.4);
+    color: var(--cat-push);
+}
+
+.chip.cat-pull.active {
+    background: rgba(217, 74, 122, 0.12);
+    border-color: rgba(217, 74, 122, 0.4);
+    color: var(--cat-pull);
+}
+
+.chip.cat-legs.active {
+    background: rgba(123, 74, 217, 0.12);
+    border-color: rgba(123, 74, 217, 0.4);
+    color: var(--cat-legs);
+}
+
+.chip.cat-core.active {
+    background: rgba(74, 217, 167, 0.12);
+    border-color: rgba(74, 217, 167, 0.4);
+    color: var(--cat-core);
+}
+
+.chip.cat-cardio.active {
+    background: rgba(217, 167, 74, 0.12);
+    border-color: rgba(217, 167, 74, 0.4);
+    color: var(--cat-cardio);
+}
+
+.chip.cat-arms.active {
+    background: rgba(217, 106, 74, 0.12);
+    border-color: rgba(217, 106, 74, 0.4);
+    color: var(--cat-arms);
+}
+
+/* Removable chip (has x button) */
+.chip .chip-remove {
+    background: transparent;
+    border: none;
+    color: inherit;
+    margin-left: 4px;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.72rem;
+}
+
+/* Smaller chip variant */
+.chip--sm {
+    padding: 5px 12px;
+    font-size: 0.74rem;
+}

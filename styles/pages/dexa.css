@@ -1,5 +1,5 @@
 /* ============================================================================
-   DEXA Scan — Phase 18
+   DEXA Scan — Phase 18 Redesign
    Upload, review form, dashboard card, history, detail views
    ============================================================================ */
 
@@ -93,46 +93,101 @@
     flex: 1;
 }
 
-/* ---- Upload Modal ---- */
+/* ---- Upload Section: Drop Zone ---- */
 .dexa-upload-form {
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
 }
 
-.dexa-upload-zone {
+.drop-zone {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-8);
+    gap: var(--space-10);
     padding: var(--space-32) var(--space-16);
-    border: 2px dashed var(--border);
+    border: 2px dashed var(--primary);
     border-radius: var(--radius-md);
     cursor: pointer;
-    color: var(--text-secondary);
-    transition: border-color 0.2s, color 0.2s;
+    text-align: center;
+    transition: background 0.2s, border-color 0.2s;
 }
 
-.dexa-upload-zone:hover,
-.dexa-upload-zone:active {
-    border-color: var(--primary);
+.drop-zone:hover,
+.drop-zone:active {
+    background: var(--primary-bg-subtle);
+}
+
+.drop-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-pill);
+    background: var(--primary-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.drop-icon i {
+    font-size: var(--font-xl);
     color: var(--primary);
 }
 
-.dexa-upload-zone i {
-    font-size: var(--font-2xl);
-}
-
-.dexa-upload-text {
+.drop-title {
     font-size: var(--font-base);
-    font-weight: 500;
+    font-weight: 600;
+    color: var(--text-strong);
 }
 
-.dexa-upload-hint {
-    font-size: var(--font-xs);
+.drop-desc {
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
+.drop-btn {
+    display: inline-block;
+    padding: var(--space-8) var(--space-20);
+    background: var(--primary);
+    color: var(--text-on-primary, #fff);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    margin-top: var(--space-4);
+}
+
+/* ---- File Format Pills ---- */
+.dexa-file-pills {
+    display: flex;
+    gap: var(--space-8);
+    justify-content: center;
+}
+
+.file-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-10);
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 500;
+    color: var(--primary);
+}
+
+.file-pill i {
+    font-size: var(--font-xs);
+}
+
+.file-pill--muted {
+    background: var(--bg-card);
+    border-color: var(--border-light);
+    color: var(--text-secondary);
+}
+
+/* ---- File Selected State ---- */
 .dexa-file-selected {
     display: flex;
     align-items: center;
@@ -157,20 +212,9 @@
     white-space: nowrap;
 }
 
-.dexa-upload-divider {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    color: var(--text-muted);
-    font-size: var(--font-xs);
-}
-
-.dexa-upload-divider::before,
-.dexa-upload-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
+/* ---- Upload Footer ---- */
+.dexa-upload-footer {
+    padding-top: var(--space-24);
 }
 
 /* ---- Analyzing State ---- */
@@ -345,7 +389,7 @@
     font-size: var(--font-sm);
 }
 
-/* ---- History Modal ---- */
+/* ---- History ---- */
 .dexa-history-item {
     display: flex;
     align-items: center;
@@ -391,7 +435,7 @@
     font-size: var(--font-xs);
 }
 
-/* ---- Delta Badges ---- */
+/* ---- Delta Badges (legacy history) ---- */
 .dexa-delta {
     font-size: var(--font-xs);
     font-weight: 600;
@@ -409,135 +453,192 @@
     background: var(--danger-bg);
 }
 
-/* ---- Detail Modal ---- */
-.dexa-detail-date {
-    font-size: var(--font-base);
-    font-weight: 600;
-    color: var(--text-strong);
+/* ===========================================================================
+   DETAIL VIEW — Stat Cards, Insight, Regional Bars, Visceral
+   =========================================================================== */
+
+/* Section heading override for detail page */
+.sec-head-sub {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+/* ---- 2x2 Stat Card Grid ---- */
+.stat-card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-8);
+    margin-bottom: var(--space-16);
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--pad-card-y) var(--pad-card-x);
+}
+
+.stat-label {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
     margin-bottom: var(--space-4);
 }
 
-.dexa-detail-comparison {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    margin-bottom: var(--space-16);
-}
-
-.dexa-detail-summary {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    margin-bottom: var(--space-16);
-}
-
-.dexa-detail-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-10) 0;
-    border-bottom: 1px solid var(--border);
-}
-
-.dexa-detail-row:last-child {
-    border-bottom: none;
-}
-
-.dexa-detail-label {
-    font-size: var(--font-sm);
-    color: var(--text-secondary);
-}
-
-.dexa-detail-value {
-    font-size: var(--font-sm);
-    font-weight: 600;
+.stat-val {
+    font-size: var(--font-xl);
+    font-weight: 700;
     color: var(--text-strong);
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
 }
 
-.dexa-detail-section {
-    margin-bottom: var(--space-16);
-}
-
-.dexa-detail-section h4 {
-    font-size: var(--font-sm);
-    font-weight: 600;
-    color: var(--text-strong);
-    margin-bottom: var(--space-8);
-}
-
-/* ---- Imbalance Analysis ---- */
-.dexa-imbalance-item {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--gap-items);
-    padding: var(--pad-card-y) var(--pad-card-x);
-    border-radius: var(--radius-sm);
-    margin-bottom: var(--space-8);
-    font-size: var(--font-sm);
-    color: var(--text-main);
-}
-
-.dexa-imbalance-item:last-child {
-    margin-bottom: 0;
-}
-
-.dexa-imbalance-mild {
-    background: var(--warning-bg);
-    border-left: 3px solid var(--warning);
-}
-
-.dexa-imbalance-moderate {
-    background: var(--warning-moderate-bg);
-    border-left: var(--accent-bar) solid var(--warning-moderate);
-}
-
-.dexa-imbalance-significant {
-    background: var(--danger-moderate-bg);
-    border-left: 3px solid var(--danger);
-}
-
-.dexa-imbalance-severity {
-    font-size: var(--font-xs);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    margin-left: var(--space-4);
-    opacity: 0.7;
-}
-
-/* ---- Regional Detail (in detail modal) ---- */
-.dexa-regional-detail {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-}
-
-.dexa-regional-detail-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-8) 0;
-    border-bottom: 1px solid var(--border);
-}
-
-.dexa-regional-detail-item:last-child {
-    border-bottom: none;
-}
-
-.dexa-regional-detail-label {
-    font-size: var(--font-sm);
-    color: var(--text-secondary);
-}
-
-.dexa-regional-detail-value {
+.stat-unit {
     font-size: var(--font-sm);
     font-weight: 500;
+    color: var(--text-muted);
+    margin-left: var(--space-2);
+}
+
+.stat-delta {
+    display: inline-block;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    margin-top: var(--space-4);
+    padding: 1px var(--space-6);
+    border-radius: var(--radius-xs);
+}
+
+/* "up" = positive trend (green) — lean mass gained, etc. */
+.stat-delta.up {
+    color: var(--success);
+    background: var(--success-bg);
+}
+
+/* "down" = negative trend that's good (green) — fat/BF decreased */
+.stat-delta.down {
+    color: var(--success);
+    background: var(--success-bg);
+}
+
+/* ---- Insight Card ---- */
+.dexa-insight-card {
+    display: flex;
+    gap: var(--space-10);
+    align-items: flex-start;
+    padding: var(--space-12) var(--pad-card-x);
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-16);
+}
+
+.dexa-insight-card > i {
+    color: var(--primary);
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.dexa-insight-card > div {
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    line-height: 1.45;
+}
+
+.dexa-insight-card--warn {
+    background: var(--warning-bg);
+    border-color: var(--warning);
+}
+
+.dexa-insight-card--warn > i {
+    color: var(--warning);
+}
+
+/* ---- Regional Lean Mass Bars ---- */
+.regional-bars {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+}
+
+.regional-bar-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 60px;
+    align-items: center;
+    gap: var(--space-10);
+}
+
+.regional-bar-label {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+
+.regional-bar-track {
+    height: 8px;
+    background: var(--border-light);
+    border-radius: var(--radius-xs);
+    overflow: hidden;
+}
+
+.regional-bar-fill {
+    height: 100%;
+    border-radius: var(--radius-xs);
+    transition: width 0.3s ease;
+}
+
+.regional-bar-value {
+    font-size: var(--font-xs);
     color: var(--text-strong);
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.regional-bar-value.balanced {
+    color: var(--success);
+}
+
+.regional-bar-value.imbalanced {
+    color: var(--warning);
+}
+
+.regional-balance-status {
+    flex: 1;
+    text-align: center;
+    font-size: var(--font-xs);
+    font-weight: 500;
+}
+
+.regional-balance-status.balanced {
+    color: var(--success);
+}
+
+.regional-balance-status.imbalanced {
+    color: var(--warning);
+}
+
+/* ---- Visceral Fat ---- */
+.vat-row {
     display: flex;
     align-items: center;
-    gap: var(--space-6);
+    gap: var(--pad-card-x);
+}
+
+.vat-info {
+    flex: 1;
+}
+
+.vat-val {
+    font-size: var(--font-lg);
+}
+
+.vat-status {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    margin-top: var(--space-4);
+}
+
+.vat-sparkline {
+    flex-shrink: 0;
 }
 
 /* ---- Detail Notes & Actions ---- */
@@ -546,6 +647,7 @@
     color: var(--text-secondary);
     padding: var(--space-12) 0;
     border-top: 1px solid var(--border);
+    margin-top: var(--space-16);
 }
 
 .dexa-detail-actions {

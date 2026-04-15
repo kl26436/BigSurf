@@ -1,0 +1,30 @@
+/* ============================================================================
+   SEGMENTED CONTROL — inline horizontal toggle picker
+   Replaces dropdowns for unit, timer, goal selections
+   ============================================================================ */
+
+.segmented {
+    display: flex;
+    background: var(--bg-card-hi);
+    border-radius: var(--radius-pill);
+    padding: 3px;
+}
+
+.segmented button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: background 150ms, color 150ms;
+    white-space: nowrap;
+}
+
+.segmented button.active {
+    background: var(--primary);
+    color: #04201a;
+}

@@ -305,50 +305,60 @@ function renderManualExercises() {
         return;
     }
 
+    const unit = AppState.globalUnit || 'lbs';
+
     container.innerHTML = manualWorkoutState.exercises
         .map((exercise, exIndex) => {
-            const equipmentDisplay = exercise.equipment
-                ? `${exercise.equipment}${exercise.equipmentLocation ? ' @ ' + exercise.equipmentLocation : ''}`
-                : 'No equipment';
+            const equipmentDisplay = exercise.equipment || '';
+            const setsSummary = exercise.sets
+                .filter(s => s.reps && s.weight)
+                .slice(0, 4)
+                .map(s => `${s.weight}×${s.reps}`)
+                .join(', ');
 
             return `
-        <div class="manual-exercise-card">
-            <div class="manual-exercise-header">
-                <div class="manual-exercise-title-row">
-                    <h4>${escapeHtml(exercise.name)}</h4>
-                    <button class="btn btn-danger btn-small" onclick="removeManualExercise(${exIndex})" title="Remove" aria-label="Delete exercise">
-                        <i class="fas fa-trash"></i>
-                    </button>
+        <div class="manual-exercise-card" style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <i class="fas fa-grip-vertical" style="color:var(--text-muted);"></i>
+                <div style="flex:1;">
+                    <div style="font-size:0.95rem;font-weight:700;color:var(--text-strong);">${escapeHtml(exercise.name)}</div>
+                    ${equipmentDisplay ? `<div style="font-size:0.72rem;color:var(--text-muted);">${escapeHtml(equipmentDisplay)}</div>` : ''}
                 </div>
-                <div class="manual-exercise-equipment" onclick="openEquipmentPickerForManual(${exIndex})">
-                    <i class="fas fa-cog"></i>
-                    <span>${escapeHtml(equipmentDisplay)}</span>
-                    <i class="fas fa-pen"></i>
-                </div>
+                <button style="background:transparent;border:none;color:var(--text-muted);" onclick="removeManualExercise(${exIndex})"><i class="fas fa-ellipsis-v"></i></button>
             </div>
-            <div class="manual-sets-grid">
-                ${exercise.sets
-                    .map(
-                        (set, setIndex) => `
-                    <div class="manual-set-row">
-                        <span class="set-label">Set ${setIndex + 1}</span>
-                        <input type="number" class="mini-input" inputmode="numeric" placeholder="Reps"
-                               value="${set.reps || ''}"
-                               onchange="updateManualSet(${exIndex}, ${setIndex}, 'reps', this.value)">
-                        <span class="separator">×</span>
-                        <input type="number" class="mini-input" inputmode="decimal" placeholder="Weight"
-                               value="${set.weight || ''}"
-                               onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
-                        <span class="unit">lbs</span>
-                        <button class="btn btn-danger btn-tiny" onclick="removeManualSet(${exIndex}, ${setIndex})" title="Remove set" aria-label="Remove set">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `
-                    )
-                    .join('')}
-            </div>
-            <button class="btn btn-secondary btn-small add-set-btn" onclick="addManualSet(${exIndex})">
+            <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+                <thead>
+                    <tr style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;">
+                        <th style="width:24px;text-align:left;padding:4px;font-weight:600;">#</th>
+                        <th style="width:38%;text-align:center;padding:4px;font-weight:600;">Weight</th>
+                        <th style="width:38%;text-align:center;padding:4px;font-weight:600;">Reps</th>
+                        <th style="width:32px;padding:4px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${exercise.sets.map((set, setIndex) => {
+                        const isDone = !!(set.reps && set.weight);
+                        return `
+                    <tr>
+                        <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">${setIndex + 1}</td>
+                        <td style="padding:4px;">
+                            <input type="number" inputmode="decimal" style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;"
+                                   value="${set.weight || ''}" placeholder="0"
+                                   onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
+                        </td>
+                        <td style="padding:4px;">
+                            <input type="number" inputmode="numeric" style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;"
+                                   value="${set.reps || ''}" placeholder="0"
+                                   onchange="updateManualSet(${exIndex}, ${setIndex}, 'reps', this.value)">
+                        </td>
+                        <td style="padding:4px;text-align:center;">
+                            <i class="fas ${isDone ? 'fa-check-circle' : 'fa-circle'}" style="color:${isDone ? 'var(--success)' : 'var(--text-muted)'};font-size:1rem;"></i>
+                        </td>
+                    </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+            <button style="width:100%;background:transparent;border:1px dashed var(--border-light);border-radius:8px;padding:8px;color:var(--primary);font-size:0.76rem;font-weight:600;margin-top:8px;cursor:pointer;" onclick="addManualSet(${exIndex})">
                 <i class="fas fa-plus"></i> Add Set
             </button>
         </div>
