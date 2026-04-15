@@ -101,7 +101,7 @@
     background: var(--bg-app);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: clip; /* clip instead of hidden — hidden breaks sticky in children */
     padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); /* Room for bottom nav */
 }
 .full-page-section.hidden {
