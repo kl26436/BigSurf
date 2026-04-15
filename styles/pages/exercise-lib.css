@@ -233,12 +233,9 @@
     align-items: center;
     gap: var(--space-12);
     min-height: 52px;
-    margin-bottom: 0;
-    padding: var(--space-8) 0;
-    position: sticky;
-    top: 56px;
-    z-index: calc(var(--z-header) - 1);
+    padding: var(--space-8) var(--pad-page);
     background: var(--bg-app);
+    flex-shrink: 0;
 }
 .btn-back-category {
     width: var(--tap);
@@ -288,12 +285,11 @@
     gap: var(--space-8);
     overflow-x: auto;
     min-height: 44px;
-    padding-bottom: var(--space-8);
-    margin-bottom: var(--space-16);
-    position: sticky;
-    top: 108px; /* 56 (section-header) + 52 (exercise-list-header) */
-    z-index: calc(var(--z-header) - 2);
+    padding: var(--space-4) var(--pad-page) var(--space-8);
     background: var(--bg-app);
+    flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
 .filter-pill {
     padding: var(--space-8) var(--space-16);

@@ -186,7 +186,7 @@
                 </section>
 
                 <!-- Workout Selector -->
-                <section id="workout-selector" class="content-section hidden">
+                <section id="workout-selector" class="content-section pinned-header hidden">
                     <div class="section-header-row">
                         <div>
                             <h2 class="section-title">Workouts</h2>
@@ -197,6 +197,7 @@
                         </button>
                     </div>
 
+                    <div class="content-section-body">
                     <!-- Search bar -->
                     <div class="template-search-bar">
                         <i class="fas fa-search"></i>
@@ -214,6 +215,7 @@
                     <div id="template-list" class="template-list">
                         <!-- Populated by renderWorkoutSelectorUI() -->
                     </div>
+                    </div><!-- /.content-section-body -->
                 </section>
 
                 <!-- Active Workout -->
@@ -307,7 +309,7 @@
                 </section>
 
                 <!-- Workout History -->
-                <section id="workout-history-section" class="content-section hidden">
+                <section id="workout-history-section" class="content-section pinned-header hidden">
                     <!-- Section Header with search toggle -->
                     <div class="section-header-row">
                         <h2 class="section-title"><i class="fas fa-calendar-alt"></i> History</h2>
@@ -321,6 +323,7 @@
                         </div>
                     </div>
 
+                    <div class="content-section-body">
                     <!-- History Search & Filter (hidden by default) -->
                     <div class="history-search-bar hidden" id="history-search-bar">
                         <div class="history-search-input-wrapper">
@@ -368,6 +371,7 @@
                     <div id="recent-workouts-list" class="recent-workouts-section">
                         <!-- Populated by JavaScript -->
                     </div>
+                    </div><!-- /.content-section-body -->
                 </section>
 
                 <!-- Workout Management Section (Full Page, not a modal) -->
@@ -987,14 +991,17 @@
         </div>
 
         <!-- Exercise Manager Section -->
-        <section id="exercise-manager-section" class="content-section hidden">
-            <!-- Section Header -->
+        <section id="exercise-manager-section" class="content-section pinned-header hidden">
+            <!-- Section Header (pinned) -->
             <div class="section-header-row">
                 <h2 class="section-title"><i class="fas fa-dumbbell"></i> Exercise Library</h2>
                 <button class="btn btn-primary" onclick="showAddExerciseModal()">
                     <i class="fas fa-plus"></i> New
                 </button>
             </div>
+
+            <!-- Scrollable content -->
+            <div class="content-section-body">
 
             <!-- View 1: Category Grid (Entry Page) -->
             <div id="exercise-category-view" class="exercise-library-view">
@@ -1101,6 +1108,8 @@
                     <!-- Exercises will be loaded here -->
                 </div>
             </div>
+
+            </div><!-- /.content-section-body -->
         </section>
 
         <!-- Edit Exercise Section (Full Screen) -->

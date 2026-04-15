@@ -194,6 +194,30 @@ dialog[open] > .modal-content {
     display: none;
 }
 
+/* Pinned-header variant: header stays fixed, content scrolls below.
+   Add class="content-section pinned-header" to use this layout. */
+.content-section.pinned-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-app);
+    z-index: 50;
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+}
+.content-section.pinned-header > .section-header-row {
+    flex-shrink: 0;
+}
+.content-section-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: var(--pad-page);
+}
+
 /* Sign-in prompt */
 .sign-in-prompt {
     text-align: center;

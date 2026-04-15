@@ -1001,14 +1001,11 @@
     justify-content: space-between;
     align-items: center;
     min-height: 56px;
-    margin: calc(-1 * var(--space-16)) calc(-1 * var(--space-16)) var(--space-20) calc(-1 * var(--space-16));
     padding: var(--space-16);
     padding-top: calc(var(--space-16) + env(safe-area-inset-top, 0px));
     border-bottom: 1px solid var(--border-light);
-    position: sticky;
-    top: 0;
     background: var(--bg-app);
-    z-index: var(--z-header);
+    flex-shrink: 0;
 }
 .section-header-row .section-title {
     font-size: var(--font-xl);
