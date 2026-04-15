@@ -7,7 +7,7 @@ import { setRangeFunctions } from './aggregators.js';
 export const RANGES = ['W', 'M', '3M', 'Y', 'All'];
 
 const RANGE_DAYS = {
-    W: 7, M: 30, '3M': 90, Y: 365, All: Infinity,
+    W: 7, M: 30, '3M': 90, '6M': 180, Y: 365, All: Infinity,
 };
 
 /**
@@ -56,7 +56,7 @@ export function subscribeRange(fn) {
  * Human-readable label for a range.
  */
 export function rangeLabel(range) {
-    const labels = { W: 'week', M: 'month', '3M': '3 months', Y: 'year', All: 'all time' };
+    const labels = { W: 'week', M: 'month', '3M': '3 months', '6M': '6 months', Y: 'year', All: 'all time' };
     return labels[range] || range;
 }
 

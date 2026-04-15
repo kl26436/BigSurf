@@ -10,6 +10,7 @@ import { AppState } from '../utils/app-state.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { Config, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
+import { loadAllWorkouts } from '../data/data-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
 import { TrainingInsights } from '../features/training-insights.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
@@ -83,11 +84,11 @@ async function renderDashboard() {
 
     try {
         const wm = new FirebaseWorkoutManager(AppState);
-        const [streaks, weeklyStats, recentWorkouts, insightsData] =
+        const [streaks, weeklyStats, allWorkouts, insightsData] =
             await Promise.all([
                 StreakTracker.calculateStreaks(),
                 StatsTracker.getWeeklyStats(),
-                StatsTracker.getRecentWorkouts(30),
+                loadAllWorkouts(AppState),
                 TrainingInsights.loadInsightsData().catch(() => ({ recentWorkouts: [], allWorkouts: [] })),
             ]);
 
@@ -115,9 +116,7 @@ async function renderDashboard() {
             `;
             if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();
         } else {
-            const allWorkouts = insightsData.allWorkouts || recentWorkouts;
-
-            // Cache for drill-down pages
+            // Cache full history for drill-down pages
             AppState.workouts = allWorkouts;
 
             // Load templates for "For Today" section
@@ -126,7 +125,7 @@ async function renderDashboard() {
                 AppState.templates = templates || [];
             } catch { AppState.templates = []; }
 
-            // Top insight (dismissable)
+            // Top insight (uses 8-week data from insightsData, not full history)
             const exerciseDatabase = AppState.exerciseDatabase || [];
             const topInsight = TrainingInsights.getTopInsight(
                 insightsData.recentWorkouts, insightsData.allWorkouts, exerciseDatabase
@@ -441,21 +440,23 @@ function renderBodyPartCard(s) {
 // ===================================================================
 
 async function renderCompositionCard(bwData) {
-    let latest = null;
+    let scan = null;
     try {
         const { getLatestDexaScan } = await import('../features/dexa-scan.js');
-        latest = await getLatestDexaScan();
+        scan = await getLatestDexaScan();
     } catch { /* no dexa */ }
 
-    const hasDexa = latest && latest.data;
+    // DEXA fields are at top level: scan.totalBodyFat, scan.totalWeight, scan.muscleMass, etc.
+    const hasDexa = scan && (scan.totalBodyFat != null || scan.muscleMass != null);
     const hasBw = bwData != null;
     if (!hasDexa && !hasBw) return renderConnectPrompt();
 
     let segments = [];
     if (hasDexa) {
-        const data = latest.data;
-        const fatPct = data.bodyFatPercentage || data.totalBodyFat || 0;
-        const musclePct = data.muscleMass ? Math.round(data.muscleMass / (data.totalWeight || 1) * 100) : 0;
+        const fatPct = scan.totalBodyFat || 0;
+        const musclePct = scan.muscleMass && scan.totalWeight
+            ? Math.round(scan.muscleMass / scan.totalWeight * 100)
+            : 0;
         const waterPct = Math.max(0, 100 - fatPct - musclePct);
         if (fatPct > 0 || musclePct > 0) {
             segments = [

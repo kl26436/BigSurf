@@ -756,6 +756,28 @@ export async function loadWorkoutHistory(state, limitCount = 50) {
     }
 }
 
+/**
+ * Load ALL completed workouts (no limit) for dashboard aggregations.
+ * Results are cached on AppState.workouts for drill-down pages.
+ */
+export async function loadAllWorkouts(state) {
+    if (!state.currentUser) return [];
+    try {
+        const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
+        const q = query(workoutsRef, orderBy('date', 'desc'));
+        const snapshot = await getDocs(q);
+        const workouts = [];
+        snapshot.forEach(docSnap => {
+            const data = { id: docSnap.id, ...docSnap.data() };
+            if (data.completedAt && !data.cancelledAt) workouts.push(data);
+        });
+        return workouts;
+    } catch (error) {
+        console.error('❌ Error loading all workouts:', error);
+        return [];
+    }
+}
+
 // Function to migrate old workout data to new format
 export async function migrateWorkoutData(state) {
     if (!state.currentUser) return;
