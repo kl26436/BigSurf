@@ -232,13 +232,13 @@
     display: flex;
     align-items: center;
     gap: var(--space-12);
-    margin-bottom: var(--space-16);
-    position: sticky;
-    top: 56px; /* Below section-header-row */
-    background: var(--bg-app);
-    z-index: calc(var(--z-sticky, 10) - 1);
+    min-height: 52px;
+    margin-bottom: 0;
     padding: var(--space-8) 0;
-    margin-top: calc(-1 * var(--space-8));
+    position: sticky;
+    top: 56px;
+    z-index: calc(var(--z-header) - 1);
+    background: var(--bg-app);
 }
 .btn-back-category {
     width: var(--tap);
@@ -287,12 +287,13 @@
     display: flex;
     gap: var(--space-8);
     overflow-x: auto;
+    min-height: 44px;
     padding-bottom: var(--space-8);
     margin-bottom: var(--space-16);
     position: sticky;
-    top: 100px; /* Below section-header-row + exercise-list-header */
+    top: 108px; /* 56 (section-header) + 52 (exercise-list-header) */
+    z-index: calc(var(--z-header) - 2);
     background: var(--bg-app);
-    z-index: calc(var(--z-sticky, 10) - 2);
 }
 .filter-pill {
     padding: var(--space-8) var(--space-16);
@@ -415,6 +416,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    min-height: 56px;
     padding: var(--space-12) var(--space-16);
     padding-top: calc(var(--space-12) + env(safe-area-inset-top, 0px));
     border-bottom: 1px solid var(--border);
@@ -422,16 +424,7 @@
     position: sticky;
     top: 0;
     background: var(--bg-app);
-    z-index: var(--z-sticky, 10);
-}
-.edit-exercise-header::before {
-    content: '';
-    position: absolute;
-    top: -50px;
-    left: 0;
-    right: 0;
-    height: 50px;
-    background: var(--bg-app);
+    z-index: var(--z-header);
 }
 
 /* Ensure edit section scrolls independently so sticky header works */

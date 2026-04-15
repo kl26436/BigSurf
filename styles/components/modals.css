@@ -582,7 +582,14 @@ dialog.modal:not([open]) {
     display: flex;
     align-items: center;
     gap: var(--space-12);
+    min-height: 56px;
     padding: var(--pad-page);
+    padding-top: calc(var(--pad-page) + env(safe-area-inset-top, 0px));
+    position: sticky;
+    top: 0;
+    background: var(--bg-app);
+    z-index: var(--z-header);
+    border-bottom: 1px solid var(--border);
 }
 .equip-lib-header h2 {
     flex: 1;
