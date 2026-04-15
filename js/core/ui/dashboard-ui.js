@@ -48,10 +48,7 @@ export async function showDashboard() {
     setBottomNavVisible(true);
     updateBottomNavActive('dashboard');
 
-    // Check for in-progress workout
-    await checkForInProgressWorkout();
-
-    // Load and render dashboard data
+    // Load and render dashboard data (pill handles in-progress indicator now)
     await renderDashboard();
 }
 
@@ -277,12 +274,14 @@ async function renderDashboard() {
             // Show welcome empty state for new users
             container.innerHTML = `
                 ${renderGreetingHeader()}
+                ${renderActiveWorkoutPill()}
                 <div class="empty-state">
                     <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
                     <div class="empty-state-title">No workouts yet</div>
-                    <div class="empty-state-description">Tap the + button below to start your first workout.</div>
+                    <div class="empty-state-description">Tap the dumbbell button below to start your first workout.</div>
                 </div>
             `;
+            if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();
         } else {
             // Phase 2 Revised: Metrics-first informational dashboard
             const volumeChangePercent = await getVolumeChangePercent();
@@ -302,12 +301,16 @@ async function renderDashboard() {
 
             container.innerHTML = `
                 ${renderGreetingHeader()}
+                ${renderActiveWorkoutPill()}
                 ${renderMetricsGrid(streakDays, weekCount, weeklyGoal)}
                 ${renderWeekTimeline(weeklyStats, volumeChangePercent)}
                 ${showInsight ? renderSingleInsight(topInsight) : ''}
                 ${renderRecentWorkoutsList(recentWorkouts)}
                 ${renderRecentPRsList(recentPRs)}
             `;
+
+            // Start pill timer if active workout exists
+            if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();
         }
 
         // Conditionally hide "Manage Locations" in More menu if no locations exist
@@ -358,6 +361,84 @@ function renderGreetingHeader() {
             <div class="dash-greeting__avatar" onclick="navigateTo('settings')"></div>
         </div>
     `;
+}
+
+/**
+ * Active workout pill — compact indicator below greeting.
+ * Returns empty string if no workout in progress.
+ */
+function renderActiveWorkoutPill() {
+    // Check both active workout state AND in-progress workout detected on load
+    const inProgress = window.inProgressWorkout;
+    const hasActiveWorkout = AppState.currentWorkout || inProgress;
+    if (!hasActiveWorkout) return '';
+
+    // Prefer live session data, fall back to in-progress workout from load
+    const workoutType = AppState.savedData?.workoutType
+        || AppState.currentWorkout?.workoutType
+        || inProgress?.workoutType
+        || 'Workout';
+    const exercises = AppState.savedData?.exercises || inProgress?.exercises || {};
+    const total = AppState.currentWorkout?.exercises?.length || Object.keys(exercises).length;
+    const done = Object.values(exercises).filter(e => e.completed).length;
+    const startedAt = AppState.savedData?.startedAt
+        || AppState.currentWorkout?.startedAt
+        || inProgress?.startedAt;
+    const elapsedSeconds = startedAt
+        ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
+        : 0;
+    const elapsed = formatPillElapsed(elapsedSeconds);
+
+    return `
+        <div class="active-pill-wrap" id="active-workout-pill">
+            <div class="active-pill" onclick="resumeActiveWorkout()">
+                <div class="active-pill__pulse"></div>
+                <div class="active-pill__info">
+                    <div class="active-pill__name">${escapeHtml(workoutType)}</div>
+                    <div class="active-pill__meta">${done}/${total} · ${elapsed}</div>
+                </div>
+                <button class="active-pill__resume" aria-label="Resume workout"
+                        onclick="event.stopPropagation(); resumeActiveWorkout()">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+            <div class="active-pill__cancel-row">
+                <button class="active-pill__cancel" onclick="confirmCancelActiveWorkout()">
+                    <i class="fas fa-times"></i> Cancel workout
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function formatPillElapsed(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+let pillTimerInterval = null;
+function startPillTimer() {
+    stopPillTimer();
+    pillTimerInterval = setInterval(() => {
+        const pill = document.querySelector('.active-pill__meta');
+        const inProgress = window.inProgressWorkout;
+        if (!pill || (!AppState.currentWorkout && !inProgress)) {
+            stopPillTimer();
+            return;
+        }
+        const exercises = AppState.savedData?.exercises || inProgress?.exercises || {};
+        const total = AppState.currentWorkout?.exercises?.length || Object.keys(exercises).length;
+        const done = Object.values(exercises).filter(e => e.completed).length;
+        const startedAt = AppState.savedData?.startedAt || AppState.currentWorkout?.startedAt || inProgress?.startedAt;
+        const elapsedSeconds = startedAt
+            ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
+            : 0;
+        pill.textContent = `${done}/${total} · ${formatPillElapsed(elapsedSeconds)}`;
+    }, 30000);
+}
+function stopPillTimer() {
+    if (pillTimerInterval) { clearInterval(pillTimerInterval); pillTimerInterval = null; }
 }
 
 /**
@@ -593,6 +674,23 @@ export function dismissInsight() {
     updateSetting('insightDismissedDate', todayStr);
     const card = document.querySelector('.insight-card-compact');
     if (card) card.remove();
+}
+
+export function resumeActiveWorkout() {
+    stopPillTimer();
+    // Use window exports to avoid circular import with workout-session
+    if (window.continueInProgressWorkout) {
+        window.continueInProgressWorkout();
+    } else {
+        window.bottomNavTo?.('workout');
+    }
+}
+
+export function confirmCancelActiveWorkout() {
+    if (!confirm('Cancel this workout? Logged sets will be saved as an incomplete entry.')) return;
+    stopPillTimer();
+    document.getElementById('active-workout-pill')?.remove();
+    window.cancelWorkout?.();
 }
 
 /**

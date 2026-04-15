@@ -530,6 +530,10 @@ async function checkForInProgressWorkoutEnhanced() {
                 originalWorkout: todaysData.originalWorkout || workoutPlan,
             };
 
+            // Activate FAB animation to signal active workout
+            const { setWorkoutActiveState } = await import('./ui/navigation.js');
+            setWorkoutActiveState(true);
+
             // Show in-progress workout prompt
             showInProgressWorkoutPrompt(todaysData);
         }
