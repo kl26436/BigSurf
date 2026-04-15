@@ -273,10 +273,17 @@ export function bottomNavTo(tab) {
             navigateTo('stats');
             break;
         case 'workout':
-            // Check if there's an active workout
+            // Check if there's an active workout (live session or detected on load)
             const { AppState } = window;
             if (AppState && AppState.currentWorkout) {
                 navigateTo('active-workout');
+            } else if (window.inProgressWorkout) {
+                // Resume in-progress workout detected on app load
+                if (window.continueInProgressWorkout) {
+                    window.continueInProgressWorkout();
+                } else {
+                    navigateTo('start-workout');
+                }
             } else {
                 navigateTo('start-workout');
             }
@@ -292,7 +299,7 @@ export function updateBottomNavActive(tab) {
     const bottomNav = document.getElementById('bottom-nav');
     if (!bottomNav) return;
 
-    bottomNav.querySelectorAll('.bottom-nav-item').forEach((item) => {
+    bottomNav.querySelectorAll('.bottom-nav__btn, .bottom-nav__fab').forEach((item) => {
         if (item.dataset.tab === tab) {
             item.classList.add('active');
             item.setAttribute('aria-current', 'page');
@@ -387,4 +394,8 @@ export function setBottomNavVisible(visible) {
     if (bottomNav) {
         bottomNav.classList.toggle('hidden', !visible);
     }
+}
+
+export function setWorkoutActiveState(isActive) {
+    document.body.classList.toggle('workout-active', isActive);
 }
