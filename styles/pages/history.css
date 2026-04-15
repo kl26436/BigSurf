@@ -511,37 +511,27 @@
    =========================================== */
 
 /* 8a: Calendar workout dots (replaces emoji icons) */
-.cal-dot-row {
+/* Calendar workout icons */
+.cal-icon-row {
     display: flex;
     justify-content: center;
-    gap: 3px;
+    gap: 2px;
     margin-top: var(--space-2);
-    min-height: 8px;
+    min-height: 12px;
 }
-.cal-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: var(--radius-pill);
-    flex-shrink: 0;
+.cal-icon {
+    font-size: 9px;
+    line-height: 1;
 }
-/* Category colors */
-.cal-dot--push { background: var(--cat-push); }
-.cal-dot--pull { background: var(--cat-pull); }
-.cal-dot--legs { background: var(--cat-legs); }
-.cal-dot--core { background: var(--cat-core); }
-.cal-dot--cardio { background: var(--cat-cardio, var(--danger)); }
-.cal-dot--other { background: var(--cat-other, var(--text-muted)); }
-/* Status modifiers */
-.cal-dot--cancelled { opacity: 0.3; }
-.cal-dot--incomplete {
-    background: transparent;
-    border: 1.5px solid currentColor;
-}
-.cal-dot--incomplete.cal-dot--push { border-color: var(--cat-push); }
-.cal-dot--incomplete.cal-dot--pull { border-color: var(--cat-pull); }
-.cal-dot--incomplete.cal-dot--legs { border-color: var(--cat-legs); }
-.cal-dot--incomplete.cal-dot--cardio { border-color: var(--cat-cardio, var(--danger)); }
-.cal-dot--incomplete.cal-dot--other { border-color: var(--cat-other, var(--text-muted)); }
+.cal-icon--push { color: var(--cat-push); }
+.cal-icon--pull { color: var(--cat-pull); }
+.cal-icon--legs { color: var(--cat-legs); }
+.cal-icon--core { color: var(--cat-core); }
+.cal-icon--cardio { color: var(--cat-cardio, var(--warning)); }
+.cal-icon--arms { color: var(--cat-arms, var(--danger)); }
+.cal-icon--other { color: var(--cat-other, var(--text-muted)); }
+.cal-icon--cancelled { opacity: 0.25; }
+.cal-icon--incomplete { opacity: 0.45; }
 .cal-dot-overflow {
     font-size: 8px;
     color: var(--text-muted);

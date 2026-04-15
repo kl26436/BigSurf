@@ -434,8 +434,26 @@ export function getWorkoutHistory(appState) {
                 legendEl.className = 'calendar-legend';
                 calendarGrid.parentNode?.insertBefore(legendEl, calendarGrid.nextSibling);
             }
+            // Build legend from categories actually used this month
+            const usedCategories = new Set();
+            Object.values(this.calendarWorkouts).forEach(workouts => {
+                const arr = Array.isArray(workouts) ? workouts : [workouts];
+                arr.forEach(w => usedCategories.add((w.category || 'other').toLowerCase()));
+            });
+
+            const categoryLabels = {
+                push: 'Push', pull: 'Pull', legs: 'Legs', core: 'Core',
+                cardio: 'Cardio', arms: 'Arms', other: 'Other',
+            };
+
+            const categoryItems = [...usedCategories].map(cat => {
+                const icon = CATEGORY_ICONS[cat] || CATEGORY_ICONS.other;
+                const label = categoryLabels[cat] || cat.charAt(0).toUpperCase() + cat.slice(1);
+                return `<span class="legend-item"><i class="fas ${icon} cal-icon cal-icon--${cat}"></i> ${label}</span>`;
+            }).join('');
+
             legendEl.innerHTML = `
-                <span class="legend-item"><span class="legend-dot has-workout"></span> Workout</span>
+                ${categoryItems}
                 <span class="legend-item"><span class="legend-dot today"></span> Today</span>
             `;
 
@@ -623,21 +641,22 @@ export function getWorkoutHistory(appState) {
         },
 
         getWorkoutIcon(workouts) {
-            // Schema v3.0: workouts is now an array — render colored dots instead of emoji icons
+            // Schema v3.0: workouts is an array — render small category icons
             const workoutArray = Array.isArray(workouts) ? workouts : [workouts];
 
-            const dots = workoutArray.slice(0, 3).map(w => {
+            const icons = workoutArray.slice(0, 2).map(w => {
                 const cat = (w.category || 'other').toLowerCase();
-                const statusClass = w.status === 'cancelled' ? 'cancelled' :
-                                   w.status === 'completed' ? 'completed' : 'incomplete';
-                return `<span class="cal-dot cal-dot--${cat} cal-dot--${statusClass}"></span>`;
+                const statusClass = w.status === 'cancelled' ? 'cal-icon--cancelled' :
+                                   w.status === 'completed' ? '' : 'cal-icon--incomplete';
+                const iconClass = CATEGORY_ICONS[cat] || CATEGORY_ICONS.other;
+                return `<i class="fas ${iconClass} cal-icon cal-icon--${cat} ${statusClass}"></i>`;
             }).join('');
 
-            const overflow = workoutArray.length > 3
-                ? `<span class="cal-dot-overflow">+${workoutArray.length - 3}</span>`
+            const overflow = workoutArray.length > 2
+                ? `<span class="cal-dot-overflow">+${workoutArray.length - 2}</span>`
                 : '';
 
-            return `<div class="cal-dot-row">${dots}${overflow}</div>`;
+            return `<div class="cal-icon-row">${icons}${overflow}</div>`;
         },
 
         showWorkoutDetail(date, workoutName, workoutIndex = 0) {
