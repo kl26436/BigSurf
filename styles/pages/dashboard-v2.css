@@ -1,0 +1,337 @@
+/* Dashboard V2 — hero chips, body-part cards, training section, composition, for-today */
+
+/* ===== HERO CHIP ROW ===== */
+.hero-chip-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.hero-chip {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 10px 10px;
+    text-align: center;
+}
+.hero-chip__icon {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+.hero-chip__val {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-strong);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.hero-chip__unit {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 2px;
+}
+.hero-chip__label {
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    margin-top: 3px;
+}
+.hero-chip__delta {
+    font-size: 0.58rem;
+    font-weight: 600;
+    margin-top: 2px;
+}
+.hero-chip__delta.up { color: var(--success); }
+.hero-chip__delta.down { color: var(--danger); }
+.hero-chip--streak {
+    background: linear-gradient(135deg, rgba(247, 168, 101, 0.15), rgba(247, 168, 101, 0.04));
+    border-color: rgba(247, 168, 101, 0.25);
+}
+.hero-chip--streak .hero-chip__val { color: var(--highlight-warm); }
+
+/* ===== SECTION HEADER ===== */
+.dash-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 14px 2px 8px;
+}
+.dash-section-head h3 {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.dash-section-head a {
+    font-size: var(--font-xs);
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ===== BODY PART CARDS ===== */
+.bp-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 8px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 100ms;
+}
+.bp-card:active { transform: scale(0.99); }
+.bp-card.stale { opacity: 0.55; }
+.bp-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.bp-card__label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--text-strong);
+    font-weight: 700;
+}
+.bp-card__icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.74rem;
+    flex-shrink: 0;
+}
+.ic-chest { background: rgba(74, 144, 217, 0.15); color: var(--cat-push); }
+.ic-back { background: rgba(217, 74, 122, 0.15); color: var(--cat-pull); }
+.ic-legs { background: rgba(123, 74, 217, 0.15); color: var(--cat-legs); }
+.ic-shoulders { background: var(--cat-shoulders-bg); color: var(--cat-shoulders); }
+.ic-arms { background: var(--cat-arms-bg); color: var(--cat-arms); }
+.ic-core { background: var(--cat-core-bg); color: var(--cat-core); }
+
+.bp-card__chev { color: var(--text-muted); font-size: 0.72rem; }
+.bp-card__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+.bp-cell {
+    background: var(--bg-card-hi);
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+.bp-cell__label {
+    font-size: 0.56rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+.bp-cell__val {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-strong);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+.bp-cell__unit {
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 2px;
+}
+.bp-cell__sub {
+    font-size: 0.58rem;
+    color: var(--success);
+    font-weight: 600;
+    margin-top: 2px;
+}
+.bp-cell__sub.down { color: var(--danger); }
+.bp-spark { width: 100%; height: 24px; }
+.stale-warn {
+    font-size: 0.62rem;
+    color: var(--warning);
+    font-weight: 600;
+    text-align: center;
+    margin-top: 2px;
+}
+
+/* ===== BODY COMPOSITION CARD ===== */
+.bc-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    cursor: pointer;
+    margin-bottom: 8px;
+}
+.bc-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.bc-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.72rem;
+    flex: 1;
+}
+.bc-leg {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-main);
+}
+.bc-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.bc-weight {
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-between;
+}
+.bc-weight strong {
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+}
+.bc-donut-empty {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 6px solid var(--border-light);
+    flex-shrink: 0;
+}
+
+/* ===== INSIGHT CARD ===== */
+.dash-insight {
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+.dash-insight i { color: var(--primary); font-size: 0.8rem; margin-top: 2px; }
+.dash-insight-text { font-size: 0.76rem; color: var(--text-main); line-height: 1.4; }
+.dash-insight-text strong { color: var(--text-strong); }
+
+/* ===== FOR TODAY ROWS ===== */
+.rw-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+}
+.rw-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+}
+.rw-info { flex: 1; min-width: 0; }
+.rw-name { font-size: 0.82rem; font-weight: 600; color: var(--text-strong); }
+.rw-meta { font-size: 0.66rem; color: var(--text-muted); margin-top: 1px; }
+.rw-count {
+    background: rgba(29, 211, 176, 0.1);
+    color: var(--primary);
+    font-size: 0.58rem;
+    padding: 2px 6px;
+    border-radius: var(--radius-pill);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-left: 6px;
+}
+.rw-play {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #04201a;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+/* ===== RECENT PR ROW ===== */
+.pr-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+.pr-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 215, 0, 0.14);
+    color: var(--badge-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+}
+.pr-info { flex: 1; min-width: 0; }
+.pr-name { font-size: 0.82rem; font-weight: 600; color: var(--text-strong); }
+.pr-meta { font-size: 0.66rem; color: var(--text-muted); }
+.pr-val {
+    font-size: 0.86rem;
+    font-weight: 800;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===== SET CHIPS ===== */
+.set-chip {
+    background: var(--bg-card-hi);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+    margin: 1px 2px;
+}
+.set-chip--pr {
+    background: rgba(255, 215, 0, 0.14);
+    color: var(--badge-gold);
+    font-weight: 700;
+}

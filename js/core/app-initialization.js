@@ -231,7 +231,8 @@ export async function signOutUser() {
             'workout-management-section',
             'exercise-manager-section',
             'dashboard',
-            'stats-section',
+            'muscle-group-detail-section',
+            'exercise-detail-section',
         ];
 
         sections.forEach((sectionId) => {
@@ -432,7 +433,8 @@ export function setupAuthenticationListener() {
                 'workout-management-section',
                 'exercise-manager-section',
                 'dashboard',
-                'stats-section',
+                'muscle-group-detail-section',
+            'exercise-detail-section',
             ];
 
             sections.forEach((sectionId) => {

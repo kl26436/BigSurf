@@ -10,6 +10,10 @@ export const AppState = {
     workoutStartTime: null,
     workoutDurationTimer: null,
 
+    // Cached data for dashboard drill-downs
+    workouts: [],
+    templates: [],
+
     // UI State
     globalUnit: 'lbs',
     exerciseUnits: {},

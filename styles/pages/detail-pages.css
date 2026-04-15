@@ -1,0 +1,311 @@
+/* Shared detail page styles — muscle group + exercise drill-down */
+
+/* ===== DETAIL HEADER ===== */
+.d-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-app);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.d-back {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    color: var(--text-main);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.d-header-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.d-header-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.84rem;
+    flex-shrink: 0;
+}
+.d-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    line-height: 1;
+}
+.d-subtitle {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+}
+
+/* ===== RANGE PILLS ===== */
+.range-pills {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 3px;
+    margin: 12px 14px;
+}
+.range-pills button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 5px 0;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+.range-pills button.active {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+
+/* ===== HERO STATS ===== */
+.d-hero-stats {
+    padding: 0 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.d-stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px;
+}
+.d-stat__label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 700;
+}
+.d-stat__val {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--text-strong);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.d-stat__unit {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 2px;
+}
+.d-stat__delta {
+    font-size: 0.66rem;
+    font-weight: 600;
+    margin-top: 4px;
+}
+.d-stat__delta.up { color: var(--success); }
+.d-stat__delta.down { color: var(--danger); }
+
+/* ===== CHART CARD ===== */
+.d-chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin: 0 14px 12px;
+}
+.d-chart-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.d-chart-title {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.d-chart-legend {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+/* ===== EXERCISE ROW (in muscle group detail) ===== */
+.d-exercise-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 14px 6px;
+    cursor: pointer;
+}
+.d-ex-spark { width: 54px; height: 24px; flex-shrink: 0; }
+.d-ex-info { flex: 1; min-width: 0; }
+.d-ex-name { font-size: 0.82rem; font-weight: 600; color: var(--text-strong); }
+.d-ex-meta { font-size: 0.62rem; color: var(--text-muted); margin-top: 1px; }
+.d-ex-right { text-align: right; }
+.d-ex-val {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+}
+.d-ex-delta { font-size: 0.6rem; color: var(--success); font-weight: 600; }
+.d-ex-delta.down { color: var(--danger); }
+
+/* ===== PR ROW (in detail page) ===== */
+.d-pr-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 14px 6px;
+}
+
+/* ===== SECTION HEADING ===== */
+.d-sec-head {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    margin: 14px 16px 8px;
+}
+
+/* ===== DETAIL CONTENT ===== */
+.d-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 80px;
+}
+.d-content::-webkit-scrollbar { display: none; }
+
+/* ===== PILL ROW (exercise detail secondary stats) ===== */
+.d-pill-row {
+    display: flex;
+    gap: 8px;
+    padding: 0 14px;
+    margin-bottom: 12px;
+}
+.d-pill {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 6px 12px;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+.d-pill strong {
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+    margin-left: 4px;
+}
+
+/* ===== SESSION ROW (exercise detail) ===== */
+.d-session-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    margin: 0 14px 6px;
+}
+.d-session-row__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.d-session-row__date {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.d-session-row__pr {
+    font-size: 0.6rem;
+    color: var(--badge-gold);
+    font-weight: 700;
+}
+.d-session-row__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* ===== BEST SETS TABLE ===== */
+.d-best-table {
+    margin: 0 14px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+.d-best-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 1fr 1fr;
+    gap: 4px;
+    padding: 8px 12px;
+    align-items: center;
+    font-size: 0.72rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.d-best-row:last-child { border-bottom: none; }
+.d-best-rank {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255, 215, 0, 0.14);
+    color: var(--badge-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 800;
+}
+.d-best-weight { font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.d-best-reps { color: var(--text-muted); }
+.d-best-1rm { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* ===== SEE ALL BUTTON ===== */
+.d-see-all {
+    display: block;
+    width: calc(100% - 28px);
+    margin: 0 14px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px;
+    color: var(--primary);
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+}

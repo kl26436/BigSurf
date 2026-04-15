@@ -11,7 +11,9 @@ const SECTION_IDS = [
     'workout-history-section',
     'workout-management-section',
     'dashboard',
-    'stats-section',
+    'metric-detail-section',
+    'muscle-group-detail-section',
+    'exercise-detail-section',
     'exercise-manager-section',
     'location-management-section',
     'equipment-library-section',
@@ -114,8 +116,16 @@ function routeToView(view) {
             showWorkoutSelector();
             break;
 
-        case 'stats':
-            showStats();
+        case 'metric-detail':
+            showMetricDetail();
+            break;
+
+        case 'muscle-group-detail':
+            showMuscleGroupDetailView();
+            break;
+
+        case 'exercise-detail':
+            showExerciseDetailView();
             break;
 
         case 'history':
@@ -163,6 +173,13 @@ async function showDashboard() {
     }
 }
 
+function showMetricDetail() {
+    const section = document.getElementById('metric-detail-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('dashboard');
+}
+
 function showActiveWorkout() {
     const activeWorkout = document.getElementById('active-workout');
     if (activeWorkout) {
@@ -184,11 +201,29 @@ function showWorkoutSelector() {
     }
 }
 
-async function showStats() {
-    const { showStats: showStatsView } = await import('./stats-ui.js');
-    if (showStatsView) {
-        showStatsView();
-    }
+async function showMuscleGroupDetailView() {
+    const section = document.getElementById('muscle-group-detail-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('dashboard');
+    const { renderMuscleGroupDetail } = await import('./muscle-group-detail-ui.js');
+    const { AppState } = await import('../utils/app-state.js');
+    renderMuscleGroupDetail(AppState.activeMuscleGroup);
+}
+
+async function showExerciseDetailView() {
+    const section = document.getElementById('exercise-detail-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('dashboard');
+    const { renderExerciseDetail } = await import('./exercise-detail-ui.js');
+    const { AppState } = await import('../utils/app-state.js');
+    renderExerciseDetail(AppState.activeExercise);
+}
+
+async function showAICoachView() {
+    const { showAICoach } = await import('../features/ai-coach-ui.js');
+    if (showAICoach) showAICoach();
 }
 
 function showHistory() {
@@ -269,8 +304,8 @@ export function bottomNavTo(tab) {
         case 'history':
             navigateTo('history');
             break;
-        case 'stats':
-            navigateTo('stats');
+        case 'ai-coach':
+            showAICoachView();
             break;
         case 'workout':
             // Check if there's an active workout (live session or detected on load)
@@ -381,21 +416,41 @@ function setupBottomSheetDrag(sheet, overlay) {
         }
         // Reset transform after close animation
         setTimeout(() => {
-            if (!sheet.classList.contains('visible')) {
-                sheet.style.transform = '';
-            }
+            if (sheet) sheet.style.transform = '';
         }, 300);
-    });
+    }, { passive: true });
 }
 
-// Show/hide bottom nav based on current page
+/**
+ * Show/hide the bottom navigation bar.
+ * Used when entering/leaving full-screen views (active workout, exercise library, etc.)
+ */
 export function setBottomNavVisible(visible) {
-    const bottomNav = document.getElementById('bottom-nav');
-    if (bottomNav) {
-        bottomNav.classList.toggle('hidden', !visible);
-    }
+    const nav = document.getElementById('bottom-nav');
+    if (!nav) return;
+    nav.classList.toggle('hidden', !visible);
 }
 
-export function setWorkoutActiveState(isActive) {
-    document.body.classList.toggle('workout-active', isActive);
+/**
+ * Toggle the body.workout-active class so the dumbbell FAB animates
+ * (and any other "workout in progress" affordances activate).
+ */
+export function setWorkoutActiveState(active) {
+    document.body.classList.toggle('workout-active', !!active);
+}
+
+// ===================================================================
+// DASHBOARD DRILL-DOWN NAVIGATION
+// ===================================================================
+
+export function showMuscleGroupDetail(bodyPart) {
+    const { AppState } = window;
+    if (AppState) AppState.activeMuscleGroup = bodyPart;
+    navigateTo('muscle-group-detail');
+}
+
+export function showExerciseDetail(exerciseName) {
+    const { AppState } = window;
+    if (AppState) AppState.activeExercise = exerciseName;
+    navigateTo('exercise-detail');
 }

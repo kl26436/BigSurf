@@ -335,6 +335,8 @@ import {
     toggleMoreMenu,
     closeMoreMenu,
     setWorkoutActiveState,
+    showMuscleGroupDetail,
+    showExerciseDetail,
 } from './core/ui/navigation.js';
 
 // Dashboard functionality
@@ -352,19 +354,7 @@ import { openMetricDetail, closeMetricDetail, setDetailRange } from './core/ui/m
 import { setRange } from './core/features/metrics/range-filter.js';
 import { showDashboard } from './core/ui/dashboard-ui.js';
 
-// Stats functionality
-import {
-    closeStats,
-    toggleStatsSection,
-    togglePRBodyPart,
-    filterPRs,
-    clearPRFilters,
-    selectProgressExercise,
-    setProgressTimeRange,
-    setProgressChartType,
-    selectProgressCategory,
-    selectProgressExerciseName,
-} from './core/ui/stats-ui.js';
+// Stats tab removed — drill-downs now live in dashboard v2
 
 // Debug utilities — loaded on demand with ?debug URL param
 
@@ -600,6 +590,18 @@ window.startWorkoutFromHistory = startWorkoutFromHistory;
 window.resumeActiveWorkout = resumeActiveWorkout;
 window.confirmCancelActiveWorkout = confirmCancelActiveWorkout;
 window.setWorkoutActiveState = setWorkoutActiveState;
+window.showMuscleGroupDetail = showMuscleGroupDetail;
+window.showExerciseDetail = showExerciseDetail;
+
+// Muscle group + exercise detail range setters (lazy-loaded)
+window.setMuscleRange = async function (range) {
+    const { setMuscleRange } = await import('./core/ui/muscle-group-detail-ui.js');
+    setMuscleRange(range);
+};
+window.setExerciseRange = async function (range) {
+    const { setExerciseRange } = await import('./core/ui/exercise-detail-ui.js');
+    setExerciseRange(range);
+};
 
 // Metric Detail Functions
 window.openMetricDetail = openMetricDetail;
@@ -607,17 +609,7 @@ window.closeMetricDetail = closeMetricDetail;
 window.setDetailRange = setDetailRange;
 window.setDashboardRange = (r) => { setRange(r); showDashboard(); };
 
-// Stats Functions
-window.closeStats = closeStats;
-window.toggleStatsSection = toggleStatsSection;
-window.togglePRBodyPart = togglePRBodyPart;
-window.filterPRs = filterPRs;
-window.clearPRFilters = clearPRFilters;
-window.selectProgressExercise = selectProgressExercise;
-window.setProgressTimeRange = setProgressTimeRange;
-window.setProgressChartType = setProgressChartType;
-window.selectProgressCategory = selectProgressCategory;
-window.selectProgressExerciseName = selectProgressExerciseName;
+// Stats tab removed — drill-downs now live in dashboard v2
 
 // Template Selection Functions
 window.showTemplateSelection = showTemplateSelection;

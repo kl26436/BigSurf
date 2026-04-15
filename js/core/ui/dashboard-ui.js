@@ -1,5 +1,5 @@
-// Dashboard UI Module - core/dashboard-ui.js
-// Unified dashboard with stats page layout, weekly goals, and in-progress workout
+// Dashboard UI Module — V2 Health-style dashboard with drill-down navigation
+// Sections: Greeting → Active Pill → Hero Chips → Insight → For Today → Training → Composition → Recent PRs
 
 import { StatsTracker } from '../features/stats-tracker.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
@@ -8,20 +8,43 @@ import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
 import { getDateString } from '../utils/date-helpers.js';
-import { Config, CATEGORY_COLORS, getCategoryIcon } from '../utils/config.js';
+import { Config, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
 import { TrainingInsights } from '../features/training-insights.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 import { updateSetting } from './settings-ui.js';
 
+import {
+    aggregateBodyPartStats, getTemplatesForDayOfWeek,
+    formatVolume, capitalize, BP_TO_CAT,
+} from '../features/metrics/aggregators.js';
+import { chartSparkline } from '../features/charts/chart-sparkline.js';
+import { chartDonut } from '../features/charts/chart-donut.js';
+
+// ===================================================================
+// CONSTANTS
+// ===================================================================
+
+const BODY_PARTS = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
+const BP_ICONS = {
+    chest: 'fa-hand-paper', back: 'fa-fist-raised', legs: 'fa-walking',
+    shoulders: 'fa-arrows-alt-v', arms: 'fa-hand-rock', core: 'fa-bullseye',
+};
+const BP_TINTS = {
+    chest: 'ic-chest', back: 'ic-back', legs: 'ic-legs',
+    shoulders: 'ic-shoulders', arms: 'ic-arms', core: 'ic-core',
+};
+
+function bodyPartColor(bp) {
+    const map = { chest: 'var(--cat-push)', back: 'var(--cat-pull)', legs: 'var(--cat-legs)', shoulders: 'var(--cat-shoulders)', arms: 'var(--cat-arms)', core: 'var(--cat-core)' };
+    return map[bp] || 'var(--text-muted)';
+}
+
 // ===================================================================
 // DASHBOARD DISPLAY
 // ===================================================================
 
-/**
- * Show dashboard view
- */
 export async function showDashboard() {
     const dashboardSection = document.getElementById('dashboard');
     if (!dashboardSection) {
@@ -29,215 +52,29 @@ export async function showDashboard() {
         return;
     }
 
-    // Hide all other sections
     const workoutSelector = document.getElementById('workout-selector');
     const activeWorkout = document.getElementById('active-workout');
     const historySection = document.getElementById('workout-history-section');
-
     if (workoutSelector) workoutSelector.classList.add('hidden');
     if (activeWorkout) activeWorkout.classList.add('hidden');
     if (historySection) historySection.classList.add('hidden');
 
-    // Show dashboard
     dashboardSection.classList.remove('hidden');
-
-    // Show full header with logo on dashboard
     setHeaderMode(true);
-
-    // Show bottom nav and set active tab
     setBottomNavVisible(true);
     updateBottomNavActive('dashboard');
 
-    // Load and render dashboard data (pill handles in-progress indicator now)
     await renderDashboard();
 }
 
-/**
- * Check if there's an in-progress workout and show resume prompt
- */
-async function checkForInProgressWorkout() {
-    try {
-        const { AppState } = await import('../utils/app-state.js');
-        const { loadTodaysWorkout } = await import('../data/data-manager.js');
+// ===================================================================
+// MAIN RENDER
+// ===================================================================
 
-        // Check today's workout first
-        let workoutData = await loadTodaysWorkout(AppState);
-
-        // If no incomplete workout today, check yesterday (in case workout started before midnight)
-        // Schema v3.0: Use loadWorkoutsByDate which handles both old and new schemas
-        if (!workoutData || workoutData.completedAt || workoutData.cancelledAt) {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = getDateString(yesterday);
-
-            const { loadWorkoutsByDate } = await import('../data/data-manager.js');
-            const yesterdayWorkouts = await loadWorkoutsByDate(AppState, yesterdayStr);
-
-            // Find any incomplete workout from yesterday
-            const incompleteYesterday = yesterdayWorkouts.find((w) => !w.completedAt && !w.cancelledAt);
-
-            if (incompleteYesterday) {
-                workoutData = incompleteYesterday;
-            }
-        }
-
-        if (workoutData && !workoutData.completedAt && !workoutData.cancelledAt) {
-            // Check if workout is too old (> 3 hours) - probably abandoned
-            const workoutStart = new Date(workoutData.startedAt);
-            const hoursSinceStart = (Date.now() - workoutStart.getTime()) / (1000 * 60 * 60);
-
-            if (hoursSinceStart > Config.ABANDONED_WORKOUT_TIMEOUT_HOURS) {
-                // Check if workout has any completed exercises
-                const hasCompletedExercises =
-                    workoutData.exercises &&
-                    Object.values(workoutData.exercises).some((ex) => ex.completed || (ex.sets && ex.sets.length > 0));
-
-                const { setDoc, doc, db, deleteDoc } = await import('../data/firebase-config.js');
-                const docId = workoutData.docId || workoutData.workoutId;
-                const workoutRef = doc(db, 'users', AppState.currentUser.uid, 'workouts', docId);
-
-                if (hasCompletedExercises) {
-                    // Auto-complete the workout with its original start date
-                    workoutData.completedAt = new Date().toISOString();
-                    workoutData.autoCompleted = true; // Flag for tracking
-                    await setDoc(workoutRef, workoutData, { merge: true });
-                } else {
-                    // No exercises done - delete the empty workout
-                    await deleteDoc(workoutRef);
-                }
-
-                const card = document.getElementById('resume-workout-banner');
-                if (card) card.classList.add('hidden');
-                window.inProgressWorkout = null;
-                return;
-            }
-
-            // Find the workout plan
-            const workoutPlan = AppState.workoutPlans.find(
-                (plan) =>
-                    plan.day === workoutData.workoutType ||
-                    plan.name === workoutData.workoutType ||
-                    plan.id === workoutData.workoutType
-            );
-
-            if (!workoutPlan) {
-                console.warn('⚠️ Workout plan not found for:', workoutData.workoutType);
-                return;
-            }
-
-            // Store in-progress workout globally so it can be resumed
-            // Use workoutData.originalWorkout if it exists (contains modified exercise list)
-            // Only fall back to workoutPlan template if originalWorkout wasn't saved
-            window.inProgressWorkout = {
-                ...workoutData,
-                originalWorkout: workoutData.originalWorkout || workoutPlan,
-            };
-
-            // Show resume banner
-            const card = document.getElementById('resume-workout-banner');
-            const nameElement = document.getElementById('resume-workout-name');
-            const timeElement = document.getElementById('resume-time-ago');
-
-            if (card && nameElement) {
-                nameElement.textContent = workoutData.workoutType;
-
-                // Calculate sets and exercises completed
-                let completedSets = 0;
-                let totalSets = 0;
-                let completedExercises = 0;
-                let totalExercises = 0;
-
-                // Get total sets from saved originalWorkout (if exercises were added/deleted) or template
-                const exerciseSource = workoutData.originalWorkout?.exercises || (workoutPlan && workoutPlan.exercises);
-                if (exerciseSource) {
-                    totalExercises = exerciseSource.length;
-                    exerciseSource.forEach((exercise) => {
-                        totalSets += exercise.sets || 3;
-                    });
-                }
-
-                // Get completed sets and exercises from saved data
-                if (workoutData.exercises) {
-                    Object.values(workoutData.exercises).forEach((exercise) => {
-                        if (exercise.sets && exercise.sets.length > 0) {
-                            const exerciseSets = exercise.sets.filter((set) => set.reps && set.weight);
-                            completedSets += exerciseSets.length;
-                            if (exercise.completed || exerciseSets.length > 0) {
-                                completedExercises++;
-                            }
-                        }
-                    });
-                }
-
-                // Update progress ring
-                const percentage = totalSets > 0 ? (completedSets / totalSets) : 0;
-                const circumference = 2 * Math.PI * 24; // radius = 24
-                const progressRing = document.getElementById('resume-progress-ring');
-                if (progressRing) {
-                    const offset = circumference * (1 - percentage);
-                    progressRing.style.strokeDasharray = `${circumference}`;
-                    progressRing.style.strokeDashoffset = `${offset}`;
-                }
-
-                // Update stat values
-                const statSets = document.getElementById('resume-stat-sets');
-                const statExercises = document.getElementById('resume-stat-exercises');
-                const statTime = document.getElementById('resume-stat-time');
-
-                if (statSets) {
-                    statSets.textContent = `${completedSets}/${totalSets}`;
-                }
-                if (statExercises) {
-                    statExercises.textContent = `${completedExercises}/${totalExercises}`;
-                }
-                if (statTime) {
-                    const minutes = Math.floor(hoursSinceStart * 60);
-                    if (minutes < 60) {
-                        statTime.textContent = `${minutes}m`;
-                    } else {
-                        const hours = Math.floor(minutes / 60);
-                        const mins = minutes % 60;
-                        statTime.textContent = `${hours}h ${mins}m`;
-                    }
-                }
-
-                // Calculate time ago for header
-                if (timeElement) {
-                    const minutesAgo = Math.floor(hoursSinceStart * 60);
-                    if (minutesAgo < 60) {
-                        timeElement.textContent = `${minutesAgo} min ago`;
-                    } else {
-                        timeElement.textContent = `${hoursSinceStart.toFixed(1)}h ago`;
-                    }
-                }
-
-                card.classList.remove('hidden');
-            } else {
-                console.warn('⚠️ Resume banner elements not found:', { card: !!card, nameElement: !!nameElement });
-            }
-        } else {
-            // Hide resume banner if no workout in progress
-            const card = document.getElementById('resume-workout-banner');
-            if (card) {
-                card.classList.add('hidden');
-            }
-            window.inProgressWorkout = null;
-        }
-    } catch (error) {
-        console.error('❌ Error checking for in-progress workout:', error);
-    }
-}
-
-
-
-/**
- * Render dashboard content - Unified stats page layout
- */
 async function renderDashboard() {
     const container = document.getElementById('dashboard-content');
     if (!container) return;
 
-    // Show skeleton loading state
     container.innerHTML = `
         <div class="skeleton skeleton-card" style="height: 140px;"></div>
         <div class="skeleton skeleton-card" style="height: 56px;"></div>
@@ -245,33 +82,28 @@ async function renderDashboard() {
     `;
 
     try {
-        // Load all stats in parallel
         const wm = new FirebaseWorkoutManager(AppState);
         const [streaks, weeklyStats, recentWorkouts, insightsData] =
             await Promise.all([
                 StreakTracker.calculateStreaks(),
                 StatsTracker.getWeeklyStats(),
-                StatsTracker.getRecentWorkouts(10),
+                StatsTracker.getRecentWorkouts(30),
                 TrainingInsights.loadInsightsData().catch(() => ({ recentWorkouts: [], allWorkouts: [] })),
             ]);
 
         await PRTracker.loadPRData();
         const recentPRs = PRTracker.getRecentPRs(3);
 
-        // Use uniqueDays to count workout days (not total workouts)
         const weekCount = weeklyStats.uniqueDays || weeklyStats.workouts.length;
         const weeklyGoal = AppState.settings?.weeklyGoal || 5;
         const streakDays = streaks?.currentStreak || 0;
 
-        // Hide the HTML resume banner — dashboard is informational only now
         const resumeBanner = document.getElementById('resume-workout-banner');
         if (resumeBanner) resumeBanner.classList.add('hidden');
 
-        // Check if user has any workout history
         const hasWorkouts = streaks && streaks.totalWorkouts > 0;
 
         if (!hasWorkouts) {
-            // Show welcome empty state for new users
             container.innerHTML = `
                 ${renderGreetingHeader()}
                 ${renderActiveWorkoutPill()}
@@ -283,48 +115,53 @@ async function renderDashboard() {
             `;
             if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();
         } else {
-            // Phase 2 Revised: Metrics-first informational dashboard
-            const volumeChangePercent = await getVolumeChangePercent();
+            const allWorkouts = insightsData.allWorkouts || recentWorkouts;
 
-            // Get top single insight
+            // Cache for drill-down pages
+            AppState.workouts = allWorkouts;
+
+            // Load templates for "For Today" section
+            try {
+                const templates = await wm.getUserWorkoutTemplates();
+                AppState.templates = templates || [];
+            } catch { AppState.templates = []; }
+
+            // Top insight (dismissable)
             const exerciseDatabase = AppState.exerciseDatabase || [];
             const topInsight = TrainingInsights.getTopInsight(
-                insightsData.recentWorkouts,
-                insightsData.allWorkouts,
-                exerciseDatabase
+                insightsData.recentWorkouts, insightsData.allWorkouts, exerciseDatabase
             );
-
-            // Check if insight was dismissed today
             const insightDismissedDate = AppState.settings?.insightDismissedDate;
             const todayStr = getDateString(new Date());
             const showInsight = topInsight && insightDismissedDate !== todayStr;
 
+            // Body weight data
+            const bwData = await loadBodyWeightData();
+
+            // Build V2 layout
             container.innerHTML = `
                 ${renderGreetingHeader()}
                 ${renderActiveWorkoutPill()}
-                ${renderMetricsGrid(streakDays, weekCount, weeklyGoal)}
-                ${renderWeekTimeline(weeklyStats, volumeChangePercent)}
-                ${showInsight ? renderSingleInsight(topInsight) : ''}
-                ${renderRecentWorkoutsList(recentWorkouts)}
-                ${renderRecentPRsList(recentPRs)}
+                ${renderHeroChipRow(streakDays, weekCount, weeklyGoal, bwData)}
+                ${showInsight ? renderDashboardInsight(topInsight) : ''}
+                ${renderForToday(allWorkouts)}
+                ${renderTrainingSection(allWorkouts)}
+                ${await renderCompositionCard(bwData)}
+                ${renderRecentPRs(recentPRs)}
             `;
 
-            // Start pill timer if active workout exists
             if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();
         }
 
-        // Conditionally hide "Manage Locations" in More menu if no locations exist
+        // Conditionally hide "Manage Locations" in More menu
         try {
             const locations = await wm.getUserLocations();
             const locMenuItem = document.getElementById('more-menu-locations');
             if (locMenuItem) {
                 locMenuItem.classList.toggle('hidden', !locations || locations.length === 0);
             }
-        } catch (e) {
-            // Non-critical — leave menu item visible on error
-        }
+        } catch (e) { /* Non-critical */ }
 
-        // First-use tip — point new users to the More menu
         showFirstUseTip('more-menu');
     } catch (error) {
         console.error('❌ Error rendering dashboard:', error);
@@ -340,14 +177,36 @@ async function renderDashboard() {
     }
 }
 
+// ===================================================================
+// BODY WEIGHT HELPER
+// ===================================================================
+
+async function loadBodyWeightData() {
+    try {
+        const { loadBodyWeightHistory } = await import('../features/body-measurements.js');
+        const { displayWeight } = await import('./ui-helpers.js');
+        const entries = await loadBodyWeightHistory(90);
+        if (!entries || entries.length === 0) return null;
+
+        const userUnit = AppState.globalUnit || 'lbs';
+        const converted = entries.map(e => {
+            const dw = displayWeight(e.weight, e.unit || 'lbs', userUnit);
+            return { ...e, displayWeight: dw.value, displayUnit: dw.label };
+        });
+        const latest = converted[converted.length - 1];
+        const first = converted[0];
+        const delta = latest.displayWeight - first.displayWeight;
+
+        return { latest, delta, unit: latest.displayUnit || userUnit };
+    } catch {
+        return null;
+    }
+}
 
 // ===================================================================
-// PHASE 2 REVISED: METRICS-FIRST DASHBOARD COMPONENTS
+// GREETING + ACTIVE PILL
 // ===================================================================
 
-/**
- * Greeting header — time-of-day greeting + date + avatar.
- */
 function renderGreetingHeader() {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -363,17 +222,11 @@ function renderGreetingHeader() {
     `;
 }
 
-/**
- * Active workout pill — compact indicator below greeting.
- * Returns empty string if no workout in progress.
- */
 function renderActiveWorkoutPill() {
-    // Check both active workout state AND in-progress workout detected on load
     const inProgress = window.inProgressWorkout;
     const hasActiveWorkout = AppState.currentWorkout || inProgress;
     if (!hasActiveWorkout) return '';
 
-    // Prefer live session data, fall back to in-progress workout from load
     const workoutType = AppState.savedData?.workoutType
         || AppState.currentWorkout?.workoutType
         || inProgress?.workoutType
@@ -441,244 +294,251 @@ function stopPillTimer() {
     if (pillTimerInterval) { clearInterval(pillTimerInterval); pillTimerInterval = null; }
 }
 
-/**
- * Metrics grid — streak card + weekly ring side-by-side.
- */
-function renderMetricsGrid(streakDays, weekCompleted, weekGoal) {
-    const ringPct = weekGoal > 0 ? Math.min(100, (weekCompleted / weekGoal) * 100) : 0;
-    const circumference = 107; // 2 * π * 17
-    const offset = circumference - (circumference * ringPct / 100);
+// ===================================================================
+// HERO CHIP ROW — Streak, Week, Body Weight
+// ===================================================================
+
+function renderHeroChipRow(streak, weekDone, weekGoal, bwData) {
+    const bwVal = bwData ? Math.round(bwData.latest.displayWeight) : null;
+    const bwUnit = bwData ? bwData.unit : '';
+    const bwDelta = bwData ? bwData.delta : null;
+
     return `
-        <div class="dash-metrics-grid">
-            <div class="hero-card dash-metric dash-metric--streak">
-                <div class="dash-metric__label">Streak</div>
-                <div class="dash-metric__value">${streakDays}</div>
-                <div class="dash-metric__sub">days <i class="fas fa-fire"></i></div>
+        <div class="hero-chip-row">
+            <div class="hero-chip hero-chip--streak">
+                <div class="hero-chip__icon"><i class="fas fa-fire" style="color:var(--highlight-warm);"></i></div>
+                <div class="hero-chip__val">${streak}</div>
+                <div class="hero-chip__label">Streak</div>
             </div>
-            <div class="hero-card dash-metric dash-metric--ring">
-                <svg class="dash-ring-svg" viewBox="0 0 40 40" aria-hidden="true">
-                    <circle cx="20" cy="20" r="17" class="dash-ring-track"/>
-                    <circle cx="20" cy="20" r="17" class="dash-ring-fill"
-                            stroke-dasharray="${circumference}"
-                            stroke-dashoffset="${offset}"
-                            transform="rotate(-90 20 20)"/>
-                </svg>
-                <div class="dash-metric__ring-info">
-                    <div class="dash-metric__value dash-metric__value--sm">${weekCompleted}/${weekGoal}</div>
-                    <div class="dash-metric__sub">This week</div>
-                </div>
+            <div class="hero-chip">
+                <div class="hero-chip__icon"><i class="fas fa-bullseye" style="color:var(--primary);"></i></div>
+                <div class="hero-chip__val">${weekDone}<span class="hero-chip__unit">/${weekGoal}</span></div>
+                <div class="hero-chip__label">This week</div>
+            </div>
+            <div class="hero-chip">
+                <div class="hero-chip__icon"><i class="fas fa-weight" style="color:var(--cat-shoulders);"></i></div>
+                <div class="hero-chip__val">${bwVal != null ? bwVal : '—'}<span class="hero-chip__unit">${bwVal != null ? ` ${bwUnit}` : ''}</span></div>
+                ${bwDelta != null ? `<div class="hero-chip__delta ${bwDelta < 0 ? 'up' : 'down'}">${bwDelta < 0 ? '↓' : '↑'} ${Math.abs(bwDelta).toFixed(1)} ${bwUnit}</div>` : '<div class="hero-chip__label">Body weight</div>'}
             </div>
         </div>
     `;
 }
 
-/**
- * Week timeline — day dots (M-S) with checkmarks + volume trend chip.
- */
-function renderWeekTimeline(weeklyStats, volumeDeltaPct) {
-    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const todayIdx = new Date().getDay(); // Sunday=0
+// ===================================================================
+// INSIGHT
+// ===================================================================
 
-    // Build set of which day-of-week indices had workouts this week
-    const workoutDayIndices = new Set();
-    if (weeklyStats.workouts) {
-        weeklyStats.workouts.forEach(w => {
-            if (w.date) {
-                const parts = w.date.split('-');
-                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-                workoutDayIndices.add(d.getDay()); // Sunday=0
-            }
-        });
-    }
-
-    const dotsHtml = days.map((d, i) => {
-        const done = workoutDayIndices.has(i);
-        const today = i === todayIdx;
-        const cls = done ? 'done' : today ? 'today' : '';
-        const inner = done ? '<i class="fas fa-check"></i>' : today ? '<i class="fas fa-circle"></i>' : '';
-        return `<div class="dash-day"><div class="dash-day__label">${d}</div><div class="dash-day__circle ${cls}">${inner}</div></div>`;
-    }).join('');
-
-    let trendHtml = '';
-    if (volumeDeltaPct !== null) {
-        const trendSign = volumeDeltaPct >= 0 ? '↑' : '↓';
-        const trendCls = volumeDeltaPct >= 0 ? 'trend-up' : 'trend-down';
-        trendHtml = `<span class="dash-timeline__trend ${trendCls}">${trendSign} ${Math.abs(volumeDeltaPct)}% volume</span>`;
-    }
-
-    return `
-        <div class="hero-card dash-timeline">
-            <div class="dash-timeline__head">
-                <h3>This week</h3>
-                ${trendHtml}
-            </div>
-            <div class="dash-timeline__dots">${dotsHtml}</div>
-        </div>
-    `;
-}
-
-/**
- * Recent Workouts list — last 3 unique workouts with per-row play buttons.
- */
-function renderRecentWorkoutsList(recentWorkouts) {
-    if (!recentWorkouts || recentWorkouts.length === 0) return '';
-
-    // Deduplicate by workoutType — show most recent of each type
-    const seen = new Set();
-    const unique = [];
-    for (const w of recentWorkouts) {
-        if (w.workoutType && !seen.has(w.workoutType)) {
-            seen.add(w.workoutType);
-            unique.push(w);
-        }
-        if (unique.length >= 3) break;
-    }
-    if (unique.length === 0) return '';
-
-    const items = unique.map(w => {
-        const category = getWorkoutCategory(w.workoutType);
-        const icon = getCategoryIcon(category);
-        const when = formatRelativeDateDash(w.date);
-        const durationMin = Math.round((w.totalDuration || 0) / 60);
-        const exCount = w.exercises ? Object.keys(w.exercises).length : 0;
-        const metaParts = [when, exCount > 0 ? `${exCount} exercises` : null, durationMin > 0 ? `${durationMin} min` : null].filter(Boolean).join(' · ');
-
-        return `
-            <div class="row-card dash-recent-row" onclick="startWorkoutFromHistory('${escapeAttr(w.id)}')">
-                <div class="dash-recent__icon cat-bg-${category.toLowerCase()}">
-                    <i class="${icon}"></i>
-                </div>
-                <div class="dash-recent__info">
-                    <div class="dash-recent__name">${escapeHtml(w.workoutType)}</div>
-                    <div class="dash-recent__meta">${metaParts}</div>
-                </div>
-                <button class="dash-recent__play" onclick="event.stopPropagation(); startWorkoutFromHistory('${escapeAttr(w.id)}')" aria-label="Restart this workout">
-                    <i class="fas fa-play"></i>
-                </button>
-            </div>
-        `;
-    }).join('');
-
-    return `
-        <div class="dash-section-head">
-            <h3>Recent Workouts</h3>
-            <a onclick="navigateTo('history')">History →</a>
-        </div>
-        ${items}
-    `;
-}
-
-/**
- * Recent PRs list — compact rows with trophy badges.
- */
-function renderRecentPRsList(recentPRs) {
-    if (!recentPRs || recentPRs.length === 0) return '';
-
-    const items = recentPRs.slice(0, 3).map(pr => {
-        const when = formatRelativeDateDash(pr.date);
-        return `
-            <div class="row-card dash-pr-row">
-                <div class="dash-pr__badge"><i class="fas fa-trophy"></i></div>
-                <div class="dash-pr__info">
-                    <div class="dash-pr__name">${escapeHtml(pr.exercise)}</div>
-                    <div class="dash-pr__meta">${when} · ${pr.reps} reps</div>
-                </div>
-                <div class="dash-pr__value">${pr.weight} lbs</div>
-            </div>
-        `;
-    }).join('');
-
-    return `
-        <div class="dash-section-head">
-            <h3>Recent PRs</h3>
-            <a onclick="navigateTo('stats')">All →</a>
-        </div>
-        ${items}
-    `;
-}
-
-/**
- * Start a workout from the Recent Workouts list.
- * Finds the matching template and starts it, or builds a one-off from history.
- */
-export async function startWorkoutFromHistory(workoutId) {
-    try {
-        // Load the historical workout
-        const { getDoc, doc, db } = await import('../data/firebase-config.js');
-        const workoutRef = doc(db, 'users', AppState.currentUser.uid, 'workouts', workoutId);
-        const snap = await getDoc(workoutRef);
-        if (!snap.exists()) {
-            showNotification('Workout not found', 'warning');
-            return;
-        }
-        const workout = snap.data();
-        const workoutType = workout.workoutType;
-
-        // Try to find a matching template
-        const wm = new FirebaseWorkoutManager(AppState);
-        const templates = await wm.getUserWorkoutTemplates();
-        const match = templates.find(t => (t.name || t.day) === workoutType);
-
-        if (match) {
-            const { selectTemplate } = await import('./template-selection.js');
-            await selectTemplate(match.id || match.name, match.isDefault || false);
-        } else {
-            // No matching template — start directly from the historical workout's exercises
-            const { startWorkoutFromExercises } = await import('../workout/workout-core.js');
-            if (typeof startWorkoutFromExercises === 'function') {
-                await startWorkoutFromExercises(workoutType, workout.exercises);
-            } else {
-                // Fallback: navigate to workout selector
-                showNotification(`Template "${workoutType}" not found — pick from your list`, 'info');
-                const { bottomNavTo } = await import('./navigation.js');
-                bottomNavTo('workout');
-            }
-        }
-    } catch (error) {
-        console.error('❌ Error starting workout from history:', error);
-        showNotification('Error starting workout', 'error');
-    }
-}
-
-/**
- * Single Insight Card — shows only the top-priority insight with actionable text.
- */
-function renderSingleInsight(insight) {
+function renderDashboardInsight(insight) {
     if (!insight) return '';
-
-    const severityClass = {
-        warning: 'insight-warning',
-        info: 'insight-info',
-        success: 'insight-success',
-    };
-    const cls = severityClass[insight.severity] || 'insight-info';
-
     return `
-        <div class="insight-card-compact hero-card hero-card-flat ${cls}">
-            <button class="insight-dismiss" onclick="dismissInsight()" aria-label="Dismiss">
-                <i class="fas fa-times"></i>
-            </button>
-            <div class="insight-content">
-                <span class="insight-icon"><i class="fas ${insight.icon}"></i></span>
-                <p class="insight-text">${escapeHtml(insight.message)}</p>
-            </div>
+        <div class="dash-insight" onclick="dismissInsight()">
+            <i class="fas ${insight.icon || 'fa-lightbulb'}"></i>
+            <div class="dash-insight-text">${escapeHtml(insight.message)}</div>
         </div>
     `;
 }
 
-/**
- * Dismiss the insight for the rest of the day.
- */
+// ===================================================================
+// FOR TODAY
+// ===================================================================
+
+function renderForToday(allWorkouts) {
+    const templates = AppState.templates || [];
+    if (templates.length === 0) return '';
+
+    const dow = new Date().getDay();
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dow];
+    const ranked = getTemplatesForDayOfWeek(templates, allWorkouts, dow).slice(0, 4);
+    if (ranked.length === 0 || ranked[0].count === 0) return '';
+
+    return `
+        <div class="dash-section-head">
+            <h3>For ${dayName}</h3>
+            <a onclick="bottomNavTo('workout')">All →</a>
+        </div>
+        ${ranked.filter(r => r.count > 0).map((r, i) => renderForTodayRow(r, i === 0, dayName)).join('')}
+    `;
+}
+
+function renderForTodayRow({ template, count }, isMostUsed, dayName) {
+    const category = template.category || getWorkoutCategory(template.name || template.day) || 'other';
+    const icon = getCategoryIcon(category);
+    const exCount = template.exercises ? template.exercises.length : 0;
+
+    return `
+        <div class="rw-row" onclick="startWorkout('${escapeAttr(template.id || template.name)}')">
+            <div class="rw-icon cat-bg-${category.toLowerCase()}"><i class="${icon}"></i></div>
+            <div class="rw-info">
+                <div class="rw-name">
+                    ${escapeHtml(template.name || template.day)}
+                    ${isMostUsed && count > 3 ? '<span class="rw-count">Most used</span>' : ''}
+                </div>
+                <div class="rw-meta">${exCount} exercises · ${count} ${count === 1 ? 'time' : 'times'} on ${dayName}s</div>
+            </div>
+            <button class="rw-play" onclick="event.stopPropagation(); startWorkout('${escapeAttr(template.id || template.name)}')">
+                <i class="fas fa-play"></i>
+            </button>
+        </div>
+    `;
+}
+
+// ===================================================================
+// TRAINING SECTION — 6 muscle group cards
+// ===================================================================
+
+function renderTrainingSection(allWorkouts) {
+    const stats = BODY_PARTS.map(bp => aggregateBodyPartStats(allWorkouts, bp, 'W'));
+    // Sort: recently trained first, stale at bottom
+    stats.sort((a, b) => {
+        if (a.isStale !== b.isStale) return a.isStale ? 1 : -1;
+        return (a.lastTrained?.daysAgo || 999) - (b.lastTrained?.daysAgo || 999);
+    });
+
+    return `
+        <div class="dash-section-head">
+            <h3>Training</h3>
+            <span style="font-size:var(--font-xs);color:var(--text-muted);">This week</span>
+        </div>
+        ${stats.map(renderBodyPartCard).join('')}
+    `;
+}
+
+function renderBodyPartCard(s) {
+    const hv = s.heaviest;
+    const heroShort = s.heroLift ? s.heroLift.split(' ')[0] : '';
+    const sparkColor = bodyPartColor(s.bodyPart);
+
+    return `
+        <div class="bp-card ${s.isStale ? 'stale' : ''}" onclick="showMuscleGroupDetail('${s.bodyPart}')">
+            <div class="bp-card__head">
+                <div class="bp-card__label">
+                    <div class="bp-card__icon ${BP_TINTS[s.bodyPart]}"><i class="fas ${BP_ICONS[s.bodyPart]}"></i></div>
+                    ${capitalize(s.bodyPart)}
+                </div>
+                <i class="fas fa-chevron-right bp-card__chev"></i>
+            </div>
+            <div class="bp-card__grid">
+                <div class="bp-cell">
+                    <div class="bp-cell__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> ${heroShort} Max</div>
+                    <div class="bp-cell__val">${hv ? `${hv.weight}<span class="bp-cell__unit">×${hv.reps}</span>` : '—'}</div>
+                </div>
+                <div class="bp-cell">
+                    <div class="bp-cell__label">Volume · wk</div>
+                    <div class="bp-cell__val">${formatVolume(s.volume)}<span class="bp-cell__unit"> lb</span></div>
+                    ${s.volumeDeltaPct != null ? `<div class="bp-cell__sub ${s.volumeDeltaPct < 0 ? 'down' : ''}">${s.volumeDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(s.volumeDeltaPct).toFixed(0)}%</div>` : ''}
+                </div>
+            </div>
+            ${s.isStale
+                ? `<div class="stale-warn">⚠ Last trained ${s.lastTrained?.daysAgo || '—'} days ago</div>`
+                : `<div class="bp-spark">${chartSparkline({ points: s.volumeTrend, color: sparkColor, width: 280, height: 24 })}</div>`
+            }
+        </div>
+    `;
+}
+
+// ===================================================================
+// COMPOSITION CARD
+// ===================================================================
+
+async function renderCompositionCard(bwData) {
+    let latest = null;
+    try {
+        const { getLatestDexaScan } = await import('../features/dexa-scan.js');
+        latest = await getLatestDexaScan();
+    } catch { /* no dexa */ }
+
+    const hasDexa = latest && latest.data;
+    const hasBw = bwData != null;
+    if (!hasDexa && !hasBw) return renderConnectPrompt();
+
+    let segments = [];
+    if (hasDexa) {
+        const data = latest.data;
+        const fatPct = data.bodyFatPercentage || data.totalBodyFat || 0;
+        const musclePct = data.muscleMass ? Math.round(data.muscleMass / (data.totalWeight || 1) * 100) : 0;
+        const waterPct = Math.max(0, 100 - fatPct - musclePct);
+        if (fatPct > 0 || musclePct > 0) {
+            segments = [
+                { label: `Muscle ${musclePct}%`, value: musclePct, color: 'var(--cat-legs)' },
+                { label: `Fat ${fatPct}%`, value: fatPct, color: 'var(--cat-pull)' },
+                { label: `Water ${waterPct}%`, value: waterPct, color: 'var(--cat-shoulders)' },
+            ];
+        }
+    }
+
+    return `
+        <div class="dash-section-head">
+            <h3>Composition</h3>
+        </div>
+        <div class="bc-card">
+            <div class="bc-row">
+                ${segments.length ? chartDonut({ segments, size: 60 }) : '<div class="bc-donut-empty"></div>'}
+                <div class="bc-legend">
+                    ${segments.length
+                        ? segments.map(s => `<div class="bc-leg"><div class="bc-dot" style="background:${s.color};"></div>${s.label}</div>`).join('')
+                        : '<div class="bc-leg">No DEXA data yet</div>'}
+                </div>
+                <i class="fas fa-chevron-right bp-card__chev"></i>
+            </div>
+            ${hasBw ? `
+                <div class="bc-weight">
+                    <span>Body weight</span>
+                    <span><strong>${bwData.latest.displayWeight.toFixed(1)} ${bwData.unit}</strong>${bwData.delta != null ? ` · ${bwData.delta < 0 ? '↓' : '↑'} ${Math.abs(bwData.delta).toFixed(1)} ${bwData.unit} this month` : ''}</span>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function renderConnectPrompt() {
+    return `
+        <div class="connect-card" style="margin-top:var(--space-12);" onclick="navigateTo('settings')">
+            <i class="fas fa-link"></i>
+            <div class="connect-card__info">
+                <div class="connect-card__title">Track Body Composition</div>
+                <div class="connect-card__sub">Add weight entries or upload a DEXA scan</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i>
+        </div>
+    `;
+}
+
+// ===================================================================
+// RECENT PRs
+// ===================================================================
+
+function renderRecentPRs(recentPRs) {
+    if (!recentPRs || recentPRs.length === 0) return '';
+    return `
+        <div class="dash-section-head" style="margin-top:4px;">
+            <h3>Recent PRs</h3>
+        </div>
+        ${recentPRs.slice(0, 3).map(pr => `
+            <div class="pr-row">
+                <div class="pr-badge"><i class="fas fa-trophy"></i></div>
+                <div class="pr-info">
+                    <div class="pr-name">${escapeHtml(pr.exercise)}</div>
+                    <div class="pr-meta">${formatRelativeDateDash(pr.date)} · ${pr.reps} reps</div>
+                </div>
+                <div class="pr-val">${pr.weight} lb</div>
+            </div>
+        `).join('')}
+    `;
+}
+
+// ===================================================================
+// EXPORTED FUNCTIONS (window-bound in main.js)
+// ===================================================================
+
 export function dismissInsight() {
     const todayStr = getDateString(new Date());
     updateSetting('insightDismissedDate', todayStr);
-    const card = document.querySelector('.insight-card-compact');
+    const card = document.querySelector('.dash-insight');
     if (card) card.remove();
 }
 
 export function resumeActiveWorkout() {
     stopPillTimer();
-    // Use window exports to avoid circular import with workout-session
     if (window.continueInProgressWorkout) {
         window.continueInProgressWorkout();
     } else {
@@ -693,61 +553,38 @@ export function confirmCancelActiveWorkout() {
     window.cancelWorkout?.();
 }
 
-/**
- * Calculate volume change percentage between this week and last week.
- * Returns null if no comparison data available.
- */
-async function getVolumeChangePercent() {
+export async function startWorkoutFromHistory(workoutId) {
     try {
-        const thisWeek = await StatsTracker.getWeeklyStats();
-        let thisWeekVolume = 0;
-        if (thisWeek.workouts) {
-            thisWeek.workouts.forEach(w => {
-                if (w.exercises) {
-                    Object.values(w.exercises).forEach(ex => {
-                        if (ex.sets) {
-                            ex.sets.forEach(s => {
-                                if (s.reps && s.weight) thisWeekVolume += s.reps * s.weight;
-                            });
-                        }
-                    });
-                }
-            });
+        const { getDoc, doc, db } = await import('../data/firebase-config.js');
+        const workoutRef = doc(db, 'users', AppState.currentUser.uid, 'workouts', workoutId);
+        const snap = await getDoc(workoutRef);
+        if (!snap.exists()) {
+            showNotification('Workout not found', 'warning');
+            return;
         }
+        const workout = snap.data();
+        const workoutType = workout.workoutType;
 
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-        const startOfLastWeek = new Date(today);
-        startOfLastWeek.setDate(today.getDate() - dayOfWeek - 7);
-        const endOfLastWeek = new Date(today);
-        endOfLastWeek.setDate(today.getDate() - dayOfWeek - 1);
+        const wm = new FirebaseWorkoutManager(AppState);
+        const templates = await wm.getUserWorkoutTemplates();
+        const match = templates.find(t => (t.name || t.day) === workoutType);
 
-        const { collection, query, where, orderBy, getDocs, db } = await import('../data/firebase-config.js');
-        const startStr = getDateString(startOfLastWeek);
-        const endStr = getDateString(endOfLastWeek);
-        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        const q = query(workoutsRef, where('date', '>=', startStr), where('date', '<=', endStr), orderBy('date', 'desc'));
-        const snapshot = await getDocs(q);
-
-        let lastWeekVolume = 0;
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (!data.completedAt || data.cancelledAt) return;
-            if (data.exercises) {
-                Object.values(data.exercises).forEach(ex => {
-                    if (ex.sets) {
-                        ex.sets.forEach(s => {
-                            if (s.reps && s.weight) lastWeekVolume += s.reps * s.weight;
-                        });
-                    }
-                });
+        if (match) {
+            const { selectTemplate } = await import('./template-selection.js');
+            await selectTemplate(match.id || match.name, match.isDefault || false);
+        } else {
+            const { startWorkoutFromExercises } = await import('../workout/workout-core.js');
+            if (typeof startWorkoutFromExercises === 'function') {
+                await startWorkoutFromExercises(workoutType, workout.exercises);
+            } else {
+                showNotification(`Template "${workoutType}" not found — pick from your list`, 'info');
+                const { bottomNavTo } = await import('./navigation.js');
+                bottomNavTo('workout');
             }
-        });
-
-        if (lastWeekVolume === 0) return null;
-        return Number(((thisWeekVolume - lastWeekVolume) / lastWeekVolume * 100).toFixed(0));
-    } catch {
-        return null;
+        }
+    } catch (error) {
+        console.error('❌ Error starting workout from history:', error);
+        showNotification('Error starting workout', 'error');
     }
 }
 
@@ -758,6 +595,7 @@ async function getVolumeChangePercent() {
 function formatRelativeDateDash(dateStr) {
     if (!dateStr) return '';
     const parts = dateStr.split('-');
+    if (parts.length < 3) return dateStr;
     const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
     const today = new Date();
     const yesterday = new Date(today);
@@ -775,4 +613,3 @@ function formatRelativeDateDash(dateStr) {
 
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
-

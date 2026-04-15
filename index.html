@@ -160,10 +160,17 @@
                     </div>
                 </section>
 
-                <!-- Stats & Records -->
-                <section id="stats-section" class="content-section hidden">
-                    <div id="stats-content">
-                        <!-- Stats content will be dynamically loaded -->
+                <!-- Muscle Group Detail (drill-down from dashboard) -->
+                <section id="muscle-group-detail-section" class="content-section hidden">
+                    <div id="muscle-group-detail-content">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </section>
+
+                <!-- Exercise Detail (drill-down from muscle group) -->
+                <section id="exercise-detail-section" class="content-section hidden">
+                    <div id="exercise-detail-content">
+                        <!-- Rendered dynamically -->
                     </div>
                 </section>
 
@@ -1604,8 +1611,8 @@
             <button class="bottom-nav__btn active" data-tab="dashboard" onclick="bottomNavTo('dashboard')" aria-current="page">
                 <i class="fas fa-home" aria-hidden="true"></i><span>Home</span>
             </button>
-            <button class="bottom-nav__btn" data-tab="stats" onclick="bottomNavTo('stats')">
-                <i class="fas fa-chart-line" aria-hidden="true"></i><span>Stats</span>
+            <button class="bottom-nav__btn" data-tab="ai-coach" onclick="bottomNavTo('ai-coach')">
+                <i class="fas fa-robot" aria-hidden="true"></i><span>Coach</span>
             </button>
             <button class="bottom-nav__fab" data-tab="workout" onclick="bottomNavTo('workout')" aria-label="Workouts">
                 <i class="fas fa-dumbbell" aria-hidden="true"></i>

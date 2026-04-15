@@ -33,7 +33,8 @@
 @import url('pages/workout.css');
 @import url('pages/templates.css');
 @import url('pages/history.css');
-@import url('pages/stats.css');
+@import url('pages/dashboard-v2.css');
+@import url('pages/detail-pages.css');
 @import url('pages/exercise-lib.css');
 @import url('pages/settings.css');
 @import url('pages/plate-calculator.css');
