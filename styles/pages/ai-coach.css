@@ -234,6 +234,7 @@
     background: var(--bg-app);
     border-top: 1px solid var(--border-subtle);
     padding: 12px 14px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     display: flex;
     gap: 8px;
     align-items: center;
@@ -272,6 +273,48 @@
 
 .chat-send:active {
     opacity: 0.8;
+}
+
+/* Thinking dots animation */
+.coach-thinking {
+    display: inline-flex;
+    gap: 4px;
+    padding: 12px 14px;
+}
+.coach-thinking i {
+    font-size: 0.4rem;
+    color: var(--text-muted);
+    animation: thinking-bounce 1.4s ease-in-out infinite;
+}
+.coach-thinking i:nth-child(2) { animation-delay: 0.2s; }
+.coach-thinking i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes thinking-bounce {
+    0%, 100% { opacity: 0.3; transform: translateY(0); }
+    50%      { opacity: 1;   transform: translateY(-3px); }
+}
+
+/* Action cards inside bot responses */
+.coach-action-card {
+    background: var(--bg-card-hi);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-top: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    border: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: background var(--anim-fast);
+}
+.coach-action-card:active { background: var(--bg-card); }
+.coach-action-card__title {
+    font-size: var(--font-sm);
+    color: var(--text-strong);
+    font-weight: 600;
+}
+.coach-action-card__desc {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
 }
 
 /* Loading state inside bot bubble */
