@@ -146,6 +146,8 @@ import {
     selectWorkoutCategory,
     showWorkoutCategoryView,
     handleWorkoutSearch,
+    selectTemplateCategory,
+    toggleTemplateDay,
 } from './core/workout/workout-management-ui.js';
 
 // Manual workout functionality
@@ -692,6 +694,8 @@ window.showCreateExerciseForm = showCreateExerciseForm;
 window.closeCreateExerciseModal = closeCreateExerciseModal;
 window.createNewExercise = createNewExercise;
 window.editTemplate = editTemplate;
+window.selectTemplateCategory = selectTemplateCategory;
+window.toggleTemplateDay = toggleTemplateDay;
 window.deleteTemplate = deleteTemplate;
 window.resetToDefault = resetToDefault;
 window.closeEquipmentPicker = closeEquipmentPicker;

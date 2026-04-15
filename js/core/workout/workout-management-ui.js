@@ -518,98 +518,97 @@ function showTemplateEditor() {
         return;
     }
 
-    // Build the workout editor form
+    const cat = (currentEditingTemplate.category || 'other').toLowerCase();
+    const days = currentEditingTemplate.suggestedDays || [];
+    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const dayValues = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+    const categories = [
+        { value: 'push', label: 'Push', icon: 'fa-hand-paper', color: 'var(--cat-push)' },
+        { value: 'pull', label: 'Pull', icon: 'fa-fist-raised', color: 'var(--cat-pull)' },
+        { value: 'legs', label: 'Legs', icon: 'fa-walking', color: 'var(--cat-legs)' },
+        { value: 'core', label: 'Core', icon: 'fa-bullseye', color: 'var(--cat-core)' },
+        { value: 'cardio', label: 'Cardio', icon: 'fa-heartbeat', color: 'var(--warning)' },
+        { value: 'other', label: 'Mixed', icon: 'fa-th', color: 'var(--text-secondary)' },
+    ];
+
+    // Build the workout editor form — redesigned
     editorContent.innerHTML = `
-        <form id="template-editor-form" class="template-editor-form">
-            <div class="form-group">
-                <label for="template-name">Workout Name *</label>
-                <input type="text"
-                       id="template-name"
-                       class="form-input"
+        <!-- Sticky header -->
+        <div class="page-header">
+            <div class="header-left">
+                <button class="back-btn" onclick="closeTemplateEditor()"><i class="fas fa-chevron-left"></i></button>
+                <div class="page-title">${currentEditingTemplate.name ? 'Edit Workout' : 'Create Workout'}</div>
+            </div>
+            <button class="btn-save" onclick="saveCurrentTemplate()">Save</button>
+        </div>
+
+        <div style="padding: 14px 16px 100px; overflow-y: auto; flex: 1;">
+            <div class="field">
+                <div class="field-label">Name</div>
+                <input class="field-input" id="template-name"
                        value="${escapeAttr(currentEditingTemplate.name)}"
-                       placeholder="e.g., Upper Body Push"
-                       required>
+                       placeholder="e.g. Push Day">
             </div>
 
-            <div class="form-group">
-                <label for="template-category">Category *</label>
-                <select id="template-category" class="form-input" required>
-                    <option value="push" ${currentEditingTemplate.category === 'push' ? 'selected' : ''}>Push (Chest, Shoulders, Triceps)</option>
-                    <option value="pull" ${currentEditingTemplate.category === 'pull' ? 'selected' : ''}>Pull (Back, Biceps)</option>
-                    <option value="legs" ${currentEditingTemplate.category === 'legs' ? 'selected' : ''}>Legs (Quads, Glutes, Hamstrings)</option>
-                    <option value="cardio" ${currentEditingTemplate.category === 'cardio' ? 'selected' : ''}>Cardio & Core</option>
-                    <option value="other" ${currentEditingTemplate.category === 'other' ? 'selected' : ''}>Other/Mixed</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Assign Days</label>
-                <div class="day-selector">
-                    <label class="day-checkbox">
-                        <input type="checkbox" name="suggested-days" value="monday" ${currentEditingTemplate.suggestedDays?.includes('monday') ? 'checked' : ''}>
-                        <span>Mon</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" name="suggested-days" value="tuesday" ${currentEditingTemplate.suggestedDays?.includes('tuesday') ? 'checked' : ''}>
-                        <span>Tue</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" name="suggested-days" value="wednesday" ${currentEditingTemplate.suggestedDays?.includes('wednesday') ? 'checked' : ''}>
-                        <span>Wed</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" name="suggested-days" value="thursday" ${currentEditingTemplate.suggestedDays?.includes('thursday') ? 'checked' : ''}>
-                        <span>Thu</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" name="suggested-days" value="friday" ${currentEditingTemplate.suggestedDays?.includes('friday') ? 'checked' : ''}>
-                        <span>Fri</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" name="suggested-days" value="saturday" ${currentEditingTemplate.suggestedDays?.includes('saturday') ? 'checked' : ''}>
-                        <span>Sat</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" name="suggested-days" value="sunday" ${currentEditingTemplate.suggestedDays?.includes('sunday') ? 'checked' : ''}>
-                        <span>Sun</span>
-                    </label>
+            <div class="field">
+                <div class="field-label">Category</div>
+                <div class="chips" id="template-category-chips">
+                    ${categories.map(c => `
+                        <div class="chip ${cat === c.value ? 'active' : ''}"
+                             style="${cat === c.value ? `color:${c.color};border-color:${c.color};background:${c.color}15;` : ''}"
+                             onclick="selectTemplateCategory('${c.value}', this)" data-cat="${c.value}">
+                            <i class="fas ${c.icon}" style="color:${c.color};"></i> ${c.label}
+                        </div>
+                    `).join('')}
                 </div>
             </div>
 
-            <div class="form-section">
-                <div class="form-section-header">
-                    <h4>Exercises</h4>
-                </div>
-                <div id="template-exercises" class="template-exercises-list">
-                    <!-- Populated by renderTemplateExercises() -->
-                </div>
-                <div class="inline-add-exercise">
-                    <div id="quick-add-chips" class="quick-add-chips">
-                        <!-- Populated by renderQuickAddChips() -->
-                    </div>
-                    <div class="inline-search-wrapper">
-                        <i class="fas fa-search inline-search-icon"></i>
-                        <input type="text"
-                               id="inline-exercise-search"
-                               class="form-input"
-                               placeholder="Search exercises to add..."
-                               autocomplete="off">
-                    </div>
-                    <div id="inline-search-results" class="inline-search-results hidden">
-                        <!-- Populated by search -->
-                    </div>
+            <div class="field">
+                <div class="field-label">Schedule (optional)</div>
+                <div class="day-chips" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;">
+                    ${dayLabels.map((label, i) => `
+                        <div class="day-chip ${days.includes(dayValues[i]) ? 'active' : ''}"
+                             style="aspect-ratio:1;background:${days.includes(dayValues[i]) ? 'var(--primary)' : 'var(--bg-card)'};border:1.5px solid ${days.includes(dayValues[i]) ? 'var(--primary)' : 'var(--border-subtle)'};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:600;color:${days.includes(dayValues[i]) ? '#04201a' : 'var(--text-secondary)'};cursor:pointer;"
+                             onclick="toggleTemplateDay('${dayValues[i]}', this)">
+                            ${label}
+                        </div>
+                    `).join('')}
                 </div>
             </div>
 
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeTemplateEditor()">
-                    Cancel
-                </button>
-                <button type="button" class="btn btn-success" onclick="saveCurrentTemplate()">
-                    <i class="fas fa-save"></i> Save Template
-                </button>
+            <div class="sec-head"><h3>Exercises <span class="count">${currentEditingTemplate.exercises.length}</span></h3></div>
+
+            <!-- Estimated stats -->
+            <div id="template-est-stats" class="est-stats"></div>
+
+            <div id="template-exercises" class="template-exercises-list">
+                <!-- Populated by renderTemplateExercises() -->
             </div>
-        </form>
+
+            <div class="inline-add-exercise">
+                <div id="quick-add-chips" class="quick-add-chips">
+                    <!-- Populated by renderQuickAddChips() -->
+                </div>
+                <div class="inline-search-wrapper">
+                    <i class="fas fa-search inline-search-icon"></i>
+                    <input type="text"
+                           id="inline-exercise-search"
+                           class="form-input"
+                           placeholder="Search exercises to add..."
+                           autocomplete="off">
+                </div>
+                <div id="inline-search-results" class="inline-search-results hidden">
+                    <!-- Populated by search -->
+                </div>
+            </div>
+        </div>
+
+        <div class="page-footer">
+            <button class="btn-redesign" onclick="saveCurrentTemplate()">
+                <i class="fas fa-check"></i> Save Workout
+            </button>
+        </div>
     `;
 
     // Show as full-page section
@@ -885,6 +884,13 @@ function renderTemplateExercises() {
         container.appendChild(item);
     });
 
+    // Update the estimated stats
+    updateTemplateEstStats();
+
+    // Update exercise count
+    const countEl = document.querySelector('.sec-head .count');
+    if (countEl) countEl.textContent = currentEditingTemplate.exercises.length;
+
     // Add the superset selection action bar
     ensureSupersetBar(container);
 }
@@ -953,51 +959,39 @@ function createTemplateExerciseItem(exercise, index) {
     const item = document.createElement('div');
     item.className = 'template-exercise-item';
     item.dataset.exerciseIndex = index;
-    const totalExercises = currentEditingTemplate.exercises.length;
-    const isFirst = index === 0;
-    const isLast = index === totalExercises - 1;
 
     const group = exercise.group || null;
     const groupBadge = group
-        ? `<span class="superset-badge" style="background: var(--primary); color: var(--bg-app);">${escapeHtml(group)}</span>`
-        : '';
-    const ungroupBtn = group
-        ? `<button type="button" class="btn btn-secondary btn-small" onclick="ungroupTemplateExercise(${index})" aria-label="Ungroup" title="Remove from superset"><i class="fas fa-unlink"></i></button>`
+        ? `<span class="superset-badge" style="background: var(--primary); color: var(--bg-app); font-size: 0.6rem; padding: 1px 6px; border-radius: var(--radius-pill); margin-right: 4px;">${escapeHtml(group)}</span>`
         : '';
 
+    const weight = exercise.weight || 0;
+    const unit = AppState.globalUnit || 'lbs';
+    const displayWeight = unit === 'kg' ? Math.round(weight * 0.453592 * 2) / 2 : weight;
+
     item.innerHTML = `
-        <div class="exercise-row">
-            <div class="exercise-select-col">
-                <input type="checkbox" class="superset-select-checkbox" data-index="${index}" onchange="updateSupersetSelectionBar()">
-            </div>
-            <div class="exercise-reorder-buttons">
-                <button type="button" class="btn-reorder" onclick="moveTemplateExercise(${index}, 'up')" ${isFirst ? 'disabled' : ''} aria-label="Move up">
-                    <i class="fas fa-chevron-up"></i>
-                </button>
-                <button type="button" class="btn-reorder" onclick="moveTemplateExercise(${index}, 'down')" ${isLast ? 'disabled' : ''} aria-label="Move down">
-                    <i class="fas fa-chevron-down"></i>
-                </button>
-            </div>
-            <div class="exercise-info" onclick="editTemplateExercise(${index})">
-                <h5>${groupBadge} ${escapeHtml(exercise.name)}</h5>
-                <div class="exercise-details">
-                    ${exercise.sets} sets × ${exercise.reps} reps @ ${exercise.weight} lbs
-                    ${exercise.bodyPart ? ` • ${escapeHtml(exercise.bodyPart)}` : ''}
+        <div class="ex-row" onclick="editTemplateExercise(${index})" style="cursor:pointer;">
+            <i class="fas fa-grip-vertical ex-drag" style="color:var(--text-muted);font-size:0.9rem;padding:4px;margin-left:-4px;"></i>
+            <div class="ex-info" style="flex:1;min-width:0;">
+                <div class="ex-name" style="font-size:0.92rem;font-weight:600;color:var(--text-strong);margin-bottom:3px;">${groupBadge}${escapeHtml(exercise.name || exercise.machine || 'Exercise')}</div>
+                <div class="ex-meta" style="display:flex;align-items:center;gap:8px;font-size:0.72rem;color:var(--text-muted);">
+                    <span class="ex-meta-chip" style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);font-variant-numeric:tabular-nums;">${exercise.sets || 3} × ${exercise.reps || 10}${weight ? ` @ ${displayWeight} ${unit === 'kg' ? 'kg' : 'lb'}` : ''}</span>
                 </div>
-                <div class="exercise-equipment-line">
-                    <i class="fas fa-${exercise.equipment ? 'cogs' : 'plus-circle'}"></i>
-                    ${exercise.equipment ? escapeHtml(exercise.equipment) : '<span class="text-muted">Tap to set equipment</span>'}
-                </div>
+                ${exercise.equipment ? `
+                    <div class="ex-equip" style="display:flex;align-items:center;gap:4px;font-size:0.7rem;color:var(--text-secondary);margin-top:4px;">
+                        <i class="fas fa-cog" style="font-size:0.68rem;color:var(--primary);opacity:0.8;"></i> ${escapeHtml(exercise.equipment)}
+                    </div>
+                ` : ''}
             </div>
-            <div class="exercise-item-actions">
-                ${ungroupBtn}
-                <button type="button" class="btn btn-secondary btn-small" onclick="editTemplateExercise(${index})" aria-label="Edit exercise">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button type="button" class="btn btn-danger btn-small" onclick="removeTemplateExercise(${index})" aria-label="Delete exercise">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
+            <button class="ex-menu" style="width:32px;height:32px;border-radius:50%;background:transparent;color:var(--text-muted);display:flex;align-items:center;justify-content:center;border:none;flex-shrink:0;" onclick="event.stopPropagation(); toggleTemplateExerciseMenu(${index})">
+                <i class="fas fa-ellipsis-v"></i>
+            </button>
+        </div>
+        <div class="template-ex-overflow hidden" id="template-ex-menu-${index}" style="background:var(--bg-card-hi);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:4px 0;margin-bottom:8px;box-shadow:var(--shadow-md);">
+            <div style="padding:10px 14px;font-size:0.82rem;color:var(--text-main);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="editTemplateExercise(${index})"><i class="fas fa-pen" style="width:14px;color:var(--text-muted);"></i>Edit details</div>
+            <div style="padding:10px 14px;font-size:0.82rem;color:var(--text-main);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="moveTemplateExercise(${index}, 'up')"><i class="fas fa-arrow-up" style="width:14px;color:var(--text-muted);"></i>Move up</div>
+            <div style="padding:10px 14px;font-size:0.82rem;color:var(--text-main);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="moveTemplateExercise(${index}, 'down')"><i class="fas fa-arrow-down" style="width:14px;color:var(--text-muted);"></i>Move down</div>
+            <div style="border-top:1px solid var(--border-subtle);padding:10px 14px;font-size:0.82rem;color:var(--danger);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="removeTemplateExercise(${index})"><i class="fas fa-trash" style="width:14px;"></i>Remove</div>
         </div>
         <div class="exercise-inline-edit hidden" id="inline-edit-${index}">
             <div class="inline-edit-fields">
@@ -1037,6 +1031,98 @@ function createTemplateExerciseItem(exercise, index) {
     `;
 
     return item;
+}
+
+/**
+ * Toggle the overflow menu for a template exercise row.
+ */
+function toggleTemplateExerciseMenu(index) {
+    const menu = document.getElementById(`template-ex-menu-${index}`);
+    if (!menu) return;
+    // Close all other menus
+    document.querySelectorAll('.template-ex-overflow').forEach(m => {
+        if (m !== menu) m.classList.add('hidden');
+    });
+    menu.classList.toggle('hidden');
+}
+
+/**
+ * Select a category chip in the template editor.
+ */
+export function selectTemplateCategory(value, el) {
+    if (!currentEditingTemplate) return;
+    currentEditingTemplate.category = value;
+    // Update chip active states
+    const container = el.parentElement;
+    container.querySelectorAll('.chip').forEach(c => {
+        c.classList.remove('active');
+        c.style.removeProperty('color');
+        c.style.removeProperty('border-color');
+        c.style.removeProperty('background');
+    });
+    el.classList.add('active');
+}
+
+/**
+ * Toggle a day chip in the template editor schedule.
+ */
+export function toggleTemplateDay(day, el) {
+    if (!currentEditingTemplate) return;
+    if (!currentEditingTemplate.suggestedDays) currentEditingTemplate.suggestedDays = [];
+
+    const idx = currentEditingTemplate.suggestedDays.indexOf(day);
+    if (idx >= 0) {
+        currentEditingTemplate.suggestedDays.splice(idx, 1);
+        el.classList.remove('active');
+        el.style.background = 'var(--bg-card)';
+        el.style.borderColor = 'var(--border-subtle)';
+        el.style.color = 'var(--text-secondary)';
+    } else {
+        currentEditingTemplate.suggestedDays.push(day);
+        el.classList.add('active');
+        el.style.background = 'var(--primary)';
+        el.style.borderColor = 'var(--primary)';
+        el.style.color = '#04201a';
+    }
+}
+
+/**
+ * Update the estimated stats bar in the template editor.
+ */
+function updateTemplateEstStats() {
+    const container = document.getElementById('template-est-stats');
+    if (!container || !currentEditingTemplate) return;
+
+    const exercises = currentEditingTemplate.exercises || [];
+    if (exercises.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let totalSets = 0;
+    let totalReps = 0;
+    exercises.forEach(ex => {
+        const sets = ex.sets || 3;
+        const reps = ex.reps || 10;
+        totalSets += sets;
+        totalReps += sets * reps;
+    });
+    const estMinutes = Math.round(totalSets * 2.5); // ~2.5 min per set including rest
+
+    container.innerHTML = `
+        <div class="est-stat" style="text-align:center;">
+            <div class="est-val" style="font-size:1.1rem;font-weight:700;color:var(--text-strong);">${totalSets}</div>
+            <div class="est-label" style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Sets</div>
+        </div>
+        <div class="est-stat" style="text-align:center;">
+            <div class="est-val" style="font-size:1.1rem;font-weight:700;color:var(--text-strong);">${totalReps}</div>
+            <div class="est-label" style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Reps</div>
+        </div>
+        <div class="est-stat" style="text-align:center;">
+            <div class="est-val" style="font-size:1.1rem;font-weight:700;color:var(--text-strong);">~${estMinutes}m</div>
+            <div class="est-label" style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Est time</div>
+        </div>
+    `;
 }
 
 export function addExerciseToTemplate() {

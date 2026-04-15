@@ -1010,3 +1010,29 @@
     color: var(--text-muted);
     font-size: var(--font-xs);
 }
+
+/* ---- Redesigned Template Editor ---- */
+
+/* Exercise row in template editor */
+.ex-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    position: relative;
+}
+
+/* Estimated stats bar */
+.est-stats {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 12px;
+}
