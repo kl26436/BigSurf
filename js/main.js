@@ -93,6 +93,8 @@ import {
     clearSelectorCache,
     toggleTemplateEdit,
     searchWorkoutTemplates,
+    moveTemplateExerciseInline,
+    removeTemplateExerciseInline,
 } from './core/ui/template-selection.js';
 
 // Workout history UI functionality
@@ -598,6 +600,8 @@ window.clearEquipmentFilterCache = clearEquipmentFilterCache;
 window.clearSelectorCache = clearSelectorCache;
 window.toggleTemplateEdit = toggleTemplateEdit;
 window.searchWorkoutTemplates = searchWorkoutTemplates;
+window.moveTemplateExerciseInline = moveTemplateExerciseInline;
+window.removeTemplateExerciseInline = removeTemplateExerciseInline;
 
 window.closeTemplateModal = function () {
     const modal = document.getElementById('template-selection-modal');

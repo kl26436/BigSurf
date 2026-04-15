@@ -414,9 +414,18 @@ function renderSingleTemplateRow(template) {
     if (isExpanded) {
         const exerciseListHtml = exercisesArray.map((ex, i) => {
             const exName = getExerciseName(ex);
+            const isFirst = i === 0;
+            const isLast = i === exercisesArray.length - 1;
             return `
                 <div class="template-editor__exercise">
-                    <span class="template-editor__number">${i + 1}</span>
+                    <div class="template-editor__reorder">
+                        <button class="template-editor__reorder-btn" data-action="moveExerciseUp" data-template-id="${escapeAttr(templateId)}" data-index="${i}" ${isFirst ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                        <button class="template-editor__reorder-btn" data-action="moveExerciseDown" data-template-id="${escapeAttr(templateId)}" data-index="${i}" ${isLast ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
                     <span class="template-editor__exercise-name">${escapeHtml(exName)}</span>
                     <button class="template-editor__remove-btn" data-action="removeTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-index="${i}">
                         <i class="fas fa-times"></i>
@@ -459,6 +468,7 @@ function renderSingleTemplateRow(template) {
                 <div class="row-card__title">${escapeHtml(templateName)}</div>
                 <div class="row-card__subtitle">${exerciseCount} exercises${timeInfo}</div>
             </div>
+            <i class="fas fa-chevron-down template-row__chevron"></i>
             <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
                 <i class="fas fa-play"></i>
             </button>
@@ -472,6 +482,59 @@ function renderSingleTemplateRow(template) {
  */
 export function toggleTemplateEdit(templateId) {
     expandedTemplateId = (expandedTemplateId === templateId) ? null : templateId;
+    renderWorkoutSelectorUI();
+}
+
+/**
+ * Move an exercise up or down within a template's exercise list (inline editor).
+ */
+export async function moveTemplateExerciseInline(templateId, index, direction) {
+    const template = loadedTemplates.find(t => t._id === templateId);
+    if (!template) return;
+
+    const exercises = normalizeExercisesToArray(template.exercises);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= exercises.length) return;
+
+    // Swap
+    [exercises[index], exercises[targetIndex]] = [exercises[targetIndex], exercises[index]];
+    template.exercises = exercises;
+
+    // Save to Firebase
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const wm = new FirebaseWorkoutManager(AppState);
+        await wm.saveWorkoutTemplate({ ...template, id: template._id, exercises });
+    } catch (err) {
+        console.error('Error reordering exercise:', err);
+    }
+
+    renderWorkoutSelectorUI();
+}
+
+/**
+ * Remove an exercise from a template (inline editor).
+ */
+export async function removeTemplateExerciseInline(templateId, index) {
+    const template = loadedTemplates.find(t => t._id === templateId);
+    if (!template) return;
+
+    const exercises = normalizeExercisesToArray(template.exercises);
+    const name = getExerciseName(exercises[index]);
+    if (!confirm(`Remove "${name}" from this template?`)) return;
+
+    exercises.splice(index, 1);
+    template.exercises = exercises;
+
+    // Save to Firebase
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const wm = new FirebaseWorkoutManager(AppState);
+        await wm.saveWorkoutTemplate({ ...template, id: template._id, exercises });
+    } catch (err) {
+        console.error('Error removing exercise:', err);
+    }
+
     renderWorkoutSelectorUI();
 }
 
@@ -493,8 +556,12 @@ function setupSelectorDelegation(container) {
             if (action === 'startTemplateRow') {
                 const workoutName = actionEl.dataset.workout;
                 if (workoutName) window.startWorkout(workoutName);
+            } else if (action === 'moveExerciseUp') {
+                moveTemplateExerciseInline(templateId, index, 'up');
+            } else if (action === 'moveExerciseDown') {
+                moveTemplateExerciseInline(templateId, index, 'down');
             } else if (action === 'removeTemplateExercise') {
-                window.removeTemplateExercise(templateId, index);
+                removeTemplateExerciseInline(templateId, index);
             } else if (action === 'addTemplateExercise') {
                 window.editTemplate(templateId, isDefault);
             } else if (action === 'editTemplateFull') {

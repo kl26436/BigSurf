@@ -583,6 +583,20 @@
     flex-shrink: 0;
 }
 
+/* Expand/collapse chevron */
+.template-row__chevron {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+    opacity: 0.5;
+}
+.template-row.expanded .template-row__chevron {
+    transform: rotate(180deg);
+    opacity: 1;
+    color: var(--primary);
+}
+
 /* Row content layout */
 .template-row .row-card__content {
     flex: 1;
@@ -670,13 +684,34 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-subtle);
 }
-.template-editor__number {
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-    font-weight: 600;
-    min-width: 18px;
-    text-align: center;
+/* Reorder up/down buttons */
+.template-editor__reorder {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
     flex-shrink: 0;
+}
+.template-editor__reorder-btn {
+    width: 24px;
+    height: 18px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: var(--font-2xs, 10px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0.6;
+}
+.template-editor__reorder-btn:active:not(:disabled) {
+    color: var(--primary);
+    opacity: 1;
+}
+.template-editor__reorder-btn:disabled {
+    opacity: 0.15;
+    cursor: default;
 }
 .template-editor__exercise-name {
     flex: 1;
