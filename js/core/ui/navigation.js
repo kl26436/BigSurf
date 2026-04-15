@@ -14,6 +14,7 @@ const SECTION_IDS = [
     'metric-detail-section',
     'muscle-group-detail-section',
     'exercise-detail-section',
+    'composition-detail-section',
     'exercise-manager-section',
     'location-management-section',
     'equipment-library-section',
@@ -128,6 +129,10 @@ function routeToView(view) {
             showExerciseDetailView();
             break;
 
+        case 'composition-detail':
+            showCompositionDetailView();
+            break;
+
         case 'history':
             showHistory();
             break;
@@ -219,6 +224,15 @@ async function showExerciseDetailView() {
     const { renderExerciseDetail } = await import('./exercise-detail-ui.js');
     const { AppState } = await import('../utils/app-state.js');
     renderExerciseDetail(AppState.activeExercise);
+}
+
+async function showCompositionDetailView() {
+    const section = document.getElementById('composition-detail-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('dashboard');
+    const { renderCompositionDetail } = await import('./composition-detail-ui.js');
+    renderCompositionDetail();
 }
 
 async function showAICoachView() {
@@ -447,6 +461,10 @@ export function showMuscleGroupDetail(bodyPart) {
     const { AppState } = window;
     if (AppState) AppState.activeMuscleGroup = bodyPart;
     navigateTo('muscle-group-detail');
+}
+
+export function showCompositionDetail() {
+    navigateTo('composition-detail');
 }
 
 export function showExerciseDetail(exerciseName) {

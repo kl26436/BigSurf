@@ -470,8 +470,9 @@ async function renderCompositionCard(bwData) {
     return `
         <div class="dash-section-head">
             <h3>Composition</h3>
+            <a onclick="showCompositionDetail()">Details →</a>
         </div>
-        <div class="bc-card">
+        <div class="bc-card" onclick="showCompositionDetail()"
             <div class="bc-row">
                 ${segments.length ? chartDonut({ segments, size: 60 }) : '<div class="bc-donut-empty"></div>'}
                 <div class="bc-legend">
@@ -493,11 +494,14 @@ async function renderCompositionCard(bwData) {
 
 function renderConnectPrompt() {
     return `
-        <div class="connect-card" style="margin-top:var(--space-12);" onclick="navigateTo('settings')">
-            <i class="fas fa-link"></i>
+        <div class="dash-section-head">
+            <h3>Composition</h3>
+        </div>
+        <div class="connect-card" onclick="showCompositionDetail()">
+            <i class="fas fa-circle-nodes"></i>
             <div class="connect-card__info">
                 <div class="connect-card__title">Track Body Composition</div>
-                <div class="connect-card__sub">Add weight entries or upload a DEXA scan</div>
+                <div class="connect-card__sub">Upload a DEXA scan or log body weight</div>
             </div>
             <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i>
         </div>
