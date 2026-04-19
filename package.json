@@ -12,7 +12,9 @@
     "lint": "eslint js/",
     "lint:fix": "eslint js/ --fix",
     "format": "prettier --write \"js/**/*.js\" \"*.css\" \"*.html\"",
-    "format:check": "prettier --check \"js/**/*.js\" \"*.css\" \"*.html\""
+    "format:check": "prettier --check \"js/**/*.js\" \"*.css\" \"*.html\"",
+    "audit:design": "node scripts/design-audit.js",
+    "audit:design:strict": "node scripts/design-audit.js --strict"
   },
   "repository": {
     "type": "git",

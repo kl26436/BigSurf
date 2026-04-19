@@ -202,14 +202,12 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
   - Modifier: `block--modifier` (two hyphens)
   - Legacy hyphen-only classes acceptable where they exist — rename when doing neighboring work
   - Utility classes (`.text-primary`, `.btn-block`, `.hidden`) are exempt — BEM applies to components, not utilities
-- [ ] **Write [styles/components/README.md](styles/components/README.md)** — one-page reference: "When you need a list item with [icon][title/subtitle][trailing] → `.row-card`. Section hero → `.hero-card`. Search field → `.field-search`. Action in page header → `.btn-save` (transparent) or `.btn-primary` (solid pill)." First thing a new contributor reads. (Opportunity 9 from design-critique-system.md)
-- [ ] **Add a design-system audit script** (Opportunity 10 from design-critique-system.md). A Node script runnable in CI that counts:
-  - Inline `style="` occurrences in JS (fail if > 30)
-  - Raw `font-size: Xrem/px` in pages/*.css (fail if > 20)
-  - Raw `border-radius: Xpx` in pages/*.css (fail if > 10)
-  - Raw `rgba(...)` / hex in pages/*.css (fail if > 10)
-  - Duplicate class definitions across files (report list)
-  Doesn't have to block CI day one — start by tracking the trend.
+- [x] **[styles/components/README.md](styles/components/README.md) written** — "When you need X, use Y" quick-reference table covering row/hero cards, section headers, chips, field-search, field+stepper, primary/secondary/icon buttons, segmented/toggle, grouped rows (stacked variant included), empty states, completion summary, active pill, BW banner. Plus a "don't reinvent" list of consolidated class names, BEM naming rules, token scale reference, and audit usage.
+- [x] **Design-system audit script shipped** at [scripts/design-audit.js](scripts/design-audit.js). Counts 6 metrics (inline styles, raw font-size, raw border-radius px, raw rgba, raw hex, cross-file duplicate class defs). Budgets calibrated to the current baseline so CI catches *regressions*, not the pre-existing debt. Three npm scripts:
+  - `npm run audit:design` — print metrics table
+  - `npm run audit:design -- --list` — list offending file:line locations
+  - `npm run audit:design:strict` — exit 1 if any budget exceeded (CI mode)
+  Baseline recorded in the README. Ratchet the budget in `scripts/design-audit.js` whenever you beat a number.
 
 ---
 
@@ -295,14 +293,14 @@ Walk on 375px viewport after next dev deploy:
 ## 📦 Phase E — Housekeeping (safe anytime)
 
 ### Delete obsolete mockups [CODE-AUDIT.md #9]
-- [ ] `mockups/dashboard-final.html` (superseded by v2)
-- [ ] `mockups/dashboard-options.html`
-- [ ] `mockups/dashboard-health-style.html`
-- [ ] `mockups/dashboard-active-workout.html`
-- [ ] `mockups/active-workout-locked.html`
-- [ ] `mockups/stats-redesign.html`
+- [x] `mockups/dashboard-final.html` — already gone
+- [x] `mockups/dashboard-options.html` — already gone
+- [x] `mockups/dashboard-health-style.html` — already gone
+- [x] `mockups/dashboard-active-workout.html` — already gone
+- [x] `mockups/active-workout-locked.html` — already gone
+- [x] `mockups/stats-redesign.html` — already gone
 
-**Keep**: `active-workout-v2.html`, `dashboard-final-v2.html`, `forms-redesign.html`, `settings-onboarding-redesign.html`, `features-redesign.html`, `create-workout-redesign.html`, `workout-page-flow.html`
+**Kept (active reference)**: `active-workout-v2.html`, `dashboard-final-v2.html`, `forms-redesign.html`, `settings-onboarding-redesign.html`, `features-redesign.html`, `create-workout-redesign.html`, `workout-page-flow.html`, `exercise-equipment-library-redesign.html`, `history-redesign.html`, `workout-selector-redesign.html`
 
 ### Delete obsolete implementation MDs [CODE-AUDIT.md #8]
 - [ ] `UX-IMPLEMENTATION-GUIDE.md` (superseded by Master)
