@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v6.1-phase-c';
+const CACHE_NAME = 'big-surf-v6.2-workout-css-deleted';
 const STATIC_ASSETS = [
   '/index.html',
   '/styles/index.css',
@@ -14,7 +14,6 @@ const STATIC_ASSETS = [
   '/styles/components/nav.css',
   '/styles/components/empty-states.css',
   '/styles/pages/app-shell.css',
-  '/styles/pages/workout.css',
   '/styles/pages/templates.css',
   '/styles/pages/history.css',
   '/styles/pages/stats.css',

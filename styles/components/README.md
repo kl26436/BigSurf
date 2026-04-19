@@ -73,16 +73,16 @@ node scripts/design-audit.js --list   # lists the actual offending lines
 node scripts/design-audit.js --strict # exits 1 if any budget exceeded (for CI)
 ```
 
-Baseline at end of Phase G (budgets — trend down as you ship):
+Baseline after workout.css deletion (budgets — trend down as you ship):
 
 | Metric | Current | Budget | Notes |
 |---|---|---|---|
 | Inline `style="..."` in JS | 161 | 170 | V2 files + specific-file extractions drove this from 333 |
-| Raw `font-size` in `pages/` | 48 | 55 | V2 files are clean; legacy pages remain |
-| Raw `border-radius: Xpx` in `pages/` | 6 | 10 | Mostly legacy workout.css |
-| Raw `rgba()` in `pages/` | 20 | 25 | Rest-timer overlays + a few legacy tints |
-| Raw `#hex` in `pages/` | 8 | 10 | Mostly dark gradients in map card / workout.css |
-| Duplicate class defs (cross-file) | 27 | 30 | Falls to ~8 once deprecated workout.css is deleted |
+| Raw `font-size` in `pages/` | 48 | 55 | Legacy history.css / exercise-lib.css carry the rest |
+| Raw `border-radius: Xpx` in `pages/` | 4 | 5 | Near zero |
+| Raw `rgba()` in `pages/` | 9 | 12 | Rest-timer overlays + a few legacy tints |
+| Raw `#hex` in `pages/` | 7 | 8 | Mostly dark gradients in map card |
+| Duplicate class defs (cross-file) | 12 | 15 | Reset/utilities overlaps; exercise-lib × components/modals |
 
 When you beat a number, ratchet the budget in [scripts/design-audit.js](../../scripts/design-audit.js).
 

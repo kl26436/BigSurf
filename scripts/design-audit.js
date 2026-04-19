@@ -18,24 +18,17 @@ const PAGES_DIR = path.join(ROOT, 'styles', 'pages');
 const COMPONENTS_DIR = path.join(ROOT, 'styles', 'components');
 const STYLES_ROOT = path.join(ROOT, 'styles');
 
-// Budgets are calibrated against the baseline at end of Phase G (Nov 2026).
-// Numbers should trend DOWN as cleanup progresses — ratchet the budget every
-// time you successfully beat it. Overshoot in --strict mode fails CI.
-//
-// Why rawFontSizeInPages is still high: legacy pages/ files (history.css,
-// exercise-lib.css, deprecated workout.css) carry the bulk. The V2 files
-// (dashboard-v2, active-workout-v2) are clean. See DESIGN-BACKLOG Phase D.
-//
-// Why duplicateClassDefs is high: deprecated workout.css (not imported but
-// still in-tree) shares ~15 class names with canonical files. Deleting
-// workout.css drops the count to ~8.
+// Budgets ratcheted after workout.css deletion (Nov 2026). Remaining debt
+// is mostly legacy history.css / exercise-lib.css raw values and a handful
+// of cross-file dupes between reset.css / utilities.css. Trend these down
+// with each PR — re-ratchet when you beat a number.
 const BUDGETS = {
     inlineStylesInJs: 170,
     rawFontSizeInPages: 55,
-    rawRadiusPxInPages: 10,
-    rawRgbaInPages: 25,
-    rawHexInPages: 10,
-    duplicateClassDefs: 30,
+    rawRadiusPxInPages: 5,
+    rawRgbaInPages: 12,
+    rawHexInPages: 8,
+    duplicateClassDefs: 15,
 };
 
 const STRICT = process.argv.includes('--strict');
