@@ -4,6 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
+import { formatStatus } from '../utils/workout-helpers.js';
 
 // ===================================================================
 // MAIN HISTORY DISPLAY FUNCTION
@@ -306,7 +307,7 @@ function showWorkoutDetailModal(workout) {
         <div class="workout-detail-summary">
             <div class="workout-meta">
                 <div class="meta-item">
-                    <strong>Status:</strong> ${escapeHtml(workout.status?.charAt(0).toUpperCase() + workout.status?.slice(1) || 'Unknown')}
+                    <strong>Status:</strong> ${escapeHtml(formatStatus(workout.status) || 'Unknown')}
                 </div>
                 <div class="meta-item">
                     <strong>Duration:</strong> ${escapeHtml(String(workout.duration || 'Unknown'))}m

@@ -6,7 +6,7 @@ import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, clo
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { countReassignmentImpact, reassignEquipment } from '../data/data-manager.js';
 import { setBottomNavVisible } from './navigation.js';
-import { getExerciseName } from '../utils/workout-helpers.js';
+import { getExerciseName, formatBodyPart } from '../utils/workout-helpers.js';
 
 let allExercises = [];
 let filteredExercises = [];
@@ -140,7 +140,7 @@ export function selectBodyPartCategory(bodyPart) {
     // Update title
     const title = document.getElementById('exercise-list-title');
     if (title) {
-        title.textContent = bodyPart ? `${bodyPart} Exercises` : 'All Exercises';
+        title.textContent = bodyPart ? `${formatBodyPart(bodyPart)} Exercises` : 'All Exercises';
     }
 
     // Reset equipment filter pills

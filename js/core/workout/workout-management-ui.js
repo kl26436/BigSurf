@@ -4,6 +4,7 @@ import { getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
 import { saveWorkoutData } from '../data/data-manager.js';
+import { formatCategory } from '../utils/workout-helpers.js';
 import { reorderTemplateExercise, normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
 import { getSessionLocation, detectLocation } from '../features/location-service.js';
 import { setBottomNavVisible } from '../ui/navigation.js';
@@ -189,7 +190,7 @@ export async function selectWorkoutCategory(category) {
 
     // Update title
     if (titleEl) {
-        titleEl.textContent = category ? `${category} Workouts` : 'All Workouts';
+        titleEl.textContent = category ? `${formatCategory(category)} Workouts` : 'All Workouts';
     }
 
     // Render filtered templates

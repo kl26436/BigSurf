@@ -4,6 +4,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { Config, debugLog } from '../utils/config.js';
+import { formatBodyPart } from '../utils/workout-helpers.js';
 
 // ===================================================================
 // BODY PART MAPPING
@@ -362,7 +363,7 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
     const highVolume = volume.filter(v => v.status === 'high');
 
     if (highVolume.length > 0) {
-        const parts = highVolume.map(v => v.bodyPart).join(', ');
+        const parts = highVolume.map(v => formatBodyPart(v.bodyPart)).join(', ');
         insights.push({
             type: 'volume-high',
             severity: 'warning',
@@ -377,7 +378,7 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
             type: 'volume-low',
             severity: 'info',
             icon: 'fa-chart-bar',
-            message: `${top.bodyPart} volume is low this week (${top.weeklySets} sets). ${top.recommendation}`,
+            message: `${formatBodyPart(top.bodyPart)} volume is low this week (${top.weeklySets} sets). ${top.recommendation}`,
         });
     }
 

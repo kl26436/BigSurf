@@ -1,7 +1,7 @@
 // Clean Workout History Module with Calendar View - core/workout-history.js
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displayWeight } from '../ui/ui-helpers.js';
 import { getDateString } from '../utils/date-helpers.js';
-import { getExerciseName } from '../utils/workout-helpers.js';
+import { getExerciseName, formatStatus, formatCategory, CATEGORY_LABELS } from '../utils/workout-helpers.js';
 import { debugLog, CATEGORY_ICONS } from '../utils/config.js';
 
 export function getWorkoutHistory(appState) {
@@ -469,11 +469,6 @@ export function getWorkoutHistory(appState) {
                 arr.forEach(w => usedCategories.add((w.category || 'other').toLowerCase()));
             });
 
-            const categoryLabels = {
-                push: 'Push', pull: 'Pull', legs: 'Legs', core: 'Core',
-                cardio: 'Cardio', arms: 'Arms', other: 'Other',
-            };
-
             // Phase C polish: hide the legend entirely when there are fewer than 4
             // distinct categories this month — icons are self-explanatory for small sets.
             if (usedCategories.size < 4) {
@@ -483,7 +478,7 @@ export function getWorkoutHistory(appState) {
                 legendEl.classList.remove('hidden');
                 const categoryItems = [...usedCategories].map(cat => {
                     const icon = CATEGORY_ICONS[cat] || CATEGORY_ICONS.other;
-                    const label = categoryLabels[cat] || cat.charAt(0).toUpperCase() + cat.slice(1);
+                    const label = CATEGORY_LABELS[cat] || formatCategory(cat);
                     return `<span class="legend-item"><i class="fas ${icon} cal-icon cal-icon--${cat}"></i> ${label}</span>`;
                 }).join('');
 
@@ -924,7 +919,7 @@ export function getWorkoutHistory(appState) {
                     <strong class="text-secondary">Status:</strong>
                     <span class="wh-detail-status--${statusModifier}">
                         <i class="fas fa-${workout.status === 'completed' ? 'check-circle' : workout.status === 'cancelled' ? 'times-circle' : 'exclamation-circle'}"></i>
-                        ${escapeHtml(workout.status.charAt(0).toUpperCase() + workout.status.slice(1))}
+                        ${escapeHtml(formatStatus(workout.status))}
                     </span>
 
                     ${
@@ -1278,7 +1273,7 @@ export function getWorkoutHistory(appState) {
 
         <div class="workout-detail-summary">
             <div class="workout-meta">
-                <div><strong>Status:</strong> ${escapeHtml(String(workoutStatus))}</div>
+                <div><strong>Status:</strong> ${escapeHtml(formatStatus(workoutStatus))}</div>
                 <div><strong>Duration:</strong> ${escapeHtml(String(formattedDuration))}</div>
                 <div><strong>Progress:</strong> ${parseInt(this.calculateProgress(workout)) || 0}%</div>
             </div>
@@ -1352,9 +1347,9 @@ export function getWorkoutHistory(appState) {
             <div class="wh-detail-meta">
                 <div class="wh-detail-meta__grid wh-detail-meta__grid--compact">
                     <strong class="text-secondary">Status:</strong>
-                    <span class="text-success">${escapeHtml(calendarWorkout.status)}</span>
+                    <span class="text-success">${escapeHtml(formatStatus(calendarWorkout.status))}</span>
                     <strong class="text-secondary">Category:</strong>
-                    <span>${escapeHtml(calendarWorkout.category)}</span>
+                    <span>${escapeHtml(formatCategory(calendarWorkout.category))}</span>
                 </div>
             </div>
             <p class="wh-detail-limited">Limited workout details available. This workout may have been logged manually or sync data is incomplete.</p>
