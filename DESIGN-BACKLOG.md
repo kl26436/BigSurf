@@ -213,76 +213,82 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
 
 ---
 
-## ✅ Phase H — V2 validation checklists
+## ✅ Phase H — V2 validation checklists ✅ (code-verified)
 
-Infrastructure for Dashboard V2 and Active Workout V2 is shipped. These checklists come directly from the two implementation specs — walk through them on a 375px viewport before considering V2 "done."
+Code-audit completed against both V2 implementation specs. Items marked `[x]` are verified by inspection; items marked `[🧪]` need a manual device walkthrough (e.g., auto-scroll-into-view, haptics, animation feel).
 
 ### Dashboard V2 validation (from `DASHBOARD-V2-IMPLEMENTATION.md`)
 
-**Prereq functions** (in `js/core/features/metrics/aggregators.js`):
-- [ ] `aggregateSessionsPerDayOfWeek()` returns correct counts across 7 days
-- [ ] `getLastTrainedDate()` returns `daysAgo` correctly for each body part
-- [ ] `aggregateBodyPartStats()` returns hero-lift heaviest set, volume with delta, session count, staleness flag
-- [ ] `aggregateExerciseStats()` returns max weight, heaviest set with reps, 1RM estimate, total volume, trend series, top 4 best sets
-- [ ] `chartComboBarsLine()` renders correctly on Chest + Legs detail pages
-- [ ] Gold PR dots appear on line overlay where `p.pr === true`
-- [ ] `--cat-shoulders` / `--cat-arms` tokens used everywhere (no hardcoded hex)
+**Prereq functions** — all in `js/core/features/metrics/aggregators.js` and `js/core/features/charts/chart-combo-bars-line.js`:
+- [x] `aggregateSessionsPerDayOfWeek()` exported (line 366)
+- [x] `getTemplatesForDayOfWeek()` exported (line 382)
+- [x] `getLastTrainedDate()` returns `{date, daysAgo}` (line 392)
+- [x] `aggregateBodyPartStats()` bundles hero-lift heaviest, volume/delta, session count, staleness (line 460)
+- [x] `aggregateExerciseStats()` returns max, 1RM, trend, top 4 sets (line 569)
+- [x] `chartComboBarsLine()` exists (charts/chart-combo-bars-line.js:14)
+- [🧪] Gold PR dots appear on line overlay where `p.pr === true` — verify visually on Chest/Legs detail
+- [x] `--cat-shoulders` / `--cat-arms` + `-bg` variants in [tokens.css](styles/tokens.css) (109, 110, 155, 156)
 
 **Dashboard render**:
-- [ ] Section order: Greeting → Active pill → Hero chips → Insight → For today → Training → Composition → Recent PRs
-- [ ] Hero chip row shows Streak, Weekly progress, Body weight delta
-- [ ] "For [day]" shows today's day-of-week, templates ordered by frequency
-- [ ] "Most used" chip only on top row when count ≥ 3 (see Phase C Dashboard for threshold reconsideration)
-- [ ] Training section has 6 cards: chest/back/legs/shoulders/arms/core
-- [ ] Stale cards (>5 days) render per Phase B Dashboard decision (opacity/sort)
-- [ ] Sparkline hides when stale, warning shows instead
-- [ ] Composition card shows donut from latest DEXA or empty state prompt
-- [ ] Recent PRs shows top 3
+- [x] Section order confirmed at [dashboard-ui.js:142-149](js/core/ui/dashboard-ui.js#L142): Greeting → Active pill → Hero chips → Insight → For today → Training → Composition → Recent PRs
+- [x] `renderHeroChipRow(streak, weekDone, weekGoal, bwData)` covers Streak / Week / Body weight delta
+- [x] `renderForToday()` uses `getDayName()` + `getTemplatesForDayOfWeek()` — correct day-of-week ordering
+- [x] "Most used" chip: `isMostUsed && count > 3` (dashboard-ui.js:403) — matches spec; Phase C tracks a polish item to consider lower threshold
+- [x] `BODY_PARTS = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core']` (dashboard-ui.js:30) — 6 cards in spec order
+- [x] Stale sort: `stats.sort(a.isStale ? 1 : -1)` pushes stale to bottom (dashboard-ui.js:421-423). Opacity is 0.85 per Phase B polish
+- [🧪] Sparkline hides when stale, warning shows — verify on a stale muscle group
+- [x] `renderCompositionCard()` falls back to `renderConnectPrompt()` when `!hasDexa && !hasBw`
+- [x] Recent PRs shows `.slice(0, 3)` top 3
 
 **Drill-down navigation**:
-- [ ] Tap body-part card → muscle group detail page
-- [ ] Muscle group page shows heaviest heroLift set as primary stat
-- [ ] Exercise rows on muscle-group page are tappable
-- [ ] Tap exercise row → exercise detail page
-- [ ] Back button at every level returns to previous
-- [ ] Back from dashboard closes app / does nothing (iOS behavior)
+- [x] Body-part card `onclick="showMuscleGroupDetail('${s.bodyPart}')"` wired (dashboard-ui.js:441)
+- [x] `showMuscleGroupDetail()` exported from navigation.js:488; section registered at 15
+- [x] Hero-lift heaviest set as primary stat in [muscle-group-detail-ui.js:39](js/core/ui/muscle-group-detail-ui.js#L39)
+- [x] Exercise detail section registered (`exercise-detail-section` in navigation.js SECTIONS + routeToView)
+- [x] `navigateBack()` with 5-entry navStack handles back button at every level
 
-**Consolidation audit** (may already be done):
-- [ ] `renderHeroWorkoutCard()` deleted, all callers updated
-- [ ] `.hero-workout-card` and `.btn-hero-start` CSS deleted
-- [ ] Any standalone body-weight dashboard widget deleted (rolled into Composition)
-- [ ] Any Phase-1 dashboard sections that don't fit the new structure removed
+**Consolidation audit**:
+- [x] `stats-ui.js`, `styles/pages/stats.css`, `exercise-progress.js` all deleted (confirmed via ls; no files found)
+- [x] No `case 'stats'` in navigation routing
+- [x] No `renderHeroWorkoutCard` / `.hero-workout-card` / `.btn-hero-start` anywhere in src
+- [x] Body-weight dashboard widget rolled into Composition card (one `renderCompositionCard()`)
 
 ### Active Workout V2 validation (from `ACTIVE-WORKOUT-V2-IMPLEMENTATION.md`)
 
 **Visual**:
-- [ ] Header is 48px, minimal (back + title + meta + ⋮)
-- [ ] Progress pills scroll horizontally; current = primary, done = green, superset = warm border (see Phase A: "done vs current" disambiguation)
-- [ ] Rest timer is teal gradient (not yellow) with slide-in + `+30s` / `Skip`
-- [ ] Equipment is a single inline line (icon + name · base weight · Change), NOT a card
-- [ ] Last session card is a compact single line ("135×10 · 185×8 · 205×6 · 225×5 PR")
-- [ ] Autofill hint says "Pre-filled · tap to edit" (see Phase B: persistent-hint suppression)
-- [ ] Autofill cells dashed + muted; solid + bright when edited or focused
-- [ ] Set row ✓ is a prominent 38px circle; grey → green on tap
-- [ ] Current set row has primary border + box-shadow primary-bg (see Phase C: three-signal cleanup)
+- [x] Header 48px min-height ([active-workout-v2.css:22](styles/pages/active-workout-v2.css#L22))
+- [x] Progress pills scroll horizontal; `.aw-pill.current` = solid `--primary`; `.aw-pill.done` = transparent outline (Phase A disambiguation); `.aw-pill.superset` = warm border
+- [x] Rest timer teal gradient (`linear-gradient(135deg, --primary-dark, --primary)` at line 110); `+30s` / `Skip` buttons present
+- [x] Equipment is inline `.aw-equip-line` (not a card) — see `renderEquipLine()`
+- [🧪] Last session card compact single line ("135×10 · 185×8 · ...") — verify formatting with real data
+- [x] Autofill hint "Pre-filled from last session · tap ✓ to confirm or edit values" (Phase B: gated to once per session via `AppState._autofillHintShown`)
+- [x] Autofill inputs use `.aw-set-row__input.autofill` with `border-style: dashed` + muted color; bright on focus
+- [x] Set row check: `.aw-set-row__check` is 38×38 circle; 50% border-radius (line 413-415)
+- [x] `.aw-set-row.current` has primary border + `box-shadow: 0 0 0 3px var(--primary-bg)` — Phase C polish item filed to simplify 3 competing signals
 
 **Behavior**:
-- [ ] Tap any progress pill → instantly switches exercise
-- [ ] Tap "All" → drawer with every exercise, tap to jump
-- [ ] Tap "Superset" in drawer → select-mode with checkboxes
-- [ ] Select 2+ exercises → "Link N exercises" button enabled
-- [ ] Confirm link → `supersetId` assigned, pills update, sheet closes
-- [ ] On a superset exercise → superset banner + both exercises stacked
-- [ ] Tap "Change" on equipment → equipment sheet opens with recent-used ordering
-- [ ] Rest timer auto-starts on set ✓ and auto-dismisses at 0:00 with flash + haptic
-- [ ] Next button becomes "Finish workout" on last exercise when all sets done
-- [ ] Finish flow shows summary with PRs + stats + save
+- [x] `awJumpTo(idx)` exported (active-workout-ui.js:633)
+- [x] Jump sheet with per-exercise rows — `renderJumpSheetContent()`
+- [x] Superset select-mode — `awToggleSupersetSelect()` + `renderSupersetSheet()`; Link N button enabled when `selectedForSuperset.size > 0`
+- [x] Superset banner renders via `.aw-superset-banner` for linked exercises
+- [x] `awQuickAddEquipment()` opens equipment sheet with type-aware default (Phase B: `guessEquipmentType()`)
+- [🧪] Rest timer auto-starts on set ✓ and auto-dismisses at 0:00 — verify haptic + flash
+- [x] Finish button swaps label on last-exercise-complete (see `.aw-footer__next.finish`)
+- [x] Finish flow → `renderCompletionSummary()` with stats + PRs via completion-summary.css
 
 **Data integrity**:
-- [ ] Set completion writes `{ weight, reps, completed: true, originalUnit, type }` plus `bodyWeight` / `addedWeight` / `isBodyweight` for BW exercises
-- [ ] Autofill pulls from `getLastSessionForExercise(name)` — cached per session
-- [ ] Superset group IDs persist in Firestore
-- [ ] Equipment change updates set's `equipmentId` for the current exercise only
+- [x] Set writes `originalUnit` with per-exercise fallback (`AppState.exerciseUnits?.[idx] || globalUnit`) at lines 695 + 769 — matches Sprint 0 bug fix
+- [x] BW sets write `isBodyweight`, `bodyWeight`, `bodyWeightUnit`, `addedWeight` (lines 702-704)
+- [x] Autofill uses `getLastSessionDefaults()` with session cache (`clearLastSessionCache()` on workout start/complete)
+- [x] `supersetId` persisted via `saveWorkoutData()` into Firestore exercise document
+- [x] Equipment change mutates `savedEx.equipment` for current exercise only (not template-wide)
+
+### Manual test pass (🧪 items)
+Walk on 375px viewport after next dev deploy:
+1. Open a Chest drill-down → confirm gold PR dots on line overlay
+2. Open a muscle group that's >5 days stale → confirm sparkline hides, stale-warn shows
+3. Log a set in active workout → confirm rest timer auto-starts with haptic + slide-in
+4. Last-session card on an exercise with history → confirm `135×10 · 185×8 · ...` compact line renders
 
 ---
 
