@@ -51,6 +51,15 @@
     white-space: nowrap;
 }
 
+/* Small eyebrow label above the title (used by Manual Workout "Past Workout") */
+.page-header__eyebrow {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+}
+
 /* Solid-pill save button. Replaces legacy `.btn-save` (transparent text). */
 .page-header__save {
     background: var(--primary);

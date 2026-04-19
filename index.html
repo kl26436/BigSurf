@@ -728,14 +728,19 @@
 
                 <!-- Step 2: Enter Exercise Data -->
                 <div id="manual-step-2" class="manual-step hidden">
-                    <div class="step-header">
-                        <button class="btn btn-secondary btn-small" onclick="backToManualStep1()">
-                            <i class="fas fa-arrow-left"></i> Back
-                        </button>
-                        <div class="step-info">
-                            <h4 id="manual-workout-title-display">Your Workout</h4>
-                            <p id="manual-workout-date-display">Date</p>
+                    <div class="page-header manual-page-header">
+                        <div class="page-header__left">
+                            <button class="page-header__back" onclick="backToManualStep1()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+                            <div>
+                                <div class="page-header__eyebrow">Past Workout</div>
+                                <div class="page-header__title" id="manual-workout-title-display">Your Workout</div>
+                            </div>
                         </div>
+                        <button class="page-header__save" onclick="saveManualWorkout()">Save</button>
+                    </div>
+                    <div class="manual-meta-chips">
+                        <button class="chip" onclick="editManualDate()"><i class="far fa-calendar"></i> <span id="manual-workout-date-display">Date</span></button>
+                        <button class="chip" onclick="editManualDuration()"><i class="far fa-clock"></i> <span id="manual-workout-duration-chip">Set duration</span></button>
                     </div>
 
                     <!-- Location Selector -->
@@ -1571,14 +1576,14 @@
             </div>
         </dialog>
 
-        <!-- Body Weight Entry Modal (Phase 12.2) -->
-        <dialog id="weight-entry-modal" class="modal" aria-modal="true" aria-label="Log body weight">
-            <div class="modal-content">
-                <button class="modal-fallback-close" onclick="closeModal('weight-entry-modal')" aria-label="Close">
-                    <i class="fas fa-times"></i>
-                </button>
-                <!-- Populated by JavaScript -->
-            </div>
+        <!-- Body Measurements Entry (full-page, Phase F §2) -->
+        <section id="body-measurements-entry-section" class="content-section pinned-header hidden">
+            <!-- Populated by renderBodyMeasurementsEntry() -->
+        </section>
+
+        <!-- Body Weight Entry Modal (legacy — kept for rollback reference) -->
+        <dialog id="weight-entry-modal" class="modal hidden" aria-hidden="true">
+            <div class="modal-content"></div>
         </dialog>
 
         <!-- Weight History (Full-Page Section) -->

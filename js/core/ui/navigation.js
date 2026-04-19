@@ -21,6 +21,7 @@ const SECTION_IDS = [
     'plate-calculator-section',
     'settings-section',
     'profile-section',
+    'body-measurements-entry-section',
 ];
 
 const FADE_DURATION = 150; // ms, matches CSS transition

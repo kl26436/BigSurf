@@ -120,7 +120,8 @@
     padding: 0 0 var(--space-24);
 }
 
-.coach-hero-icon {
+/* Hero icon (spec §8: .coach-hero__icon) */
+.coach-hero__icon {
     width: 64px;
     height: 64px;
     border-radius: 50%;
@@ -130,45 +131,41 @@
     align-items: center;
     justify-content: center;
     margin: 0 auto var(--space-12);
-    font-size: 1.5rem;
+    font-size: var(--font-lg);
 }
-
-.coach-hero-title {
-    font-size: 1.1rem;
+.coach-hero__title {
+    font-size: var(--font-lg);
     color: var(--text-strong);
     font-weight: 700;
     margin-bottom: var(--space-4);
 }
-
-.coach-hero-sub {
-    font-size: 0.82rem;
+.coach-hero__desc {
+    font-size: var(--font-sm);
     color: var(--text-muted);
 }
 
-/* Prompt cards (vertical stack) */
+/* Prompt cards (spec §8: .coach-prompt-card family) */
 .coach-prompt-list {
     display: flex;
     flex-direction: column;
 }
-
-.prompt-card {
+.coach-prompt-card {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     padding: 12px;
     display: flex;
-    gap: 10px;
+    gap: var(--space-10);
     align-items: flex-start;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
     cursor: pointer;
-    transition: background var(--anim-fast);
+    transition: transform var(--anim-fast), background var(--anim-fast);
 }
-
-.prompt-card:active {
+.coach-prompt-card:active {
+    transform: scale(0.98);
     background: var(--bg-card-hi);
 }
-
-.prompt-icon {
+.coach-prompt-card__icon {
     width: 32px;
     height: 32px;
     border-radius: var(--radius-sm);
@@ -177,80 +174,82 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.82rem;
+    font-size: var(--font-sm);
     flex-shrink: 0;
 }
-
-.prompt-txt {
-    font-size: 0.82rem;
+.coach-prompt-card__icon--warning {
+    background: var(--warning-bg-subtle);
+    color: var(--warning);
+}
+.coach-prompt-card__icon--warm {
+    background: var(--highlight-warm-bg);
+    color: var(--highlight-warm);
+}
+.coach-prompt-card__icon--core {
+    background: var(--cat-core-bg);
+    color: var(--cat-core);
+}
+.coach-prompt-card__text {
+    font-size: var(--font-sm);
     color: var(--text-main);
     line-height: 1.4;
 }
+.coach-prompt-card__text strong { color: var(--text-strong); }
 
-.prompt-txt strong {
-    color: var(--text-strong);
-}
-
-/* Chat bubbles */
-.chat-wrap {
+/* Chat bubbles (spec §8: .coach-chat + .coach-msg--user/--bot) */
+.coach-chat {
     display: flex;
     flex-direction: column;
 }
-
-.chat-msg {
+.coach-msg {
     max-width: 80%;
     padding: 12px 14px;
     border-radius: 18px;
-    font-size: 0.88rem;
+    font-size: var(--font-sm);
     line-height: 1.5;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
+    word-wrap: break-word;
 }
-
-.chat-msg.user {
+.coach-msg--user {
     background: var(--primary);
     color: var(--text-on-accent);
     align-self: flex-end;
     border-bottom-right-radius: 6px;
 }
-
-.chat-msg.bot {
+.coach-msg--bot {
     background: var(--bg-card);
     color: var(--text-main);
     align-self: flex-start;
-    border-bottom-left-radius: 6px;
     border: 1px solid var(--border-subtle);
+    border-bottom-left-radius: 6px;
 }
+.coach-msg strong { color: var(--text-strong); }
 
-/* Chat input bar */
-.chat-input {
+/* Input bar pinned at bottom (spec §8: .coach-input-bar + __send) */
+.coach-input-bar {
     position: sticky;
     bottom: 0;
     background: var(--bg-app);
     border-top: 1px solid var(--border-subtle);
-    padding: 12px 14px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: var(--space-12) var(--space-16);
+    padding-bottom: calc(var(--space-12) + env(safe-area-inset-bottom, 0px));
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
     align-items: center;
 }
-
-.chat-input input {
+.coach-input-bar input {
     flex: 1;
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-pill);
-    padding: 10px 16px;
+    padding: var(--space-10) var(--space-16);
     color: var(--text-strong);
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     outline: none;
     font-family: var(--font);
 }
-
-.chat-input input:focus {
-    border-color: var(--primary);
-}
-
-.chat-send {
+.coach-input-bar input:focus { border-color: var(--primary); }
+.coach-input-bar__send {
     width: 38px;
     height: 38px;
     border-radius: 50%;
@@ -260,14 +259,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     cursor: pointer;
     flex-shrink: 0;
 }
-
-.chat-send:active {
-    opacity: 0.8;
-}
+.coach-input-bar__send:active { opacity: 0.8; }
 
 /* Thinking dots animation */
 .coach-thinking {
@@ -312,7 +308,7 @@
 }
 
 /* Loading state inside bot bubble */
-.chat-msg .coach-loading {
+.coach-msg .coach-loading {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -321,7 +317,7 @@
     font-size: var(--font-sm);
 }
 
-.chat-msg .coach-loading i {
+.coach-msg .coach-loading i {
     color: var(--primary);
     font-size: var(--font-lg);
 }
@@ -624,22 +620,6 @@
 
 .preview-actions .btn-secondary {
     flex-shrink: 0;
-}
-
-/* ============================================================================
-   PROMPT CARD ICON TINTS (Phase F §8) — replaces inline `style="background:..."`
-   ============================================================================ */
-.prompt-icon--warning {
-    background: var(--warning-bg-subtle);
-    color: var(--warning);
-}
-.prompt-icon--warm {
-    background: var(--highlight-warm-bg);
-    color: var(--highlight-warm);
-}
-.prompt-icon--core {
-    background: var(--cat-core-bg);
-    color: var(--cat-core);
 }
 
 /* Small leading icon in coach chat messages (error / info states) */

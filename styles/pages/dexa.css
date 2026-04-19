@@ -100,91 +100,72 @@
     gap: var(--space-16);
 }
 
-.drop-zone {
+/* ---- Drop zone (spec §7 §0: .dexa-drop family) ---- */
+.dexa-drop {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--space-10);
-    padding: var(--space-32) var(--space-16);
-    border: 2px dashed var(--primary);
+    padding: var(--space-40) var(--space-20);
+    background: var(--bg-card);
+    border: 2px dashed var(--primary-border);
     border-radius: var(--radius-md);
     cursor: pointer;
     text-align: center;
-    transition: background 0.2s, border-color 0.2s;
+    margin-bottom: var(--space-12);
+    transition: background var(--anim-fast), border-color var(--anim-fast);
 }
+.dexa-drop:hover,
+.dexa-drop:active { background: var(--primary-bg-subtle); }
 
-.drop-zone:hover,
-.drop-zone:active {
-    background: var(--primary-bg-subtle);
-}
-
-.drop-icon {
+.dexa-drop__icon {
     width: 64px;
     height: 64px;
-    border-radius: var(--radius-pill);
+    border-radius: 50%;
     background: var(--primary-bg);
+    color: var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
+    margin: 0 auto var(--space-12);
+    font-size: var(--font-lg);
 }
-
-.drop-icon i {
-    font-size: var(--font-xl);
-    color: var(--primary);
-}
-
-.drop-title {
+.dexa-drop__title {
     font-size: var(--font-base);
-    font-weight: 600;
     color: var(--text-strong);
+    font-weight: 700;
+    margin-bottom: var(--space-4);
 }
-
-.drop-desc {
+.dexa-drop__desc {
     font-size: var(--font-sm);
     color: var(--text-muted);
+    margin-bottom: var(--space-12);
 }
-
-.drop-btn {
-    display: inline-block;
+.dexa-drop__btn {
+    max-width: 160px;
+    margin: 0 auto;
+    display: inline-flex;
+    width: auto;
     padding: var(--space-8) var(--space-20);
-    background: var(--primary);
-    color: var(--text-on-primary, #fff);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-sm);
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    margin-top: var(--space-4);
 }
 
-/* ---- File Format Pills ---- */
-.dexa-file-pills {
+/* ---- Supports pills (spec §7: .dexa-supports family) ---- */
+.dexa-supports {
     display: flex;
     gap: var(--space-8);
     justify-content: center;
+    margin-bottom: var(--space-20);
 }
-
-.file-pill {
+.dexa-supports__pill {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
+    padding: var(--space-6) var(--space-12);
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
     display: inline-flex;
     align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-4) var(--space-10);
-    background: var(--primary-bg);
-    border: 1px solid var(--primary-border);
-    border-radius: var(--radius-pill);
-    font-size: var(--font-xs);
-    font-weight: 500;
-    color: var(--primary);
-}
-
-.file-pill i {
-    font-size: var(--font-xs);
-}
-
-.file-pill--muted {
-    background: var(--bg-card);
-    border-color: var(--border-light);
-    color: var(--text-secondary);
+    gap: var(--space-6);
 }
 
 /* ---- File Selected State ---- */
@@ -464,7 +445,8 @@
 }
 
 /* ---- 2x2 Stat Card Grid ---- */
-.stat-card-grid {
+/* Spec §7: .dexa-stat-grid — 2x2 grid of .stat-card summary tiles */
+.dexa-stat-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-8);

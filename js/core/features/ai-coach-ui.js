@@ -28,38 +28,38 @@ export function showAICoach(prefillContext) {
             <div id="coach-chat-area" class="coach-chat-area">
                 <div id="coach-empty-state" class="coach-empty-state">
                     <div class="coach-hero">
-                        <div class="coach-hero-icon"><i class="fas fa-robot"></i></div>
-                        <div class="coach-hero-title">Ask anything</div>
-                        <div class="coach-hero-sub">I know your training history. Try:</div>
+                        <div class="coach-hero__icon"><i class="fas fa-robot"></i></div>
+                        <div class="coach-hero__title">Ask anything</div>
+                        <div class="coach-hero__desc">I know your training history. Try:</div>
                     </div>
 
                     <div class="coach-prompt-list">
-                        <div class="prompt-card" onclick="askCoach('Why has my bench press stalled? Suggest a deload strategy.')">
-                            <div class="prompt-icon"><i class="fas fa-chart-line"></i></div>
-                            <div class="prompt-txt">Why has my <strong>bench press</strong> stalled? Suggest a deload.</div>
+                        <div class="coach-prompt-card" onclick="askCoach('Why has my bench press stalled? Suggest a deload strategy.')">
+                            <div class="coach-prompt-card__icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="coach-prompt-card__text">Why has my <strong>bench press</strong> stalled? Suggest a deload.</div>
                         </div>
-                        <div class="prompt-card" onclick="askCoach('Analyze my volume distribution and identify any muscle groups I am neglecting or overtraining.')">
-                            <div class="prompt-icon prompt-icon--warning"><i class="fas fa-balance-scale"></i></div>
-                            <div class="prompt-txt">Check my <strong>push / pull volume</strong> balance this month.</div>
+                        <div class="coach-prompt-card" onclick="askCoach('Analyze my volume distribution and identify any muscle groups I am neglecting or overtraining.')">
+                            <div class="coach-prompt-card__icon coach-prompt-card__icon--warning"><i class="fas fa-balance-scale"></i></div>
+                            <div class="coach-prompt-card__text">Check my <strong>push / pull volume</strong> balance this month.</div>
                         </div>
-                        <div class="prompt-card" onclick="askCoach('Plan a 5-day training split optimized for my goals and recent performance.')">
-                            <div class="prompt-icon prompt-icon--warm"><i class="fas fa-calendar-alt"></i></div>
-                            <div class="prompt-txt">Plan a <strong>5-day split</strong> for my goals.</div>
+                        <div class="coach-prompt-card" onclick="askCoach('Plan a 5-day training split optimized for my goals and recent performance.')">
+                            <div class="coach-prompt-card__icon coach-prompt-card__icon--warm"><i class="fas fa-calendar-alt"></i></div>
+                            <div class="coach-prompt-card__text">Plan a <strong>5-day split</strong> for my goals.</div>
                         </div>
-                        <div class="prompt-card" onclick="askCoach('Help me plan a deload week. I am feeling beat up and need recovery.')">
-                            <div class="prompt-icon prompt-icon--core"><i class="fas fa-running"></i></div>
-                            <div class="prompt-txt">Help me deload next week — I'm feeling beat up.</div>
+                        <div class="coach-prompt-card" onclick="askCoach('Help me plan a deload week. I am feeling beat up and need recovery.')">
+                            <div class="coach-prompt-card__icon coach-prompt-card__icon--core"><i class="fas fa-running"></i></div>
+                            <div class="coach-prompt-card__text">Help me deload next week — I'm feeling beat up.</div>
                         </div>
                     </div>
                 </div>
 
-                <div id="coach-chat-messages" class="chat-wrap"></div>
+                <div id="coach-chat-messages" class="coach-chat"></div>
             </div>
 
-            <div class="chat-input">
+            <div class="coach-input-bar">
                 <input id="coach-chat-input" type="text" placeholder="Ask your coach anything\u2026"
                     onkeydown="if(event.key==='Enter'){event.preventDefault();sendCoachMessage();}">
-                <button class="chat-send" onclick="sendCoachMessage()"><i class="fas fa-arrow-up"></i></button>
+                <button class="coach-input-bar__send" onclick="sendCoachMessage()" aria-label="Send"><i class="fas fa-arrow-up"></i></button>
             </div>
         </div>
     `;
@@ -112,7 +112,7 @@ function addChatBubble(role, html) {
     if (!wrap) return;
 
     const bubble = document.createElement('div');
-    bubble.className = `chat-msg ${role}`;
+    bubble.className = `coach-msg coach-msg--${role}`;
     bubble.innerHTML = html;
     wrap.appendChild(bubble);
 
@@ -609,7 +609,7 @@ export function removePreviewExercise(index) {
     // Find the last bot bubble that contains the template preview
     const wrap = document.getElementById('coach-chat-messages');
     if (!wrap) return;
-    const botBubbles = wrap.querySelectorAll('.chat-msg.bot');
+    const botBubbles = wrap.querySelectorAll('.coach-msg--bot');
     const lastBot = botBubbles[botBubbles.length - 1];
     if (lastBot) renderTemplatePreview(lastBot);
 }

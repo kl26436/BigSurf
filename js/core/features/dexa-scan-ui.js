@@ -132,12 +132,12 @@ export function showDexaUploadModal() {
 
     body.innerHTML = `
         <div class="dexa-upload-form">
-            <!-- Drop zone -->
-            <label class="drop-zone" for="dexa-file-input">
-                <div class="drop-icon"><i class="fas fa-file-upload"></i></div>
-                <div class="drop-title">Upload scan results</div>
-                <div class="drop-desc">PDF or CSV from your DEXA facility</div>
-                <span class="drop-btn">Choose file</span>
+            <!-- Drop zone (spec §7: .dexa-drop family) -->
+            <label class="dexa-drop" for="dexa-file-input">
+                <div class="dexa-drop__icon"><i class="fas fa-file-upload"></i></div>
+                <div class="dexa-drop__title">Upload scan results</div>
+                <div class="dexa-drop__desc">PDF or CSV from your DEXA facility</div>
+                <span class="btn-primary dexa-drop__btn">Choose file</span>
             </label>
             <input type="file" id="dexa-file-input" class="hidden"
                    accept=".pdf,.csv,.xlsx" onchange="handleDexaFileSelect()">
@@ -150,10 +150,10 @@ export function showDexaUploadModal() {
                 </button>
             </div>
 
-            <!-- File format pills -->
-            <div class="dexa-file-pills">
-                <div class="file-pill"><i class="fas fa-file-pdf"></i> Supports PDF</div>
-                <div class="file-pill file-pill--muted"><i class="fas fa-file-csv"></i> CSV / Excel</div>
+            <!-- File format pills (spec §7: .dexa-supports family) -->
+            <div class="dexa-supports">
+                <div class="dexa-supports__pill"><i class="fas fa-file-pdf"></i> Supports PDF</div>
+                <div class="dexa-supports__pill"><i class="fas fa-file-csv"></i> CSV / Excel</div>
             </div>
 
             <!-- Manual entry section -->
@@ -734,7 +734,7 @@ export async function showDexaDetail(scanId) {
             <h3>Summary</h3>
             ${delta ? `<span class="sec-head-sub">vs ${formatShortMonthDay(prevScan.date)}</span>` : ''}
         </div>
-        <div class="stat-card-grid">
+        <div class="dexa-stat-grid">
             ${statCards.map(s => renderStatCard(s)).join('')}
         </div>
     `;

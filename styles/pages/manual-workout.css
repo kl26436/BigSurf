@@ -1,7 +1,24 @@
 /* ============================================================================
    MANUAL WORKOUT — past-workout entry form.
-   Extracted from js/core/features/manual-workout.js inline styles (Phase F §3).
+   Spec §3 header uses page-header + eyebrow + editable date/duration chips.
    ============================================================================ */
+
+/* Header row is already shaped by .page-header; override only the layout
+   so the chip row can sit flush below it */
+.manual-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-8);
+    padding-bottom: var(--space-12);
+}
+.manual-page-header > .page-header__left + button { align-self: flex-end; }
+
+.manual-meta-chips {
+    display: flex;
+    gap: var(--space-8);
+    padding: 0 var(--pad-card-x) var(--space-12);
+}
+
 
 .manual-exercise-card {
     background: var(--bg-card);

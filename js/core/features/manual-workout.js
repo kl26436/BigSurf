@@ -464,6 +464,40 @@ export function addToManualWorkoutFromLibrary(exerciseData) {
 }
 
 // ===================================================================
+// HEADER CHIP ACTIONS (§3)
+// ===================================================================
+
+/** Edit the workout date via prompt — updates manualWorkoutState.date and UI chip. */
+export function editManualDate() {
+    const current = manualWorkoutState.date || new Date().toISOString().split('T')[0];
+    const next = prompt('Workout date (YYYY-MM-DD):', current);
+    if (next && /^\d{4}-\d{2}-\d{2}$/.test(next.trim())) {
+        manualWorkoutState.date = next.trim();
+        const chipLabel = document.getElementById('manual-workout-date-display');
+        if (chipLabel) chipLabel.textContent = formatDateForDisplay(manualWorkoutState.date);
+    } else if (next != null) {
+        showNotification('Use YYYY-MM-DD format', 'warn');
+    }
+}
+
+/** Edit the workout duration via prompt — updates the duration input + chip. */
+export function editManualDuration() {
+    const input = document.getElementById('manual-workout-duration');
+    const current = input?.value || '';
+    const next = prompt('Duration in minutes:', current);
+    if (next != null) {
+        const n = parseInt(next, 10);
+        if (isFinite(n) && n > 0) {
+            if (input) input.value = n;
+            const chipLabel = document.getElementById('manual-workout-duration-chip');
+            if (chipLabel) chipLabel.textContent = `${n} min`;
+        } else if (next.trim() !== '') {
+            showNotification('Enter a positive number', 'warn');
+        }
+    }
+}
+
+// ===================================================================
 // SAVE WORKOUT
 // ===================================================================
 

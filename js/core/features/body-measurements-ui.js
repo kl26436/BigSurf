@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification, openModal, closeModal, displayWeight } from '../ui/ui-helpers.js';
+import { navigateTo, navigateBack } from '../ui/navigation.js';
 import {
     saveBodyWeight,
     loadBodyWeightHistory,
@@ -96,19 +97,24 @@ export async function renderBodyWeightCard() {
 /**
  * Show the redesigned weight entry modal — hero weight card + body composition + circumference.
  */
+/**
+ * Render the full-page Body Measurements entry (Phase F §2).
+ * Spec: page-header + hero bm-weight-card + bm-row family + segmented unit
+ * toggle + import-sources group + sticky footer primary CTA.
+ */
 export function showWeightEntryModal() {
-    const modal = document.getElementById('weight-entry-modal');
-    if (!modal) return;
+    const section = document.getElementById('body-measurements-entry-section');
+    if (!section) return;
 
     const unit = AppState.globalUnit || 'lbs';
     const unitLabel = unit === 'kg' ? 'kg' : 'lb';
     const circumUnit = unit === 'kg' ? 'cm' : 'in';
+    const today = AppState.getTodayDateString?.() || new Date().toISOString().split('T')[0];
 
-    // Get latest weight for pre-fill hint
     const lastEntry = AppState._lastBodyWeight;
-    const lastHint = lastEntry
-        ? `Last: ${lastEntry.weight} ${lastEntry.unit} · ${lastEntry.date || 'recent'}`
-        : '';
+    const lastValueStr = lastEntry
+        ? `${lastEntry.weight} ${lastEntry.unit}${lastEntry.date ? ' · ' + lastEntry.date : ''}`
+        : '—';
 
     const circumFields = [
         { key: 'chest', label: 'Chest', icon: 'fa-ruler-horizontal' },
@@ -116,74 +122,59 @@ export function showWeightEntryModal() {
         { key: 'bicepLeft', label: 'Arm (L/R avg)', icon: 'fa-ruler-horizontal' },
     ];
 
-    modal.querySelector('.modal-content').innerHTML = `
-        <div class="modal-header">
-            <h3>Log Measurements</h3>
-            <button class="modal-close-btn" onclick="closeWeightEntryModal()">
-                <i class="fas fa-times"></i>
-            </button>
+    section.innerHTML = `
+        <div class="page-header">
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="closeWeightEntryModal()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+                <div class="page-header__title">Log Measurements</div>
+            </div>
+            <button class="page-header__save" onclick="saveBodyWeightEntry()">Save</button>
         </div>
-        <div class="modal-body bm-entry-body">
-            <!-- Hero weight card -->
-            <div class="sec-head"><h4>Weight</h4></div>
-            <div class="bw-hero-card">
-                <div class="bw-hero-input-row">
-                    <input type="number" id="body-weight-input" class="bw-hero-input"
+
+        <div class="content-section-body bm-entry-body">
+            <div class="field">
+                <div class="field-label">Date</div>
+                <input class="field-input" type="date" id="bm-entry-date" value="${today}">
+            </div>
+
+            <!-- Hero weight card (spec §2) -->
+            <div class="sec-head"><h3>Weight</h3></div>
+            <div class="bm-weight-card">
+                <div class="bm-weight-card__row">
+                    <input type="number" id="body-weight-input" class="bm-weight-card__input"
                            placeholder="${unit === 'kg' ? '83.0' : '184.0'}"
                            step="0.1" min="0" max="999" inputmode="decimal" autofocus>
-                    <span class="bw-hero-unit">${unitLabel}</span>
-                    <div class="bw-hero-last">
-                        ${lastHint ? `
-                            <div class="bw-hero-last-label">Last</div>
-                            <div class="bw-hero-last-value">${escapeHtml(lastHint)}</div>
-                        ` : ''}
+                    <span class="bm-weight-card__unit">${unitLabel}</span>
+                    <div class="bm-weight-card__last">
+                        <div class="bm-weight-card__last-label">Last</div>
+                        <div class="bm-weight-card__last-val">${escapeHtml(lastValueStr)}</div>
                     </div>
                 </div>
-                <div class="chips bm-unit-chips">
-                    <div class="chip ${unit === 'lbs' ? 'active' : ''}" onclick="setBodyWeightUnit('lbs')">lb</div>
-                    <div class="chip ${unit === 'kg' ? 'active' : ''}" onclick="setBodyWeightUnit('kg')">kg</div>
+                <div class="segmented" data-field="weightUnit">
+                    <button class="${unit === 'lbs' ? 'active' : ''}" onclick="setBodyWeightUnit('lbs')">lb</button>
+                    <button class="${unit === 'kg' ? 'active' : ''}" onclick="setBodyWeightUnit('kg')">kg</button>
                 </div>
             </div>
 
             <!-- Body composition -->
-            <div class="sec-head"><h4>Body composition <span class="count">(optional)</span></h4></div>
-            <div class="meas-row">
-                <div class="meas-icon"><i class="fas fa-percent"></i></div>
-                <div class="meas-info"><div class="meas-name">Body fat</div></div>
-                <input type="number" id="body-fat-input" class="meas-input"
-                       placeholder="—" step="0.1" min="0" max="100" inputmode="decimal">
-                <div class="meas-unit">%</div>
-            </div>
-            <div class="meas-row">
-                <div class="meas-icon"><i class="fas fa-fire"></i></div>
-                <div class="meas-info"><div class="meas-name">Muscle mass</div></div>
-                <input type="number" id="muscle-mass-input" class="meas-input"
-                       placeholder="—" step="0.1" min="0" max="500" inputmode="decimal">
-                <div class="meas-unit">${unitLabel}</div>
-            </div>
+            <div class="sec-head"><h3>Body composition <span class="count">(optional)</span></h3></div>
+            ${renderBmRow('body-fat-input', 'Body fat', 'fa-percent', '%')}
+            ${renderBmRow('muscle-mass-input', 'Muscle mass', 'fa-fire', unitLabel)}
 
             <!-- Circumference -->
-            <div class="sec-head"><h4>Circumference <span class="count">(optional)</span></h4></div>
-            ${circumFields.map(f => `
-                <div class="meas-row">
-                    <div class="meas-icon"><i class="fas ${f.icon}"></i></div>
-                    <div class="meas-info"><div class="meas-name">${f.label}</div></div>
-                    <input type="number" id="measure-${f.key}" class="meas-input"
-                           placeholder="—" step="0.1" min="0" max="200" inputmode="decimal">
-                    <div class="meas-unit">${circumUnit}</div>
-                </div>
-            `).join('')}
+            <div class="sec-head"><h3>Circumference <span class="count">(optional)</span></h3></div>
+            ${circumFields.map(f => renderBmRow(`measure-${f.key}`, f.label, f.icon, circumUnit)).join('')}
 
-            <!-- Connected sources -->
-            <div class="sec-head"><h4>Or import from</h4></div>
-            <div class="group">
+            <!-- Import sources -->
+            <div class="sec-head"><h3>Or import from</h3></div>
+            <div class="group bm-import-sources">
                 <div class="srow srow--clickable" onclick="handleWithingsSettingsAction()">
                     <div class="srow-icon ic-blue"><i class="fas fa-link"></i></div>
                     <div class="srow-info">
                         <div class="srow-name">Withings</div>
                         <div class="srow-desc" id="bm-withings-status">Weight & body composition</div>
                     </div>
-                    <div class="srow-right"><span style="color: var(--primary); font-size: 0.74rem; font-weight: 600;">Sync</span></div>
+                    <div class="srow-right"><span class="srow-action">Sync</span></div>
                 </div>
                 <div class="srow srow--clickable" onclick="showDexaUploadModal()">
                     <div class="srow-icon ic-warm"><i class="fas fa-x-ray"></i></div>
@@ -191,30 +182,41 @@ export function showWeightEntryModal() {
                         <div class="srow-name">Upload DEXA scan</div>
                         <div class="srow-desc">PDF or CSV from your facility</div>
                     </div>
-                    <div class="srow-right"><span style="color: var(--primary); font-size: 0.74rem; font-weight: 600;">Upload</span></div>
+                    <div class="srow-right"><span class="srow-action">Upload</span></div>
                 </div>
             </div>
+        </div>
 
-            <button class="btn btn-primary" style="width: 100%; margin-top: 16px;" onclick="saveBodyWeightEntry()">
+        <div class="page-footer">
+            <button class="btn-primary" onclick="saveBodyWeightEntry()">
                 <i class="fas fa-check"></i> Save Entry
             </button>
         </div>
     `;
 
-    openModal(modal);
+    navigateTo('body-measurements-entry-section');
+    setTimeout(() => document.getElementById('body-weight-input')?.focus(), 150);
+}
 
-    setTimeout(() => {
-        const input = document.getElementById('body-weight-input');
-        if (input) input.focus();
-    }, 100);
+function renderBmRow(inputId, label, icon, unit) {
+    return `
+        <div class="bm-row">
+            <div class="bm-row__icon"><i class="fas ${icon}"></i></div>
+            <div class="bm-row__info">
+                <div class="bm-row__name">${escapeHtml(label)}</div>
+            </div>
+            <input type="number" id="${inputId}" class="bm-row__input"
+                   placeholder="—" step="0.1" min="0" max="999" inputmode="decimal">
+            <div class="bm-row__unit">${escapeHtml(unit)}</div>
+        </div>
+    `;
 }
 
 /**
- * Close the weight entry modal.
+ * Close the measurements entry page (navigate back to dashboard/previous).
  */
 export function closeWeightEntryModal() {
-    const modal = document.getElementById('weight-entry-modal');
-    if (modal) closeModal(modal);
+    navigateBack();
 }
 
 /**
@@ -237,14 +239,25 @@ export async function saveBodyWeightEntry() {
     const notes = notesInput?.value?.trim() || '';
     const unit = AppState.globalUnit || 'lbs';
 
-    const result = await saveBodyWeight(weight, unit, { bodyFat, muscleMass, notes });
+    // Circumference fields
+    const circumKeys = ['chest', 'waist', 'bicepLeft'];
+    const measurements = {};
+    for (const k of circumKeys) {
+        const el = document.getElementById(`measure-${k}`);
+        const v = el?.value ? parseFloat(el.value) : null;
+        if (v && v > 0) measurements[k] = v;
+    }
+
+    const dateEl = document.getElementById('bm-entry-date');
+    const entryDate = dateEl?.value || null;
+
+    const extra = { bodyFat, muscleMass, notes };
+    if (Object.keys(measurements).length > 0) extra.measurements = measurements;
+    if (entryDate) extra.date = entryDate;
+
+    const result = await saveBodyWeight(weight, unit, extra);
     if (result) {
         closeWeightEntryModal();
-        // Refresh dashboard to show updated weight
-        if (typeof window.showDashboard === 'function') {
-            // Soft refresh — re-render dashboard
-            const { renderDashboard } = await import('../ui/dashboard-ui.js');
-        }
     }
 }
 
