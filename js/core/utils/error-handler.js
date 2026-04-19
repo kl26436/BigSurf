@@ -69,7 +69,8 @@ function getAppContext() {
 
     // Which page/section is visible?
     const sections = [
-        'dashboard', 'active-workout', 'workout-selector', 'stats-section',
+        'dashboard', 'active-workout', 'workout-selector',
+        'muscle-group-detail-section', 'exercise-detail-section', 'composition-detail-section',
         'workout-history-section', 'workout-management-section', 'exercise-manager-section',
         'settings-section', 'plate-calculator-section', 'equipment-library-section',
         'location-management-section',

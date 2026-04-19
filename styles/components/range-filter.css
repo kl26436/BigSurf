@@ -1,0 +1,28 @@
+/* ===========================================
+   RANGE FILTER — time range pill selector
+   =========================================== */
+.range-filter {
+    display: flex;
+    gap: var(--space-6);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 3px;
+    margin-bottom: var(--space-12);
+}
+.range-filter button {
+    flex: 1;
+    padding: 6px 0;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: all var(--anim-fast);
+}
+.range-filter button.active {
+    background: var(--primary-bg);
+    color: var(--primary);
+}

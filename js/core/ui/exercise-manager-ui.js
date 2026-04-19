@@ -46,7 +46,9 @@ export function openExerciseManager() {
             'workout-selector',
             'active-workout',
             'workout-history-section',
-            'stats-section',
+            'muscle-group-detail-section',
+            'exercise-detail-section',
+            'composition-detail-section',
             'workout-management-section',
             'location-management-section',
         ];
@@ -494,7 +496,9 @@ export function openEditExerciseSection(exercise) {
         'workout-selector',
         'active-workout',
         'workout-history-section',
-        'stats-section',
+        'muscle-group-detail-section',
+        'exercise-detail-section',
+        'composition-detail-section',
         'workout-management-section',
         'exercise-manager-section',
     ];

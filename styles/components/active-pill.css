@@ -1,0 +1,100 @@
+/* ===========================================
+   ACTIVE WORKOUT PILL — compact indicator below greeting
+   =========================================== */
+.active-pill-wrap {
+    margin-bottom: var(--gap-items);
+}
+.active-pill {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: var(--bg-app);
+    border-radius: var(--radius-pill);
+    padding: 7px 8px 7px 14px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    min-height: 38px;
+    box-shadow: 0 4px 12px rgba(29, 211, 176, 0.2);
+    cursor: pointer;
+    transition: transform var(--anim-fast);
+}
+.active-pill:active { transform: scale(0.98); }
+
+.active-pill__pulse {
+    width: var(--space-8);
+    height: var(--space-8);
+    border-radius: 50%;
+    background: var(--bg-app);
+    flex-shrink: 0;
+    animation: pill-pulse 1.6s ease-out infinite;
+}
+@keyframes pill-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(4, 32, 26, 0.6); }
+    100% { box-shadow: 0 0 0 8px rgba(4, 32, 26, 0); }
+}
+
+.active-pill__info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-6);
+    overflow: hidden;
+}
+.active-pill__name {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.active-pill__meta {
+    font-size: var(--font-xs);
+    opacity: 0.78;
+    font-weight: 500;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.active-pill__resume {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    border-radius: 50%;
+    background: var(--bg-app);
+    color: var(--primary);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: transform var(--anim-fast);
+}
+.active-pill__resume:active { transform: scale(0.92); }
+
+/* Cancel — own line, centered, dim */
+.active-pill__cancel-row {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-6);
+}
+.active-pill__cancel {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 500;
+    padding: var(--space-4) var(--space-12);
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    cursor: pointer;
+    transition: color var(--anim-fast);
+}
+.active-pill__cancel i { font-size: var(--font-2xs); }
+.active-pill__cancel:hover,
+.active-pill__cancel:active { color: var(--danger); }
+
+@media (prefers-reduced-motion: reduce) {
+    .active-pill__pulse { animation: none; }
+}

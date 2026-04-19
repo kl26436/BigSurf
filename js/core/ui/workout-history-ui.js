@@ -16,7 +16,7 @@ export async function showWorkoutHistory() {
     }
 
     // Hide all sections including dashboard
-    const sections = ['workout-selector', 'active-workout', 'workout-management', 'dashboard', 'stats-section'];
+    const sections = ['workout-selector', 'active-workout', 'workout-management', 'dashboard', 'muscle-group-detail-section', 'exercise-detail-section', 'composition-detail-section'];
     sections.forEach((sectionId) => {
         const section = document.getElementById(sectionId);
         if (section) section.classList.add('hidden');

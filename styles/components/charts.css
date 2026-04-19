@@ -1,0 +1,50 @@
+/* ===========================================
+   CHART COMPONENTS — SVG chart styles
+   =========================================== */
+
+/* Horizontal bar breakdown (body part volume) */
+.bp-bars { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-10); }
+.bp-bar-row {
+    display: grid;
+    grid-template-columns: 58px 1fr 42px;
+    align-items: center;
+    gap: var(--space-8);
+}
+.bp-bar-row__name { font-size: var(--font-xs); color: var(--text-secondary); }
+.bp-bar-row__bar { background: var(--border-light); height: 8px; border-radius: 4px; overflow: hidden; }
+.bp-bar-row__fill { height: 100%; border-radius: 4px; transition: width var(--anim-slow) var(--ease-out-expo); }
+.bp-bar-row__val { font-size: var(--font-xs); color: var(--text-strong); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Body composition donut row */
+.dash-bc-row { display: flex; align-items: center; gap: var(--space-12); margin-top: var(--space-8); }
+.dash-bc-legend { display: flex; flex-direction: column; gap: var(--space-6); font-size: var(--font-xs); flex: 1; }
+.dash-bc-leg { display: flex; align-items: center; gap: var(--space-6); }
+.dash-bc-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* Sparkline containers */
+.spark-container { width: 100%; height: 40px; margin-top: var(--space-10); }
+
+/* Connect more data card */
+.connect-card {
+    background: linear-gradient(135deg, rgba(29, 211, 176, 0.08), rgba(29, 211, 176, 0.02));
+    border: 1px dashed var(--primary-border);
+    padding: var(--pad-card-y);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+}
+.connect-card i { color: var(--primary); font-size: var(--font-xl); }
+.connect-card__info { flex: 1; }
+.connect-card__title { font-size: var(--font-sm); font-weight: 700; color: var(--text-strong); }
+.connect-card__sub { font-size: var(--font-xs); color: var(--text-muted); margin-top: 2px; }
+.connect-card__btn {
+    background: var(--primary);
+    color: var(--bg-app);
+    border: none;
+    padding: 7px 14px;
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 700;
+    cursor: pointer;
+}

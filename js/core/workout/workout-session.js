@@ -4,7 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml, openModal, closeModal } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
-import { setBottomNavVisible, navigateTo } from '../ui/navigation.js';
+import { setBottomNavVisible, navigateTo, setWorkoutActiveState } from '../ui/navigation.js';
 import { saveWorkoutData, debouncedSaveWorkoutData, clearLastSessionCache } from '../data/data-manager.js';
 import {
     detectLocation,
@@ -18,6 +18,7 @@ import {
     getCurrentCoords,
 } from '../features/location-service.js';
 import { renderExercises, toggleExerciseExpansion } from './exercise-ui.js';
+import { renderActiveWorkout, loadAutofillForAllExercises } from './active-workout-ui.js';
 import { haptic } from '../utils/haptics.js';
 
 // ===================================================================
@@ -51,11 +52,11 @@ function detectTemplateChanges(currentExercises, originalWorkout) {
 window.addEventListener('exerciseRenamed', (event) => {
     // If we have an active workout, refresh the exercises display
     if (AppState.currentWorkout) {
-        renderExercises();
+        renderActiveWorkout();
         // Close exercise modal if open and re-open with refreshed data
         const { exerciseIndex } = event.detail;
         if (typeof exerciseIndex === 'number') {
-            toggleExerciseExpansion(exerciseIndex);
+            // v2 wizard handles its own navigation
         }
     }
 });
@@ -164,6 +165,15 @@ export async function startWorkout(workoutType) {
         templateIsDefault: workout.isDefault || false,
     };
 
+    // Snapshot the initial template for change detection at completion
+    // Stored on window so saveWorkoutData's originalWorkout overwrites don't affect it
+    window._initialTemplateSnapshot = {
+        exercises: workout.exercises.map(ex => ({
+            machine: ex.machine || ex.name,
+            name: ex.name || ex.machine,
+        })),
+    };
+
     // Initialize exercise units
     AppState.exerciseUnits = {};
 
@@ -190,22 +200,18 @@ export async function startWorkout(workoutType) {
     // Hide main header (no logo on active workout), show bottom nav
     setHeaderMode(false);
     setBottomNavVisible(true);
+    setWorkoutActiveState(true);
 
     // Hide resume banner when starting a workout
     const resumeBanner = document.getElementById('resume-workout-banner');
     if (resumeBanner) resumeBanner.classList.add('hidden');
 
-    // Start duration timer
+    // Start duration timer (v1 — v2 has its own)
     startWorkoutTimer();
 
-    // Render exercises
-    renderExercises();
-
-    // Initialize compact hero progress bar
-    updateWorkoutProgress();
-
-    // Update location indicator
-    updateLocationIndicator(getSessionLocation(), isLocationLocked());
+    // V2 wizard UI: load autofill then render
+    await loadAutofillForAllExercises();
+    renderActiveWorkout();
 
     // Initialize window.inProgressWorkout so saveWorkoutData can update it
     // This ensures exercise additions/deletions persist when closing/reopening workout
@@ -244,6 +250,7 @@ export async function completeWorkout() {
     // Stop duration timer and rest timer display
     AppState.clearTimers();
     stopActiveWorkoutRestTimer();
+    setWorkoutActiveState(false);
 
     const isEditingHistorical = window.editingHistoricalWorkout === true;
 
@@ -309,12 +316,16 @@ export async function completeWorkout() {
     }
 
     // Detect structural changes (reorder, swap, add, remove) for template update prompt
-    // Must read currentWorkout.exercises BEFORE AppState.reset() clears it
+    // Compare current exercises against the INITIAL template snapshot (not the overwritten originalWorkout)
     let templateChanges = null;
-    if (!isEditingHistorical && completedWorkoutData.originalWorkout?.exercises) {
+    if (!isEditingHistorical) {
         const currentExercises = AppState.currentWorkout?.exercises || [];
-        templateChanges = detectTemplateChanges(currentExercises, completedWorkoutData.originalWorkout);
+        const initialSnapshot = window._initialTemplateSnapshot;
+        if (initialSnapshot?.exercises) {
+            templateChanges = detectTemplateChanges(currentExercises, initialSnapshot);
+        }
     }
+    window._initialTemplateSnapshot = null;
 
     // Reset state BEFORE showing summary (critical order!)
     AppState.reset();
@@ -334,6 +345,8 @@ export async function completeWorkout() {
     updateWorkoutButtonsForEditMode(false);
 
     // Show completion summary modal (or go to dashboard for historical edits)
+    document.getElementById('active-workout-pill')?.remove();
+
     if (!isEditingHistorical) {
         haptic('complete');
         window._lastCompletedWorkout = completedWorkoutData;
@@ -748,6 +761,84 @@ export function updateWorkoutProgress() {
     }
 }
 
+/**
+ * Show a mid-workout summary preview without completing the workout.
+ * Opens the completion modal in read-only preview mode.
+ */
+export function showMidWorkoutSummary() {
+    if (!AppState.currentWorkout) return;
+
+    const exercises = AppState.currentWorkout.exercises || [];
+    const saved = AppState.savedData?.exercises || {};
+
+    let totalSets = 0;
+    let totalVolume = 0;
+    let exerciseCount = 0;
+
+    exercises.forEach((ex, i) => {
+        const exData = saved[`exercise_${i}`];
+        if (exData?.sets) {
+            exerciseCount++;
+            exData.sets.forEach(s => {
+                if (s.reps && s.weight) {
+                    totalSets++;
+                    totalVolume += s.reps * s.weight;
+                }
+            });
+        }
+    });
+
+    // Format elapsed duration
+    const elapsed = AppState.currentWorkout.startedAt
+        ? Math.floor((Date.now() - new Date(AppState.currentWorkout.startedAt).getTime()) / 1000)
+        : 0;
+    const dMin = Math.floor(elapsed / 60);
+    const durationStr = dMin >= 60 ? `${Math.floor(dMin / 60)}h ${dMin % 60}m` : `${dMin}m`;
+
+    const volumeStr = totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : `${totalVolume}`;
+
+    const modal = document.getElementById('workout-completion-modal');
+    const content = document.getElementById('workout-completion-content');
+    if (!modal || !content) return;
+
+    content.innerHTML = `
+        <div class="completion-summary">
+            <div class="completion-header">
+                <i class="fas fa-chart-bar" style="color: var(--primary); font-size: 2.5rem;"></i>
+                <h2>Session So Far</h2>
+                <p class="completion-workout-name">${escapeHtml(AppState.currentWorkout.workoutType || 'Workout')}</p>
+            </div>
+
+            <div class="completion-stats-grid">
+                <div class="completion-stat">
+                    <span class="completion-stat-value">${durationStr}</span>
+                    <span class="completion-stat-label">Elapsed</span>
+                </div>
+                <div class="completion-stat">
+                    <span class="completion-stat-value">${totalSets}</span>
+                    <span class="completion-stat-label">Sets</span>
+                </div>
+                <div class="completion-stat">
+                    <span class="completion-stat-value">${volumeStr}</span>
+                    <span class="completion-stat-label">Volume</span>
+                </div>
+                <div class="completion-stat">
+                    <span class="completion-stat-value">${exerciseCount}/${exercises.length}</span>
+                    <span class="completion-stat-label">Exercises</span>
+                </div>
+            </div>
+
+            <div class="completion-actions">
+                <button class="btn btn-primary" onclick="closeModal('workout-completion-modal')">
+                    <i class="fas fa-arrow-left"></i> Back to Workout
+                </button>
+            </div>
+        </div>
+    `;
+
+    openModal('workout-completion-modal');
+}
+
 export function saveActiveWorkoutAsTemplate() {
     if (!AppState.currentWorkout) {
         showNotification('No active workout', 'warning');
@@ -812,6 +903,8 @@ export async function cancelWorkout(skipConfirmation = false) {
 
     AppState.reset();
     AppState.clearTimers();
+    setWorkoutActiveState(false);
+    document.getElementById('active-workout-pill')?.remove();
     stopActiveWorkoutRestTimer();
 
     // Clear in-progress workout since it's been cancelled
@@ -862,7 +955,9 @@ export function continueInProgressWorkout() {
         'workout-selector',
         'dashboard',
         'workout-history-section',
-        'stats-section',
+        'muscle-group-detail-section',
+        'exercise-detail-section',
+        'composition-detail-section',
         'workout-management-section',
         'exercise-manager-section',
         'location-management-section',
@@ -878,6 +973,7 @@ export function continueInProgressWorkout() {
     // Hide main header (no logo on active workout), show bottom nav
     setHeaderMode(false);
     setBottomNavVisible(true);
+    setWorkoutActiveState(true);
 
     // Set workout name in header
     const workoutNameElement = document.getElementById('current-workout-name');
@@ -885,11 +981,11 @@ export function continueInProgressWorkout() {
         workoutNameElement.textContent = window.inProgressWorkout.workoutType;
     }
 
-    // Resume timer
+    // Resume timer (v1 — v2 has its own)
     startWorkoutTimer();
 
-    // Render exercises
-    renderExercises();
+    // V2 wizard UI
+    loadAutofillForAllExercises().then(() => renderActiveWorkout());
 
     // Restore location from saved data
     if (window.inProgressWorkout.location) {
@@ -1028,7 +1124,9 @@ export async function editHistoricalWorkout(docIdOrDate) {
         'workout-selector',
         'dashboard',
         'workout-history-section',
-        'stats-section',
+        'muscle-group-detail-section',
+        'exercise-detail-section',
+        'composition-detail-section',
         'workout-management-section',
         'exercise-manager-section',
         'location-management-section',
@@ -1064,16 +1162,8 @@ export async function editHistoricalWorkout(docIdOrDate) {
     // Display static duration (don't start a live timer when editing)
     displayStaticDuration(workoutData.totalDuration);
 
-    // Render exercises
-    renderExercises();
-
-    // Update location indicator to show current location with change option
-    // Don't lock it so user can change it when editing
-    const currentLocation = getSessionLocation();
-    updateLocationIndicator(currentLocation, false);
-
-    // Update button labels for edit mode
-    updateWorkoutButtonsForEditMode(true);
+    // V2 wizard UI for editing
+    loadAutofillForAllExercises().then(() => renderActiveWorkout());
 }
 
 /**
@@ -1198,8 +1288,8 @@ export async function showWorkoutSelector() {
         if (workoutManagement) workoutManagement.classList.add('hidden');
         if (historySection) historySection.classList.add('hidden');
 
-        // Re-render exercises to ensure UI is up to date
-        renderExercises();
+        // Re-render v2 wizard UI to ensure UI is up to date
+        renderActiveWorkout();
         return; // Don't show selector or check for in-progress workout
     }
 

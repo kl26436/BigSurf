@@ -68,7 +68,9 @@ export async function showWorkoutManagement() {
         'workout-selector',
         'active-workout',
         'workout-history-section',
-        'stats-section',
+        'muscle-group-detail-section',
+        'exercise-detail-section',
+        'composition-detail-section',
         'exercise-manager-section',
         'location-management-section',
     ];

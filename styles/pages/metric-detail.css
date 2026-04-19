@@ -1,0 +1,151 @@
+/* ===========================================
+   METRIC DETAIL — drill-down view
+   =========================================== */
+
+/* Page header with back button */
+.detail-page-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-4);
+    margin-bottom: var(--space-8);
+}
+.detail-page-header__back {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    color: var(--text-main);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm);
+    cursor: pointer;
+}
+.detail-page-header__title {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.detail-page-header__tag {
+    margin-left: auto;
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    background: var(--bg-card-hi);
+    padding: 2px 8px;
+    border-radius: var(--radius-xs);
+}
+
+/* Hero number */
+.detail-hero { padding: 0 var(--space-4); margin-bottom: var(--space-8); }
+.detail-hero__num {
+    font-size: 2.4rem;
+    font-weight: var(--font-display-weight);
+    color: var(--text-strong);
+    line-height: 1;
+    margin-bottom: var(--space-4);
+}
+.detail-hero__unit {
+    font-size: var(--font-base);
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 4px;
+}
+.detail-hero__delta {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    margin-bottom: var(--space-12);
+}
+.detail-hero__delta.delta-up { color: var(--success); }
+.detail-hero__delta.delta-down { color: var(--danger); }
+.detail-hero__minmax {
+    display: flex;
+    gap: var(--space-16);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-8);
+}
+.detail-hero__minmax strong { color: var(--text-strong); }
+
+/* Hero chart container */
+.detail-chart {
+    width: 100%;
+    height: 160px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-12);
+    margin-bottom: var(--space-12);
+}
+
+/* Insight card */
+.detail-insight {
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-12) var(--pad-card-y);
+    margin-bottom: var(--space-12);
+    display: flex;
+    gap: var(--space-10);
+    align-items: flex-start;
+}
+.detail-insight > i { color: var(--primary); margin-top: 2px; }
+.detail-insight > div {
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    line-height: 1.45;
+}
+.detail-insight strong { color: var(--text-strong); }
+
+/* Breakdown section */
+.detail-breakdown-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: var(--space-20) 0 var(--space-10);
+    padding: 0 2px;
+}
+.detail-breakdown-head h3 {
+    font-size: var(--font-base);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+/* Breakdown rows */
+.detail-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 11px 12px;
+    margin-bottom: var(--space-6);
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    cursor: pointer;
+    transition: transform var(--anim-fast);
+}
+.detail-row:active { transform: scale(0.98); }
+.detail-row svg { flex-shrink: 0; }
+.detail-row__info { flex: 1; min-width: 0; }
+.detail-row__name { font-size: var(--font-sm); color: var(--text-strong); font-weight: 600; }
+.detail-row__sub { font-size: var(--font-xs); color: var(--text-muted); margin-top: 2px; }
+.detail-row__right { text-align: right; }
+.detail-row__val { font-size: var(--font-sm); font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.detail-row__delta { font-size: var(--font-xs); font-weight: 600; margin-top: 2px; }
+.detail-row__delta.delta-up { color: var(--success); }
+.detail-row__delta.delta-down { color: var(--danger); }
+
+/* Weight entry rows */
+.detail-weight-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    background: rgba(86, 182, 194, 0.15);
+    color: var(--cat-shoulders);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+}
