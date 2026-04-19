@@ -347,18 +347,22 @@ Walk on 375px viewport after next dev deploy:
 **Kept (active reference)**: `active-workout-v2.html`, `dashboard-final-v2.html`, `forms-redesign.html`, `settings-onboarding-redesign.html`, `features-redesign.html`, `create-workout-redesign.html`, `workout-page-flow.html`, `exercise-equipment-library-redesign.html`, `history-redesign.html`, `workout-selector-redesign.html`
 
 ### Delete obsolete implementation MDs [CODE-AUDIT.md #8]
-- [ ] `UX-IMPLEMENTATION-GUIDE.md` (superseded by Master)
-- [ ] `DASHBOARD-IMPLEMENTATION.md` (Phase 1 shipped)
-- [ ] `EQUIPMENT-WEIGHT-IMPLEMENTATION.md` (shipped)
-- [ ] Review and likely delete: `PLAN.md`, `workout-app-backlog.md`, `ENHANCEMENTS.md`
-- [ ] Review: `UX-VISUAL-POLISH-GUIDE.md`, `UX-WORLD-CLASS-GUIDE.md`
+All 8 obsolete MDs confirmed deleted (audit 2026-04-19):
+- [x] `UX-IMPLEMENTATION-GUIDE.md` — deleted
+- [x] `DASHBOARD-IMPLEMENTATION.md` — deleted
+- [x] `EQUIPMENT-WEIGHT-IMPLEMENTATION.md` — deleted
+- [x] `PLAN.md` — deleted
+- [x] `workout-app-backlog.md` — deleted
+- [x] `ENHANCEMENTS.md` — deleted
+- [x] `UX-VISUAL-POLISH-GUIDE.md` — deleted
+- [x] `UX-WORLD-CLASS-GUIDE.md` — deleted
 
 ### Archive source docs (this file is the single source of truth)
 All items from the docs below are now captured in this backlog. Archive once confident nothing is missed:
 - [x] `design-critique-system.md` → archived to `docs/archive/` (audit 2026-04-19: 33/35 shipped; Opportunity 5 deferred via CLAUDE.md Rule 9; one feature idea captured)
 - [x] `design-critique-dashboard.md` → archived to `docs/archive/` (audit 2026-04-19: 33/35 shipped, 2 intentional trade-offs + 1 future polish item captured in Phase C Dashboard)
 - [x] `design-critique-history.md` → archived to `docs/archive/` (audit 2026-04-19: 17/19 shipped, 2 intentional exceptions captured in Phase C History section)
-- [ ] `CODE-AUDIT.md` → archive (all open items in Phase D/E; closed items in shipped list)
+- [x] `CODE-AUDIT.md` → archived to `docs/archive/` (audit 2026-04-19: 9/9 issues resolved; nothing new to capture)
 - [ ] `DASHBOARD-V2-IMPLEMENTATION.md` → keep until Phase H Dashboard checklist is signed off; then archive
 - [ ] `ACTIVE-WORKOUT-V2-IMPLEMENTATION.md` → keep until Phase H Active Workout checklist is signed off; then archive
 - [ ] `PAGES-REDESIGN-IMPLEMENTATION.md` → keep until Phase F is complete; then archive
