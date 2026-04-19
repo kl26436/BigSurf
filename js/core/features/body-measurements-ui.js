@@ -123,7 +123,7 @@ export function showWeightEntryModal() {
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="modal-body" style="padding: 14px 16px 24px;">
+        <div class="modal-body bm-entry-body">
             <!-- Hero weight card -->
             <div class="sec-head"><h4>Weight</h4></div>
             <div class="bw-hero-card">
@@ -139,7 +139,7 @@ export function showWeightEntryModal() {
                         ` : ''}
                     </div>
                 </div>
-                <div class="chips" style="margin-top: 10px;">
+                <div class="chips bm-unit-chips">
                     <div class="chip ${unit === 'lbs' ? 'active' : ''}" onclick="setBodyWeightUnit('lbs')">lb</div>
                     <div class="chip ${unit === 'kg' ? 'active' : ''}" onclick="setBodyWeightUnit('kg')">kg</div>
                 </div>
@@ -153,6 +153,13 @@ export function showWeightEntryModal() {
                 <input type="number" id="body-fat-input" class="meas-input"
                        placeholder="—" step="0.1" min="0" max="100" inputmode="decimal">
                 <div class="meas-unit">%</div>
+            </div>
+            <div class="meas-row">
+                <div class="meas-icon"><i class="fas fa-fire"></i></div>
+                <div class="meas-info"><div class="meas-name">Muscle mass</div></div>
+                <input type="number" id="muscle-mass-input" class="meas-input"
+                       placeholder="—" step="0.1" min="0" max="500" inputmode="decimal">
+                <div class="meas-unit">${unitLabel}</div>
             </div>
 
             <!-- Circumference -->
@@ -216,6 +223,7 @@ export function closeWeightEntryModal() {
 export async function saveBodyWeightEntry() {
     const weightInput = document.getElementById('body-weight-input');
     const fatInput = document.getElementById('body-fat-input');
+    const muscleInput = document.getElementById('muscle-mass-input');
     const notesInput = document.getElementById('body-weight-notes');
 
     const weight = parseFloat(weightInput?.value);
@@ -225,10 +233,11 @@ export async function saveBodyWeightEntry() {
     }
 
     const bodyFat = fatInput?.value ? parseFloat(fatInput.value) : null;
+    const muscleMass = muscleInput?.value ? parseFloat(muscleInput.value) : null;
     const notes = notesInput?.value?.trim() || '';
     const unit = AppState.globalUnit || 'lbs';
 
-    const result = await saveBodyWeight(weight, unit, { bodyFat, notes });
+    const result = await saveBodyWeight(weight, unit, { bodyFat, muscleMass, notes });
     if (result) {
         closeWeightEntryModal();
         // Refresh dashboard to show updated weight

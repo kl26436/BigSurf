@@ -1115,3 +1115,33 @@ dialog.modal[open] {
 dialog.modal[open] .modal-content {
     transform: translateY(0);
 }
+
+/* ============================================================================
+   EQUIPMENT DETAIL PAGE — §9a polish. Classes added during Phase F.
+   ============================================================================ */
+
+.equip-detail-title {
+    font-size: var(--font-md);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.equip-detail-body {
+    padding: var(--space-12) var(--space-16) var(--space-80);
+}
+.equip-locations-chips { margin-bottom: var(--space-8); }
+.equip-locations-empty {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+.eq-location-chip {
+    padding-right: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+.equip-notes {
+    resize: none;
+    min-height: 60px;
+}

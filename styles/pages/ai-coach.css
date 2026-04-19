@@ -625,3 +625,24 @@
 .preview-actions .btn-secondary {
     flex-shrink: 0;
 }
+
+/* ============================================================================
+   PROMPT CARD ICON TINTS (Phase F §8) — replaces inline `style="background:..."`
+   ============================================================================ */
+.prompt-icon--warning {
+    background: var(--warning-bg-subtle);
+    color: var(--warning);
+}
+.prompt-icon--warm {
+    background: var(--highlight-warm-bg);
+    color: var(--highlight-warm);
+}
+.prompt-icon--core {
+    background: var(--cat-core-bg);
+    color: var(--cat-core);
+}
+
+/* Small leading icon in coach chat messages (error / info states) */
+.coach-msg-icon {
+    margin-right: var(--space-6);
+}

@@ -361,7 +361,7 @@ export async function openEquipmentDetail(equipmentId) {
             <button class="btn-icon" onclick="backToEquipmentList()" aria-label="Back">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <h2 style="font-size: 1rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(equipment.name)}</h2>
+            <h2 class="equip-detail-title">${escapeHtml(equipment.name)}</h2>
             <button class="page-header__save" onclick="backToEquipmentList()">Done</button>
         `;
     }
@@ -370,7 +370,7 @@ export async function openEquipmentDetail(equipmentId) {
 
     container.innerHTML = `
         <div class="equipment-detail">
-            <div style="padding: 14px 16px 80px;">
+            <div class="equip-detail-body">
                 <!-- Name -->
                 <div class="field">
                     <div class="field-label">Name</div>
@@ -388,7 +388,7 @@ export async function openEquipmentDetail(equipmentId) {
                 <!-- Type chips -->
                 <div class="field">
                     <div class="field-label">Type</div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <div class="chips">
                         ${EQUIPMENT_TYPES_LIST.map(t => `
                             <div class="chip ${currentType === t ? 'active' : ''}"
                                  onclick="saveEquipmentField('${escapeAttr(equipmentId)}', 'equipmentType', '${t}'); openEquipmentDetail('${escapeAttr(equipmentId)}');">
@@ -401,7 +401,7 @@ export async function openEquipmentDetail(equipmentId) {
                 <!-- Base weight (conditional) -->
                 ${BASE_WEIGHT_TYPES.includes(currentType) ? `
                 <div class="field">
-                    <div class="field-label">Base weight <span style="color: var(--text-muted); text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 0.7rem;">(empty machine / bar)</span></div>
+                    <div class="field-label">Base weight <span class="field-label__hint">(empty machine / bar)</span></div>
                     <div class="equip-base-weight-row">
                         <input type="number" inputmode="decimal" step="0.5"
                                class="equip-base-weight-input"
@@ -421,27 +421,25 @@ export async function openEquipmentDetail(equipmentId) {
                 <!-- Locations -->
                 <div class="sec-head">
                     <h4>Locations <span class="count">${locations.length}</span></h4>
-                    <span style="color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer;"
-                          onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Add</span>
+                    <button class="sec-head__action" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Add</button>
                 </div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                <div class="chips equip-locations-chips">
                     ${locations.map(loc => `
-                        <div class="chip active" style="padding-right: 4px; display: flex; align-items: center; gap: 4px;">
+                        <div class="chip active eq-location-chip">
                             <i class="fas fa-map-marker-alt"></i> ${escapeHtml(loc)}
-                            <button style="background:none;border:none;color:var(--text-muted);font-size:0.7rem;cursor:pointer;padding:2px 4px;line-height:1;"
+                            <button class="chip-remove"
                                     onclick="event.stopPropagation(); removeEquipmentLocation('${escapeAttr(equipmentId)}', '${escapeAttr(loc)}')">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
                     `).join('')}
-                    ${locations.length === 0 ? '<span style="font-size: 0.78rem; color: var(--text-muted);">No locations yet</span>' : ''}
+                    ${locations.length === 0 ? '<span class="equip-locations-empty">No locations yet</span>' : ''}
                 </div>
 
                 <!-- Used for exercises -->
                 <div class="sec-head">
                     <h4>Used for <span class="count">${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}</span></h4>
-                    <span style="color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer;"
-                          onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Assign</span>
+                    <button class="sec-head__action" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Assign</button>
                 </div>
                 ${exercises.map(ex => `
                     <div class="link-row">
@@ -453,13 +451,13 @@ export async function openEquipmentDetail(equipmentId) {
 
                 <!-- Notes -->
                 <div class="sec-head"><h4>Notes</h4></div>
-                <textarea class="form-input" style="resize: none; min-height: 60px;"
+                <textarea class="field-input equip-notes"
                           placeholder="e.g., Setting 5 for chest fly, setting 8 for pushdown"
                           oninput="saveEquipmentNotes('${escapeAttr(equipmentId)}', this.value)">${escapeHtml(notes)}</textarea>
 
                 <!-- Delete -->
-                <div style="margin-top: 24px; text-align: center;">
-                    <button style="background: transparent; border: none; color: var(--danger); font-size: 0.82rem; font-weight: 600; cursor: pointer;"
+                <div class="danger-action-row">
+                    <button class="danger-action-btn"
                             onclick="deleteEquipmentFromLibrary('${escapeAttr(equipmentId)}')">
                         <i class="fas fa-trash"></i> Delete equipment
                     </button>

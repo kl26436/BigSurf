@@ -4,6 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { Config } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { navigateTo } from './navigation.js';
 import { db, doc, setDoc, getDoc } from '../data/firebase-config.js';
 import { exportWorkoutData } from '../data/data-manager.js';
 
@@ -27,6 +28,12 @@ const DEFAULT_SETTINGS = {
     plateKg: [20, 15, 10, 5, 2.5, 1.25],
     plateBarLbs: 45,
     plateBarKg: 20,
+
+    // Profile (user can override Firebase auth displayName; other fields are opt-in)
+    profileName: null,       // override display name; null = use Firebase auth
+    profileHeightCm: null,   // number (cm); convert display per unit pref
+    profileBirthday: null,   // YYYY-MM-DD
+    profileExperience: null, // 'beginner' | 'intermediate' | 'advanced'
 
     // Meta
     hasCompletedOnboarding: false,
@@ -134,7 +141,7 @@ export function renderSettings() {
         <div class="settings-page" style="padding: 14px 16px 80px;">
 
             <!-- Profile card -->
-            <div class="profile-card">
+            <div class="profile-card" onclick="openProfile()">
                 <div class="profile-avatar">
                     ${photoURL ? `<img src="${escapeAttr(photoURL)}" alt="">` : ''}
                 </div>
@@ -142,7 +149,7 @@ export function renderSettings() {
                     <div class="profile-name">${escapeHtml(displayName)}</div>
                     <div class="profile-email">${escapeHtml(email)}</div>
                 </div>
-                <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
+                <i class="fas fa-chevron-right profile-card__chev"></i>
             </div>
 
             <!-- Preferences -->
@@ -468,6 +475,143 @@ export function completeOnboarding() {
     const overlay = document.getElementById('onboarding-overlay');
     if (overlay) overlay.remove();
 }
+
+// ===================================================================
+// PROFILE DETAIL (§5)
+// ===================================================================
+
+/** Open the Profile detail page. */
+export function openProfile() {
+    navigateTo('profile-section');
+    renderProfileDetail();
+}
+
+/** Render the Profile detail page with editable fields. */
+export function renderProfileDetail() {
+    const container = document.getElementById('profile-content');
+    if (!container) return;
+
+    const s = AppState.settings || DEFAULT_SETTINGS;
+    const user = AppState.currentUser;
+    const authName = user?.displayName || 'User';
+    const email = user?.email || '';
+    const photoURL = user?.photoURL || '';
+    const displayName = s.profileName || authName;
+
+    const height = s.profileHeightCm != null ? `${s.profileHeightCm} cm` : 'Not set';
+    const birthday = s.profileBirthday || 'Not set';
+    const exp = s.profileExperience ? s.profileExperience.charAt(0).toUpperCase() + s.profileExperience.slice(1) : 'Not set';
+
+    container.innerHTML = `
+        <div class="profile-detail">
+            <div class="profile-hero">
+                <div class="profile-hero__avatar">
+                    ${photoURL ? `<img src="${escapeAttr(photoURL)}" alt="">` : escapeHtml((displayName || '?').charAt(0).toUpperCase())}
+                </div>
+                <div class="profile-hero__name">${escapeHtml(displayName)}</div>
+                <div class="profile-hero__email">${escapeHtml(email)}</div>
+            </div>
+
+            <div class="group-label">Display</div>
+            <div class="group">
+                <div class="srow" onclick="editProfileName()">
+                    <div class="srow-icon ic-primary"><i class="fas fa-user"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Name</div>
+                    </div>
+                    <div class="srow-right">
+                        <span class="srow-value">${escapeHtml(displayName)}</span>
+                        <i class="fas fa-chevron-right srow-chev"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="group-label">Body data</div>
+            <div class="group">
+                <div class="srow" onclick="editProfileHeight()">
+                    <div class="srow-icon ic-blue"><i class="fas fa-ruler-vertical"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Height</div>
+                    </div>
+                    <div class="srow-right">
+                        <span class="srow-value">${escapeHtml(height)}</span>
+                        <i class="fas fa-chevron-right srow-chev"></i>
+                    </div>
+                </div>
+                <div class="srow" onclick="editProfileBirthday()">
+                    <div class="srow-icon ic-warm"><i class="fas fa-birthday-cake"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Birthday</div>
+                    </div>
+                    <div class="srow-right">
+                        <span class="srow-value">${escapeHtml(birthday)}</span>
+                        <i class="fas fa-chevron-right srow-chev"></i>
+                    </div>
+                </div>
+                <div class="srow" onclick="editProfileExperience()">
+                    <div class="srow-icon ic-purple"><i class="fas fa-medal"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Experience</div>
+                    </div>
+                    <div class="srow-right">
+                        <span class="srow-value">${escapeHtml(exp)}</span>
+                        <i class="fas fa-chevron-right srow-chev"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/** Prompt-based editors for each profile field. */
+export function editProfileName() {
+    const s = AppState.settings || DEFAULT_SETTINGS;
+    const current = s.profileName || AppState.currentUser?.displayName || '';
+    const next = prompt('Display name:', current);
+    if (next != null) {
+        updateSetting('profileName', next.trim() || null);
+        renderProfileDetail();
+    }
+}
+export function editProfileHeight() {
+    const s = AppState.settings || DEFAULT_SETTINGS;
+    const current = s.profileHeightCm != null ? String(s.profileHeightCm) : '';
+    const next = prompt('Height in cm:', current);
+    if (next != null) {
+        const n = parseFloat(next);
+        updateSetting('profileHeightCm', isFinite(n) && n > 0 ? n : null);
+        renderProfileDetail();
+    }
+}
+export function editProfileBirthday() {
+    const s = AppState.settings || DEFAULT_SETTINGS;
+    const current = s.profileBirthday || '';
+    const next = prompt('Birthday (YYYY-MM-DD):', current);
+    if (next != null) {
+        const cleaned = next.trim();
+        if (cleaned === '' || /^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+            updateSetting('profileBirthday', cleaned || null);
+            renderProfileDetail();
+        } else {
+            showNotification('Use YYYY-MM-DD format', 'warn');
+        }
+    }
+}
+export function editProfileExperience() {
+    const s = AppState.settings || DEFAULT_SETTINGS;
+    const current = s.profileExperience || '';
+    const next = prompt('Experience (beginner / intermediate / advanced):', current);
+    if (next != null) {
+        const cleaned = next.trim().toLowerCase();
+        if (cleaned === '' || ['beginner', 'intermediate', 'advanced'].includes(cleaned)) {
+            updateSetting('profileExperience', cleaned || null);
+            renderProfileDetail();
+        } else {
+            showNotification('Use beginner / intermediate / advanced', 'warn');
+        }
+    }
+}
+export function closeProfile() { navigateTo('settings-section'); }
 
 /**
  * Rebuild PRs from settings page — recalculates from full workout history.

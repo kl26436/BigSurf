@@ -20,6 +20,7 @@ const SECTION_IDS = [
     'equipment-library-section',
     'plate-calculator-section',
     'settings-section',
+    'profile-section',
 ];
 
 const FADE_DURATION = 150; // ms, matches CSS transition

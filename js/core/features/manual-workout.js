@@ -317,22 +317,22 @@ function renderManualExercises() {
                 .join(', ');
 
             return `
-        <div class="manual-exercise-card" style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;margin-bottom:10px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-                <i class="fas fa-grip-vertical" style="color:var(--text-muted);"></i>
-                <div style="flex:1;">
-                    <div style="font-size:0.95rem;font-weight:700;color:var(--text-strong);">${escapeHtml(exercise.name)}</div>
-                    ${equipmentDisplay ? `<div style="font-size:0.72rem;color:var(--text-muted);">${escapeHtml(equipmentDisplay)}</div>` : ''}
+        <div class="manual-exercise-card">
+            <div class="manual-ex-head">
+                <i class="fas fa-grip-vertical manual-ex-drag"></i>
+                <div class="manual-ex-name-col">
+                    <div class="manual-ex-name">${escapeHtml(exercise.name)}</div>
+                    ${equipmentDisplay ? `<div class="manual-ex-equip">${escapeHtml(equipmentDisplay)}</div>` : ''}
                 </div>
-                <button style="background:transparent;border:none;color:var(--text-muted);" onclick="removeManualExercise(${exIndex})"><i class="fas fa-ellipsis-v"></i></button>
+                <button class="manual-ex-overflow" onclick="removeManualExercise(${exIndex})"><i class="fas fa-ellipsis-v"></i></button>
             </div>
-            <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+            <table class="manual-sets-table">
                 <thead>
-                    <tr style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;">
-                        <th style="width:24px;text-align:left;padding:4px;font-weight:600;">#</th>
-                        <th style="width:38%;text-align:center;padding:4px;font-weight:600;">Weight</th>
-                        <th style="width:38%;text-align:center;padding:4px;font-weight:600;">Reps</th>
-                        <th style="width:32px;padding:4px;"></th>
+                    <tr>
+                        <th class="manual-sets-table__col-num">#</th>
+                        <th class="manual-sets-table__col-weight">Weight</th>
+                        <th class="manual-sets-table__col-reps">Reps</th>
+                        <th class="manual-sets-table__col-check"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -340,25 +340,25 @@ function renderManualExercises() {
                         const isDone = !!(set.reps && set.weight);
                         return `
                     <tr>
-                        <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">${setIndex + 1}</td>
-                        <td style="padding:4px;">
-                            <input type="number" inputmode="decimal" style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;"
+                        <td class="manual-sets-table__num">${setIndex + 1}</td>
+                        <td>
+                            <input type="number" inputmode="decimal" class="manual-sets-table__input"
                                    value="${set.weight || ''}" placeholder="0"
                                    onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
                         </td>
-                        <td style="padding:4px;">
-                            <input type="number" inputmode="numeric" style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;"
+                        <td>
+                            <input type="number" inputmode="numeric" class="manual-sets-table__input"
                                    value="${set.reps || ''}" placeholder="0"
                                    onchange="updateManualSet(${exIndex}, ${setIndex}, 'reps', this.value)">
                         </td>
-                        <td style="padding:4px;text-align:center;">
-                            <i class="fas ${isDone ? 'fa-check-circle' : 'fa-circle'}" style="color:${isDone ? 'var(--success)' : 'var(--text-muted)'};font-size:1rem;"></i>
+                        <td class="manual-sets-table__check">
+                            <i class="fas ${isDone ? 'fa-check-circle text-success' : 'fa-circle text-muted'}"></i>
                         </td>
                     </tr>`;
                     }).join('')}
                 </tbody>
             </table>
-            <button style="width:100%;background:transparent;border:1px dashed var(--border-light);border-radius:8px;padding:8px;color:var(--primary);font-size:0.76rem;font-weight:600;margin-top:8px;cursor:pointer;" onclick="addManualSet(${exIndex})">
+            <button class="manual-add-set-btn" onclick="addManualSet(${exIndex})">
                 <i class="fas fa-plus"></i> Add Set
             </button>
         </div>

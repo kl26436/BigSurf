@@ -1,0 +1,90 @@
+/* ============================================================================
+   MANUAL WORKOUT — past-workout entry form.
+   Extracted from js/core/features/manual-workout.js inline styles (Phase F §3).
+   ============================================================================ */
+
+.manual-exercise-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: var(--space-10);
+}
+
+.manual-ex-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    margin-bottom: var(--space-12);
+}
+.manual-ex-drag { color: var(--text-muted); }
+.manual-ex-name-col { flex: 1; }
+.manual-ex-name {
+    font-size: var(--font-base);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.manual-ex-equip {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.manual-ex-overflow {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+/* Sets table */
+.manual-sets-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+.manual-sets-table thead tr {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.manual-sets-table th {
+    padding: var(--space-4);
+    font-weight: 600;
+}
+.manual-sets-table__col-num { width: 24px; text-align: left; }
+.manual-sets-table__col-weight { width: 38%; text-align: center; }
+.manual-sets-table__col-reps { width: 38%; text-align: center; }
+.manual-sets-table__col-check { width: 32px; }
+.manual-sets-table td { padding: var(--space-4); }
+.manual-sets-table__num {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    font-weight: 600;
+}
+.manual-sets-table__input {
+    width: 100%;
+    background: var(--bg-app);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xs);
+    padding: var(--space-8);
+    color: var(--text-strong);
+    font-size: var(--font-sm);
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+}
+.manual-sets-table__check { text-align: center; }
+
+.manual-add-set-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-xs);
+    padding: var(--space-8);
+    color: var(--primary);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    margin-top: var(--space-8);
+    cursor: pointer;
+}

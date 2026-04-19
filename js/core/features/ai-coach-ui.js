@@ -39,15 +39,15 @@ export function showAICoach(prefillContext) {
                             <div class="prompt-txt">Why has my <strong>bench press</strong> stalled? Suggest a deload.</div>
                         </div>
                         <div class="prompt-card" onclick="askCoach('Analyze my volume distribution and identify any muscle groups I am neglecting or overtraining.')">
-                            <div class="prompt-icon" style="background:rgba(240,194,75,0.1);color:var(--warning);"><i class="fas fa-balance-scale"></i></div>
+                            <div class="prompt-icon prompt-icon--warning"><i class="fas fa-balance-scale"></i></div>
                             <div class="prompt-txt">Check my <strong>push / pull volume</strong> balance this month.</div>
                         </div>
                         <div class="prompt-card" onclick="askCoach('Plan a 5-day training split optimized for my goals and recent performance.')">
-                            <div class="prompt-icon" style="background:rgba(247,168,101,0.1);color:var(--highlight-warm);"><i class="fas fa-calendar-alt"></i></div>
+                            <div class="prompt-icon prompt-icon--warm"><i class="fas fa-calendar-alt"></i></div>
                             <div class="prompt-txt">Plan a <strong>5-day split</strong> for my goals.</div>
                         </div>
                         <div class="prompt-card" onclick="askCoach('Help me plan a deload week. I am feeling beat up and need recovery.')">
-                            <div class="prompt-icon" style="background:rgba(74,217,167,0.1);color:var(--cat-core);"><i class="fas fa-running"></i></div>
+                            <div class="prompt-icon prompt-icon--core"><i class="fas fa-running"></i></div>
                             <div class="prompt-txt">Help me deload next week — I'm feeling beat up.</div>
                         </div>
                     </div>
@@ -176,11 +176,11 @@ export async function askCoach(question) {
         let errorHtml;
 
         if (errorMessage.includes('once per day') || errorMessage.includes('rate limit')) {
-            errorHtml = `<i class="fas fa-clock" style="color:var(--warning);margin-right:6px;"></i> Coach is available once per day. Check back tomorrow, or review your training insights on the dashboard.`;
+            errorHtml = `<i class="fas fa-clock text-warning coach-msg-icon"></i> Coach is available once per day. Check back tomorrow, or review your training insights on the dashboard.`;
         } else if (errorMessage.includes('not-found') || errorMessage.includes('internal')) {
-            errorHtml = `<i class="fas fa-cloud" style="color:var(--text-muted);margin-right:6px;"></i> AI Coach requires Cloud Functions to be deployed. The rules-based insights on your dashboard are always available.`;
+            errorHtml = `<i class="fas fa-cloud text-muted coach-msg-icon"></i> AI Coach requires Cloud Functions to be deployed. The rules-based insights on your dashboard are always available.`;
         } else {
-            errorHtml = `<i class="fas fa-exclamation-circle" style="color:var(--text-muted);margin-right:6px;"></i> Unable to reach coach. Check your connection and try again.`;
+            errorHtml = `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Unable to reach coach. Check your connection and try again.`;
         }
 
         if (loadingBubble) {
@@ -505,7 +505,7 @@ export async function generateWorkoutTemplate(focus) {
     } catch (error) {
         console.error('Template generation error:', error);
         if (loadingBubble) {
-            loadingBubble.innerHTML = `<i class="fas fa-exclamation-circle" style="color:var(--text-muted);margin-right:6px;"></i> Failed to generate workout. ${escapeHtml(error.message || 'Try again.')}`;
+            loadingBubble.innerHTML = `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Failed to generate workout. ${escapeHtml(error.message || 'Try again.')}`;
         }
     }
 }

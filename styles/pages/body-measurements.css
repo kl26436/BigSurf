@@ -477,6 +477,14 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Body measurements entry modal — inline-style replacements */
+.bm-entry-body {
+    padding: var(--space-12) var(--space-16) var(--space-24);
+}
+.bm-unit-chips {
+    margin-top: var(--space-10);
+}
+
 /* Bodyweight chart time-range pills (3M / 6M / 1Y / All).
    Previously referenced by JS but undefined — now canonical. */
 .pill-btn {

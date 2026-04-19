@@ -146,3 +146,51 @@
     gap: 10px;
     border-top: 1px solid var(--border-subtle);
 }
+
+/* ============================================================================
+   PROFILE DETAIL (§5) — hero block + grouped rows of editable fields
+   ============================================================================ */
+
+.profile-card { cursor: pointer; }
+.profile-card__chev { color: var(--text-muted); }
+
+.profile-detail { padding: var(--space-12) var(--space-16) var(--space-80); }
+
+.profile-hero {
+    text-align: center;
+    padding: var(--space-20) 0 var(--space-24);
+}
+.profile-hero__avatar {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--space-12);
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--cat-push-bg), var(--cat-pull-bg));
+    color: var(--text-strong);
+    font-size: var(--font-2xl);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+}
+.profile-hero__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.profile-hero__name {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.profile-hero__email {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Shared spacer used in section-header-row to keep title centered
+   (36px matches .btn-icon-sm width) */
+.header-spacer { width: 36px; flex-shrink: 0; }

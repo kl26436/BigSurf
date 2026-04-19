@@ -8,7 +8,7 @@
 import { AppState } from './core/utils/app-state.js';
 import { getCategoryIcon } from './core/utils/config.js';
 import { startApplication } from './core/app-initialization.js';
-import { updateSetting, onboardingNext, onboardingBack, completeOnboarding, rebuildPRsFromSettings } from './core/ui/settings-ui.js';
+import { updateSetting, onboardingNext, onboardingBack, completeOnboarding, rebuildPRsFromSettings, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, closeProfile } from './core/ui/settings-ui.js';
 import { exportWorkoutData } from './core/data/data-manager.js';
 import { dismissFirstUseTip } from './core/features/first-use-tips.js';
 import {
@@ -805,6 +805,13 @@ window.onboardingBack = onboardingBack;
 window.completeOnboarding = completeOnboarding;
 window.exportWorkoutData = exportWorkoutData;
 window.rebuildPRsFromSettings = rebuildPRsFromSettings;
+// Profile detail (§5)
+window.openProfile = openProfile;
+window.editProfileName = editProfileName;
+window.editProfileHeight = editProfileHeight;
+window.editProfileBirthday = editProfileBirthday;
+window.editProfileExperience = editProfileExperience;
+window.closeProfile = closeProfile;
 window.dismissFirstUseTip = dismissFirstUseTip;
 
 // Body Measurements (Phase 12)
