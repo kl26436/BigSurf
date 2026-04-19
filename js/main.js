@@ -323,6 +323,8 @@ import {
 import {
     showAICoach,
     closeAICoach,
+    openCoachHistory,
+    openCoachTemplate,
     sendCoachMessage,
     askCoach,
     resetCoachUI,
@@ -853,6 +855,8 @@ window.disconnectWithings = disconnectWithings;
 // AI Coach (Phase 17)
 window.showAICoach = showAICoach;
 window.closeAICoach = closeAICoach;
+window.openCoachHistory = openCoachHistory;
+window.openCoachTemplate = openCoachTemplate;
 window.sendCoachMessage = sendCoachMessage;
 window.askCoach = askCoach;
 window.resetCoachUI = resetCoachUI;

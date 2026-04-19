@@ -85,22 +85,13 @@
     color: var(--success);
 }
 
-/* ===== AI Coach Modal — Chat UI ===== */
+/* ===== AI Coach — Chat UI (Phase F §8 full-page) ===== */
 
-/* Ensure coach-content fills modal for flex layout */
-.coach-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-}
-
-/* Chat container fills the modal content area */
+/* Chat container fills the space below .page-header inside the pinned section */
 .coach-chat-container {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
     min-height: 0;
 }
 
@@ -283,28 +274,62 @@
     50%      { opacity: 1;   transform: translateY(-3px); }
 }
 
-/* Action cards inside bot responses */
+/* Action cards inside bot responses (spec §8) — embedded affordance linking
+   the user to something the bot just created/updated (e.g. a saved template). */
 .coach-action-card {
     background: var(--bg-card-hi);
     border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    margin-top: var(--space-4);
+    padding: var(--space-10) var(--space-12);
+    margin-top: var(--space-8);
     display: flex;
     align-items: center;
     gap: var(--space-10);
     border: 1px solid var(--border-light);
     cursor: pointer;
-    transition: background var(--anim-fast);
+    transition: background var(--anim-fast), transform var(--anim-fast);
 }
-.coach-action-card:active { background: var(--bg-card); }
+.coach-action-card:active {
+    background: var(--bg-card);
+    transform: scale(0.99);
+}
+.coach-action-card__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm);
+    flex-shrink: 0;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+}
+.coach-action-card__icon--push   { background: var(--cat-push-bg);   color: var(--cat-push); }
+.coach-action-card__icon--pull   { background: var(--cat-pull-bg);   color: var(--cat-pull); }
+.coach-action-card__icon--legs   { background: var(--cat-legs-bg);   color: var(--cat-legs); }
+.coach-action-card__icon--core   { background: var(--cat-core-bg);   color: var(--cat-core); }
+.coach-action-card__icon--cardio { background: var(--cat-cardio-bg); color: var(--cat-cardio); }
+.coach-action-card__body {
+    flex: 1;
+    min-width: 0;
+}
 .coach-action-card__title {
     font-size: var(--font-sm);
     color: var(--text-strong);
     font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .coach-action-card__desc {
     font-size: var(--font-xs);
     color: var(--text-muted);
+    margin-top: 2px;
+}
+.coach-action-card__chev {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    flex-shrink: 0;
 }
 
 /* Loading state inside bot bubble */
@@ -358,6 +383,61 @@
     font-size: var(--font-xs);
     color: var(--text-muted);
     margin-bottom: var(--space-6);
+}
+
+/* ===== Coach history list (shown in empty state) ===== */
+
+.coach-history-section {
+    margin-top: var(--space-20);
+}
+
+.coach-history-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: 0 2px var(--space-8);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+}
+
+.coach-history-header i {
+    font-size: 0.75rem;
+}
+
+.coach-history-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-bottom: var(--space-8);
+    cursor: pointer;
+    transition: transform var(--anim-fast), border-color var(--anim-fast);
+}
+
+.coach-history-item:active {
+    transform: scale(0.98);
+    border-color: var(--primary-border);
+}
+
+.coach-history-question {
+    font-size: var(--font-sm);
+    color: var(--text-strong);
+    font-weight: 500;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.coach-history-date {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: 4px;
 }
 
 /* Freeform textarea (used in workout builder) */

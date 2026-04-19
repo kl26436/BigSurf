@@ -78,6 +78,29 @@
     cursor: not-allowed;
 }
 
+/* Trailing icon action (e.g. history on AI Coach). Matches page-header__back
+   circle sizing but uses transparent bg so it reads as a subtle affordance. */
+.page-header__icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background var(--anim-fast), color var(--anim-fast);
+}
+.page-header__icon-btn:hover,
+.page-header__icon-btn:active {
+    background: var(--bg-card);
+    color: var(--text-main);
+}
+
 /* Old page-title — retained for sections that still use it */
 .page-title {
     font-size: var(--font-md);

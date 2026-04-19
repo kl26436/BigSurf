@@ -1733,17 +1733,10 @@
         </dialog>
 
         <!-- AI Coach Modal (Phase 17) -->
-        <dialog id="ai-coach-modal" class="modal">
-            <div class="modal-content modal-content--full">
-                <div class="modal-header">
-                    <h3 class="modal-title">AI Coach</h3>
-                    <button class="btn-icon modal-close" onclick="closeAICoach()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="coach-content"></div>
-            </div>
-        </dialog>
+        <!-- AI Coach (full-page, Phase F §8) -->
+        <section id="ai-coach-section" class="content-section pinned-header hidden">
+            <!-- Populated by showAICoach() -->
+        </section>
 
         <!-- More Menu Bottom Sheet -->
         <div id="more-menu" class="more-menu">
@@ -1772,7 +1765,7 @@
                     <i class="fas fa-calculator"></i>
                     <span>Plate Calculator</span>
                 </button>
-                <button class="more-menu-item" onclick="showAICoach(); closeMoreMenu();">
+                <button class="more-menu-item" onclick="navigateTo('ai-coach'); closeMoreMenu();">
                     <i class="fas fa-brain"></i>
                     <span>AI Coach</span>
                 </button>

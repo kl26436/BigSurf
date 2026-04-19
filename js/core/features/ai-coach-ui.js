@@ -3,9 +3,10 @@
 // Handles modal, prompt cards, freeform input, and coach history display
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
+import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { TrainingInsights } from './training-insights.js';
-import { Config, debugLog } from '../utils/config.js';
+import { Config, debugLog, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 
 // ===================================================================
@@ -13,17 +14,128 @@ import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 // ===================================================================
 
 /**
- * Show the AI Coach modal with chat UI.
- * @param {string} [prefillContext] - Optional exercise name for pre-filled plateau context
+ * Compute personalized prompt cards from AppState.workouts.
+ * Prioritizes contextual prompts (stalled lifts, volume imbalance, deload),
+ * then fills remaining slots with generic starter prompts. Always returns 4.
  */
-export function showAICoach(prefillContext) {
-    const modal = document.getElementById('ai-coach-modal');
-    if (!modal) return;
+function getContextualPrompts() {
+    const workouts = AppState.workouts || [];
+    const exerciseDatabase = AppState.exerciseDatabase || [];
+    const prompts = [];
 
-    const content = modal.querySelector('.coach-content');
-    if (!content) return;
+    if (workouts.length > 0) {
+        try {
+            const plateaus = TrainingInsights.detectPlateaus(workouts);
+            if (plateaus.length > 0) {
+                const p = plateaus[0];
+                const name = p.exercise;
+                prompts.push({
+                    icon: 'fa-chart-line',
+                    iconClass: '',
+                    text: `My ${name} has stalled at ${p.weight} lbs across ${p.sessions} sessions. Analyze my recent data and suggest strategies to break through.`,
+                    html: `Why has my <strong>${escapeHtml(name.toLowerCase())}</strong> stalled? Suggest a deload.`,
+                });
+            }
+        } catch (e) { debugLog('coach prompts: plateau check failed', e); }
 
-    content.innerHTML = `
+        try {
+            const volumes = TrainingInsights.analyzeWeeklyVolume(workouts.slice(0, 20), exerciseDatabase);
+            const low = volumes.find(v => v.status === 'low');
+            const high = volumes.find(v => v.status === 'high');
+            if (low) {
+                prompts.push({
+                    icon: 'fa-balance-scale',
+                    iconClass: 'coach-prompt-card__icon--warning',
+                    text: `My ${low.bodyPart} volume is only ${low.weeklySets} working sets per week. How should I rebalance my program to hit all muscle groups?`,
+                    html: `My <strong>${escapeHtml(low.bodyPart)}</strong> volume is low — how do I rebalance?`,
+                });
+            } else if (high) {
+                prompts.push({
+                    icon: 'fa-balance-scale',
+                    iconClass: 'coach-prompt-card__icon--warning',
+                    text: `My ${high.bodyPart} volume is ${high.weeklySets} sets per week. Am I overtraining? How should I adjust?`,
+                    html: `Am I overtraining <strong>${escapeHtml(high.bodyPart)}</strong>?`,
+                });
+            }
+        } catch (e) { debugLog('coach prompts: volume check failed', e); }
+
+        try {
+            const deload = TrainingInsights.checkDeloadNeeded(workouts);
+            if (deload?.needed) {
+                prompts.push({
+                    icon: 'fa-running',
+                    iconClass: 'coach-prompt-card__icon--core',
+                    text: `I've trained hard for ${deload.consecutiveHardWeeks} consecutive weeks. Plan a deload week for me.`,
+                    html: `Plan a <strong>deload week</strong> — I've gone hard ${deload.consecutiveHardWeeks} weeks straight.`,
+                });
+            }
+        } catch (e) { debugLog('coach prompts: deload check failed', e); }
+    }
+
+    const usedIcons = new Set(prompts.map(p => p.icon));
+    const fallbacks = [
+        {
+            icon: 'fa-calendar-alt',
+            iconClass: 'coach-prompt-card__icon--warm',
+            text: 'Plan a 5-day training split optimized for my goals and recent performance.',
+            html: `Plan a <strong>5-day split</strong> for my goals.`,
+        },
+        {
+            icon: 'fa-balance-scale',
+            iconClass: 'coach-prompt-card__icon--warning',
+            text: 'Analyze my volume distribution and identify any muscle groups I am neglecting or overtraining.',
+            html: `Check my <strong>push / pull volume</strong> balance this month.`,
+        },
+        {
+            icon: 'fa-chart-line',
+            iconClass: '',
+            text: 'Summarize my training trends over the last month and highlight wins and concerns.',
+            html: `Summarize my <strong>training trends</strong> this month.`,
+        },
+        {
+            icon: 'fa-running',
+            iconClass: 'coach-prompt-card__icon--core',
+            text: "Help me plan a deload week. I am feeling beat up and need recovery.",
+            html: `Help me deload — I'm feeling beat up.`,
+        },
+    ];
+
+    for (const fb of fallbacks) {
+        if (prompts.length >= 4) break;
+        if (!usedIcons.has(fb.icon)) {
+            prompts.push(fb);
+            usedIcons.add(fb.icon);
+        }
+    }
+
+    return prompts.slice(0, 4);
+}
+
+/**
+ * Render the AI Coach page into #ai-coach-section. Does NOT navigate — caller
+ * decides. Used both by `showAICoach()` (direct entry) and by navigation.js
+ * case 'ai-coach' (tab/more-menu entry) so the section is never empty.
+ */
+export function renderAICoachSection() {
+    const section = document.getElementById('ai-coach-section');
+    if (!section) return;
+
+    const prompts = getContextualPrompts();
+    const promptsHtml = prompts.map(p => `
+                        <div class="coach-prompt-card" onclick="askCoach('${escapeAttr(p.text)}')">
+                            <div class="coach-prompt-card__icon${p.iconClass ? ' ' + p.iconClass : ''}"><i class="fas ${p.icon}"></i></div>
+                            <div class="coach-prompt-card__text">${p.html}</div>
+                        </div>`).join('');
+
+    section.innerHTML = `
+        <div class="page-header">
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="closeAICoach()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+                <div class="page-header__title">AI Coach</div>
+            </div>
+            <button class="page-header__icon-btn" onclick="openCoachHistory()" aria-label="Past conversations"><i class="fas fa-history"></i></button>
+        </div>
+
         <div class="coach-chat-container">
             <div id="coach-chat-area" class="coach-chat-area">
                 <div id="coach-empty-state" class="coach-empty-state">
@@ -33,24 +145,10 @@ export function showAICoach(prefillContext) {
                         <div class="coach-hero__desc">I know your training history. Try:</div>
                     </div>
 
-                    <div class="coach-prompt-list">
-                        <div class="coach-prompt-card" onclick="askCoach('Why has my bench press stalled? Suggest a deload strategy.')">
-                            <div class="coach-prompt-card__icon"><i class="fas fa-chart-line"></i></div>
-                            <div class="coach-prompt-card__text">Why has my <strong>bench press</strong> stalled? Suggest a deload.</div>
-                        </div>
-                        <div class="coach-prompt-card" onclick="askCoach('Analyze my volume distribution and identify any muscle groups I am neglecting or overtraining.')">
-                            <div class="coach-prompt-card__icon coach-prompt-card__icon--warning"><i class="fas fa-balance-scale"></i></div>
-                            <div class="coach-prompt-card__text">Check my <strong>push / pull volume</strong> balance this month.</div>
-                        </div>
-                        <div class="coach-prompt-card" onclick="askCoach('Plan a 5-day training split optimized for my goals and recent performance.')">
-                            <div class="coach-prompt-card__icon coach-prompt-card__icon--warm"><i class="fas fa-calendar-alt"></i></div>
-                            <div class="coach-prompt-card__text">Plan a <strong>5-day split</strong> for my goals.</div>
-                        </div>
-                        <div class="coach-prompt-card" onclick="askCoach('Help me plan a deload week. I am feeling beat up and need recovery.')">
-                            <div class="coach-prompt-card__icon coach-prompt-card__icon--core"><i class="fas fa-running"></i></div>
-                            <div class="coach-prompt-card__text">Help me deload next week — I'm feeling beat up.</div>
-                        </div>
+                    <div class="coach-prompt-list">${promptsHtml}
                     </div>
+
+                    <div id="coach-history-section" class="coach-history-section hidden"></div>
                 </div>
 
                 <div id="coach-chat-messages" class="coach-chat"></div>
@@ -64,7 +162,16 @@ export function showAICoach(prefillContext) {
         </div>
     `;
 
-    openModal(modal);
+    loadCoachHistory();
+}
+
+/**
+ * Show the AI Coach page. Direct entry point — renders + navigates.
+ * @param {string} [prefillContext] - Optional exercise name for pre-filled plateau context
+ */
+export function showAICoach(prefillContext) {
+    renderAICoachSection();
+    navigateTo('ai-coach-section');
 
     // If prefill context, auto-ask about a plateau
     if (prefillContext) {
@@ -75,11 +182,23 @@ export function showAICoach(prefillContext) {
 }
 
 /**
- * Close the AI Coach modal.
+ * Close the AI Coach page — returns to whatever was previously visible.
  */
 export function closeAICoach() {
-    const modal = document.getElementById('ai-coach-modal');
-    if (modal) closeModal(modal);
+    navigateBack();
+}
+
+/**
+ * Reset to the empty state so the history list (and starter prompts) is visible.
+ * Called from the history icon in the page-header.
+ */
+export function openCoachHistory() {
+    const chatMessages = document.getElementById('coach-chat-messages');
+    if (chatMessages) chatMessages.innerHTML = '';
+    const emptyState = document.getElementById('coach-empty-state');
+    if (emptyState) emptyState.classList.remove('hidden');
+    loadCoachHistory();
+    document.getElementById('coach-chat-area')?.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /**
@@ -640,21 +759,66 @@ export async function saveGeneratedTemplate() {
             })),
         };
 
-        await wm.saveWorkoutTemplate(templateData);
+        const savedId = await wm.saveWorkoutTemplate(templateData);
 
         // Refresh workout plans in AppState
         const templates = await wm.getUserWorkoutTemplates();
         AppState.workoutPlans = templates;
 
+        const exerciseCount = templateData.exercises.length;
         _pendingTemplate = null;
 
         showNotification(`"${templateData.name}" saved!`, 'success');
-        closeAICoach();
+
+        // Stay in the coach and surface an action card so the user can jump
+        // straight to the new template (matches PAGES-REDESIGN §8 spec).
+        addChatBubble('bot', renderActionCard({
+            templateId: savedId,
+            name: templateData.name,
+            category: templateData.category,
+            exerciseCount,
+            descLabel: 'Saved',
+        }));
 
     } catch (error) {
         console.error('Error saving generated template:', error);
         showNotification('Failed to save template', 'error');
     }
+}
+
+/**
+ * Render a coach action card (spec §8). Used when the bot completes an action
+ * the user can drill into — e.g. template created/updated.
+ */
+function renderActionCard({ templateId, name, category, exerciseCount, descLabel }) {
+    const iconClass = getCategoryIcon(category);
+    const catKey = (category || 'other').toLowerCase();
+    return `
+        <div class="coach-action-card" onclick="openCoachTemplate('${escapeAttr(templateId)}')">
+            <div class="coach-action-card__icon coach-action-card__icon--${catKey}"><i class="${iconClass}"></i></div>
+            <div class="coach-action-card__body">
+                <div class="coach-action-card__title">${escapeHtml(name)}</div>
+                <div class="coach-action-card__desc">${escapeHtml(descLabel)} · ${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'}</div>
+            </div>
+            <i class="fas fa-chevron-right coach-action-card__chev"></i>
+        </div>
+    `;
+}
+
+/**
+ * Open a template from a coach action card — closes the coach and routes to
+ * the template editor in workout-management.
+ */
+export function openCoachTemplate(templateId) {
+    if (!templateId) return;
+    closeAICoach();
+    // Wait for navigation transition so the template editor opens on top of
+    // the returned-to section rather than racing the fade-out.
+    setTimeout(() => {
+        if (typeof window.editTemplate === 'function') {
+            window.editTemplate(templateId, false);
+        }
+    }, 200);
 }
 
 // ===================================================================

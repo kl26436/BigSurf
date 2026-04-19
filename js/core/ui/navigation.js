@@ -22,6 +22,7 @@ const SECTION_IDS = [
     'settings-section',
     'profile-section',
     'body-measurements-entry-section',
+    'ai-coach-section',
 ];
 
 const FADE_DURATION = 150; // ms, matches CSS transition
@@ -189,6 +190,22 @@ function routeToView(view) {
             break;
         }
 
+        case 'ai-coach': {
+            // Ensure the section is populated. showAICoach() renders before
+            // navigating, but direct navigateTo('ai-coach') (tab bar, more menu)
+            // lands here with an empty section on first visit.
+            const coachSection = document.getElementById('ai-coach-section');
+            if (coachSection) {
+                if (!coachSection.firstElementChild) {
+                    // Lazy-render on first visit via tab/more-menu entry.
+                    import('../features/ai-coach-ui.js').then(m => m.renderAICoachSection?.());
+                }
+                coachSection.classList.remove('hidden');
+            }
+            setBottomNavVisible(true);
+            break;
+        }
+
         default:
             console.warn(`Unknown view: ${view}`);
             showDashboard();
@@ -261,11 +278,6 @@ async function showCompositionDetailView() {
     updateBottomNavActive('dashboard');
     const { renderCompositionDetail } = await import('./composition-detail-ui.js');
     renderCompositionDetail();
-}
-
-async function showAICoachView() {
-    const { showAICoach } = await import('../features/ai-coach-ui.js');
-    if (showAICoach) showAICoach();
 }
 
 function showHistory() {
@@ -347,7 +359,7 @@ export function bottomNavTo(tab) {
             navigateTo('history');
             break;
         case 'ai-coach':
-            showAICoachView();
+            navigateTo('ai-coach');
             break;
         case 'workout':
             // Check if there's an active workout (live session or detected on load)

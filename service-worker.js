@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v6.8-elapsed-hero';
+const CACHE_NAME = 'big-surf-v6.9-ai-coach-page';
 const STATIC_ASSETS = [
   '/index.html',
   '/styles/index.css',
