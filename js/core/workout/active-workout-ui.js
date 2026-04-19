@@ -351,7 +351,7 @@ function renderExerciseView(exercise, idx, savedEx) {
             <span class="aw-sets-header__label"></span>
             <span class="aw-sets-header__label">Reps</span>
             <span class="aw-sets-header__label">${weightLabel}</span>
-            <button class="aw-sets-header__unit" onclick="awToggleUnit(${idx})">${unit === 'lbs' ? 'kg' : 'lbs'}</button>
+            <button class="aw-sets-header__unit" onclick="awToggleUnit(${idx})" title="Tap to switch unit">${unit}</button>
         </div>
         ${sets.hasAutofill ? '<div class="aw-autofill-hint"><i class="fas fa-magic"></i> Pre-filled from last session · tap ✓ to confirm or edit values</div>' : ''}
         <div class="aw-sets">
@@ -758,7 +758,7 @@ export function awUpdateSet(exerciseIdx, setIdx, field, value) {
         set.reps = parseInt(value, 10) || null;
     }
     set._userEdited = true;
-    set.originalUnit = AppState.globalUnit || 'lbs';
+    set.originalUnit = AppState.exerciseUnits?.[exerciseIdx] || AppState.globalUnit || 'lbs';
 
     debouncedSaveWorkoutData(AppState);
 }
@@ -1133,7 +1133,7 @@ function renderEquipmentSheet(exerciseIdx) {
     `;
 
     const body = `
-        <div class="aw-sheet__search">
+        <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
             <input type="text" placeholder="Search equipment…" value="${escapeAttr(equipSearchQuery)}" oninput="awEquipSearch(${exerciseIdx}, this.value)">
         </div>
@@ -1375,7 +1375,7 @@ function renderAddExerciseSheet() {
     ).join('');
 
     const body = `
-        <div class="aw-sheet__search">
+        <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
             <input type="text" placeholder="Search exercises…" value="${escapeAttr(addExerciseSearch)}" oninput="awSetAddSearch(this.value)">
         </div>

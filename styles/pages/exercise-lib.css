@@ -160,33 +160,6 @@
 .exercise-search-row {
     margin-bottom: var(--space-12);
 }
-.exercise-search-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-.exercise-search-wrapper.full-width {
-    width: 100%;
-}
-.exercise-search-wrapper i {
-    position: absolute;
-    left: var(--space-16);
-    color: var(--text-muted);
-}
-.exercise-search-input {
-    width: 100%;
-    padding: var(--space-12) var(--space-16) var(--space-12) var(--space-40);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-strong);
-    font-size: var(--font-md);
-}
-.exercise-search-input:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
 .search-container {
     margin-bottom: var(--space-12);
 }
@@ -264,21 +237,6 @@
     padding: var(--space-16) 0;
     background: linear-gradient(transparent, var(--bg-app) 20%);
 }
-.btn-add-exercise-bottom {
-    width: 100%;
-    padding: var(--space-16);
-    background: var(--primary);
-    border: none;
-    border-radius: var(--radius-md);
-    color: var(--bg-app);
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-8);
-}
-
 /* Equipment Filter Pills */
 .equipment-filter-pills {
     display: flex;
@@ -436,23 +394,6 @@
     flex: 1;
     text-align: center;
 }
-.btn-back,
-.btn-save {
-    min-width: 60px; /* button label constraint */
-    padding: var(--space-8) var(--space-12);
-    background: none;
-    border: none;
-    color: var(--primary);
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: var(--space-6);
-}
-.btn-back {
-    color: var(--text-muted);
-}
-
 .edit-section {
     background: var(--bg-card);
     border-radius: var(--radius-md);

@@ -26,6 +26,7 @@
 @import url('components/grouped-rows.css');
 @import url('components/page-header.css');
 @import url('components/fields.css');
+@import url('components/completion-summary.css');
 
 /* 4. Page-specific layouts */
 @import url('pages/app-shell.css');

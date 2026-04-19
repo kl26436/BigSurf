@@ -183,3 +183,56 @@ textarea.field-input {
     border: none;
     width: 100%;
 }
+
+/* ============================================================================
+   SEARCH FIELD — icon + input unified search control
+   Use: <div class="field-search"><i class="fa-search"></i><input type="search"></div>
+   Modifiers: .field-search--sticky (sticky top in scrollable panels)
+   ============================================================================ */
+
+.field-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.field-search--sticky {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-surface);
+    padding-top: 2px;
+    margin-bottom: var(--space-8);
+}
+
+.field-search > i {
+    position: absolute;
+    left: var(--space-12);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    pointer-events: none;
+}
+
+.field-search input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-10) var(--space-12) var(--space-10) var(--space-36);
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: var(--font-sm);
+    font-family: inherit;
+    outline: none;
+    transition: border-color var(--anim-fast);
+}
+
+.field-search input:focus {
+    border-color: var(--primary);
+}
+
+.field-search input::placeholder {
+    color: var(--text-muted);
+}

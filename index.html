@@ -259,8 +259,8 @@
                             <button class="btn-icon-sm" onclick="toggleHistorySearch()" aria-label="Search">
                                 <i class="fas fa-search"></i>
                             </button>
-                            <button class="btn btn-primary" onclick="showAddManualWorkoutModal()">
-                                <i class="fas fa-plus"></i> Add Missing
+                            <button class="btn-icon-sm" onclick="showAddManualWorkoutModal()" aria-label="Add missing workout" title="Add missing workout">
+                                <i class="fas fa-plus"></i>
                             </button>
                         </div>
                     </div>
@@ -268,7 +268,7 @@
                     <div class="content-section-body">
                     <!-- History Search & Filter (hidden by default) -->
                     <div class="history-search-bar hidden" id="history-search-bar">
-                        <div class="history-search-input-wrapper">
+                        <div class="field-search">
                             <i class="fas fa-search"></i>
                             <input type="text" id="history-search-input"
                                 placeholder="Search exercises or workouts..."
@@ -335,12 +335,11 @@
                         <!-- Search -->
                         <div class="exercise-library-header">
                             <div class="exercise-search-row">
-                                <div class="exercise-search-wrapper full-width">
+                                <div class="field-search">
                                     <i class="fas fa-search"></i>
                                     <input
                                         type="text"
                                         id="workout-search-input"
-                                        class="exercise-search-input"
                                         placeholder="Search workouts"
                                         oninput="handleWorkoutSearch()"
                                     />
@@ -853,12 +852,11 @@
                 <!-- Header with search only -->
                 <div class="exercise-library-header">
                     <div class="exercise-search-row">
-                        <div class="exercise-search-wrapper full-width">
+                        <div class="field-search">
                             <i class="fas fa-search"></i>
                             <input
                                 type="text"
                                 id="exercise-search-input"
-                                class="exercise-search-input"
                                 placeholder="Search exercises"
                                 oninput="handleExerciseSearch()"
                             />
@@ -918,11 +916,11 @@
                 </div>
 
                 <!-- Search bar (always visible) -->
-                <div id="exercise-list-search" class="exercise-list-search">
+                <div id="exercise-list-search" class="exercise-list-search field-search">
+                    <i class="fas fa-search"></i>
                     <input
                         type="text"
                         id="exercise-list-search-input"
-                        class="exercise-search-input"
                         placeholder="Search exercises..."
                         oninput="filterExerciseLibrary()"
                     />

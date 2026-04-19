@@ -1,0 +1,113 @@
+/* ============================================================================
+   WORKOUT COMPLETION SUMMARY — post-workout modal showing stats, PRs, notes
+   ============================================================================ */
+
+.completion-summary {
+    padding: var(--space-24) var(--space-20);
+    text-align: center;
+}
+.completion-header {
+    margin-bottom: var(--space-24);
+}
+.completion-header h2 {
+    margin: var(--space-12) 0 var(--space-4);
+    font-size: var(--font-xl);
+    color: var(--text-strong);
+}
+.completion-workout-name {
+    font-size: var(--font-base);
+    color: var(--text-muted);
+}
+.completion-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-8);
+    margin-bottom: var(--space-20);
+}
+.completion-stat {
+    text-align: center;
+    padding: var(--space-12) var(--space-4);
+    background: var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+.completion-stat-value {
+    display: block;
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--primary);
+}
+.completion-stat-label {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+.completion-prs {
+    background: var(--achievement-gold-bg-subtle);
+    border: 1px solid var(--achievement-gold-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-16);
+    margin-bottom: var(--space-20);
+    text-align: left;
+}
+.completion-prs h3 {
+    font-size: var(--font-base);
+    margin: 0 0 var(--space-10);
+    color: var(--text-strong);
+}
+.completion-pr-item {
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    padding: var(--space-4) 0;
+}
+.completion-notes-section {
+    margin-bottom: var(--space-20);
+    text-align: left;
+}
+.completion-notes-section label {
+    display: block;
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-6);
+}
+.completion-notes-section textarea {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    padding: var(--space-10) var(--space-12);
+    font-size: var(--font-base);
+    resize: none;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+.completion-notes-section textarea::placeholder {
+    color: var(--text-muted);
+}
+.completion-template-changes {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-10) var(--space-12);
+    background: var(--primary-bg-subtle);
+    border: 1px solid var(--primary-bg-strong);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-16);
+}
+.template-changes-text {
+    flex: 1;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+}
+.template-changes-text i {
+    color: var(--primary);
+}
+.completion-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    align-items: center;
+}

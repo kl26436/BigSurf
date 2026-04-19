@@ -333,42 +333,6 @@
     margin-bottom: var(--space-16);
 }
 
-.history-search-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.history-search-input-wrapper i.fa-search {
-    position: absolute;
-    left: var(--space-12);
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-    pointer-events: none;
-}
-
-.history-search-input-wrapper input {
-    width: 100%;
-    padding: var(--input-padding, 10px 14px);
-    padding-left: var(--tap-sm);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-main);
-    font-size: var(--font-sm);
-    font-family: inherit;
-    outline: none;
-    transition: border-color 0.15s;
-}
-
-.history-search-input-wrapper input::placeholder {
-    color: var(--text-muted);
-}
-
-.history-search-input-wrapper input:focus {
-    border-color: var(--primary);
-}
-
 .history-search-clear {
     position: absolute;
     right: var(--space-8);
@@ -416,11 +380,16 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--pad-card-y) var(--pad-card-x);
-    background: var(--bg-card);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-8);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
     transition: background 0.15s;
+}
+.recent-workout-item:first-child {
+    border-top: 1px solid var(--border-subtle);
 }
 .recent-workout-item:active {
     background: var(--bg-card-hi);
@@ -573,9 +542,6 @@
 }
 
 /* 8d: Improved workout list items */
-.recent-workout-item {
-    gap: var(--space-12);
-}
 .recent-workout-exercises {
     font-size: var(--font-xs);
     color: var(--text-muted);
@@ -622,28 +588,22 @@
 .calendar-grid {
     gap: 2px;
 }
+/* Compact override — preserves the tappable affordance from the base rules above.
+   Keep has-workout with a subtle fill (restored from the §8e strip-to-transparent) so
+   workout days read as controls, not decoration. Keep today's border for clarity. */
 .calendar-day {
     min-height: 38px;
     padding: var(--space-4) var(--space-2);
-    background: transparent;
     border-radius: var(--radius-sm);
-}
-.calendar-day:hover {
-    background: var(--bg-card-hi);
-}
-.calendar-day.today {
-    background: var(--primary-bg);
-}
-.calendar-day.has-workout {
-    background: transparent;
-}
-.calendar-day.has-workout:active {
-    background: var(--primary-bg-subtle);
 }
 .calendar-day .day-number {
     font-size: var(--font-sm);
     font-weight: 500;
     line-height: 1;
+}
+.calendar-day .workout-icon,
+.calendar-day .workout-status-icon {
+    font-size: var(--font-xs);
 }
 
 /* Month nav tighter */
@@ -662,20 +622,6 @@
 }
 .recent-workouts-items {
     gap: 0;
-}
-.recent-workout-item {
-    border: none;
-    border-radius: 0;
-    border-bottom: 1px solid var(--border-subtle);
-    background: transparent;
-    padding: var(--space-12) var(--space-8);
-    cursor: pointer;
-}
-.recent-workout-item:first-child {
-    border-top: 1px solid var(--border-subtle);
-}
-.recent-workout-item:active {
-    background: var(--bg-card-hi);
 }
 .recent-workout-name {
     font-size: var(--font-sm);

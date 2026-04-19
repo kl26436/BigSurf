@@ -720,10 +720,10 @@ export function getWorkoutHistory(appState) {
 
                 const statusIcon =
                     workout.status === 'completed'
-                        ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>'
+                        ? '<i class="fas fa-check-circle text-success"></i>'
                         : workout.status === 'cancelled'
-                          ? '<i class="fas fa-times-circle" style="color: var(--danger);"></i>'
-                          : '<i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>';
+                          ? '<i class="fas fa-times-circle text-danger"></i>'
+                          : '<i class="fas fa-exclamation-circle text-warning"></i>';
 
                 html += `
                     <div class="workout-picker-item" data-action="showWorkoutDetail" data-date="${date}" data-workout-name="${escapeAttr(workout.name)}" data-index="${index}" style="cursor: pointer;">
@@ -736,7 +736,7 @@ export function getWorkoutHistory(appState) {
                                 ${startTime ? startTime + ' &bull; ' : ''}${escapeHtml(String(workout.duration || ''))} ${statusIcon}
                             </div>
                         </div>
-                        <i class="fas fa-chevron-right" style="color: var(--text-secondary);"></i>
+                        <i class="fas fa-chevron-right text-secondary"></i>
                     </div>
                 `;
             });
@@ -755,7 +755,7 @@ export function getWorkoutHistory(appState) {
                     exerciseHTML += `
                     <div style="background: var(--bg-secondary); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border);">
                         <h4 style="color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-trophy" style="color: var(--warning);"></i>
+                            <i class="fas fa-trophy text-warning"></i>
                             ${escapeHtml(exercise.name)}
                         </h4>
                         
@@ -793,7 +793,7 @@ export function getWorkoutHistory(appState) {
                         exerciseHTML += `
                         <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-top: 1rem; border-left: 3px solid var(--primary);">
                             <strong style="color: var(--primary); display: block; margin-bottom: 0.5rem;">Notes:</strong>
-                            <span style="color: var(--text-primary);">${escapeHtml(exercise.notes)}</span>
+                            <span>${escapeHtml(exercise.notes)}</span>
                         </div>`;
                     }
 
@@ -822,7 +822,7 @@ export function getWorkoutHistory(appState) {
                 notesSection = `
                 <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 3px solid var(--info);">
                     <strong style="color: var(--info); display: block; margin-bottom: 0.5rem;">Workout Notes:</strong>
-                    <span style="color: var(--text-primary);">${escapeHtml(workout.rawData.manualNotes)}</span>
+                    <span>${escapeHtml(workout.rawData.manualNotes)}</span>
                 </div>`;
             }
 
@@ -879,7 +879,7 @@ export function getWorkoutHistory(appState) {
             return `
             <div style="margin-bottom: 1.5rem;">
                 <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.75rem 1rem; align-items: center;">
-                    <strong style="color: var(--text-secondary);">Status:</strong>
+                    <strong class="text-secondary">Status:</strong>
                     <span style="color: ${workout.status === 'completed' ? 'var(--success)' : workout.status === 'cancelled' ? 'var(--danger)' : 'var(--warning)'};">
                         <i class="fas fa-${workout.status === 'completed' ? 'check-circle' : workout.status === 'cancelled' ? 'times-circle' : 'exclamation-circle'}"></i>
                         ${escapeHtml(workout.status.charAt(0).toUpperCase() + workout.status.slice(1))}
@@ -888,8 +888,8 @@ export function getWorkoutHistory(appState) {
                     ${
                         workoutLocation
                             ? `
-                        <strong style="color: var(--text-secondary);">Location:</strong>
-                        <span style="color: var(--primary);">
+                        <strong class="text-secondary">Location:</strong>
+                        <span class="text-primary">
                             <i class="fas fa-map-marker-alt"></i> ${escapeHtml(workoutLocation)}
                         </span>
                     `
@@ -899,8 +899,8 @@ export function getWorkoutHistory(appState) {
                     ${
                         startTime
                             ? `
-                        <strong style="color: var(--text-secondary);">Started:</strong>
-                        <span style="color: var(--text-primary);">
+                        <strong class="text-secondary">Started:</strong>
+                        <span>
                             <i class="fas fa-clock"></i> ${startTime}
                         </span>
                     `
@@ -910,21 +910,21 @@ export function getWorkoutHistory(appState) {
                     ${
                         endTime
                             ? `
-                        <strong style="color: var(--text-secondary);">Finished:</strong>
-                        <span style="color: var(--text-primary);">
+                        <strong class="text-secondary">Finished:</strong>
+                        <span>
                             <i class="fas fa-flag-checkered"></i> ${endTime}
                         </span>
                     `
                             : ''
                     }
 
-                    <strong style="color: var(--text-secondary);">Duration:</strong>
+                    <strong class="text-secondary">Duration:</strong>
                     <span style="color: var(--primary); font-weight: 600;">
                         <i class="fas fa-stopwatch"></i> ${escapeHtml(String(totalDuration || 'Unknown'))}
                     </span>
 
-                    <strong style="color: var(--text-secondary);">Progress:</strong>
-                    <span style="color: var(--text-primary);">
+                    <strong class="text-secondary">Progress:</strong>
+                    <span>
                         ${workout.progress || 0}%
                         <div style="background: var(--bg-secondary); height: 6px; border-radius: 3px; overflow: hidden; margin-top: 4px;">
                             <div style="background: var(--primary); height: 100%; width: ${workout.progress || 0}%; transition: width 0.3s ease;"></div>
@@ -1067,10 +1067,10 @@ export function getWorkoutHistory(appState) {
 
                 const statusIcon =
                     workout.status === 'completed'
-                        ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>'
+                        ? '<i class="fas fa-check-circle text-success"></i>'
                         : workout.status === 'cancelled'
-                          ? '<i class="fas fa-times-circle" style="color: var(--danger);"></i>'
-                          : '<i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>';
+                          ? '<i class="fas fa-times-circle text-danger"></i>'
+                          : '<i class="fas fa-exclamation-circle text-warning"></i>';
 
                 pickerHTML += `
             <div class="workout-picker-item" data-action="selectFromPicker" data-date="${escapeAttr(date)}" data-index="${index}">
@@ -1083,7 +1083,7 @@ export function getWorkoutHistory(appState) {
                         ${startTime ? startTime + ' &bull; ' : ''}${escapeHtml(String(workout.duration || ''))} ${statusIcon}
                     </div>
                 </div>
-                <i class="fas fa-chevron-right" style="color: var(--text-secondary);"></i>
+                <i class="fas fa-chevron-right text-secondary"></i>
             </div>
         `;
             });
@@ -1293,10 +1293,10 @@ export function getWorkoutHistory(appState) {
             content.innerHTML = `
             <div style="margin-bottom: 1.5rem;">
                 <div style="display: grid; grid-template-columns: auto 1fr; gap: 1rem;">
-                    <strong style="color: var(--text-secondary);">Status:</strong>
-                    <span style="color: var(--success);">${escapeHtml(calendarWorkout.status)}</span>
-                    <strong style="color: var(--text-secondary);">Category:</strong>
-                    <span style="color: var(--text-primary);">${escapeHtml(calendarWorkout.category)}</span>
+                    <strong class="text-secondary">Status:</strong>
+                    <span class="text-success">${escapeHtml(calendarWorkout.status)}</span>
+                    <strong class="text-secondary">Category:</strong>
+                    <span>${escapeHtml(calendarWorkout.category)}</span>
                 </div>
             </div>
             <p style="color: var(--text-secondary); font-style: italic;">Limited workout details available. This workout may have been logged manually or sync data is incomplete.</p>

@@ -571,18 +571,6 @@ dialog.modal:not([open]) {
 .btn-icon:active {
     background: var(--border-light);
 }
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.section-header__title {
-    font-size: var(--font-sm);
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
 
 /* Equipment Library — grouped list layout */
 .equip-lib-header {

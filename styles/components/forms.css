@@ -97,15 +97,3 @@ input[type='number'] {
     color: var(--text-strong);
     font-size: var(--font-md);
 }
-.btn-save {
-    background: var(--primary);
-    color: var(--bg-app);
-    border: none;
-    padding: var(--space-12) var(--space-20);
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    cursor: pointer;
-}
-.btn-save:hover {
-    background: var(--primary-dark);
-}

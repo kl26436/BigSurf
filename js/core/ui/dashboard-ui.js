@@ -339,9 +339,12 @@ function renderHeroChipRow(streak, weekDone, weekGoal, bwData) {
 function renderDashboardInsight(insight) {
     if (!insight) return '';
     return `
-        <div class="dash-insight" onclick="dismissInsight()">
+        <div class="dash-insight">
             <i class="fas ${insight.icon || 'fa-lightbulb'}"></i>
             <div class="dash-insight-text">${escapeHtml(insight.message)}</div>
+            <button class="dash-insight__close" onclick="dismissInsight()" aria-label="Dismiss insight">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
     `;
 }

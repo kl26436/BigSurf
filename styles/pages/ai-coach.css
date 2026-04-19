@@ -85,12 +85,6 @@
     color: var(--success);
 }
 
-/* Section header icon tint */
-.stats-section-title .fa-brain {
-    color: var(--primary);
-    margin-right: var(--space-4);
-}
-
 /* ===== AI Coach Modal — Chat UI ===== */
 
 /* Ensure coach-content fills modal for flex layout */

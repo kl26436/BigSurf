@@ -57,6 +57,7 @@
     --primary-bg-intensity-3: rgba(29, 211, 176, 0.7);
 
     --success-bg: rgba(54, 196, 107, 0.12);
+    --success-bg-subtle: rgba(54, 196, 107, 0.06);
     --success-border: rgba(54, 196, 107, 0.25);
 
     --danger-bg: rgba(239, 68, 68, 0.12);
@@ -123,6 +124,16 @@
     --stat-exercises-bg: var(--primary-bg);
     --stat-negative: var(--danger);
 
+    /* Semantic state tokens (workout set states, list-item states) */
+    --state-current: var(--primary);
+    --state-current-bg: var(--primary-bg);
+    --state-done: var(--success);
+    --state-done-bg: var(--success-bg);
+    --state-done-bg-subtle: var(--success-bg-subtle);
+    --state-incomplete: var(--warning);
+    --state-incomplete-bg: var(--warning-bg);
+    --state-cancelled: var(--text-muted);
+
     /* Font size scale */
     --font-2xs: 0.65rem;
     --font-xs: 0.7rem;
@@ -185,6 +196,7 @@
     --space-20: 20px;
     --space-24: 24px;
     --space-32: 32px;
+    --space-36: 36px;
     --space-40: 40px;
     --space-48: 48px;
     --space-80: 80px;
