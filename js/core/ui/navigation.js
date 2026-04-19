@@ -173,14 +173,21 @@ function routeToView(view) {
             showSettings();
             break;
 
-        case 'profile':
-            // Section content is populated by openProfile() before navigateTo runs.
-            // No-op here to prevent the default fallback to dashboard.
+        case 'profile': {
+            // navigateTo() hides all sections — we need to un-hide the target.
+            // openProfile() handles rendering the content before navigateTo runs.
+            const profileSection = document.getElementById('profile-section');
+            if (profileSection) profileSection.classList.remove('hidden');
+            setBottomNavVisible(true);
             break;
+        }
 
-        case 'body-measurements-entry':
-            // Section content is populated by showWeightEntryModal() before navigateTo.
+        case 'body-measurements-entry': {
+            const bmSection = document.getElementById('body-measurements-entry-section');
+            if (bmSection) bmSection.classList.remove('hidden');
+            setBottomNavVisible(true);
             break;
+        }
 
         default:
             console.warn(`Unknown view: ${view}`);
