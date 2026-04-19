@@ -346,6 +346,10 @@
 .recent-workout-item:active {
     background: var(--bg-card-hi);
 }
+.recent-workout-info {
+    flex: 1;
+    min-width: 0;
+}
 .recent-workout-name {
     font-size: var(--font-sm);
     font-weight: 600;
