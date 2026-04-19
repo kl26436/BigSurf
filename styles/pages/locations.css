@@ -30,7 +30,7 @@
 }
 .loc-map-card__canvas {
     height: 100px;
-    background: linear-gradient(135deg, #1a2838, #0d1218);
+    background: linear-gradient(135deg, var(--map-placeholder-start), var(--map-placeholder-end));
     border-radius: var(--radius-sm);
     display: flex;
     align-items: center;

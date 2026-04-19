@@ -141,7 +141,7 @@
     width: 30px;
     height: 30px;
     border-radius: var(--radius-sm);
-    background: rgba(86, 182, 194, 0.15);
+    background: var(--cat-shoulders-bg);
     color: var(--cat-shoulders);
     display: flex;
     align-items: center;

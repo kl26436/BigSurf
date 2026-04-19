@@ -720,7 +720,7 @@
     cursor: pointer;
 }
 .template-editor__add-btn:active {
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--primary-bg);
 }
 .template-editor__empty {
     text-align: center;

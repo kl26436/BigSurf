@@ -282,7 +282,7 @@ function showWorkoutDetailModal(workout) {
     // Build action buttons using data attributes for event delegation
     const escapedId = escapeAttr(workout.id);
     const actionButtons = `
-        <div class="modal-actions" style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
+        <div class="modal-actions modal-actions--end">
             ${
                 workout.status !== 'completed'
                     ? `

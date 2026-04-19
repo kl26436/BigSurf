@@ -1077,7 +1077,7 @@
 .quick-add-chip:active {
     background: var(--primary);
     border-color: var(--primary);
-    color: #fff;
+    color: var(--text-on-color);
 }
 .quick-add-chip--used {
     font-weight: 600;

@@ -189,6 +189,14 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
   - `.page-header__save` disabled state uses `--bg-card-hi` + `--text-muted` (not opacity) ✓
   - Destructive actions use `.danger-action-*` pattern with confirmation ✓
 
+- [x] **§14 Raw-literal elimination (Apr 2026)** — cleared the remaining literal color / radius values in pages/:
+  - Raw rgba in pages: **8 → 1** (the one remaining is inside a `var(..., fallback)` — intentional token fallback).
+  - Raw hex in pages: **7 → 0**. `#fff` callers now use new `--text-on-color` token; `#1a2838` / `#0d1218` (map placeholder) moved to `--map-placeholder-start/end`.
+  - Raw border-radius px in pages: **4 → 0**. Added `--radius-2xs` (2px) and `--radius-xl` (24px) to the scale; migrated `.onb-dot`, `.onb-icon-hero`, `.d-header-icon`, `.coach-msg`.
+  - Final 5 leaf inline styles also swept: `.text-badge-gold` + `.icon-leading` utilities; `.modal-actions--end` modifier; `.metric-card__label i` reads `--icon-color`.
+  - Audit budgets floor-set to current baseline: `rawRadiusPxInPages 0`, `rawHexInPages 0`, `rawRgbaInPages 2`, `inlineStylesInJs 15`. Strict audit treats any new raw radius / hex as a regression.
+  - **Tests**: 354/354 pass.
+
 - [x] **§13 Long-tail follow-up wave 3 (Apr 2026)** — inline-style sweep continued deep into leaf files:
   - `data-manager.js`: 11 → **0**. Added `.exercise-history-content__*` family (match/pr/pr-icon/pr-label/last/sets/set-chip/notes) + `.exercise-history-placeholder` / `--error` in [components/modals.css](styles/components/modals.css).
   - `workout-session.js`: 4 → **0**. New `.completion-prs__trophy`, `.completion-header__icon`, `.completion-hero__chart`, `.completion-template-saved` in [components/completion-summary.css](styles/components/completion-summary.css).

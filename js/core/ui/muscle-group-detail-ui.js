@@ -54,7 +54,7 @@ export function renderMuscleGroupDetail(bodyPart) {
 
             <div class="d-hero-stats">
                 <div class="d-stat">
-                    <div class="d-stat__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> Heaviest · ${heroShort}</div>
+                    <div class="d-stat__label"><i class="fas fa-trophy text-badge-gold"></i> Heaviest · ${heroShort}</div>
                     <div class="d-stat__val">${stats.heaviest ? `${stats.heaviest.weight}<span class="d-stat__unit">× ${stats.heaviest.reps}</span>` : '—'}</div>
                 </div>
                 <div class="d-stat">

@@ -436,6 +436,12 @@ dialog.modal:not([open]) {
     justify-content: center;
     margin-top: var(--space-16);
 }
+/* Right-aligned variant (used for history detail Resume / Delete / Close) */
+.modal-actions--end {
+    justify-content: flex-end;
+    gap: var(--space-16);
+    margin-top: var(--space-32);
+}
 .modal-actions-top {
     display: flex;
     justify-content: flex-end;

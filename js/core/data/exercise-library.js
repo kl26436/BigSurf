@@ -172,7 +172,7 @@ export function getExerciseLibrary(appState) {
                     .filter(Boolean);
                 if (favExercises.length > 0) {
                     favSection.innerHTML = `
-                        <div class="quick-add-label"><i class="fas fa-star" style="color: gold; margin-right: 4px;"></i> Favorites</div>
+                        <div class="quick-add-label"><i class="fas fa-star text-badge-gold icon-leading"></i> Favorites</div>
                         <div class="quick-add-chips">
                             ${favExercises.map((ex) => `<button class="quick-add-chip favorite-chip" data-exercise-name="${escapeHtml(ex.name || ex.machine)}" data-equipment="${escapeHtml(ex.equipment || '')}">${escapeHtml(ex.name || ex.machine)}</button>`).join('')}
                         </div>

@@ -52,7 +52,7 @@ export function renderExerciseDetail(exerciseName) {
 
             <div class="d-hero-stats">
                 <div class="d-stat">
-                    <div class="d-stat__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> Max weight</div>
+                    <div class="d-stat__label"><i class="fas fa-trophy text-badge-gold"></i> Max weight</div>
                     <div class="d-stat__val">${s.maxWeight}<span class="d-stat__unit"> lb</span></div>
                 </div>
                 <div class="d-stat">

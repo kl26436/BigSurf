@@ -29,16 +29,20 @@
 
     /* Dark text on accent backgrounds */
     --text-on-accent: #04201a;
+    /* Pure white text for colored backgrounds (success/danger chips, check buttons) */
+    --text-on-color: #ffffff;
 
     /* Borders - subtle */
     --border: #1a2028;
     --border-accent: rgba(29, 211, 176, 0.85);
 
     /* Border Radius scale */
+    --radius-2xs: 2px;
     --radius-xs: 4px;
     --radius-sm: 12px;
     --radius-md: 16px;
     --radius-lg: 20px;
+    --radius-xl: 24px;
     --radius-pill: 999px;
 
     /* Shadows - crisp, iOS-like */
@@ -113,6 +117,14 @@
     --cat-core-bg: rgba(74, 217, 167, 0.15);
     --cat-arms-bg: rgba(224, 108, 117, 0.15);
     --cat-shoulders-bg: rgba(86, 182, 194, 0.15);
+    --cat-shoulders-bg-subtle: rgba(86, 182, 194, 0.02);
+    --cat-shoulders-bg-gradient-start: rgba(86, 182, 194, 0.12);
+    --cat-shoulders-border: rgba(86, 182, 194, 0.25);
+    /* Neutral chip tint for informational tags (rgba of --text-muted) */
+    --muted-bg: rgba(176, 184, 193, 0.1);
+    /* Placeholder map gradient (location card when no map service available) */
+    --map-placeholder-start: #1a2838;
+    --map-placeholder-end: #0d1218;
 
     /* History workout picker category colors (legacy Material colors) */
     --cat-push-legacy: #f44336;

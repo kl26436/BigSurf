@@ -436,7 +436,7 @@
 .aw-set-row__check:active { transform: scale(0.92); }
 .aw-set-row__check.done {
     background: var(--success);
-    color: #fff;
+    color: var(--text-on-color);
 }
 
 /* Add set button */
@@ -782,7 +782,7 @@
 .js-row__checkbox.checked {
     background: var(--highlight-warm);
     border-color: var(--highlight-warm);
-    color: #fff;
+    color: var(--text-on-color);
 }
 
 /* === SUPERSET MODE === */

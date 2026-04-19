@@ -24,7 +24,7 @@ export function renderMetricCard({ id, label, icon, iconColor, value, unit, delt
         <div class="metric-card" data-metric="${id}" ${onclick}>
             <div class="metric-card__head">
                 <div class="metric-card__label">
-                    <i class="fas fa-${icon}" style="color:${iconColor};"></i>
+                    <i class="fas fa-${icon}" style="--icon-color:${iconColor};"></i>
                     ${escapeHtml(label)}
                     ${tag ? `<span class="metric-card__tag">${escapeHtml(tag)}</span>` : ''}
                 </div>

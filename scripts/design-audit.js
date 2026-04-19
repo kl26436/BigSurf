@@ -24,11 +24,11 @@ const STYLES_ROOT = path.join(ROOT, 'styles');
 // calendar glyph px). Trend these down with each PR — re-ratchet when you
 // beat a number.
 const BUDGETS = {
-    inlineStylesInJs: 20,
+    inlineStylesInJs: 15,
     rawFontSizeInPages: 12,
-    rawRadiusPxInPages: 4,
-    rawRgbaInPages: 10,
-    rawHexInPages: 8,
+    rawRadiusPxInPages: 0,
+    rawRgbaInPages: 2,
+    rawHexInPages: 0,
     duplicateClassDefs: 5,
 };
 

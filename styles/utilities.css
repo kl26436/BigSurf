@@ -175,6 +175,9 @@ dialog[open] > .modal-content {
 .text-muted { color: var(--text-muted); }
 .text-secondary { color: var(--text-secondary); }
 .text-strong { color: var(--text-strong); }
+.text-badge-gold { color: var(--badge-gold); }
+/* Inline trophy/star spacing when used next to a label */
+.icon-leading { margin-right: 4px; }
 
 /* State classes used by JS */
 .collapsed > *:not(:first-child) {

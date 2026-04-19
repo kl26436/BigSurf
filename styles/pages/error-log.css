@@ -123,7 +123,7 @@
 }
 
 .error-severity-tag.error-severity-info {
-    background: rgba(176, 184, 193, 0.1);
+    background: var(--muted-bg);
     color: var(--text-muted);
 }
 
@@ -271,7 +271,7 @@
 /* --- Error badge (More menu) --- */
 .error-badge {
     background: var(--danger);
-    color: #fff;
+    color: var(--text-on-color);
     font-size: var(--font-2xs);
     font-weight: 700;
     min-width: 18px;

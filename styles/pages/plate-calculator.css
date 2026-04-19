@@ -233,7 +233,7 @@
 .barbell-plate span {
     font-size: 8px; /* plate label micro-text */
     font-weight: 700;
-    color: #fff;
+    color: var(--text-on-color);
     writing-mode: vertical-rl;
     text-orientation: mixed;
     line-height: 1;
