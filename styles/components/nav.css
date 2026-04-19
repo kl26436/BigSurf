@@ -122,9 +122,7 @@
     max-height: 90vh;
     overflow-y: auto;
 }
-.exercise-unit-toggle {
-    padding: var(--space-12) var(--space-16);
-}
+/* .exercise-unit-toggle consolidated in components/modals.css */
 
 /* App section for full-page views */
 .app-section {

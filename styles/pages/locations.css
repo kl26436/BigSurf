@@ -1,0 +1,161 @@
+/* ============================================================================
+   LOCATION MANAGEMENT — location list, add/edit detail page, GPS search.
+   Extracted from js/core/features/location-ui.js inline styles.
+   ============================================================================ */
+
+/* Empty state subtitle on locations list */
+.loc-empty-subtitle {
+    font-size: var(--font-sm);
+    margin-top: var(--space-6);
+}
+
+/* Back button sits next to the title in section-header-row */
+.btn-icon--back { margin-right: var(--space-8); }
+
+/* Truncating section title when a long location name is shown */
+.section-title--truncate {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Map card (location detail) ── */
+.loc-map-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 14px;
+}
+.loc-map-card__canvas {
+    height: 100px;
+    background: linear-gradient(135deg, #1a2838, #0d1218);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin-bottom: var(--space-10);
+}
+.loc-map-card__pin {
+    color: var(--primary);
+    font-size: var(--font-xl);
+}
+.loc-map-card__info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.loc-map-card__address {
+    font-size: var(--font-sm);
+    color: var(--text-strong);
+    font-weight: 600;
+}
+.loc-map-card__coords {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.loc-map-card__use-current {
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    color: var(--primary);
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ── Match-radius chip row ── */
+.loc-radius-chips {
+    display: flex;
+    gap: var(--space-8);
+}
+
+/* ── Equipment-here rows (empty + view-all footer) ── */
+.loc-equip-view-all-row {
+    text-align: center;
+    margin-top: var(--space-4);
+}
+.loc-equip-view-all-btn {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+.loc-equip-empty {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    padding: var(--space-8) 0;
+}
+
+/* ── Destructive action row (centered text button at bottom of edit page) ── */
+.danger-action-row {
+    margin-top: var(--space-24);
+    text-align: center;
+}
+.danger-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--danger);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ── Address search failure state ── */
+.loc-search-error {
+    text-align: center;
+    padding: var(--space-20);
+    color: var(--danger);
+}
+.loc-search-error__hint {
+    font-size: var(--font-sm);
+    margin-top: var(--space-8);
+    opacity: 0.7;
+}
+
+/* ── Manual coordinate entry fallback ── */
+.loc-manual-coords {
+    padding: var(--space-20);
+    text-align: center;
+}
+.loc-manual-coords__prompt {
+    color: var(--text-muted);
+    margin-bottom: var(--space-16);
+}
+.loc-manual-coords__inputs {
+    display: flex;
+    gap: var(--space-10);
+    justify-content: center;
+}
+.loc-manual-coords__input {
+    width: 120px;
+    padding: var(--space-8);
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-strong);
+}
+.loc-manual-coords__btn { padding: var(--space-8) var(--space-12); }
+
+/* ── OpenStreetMap iframe preview ── */
+.loc-map-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ── Inline "current location" chip (session display) ── */
+.current-location-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    padding: var(--space-6) var(--space-16);
+    background: var(--primary-bg);
+    border-radius: var(--radius-xs);
+    margin: var(--space-6) 0;
+}

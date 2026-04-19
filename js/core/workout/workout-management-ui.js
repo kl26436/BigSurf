@@ -546,7 +546,7 @@ function showTemplateEditor() {
 
     // Build the workout editor form — redesigned (no duplicate header)
     editorContent.innerHTML = `
-        <div style="padding: 14px 16px 100px;">
+        <div class="template-editor-body">
             <div class="field">
                 <div class="field-label">Name</div>
                 <input class="field-input" id="template-name"
@@ -558,10 +558,9 @@ function showTemplateEditor() {
                 <div class="field-label">Category</div>
                 <div class="chips" id="template-category-chips">
                     ${categories.map(c => `
-                        <div class="chip ${cat === c.value ? 'active' : ''}"
-                             style="${cat === c.value ? `color:${c.color};border-color:${c.color};background:${c.color}15;` : ''}"
+                        <div class="chip cat-${c.value} ${cat === c.value ? 'active' : ''}"
                              onclick="selectTemplateCategory('${c.value}', this)" data-cat="${c.value}">
-                            <i class="fas ${c.icon}" style="color:${c.color};"></i> ${c.label}
+                            <i class="fas ${c.icon}"></i> ${c.label}
                         </div>
                     `).join('')}
                 </div>
@@ -569,10 +568,9 @@ function showTemplateEditor() {
 
             <div class="field">
                 <div class="field-label">Schedule (optional)</div>
-                <div class="day-chips" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;">
+                <div class="day-chips">
                     ${dayLabels.map((label, i) => `
                         <div class="day-chip ${days.includes(dayValues[i]) ? 'active' : ''}"
-                             style="aspect-ratio:1;background:${days.includes(dayValues[i]) ? 'var(--primary)' : 'var(--bg-card)'};border:1.5px solid ${days.includes(dayValues[i]) ? 'var(--primary)' : 'var(--border-subtle)'};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:600;color:${days.includes(dayValues[i]) ? '#04201a' : 'var(--text-secondary)'};cursor:pointer;"
                              onclick="toggleTemplateDay('${dayValues[i]}', this)">
                             ${label}
                         </div>
@@ -960,7 +958,7 @@ function createTemplateExerciseItem(exercise, index) {
 
     const group = exercise.group || null;
     const groupBadge = group
-        ? `<span class="superset-badge" style="background: var(--primary); color: var(--bg-app); font-size: 0.6rem; padding: 1px 6px; border-radius: var(--radius-pill); margin-right: 4px;">${escapeHtml(group)}</span>`
+        ? `<span class="superset-badge">${escapeHtml(group)}</span>`
         : '';
 
     const weight = exercise.weight || 0;
@@ -968,28 +966,28 @@ function createTemplateExerciseItem(exercise, index) {
     const displayWeight = unit === 'kg' ? Math.round(weight * 0.453592 * 2) / 2 : weight;
 
     item.innerHTML = `
-        <div class="ex-row" onclick="editTemplateExercise(${index})" style="cursor:pointer;">
-            <i class="fas fa-grip-vertical ex-drag" style="color:var(--text-muted);font-size:0.9rem;padding:4px;margin-left:-4px;"></i>
-            <div class="ex-info" style="flex:1;min-width:0;">
-                <div class="ex-name" style="font-size:0.92rem;font-weight:600;color:var(--text-strong);margin-bottom:3px;">${groupBadge}${escapeHtml(exercise.name || exercise.machine || 'Exercise')}</div>
-                <div class="ex-meta" style="display:flex;align-items:center;gap:8px;font-size:0.72rem;color:var(--text-muted);">
-                    <span class="ex-meta-chip" style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);font-variant-numeric:tabular-nums;">${exercise.sets || 3} × ${exercise.reps || 10}${weight ? ` @ ${displayWeight} ${unit === 'kg' ? 'kg' : 'lb'}` : ''}</span>
+        <div class="ex-row" onclick="editTemplateExercise(${index})">
+            <i class="fas fa-grip-vertical ex-drag"></i>
+            <div class="ex-info">
+                <div class="ex-name">${groupBadge}${escapeHtml(exercise.name || exercise.machine || 'Exercise')}</div>
+                <div class="ex-meta">
+                    <span class="ex-meta-chip">${exercise.sets || 3} × ${exercise.reps || 10}${weight ? ` @ ${displayWeight} ${unit === 'kg' ? 'kg' : 'lb'}` : ''}</span>
                 </div>
                 ${exercise.equipment ? `
-                    <div class="ex-equip" style="display:flex;align-items:center;gap:4px;font-size:0.7rem;color:var(--text-secondary);margin-top:4px;">
-                        <i class="fas fa-cog" style="font-size:0.68rem;color:var(--primary);opacity:0.8;"></i> ${escapeHtml(exercise.equipment)}
+                    <div class="ex-equip">
+                        <i class="fas fa-cog"></i> ${escapeHtml(exercise.equipment)}
                     </div>
                 ` : ''}
             </div>
-            <button class="ex-menu" style="width:32px;height:32px;border-radius:50%;background:transparent;color:var(--text-muted);display:flex;align-items:center;justify-content:center;border:none;flex-shrink:0;" onclick="event.stopPropagation(); toggleTemplateExerciseMenu(${index})">
+            <button class="ex-menu" onclick="event.stopPropagation(); toggleTemplateExerciseMenu(${index})">
                 <i class="fas fa-ellipsis-v"></i>
             </button>
         </div>
-        <div class="template-ex-overflow hidden" id="template-ex-menu-${index}" style="background:var(--bg-card-hi);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:4px 0;margin-bottom:8px;box-shadow:var(--shadow-md);">
-            <div style="padding:10px 14px;font-size:0.82rem;color:var(--text-main);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="editTemplateExercise(${index})"><i class="fas fa-pen" style="width:14px;color:var(--text-muted);"></i>Edit details</div>
-            <div style="padding:10px 14px;font-size:0.82rem;color:var(--text-main);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="moveTemplateExercise(${index}, 'up')"><i class="fas fa-arrow-up" style="width:14px;color:var(--text-muted);"></i>Move up</div>
-            <div style="padding:10px 14px;font-size:0.82rem;color:var(--text-main);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="moveTemplateExercise(${index}, 'down')"><i class="fas fa-arrow-down" style="width:14px;color:var(--text-muted);"></i>Move down</div>
-            <div style="border-top:1px solid var(--border-subtle);padding:10px 14px;font-size:0.82rem;color:var(--danger);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="removeTemplateExercise(${index})"><i class="fas fa-trash" style="width:14px;"></i>Remove</div>
+        <div class="template-ex-overflow hidden" id="template-ex-menu-${index}">
+            <div class="template-ex-overflow__item" onclick="editTemplateExercise(${index})"><i class="fas fa-pen"></i>Edit details</div>
+            <div class="template-ex-overflow__item" onclick="moveTemplateExercise(${index}, 'up')"><i class="fas fa-arrow-up"></i>Move up</div>
+            <div class="template-ex-overflow__item" onclick="moveTemplateExercise(${index}, 'down')"><i class="fas fa-arrow-down"></i>Move down</div>
+            <div class="template-ex-overflow__item template-ex-overflow__item--danger" onclick="removeTemplateExercise(${index})"><i class="fas fa-trash"></i>Remove</div>
         </div>
         <div class="exercise-inline-edit hidden" id="inline-edit-${index}">
             <div class="inline-edit-fields">
@@ -1108,17 +1106,17 @@ function updateTemplateEstStats() {
     const estMinutes = Math.round(totalSets * 2.5); // ~2.5 min per set including rest
 
     container.innerHTML = `
-        <div class="est-stat" style="text-align:center;">
-            <div class="est-val" style="font-size:1.1rem;font-weight:700;color:var(--text-strong);">${totalSets}</div>
-            <div class="est-label" style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Sets</div>
+        <div class="est-stat">
+            <div class="est-stat__val">${totalSets}</div>
+            <div class="est-stat__label">Sets</div>
         </div>
-        <div class="est-stat" style="text-align:center;">
-            <div class="est-val" style="font-size:1.1rem;font-weight:700;color:var(--text-strong);">${totalReps}</div>
-            <div class="est-label" style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Reps</div>
+        <div class="est-stat">
+            <div class="est-stat__val">${totalReps}</div>
+            <div class="est-stat__label">Reps</div>
         </div>
-        <div class="est-stat" style="text-align:center;">
-            <div class="est-val" style="font-size:1.1rem;font-weight:700;color:var(--text-strong);">~${estMinutes}m</div>
-            <div class="est-label" style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">Est time</div>
+        <div class="est-stat">
+            <div class="est-stat__val">~${estMinutes}m</div>
+            <div class="est-stat__label">Est time</div>
         </div>
     `;
 }
@@ -1833,7 +1831,7 @@ export function showCreateExerciseForm() {
             </div>
             <button class="page-header__save" id="create-ex-header-save" disabled onclick="createNewExercise(event)">Save</button>
         </div>
-        <div style="padding:16px;padding-bottom:100px;overflow-y:auto;flex:1;">
+        <div class="create-ex-form-body">
             <div class="field">
                 <div class="field-label">Name</div>
                 <input class="field-input" type="text" id="new-exercise-name" placeholder="e.g. Bulgarian Split Squat" oninput="window._createExUpdateSave()">
@@ -1865,11 +1863,11 @@ export function showCreateExerciseForm() {
             </div>
             <div class="sec-head"><h3>Equipment</h3></div>
             <div id="create-ex-equipment-area">
-                <div class="empty-state-card" style="text-align:center;padding:24px 16px;">
-                    <div style="font-size:1.4rem;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-cog"></i></div>
-                    <div style="font-size:0.86rem;font-weight:600;color:var(--text-main);margin-bottom:4px;">Pick equipment</div>
-                    <div style="font-size:0.74rem;color:var(--text-muted);margin-bottom:12px;">Bodyweight, barbell, or pick a specific machine</div>
-                    <button class="btn-redesign" style="width:auto;display:inline-flex;padding:10px 18px;font-size:0.82rem;" onclick="window._createExChooseEquipment()"><i class="fas fa-dumbbell"></i> Choose equipment</button>
+                <div class="empty-state-card create-ex-equip-empty">
+                    <div class="create-ex-equip-empty__icon"><i class="fas fa-cog"></i></div>
+                    <div class="create-ex-equip-empty__title">Pick equipment</div>
+                    <div class="create-ex-equip-empty__desc">Bodyweight, barbell, or pick a specific machine</div>
+                    <button class="btn-redesign create-ex-equip-empty__btn" onclick="window._createExChooseEquipment()"><i class="fas fa-dumbbell"></i> Choose equipment</button>
                 </div>
             </div>
             <button class="more-details-toggle" id="create-ex-more-toggle" type="button" onclick="window._createExToggleMore()">+ More details (notes, video URL)</button>

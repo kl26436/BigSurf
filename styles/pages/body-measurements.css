@@ -477,6 +477,25 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Bodyweight chart time-range pills (3M / 6M / 1Y / All).
+   Previously referenced by JS but undefined — now canonical. */
+.pill-btn {
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+    padding: var(--space-4) var(--space-10);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
+}
+.pill-btn.active {
+    background: var(--primary-bg);
+    border-color: var(--primary-border);
+    color: var(--primary);
+}
+
 .meas-unit {
     font-size: 0.7rem;
     color: var(--text-muted);

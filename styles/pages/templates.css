@@ -290,21 +290,7 @@
     margin-right: var(--space-2);
 }
 
-.quick-add-chip {
-    background: var(--primary-bg);
-    border: 1px solid var(--primary-border);
-    color: var(--primary);
-    border-radius: var(--radius-pill);
-    padding: var(--space-6) var(--space-12);
-    font-size: var(--font-sm);
-    cursor: pointer;
-    transition: background 0.15s;
-    white-space: nowrap;
-}
-
-.quick-add-chip:active {
-    background: var(--primary-bg-hover);
-}
+/* .quick-add-chip canonical lives in pages/exercise-lib.css (cascade winner). */
 
 /* Save as Template banner */
 .save-template-banner {
@@ -986,30 +972,7 @@
 .recent-templates-list::-webkit-scrollbar {
     display: none;
 }
-.recent-template-chip {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    padding: var(--space-10) var(--space-16);
-    color: var(--text-main);
-    cursor: pointer;
-    white-space: nowrap;
-    font-size: var(--font-sm);
-}
-.recent-template-chip:active {
-    background: var(--bg-card-hi);
-}
-.recent-template-chip i {
-    color: var(--primary);
-    font-size: var(--font-base);
-}
-.recent-template-chip small {
-    color: var(--text-muted);
-    font-size: var(--font-xs);
-}
+/* .recent-template-chip family removed — no JS callsites. */
 
 /* ---- Redesigned Template Editor ---- */
 
@@ -1035,4 +998,184 @@
     display: flex;
     justify-content: space-around;
     margin-bottom: 12px;
+}
+
+/* ============================================================================
+   TEMPLATE EDITOR — form body, day chips, exercise rows + overflow menu,
+   estimate stats. Extracted from workout-management-ui.js inline styles.
+   ============================================================================ */
+
+.template-editor-body {
+    padding: var(--space-12) var(--space-16) 100px;
+}
+
+/* Day-of-week chip row (7-col grid of uniform circles) */
+.day-chips {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: var(--space-6);
+}
+.day-chip {
+    aspect-ratio: 1;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-subtle);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
+}
+.day-chip.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-on-accent);
+}
+
+/* Superset badge inside exercise-row name */
+.superset-badge {
+    background: var(--primary);
+    color: var(--text-on-accent);
+    font-size: var(--font-2xs);
+    padding: 1px var(--space-6);
+    border-radius: var(--radius-pill);
+    margin-right: var(--space-4);
+}
+
+/* .ex-row base style defined above (line ~1003). The rule below adds the
+   cursor hint that was previously inlined. */
+.ex-row { cursor: pointer; }
+.ex-drag {
+    color: var(--text-muted);
+    font-size: var(--font-base);
+    padding: var(--space-4);
+    margin-left: calc(var(--space-4) * -1);
+}
+.ex-info { flex: 1; min-width: 0; }
+.ex-name {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-strong);
+    margin-bottom: 3px;
+}
+.ex-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.ex-meta-chip {
+    background: var(--bg-card-hi);
+    padding: 2px var(--space-8);
+    border-radius: var(--radius-pill);
+    font-variant-numeric: tabular-nums;
+}
+.ex-equip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    margin-top: var(--space-4);
+}
+.ex-equip i {
+    font-size: var(--font-2xs);
+    color: var(--primary);
+    opacity: 0.8;
+}
+.ex-menu {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+/* Template exercise overflow menu */
+.template-ex-overflow {
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: var(--space-4) 0;
+    margin-bottom: var(--space-8);
+    box-shadow: var(--shadow-md);
+}
+.template-ex-overflow__item {
+    padding: var(--space-10) var(--space-12);
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    cursor: pointer;
+}
+.template-ex-overflow__item i {
+    width: 14px;
+    color: var(--text-muted);
+}
+.template-ex-overflow__item--danger {
+    color: var(--danger);
+    border-top: 1px solid var(--border-subtle);
+}
+.template-ex-overflow__item--danger i {
+    color: var(--danger);
+}
+
+/* Estimate stats row (sets / reps / time) below exercise list */
+.est-stat { text-align: center; }
+.est-stat__val {
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.est-stat__label {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+}
+
+/* Create-exercise empty equipment state */
+.create-ex-form-body {
+    padding: var(--space-16);
+    padding-bottom: 100px;
+    overflow-y: auto;
+    flex: 1;
+}
+.create-ex-equip-empty {
+    text-align: center;
+    padding: var(--space-24) var(--space-16);
+}
+.create-ex-equip-empty__icon {
+    font-size: var(--font-xl);
+    color: var(--text-muted);
+    margin-bottom: var(--space-8);
+}
+.create-ex-equip-empty__title {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: var(--space-4);
+}
+.create-ex-equip-empty__desc {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-bottom: var(--space-12);
+}
+.create-ex-equip-empty__btn {
+    width: auto;
+    display: inline-flex;
+    padding: var(--space-10) var(--space-16);
+    font-size: var(--font-sm);
 }

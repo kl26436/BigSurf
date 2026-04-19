@@ -170,7 +170,7 @@ function renderLocationManagementList() {
             <div class="location-empty-state">
                 <i class="fas fa-map-marker-alt"></i>
                 <p>No saved locations yet</p>
-                <p style="font-size: 0.8rem; margin-top: 0.5rem;">Add your gym locations below</p>
+                <p class="loc-empty-subtitle">Add your gym locations below</p>
             </div>
         `;
         return;
@@ -390,7 +390,7 @@ function showLocationOnMap(lat, lon, name) {
     container.innerHTML = `
         <iframe
             src="https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.01}%2C${lat - 0.01}%2C${lon + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lon}"
-            style="width: 100%; height: 100%; border: none;">
+            class="loc-map-iframe">
         </iframe>
         <div class="map-location-label">${escapeHtml(name)}</div>
     `;
@@ -581,9 +581,9 @@ export async function searchLocationAddress() {
         });
     } catch (error) {
         console.error('Address search error:', error);
-        resultsContainer.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--danger);">
+        resultsContainer.innerHTML = `<div class="loc-search-error">
             <p>Search failed. Please try again.</p>
-            <p style="font-size: 0.8rem; margin-top: 8px; opacity: 0.7;">Tip: Try a more specific address or city name</p>
+            <p class="loc-search-error__hint">Tip: Try a more specific address or city name</p>
         </div>`;
     }
 }
@@ -653,12 +653,12 @@ function initAddLocationMap() {
     } else {
         // Fallback: Show coordinate input fields
         container.innerHTML = `
-            <div style="padding: 20px; text-align: center;">
-                <p style="color: var(--text-muted); margin-bottom: 16px;">Enter coordinates manually:</p>
-                <div style="display: flex; gap: 10px; justify-content: center;">
-                    <input type="number" id="manual-lat" placeholder="Latitude" step="0.00001" inputmode="decimal" style="width: 120px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-strong);">
-                    <input type="number" id="manual-lon" placeholder="Longitude" step="0.00001" inputmode="decimal" style="width: 120px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-strong);">
-                    <button onclick="applyManualCoords()" class="btn btn-secondary" style="padding: 8px 12px;">Set</button>
+            <div class="loc-manual-coords">
+                <p class="loc-manual-coords__prompt">Enter coordinates manually:</p>
+                <div class="loc-manual-coords__inputs">
+                    <input type="number" id="manual-lat" placeholder="Latitude" step="0.00001" inputmode="decimal" class="loc-manual-coords__input">
+                    <input type="number" id="manual-lon" placeholder="Longitude" step="0.00001" inputmode="decimal" class="loc-manual-coords__input">
+                    <button onclick="applyManualCoords()" class="btn btn-secondary loc-manual-coords__btn">Set</button>
                 </div>
             </div>
         `;
@@ -790,10 +790,10 @@ export function showLocationDetail(locationId) {
     const staticHeader = section?.querySelector('.section-header-row');
     if (staticHeader) {
         staticHeader.innerHTML = `
-            <button class="btn-icon" onclick="showLocationManagement()" aria-label="Back" style="margin-right: 8px;">
+            <button class="btn-icon btn-icon--back" onclick="showLocationManagement()" aria-label="Back">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <h2 class="section-title" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(location.name)}</h2>
+            <h2 class="section-title section-title--truncate">${escapeHtml(location.name)}</h2>
             <button class="page-header__save" onclick="showLocationManagement()">Done</button>
         `;
     }
@@ -817,16 +817,16 @@ export function showLocationDetail(locationId) {
         </div>
 
         <!-- Map card -->
-        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;margin-bottom:14px;">
-            <div style="height:100px;background:linear-gradient(135deg,#1a2838,#0d1218);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:10px;">
-                <i class="fas fa-map-marker-alt" style="color:var(--primary);font-size:1.8rem;"></i>
+        <div class="loc-map-card">
+            <div class="loc-map-card__canvas">
+                <i class="fas fa-map-marker-alt loc-map-card__pin"></i>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="loc-map-card__info-row">
                 <div>
-                    <div style="font-size:0.8rem;color:var(--text-strong);font-weight:600;">${escapeHtml(address)}</div>
-                    ${hasGPS ? `<div style="font-size:0.7rem;color:var(--text-muted);">${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° W</div>` : ''}
+                    <div class="loc-map-card__address">${escapeHtml(address)}</div>
+                    ${hasGPS ? `<div class="loc-map-card__coords">${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° W</div>` : ''}
                 </div>
-                <button style="background:var(--primary-bg);border:1px solid var(--primary-border);color:var(--primary);padding:6px 12px;border-radius:var(--radius-pill);font-size:0.72rem;font-weight:600;cursor:pointer;" onclick="detectAndAddLocation()">
+                <button class="loc-map-card__use-current" onclick="detectAndAddLocation()">
                     <i class="fas fa-crosshairs"></i> Use current
                 </button>
             </div>
@@ -835,7 +835,7 @@ export function showLocationDetail(locationId) {
         <!-- Match radius -->
         <div class="field">
             <div class="field-label">Match radius</div>
-            <div style="display:flex;gap:8px;">
+            <div class="loc-radius-chips">
                 <div class="chip ${radius <= 200 ? 'active' : ''}" onclick="updateLocationRadius('${escapeAttr(locationId)}', 100)">100m</div>
                 <div class="chip ${radius > 200 && radius <= 700 ? 'active' : ''}" onclick="updateLocationRadius('${escapeAttr(locationId)}', 500)">500m</div>
                 <div class="chip ${radius > 700 ? 'active' : ''}" onclick="updateLocationRadius('${escapeAttr(locationId)}', 1000)">1 km</div>
@@ -851,12 +851,12 @@ export function showLocationDetail(locationId) {
                 <button class="link-row-action" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">View</button>
             </div>
         `).join('')}
-        ${locationEquip.length > 5 ? `<div style="text-align:center;margin-top:4px;"><button style="background:transparent;border:none;color:var(--primary);font-size:0.78rem;font-weight:600;cursor:pointer;">View all ${locationEquip.length} →</button></div>` : ''}
-        ${locationEquip.length === 0 ? '<div style="font-size:0.78rem;color:var(--text-muted);padding:8px 0;">No equipment linked to this location</div>' : ''}
+        ${locationEquip.length > 5 ? `<div class="loc-equip-view-all-row"><button class="loc-equip-view-all-btn">View all ${locationEquip.length} →</button></div>` : ''}
+        ${locationEquip.length === 0 ? '<div class="loc-equip-empty">No equipment linked to this location</div>' : ''}
 
         <!-- Delete -->
-        <div style="margin-top:24px;text-align:center;">
-            <button style="background:transparent;border:none;color:var(--danger);font-size:0.82rem;font-weight:600;cursor:pointer;" onclick="deleteLocation('${escapeAttr(locationId)}')">
+        <div class="danger-action-row">
+            <button class="danger-action-btn" onclick="deleteLocation('${escapeAttr(locationId)}')">
                 <i class="fas fa-trash"></i> Delete location
             </button>
         </div>
@@ -987,7 +987,7 @@ function updateLocationMap() {
         container.innerHTML = `
             <iframe
                 src="https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.01}%2C${lat - 0.01}%2C${lon + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lon}"
-                style="width: 100%; height: 100%; border: none;">
+                class="loc-map-iframe">
             </iframe>
         `;
     } else {
@@ -1034,9 +1034,9 @@ export function displayCurrentLocation() {
     const location = getSessionLocation();
     if (!location) return null;
     return `
-        <div style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(64, 224, 208, 0.1); border-radius: 6px; margin: 0.5rem 0;">
-            <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i>
-            <span style="color: var(--text-primary);">${location}</span>
+        <div class="current-location-chip">
+            <i class="fas fa-map-marker-alt text-primary"></i>
+            <span>${location}</span>
         </div>
     `;
 }

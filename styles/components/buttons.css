@@ -55,9 +55,7 @@
 .btn-text:active {
     color: var(--text-strong);
 }
-.btn-text-danger {
-    color: var(--danger);
-}
+/* .btn-text-danger removed — no JS callsites. Use `.btn-text.text-danger` if needed. */
 
 .btn-full {
     width: 100%;
