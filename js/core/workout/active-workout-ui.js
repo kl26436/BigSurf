@@ -137,7 +137,8 @@ function renderWorkoutHeader() {
             </button>
             <div class="aw-title">
                 <div class="aw-title__name">${escapeHtml(workoutName)}${locName ? ` <span class="aw-title__loc"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(locName)}</span>` : ''}</div>
-                <div class="aw-title__meta"><span class="aw-title__elapsed">${elapsed}</span> · Exercise ${currentExerciseIdx + 1}/${exerciseCount}</div>
+                <div class="aw-title__elapsed">${elapsed}</div>
+                <div class="aw-title__meta">Exercise ${currentExerciseIdx + 1}/${exerciseCount}</div>
             </div>
             <button class="aw-menu" onclick="awToggleWorkoutMenu()">
                 <i class="fas fa-ellipsis-v"></i>
@@ -1899,12 +1900,9 @@ function startDurationTimer() {
 
     durationInterval = setInterval(() => {
         elapsedSeconds++;
-        // Update just the meta text without full re-render
-        const meta = document.querySelector('.aw-title__meta');
-        if (meta) {
-            const exerciseCount = AppState.currentWorkout?.exercises?.length || 0;
-            meta.innerHTML = `<span class="aw-title__elapsed">${formatElapsed(elapsedSeconds)}</span> · Exercise ${currentExerciseIdx + 1}/${exerciseCount}`;
-        }
+        // Surgically update just the elapsed number — no re-render, no meta rewrite
+        const elapsedEl = document.querySelector('.aw-title__elapsed');
+        if (elapsedEl) elapsedEl.textContent = formatElapsed(elapsedSeconds);
     }, 1000);
 }
 

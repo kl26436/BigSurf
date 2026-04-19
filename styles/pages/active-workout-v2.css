@@ -19,7 +19,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 48px;
+    min-height: 56px;
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
@@ -37,23 +37,27 @@
 .aw-menu { background: transparent; color: var(--text-muted); }
 .aw-title { flex: 1; text-align: center; min-width: 0; }
 .aw-title__name {
-    font-size: var(--font-sm);
-    font-weight: 700;
-    color: var(--text-strong);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.15;
+}
+/* Elapsed time is the session hero — dominant visual weight, centered beat of the header. */
+.aw-title__elapsed {
+    color: var(--text-strong);
+    font-weight: 800;
+    font-size: var(--font-md);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
 }
 .aw-title__meta {
     font-size: var(--font-2xs);
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
-}
-/* Elapsed time is the session heartbeat — promote it above the exercise counter */
-.aw-title__elapsed {
-    color: var(--text-strong);
-    font-weight: 700;
-    font-size: var(--font-xs);
+    line-height: 1.15;
 }
 .aw-title__loc {
     font-size: var(--font-2xs);
