@@ -1,4 +1,10 @@
 // js/core/utils/config.js
+
+// App version — single source of truth for the settings footer and any "About"
+// surface. Keep in sync with package.json#version. The service-worker cache key
+// tracks deploy-tier (feature-scoped), not marketing version, so those can drift.
+export const APP_VERSION = '1.0.0';
+
 export const Config = {
     // Debug
     DEBUG_MODE: typeof window !== 'undefined' && new URL(window.location).searchParams.has('debug'),

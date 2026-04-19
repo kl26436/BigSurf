@@ -2,10 +2,10 @@
 // User-configurable settings with Firestore persistence
 
 import { AppState } from '../utils/app-state.js';
-import { Config } from '../utils/config.js';
+import { Config, APP_VERSION } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
 import { navigateTo } from './navigation.js';
-import { db, doc, setDoc, getDoc } from '../data/firebase-config.js';
+import { db, doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from '../data/firebase-config.js';
 import { exportWorkoutData } from '../data/data-manager.js';
 
 // Default settings — merged with user overrides on load
@@ -283,10 +283,17 @@ export function renderSettings() {
                         <div class="srow-desc">Recalculate from workout history</div>
                     </div>
                 </div>
+                <div class="srow srow--clickable" onclick="confirmDeleteAllData()">
+                    <div class="srow-icon ic-danger"><i class="fas fa-trash"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name srow-name--danger">Delete all data</div>
+                        <div class="srow-desc">Permanently remove all workouts, templates, equipment, and settings</div>
+                    </div>
+                </div>
             </div>
 
             <div class="settings-footer">
-                Big Surf v3.1 · Equipment Weight + Bodyweight Tracking
+                Big Surf v${escapeHtml(APP_VERSION)}
             </div>
         </div>
     `;
@@ -659,4 +666,107 @@ export async function rebuildPRsFromSettings() {
         console.error('PR rebuild failed:', error);
         showNotification('Failed to rebuild PRs', 'error');
     }
+}
+
+// ===================================================================
+// DELETE ALL DATA (Phase F §4 danger action)
+// ===================================================================
+
+// Every user-scoped Firestore subcollection known to this app. Kept here
+// (not auto-discovered) because new subcollections must be opted into the
+// wipe intentionally — losing data is cheap, leaking it isn't.
+const USER_SUBCOLLECTIONS = [
+    'workouts',
+    'workoutTemplates',
+    'equipment',
+    'locations',
+    'customExercises',
+    'exerciseOverrides',
+    'measurements',
+    'dexa',
+    'coachHistory',
+];
+// Single-doc preference paths to clear alongside the subcollections.
+const USER_PREFERENCE_DOCS = ['settings', 'favorites'];
+
+/**
+ * Two-step confirm then wipe all user data. Final step signs the user out so
+ * they land on the auth screen with a clean slate.
+ */
+export async function confirmDeleteAllData() {
+    const first = window.confirm(
+        'Delete ALL your data?\n\n' +
+        'This permanently removes every workout, template, equipment entry, ' +
+        'location, measurement, DEXA scan, coach conversation, and preference. ' +
+        'This cannot be undone.\n\nContinue?'
+    );
+    if (!first) return;
+
+    const typed = window.prompt('Type DELETE in all caps to confirm:');
+    if (typed !== 'DELETE') {
+        showNotification('Deletion cancelled', 'info', 2000);
+        return;
+    }
+
+    showNotification('Deleting your data…', 'info', 10000);
+    try {
+        const { deletedDocs } = await deleteAllUserData();
+        showNotification(`Deleted ${deletedDocs} records. Signing out…`, 'success', 3000);
+
+        // Sign out so the UI doesn't try to render against a wiped profile.
+        const { signOutUser } = await import('../app-initialization.js');
+        await signOutUser();
+    } catch (error) {
+        console.error('❌ Delete all data failed:', error);
+        showNotification('Delete failed — some data may remain. Try again or contact support.', 'error', 5000);
+    }
+}
+
+/**
+ * Delete every user-scoped doc in Firestore. Returns total deleted count.
+ * Uses batched writes (500/batch limit) to stay under Firestore caps.
+ */
+async function deleteAllUserData() {
+    if (!AppState.currentUser) {
+        throw new Error('Not signed in');
+    }
+    const uid = AppState.currentUser.uid;
+    let deletedDocs = 0;
+
+    for (const subPath of USER_SUBCOLLECTIONS) {
+        const snap = await getDocs(collection(db, 'users', uid, subPath));
+        deletedDocs += await deleteDocsInBatches(snap.docs);
+    }
+
+    // Preference docs live under preferences/{settings,favorites} — best-effort
+    // delete; missing docs just resolve without error.
+    for (const prefName of USER_PREFERENCE_DOCS) {
+        try {
+            await deleteDoc(doc(db, 'users', uid, 'preferences', prefName));
+            deletedDocs++;
+        } catch (err) {
+            // Non-fatal — the doc may not exist for this user.
+            console.warn(`Could not delete preferences/${prefName}:`, err);
+        }
+    }
+
+    // Reset in-memory state so any surviving render pass sees empty data.
+    AppState.settings = null;
+    AppState.workouts = [];
+    AppState.workoutPlans = [];
+
+    return { deletedDocs };
+}
+
+async function deleteDocsInBatches(docs) {
+    const BATCH_LIMIT = 500;
+    let total = 0;
+    for (let i = 0; i < docs.length; i += BATCH_LIMIT) {
+        const batch = writeBatch(db);
+        const slice = docs.slice(i, i + BATCH_LIMIT);
+        for (const d of slice) batch.delete(d.ref);
+        await batch.commit();
+        total += slice.length;
+    }
+    return total;
 }
