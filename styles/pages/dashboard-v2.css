@@ -111,6 +111,32 @@
     border-color: var(--highlight-warm-border);
 }
 .hero-chip--streak .hero-chip__val { color: var(--highlight-warm); }
+/* Hero-chip icon tint modifiers (replaces inline color styles) */
+.hero-chip__icon--warm      { color: var(--highlight-warm); }
+.hero-chip__icon--primary   { color: var(--primary); }
+.hero-chip__icon--shoulders { color: var(--cat-shoulders); }
+
+/* Dashboard loading skeletons — sized to match the real cards below */
+.dash-skel--hero  { height: 140px; }
+.dash-skel--strip { height: 56px; }
+.dash-skel--row   { height: 48px; }
+
+/* Inline meta next to section titles (e.g., "This week") */
+.dash-section-head__meta {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+/* Tight variant for stacked section heads */
+.dash-section-head--tight { margin-top: 4px; }
+
+/* Body-part cell icon tints (e.g., trophy beside hero-lift max) */
+.bp-cell__icon--gold { color: var(--badge-gold); }
+
+/* Body-composition card variant: stacked under body-weight card */
+.bc-card--composition { margin-top: 12px; }
+
+/* Body-weight card icon tint */
+.bw-card-head__icon--primary { color: var(--primary); }
 
 /* ===== SECTION HEADER ===== */
 .dash-section-head {

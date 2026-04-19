@@ -676,3 +676,73 @@
     opacity: 0.5;
     display: block;
 }
+
+/* Manual workout notes banner inside detail modal */
+.wh-detail-manual-notes {
+    background: var(--bg-secondary);
+    padding: var(--space-16);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-16);
+    border-left: 3px solid var(--info, var(--primary));
+}
+.wh-detail-manual-notes__label {
+    color: var(--info, var(--primary));
+    display: block;
+    margin-bottom: var(--space-8);
+}
+
+/* Action buttons row — wraps on small screens */
+.wh-detail-actions {
+    display: flex;
+    gap: var(--space-16);
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Meta block — grid of label/value pairs */
+.wh-detail-meta {
+    margin-bottom: var(--space-24);
+}
+.wh-detail-meta__grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-12) var(--space-16);
+    align-items: center;
+}
+.wh-detail-meta__grid--compact {
+    gap: var(--space-16);
+}
+.wh-detail-status--completed { color: var(--success); }
+.wh-detail-status--cancelled { color: var(--danger); }
+.wh-detail-status--partial   { color: var(--warning); }
+.wh-detail-duration { color: var(--primary); font-weight: 600; }
+
+/* Progress bar */
+.wh-detail-progress-bar {
+    background: var(--bg-secondary);
+    height: 6px;
+    border-radius: var(--radius-xs);
+    overflow: hidden;
+    margin-top: 4px;
+}
+.wh-detail-progress-bar__fill {
+    background: var(--primary);
+    height: 100%;
+    width: var(--progress, 0%);
+    transition: width var(--anim-slow, 0.3s) var(--ease-out-expo, ease);
+}
+
+/* Exercises section header */
+.wh-detail-exercises {
+    margin-bottom: var(--space-16);
+}
+.wh-detail-exercises__title {
+    color: var(--text-strong);
+    margin-bottom: var(--space-16);
+}
+
+/* Limited/partial detail fallback note */
+.wh-detail-limited {
+    color: var(--text-secondary);
+    font-style: italic;
+}

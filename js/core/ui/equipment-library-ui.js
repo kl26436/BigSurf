@@ -202,7 +202,7 @@ function renderEquipmentLibrary() {
                             <i class="fas fa-chevron-down equip-exercise-chevron" id="chevron-${equipId}"></i>
                         </div>
                     </div>
-                    <div class="equip-nested-list" id="equip-list-${equipId}" style="display: none;">
+                    <div class="equip-nested-list hidden" id="equip-list-${equipId}">
                 `;
 
                 for (const equip of equips) {
@@ -289,9 +289,9 @@ export function toggleEquipmentExercise(equipId) {
     const chevron = document.getElementById(`chevron-${equipId}`);
     if (!list) return;
 
-    const isOpen = list.style.display !== 'none';
-    list.style.display = isOpen ? 'none' : 'block';
-    if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+    const willOpen = list.classList.contains('hidden');
+    list.classList.toggle('hidden');
+    if (chevron) chevron.classList.toggle('equip-exercise-chevron--open', willOpen);
 }
 
 export function filterEquipmentByLocation(location) {
@@ -708,15 +708,15 @@ export function showAddEquipmentFlow() {
     const existingFunctions = [...new Set(allEquipment.flatMap(e => e.exerciseTypes || []))].sort();
 
     container.innerHTML = `
-        <div style="padding: var(--pad-page);">
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: var(--gap-section);">
+        <div class="equip-add">
+            <div class="equip-add__header">
                 <button class="btn-icon" onclick="backToEquipmentList()" aria-label="Back">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h3 style="flex: 1; margin: 0;">Add Equipment</h3>
+                <h3 class="equip-add__title">Add Equipment</h3>
             </div>
 
-            <div class="form-group" style="margin-bottom: var(--space-16);">
+            <div class="form-group equip-add__group">
                 <label class="form-label">Brand</label>
                 <input type="text" id="equip-brand" class="form-input"
                     placeholder="e.g., Hammer Strength, Rogue"
@@ -727,14 +727,14 @@ export function showAddEquipmentFlow() {
                 </datalist>
             </div>
 
-            <div class="form-group" style="margin-bottom: var(--space-16);">
-                <label class="form-label">Model / Line <span style="color: var(--text-muted); font-weight: 400;">(optional)</span></label>
+            <div class="form-group equip-add__group">
+                <label class="form-label">Model / Line <span class="equip-add__optional">(optional)</span></label>
                 <input type="text" id="equip-model" class="form-input"
                     placeholder="e.g., Monolith, Plate-Loaded"
                     oninput="updateEquipNamePreview()">
             </div>
 
-            <div class="form-group" style="margin-bottom: var(--space-16);">
+            <div class="form-group equip-add__group">
                 <label class="form-label">What is it?</label>
                 <input type="text" id="equip-function" class="form-input"
                     placeholder="e.g., Leg Press, Lat Pulldown"
@@ -745,9 +745,9 @@ export function showAddEquipmentFlow() {
                 </datalist>
             </div>
 
-            <div class="form-group" style="margin-bottom: var(--space-16);">
+            <div class="form-group equip-add__group">
                 <label class="form-label">Type</label>
-                <div style="display: flex; flex-wrap: wrap; gap: var(--space-8);">
+                <div class="equip-add__type-row">
                     ${EQUIPMENT_TYPES_LIST.map(t => `
                         <button class="btn btn-secondary btn-small equip-type-btn" data-type="${t}"
                             onclick="selectEquipType(this, '${t}')">
@@ -757,12 +757,12 @@ export function showAddEquipmentFlow() {
                 </div>
             </div>
 
-            <div style="background: var(--bg-card-hi); border-radius: var(--radius-sm); padding: var(--space-12); margin-bottom: var(--space-24);">
-                <span style="font-size: var(--font-xs); color: var(--text-muted);">Preview:</span>
-                <strong id="equip-name-preview" style="display: block; margin-top: var(--space-4); color: var(--text-strong);">—</strong>
+            <div class="equip-add__preview">
+                <span class="equip-add__preview-label">Preview:</span>
+                <strong id="equip-name-preview" class="equip-add__preview-val">—</strong>
             </div>
 
-            <button class="btn btn-primary" style="width: 100%;" onclick="confirmAddEquipment()">
+            <button class="btn btn-primary equip-add__submit" onclick="confirmAddEquipment()">
                 <i class="fas fa-plus"></i> Add Equipment
             </button>
         </div>

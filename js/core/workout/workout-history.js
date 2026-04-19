@@ -736,7 +736,7 @@ export function getWorkoutHistory(appState) {
                           : '<i class="fas fa-exclamation-circle text-warning"></i>';
 
                 html += `
-                    <div class="workout-picker-item" data-action="showWorkoutDetail" data-date="${date}" data-workout-name="${escapeAttr(workout.name)}" data-index="${index}" style="cursor: pointer;">
+                    <div class="workout-picker-item clickable" data-action="showWorkoutDetail" data-date="${date}" data-workout-name="${escapeAttr(workout.name)}" data-index="${index}">
                         <div class="workout-picker-icon ${workout.category}">
                             <i class="fas ${CATEGORY_ICONS[(workout.category || 'other').toLowerCase()] || CATEGORY_ICONS.other}"></i>
                         </div>
@@ -829,8 +829,8 @@ export function getWorkoutHistory(appState) {
             let notesSection = '';
             if (workout.rawData && workout.rawData.manualNotes) {
                 notesSection = `
-                <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 3px solid var(--info);">
-                    <strong style="color: var(--info); display: block; margin-bottom: 0.5rem;">Workout Notes:</strong>
+                <div class="wh-detail-manual-notes">
+                    <strong class="wh-detail-manual-notes__label">Workout Notes:</strong>
                     <span>${escapeHtml(workout.rawData.manualNotes)}</span>
                 </div>`;
             }
@@ -841,7 +841,7 @@ export function getWorkoutHistory(appState) {
             let actionButtons = '';
             if (workout.status === 'cancelled' || workout.status === 'partial') {
                 actionButtons = `
-                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <div class="wh-detail-actions">
                     <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-edit"></i> Edit Workout
                     </button>
@@ -855,7 +855,7 @@ export function getWorkoutHistory(appState) {
             `;
             } else {
                 actionButtons = `
-                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <div class="wh-detail-actions">
                     <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-edit"></i> Edit Workout
                     </button>
@@ -885,11 +885,12 @@ export function getWorkoutHistory(appState) {
             // Get location from rawData
             const workoutLocation = rawData.location || null;
 
+            const statusModifier = workout.status === 'completed' ? 'completed' : workout.status === 'cancelled' ? 'cancelled' : 'partial';
             return `
-            <div style="margin-bottom: 1.5rem;">
-                <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.75rem 1rem; align-items: center;">
+            <div class="wh-detail-meta">
+                <div class="wh-detail-meta__grid">
                     <strong class="text-secondary">Status:</strong>
-                    <span style="color: ${workout.status === 'completed' ? 'var(--success)' : workout.status === 'cancelled' ? 'var(--danger)' : 'var(--warning)'};">
+                    <span class="wh-detail-status--${statusModifier}">
                         <i class="fas fa-${workout.status === 'completed' ? 'check-circle' : workout.status === 'cancelled' ? 'times-circle' : 'exclamation-circle'}"></i>
                         ${escapeHtml(workout.status.charAt(0).toUpperCase() + workout.status.slice(1))}
                     </span>
@@ -928,22 +929,22 @@ export function getWorkoutHistory(appState) {
                     }
 
                     <strong class="text-secondary">Duration:</strong>
-                    <span style="color: var(--primary); font-weight: 600;">
+                    <span class="wh-detail-duration">
                         <i class="fas fa-stopwatch"></i> ${escapeHtml(String(totalDuration || 'Unknown'))}
                     </span>
 
                     <strong class="text-secondary">Progress:</strong>
                     <span>
                         ${workout.progress || 0}%
-                        <div style="background: var(--bg-secondary); height: 6px; border-radius: 3px; overflow: hidden; margin-top: 4px;">
-                            <div style="background: var(--primary); height: 100%; width: ${workout.progress || 0}%; transition: width 0.3s ease;"></div>
+                        <div class="wh-detail-progress-bar">
+                            <div class="wh-detail-progress-bar__fill" style="--progress: ${workout.progress || 0}%;"></div>
                         </div>
                     </span>
                 </div>
             </div>
             ${notesSection}
-            <div style="margin-bottom: 1rem;">
-                <h3 style="color: var(--text-primary); margin-bottom: 1rem;">
+            <div class="wh-detail-exercises">
+                <h3 class="wh-detail-exercises__title">
                     <i class="fas fa-dumbbell"></i> Exercises & Sets
                 </h3>
                 ${exerciseHTML}
@@ -1316,15 +1317,15 @@ export function getWorkoutHistory(appState) {
             }
 
             content.innerHTML = `
-            <div style="margin-bottom: 1.5rem;">
-                <div style="display: grid; grid-template-columns: auto 1fr; gap: 1rem;">
+            <div class="wh-detail-meta">
+                <div class="wh-detail-meta__grid wh-detail-meta__grid--compact">
                     <strong class="text-secondary">Status:</strong>
                     <span class="text-success">${escapeHtml(calendarWorkout.status)}</span>
                     <strong class="text-secondary">Category:</strong>
                     <span>${escapeHtml(calendarWorkout.category)}</span>
                 </div>
             </div>
-            <p style="color: var(--text-secondary); font-style: italic;">Limited workout details available. This workout may have been logged manually or sync data is incomplete.</p>
+            <p class="wh-detail-limited">Limited workout details available. This workout may have been logged manually or sync data is incomplete.</p>
         `;
 
             modal.style.display = 'flex';

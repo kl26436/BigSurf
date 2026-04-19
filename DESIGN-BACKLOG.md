@@ -189,6 +189,13 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
   - `.page-header__save` disabled state uses `--bg-card-hi` + `--text-muted` (not opacity) ✓
   - Destructive actions use `.danger-action-*` pattern with confirmation ✓
 
+- [x] **§12 Long-tail follow-up wave 2 (Apr 2026)** — inline-style sweep continued:
+  - `workout-history.js`: 16 → **1** (only CSS custom property `--progress` on progress bar fill). New `.wh-detail-manual-notes`, `.wh-detail-actions`, `.wh-detail-meta`, `.wh-detail-meta__grid`, `.wh-detail-status--{completed,cancelled,partial}`, `.wh-detail-duration`, `.wh-detail-progress-bar`, `.wh-detail-exercises`, `.wh-detail-limited` in [history.css](styles/pages/history.css).
+  - `dashboard-ui.js`: 13 → **1** (per-segment dot color). New `.hero-chip__icon--warm/--primary/--shoulders`, `.dash-skel--hero/--strip/--row`, `.dash-section-head__meta`, `.dash-section-head--tight`, `.bp-cell__icon--gold`, `.bc-card--composition`, `.bw-card-head__icon--primary` in [dashboard-v2.css](styles/pages/dashboard-v2.css).
+  - `equipment-library-ui.js`: 14 → **0**. Replaced `style="display:none"` with `.hidden` + classList toggle. Added `.equip-exercise-chevron--open`, `.equip-add` + `.equip-add__header/__title/__group/__optional/__type-row/__preview/__preview-label/__preview-val/__submit` in [components/modals.css](styles/components/modals.css).
+  - Audit budgets ratcheted: `inlineStylesInJs 95→55`, `rawRadiusPxInPages 5→4`.
+  - **Tests**: 354/354 pass.
+
 - [x] **§11 Long-tail follow-up (Apr 2026)** — inline-style sweep + font-size tokenization wave:
   - `composition-detail-ui.js`: 29 → **2** (only CSS custom properties for per-item colors / widths). New `.comp-*` CSS block in [detail-pages.css](styles/pages/detail-pages.css) covering donut row, stats grid, visceral-fat color states, body-weight empty state, DEXA empty state, action list, `.dash-template-icon--*` tints.
   - `metric-detail-ui.js`: 24 → **1** (per-segment dot color via `--dot-color`). New `.md-*` CSS block in detail-pages.css: `.md-body`, `.md-placeholder`, `.md-skel-tall`, `.md-error`, `.md-hero-meta`, `.md-chart-placeholder`, `.md-empty`, `.md-empty-line`, `.md-goal-strong`, `.md-bc-row`, `.md-bc-legend`. `.dash-bc-dot` now reads `var(--dot-color, var(--text-muted))`.

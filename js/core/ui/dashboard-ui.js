@@ -77,9 +77,9 @@ async function renderDashboard() {
     if (!container) return;
 
     container.innerHTML = `
-        <div class="skeleton skeleton-card" style="height: 140px;"></div>
-        <div class="skeleton skeleton-card" style="height: 56px;"></div>
-        <div class="skeleton skeleton-card" style="height: 48px;"></div>
+        <div class="skeleton skeleton-card dash-skel--hero"></div>
+        <div class="skeleton skeleton-card dash-skel--strip"></div>
+        <div class="skeleton skeleton-card dash-skel--row"></div>
     `;
 
     try {
@@ -319,17 +319,17 @@ function renderHeroChipRow(streak, weekDone, weekGoal, bwData) {
     return `
         <div class="hero-chip-row">
             <div class="hero-chip hero-chip--streak">
-                <div class="hero-chip__icon"><i class="fas fa-fire" style="color:var(--highlight-warm);"></i></div>
+                <div class="hero-chip__icon hero-chip__icon--warm"><i class="fas fa-fire"></i></div>
                 <div class="hero-chip__val">${streak}</div>
                 <div class="hero-chip__label">Streak</div>
             </div>
             <div class="hero-chip">
-                <div class="hero-chip__icon"><i class="fas fa-bullseye" style="color:var(--primary);"></i></div>
+                <div class="hero-chip__icon hero-chip__icon--primary"><i class="fas fa-bullseye"></i></div>
                 <div class="hero-chip__val">${weekDone}<span class="hero-chip__unit">/${weekGoal}</span></div>
                 <div class="hero-chip__label">This week</div>
             </div>
             <div class="hero-chip">
-                <div class="hero-chip__icon"><i class="fas fa-weight" style="color:var(--cat-shoulders);"></i></div>
+                <div class="hero-chip__icon hero-chip__icon--shoulders"><i class="fas fa-weight"></i></div>
                 <div class="hero-chip__val">${bwVal != null ? bwVal : '—'}<span class="hero-chip__unit">${bwVal != null ? ` ${bwUnit}` : ''}</span></div>
                 ${bwDelta != null ? `<div class="hero-chip__delta ${deltaDirClass}">${bwDelta < 0 ? '↓' : '↑'} ${Math.abs(bwDelta).toFixed(1)} ${bwUnit}</div>` : '<div class="hero-chip__label">Body weight</div>'}
             </div>
@@ -452,7 +452,7 @@ function renderTrainingSection(allWorkouts) {
     return `
         <div class="dash-section-head">
             <h3>Training</h3>
-            <span style="font-size:var(--font-xs);color:var(--text-muted);">This week</span>
+            <span class="dash-section-head__meta">This week</span>
         </div>
         ${stats.map(renderBodyPartCard).join('')}
     `;
@@ -474,7 +474,7 @@ function renderBodyPartCard(s) {
             </div>
             <div class="bp-card__grid">
                 <div class="bp-cell">
-                    <div class="bp-cell__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> ${heroShort} Max</div>
+                    <div class="bp-cell__label"><i class="fas fa-trophy bp-cell__icon--gold"></i> ${heroShort} Max</div>
                     <div class="bp-cell__val">${hv ? `${hv.weight}<span class="bp-cell__unit">×${hv.reps}</span>` : '—'}</div>
                 </div>
                 <div class="bp-cell">
@@ -530,7 +530,7 @@ async function renderCompositionCard(bwData) {
         html += `
             <div class="bc-card" onclick="showCompositionDetail()">
                 <div class="bw-card-head">
-                    <i class="fas fa-weight" style="color:var(--primary);"></i>
+                    <i class="fas fa-weight bw-card-head__icon--primary"></i>
                     <span class="bw-card-title">Body Weight</span>
                     ${source}
                     <i class="fas fa-chevron-right dash-chev"></i>
@@ -572,7 +572,7 @@ async function renderCompositionCard(bwData) {
         }
 
         html += `
-            <div class="bc-card" onclick="showCompositionDetail()" style="margin-top:12px;">
+            <div class="bc-card bc-card--composition" onclick="showCompositionDetail()">
                 <div class="bw-card-head">
                     <span class="bw-card-title">Body Composition</span>
                     <i class="fas fa-chevron-right dash-chev"></i>
@@ -580,7 +580,7 @@ async function renderCompositionCard(bwData) {
                 <div class="bc-row">
                     ${chartDonut({ segments, size: 60 })}
                     <div class="bc-legend">
-                        ${segments.map(s => `<div class="bc-leg"><div class="bc-dot" style="background:${s.color};"></div>${s.label}</div>`).join('')}
+                        ${segments.map(s => `<div class="bc-leg"><div class="bc-dot" style="--dot-color:${s.color};"></div>${s.label}</div>`).join('')}
                     </div>
                 </div>
                 ${dexaAgo ? `<div class="bc-dexa-ago">Last DEXA: ${dexaAgo}${muscleDelta}</div>` : ''}
@@ -602,7 +602,7 @@ function renderConnectPrompt() {
                 <div class="connect-card__title">Track Body Composition</div>
                 <div class="connect-card__sub">Upload a DEXA scan or log body weight</div>
             </div>
-            <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i>
+            <i class="fas fa-chevron-right dash-chev"></i>
         </div>
     `;
 }
@@ -614,7 +614,7 @@ function renderConnectPrompt() {
 function renderRecentPRs(recentPRs) {
     if (!recentPRs || recentPRs.length === 0) return '';
     return `
-        <div class="dash-section-head" style="margin-top:4px;">
+        <div class="dash-section-head dash-section-head--tight">
             <h3>Recent PRs</h3>
         </div>
         ${recentPRs.slice(0, 3).map(pr => `
