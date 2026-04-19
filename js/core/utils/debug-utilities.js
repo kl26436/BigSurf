@@ -1925,3 +1925,85 @@ export async function backfillEquipmentFromHistory(dryRun = false) {
 
     return { templatesUpdated, exercisesUpdated, equipmentMap: Object.fromEntries(equipmentMap) };
 }
+
+// ===================================================================
+// Repair workoutType strings that were saved as slugified template IDs
+// (e.g. "chest___push") instead of pretty names. Prior dashboard bug
+// fixed in commit 668906d — this migration cleans up historical docs.
+// ===================================================================
+export async function debugFixWorkoutNames(dryRun = true) {
+    if (!AppState.currentUser) {
+        console.log('❌ No user signed in');
+        return null;
+    }
+
+    console.log(`🔧 Scanning workouts for slugified names${dryRun ? ' (DRY RUN)' : ''}...\n`);
+
+    const { db, collection, getDocs, doc, updateDoc } = await import('../data/firebase-config.js');
+
+    if (!AppState.workoutPlans || AppState.workoutPlans.length === 0) {
+        const workoutManager = new FirebaseWorkoutManager(AppState);
+        AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
+    }
+    const plans = AppState.workoutPlans;
+
+    const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+    const snapshot = await getDocs(workoutsRef);
+
+    const slugRe = /^[a-z0-9_]+$/;
+    let scanned = 0;
+    let needsFix = 0;
+    let fixed = 0;
+    const updates = [];
+
+    for (const docSnap of snapshot.docs) {
+        scanned++;
+        const w = docSnap.data();
+        const raw = (w.workoutType || '').trim();
+        if (!raw) continue;
+
+        let pretty = null;
+
+        if (w.templateId) {
+            const byId = plans.find((p) => p.id === w.templateId);
+            if (byId && (byId.name || byId.day)) pretty = byId.name || byId.day;
+        }
+
+        if (!pretty && slugRe.test(raw)) {
+            const bySlug = plans.find((p) => p.id === raw);
+            if (bySlug && (bySlug.name || bySlug.day)) pretty = bySlug.name || bySlug.day;
+        }
+
+        if (!pretty) continue;
+        if (pretty === raw) continue;
+
+        needsFix++;
+        updates.push({ docId: docSnap.id, from: raw, to: pretty, date: w.date });
+        console.log(`  ${w.date || '?'}  "${raw}"  →  "${pretty}"`);
+
+        if (!dryRun) {
+            try {
+                await updateDoc(doc(db, 'users', AppState.currentUser.uid, 'workouts', docSnap.id), {
+                    workoutType: pretty,
+                    lastUpdated: new Date().toISOString(),
+                });
+                fixed++;
+            } catch (err) {
+                console.error(`    ❌ update failed for ${docSnap.id}:`, err);
+            }
+        }
+    }
+
+    console.log(`\n✅ Scanned ${scanned} workouts · ${needsFix} need repair · ${fixed} updated`);
+
+    if (dryRun && needsFix > 0) {
+        console.log('\n💡 Run window.debugFixWorkoutNames(false) to apply changes');
+        showNotification(`${needsFix} workouts would be renamed. Run with (false) to apply.`, 'info');
+    } else if (!dryRun && fixed > 0) {
+        showNotification(`Renamed ${fixed} workouts`, 'success');
+    } else {
+        showNotification('No workouts need repair', 'info');
+    }
+
+    return { scanned, needsFix, fixed, updates };
+}

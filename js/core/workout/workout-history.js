@@ -13,12 +13,38 @@ export function getWorkoutHistory(appState) {
     const calendarWorkouts = {};
     const firstWorkoutDate = null; // Track the earliest workout date
 
+    // Resolve a workout's display name. Older saves may contain a slugified
+    // template id (e.g. "chest___push") in workoutType instead of the pretty
+    // name. Prefer the matched template's name/day; fall back to trimmed
+    // workoutType; last resort "Workout".
+    function resolveWorkoutDisplayName(workout) {
+        const raw = (workout?.workoutType || '').trim();
+        const templateId = workout?.templateId || null;
+        const plans = appState?.workoutPlans || [];
+
+        // First try templateId (stored separately since Phase that added it).
+        if (templateId) {
+            const byId = plans.find((p) => p.id === templateId);
+            if (byId) return byId.name || byId.day || raw || 'Workout';
+        }
+
+        // If raw looks like a slug (all lowercase/digits/underscore, no space),
+        // try matching it as a template id.
+        if (raw && /^[a-z0-9_]+$/.test(raw)) {
+            const bySlug = plans.find((p) => p.id === raw);
+            if (bySlug) return bySlug.name || bySlug.day || raw;
+        }
+
+        return raw || 'Workout';
+    }
+
     return {
         currentHistory,
         filteredHistory,
         currentCalendarDate,
         calendarWorkouts,
         firstWorkoutDate,
+        resolveWorkoutDisplayName,
 
         initialize() {
             this.setupEventListeners();
@@ -302,7 +328,7 @@ export function getWorkoutHistory(appState) {
             }
 
             return {
-                name: workout.workoutType || 'Workout',
+                name: resolveWorkoutDisplayName(workout),
                 category: category,
                 status: status,
                 progress: workout.progress?.percentage || (status === 'completed' ? 100 : 0),
@@ -530,7 +556,7 @@ export function getWorkoutHistory(appState) {
             html += '<div class="recent-workouts-items">';
 
             visibleWorkouts.forEach((workout) => {
-                const workoutType = workout.workoutType || 'Workout';
+                const workoutType = resolveWorkoutDisplayName(workout);
                 const displayDate = this.formatRelativeDate(workout.date);
                 const exerciseCount = workout.exercises ? Object.keys(workout.exercises).length : 0;
                 const durationMin = workout.totalDuration ? Math.floor(workout.totalDuration / 60) : 0;
@@ -1241,7 +1267,7 @@ export function getWorkoutHistory(appState) {
             // Set the modal content
             content.innerHTML = `
         <div class="workout-header">
-            <h3>${escapeHtml(workout.workoutType)} - ${displayDate}</h3>
+            <h3>${escapeHtml(resolveWorkoutDisplayName(workout))} - ${displayDate}</h3>
         </div>
 
         <div class="workout-detail-summary">
@@ -1374,7 +1400,7 @@ export function getWorkoutHistory(appState) {
             if (!workout) return;
 
             const confirmDelete = confirm(
-                `Delete workout "${workout.workoutType}" from ${new Date(workout.date).toLocaleDateString()}?\n\nThis cannot be undone.`
+                `Delete workout "${resolveWorkoutDisplayName(workout)}" from ${new Date(workout.date).toLocaleDateString()}?\n\nThis cannot be undone.`
             );
             if (!confirmDelete) return;
 
