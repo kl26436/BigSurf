@@ -138,6 +138,8 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
 - [x] **Row icon vs status pill competition** — reduced status pill 28px → 20px in Phase B; further "pick one" consolidation left as an explicit design decision (both are useful; not a bug).
 - [x] **Load More inline style** — shipped in Phase B (`.btn-block` utility + `.recent-workouts-load-more` class).
 - [~] **`.workout-picker-item` vs `.recent-workout-item`** — deliberate distinction documented: `.recent-workout-item` is the borderless list row under the calendar; `.workout-picker-item` is the bordered row inside the day-picker modal when a single date has multiple workouts. Different contexts, both needed.
+- [~] **`.cal-icon` font-size 9px** — intentional exception to token scale. Kept dense so the 7-column grid stays compact. One of the ~10 raw font-sizes tracked by the design audit. Revisit if users report workout markers are hard to read on the calendar.
+- [~] **`.btn-icon-sm` at 40px** — below the `--tap: 44px` spec. Accepted as good-enough during Phase B; revisit if an a11y audit flags it. If bumped to 44px, the history-header row height will need a corresponding tweak.
 
 ---
 
@@ -350,7 +352,7 @@ Walk on 375px viewport after next dev deploy:
 All items from the docs below are now captured in this backlog. Archive once confident nothing is missed:
 - [ ] `design-critique-system.md` → archive (all items in Phase A/B/C/D/G)
 - [ ] `design-critique-dashboard.md` → archive (all items in Phase A/B/C)
-- [ ] `design-critique-history.md` → archive (all items in Phase A/B/C)
+- [x] `design-critique-history.md` → archived to `docs/archive/` (audit 2026-04-19: 17/19 shipped, 2 intentional exceptions captured in Phase C History section)
 - [ ] `CODE-AUDIT.md` → archive (all open items in Phase D/E; closed items in shipped list)
 - [ ] `DASHBOARD-V2-IMPLEMENTATION.md` → keep until Phase H Dashboard checklist is signed off; then archive
 - [ ] `ACTIVE-WORKOUT-V2-IMPLEMENTATION.md` → keep until Phase H Active Workout checklist is signed off; then archive
