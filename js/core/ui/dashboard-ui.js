@@ -421,7 +421,7 @@ function renderForTodayRow({ template, count, scheduled }, isMostUsed, dayName) 
         : (isMostUsed && count >= 1 ? '<span class="dash-template-count">Most used</span>' : '');
 
     return `
-        <div class="dash-template-row" onclick="startWorkout('${escapeAttr(template.id || template.name)}')">
+        <div class="dash-template-row" onclick="startWorkout('${escapeAttr(template.day || template.name || template.id)}')">
             <div class="dash-template-icon cat-bg-${category.toLowerCase()}"><i class="${icon}"></i></div>
             <div class="dash-template-info">
                 <div class="dash-template-name">
@@ -430,7 +430,7 @@ function renderForTodayRow({ template, count, scheduled }, isMostUsed, dayName) 
                 </div>
                 <div class="dash-template-meta">${exCount} exercises · ${usageText}</div>
             </div>
-            <button class="dash-template-play" onclick="event.stopPropagation(); startWorkout('${escapeAttr(template.id || template.name)}')">
+            <button class="dash-template-play" onclick="event.stopPropagation(); startWorkout('${escapeAttr(template.day || template.name || template.id)}')">
                 <i class="fas fa-play"></i>
             </button>
         </div>

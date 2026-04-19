@@ -154,8 +154,11 @@ export async function startWorkout(workoutType) {
     // Set up workout state - DEEP CLONE to avoid modifying the template
     AppState.currentWorkout = JSON.parse(JSON.stringify(workout));
     AppState.workoutStartTime = new Date();
+    // Normalize display name: callers may pass a Firestore id (e.g. "chest___push")
+    // rather than the pretty name. Resolve via the found plan.
+    const displayName = workout.name || workout.day || workoutType;
     AppState.savedData = {
-        workoutType: workoutType,
+        workoutType: displayName,
         date: AppState.getTodayDateString(),
         startedAt: new Date().toISOString(),
         exercises: {},
@@ -179,7 +182,7 @@ export async function startWorkout(workoutType) {
 
     const workoutNameElement = document.getElementById('current-workout-name');
     if (workoutNameElement) {
-        workoutNameElement.textContent = workoutType;
+        workoutNameElement.textContent = displayName;
     }
 
     // Hide other sections and show active workout
