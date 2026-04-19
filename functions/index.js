@@ -686,14 +686,14 @@ exports.withingsSyncWeight = functions.runWith({ secrets: [withingsClientId, wit
             }
 
             // Fetch measurements from Withings
-            // meastypes: 1=weight(kg), 6=body fat(%), 8=fat mass, 76=muscle mass
+            // meastypes: 1=weight(kg), 4=height(m), 6=body fat(%), 8=fat mass, 76=muscle mass
             const sinceDays = (data && data.days) || 30;
             const startDate = Math.floor((Date.now() - sinceDays * 86400000) / 1000);
 
             const result = await httpsPost('wbsapi.withings.net', '/measure', {
                 action: 'getmeas',
                 access_token: accessToken,
-                meastypes: '1,6',
+                meastypes: '1,4,6',
                 category: '1', // Real measurements only (not goals)
                 startdate: startDate.toString(),
                 enddate: Math.floor(Date.now() / 1000).toString(),
@@ -710,6 +710,11 @@ exports.withingsSyncWeight = functions.runWith({ secrets: [withingsClientId, wit
 
             const measureGroups = result.body?.measuregrps || [];
             let saved = 0;
+            // Height is a profile value (meastype 4), not a time-series. Pick the
+            // most recent one we see in this batch and write it to the user's
+            // profile only when they don't already have a height set.
+            let latestHeightCm = null;
+            let latestHeightTs = 0;
 
             for (const group of measureGroups) {
                 const date = new Date(group.date * 1000);
@@ -723,6 +728,14 @@ exports.withingsSyncWeight = functions.runWith({ secrets: [withingsClientId, wit
                     const value = measure.value * Math.pow(10, measure.unit);
                     if (measure.type === 1) weight = Math.round(value * 100) / 100; // kg
                     if (measure.type === 6) bodyFat = Math.round(value * 10) / 10; // %
+                    if (measure.type === 4) {
+                        // Withings reports height in meters; convert to cm (1 decimal).
+                        const cm = Math.round(value * 100 * 10) / 10;
+                        if (cm > 0 && group.date > latestHeightTs) {
+                            latestHeightCm = cm;
+                            latestHeightTs = group.date;
+                        }
+                    }
                 }
 
                 if (weight) {
@@ -739,6 +752,21 @@ exports.withingsSyncWeight = functions.runWith({ secrets: [withingsClientId, wit
                         withingsGrpId: group.grpid,
                     }, { merge: true }); // merge to avoid overwriting edits
                     saved++;
+                }
+            }
+
+            // Write height to preferences/settings only if the user hasn't set
+            // one themselves — avoids stomping on a manually-entered value.
+            if (latestHeightCm != null) {
+                const settingsRef = db.collection('users').doc(userId)
+                    .collection('preferences').doc('settings');
+                const settingsSnap = await settingsRef.get();
+                const existing = settingsSnap.exists ? settingsSnap.data() : {};
+                if (existing.profileHeightCm == null) {
+                    await settingsRef.set(
+                        { profileHeightCm: latestHeightCm },
+                        { merge: true }
+                    );
                 }
             }
 

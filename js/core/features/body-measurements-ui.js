@@ -2,7 +2,7 @@
 // Dashboard widget, weight entry modal, Stats chart, body measurements modal
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification, openModal, closeModal, displayWeight } from '../ui/ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, openModal, closeModal, displayWeight, formatHeight, parseHeightToCm } from '../ui/ui-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import {
     saveBodyWeight,
@@ -161,6 +161,11 @@ export function showWeightEntryModal() {
             ${renderBmRow('body-fat-input', 'Body fat', 'fa-percent', '%')}
             ${renderBmRow('muscle-mass-input', 'Muscle mass', 'fa-fire', unitLabel)}
 
+            <!-- Height — stored on the user profile (not a dated entry).
+                 Displayed and entered in ft/in; stored as cm. -->
+            <div class="sec-head"><h3>Profile <span class="count">(saved to your profile, not this entry)</span></h3></div>
+            ${renderHeightRow(AppState.settings?.profileHeightCm)}
+
             <!-- Circumference -->
             <div class="sec-head"><h3>Circumference <span class="count">(optional)</span></h3></div>
             ${circumFields.map(f => renderBmRow(`measure-${f.key}`, f.label, f.icon, circumUnit)).join('')}
@@ -212,6 +217,32 @@ function renderBmRow(inputId, label, icon, unit) {
     `;
 }
 
+/** Height row — unit-aware entry, stored as cm on the user profile.
+ *  lbs pref → ft/in string input (e.g. 5'10"); kg pref → cm numeric input. */
+function renderHeightRow(currentCm) {
+    const unitPref = AppState.settings?.weightUnit || AppState.globalUnit || 'lbs';
+    const usesImperial = unitPref === 'lbs';
+    const display = currentCm != null
+        ? (usesImperial ? formatHeight(currentCm, 'lbs') : String(Math.round(currentCm)))
+        : '';
+    const placeholder = usesImperial ? "5'10\"" : '178';
+    const unitLabel = usesImperial ? 'ft/in' : 'cm';
+    const inputType = usesImperial ? 'text' : 'number';
+    return `
+        <div class="bm-row">
+            <div class="bm-row__icon"><i class="fas fa-ruler-vertical"></i></div>
+            <div class="bm-row__info">
+                <div class="bm-row__name">Height</div>
+            </div>
+            <input type="${inputType}" id="bm-height-input" class="bm-row__input bm-row__input--wide"
+                   placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(display)}"
+                   inputmode="${usesImperial ? 'text' : 'decimal'}"
+                   aria-label="Height">
+            <div class="bm-row__unit">${unitLabel}</div>
+        </div>
+    `;
+}
+
 /**
  * Close the measurements entry page (navigate back to dashboard/previous).
  */
@@ -250,6 +281,18 @@ export async function saveBodyWeightEntry() {
 
     const dateEl = document.getElementById('bm-entry-date');
     const entryDate = dateEl?.value || null;
+
+    // Height — stored on the user profile, not the measurements record. Write-through
+    // only when the user actually typed something so a blank field doesn't clear it.
+    const heightEl = document.getElementById('bm-height-input');
+    const heightRaw = heightEl?.value?.trim() || '';
+    if (heightRaw) {
+        const cm = parseHeightToCm(heightRaw, unit);
+        if (cm != null) {
+            const { updateSetting } = await import('../ui/settings-ui.js');
+            updateSetting('profileHeightCm', cm);
+        }
+    }
 
     const extra = { bodyFat, muscleMass, notes };
     if (Object.keys(measurements).length > 0) extra.measurements = measurements;

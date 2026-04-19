@@ -3,7 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { Config, APP_VERSION } from '../utils/config.js';
-import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, formatHeight, parseHeightToCm } from './ui-helpers.js';
 import { navigateTo } from './navigation.js';
 import { db, doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from '../data/firebase-config.js';
 import { exportWorkoutData } from '../data/data-manager.js';
@@ -269,7 +269,8 @@ export function renderSettings() {
                 </div>
             </div>
 
-            <!-- Danger zone -->
+            <!-- Danger zone (account-level actions only — Delete all data lives
+                 one more tap away on the Profile detail page to prevent mis-taps) -->
             <div class="group-label group-label--danger">Danger zone</div>
             <div class="group">
                 <div class="srow srow--clickable" onclick="signOutUser()">
@@ -281,13 +282,6 @@ export function renderSettings() {
                     <div class="srow-info">
                         <div class="srow-name">Rebuild PRs</div>
                         <div class="srow-desc">Recalculate from workout history</div>
-                    </div>
-                </div>
-                <div class="srow srow--clickable" onclick="confirmDeleteAllData()">
-                    <div class="srow-icon ic-danger"><i class="fas fa-trash"></i></div>
-                    <div class="srow-info">
-                        <div class="srow-name srow-name--danger">Delete all data</div>
-                        <div class="srow-desc">Permanently remove all workouts, templates, equipment, and settings</div>
                     </div>
                 </div>
             </div>
@@ -535,9 +529,14 @@ export function renderProfileDetail() {
     const photoURL = user?.photoURL || '';
     const displayName = s.profileName || authName;
 
-    const height = s.profileHeightCm != null ? `${s.profileHeightCm} cm` : 'Not set';
-    const birthday = s.profileBirthday || 'Not set';
-    const exp = s.profileExperience ? s.profileExperience.charAt(0).toUpperCase() + s.profileExperience.slice(1) : 'Not set';
+    // Height display follows weightUnit: lbs → ft/in, kg → cm. Storage stays cm.
+    const heightDisplay = s.profileHeightCm != null
+        ? formatHeight(s.profileHeightCm, s.weightUnit)
+        : 'Not set';
+    const birthdayDisplay = formatBirthday(s.profileBirthday);
+    const exp = s.profileExperience
+        ? s.profileExperience.charAt(0).toUpperCase() + s.profileExperience.slice(1)
+        : 'Not set';
 
     container.innerHTML = `
         <div class="profile-detail">
@@ -549,7 +548,7 @@ export function renderProfileDetail() {
                 <div class="profile-hero__email">${escapeHtml(email)}</div>
             </div>
 
-            <div class="group-label">Display</div>
+            <div class="group-label">Account</div>
             <div class="group">
                 <div class="srow" onclick="editProfileName()">
                     <div class="srow-icon ic-primary"><i class="fas fa-user"></i></div>
@@ -563,7 +562,7 @@ export function renderProfileDetail() {
                 </div>
             </div>
 
-            <div class="group-label">Body data</div>
+            <div class="group-label">Fitness profile</div>
             <div class="group">
                 <div class="srow" onclick="editProfileHeight()">
                     <div class="srow-icon ic-blue"><i class="fas fa-ruler-vertical"></i></div>
@@ -571,7 +570,7 @@ export function renderProfileDetail() {
                         <div class="srow-name">Height</div>
                     </div>
                     <div class="srow-right">
-                        <span class="srow-value">${escapeHtml(height)}</span>
+                        <span class="srow-value">${escapeHtml(heightDisplay)}</span>
                         <i class="fas fa-chevron-right srow-chev"></i>
                     </div>
                 </div>
@@ -581,7 +580,7 @@ export function renderProfileDetail() {
                         <div class="srow-name">Birthday</div>
                     </div>
                     <div class="srow-right">
-                        <span class="srow-value">${escapeHtml(birthday)}</span>
+                        <span class="srow-value">${escapeHtml(birthdayDisplay)}</span>
                         <i class="fas fa-chevron-right srow-chev"></i>
                     </div>
                 </div>
@@ -596,8 +595,29 @@ export function renderProfileDetail() {
                     </div>
                 </div>
             </div>
+
+            <div class="group-label group-label--danger">Danger zone</div>
+            <div class="group">
+                <div class="srow srow--clickable" onclick="confirmDeleteAllData()">
+                    <div class="srow-icon ic-danger"><i class="fas fa-trash"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name srow-name--danger">Delete all data</div>
+                        <div class="srow-desc">Permanently remove all workouts, templates, equipment, and settings</div>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
+}
+
+/** Render a stored YYYY-MM-DD birthday as "MMM yyyy" (e.g. "Mar 1988"). */
+function formatBirthday(iso) {
+    if (!iso) return 'Not set';
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m) return iso;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 }
 
 /** Prompt-based editors for each profile field. */
@@ -612,13 +632,29 @@ export function editProfileName() {
 }
 export function editProfileHeight() {
     const s = AppState.settings || DEFAULT_SETTINGS;
-    const current = s.profileHeightCm != null ? String(s.profileHeightCm) : '';
-    const next = prompt('Height in cm:', current);
-    if (next != null) {
-        const n = parseFloat(next);
-        updateSetting('profileHeightCm', isFinite(n) && n > 0 ? n : null);
+    const usesImperial = s.weightUnit === 'lbs';
+    const current = s.profileHeightCm != null
+        ? (usesImperial ? formatHeight(s.profileHeightCm, 'lbs') : String(Math.round(s.profileHeightCm)))
+        : '';
+    const promptLabel = usesImperial
+        ? 'Height (e.g. 5\'10" or 70in):'
+        : 'Height in cm:';
+    const next = prompt(promptLabel, current);
+    if (next == null) return;
+    if (next.trim() === '') {
+        updateSetting('profileHeightCm', null);
         renderProfileDetail();
+        return;
     }
+    const cm = parseHeightToCm(next, s.weightUnit);
+    if (cm == null) {
+        showNotification(usesImperial
+            ? 'Use a format like 5\'10" or 70in'
+            : 'Enter a number in cm', 'warn');
+        return;
+    }
+    updateSetting('profileHeightCm', cm);
+    renderProfileDetail();
 }
 export function editProfileBirthday() {
     const s = AppState.settings || DEFAULT_SETTINGS;

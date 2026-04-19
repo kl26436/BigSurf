@@ -585,6 +585,10 @@
     width: 24px;
     text-align: left;
 }
+/* Wider input for free-form values like 5'10". Unit column also needs
+   more room for the "ft/in" label. */
+.bm-row__input--wide { width: 100px; }
+.bm-row .bm-row__input--wide + .bm-row__unit { width: 44px; }
 
 /* Bodyweight chart time-range pills (3M / 6M / 1Y / All).
    Previously referenced by JS but undefined — now canonical. */

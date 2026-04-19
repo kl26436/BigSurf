@@ -121,6 +121,64 @@ export function displayWeight(weight, storedUnit, displayUnit) {
     return { value: Math.round(weight), label: unit };
 }
 
+// ---------------------------------------------------------------------------
+// Height helpers — storage is always cm; display adapts to the user's unit
+// preference (lbs → ft'in", kg → cm).
+// ---------------------------------------------------------------------------
+
+/** Format a cm value for display per unit pref. Returns '—' when unset. */
+export function formatHeight(cm, unitPref) {
+    if (cm == null || isNaN(cm) || cm <= 0) return '—';
+    if (unitPref === 'lbs') {
+        const totalInches = cm / 2.54;
+        const feet = Math.floor(totalInches / 12);
+        const inches = Math.round(totalInches - feet * 12);
+        // Carry if rounding pushed inches to 12
+        if (inches === 12) return `${feet + 1}'0"`;
+        return `${feet}'${inches}"`;
+    }
+    return `${Math.round(cm)} cm`;
+}
+
+/** Parse a user-typed height string back to cm. Accepts `5'10"`, `5 10`,
+ *  `70in`, `178`, `178cm`. Returns null if unparseable. */
+export function parseHeightToCm(input, unitPref) {
+    if (input == null) return null;
+    const raw = String(input).trim().toLowerCase();
+    if (!raw) return null;
+
+    // Explicit cm overrides unit pref
+    if (raw.endsWith('cm')) {
+        const n = parseFloat(raw);
+        return isFinite(n) && n > 0 ? n : null;
+    }
+    // Explicit inches
+    if (raw.endsWith('in') || raw.endsWith('"')) {
+        const n = parseFloat(raw);
+        return isFinite(n) && n > 0 ? Math.round(n * 2.54 * 10) / 10 : null;
+    }
+    // Feet'inches" style: 5'10", 5'10, 5' 10
+    const ftIn = raw.match(/^(\d+)\s*(?:'|ft)\s*(\d{1,2})(?:"|in)?$/);
+    if (ftIn) {
+        const ft = parseInt(ftIn[1], 10);
+        const inch = parseInt(ftIn[2], 10);
+        if (ft >= 0 && inch >= 0 && inch < 12) {
+            return Math.round((ft * 12 + inch) * 2.54 * 10) / 10;
+        }
+        return null;
+    }
+    // Bare number: interpret by unit pref
+    const n = parseFloat(raw);
+    if (!isFinite(n) || n <= 0) return null;
+    if (unitPref === 'lbs') {
+        // Heuristic: < 10 = feet (e.g. 5.83), 36-96 = inches, else invalid
+        if (n < 10) return Math.round(n * 12 * 2.54 * 10) / 10;
+        if (n < 100) return Math.round(n * 2.54 * 10) / 10;
+        return n; // Assume cm if someone typed 178 despite lbs pref
+    }
+    return n; // Metric: bare number is cm
+}
+
 export function updateProgress(state) {
     if (!state.currentWorkout || !state.savedData.exercises) return;
 
