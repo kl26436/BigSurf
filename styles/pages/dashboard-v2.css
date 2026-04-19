@@ -177,7 +177,7 @@
 .ic-arms { background: var(--cat-arms-bg); color: var(--cat-arms); }
 .ic-core { background: var(--cat-core-bg); color: var(--cat-core); }
 
-.bp-card__chev { color: var(--text-muted); font-size: var(--font-xs); }
+.dash-chev { color: var(--text-muted); font-size: var(--font-xs); }
 .bp-card__grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -362,7 +362,7 @@
 .dash-insight__close:active { background: var(--primary-bg-strong); color: var(--primary); }
 
 /* ===== FOR TODAY ROWS ===== */
-.rw-row {
+.dash-template-row {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
@@ -373,7 +373,7 @@
     margin-bottom: 6px;
     cursor: pointer;
 }
-.rw-icon {
+.dash-template-icon {
     width: 34px;
     height: 34px;
     border-radius: var(--radius-xs);
@@ -383,10 +383,10 @@
     font-size: var(--font-sm);
     flex-shrink: 0;
 }
-.rw-info { flex: 1; min-width: 0; }
-.rw-name { font-size: var(--font-sm); font-weight: 600; color: var(--text-strong); }
-.rw-meta { font-size: var(--font-xs); color: var(--text-muted); margin-top: 1px; }
-.rw-count {
+.dash-template-info { flex: 1; min-width: 0; }
+.dash-template-name { font-size: var(--font-sm); font-weight: 600; color: var(--text-strong); }
+.dash-template-meta { font-size: var(--font-xs); color: var(--text-muted); margin-top: 1px; }
+.dash-template-count {
     background: var(--primary-bg-subtle);
     color: var(--primary);
     font-size: var(--font-2xs);
@@ -397,7 +397,7 @@
     letter-spacing: 0.04em;
     margin-left: 6px;
 }
-.rw-play {
+.dash-template-play {
     width: 30px;
     height: 30px;
     border-radius: 50%;

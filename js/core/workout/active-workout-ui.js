@@ -137,7 +137,7 @@ function renderWorkoutHeader() {
             </button>
             <div class="aw-title">
                 <div class="aw-title__name">${escapeHtml(workoutName)}${locName ? ` <span class="aw-title__loc"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(locName)}</span>` : ''}</div>
-                <div class="aw-title__meta">Exercise ${currentExerciseIdx + 1} of ${exerciseCount} · ${elapsed}</div>
+                <div class="aw-title__meta"><span class="aw-title__elapsed">${elapsed}</span> · Exercise ${currentExerciseIdx + 1}/${exerciseCount}</div>
             </div>
             <button class="aw-menu" onclick="awToggleWorkoutMenu()">
                 <i class="fas fa-ellipsis-v"></i>
@@ -497,16 +497,18 @@ function buildSetRows(exercise, idx, savedEx, unit) {
         const repsPlaceholder = !set._userEdited && !set.completed && set.reps != null ? set.reps : 'reps';
 
         return `
-            <div class="${classes.join(' ')}">
+            <div class="${classes.join(' ')}" data-set-idx="${si}">
                 <div class="aw-set-row__num">${si + 1}</div>
                 <input class="aw-set-row__input ${isAutofill ? 'autofill' : ''} ${set.completed ? 'done-val' : ''}"
                        type="number" inputmode="numeric"
+                       data-field="reps"
                        value="${repsVal}"
                        placeholder="${repsPlaceholder}"
                        ${set.completed ? 'readonly' : ''}
                        onchange="awUpdateSet(${idx}, ${si}, 'reps', this.value)">
                 <input class="aw-set-row__input ${isAutofill ? 'autofill' : ''} ${set.completed ? 'done-val' : ''}"
                        type="number" inputmode="decimal" step="0.5"
+                       data-field="weight"
                        value="${weightVal}"
                        placeholder="${weightPlaceholder}"
                        ${set.completed ? 'readonly' : ''}
@@ -1251,6 +1253,10 @@ export async function awSelectEquipment(exerciseIdx, equipName) {
                     const { doc, db, updateDoc } = await import('../data/firebase-config.js');
                     const eqRef = doc(db, 'users', AppState.currentUser.uid, 'equipment', eq.id);
                     await updateDoc(eqRef, { locations: eq.locations, exerciseTypes: eq.exerciseTypes });
+                    // Phase C: one-time toast so auto-associate isn't a silent write
+                    if (locName) {
+                        showNotification(`Added ${equipName} to ${locName}`, 'silent', 2500);
+                    }
                 } catch (e) {
                     // Non-critical — equipment association will work next time
                     debugLog('Equipment auto-associate failed:', e);
@@ -1332,8 +1338,20 @@ export async function awSaveNewEquipment(exerciseIdx) {
     if (!name) {
         nameInput?.classList.add('input-error');
         setTimeout(() => nameInput?.classList.remove('input-error'), 600);
+        // Inline error message so users know *why* the pulse happened.
+        let errEl = document.getElementById('aw-new-equip-name-error');
+        if (!errEl) {
+            errEl = document.createElement('div');
+            errEl.id = 'aw-new-equip-name-error';
+            errEl.className = 'field__error';
+            errEl.textContent = 'Name required';
+            nameInput?.parentElement?.appendChild(errEl);
+        }
+        nameInput?.focus();
         return;
     }
+    // Clear any existing error message on success
+    document.getElementById('aw-new-equip-name-error')?.remove();
 
     const equipType = activeType?.dataset?.type || 'Machine';
     const baseWeight = parseFloat(baseInput?.value) || 0;
@@ -1529,7 +1547,34 @@ export function awToggleUnit(exerciseIdx) {
     }
 
     debouncedSaveWorkoutData(AppState);
-    renderAll();
+
+    // Surgical DOM update — preserve input focus (Phase C polish: don't call renderAll).
+    // If the current exercise in view matches, update the unit toggle label + weight
+    // column label + every weight input in place. Any other exercise stays stale
+    // until its view is opened (same as today).
+    if (exerciseIdx === currentExerciseIdx) {
+        const unitBtn = document.querySelector('.aw-sets-header__unit');
+        if (unitBtn) unitBtn.textContent = newUnit;
+
+        // Update the weight column label (lbs / kg / Added lbs / Plates lbs)
+        const exercise = AppState.currentWorkout.exercises[exerciseIdx];
+        const isBW = isBodyweightExercise(exercise);
+        const equipDoc = getEquipmentDoc(savedEx?.equipment || exercise?.equipment || null);
+        const hasBaseWeight = !isBW && equipDoc && equipDoc.baseWeight > 0;
+        let weightLabel = newUnit;
+        if (isBW) weightLabel = `Added ${newUnit}`;
+        else if (hasBaseWeight) weightLabel = `Plates ${newUnit}`;
+        const labels = document.querySelectorAll('.aw-sets-header .aw-sets-header__label');
+        if (labels.length >= 3) labels[2].textContent = weightLabel;
+
+        // Update weight input values to the new unit
+        (savedEx?.sets || []).forEach((set, setIdx) => {
+            const input = document.querySelector(`.aw-set-row[data-set-idx="${setIdx}"] input[data-field="weight"]`);
+            if (input && document.activeElement !== input) {
+                input.value = set.weight != null ? set.weight : '';
+            }
+        });
+    }
 }
 
 // ===================================================================
@@ -1858,7 +1903,7 @@ function startDurationTimer() {
         const meta = document.querySelector('.aw-title__meta');
         if (meta) {
             const exerciseCount = AppState.currentWorkout?.exercises?.length || 0;
-            meta.textContent = `Exercise ${currentExerciseIdx + 1} of ${exerciseCount} · ${formatElapsed(elapsedSeconds)}`;
+            meta.innerHTML = `<span class="aw-title__elapsed">${formatElapsed(elapsedSeconds)}</span> · Exercise ${currentExerciseIdx + 1}/${exerciseCount}`;
         }
     }, 1000);
 }

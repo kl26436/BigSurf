@@ -78,70 +78,8 @@
     flex-direction: column;
     gap: var(--space-12);
 }
-.history-card {
-    display: flex;
-    gap: var(--space-16);
-    padding: var(--space-16);
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition:
-        transform 0.2s,
-        box-shadow 0.2s;
-}
-.history-card::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: linear-gradient(180deg, var(--primary), var(--primary-dark));
-}
-.history-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-.history-date {
-    text-align: center;
-    min-width: var(--icon-xl);
-    padding: var(--space-8);
-    background: var(--primary-bg-subtle);
-    border-radius: var(--radius-sm);
-}
-.history-date-day {
-    font-size: var(--font-xl);
-    font-weight: 700;
-    color: var(--primary);
-    line-height: 1;
-}
-.history-date-month {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    text-transform: uppercase;
-    font-weight: 600;
-    margin-top: var(--space-2);
-}
-.history-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-.history-name {
-    font-weight: 600;
-    font-size: var(--font-md);
-    color: var(--text-strong);
-}
-.history-meta {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-    margin-top: var(--space-4);
-}
+/* .history-card family removed in Phase C — superseded by .recent-workout-item.
+   (card, card::before, card:hover, date, date-day, date-month, info, name, meta) */
 
 /* ===========================================
    22. CALENDAR (Additional Styles)
@@ -529,8 +467,8 @@
     align-items: center;
 }
 .btn-icon-sm {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: var(--radius-pill);
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);

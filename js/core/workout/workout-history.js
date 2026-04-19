@@ -239,28 +239,30 @@ export function getWorkoutHistory(appState) {
         },
 
         formatWorkoutForCalendar(workout) {
-            // Determine workout category
-            let category = 'other';
-            const workoutType = workout.workoutType?.toLowerCase() || '';
-
-            if (
-                workoutType.includes('push') ||
-                workoutType.includes('chest') ||
-                workoutType.includes('shoulder') ||
-                workoutType.includes('tricep')
-            ) {
-                category = 'push';
-            } else if (workoutType.includes('pull') || workoutType.includes('back') || workoutType.includes('bicep')) {
-                category = 'pull';
-            } else if (
-                workoutType.includes('leg') ||
-                workoutType.includes('quad') ||
-                workoutType.includes('glute') ||
-                workoutType.includes('hamstring')
-            ) {
-                category = 'legs';
-            } else if (workoutType.includes('cardio') || workoutType.includes('core')) {
-                category = 'cardio';
+            // Prefer the canonical `workout.category` field; fall back to name-based
+            // inference for legacy entries that don't carry one.
+            let category = workout.category || 'other';
+            if (category === 'other') {
+                const workoutType = workout.workoutType?.toLowerCase() || '';
+                if (
+                    workoutType.includes('push') ||
+                    workoutType.includes('chest') ||
+                    workoutType.includes('shoulder') ||
+                    workoutType.includes('tricep')
+                ) {
+                    category = 'push';
+                } else if (workoutType.includes('pull') || workoutType.includes('back') || workoutType.includes('bicep')) {
+                    category = 'pull';
+                } else if (
+                    workoutType.includes('leg') ||
+                    workoutType.includes('quad') ||
+                    workoutType.includes('glute') ||
+                    workoutType.includes('hamstring')
+                ) {
+                    category = 'legs';
+                } else if (workoutType.includes('cardio') || workoutType.includes('core')) {
+                    category = 'cardio';
+                }
             }
 
             // Determine status
@@ -446,16 +448,24 @@ export function getWorkoutHistory(appState) {
                 cardio: 'Cardio', arms: 'Arms', other: 'Other',
             };
 
-            const categoryItems = [...usedCategories].map(cat => {
-                const icon = CATEGORY_ICONS[cat] || CATEGORY_ICONS.other;
-                const label = categoryLabels[cat] || cat.charAt(0).toUpperCase() + cat.slice(1);
-                return `<span class="legend-item"><i class="fas ${icon} cal-icon cal-icon--${cat}"></i> ${label}</span>`;
-            }).join('');
+            // Phase C polish: hide the legend entirely when there are fewer than 4
+            // distinct categories this month — icons are self-explanatory for small sets.
+            if (usedCategories.size < 4) {
+                legendEl.innerHTML = '';
+                legendEl.classList.add('hidden');
+            } else {
+                legendEl.classList.remove('hidden');
+                const categoryItems = [...usedCategories].map(cat => {
+                    const icon = CATEGORY_ICONS[cat] || CATEGORY_ICONS.other;
+                    const label = categoryLabels[cat] || cat.charAt(0).toUpperCase() + cat.slice(1);
+                    return `<span class="legend-item"><i class="fas ${icon} cal-icon cal-icon--${cat}"></i> ${label}</span>`;
+                }).join('');
 
-            legendEl.innerHTML = `
-                ${categoryItems}
-                <span class="legend-item"><span class="legend-dot today"></span> Today</span>
-            `;
+                legendEl.innerHTML = `
+                    ${categoryItems}
+                    <span class="legend-item"><span class="legend-dot today"></span> Today</span>
+                `;
+            }
 
             // ADDED: Setup click events after rendering
             this.setupCalendarClickEvents();

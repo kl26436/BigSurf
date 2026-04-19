@@ -130,9 +130,11 @@ async function renderDashboard() {
             const topInsight = TrainingInsights.getTopInsight(
                 insightsData.recentWorkouts, insightsData.allWorkouts, exerciseDatabase
             );
-            const insightDismissedDate = AppState.settings?.insightDismissedDate;
-            const todayStr = getDateString(new Date());
-            const showInsight = topInsight && insightDismissedDate !== todayStr;
+            // Dismiss-by-content-hash so a NEW insight resurfaces even if today's was
+            // dismissed (replaces the old "dismissed for the day" logic).
+            const dismissedHash = AppState.settings?.insightDismissedHash;
+            const insightHash = topInsight ? hashInsight(topInsight) : null;
+            const showInsight = topInsight && insightHash !== dismissedHash;
 
             // Body weight data
             const bwData = await loadBodyWeightData();
@@ -383,10 +385,17 @@ function renderForToday(allWorkouts) {
     return `
         <div class="dash-section-head">
             <h3>For ${dayName}</h3>
-            <a onclick="bottomNavTo('workout')">All →</a>
+            <a onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">All →</a>
         </div>
         ${ranked.filter(r => r.count > 0).map((r, i) => renderForTodayRow(r, i === 0, dayName)).join('')}
     `;
+}
+
+// Navigate to the workout selector, pre-sorted by how often each template is
+// used on the chosen day of week. AppState flag is consumed by workout-session.
+export function openWorkoutSelectorForDay(dayName) {
+    AppState._workoutSelectorDayFilter = dayName;
+    window.bottomNavTo?.('workout');
 }
 
 function renderForTodayRow({ template, count }, isMostUsed, dayName) {
@@ -395,16 +404,16 @@ function renderForTodayRow({ template, count }, isMostUsed, dayName) {
     const exCount = template.exercises ? template.exercises.length : 0;
 
     return `
-        <div class="rw-row" onclick="startWorkout('${escapeAttr(template.id || template.name)}')">
-            <div class="rw-icon cat-bg-${category.toLowerCase()}"><i class="${icon}"></i></div>
-            <div class="rw-info">
-                <div class="rw-name">
+        <div class="dash-template-row" onclick="startWorkout('${escapeAttr(template.id || template.name)}')">
+            <div class="dash-template-icon cat-bg-${category.toLowerCase()}"><i class="${icon}"></i></div>
+            <div class="dash-template-info">
+                <div class="dash-template-name">
                     ${escapeHtml(template.name || template.day)}
-                    ${isMostUsed && count > 3 ? '<span class="rw-count">Most used</span>' : ''}
+                    ${isMostUsed && count >= 1 ? '<span class="dash-template-count">Most used</span>' : ''}
                 </div>
-                <div class="rw-meta">${exCount} exercises · ${count} ${count === 1 ? 'time' : 'times'} on ${dayName}s</div>
+                <div class="dash-template-meta">${exCount} exercises · ${count} ${count === 1 ? 'time' : 'times'} on ${dayName}s</div>
             </div>
-            <button class="rw-play" onclick="event.stopPropagation(); startWorkout('${escapeAttr(template.id || template.name)}')">
+            <button class="dash-template-play" onclick="event.stopPropagation(); startWorkout('${escapeAttr(template.id || template.name)}')">
                 <i class="fas fa-play"></i>
             </button>
         </div>
@@ -444,7 +453,7 @@ function renderBodyPartCard(s) {
                     <div class="bp-card__icon ${BP_TINTS[s.bodyPart]}"><i class="fas ${BP_ICONS[s.bodyPart]}"></i></div>
                     ${capitalize(s.bodyPart)}
                 </div>
-                <i class="fas fa-chevron-right bp-card__chev"></i>
+                <i class="fas fa-chevron-right dash-chev"></i>
             </div>
             <div class="bp-card__grid">
                 <div class="bp-cell">
@@ -507,7 +516,7 @@ async function renderCompositionCard(bwData) {
                     <i class="fas fa-weight" style="color:var(--primary);"></i>
                     <span class="bw-card-title">Body Weight</span>
                     ${source}
-                    <i class="fas fa-chevron-right bp-card__chev"></i>
+                    <i class="fas fa-chevron-right dash-chev"></i>
                 </div>
                 <div class="bw-card-value">${weightStr} <span class="bw-card-unit">${bwData.unit}</span></div>
                 ${deltaStr}
@@ -549,7 +558,7 @@ async function renderCompositionCard(bwData) {
             <div class="bc-card" onclick="showCompositionDetail()" style="margin-top:12px;">
                 <div class="bw-card-head">
                     <span class="bw-card-title">Body Composition</span>
-                    <i class="fas fa-chevron-right bp-card__chev"></i>
+                    <i class="fas fa-chevron-right dash-chev"></i>
                 </div>
                 <div class="bc-row">
                     ${chartDonut({ segments, size: 60 })}
@@ -608,10 +617,24 @@ function renderRecentPRs(recentPRs) {
 // EXPORTED FUNCTIONS (window-bound in main.js)
 // ===================================================================
 
+// Tiny, stable content hash — enough to distinguish insights without a crypto lib.
+function hashInsight(insight) {
+    const src = `${insight.icon || ''}|${insight.message || ''}`;
+    let h = 0;
+    for (let i = 0; i < src.length; i++) {
+        h = ((h << 5) - h) + src.charCodeAt(i);
+        h |= 0;
+    }
+    return `h${h}`;
+}
+
 export function dismissInsight() {
-    const todayStr = getDateString(new Date());
-    updateSetting('insightDismissedDate', todayStr);
+    // Remember *which* insight the user dismissed, not just the day.
+    // A new insight with a different hash will resurface automatically.
     const card = document.querySelector('.dash-insight');
+    const text = card?.querySelector('.dash-insight-text')?.textContent?.trim() || '';
+    const icon = card?.querySelector('> i')?.className?.match(/fa-[\w-]+/)?.[0] || '';
+    if (text) updateSetting('insightDismissedHash', hashInsight({ icon, message: text }));
     if (card) card.remove();
 }
 

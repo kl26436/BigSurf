@@ -205,7 +205,7 @@ function renderBodyWeightSection(entries, unit) {
             <div class="d-sec-head">Body weight</div>
             <div class="stat-card" style="margin:0 14px 14px;text-align:center;padding:20px;">
                 <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">No weight entries yet</div>
-                <button class="rw-play" style="margin:0 auto;width:auto;padding:8px 16px;border-radius:var(--radius-pill);font-size:0.78rem;" onclick="showWeightEntryModal()">
+                <button class="dash-template-play" style="margin:0 auto;width:auto;padding:8px 16px;border-radius:var(--radius-pill);font-size:0.78rem;" onclick="showWeightEntryModal()">
                     <i class="fas fa-plus"></i> Add weight
                 </button>
             </div>
@@ -246,7 +246,7 @@ function renderNoDexaState() {
             </div>
             <div style="font-size:1rem;font-weight:700;color:var(--text-strong);margin-bottom:6px;">No DEXA scan yet</div>
             <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:16px;line-height:1.4;">Upload your DEXA scan results to see body composition breakdown, regional lean mass, and track changes over time.</div>
-            <button class="rw-play" style="width:auto;padding:10px 20px;border-radius:var(--radius-pill);font-size:0.82rem;font-weight:700;" onclick="showDexaUploadModal()">
+            <button class="dash-template-play" style="width:auto;padding:10px 20px;border-radius:var(--radius-pill);font-size:0.82rem;font-weight:700;" onclick="showDexaUploadModal()">
                 <i class="fas fa-file-upload"></i> Upload DEXA scan
             </button>
         </div>
@@ -256,29 +256,29 @@ function renderNoDexaState() {
 function renderActions(hasDexa) {
     return `
         <div style="padding:8px 14px 20px;display:flex;flex-direction:column;gap:8px;">
-            <div class="rw-row" onclick="showDexaUploadModal()">
-                <div class="rw-icon" style="background:var(--primary-bg);"><i class="fas fa-file-upload" style="color:var(--primary);"></i></div>
-                <div class="rw-info">
-                    <div class="rw-name">Upload new DEXA scan</div>
-                    <div class="rw-meta">PDF, CSV, or enter manually</div>
+            <div class="dash-template-row" onclick="showDexaUploadModal()">
+                <div class="dash-template-icon" style="background:var(--primary-bg);"><i class="fas fa-file-upload" style="color:var(--primary);"></i></div>
+                <div class="dash-template-info">
+                    <div class="dash-template-name">Upload new DEXA scan</div>
+                    <div class="dash-template-meta">PDF, CSV, or enter manually</div>
                 </div>
                 <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.72rem;"></i>
             </div>
             ${hasDexa ? `
-                <div class="rw-row" onclick="showDexaHistory()">
-                    <div class="rw-icon" style="background:rgba(255,215,0,0.1);"><i class="fas fa-history" style="color:var(--badge-gold);"></i></div>
-                    <div class="rw-info">
-                        <div class="rw-name">Scan history</div>
-                        <div class="rw-meta">Compare scans over time</div>
+                <div class="dash-template-row" onclick="showDexaHistory()">
+                    <div class="dash-template-icon" style="background:rgba(255,215,0,0.1);"><i class="fas fa-history" style="color:var(--badge-gold);"></i></div>
+                    <div class="dash-template-info">
+                        <div class="dash-template-name">Scan history</div>
+                        <div class="dash-template-meta">Compare scans over time</div>
                     </div>
                     <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.72rem;"></i>
                 </div>
             ` : ''}
-            <div class="rw-row" onclick="showWeightEntryModal()">
-                <div class="rw-icon" style="background:var(--cat-shoulders-bg);"><i class="fas fa-weight" style="color:var(--cat-shoulders);"></i></div>
-                <div class="rw-info">
-                    <div class="rw-name">Log body weight</div>
-                    <div class="rw-meta">Track weight changes over time</div>
+            <div class="dash-template-row" onclick="showWeightEntryModal()">
+                <div class="dash-template-icon" style="background:var(--cat-shoulders-bg);"><i class="fas fa-weight" style="color:var(--cat-shoulders);"></i></div>
+                <div class="dash-template-info">
+                    <div class="dash-template-name">Log body weight</div>
+                    <div class="dash-template-meta">Track weight changes over time</div>
                 </div>
                 <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.72rem;"></i>
             </div>

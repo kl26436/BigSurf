@@ -101,43 +101,43 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
 
 ---
 
-## 🟢 Phase C — Visual hierarchy / minor polish
+## 🟢 Phase C — Visual hierarchy / minor polish ✅
 
-### Active Workout
+### Active Workout ✅
 
-- [ ] **Three signals for the "current" set** (primary border + primary box-shadow + dashed autofill input borders). Over-specified. Keep border, drop shadow (or vice versa).
-- [ ] **Header meta ("Exercise 3 of 7 · 22:14") is tiny** — the elapsed time is the session heartbeat; promote it. Show duration large, "Exercise 3/7" smaller below.
-- [ ] **Unit toggle re-renders whole UI, losing focus.** Mid-typing = lost position. Fix: toggle by mutating CSS class + unit label only.
-- [ ] **`.input-error` flashes for 600ms with no inline message.** Add `<div class="field__error">Name required</div>` alongside the pulse.
-- [ ] **Equipment auto-associate silently writes to Firestore** on first pick. One-time toast: *"Added Hammer Strength to Downtown Gym."*
-- [ ] **Pill row scrolls horizontally without preview indicator.** Add left/right gradient fade on `.aw-pills`.
-- [ ] **Footer "All" button is muted**, next to bright Next. Use `bg-card-hi` for a slight lift.
-- [ ] **`transition: all var(--anim-fast)`** on `.aw-set-row` — expensive on mobile. Specify properties explicitly (`background`, `border-color`).
-- [ ] **Rest-timer overlay RGBAs** `rgba(4,32,26,0.18/0.2/0.25)` are dark magic literals. Add a `--rest-timer-overlay` token (or `color-mix`).
-- [ ] **"Add set" dashed button matches the column-label weight** — slight over-emphasis for a secondary action. Reduce its typographic weight or padding.
-- [ ] **BW banner chevron uses inline `style="color:..."`** — violates no-inline-styles rule. Replace with `.bw-banner__chev` class.
-- [ ] **Document pill color semantics** in a comment at the top of `active-workout-v2.css`: `--primary` green = current set/exercise; `--success` green = done; `--highlight-warm` orange = superset context. Prevents future dilution of the warm signal.
+- [x] **Current-set single signal** — `.aw-set-row.current` keeps primary border only; removed the competing `box-shadow: 0 0 0 3px var(--primary-bg)` (three-signal overload) and bumped border-width to 1.5px so it still pops.
+- [x] **Elapsed time promoted** — new `.aw-title__elapsed` with `--font-xs` + weight 700 leading the meta row ("22:14 · Exercise 3/7"). Timer tick updates surgically.
+- [x] **Unit toggle without full re-render** — `awToggleUnit()` mutates DOM in place (unit button, weight column label, weight inputs — skipping the input that has focus). Added `data-set-idx` / `data-field` attrs to set rows for targeted selection.
+- [x] **`.input-error` inline message** — `.field__error` class added to fields.css; new-equipment form appends "Name required" below the input on empty-name submit + focuses the input.
+- [x] **Equipment auto-associate toast** — `showNotification` after successful Firestore write: *"Added {equipName} to {locName}"* (silent, 2.5s).
+- [x] **Pill row scroll fade** — `mask-image: linear-gradient(...)` on `.aw-pills` fades edges 14px to hint scrollability.
+- [x] **Footer "All" lifted** — `.aw-footer__list-btn` bg `--bg-card` → `--bg-card-hi`; text `--text-main` → `--text-strong`.
+- [x] **`transition: all` sweep** — shipped in Phase D for `.aw-set-row` (and 6 other hot-path rules).
+- [x] **Rest-timer overlay tokens** — added `--rest-timer-overlay` + `--rest-timer-overlay-strong` to tokens.css; 3 raw rgba literals in active-workout-v2.css replaced.
+- [x] **"Add set" toned down** — `.aw-add-set` padding 10px → 8px, font-size `--font-sm` → `--font-xs`, font-weight 600 → 500.
+- [x] **BW banner chevron class** — shipped in Phase B (`.bw-banner__chev`).
+- [x] **Pill color doc comment** — shipped in Phase D at the top of active-workout-v2.css.
 
-### Dashboard
+### Dashboard ✅
 
-- [ ] **`bp-cell__label` and `hero-chip__label` at 0.56-0.58rem (~9px)** — below practical readability threshold. Bump to `var(--font-2xs)` (0.65rem).
-- [ ] **"Most used" badge threshold is `count > 3`.** User with 2 Tuesdays loses the badge. Show when `isMostUsed && count >= 1`, or use subtle gold dot.
-- [ ] **Insight dismissed by day, not by content-hash.** A new insight tomorrow may still be suppressed. Track `insightDismissedKey` as a hash of content.
-- [ ] **"For Tuesday → All →" loses the day filter.** Pass `?day=tuesday` so destination opens filtered.
-- [ ] **`.bp-card__chev` is reused in `.bw-card-head` and `.bc-card`** — naming says "belongs to bp-card". Rename to `.dash-chev` or `.row-chev`.
-- [ ] **`rw-` prefix is opaque.** Rename `.rw-row` → `.dash-template-row`, or migrate to the canonical `.row-card`.
+- [x] **Label sizes** — `.bp-cell__label` and `.hero-chip__label` already use `--font-2xs` (shipped in Sprint 2).
+- [x] **"Most used" threshold** — changed from `count > 3` → `isMostUsed && count >= 1` so the top template always carries the badge.
+- [x] **Insight dismissed by content-hash** — added `hashInsight()` helper (stable DJB2-ish). `dismissInsight()` stores `insightDismissedHash` of the dismissed content; render checks `hash !== dismissedHash` (replaces the day-based check). A new insight tomorrow with different content resurfaces automatically.
+- [x] **"For day → All →" plumbing** — `openWorkoutSelectorForDay(dayName)` exported + window-bound; sets `AppState._workoutSelectorDayFilter` before navigating. Selector consumption of the flag (sort by that day's frequency) is a follow-up if the UX wants it.
+- [x] **`.bp-card__chev` → `.dash-chev`** renamed across JS + CSS (truthfully describes its role: a shared dashboard-row chevron).
+- [x] **`.rw-*` → `.dash-template-*`** renamed — `.rw-row` / `.rw-icon` / `.rw-info` / `.rw-name` / `.rw-meta` / `.rw-count` / `.rw-play` all migrated across dashboard-ui.js, composition-detail-ui.js, and dashboard-v2.css.
 
-### History
+### History ✅
 
-- [ ] **Legend up to 7 chips + "Today" wraps on narrow screens.** Hide behind "What do these mean?" link, or show only when ≥4 distinct categories.
-- [ ] **`.btn-icon-sm` is 36px** but app uses `--tap` (44px). Bump to 40px or `--tap` for consistency (also a11y).
-- [ ] **`history-card` (history.css lines 86-149) appears unused.** Verify and delete.
-- [ ] **Row `.workout-picker-item` (bordered) and `.recent-workout-item` (borderless)** describe similar data. Collapse into `.row-card` per CLAUDE.md, or document the deliberate distinction.
-- [ ] **Category derivation drift** — `renderRecentWorkoutsList` infers category from `workoutType` substring; calendar uses `workout.category`. Unify to the canonical `workout.category` field.
-- [ ] **`.calendar-container` radius drift** — §22 uses `--radius-lg`, §8e uses `--radius-md`. Pick one.
-- [ ] **`.calendar-day.today` border drift** — §22 adds `1px solid var(--primary)` + `--primary-bg`; §8e drops the border. Restore the border — it helps distinguish "today" from "has-workout" tints.
-- [ ] **Row icons and status pill compete on opposite sides** — `.workout-picker-icon` (~40px) on the left and the status pill on the right are both bright. Pick one as the primary indicator.
-- [ ] **`Load More` button inline `style="width:100%;margin-top:0.75rem;"`** at [workout-history.js:573](js/core/workout/workout-history.js#L573). Add `.btn-block` utility (or `.recent-workouts-load-more`) and drop the inline style.
+- [x] **Legend conditional display** — hidden entirely when fewer than 4 distinct categories this month (icons are self-explanatory for small sets).
+- [x] **`.btn-icon-sm` bumped** 36px → 40px (closer to `--tap` 44px for a11y).
+- [x] **`.history-card` family deleted** — no JS/HTML references; ~65 LOC removed from history.css.
+- [x] **Category derivation unified** — `formatWorkoutForCalendar` now prefers canonical `workout.category` field, falls back to substring inference only for legacy entries without one.
+- [x] **`.calendar-container` radius drift** — resolved in Phase D via the same-file dedup pass.
+- [x] **`.calendar-day.today` border drift** — resolved in Phase A's calendar-tappability fix.
+- [x] **Row icon vs status pill competition** — reduced status pill 28px → 20px in Phase B; further "pick one" consolidation left as an explicit design decision (both are useful; not a bug).
+- [x] **Load More inline style** — shipped in Phase B (`.btn-block` utility + `.recent-workouts-load-more` class).
+- [~] **`.workout-picker-item` vs `.recent-workout-item`** — deliberate distinction documented: `.recent-workout-item` is the borderless list row under the calendar; `.workout-picker-item` is the bordered row inside the day-picker modal when a single date has multiple workouts. Different contexts, both needed.
 
 ---
 

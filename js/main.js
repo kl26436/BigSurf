@@ -390,6 +390,7 @@ import {
 import {
     startWorkoutFromHistory,
     dismissInsight,
+    openWorkoutSelectorForDay,
     resumeActiveWorkout,
     confirmCancelActiveWorkout,
 } from './core/ui/dashboard-ui.js';
@@ -679,6 +680,7 @@ window.setHeaderMode = setHeaderMode;
 
 // Dashboard Functions
 window.dismissInsight = dismissInsight;
+window.openWorkoutSelectorForDay = openWorkoutSelectorForDay;
 window.startWorkoutFromHistory = startWorkoutFromHistory;
 window.resumeActiveWorkout = resumeActiveWorkout;
 window.confirmCancelActiveWorkout = confirmCancelActiveWorkout;

@@ -76,6 +76,11 @@
     --overlay-medium: rgba(0, 0, 0, 0.5);
     --overlay-heavy: rgba(0, 0, 0, 0.7);
 
+    /* Dark overlay tint for the rest-timer teal gradient (darker than --bg-app
+       so buttons/bars show up against the primary gradient). */
+    --rest-timer-overlay: rgba(4, 32, 26, 0.18);
+    --rest-timer-overlay-strong: rgba(4, 32, 26, 0.25);
+
     /* Badge background tokens */
     --badge-gold-bg: rgba(255, 215, 0, 0.2);
     --badge-silver-bg: rgba(192, 192, 192, 0.2);

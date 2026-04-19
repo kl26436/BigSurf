@@ -48,6 +48,13 @@
     border-color: var(--primary);
 }
 
+/* Inline field error message (paired with .input-error red-pulse on the input) */
+.field__error {
+    margin-top: var(--space-4);
+    font-size: var(--font-xs);
+    color: var(--danger);
+}
+
 .field-input::placeholder {
     color: var(--text-muted);
 }
