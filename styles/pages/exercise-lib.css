@@ -249,25 +249,7 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 }
-.filter-pill {
-    padding: var(--space-8) var(--space-16);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-pill);
-    color: var(--text-main);
-    font-size: var(--font-sm);
-    white-space: nowrap;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.filter-pill:hover {
-    border-color: var(--primary);
-}
-.filter-pill.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: var(--bg-app);
-}
+/* .filter-pill canonical definition lives in styles/utilities.css */
 
 /* ===========================================
    WORKOUT LIBRARY (Category Grid + List View)

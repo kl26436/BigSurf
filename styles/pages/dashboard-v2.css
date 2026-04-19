@@ -260,6 +260,8 @@
     height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
+    /* Color comes from --dot-color set inline (truly dynamic per segment) */
+    background: var(--dot-color, var(--text-muted));
 }
 .bc-weight {
     font-size: var(--font-xs);

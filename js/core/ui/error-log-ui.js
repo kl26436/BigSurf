@@ -330,7 +330,7 @@ function renderErrorEntry(entry) {
                 ${shownIcon}
                 ${expandBtn}
             </div>
-            <div class="error-message">${message}</div>
+            <div class="error-log-message">${message}</div>
             ${source ? `<div class="error-source">${source}</div>` : ''}
             ${detailsHtml}
         </div>

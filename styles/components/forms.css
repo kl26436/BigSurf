@@ -86,14 +86,5 @@ input[type='number'] {
     outline: none;
     border-color: var(--primary);
 }
-.edit-input-number {
-    width: 80px; /* number input constraint */
-    padding: var(--space-10);
-    min-height: var(--tap-sm);
-    text-align: center;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-strong);
-    font-size: var(--font-md);
-}
+/* .edit-input-number canonical definition lives in pages/exercise-lib.css
+   (only callsite is the exercise editor there) */

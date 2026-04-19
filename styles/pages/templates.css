@@ -275,22 +275,8 @@
     flex: 1;
 }
 
-/* Quick-add chips */
-.quick-add-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-6);
-    align-items: center;
-    margin-bottom: var(--space-8);
-}
-
-.quick-add-label {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    margin-right: var(--space-2);
-}
-
-/* .quick-add-chip canonical lives in pages/exercise-lib.css (cascade winner). */
+/* .quick-add-chips / .quick-add-label / .quick-add-chip canonical definitions
+   live in pages/exercise-lib.css (cascade winner, loaded after templates.css). */
 
 /* Save as Template banner */
 .save-template-banner {

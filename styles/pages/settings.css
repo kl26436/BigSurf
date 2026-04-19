@@ -5,8 +5,54 @@
 
 /* Legacy settings classes (kept for compat but no longer primary) */
 .settings-page {
-    padding: var(--space-16);
+    padding: 14px 16px 80px;
 }
+
+/* Inline primary "Connect" indicator on connection rows */
+.srow-connect {
+    color: var(--primary);
+    font-size: var(--font-xs);
+    font-weight: 600;
+}
+
+/* Destructive row name (e.g., "Sign out") */
+.srow-name--danger { color: var(--danger); }
+
+/* Settings footer (version + build info) */
+.settings-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+/* Onboarding welcome body — centered column with logo */
+.onb-welcome-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+}
+.onb-welcome-logo {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    margin: 0 auto 18px;
+}
+
+/* Onboarding footer button sizing */
+.onb-btn-full { flex: 1; }
+.onb-btn-wide { flex: 2; }
+
+/* Onboarding units step — segmented group wrapper + padded buttons */
+.onb-unit-group { margin-bottom: 12px; }
+.onb-unit-group .group-label { margin-top: 0; }
+.onb-segmented {
+    background: var(--bg-card);
+    padding: 4px;
+}
+.onb-segmented button { padding: 10px; }
 
 /* Onboarding overlay — full-screen, flex column */
 .onboarding-overlay {
@@ -54,7 +100,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2rem;
+    font-size: var(--font-2xl);
     margin-bottom: 18px;
 }
 
@@ -68,7 +114,7 @@
 }
 
 .onb-desc {
-    font-size: 0.92rem;
+    font-size: var(--font-base);
     color: var(--text-secondary);
     line-height: 1.5;
     margin-bottom: 24px;
@@ -107,7 +153,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: 0.9rem;
+    font-size: var(--font-base);
     font-weight: 700;
 }
 
@@ -116,13 +162,13 @@
 }
 
 .onb-chip-name {
-    font-size: 0.92rem;
+    font-size: var(--font-base);
     font-weight: 600;
     color: var(--text-strong);
 }
 
 .onb-chip-desc {
-    font-size: 0.72rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     margin-top: 2px;
 }
@@ -136,7 +182,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.68rem;
+    font-size: var(--font-2xs);
 }
 
 /* Footer with Back + Next buttons */
@@ -151,7 +197,7 @@
    PROFILE DETAIL (§5) — hero block + grouped rows of editable fields
    ============================================================================ */
 
-.profile-card { cursor: pointer; }
+/* .profile-card cursor:pointer consolidated into components/page-header.css */
 .profile-card__chev { color: var(--text-muted); }
 
 .profile-detail { padding: var(--space-12) var(--space-16) var(--space-80); }

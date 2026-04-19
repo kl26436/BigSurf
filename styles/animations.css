@@ -80,11 +80,7 @@
     animation: sectionFadeIn 200ms var(--ease-out-expo) both;
 }
 
-/* Section fade-out (used by navigation) */
-.section-fade-out {
-    opacity: 0;
-    transition: opacity 150ms ease;
-}
+/* .section-fade-out canonical definition lives in utilities.css */
 
 /* ── Exercise completion slide ── */
 @keyframes slideToBottom {

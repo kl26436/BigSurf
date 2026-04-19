@@ -1021,68 +1021,10 @@ dialog.modal:not([open]) {
     color: var(--text-muted);
 }
 
-/* ===========================================
-   41. MANUAL WORKOUT COMPONENTS
-   =========================================== */
-.manual-exercise-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    padding: var(--pad-page);
-    margin-bottom: var(--space-12);
-    position: relative;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-}
-.manual-exercise-card::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-}
-.manual-exercise-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: var(--space-12);
-}
-.manual-exercise-title-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-}
-.manual-exercise-equipment {
-    font-size: var(--font-xs);
-    background: var(--primary-bg);
-    color: var(--primary);
-    padding: var(--space-2) var(--space-8);
-    border-radius: var(--radius-sm);
-}
-.manual-set-row {
-    display: grid;
-    grid-template-columns: 40px 1fr 1fr auto;
-    gap: var(--space-8);
-    align-items: center;
-    margin-bottom: var(--space-8);
-}
-.manual-sets-grid {
-    margin-bottom: var(--space-12);
-}
-.manual-library-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-12);
-    background: var(--bg-card);
-    border-radius: var(--radius-sm);
-    margin-bottom: var(--space-8);
-    cursor: pointer;
-}
-.manual-library-item:hover {
-    background: var(--bg-card-hi);
-}
+/* Manual-workout styles moved to pages/manual-workout.css.
+   Dead classes removed: .manual-exercise-header, .manual-exercise-title-row,
+   .manual-exercise-equipment, .manual-set-row, .manual-sets-grid.
+   .manual-library-item kept below in manual-workout.css. */
 
 /* ===========================================
    MODAL ENTRANCE/EXIT ANIMATIONS

@@ -34,16 +34,7 @@
 /* ===========================================
    16. LOADING STATES
    =========================================== */
-.loading-screen {
-    position: fixed;
-    inset: 0;
-    background: var(--bg-app);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 800;
-}
+/* .loading-screen canonical definition lives in utilities.css */
 .spinner {
     width: var(--icon-md);
     height: var(--icon-md);

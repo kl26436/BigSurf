@@ -296,7 +296,7 @@
 }
 .aw-last__info { flex: 1; min-width: 0; }
 .aw-last__label {
-    font-size: 0.58rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -320,7 +320,7 @@
 /* === AUTOFILL HINT === */
 .aw-autofill-hint {
     padding: 0 16px 6px;
-    font-size: 0.64rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
 }
 .aw-autofill-hint > i { color: var(--primary); }
@@ -893,7 +893,7 @@
     padding: 20px 0 16px;
 }
 .aw-summary-hero__icon {
-    font-size: 2.5rem;
+    font-size: var(--font-3xl);
     color: var(--success);
     margin-bottom: 8px;
 }
@@ -1039,7 +1039,7 @@
 }
 .added-weight-row > i {
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
 }
 .added-weight-row--active {
     background: var(--primary-bg);

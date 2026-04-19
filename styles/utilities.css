@@ -521,13 +521,21 @@ dialog[open] > .modal-content {
     font-size: var(--font-sm);
     color: var(--text-muted);
 }
+/* Filter pill — horizontal chip-style filter button with active state.
+   Consolidated here from exercise-lib.css during dedup sweep. */
 .filter-pill {
-    padding: var(--space-6) var(--space-12);
+    padding: var(--space-8) var(--space-16);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-pill);
+    color: var(--text-main);
     font-size: var(--font-sm);
+    white-space: nowrap;
     cursor: pointer;
+    transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
+}
+.filter-pill:hover {
+    border-color: var(--primary);
 }
 .filter-pill.active {
     background: var(--primary);
@@ -545,5 +553,7 @@ dialog[open] > .modal-content {
     transition: opacity 0.15s ease;
 }
 
-/* Clickable utility (replaces inline cursor:pointer from JS) */
-.clickable { cursor: pointer; }
+/* Clickable utility — cursor hint + mobile tap-delay removal.
+   Canonical home for .clickable (reset.css references it as part of the
+   touch-action selector list only). */
+.clickable { cursor: pointer; touch-action: manipulation; }

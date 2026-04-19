@@ -87,7 +87,7 @@ function renderDetailLayout({ title, tag, range, hero, chart, insight, breakdown
             <div class="detail-page-header__title">${escapeHtml(title)}</div>
             ${tag ? `<div class="detail-page-header__tag">${escapeHtml(tag)}</div>` : ''}
         </div>
-        <div style="padding:0 var(--pad-page);">
+        <div class="md-body">
             ${renderRangeFilter(range).replace(/setDashboardRange/g, 'setDetailRange')}
             <div class="detail-hero">${hero}</div>
             <div class="detail-chart">${chart}</div>
@@ -106,7 +106,7 @@ function renderUnknownMetric(id) {
             </button>
             <div class="detail-page-header__title">${escapeHtml(id)}</div>
         </div>
-        <div style="padding:var(--pad-page);text-align:center;color:var(--text-muted);">
+        <div class="md-placeholder">
             Detail view coming soon.
         </div>
     `;
@@ -117,7 +117,7 @@ function renderUnknownMetric(id) {
 // ===================================================================
 
 async function renderVolumeBodyPartDetail(container, range) {
-    container.innerHTML = '<div class="skeleton skeleton-card" style="height:300px;"></div>';
+    container.innerHTML = '<div class="skeleton skeleton-card md-skel-tall"></div>';
 
     try {
         const { StatsTracker } = await import('../features/stats-tracker.js');
@@ -184,7 +184,7 @@ async function renderVolumeBodyPartDetail(container, range) {
         });
     } catch (error) {
         console.error('❌ Error rendering volume detail:', error);
-        container.innerHTML = '<div style="padding:var(--pad-page);color:var(--text-muted);">Error loading volume data.</div>';
+        container.innerHTML = '<div class="md-error">Error loading volume data.</div>';
     }
 }
 
@@ -193,7 +193,7 @@ async function renderVolumeBodyPartDetail(container, range) {
 // ===================================================================
 
 async function renderStrengthDetail(container, range) {
-    container.innerHTML = '<div class="skeleton skeleton-card" style="height:300px;"></div>';
+    container.innerHTML = '<div class="skeleton skeleton-card md-skel-tall"></div>';
 
     try {
         const { StatsTracker } = await import('../features/stats-tracker.js');
@@ -235,15 +235,15 @@ async function renderStrengthDetail(container, range) {
             range,
             hero: `
                 <div class="detail-hero__num">${formatNumber(totalCurrent)}<span class="detail-hero__unit">lb combined</span></div>
-                <div style="font-size:var(--font-xs);color:var(--text-muted);">Estimated 1RM · Epley formula</div>
+                <div class="md-hero-meta">Estimated 1RM · Epley formula</div>
             `,
-            chart: '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:var(--font-xs);">Per-lift trends below</div>',
+            chart: '<div class="md-chart-placeholder">Per-lift trends below</div>',
             insight: totalCurrent > 0 ? `Your combined estimated 1RM across the big 4 lifts is <strong>${formatNumber(totalCurrent)} lb</strong>.` : '',
-            breakdown: liftRows || '<div style="color:var(--text-muted);font-size:var(--font-sm);">No compound lift data in this range.</div>',
+            breakdown: liftRows || '<div class="md-empty-line">No compound lift data in this range.</div>',
         });
     } catch (error) {
         console.error('❌ Error rendering strength detail:', error);
-        container.innerHTML = '<div style="padding:var(--pad-page);color:var(--text-muted);">Error loading strength data.</div>';
+        container.innerHTML = '<div class="md-error">Error loading strength data.</div>';
     }
 }
 
@@ -252,7 +252,7 @@ async function renderStrengthDetail(container, range) {
 // ===================================================================
 
 async function renderBodyWeightDetail(container, range) {
-    container.innerHTML = '<div class="skeleton skeleton-card" style="height:300px;"></div>';
+    container.innerHTML = '<div class="skeleton skeleton-card md-skel-tall"></div>';
 
     try {
         const { loadBodyWeightHistory } = await import('../features/body-measurements.js');
@@ -264,9 +264,9 @@ async function renderBodyWeightDetail(container, range) {
             container.innerHTML = renderDetailLayout({
                 title: 'Body Weight',
                 range,
-                hero: '<div style="color:var(--text-muted);">No body weight entries yet.</div>',
+                hero: '<div class="md-empty">No body weight entries yet.</div>',
                 chart: '',
-                breakdown: '<div style="color:var(--text-muted);font-size:var(--font-sm);">Add weight entries in Settings to see trends.</div>',
+                breakdown: '<div class="md-empty-line">Add weight entries in Settings to see trends.</div>',
             });
             return;
         }
@@ -335,7 +335,7 @@ async function renderBodyWeightDetail(container, range) {
                 <div class="detail-hero__minmax">
                     <span>Min <strong>${min.toFixed(1)}</strong></span>
                     <span>Max <strong>${max.toFixed(1)}</strong></span>
-                    ${goal ? `<span>Goal <strong style="color:var(--primary);">${goal}</strong></span>` : ''}
+                    ${goal ? `<span>Goal <strong class="md-goal-strong">${goal}</strong></span>` : ''}
                 </div>
             `,
             chart: chartLine({
@@ -344,11 +344,11 @@ async function renderBodyWeightDetail(container, range) {
                 goalY: goal || null, goalLabel: goal ? `Goal ${goal}` : null,
             }),
             insight,
-            breakdown: recentEntries || '<div style="color:var(--text-muted);font-size:var(--font-sm);">No recent entries.</div>',
+            breakdown: recentEntries || '<div class="md-empty-line">No recent entries.</div>',
         });
     } catch (error) {
         console.error('❌ Error rendering body weight detail:', error);
-        container.innerHTML = '<div style="padding:var(--pad-page);color:var(--text-muted);">Error loading body weight data.</div>';
+        container.innerHTML = '<div class="md-error">Error loading body weight data.</div>';
     }
 }
 
@@ -357,7 +357,7 @@ async function renderBodyWeightDetail(container, range) {
 // ===================================================================
 
 async function renderBodyCompositionDetail(container, range) {
-    container.innerHTML = '<div class="skeleton skeleton-card" style="height:300px;"></div>';
+    container.innerHTML = '<div class="skeleton skeleton-card md-skel-tall"></div>';
 
     try {
         const { loadDexaHistory, getLatestDexaScan, compareDexaScans } = await import('../features/dexa-scan.js');
@@ -367,9 +367,9 @@ async function renderBodyCompositionDetail(container, range) {
             container.innerHTML = renderDetailLayout({
                 title: 'Body Composition',
                 range,
-                hero: '<div style="color:var(--text-muted);">No DEXA scans uploaded yet.</div>',
+                hero: '<div class="md-empty">No DEXA scans uploaded yet.</div>',
                 chart: '',
-                breakdown: '<div style="color:var(--text-muted);font-size:var(--font-sm);">Upload a DEXA scan PDF to see body composition breakdown.</div>',
+                breakdown: '<div class="md-empty-line">Upload a DEXA scan PDF to see body composition breakdown.</div>',
             });
             return;
         }
@@ -422,20 +422,20 @@ async function renderBodyCompositionDetail(container, range) {
             title: 'Body Composition',
             range,
             hero: `
-                <div style="display:flex;align-items:center;gap:var(--space-16);margin-bottom:var(--space-12);">
+                <div class="md-bc-row">
                     ${chartDonut({ segments, size: 80 })}
-                    <div class="dash-bc-legend" style="font-size:var(--font-sm);">
-                        ${segments.map(s => `<div class="dash-bc-leg"><div class="dash-bc-dot" style="background:${s.color};"></div>${s.label}</div>`).join('')}
+                    <div class="dash-bc-legend md-bc-legend">
+                        ${segments.map(s => `<div class="dash-bc-leg"><div class="dash-bc-dot" style="--dot-color:${s.color};"></div>${s.label}</div>`).join('')}
                     </div>
                 </div>
             `,
-            chart: '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:var(--font-xs);">DEXA scan history below</div>',
+            chart: '<div class="md-chart-placeholder">DEXA scan history below</div>',
             insight,
-            breakdown: scanRows || '<div style="color:var(--text-muted);font-size:var(--font-sm);">No scan history.</div>',
+            breakdown: scanRows || '<div class="md-empty-line">No scan history.</div>',
         });
     } catch (error) {
         console.error('❌ Error rendering body composition detail:', error);
-        container.innerHTML = '<div style="padding:var(--pad-page);color:var(--text-muted);">Error loading composition data.</div>';
+        container.innerHTML = '<div class="md-error">Error loading composition data.</div>';
     }
 }
 

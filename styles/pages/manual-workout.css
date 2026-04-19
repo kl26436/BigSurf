@@ -105,3 +105,19 @@
     margin-top: var(--space-8);
     cursor: pointer;
 }
+
+/* Library picker row inside the manual-workout "pick a template" flow.
+   Consolidated from components/modals.css during dedup sweep. */
+.manual-library-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-12);
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-8);
+    cursor: pointer;
+}
+.manual-library-item:hover {
+    background: var(--bg-card-hi);
+}

@@ -149,8 +149,9 @@
     cursor: pointer;
 }
 
-/* --- Entry body --- */
-.error-message {
+/* Entry body — renamed from .error-message to avoid colliding with the
+   inline-form-error utility of the same name in utilities.css */
+.error-log-message {
     font-size: var(--font-sm);
     color: var(--text-main);
     line-height: 1.4;

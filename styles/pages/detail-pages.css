@@ -23,7 +23,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.78rem;
+    font-size: var(--font-xs);
     flex-shrink: 0;
     cursor: pointer;
 }
@@ -41,17 +41,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.84rem;
+    font-size: var(--font-sm);
     flex-shrink: 0;
 }
 .d-title {
-    font-size: 1rem;
+    font-size: var(--font-md);
     font-weight: 700;
     color: var(--text-strong);
     line-height: 1;
 }
 .d-subtitle {
-    font-size: 0.68rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
     margin-top: 2px;
@@ -72,7 +72,7 @@
     background: transparent;
     border: none;
     color: var(--text-muted);
-    font-size: 0.68rem;
+    font-size: var(--font-2xs);
     font-weight: 600;
     padding: 5px 0;
     border-radius: var(--radius-pill);
@@ -98,7 +98,7 @@
     padding: 12px;
 }
 .d-stat__label {
-    font-size: 0.6rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -116,13 +116,13 @@
     font-variant-numeric: tabular-nums;
 }
 .d-stat__unit {
-    font-size: 0.72rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     font-weight: 500;
     margin-left: 2px;
 }
 .d-stat__delta {
-    font-size: 0.66rem;
+    font-size: var(--font-2xs);
     font-weight: 600;
     margin-top: 4px;
 }
@@ -144,12 +144,12 @@
     margin-bottom: 12px;
 }
 .d-chart-title {
-    font-size: 0.76rem;
+    font-size: var(--font-xs);
     font-weight: 700;
     color: var(--text-strong);
 }
 .d-chart-legend {
-    font-size: 0.6rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
 }
 
@@ -167,16 +167,16 @@
 }
 .d-ex-spark { width: 54px; height: 24px; flex-shrink: 0; }
 .d-ex-info { flex: 1; min-width: 0; }
-.d-ex-name { font-size: 0.82rem; font-weight: 600; color: var(--text-strong); }
-.d-ex-meta { font-size: 0.62rem; color: var(--text-muted); margin-top: 1px; }
+.d-ex-name { font-size: var(--font-sm); font-weight: 600; color: var(--text-strong); }
+.d-ex-meta { font-size: var(--font-2xs); color: var(--text-muted); margin-top: 1px; }
 .d-ex-right { text-align: right; }
 .d-ex-val {
-    font-size: 0.8rem;
+    font-size: var(--font-sm);
     font-weight: 700;
     color: var(--text-strong);
     font-variant-numeric: tabular-nums;
 }
-.d-ex-delta { font-size: 0.6rem; color: var(--success); font-weight: 600; }
+.d-ex-delta { font-size: var(--font-2xs); color: var(--success); font-weight: 600; }
 .d-ex-delta.down { color: var(--danger); }
 
 /* ===== PR ROW (in detail page) ===== */
@@ -193,7 +193,7 @@
 
 /* ===== SECTION HEADING ===== */
 .d-sec-head {
-    font-size: 0.72rem;
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -221,7 +221,7 @@
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-pill);
     padding: 6px 12px;
-    font-size: 0.68rem;
+    font-size: var(--font-2xs);
     color: var(--text-muted);
 }
 .d-pill strong {
@@ -245,12 +245,12 @@
     margin-bottom: 6px;
 }
 .d-session-row__date {
-    font-size: 0.76rem;
+    font-size: var(--font-xs);
     font-weight: 600;
     color: var(--text-strong);
 }
 .d-session-row__pr {
-    font-size: 0.6rem;
+    font-size: var(--font-2xs);
     color: var(--badge-gold);
     font-weight: 700;
 }
@@ -274,7 +274,7 @@
     gap: 4px;
     padding: 8px 12px;
     align-items: center;
-    font-size: 0.72rem;
+    font-size: var(--font-xs);
     border-bottom: 1px solid var(--border-subtle);
 }
 .d-best-row:last-child { border-bottom: none; }
@@ -287,7 +287,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.6rem;
+    font-size: var(--font-2xs);
     font-weight: 800;
 }
 .d-best-weight { font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
@@ -304,8 +304,152 @@
     border-radius: var(--radius-md);
     padding: 10px;
     color: var(--primary);
-    font-size: 0.76rem;
+    font-size: var(--font-xs);
     font-weight: 600;
     text-align: center;
     cursor: pointer;
 }
+
+/* ============================================================================
+   COMPOSITION DETAIL PAGE — extracted from composition-detail-ui inline styles
+   ============================================================================ */
+
+.comp-skeleton { height: 200px; }
+
+/* 14px horizontal gutter + 14px bottom margin — shared "boxed card" spacing */
+.comp-boxed { margin: 0 14px 14px; }
+
+.comp-donut-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 14px;
+}
+.comp-donut-legend { gap: 6px; }
+
+.d-sec-head__meta {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.comp-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0 14px 14px;
+}
+
+/* Visceral fat — slightly larger stat val + color-coded status */
+.comp-vat-val { font-size: var(--font-md); }
+.comp-vat--good { color: var(--success); }
+.comp-vat--warn { color: var(--warning); }
+.comp-vat--bad  { color: var(--danger); }
+
+/* Body-weight section */
+.comp-bw-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+}
+.comp-bw-empty {
+    text-align: center;
+    padding: 20px;
+}
+.comp-bw-empty__msg {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+.comp-bw-empty__btn {
+    margin: 0 auto;
+    width: auto;
+    padding: var(--space-8) var(--space-16);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+}
+
+/* No-DEXA empty state (full-screen illustration) */
+.comp-empty-state {
+    text-align: center;
+    padding: 32px 20px;
+}
+.comp-empty-state__icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--primary-bg);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 14px;
+    font-size: var(--font-lg);
+}
+.comp-empty-state__title {
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+    margin-bottom: 6px;
+}
+.comp-empty-state__desc {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    line-height: 1.4;
+}
+.comp-empty-state__btn {
+    width: auto;
+    padding: var(--space-10) var(--space-20);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-sm);
+    font-weight: 700;
+}
+
+/* Action list at bottom of composition detail */
+.comp-actions-list {
+    padding: 8px 14px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.comp-chev {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+}
+
+/* Dash-template-icon tint modifiers (replaces inline background/color styles) */
+.dash-template-icon--primary   { background: var(--primary-bg); color: var(--primary); }
+.dash-template-icon--gold      { background: var(--badge-gold-bg); color: var(--badge-gold); }
+.dash-template-icon--shoulders { background: var(--cat-shoulders-bg); color: var(--cat-shoulders); }
+
+/* ============================================================================
+   METRIC DETAIL PAGE — extracted from metric-detail-ui inline styles
+   ============================================================================ */
+
+.md-body { padding: 0 var(--pad-page); }
+.md-placeholder { padding: var(--pad-page); text-align: center; color: var(--text-muted); }
+.md-skel-tall { height: 300px; }
+.md-error { padding: var(--pad-page); color: var(--text-muted); }
+
+.md-hero-meta { font-size: var(--font-xs); color: var(--text-muted); }
+.md-chart-placeholder {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+}
+.md-empty { color: var(--text-muted); }
+.md-empty-line { color: var(--text-muted); font-size: var(--font-sm); }
+.md-goal-strong { color: var(--primary); }
+
+.md-bc-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+    margin-bottom: var(--space-12);
+}
+.md-bc-legend { font-size: var(--font-sm); }

@@ -39,10 +39,10 @@ a,
 input,
 select,
 textarea,
-.bottom-nav-item,
-.clickable {
+.bottom-nav-item {
     touch-action: manipulation;
 }
+/* .clickable carries its own touch-action — see utilities.css */
 
 /* iOS momentum scrolling for scrollable containers */
 .modal > .modal-content,
@@ -55,10 +55,5 @@ textarea,
 .hidden {
     display: none !important;
 }
-.text-muted {
-    color: var(--text-muted);
-}
-.text-primary {
-    color: var(--primary);
-}
+/* .text-muted / .text-primary live in utilities.css (canonical) */
 

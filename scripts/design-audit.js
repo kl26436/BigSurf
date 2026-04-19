@@ -18,17 +18,18 @@ const PAGES_DIR = path.join(ROOT, 'styles', 'pages');
 const COMPONENTS_DIR = path.join(ROOT, 'styles', 'components');
 const STYLES_ROOT = path.join(ROOT, 'styles');
 
-// Budgets ratcheted after workout.css deletion (Nov 2026). Remaining debt
-// is mostly legacy history.css / exercise-lib.css raw values and a handful
-// of cross-file dupes between reset.css / utilities.css. Trend these down
-// with each PR — re-ratchet when you beat a number.
+// Budgets ratcheted after composition-detail / metric-detail / settings-ui
+// inline-style sweeps + pages font-size tokenization (Apr 2026). Remaining
+// raw font-sizes are a handful of intentional one-offs (hero stat sizes,
+// calendar glyph px). Trend these down with each PR — re-ratchet when you
+// beat a number.
 const BUDGETS = {
-    inlineStylesInJs: 170,
-    rawFontSizeInPages: 55,
+    inlineStylesInJs: 95,
+    rawFontSizeInPages: 12,
     rawRadiusPxInPages: 5,
     rawRgbaInPages: 12,
     rawHexInPages: 8,
-    duplicateClassDefs: 15,
+    duplicateClassDefs: 5,
 };
 
 const STRICT = process.argv.includes('--strict');

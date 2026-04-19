@@ -10,7 +10,7 @@ export async function renderCompositionDetail() {
     const container = document.getElementById('composition-detail-content');
     if (!container) return;
 
-    container.innerHTML = `<div class="skeleton skeleton-card" style="height:200px;"></div>`;
+    container.innerHTML = `<div class="skeleton skeleton-card comp-skeleton"></div>`;
 
     // Load DEXA + body weight data in parallel
     let scan = null;
@@ -72,15 +72,15 @@ function renderDexaSummary(scan, prev) {
     ];
 
     return `
-        <div style="display:flex;align-items:center;gap:14px;padding:16px 14px;">
+        <div class="comp-donut-row">
             ${chartDonut({ segments, size: 80 })}
-            <div class="bc-legend" style="gap:6px;">
-                ${segments.map(s => `<div class="bc-leg"><div class="bc-dot" style="background:${s.color};"></div>${s.label}</div>`).join('')}
+            <div class="bc-legend comp-donut-legend">
+                ${segments.map(s => `<div class="bc-leg"><div class="bc-dot" style="--dot-color:${s.color};"></div>${s.label}</div>`).join('')}
             </div>
         </div>
 
-        <div class="d-sec-head">Summary${prev ? ` <span style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400;">vs ${formatDate(prev.date)}</span>` : ''}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 14px 14px;">
+        <div class="d-sec-head">Summary${prev ? ` <span class="d-sec-head__meta">vs ${formatDate(prev.date)}</span>` : ''}</div>
+        <div class="comp-stats-grid">
             ${renderStatCard('Body fat', fatPct, '%', prev ? Math.round(prev.totalBodyFat || 0) : null, true)}
             ${renderStatCard('Lean mass', Math.round(leanMass * 10) / 10, ` ${scan.unit || 'lb'}`, prev?.totalLeanMass || prev?.leanMass, false)}
             ${renderStatCard('Fat mass', Math.round(fatMass * 10) / 10, ` ${scan.unit || 'lb'}`, prev?.totalFatMass || prev?.fatMass, true)}
@@ -129,7 +129,7 @@ function renderInsight(scan, prev) {
     if (!message) return '';
 
     return `
-        <div class="dexa-insight-card" style="margin:0 14px 14px;">
+        <div class="dexa-insight-card comp-boxed">
             <i class="fas fa-lightbulb"></i>
             <div>${message}</div>
         </div>
@@ -155,7 +155,7 @@ function renderRegionalBars(scan) {
 
     return `
         <div class="d-sec-head">Regional lean mass</div>
-        <div class="stat-card" style="margin:0 14px 14px;">
+        <div class="stat-card comp-boxed">
             <div class="regional-bars">
                 ${renderBarRow('Trunk', trunk, maxVal, 'var(--cat-push)')}
                 ${renderBarRow('Arms', arms, maxVal, 'var(--cat-arms)')}
@@ -172,10 +172,11 @@ function renderRegionalBars(scan) {
 
 function renderBarRow(label, value, maxVal, color) {
     const pct = maxVal > 0 ? (value / maxVal) * 100 : 0;
+    // width + color are genuinely dynamic — route via CSS custom properties
     return `
         <div class="regional-bar-row">
             <div class="regional-bar-label">${label}</div>
-            <div class="regional-bar-track"><div class="regional-bar-fill" style="width:${pct.toFixed(0)}%;background:${color};"></div></div>
+            <div class="regional-bar-track"><div class="regional-bar-fill" style="--bar-width:${pct.toFixed(0)}%;--bar-color:${color};"></div></div>
             <div class="regional-bar-value">${value.toFixed(1)} lb</div>
         </div>
     `;
@@ -184,15 +185,15 @@ function renderBarRow(label, value, maxVal, color) {
 function renderVisceralFat(scan) {
     const vat = scan.vat;
     const status = vat < 1.0 ? 'Low · healthy range' : vat < 2.0 ? 'Moderate' : 'High';
-    const statusColor = vat < 1.0 ? 'var(--success)' : vat < 2.0 ? 'var(--warning)' : 'var(--danger)';
+    const statusClass = vat < 1.0 ? 'comp-vat--good' : vat < 2.0 ? 'comp-vat--warn' : 'comp-vat--bad';
 
     return `
         <div class="d-sec-head">Visceral fat</div>
-        <div class="stat-card" style="margin:0 14px 14px;">
+        <div class="stat-card comp-boxed">
             <div class="vat-row">
                 <div class="vat-info">
-                    <div class="stat-val" style="font-size:1.3rem;">${vat}<span class="stat-unit">lb</span></div>
-                    <div class="vat-status" style="color:${statusColor};">${status}</div>
+                    <div class="stat-val comp-vat-val">${vat}<span class="stat-unit">lb</span></div>
+                    <div class="vat-status ${statusClass}">${status}</div>
                 </div>
             </div>
         </div>
@@ -203,9 +204,9 @@ function renderBodyWeightSection(entries, unit) {
     if (!entries || entries.length === 0) {
         return `
             <div class="d-sec-head">Body weight</div>
-            <div class="stat-card" style="margin:0 14px 14px;text-align:center;padding:20px;">
-                <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">No weight entries yet</div>
-                <button class="dash-template-play" style="margin:0 auto;width:auto;padding:8px 16px;border-radius:var(--radius-pill);font-size:0.78rem;" onclick="showWeightEntryModal()">
+            <div class="stat-card comp-boxed comp-bw-empty">
+                <div class="comp-bw-empty__msg">No weight entries yet</div>
+                <button class="dash-template-play comp-bw-empty__btn" onclick="showWeightEntryModal()">
                     <i class="fas fa-plus"></i> Add weight
                 </button>
             </div>
@@ -228,8 +229,8 @@ function renderBodyWeightSection(entries, unit) {
 
     return `
         <div class="d-sec-head">Body weight</div>
-        <div class="stat-card" style="margin:0 14px 14px;">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+        <div class="stat-card comp-boxed">
+            <div class="comp-bw-head">
                 <div class="stat-val">${latestW.toFixed(1)}<span class="stat-unit">${unit}</span></div>
                 <div class="stat-delta ${delta <= 0 ? 'down' : 'up'}">${delta < 0 ? '↓' : '↑'} ${Math.abs(delta).toFixed(1)} ${unit} · 90d</div>
             </div>
@@ -240,13 +241,13 @@ function renderBodyWeightSection(entries, unit) {
 
 function renderNoDexaState() {
     return `
-        <div style="text-align:center;padding:32px 20px;">
-            <div style="width:64px;height:64px;border-radius:50%;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.4rem;">
+        <div class="comp-empty-state">
+            <div class="comp-empty-state__icon">
                 <i class="fas fa-circle-nodes"></i>
             </div>
-            <div style="font-size:1rem;font-weight:700;color:var(--text-strong);margin-bottom:6px;">No DEXA scan yet</div>
-            <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:16px;line-height:1.4;">Upload your DEXA scan results to see body composition breakdown, regional lean mass, and track changes over time.</div>
-            <button class="dash-template-play" style="width:auto;padding:10px 20px;border-radius:var(--radius-pill);font-size:0.82rem;font-weight:700;" onclick="showDexaUploadModal()">
+            <div class="comp-empty-state__title">No DEXA scan yet</div>
+            <div class="comp-empty-state__desc">Upload your DEXA scan results to see body composition breakdown, regional lean mass, and track changes over time.</div>
+            <button class="dash-template-play comp-empty-state__btn" onclick="showDexaUploadModal()">
                 <i class="fas fa-file-upload"></i> Upload DEXA scan
             </button>
         </div>
@@ -255,32 +256,32 @@ function renderNoDexaState() {
 
 function renderActions(hasDexa) {
     return `
-        <div style="padding:8px 14px 20px;display:flex;flex-direction:column;gap:8px;">
+        <div class="comp-actions-list">
             <div class="dash-template-row" onclick="showDexaUploadModal()">
-                <div class="dash-template-icon" style="background:var(--primary-bg);"><i class="fas fa-file-upload" style="color:var(--primary);"></i></div>
+                <div class="dash-template-icon dash-template-icon--primary"><i class="fas fa-file-upload"></i></div>
                 <div class="dash-template-info">
                     <div class="dash-template-name">Upload new DEXA scan</div>
                     <div class="dash-template-meta">PDF, CSV, or enter manually</div>
                 </div>
-                <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.72rem;"></i>
+                <i class="fas fa-chevron-right comp-chev"></i>
             </div>
             ${hasDexa ? `
                 <div class="dash-template-row" onclick="showDexaHistory()">
-                    <div class="dash-template-icon" style="background:rgba(255,215,0,0.1);"><i class="fas fa-history" style="color:var(--badge-gold);"></i></div>
+                    <div class="dash-template-icon dash-template-icon--gold"><i class="fas fa-history"></i></div>
                     <div class="dash-template-info">
                         <div class="dash-template-name">Scan history</div>
                         <div class="dash-template-meta">Compare scans over time</div>
                     </div>
-                    <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.72rem;"></i>
+                    <i class="fas fa-chevron-right comp-chev"></i>
                 </div>
             ` : ''}
             <div class="dash-template-row" onclick="showWeightEntryModal()">
-                <div class="dash-template-icon" style="background:var(--cat-shoulders-bg);"><i class="fas fa-weight" style="color:var(--cat-shoulders);"></i></div>
+                <div class="dash-template-icon dash-template-icon--shoulders"><i class="fas fa-weight"></i></div>
                 <div class="dash-template-info">
                     <div class="dash-template-name">Log body weight</div>
                     <div class="dash-template-meta">Track weight changes over time</div>
                 </div>
-                <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.72rem;"></i>
+                <i class="fas fa-chevron-right comp-chev"></i>
             </div>
         </div>
     `;

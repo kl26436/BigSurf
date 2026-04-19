@@ -189,6 +189,14 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
   - `.page-header__save` disabled state uses `--bg-card-hi` + `--text-muted` (not opacity) ✓
   - Destructive actions use `.danger-action-*` pattern with confirmation ✓
 
+- [x] **§11 Long-tail follow-up (Apr 2026)** — inline-style sweep + font-size tokenization wave:
+  - `composition-detail-ui.js`: 29 → **2** (only CSS custom properties for per-item colors / widths). New `.comp-*` CSS block in [detail-pages.css](styles/pages/detail-pages.css) covering donut row, stats grid, visceral-fat color states, body-weight empty state, DEXA empty state, action list, `.dash-template-icon--*` tints.
+  - `metric-detail-ui.js`: 24 → **1** (per-segment dot color via `--dot-color`). New `.md-*` CSS block in detail-pages.css: `.md-body`, `.md-placeholder`, `.md-skel-tall`, `.md-error`, `.md-hero-meta`, `.md-chart-placeholder`, `.md-empty`, `.md-empty-line`, `.md-goal-strong`, `.md-bc-row`, `.md-bc-legend`. `.dash-bc-dot` now reads `var(--dot-color, var(--text-muted))`.
+  - `settings-ui.js`: 19 → **0**. New `.srow-connect`, `.srow-name--danger`, `.settings-footer`, `.onb-welcome-body`, `.onb-welcome-logo`, `.onb-btn-full`, `.onb-btn-wide`, `.onb-unit-group`, `.onb-segmented` in [settings.css](styles/pages/settings.css).
+  - **Raw `font-size: Xrem/px` in pages/**: 48 → **10** (hero display values + tiny pixel-perfect calendar glyphs only). Tokenized detail-pages.css, body-measurements.css, settings.css, active-workout-v2.css to `--font-2xs/xs/sm/base/md/2xl/3xl`.
+  - Audit budgets ratcheted: `inlineStylesInJs 170→95`, `rawFontSizeInPages 55→12`, `duplicateClassDefs 15→5`.
+  - **Tests**: 354/354 pass.
+
 ---
 
 ## 📐 Phase G — Meta / system documentation

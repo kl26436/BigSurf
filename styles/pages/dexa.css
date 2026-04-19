@@ -593,6 +593,9 @@
     height: 100%;
     border-radius: var(--radius-xs);
     transition: width 0.3s ease;
+    /* --bar-width and --bar-color set inline (per-region dynamic values) */
+    width: var(--bar-width, 0%);
+    background: var(--bar-color, var(--primary));
 }
 
 .regional-bar-value {

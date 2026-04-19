@@ -138,7 +138,7 @@ export function renderSettings() {
     const photoURL = user?.photoURL || '';
 
     container.innerHTML = `
-        <div class="settings-page" style="padding: 14px 16px 80px;">
+        <div class="settings-page">
 
             <!-- Profile card -->
             <div class="profile-card" onclick="openProfile()">
@@ -246,7 +246,7 @@ export function renderSettings() {
                         <div class="srow-desc" id="withings-status-text">Weight & body composition</div>
                     </div>
                     <div class="srow-right" id="withings-status-icon">
-                        <span style="color: var(--primary); font-size: 0.74rem; font-weight: 600;">Connect</span>
+                        <span class="srow-connect">Connect</span>
                     </div>
                 </div>
             </div>
@@ -274,7 +274,7 @@ export function renderSettings() {
             <div class="group">
                 <div class="srow srow--clickable" onclick="signOutUser()">
                     <div class="srow-icon ic-danger"><i class="fas fa-sign-out-alt"></i></div>
-                    <div class="srow-info"><div class="srow-name" style="color: var(--danger);">Sign out</div></div>
+                    <div class="srow-info"><div class="srow-name srow-name--danger">Sign out</div></div>
                 </div>
                 <div class="srow srow--clickable" onclick="rebuildPRsFromSettings()">
                     <div class="srow-icon ic-muted"><i class="fas fa-sync-alt"></i></div>
@@ -285,7 +285,7 @@ export function renderSettings() {
                 </div>
             </div>
 
-            <div style="text-align: center; margin-top: 20px; font-size: 0.7rem; color: var(--text-muted);">
+            <div class="settings-footer">
                 Big Surf v3.1 · Equipment Weight + Bodyweight Tracking
             </div>
         </div>
@@ -382,13 +382,13 @@ function renderOnboardingStep() {
         // Step 0: Welcome
         {
             body: `
-                <div style="flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;">
-                    <img src="BigSurfNoBG.png" alt="Big Surf" style="width:120px;height:120px;object-fit:contain;margin:0 auto 18px;" onerror="this.style.display='none'">
+                <div class="onb-welcome-body">
+                    <img class="onb-welcome-logo" src="BigSurfNoBG.png" alt="Big Surf" onerror="this.style.display='none'">
                     <div class="onb-title">Welcome to<br>Big Surf</div>
                     <div class="onb-desc">Track your lifts, hit PRs, see trends. Let's set up your profile in under a minute.</div>
                 </div>
             `,
-            footer: `<button class="btn-redesign" style="flex:1;" onclick="onboardingNext()">Get Started <i class="fas fa-arrow-right"></i></button>`,
+            footer: `<button class="btn-redesign onb-btn-full" onclick="onboardingNext()">Get Started <i class="fas fa-arrow-right"></i></button>`,
         },
 
         // Step 1: Weekly Goal
@@ -401,7 +401,7 @@ function renderOnboardingStep() {
             `,
             footer: `
                 <button class="btn-ghost" onclick="onboardingBack()">Back</button>
-                <button class="btn-redesign" style="flex:2;" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
+                <button class="btn-redesign onb-btn-wide" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
             `,
         },
 
@@ -415,7 +415,7 @@ function renderOnboardingStep() {
             `,
             footer: `
                 <button class="btn-ghost" onclick="onboardingBack()">Back</button>
-                <button class="btn-redesign" style="flex:2;" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
+                <button class="btn-redesign onb-btn-wide" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
             `,
         },
 
@@ -426,26 +426,26 @@ function renderOnboardingStep() {
                 <div class="onb-title">Your units</div>
                 <div class="onb-desc">Set defaults. Changeable later in Settings.</div>
 
-                <div style="margin-bottom:12px;">
-                    <div class="group-label" style="margin-top:0;">Weight</div>
-                    <div class="segmented" style="background:var(--bg-card);padding:4px;">
-                        <button style="padding:10px;" class="${s.weightUnit === 'lbs' ? 'active' : ''}" onclick="updateSetting('weightUnit','lbs'); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">Pounds (lb)</button>
-                        <button style="padding:10px;" class="${s.weightUnit === 'kg' ? 'active' : ''}" onclick="updateSetting('weightUnit','kg'); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">Kilograms (kg)</button>
+                <div class="onb-unit-group">
+                    <div class="group-label">Weight</div>
+                    <div class="segmented onb-segmented">
+                        <button class="${s.weightUnit === 'lbs' ? 'active' : ''}" onclick="updateSetting('weightUnit','lbs'); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">Pounds (lb)</button>
+                        <button class="${s.weightUnit === 'kg' ? 'active' : ''}" onclick="updateSetting('weightUnit','kg'); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">Kilograms (kg)</button>
                     </div>
                 </div>
-                <div style="margin-bottom:12px;">
-                    <div class="group-label" style="margin-top:0;">Rest timer default</div>
-                    <div class="segmented" style="background:var(--bg-card);padding:4px;">
+                <div class="onb-unit-group">
+                    <div class="group-label">Rest timer default</div>
+                    <div class="segmented onb-segmented">
                         ${[60, 90, 120, 180].map(v => {
                             const label = v < 120 ? `${v}s` : `${v / 60} min`;
-                            return `<button style="padding:10px;" class="${s.restTimerDuration === v ? 'active' : ''}" onclick="updateSetting('restTimerDuration',${v}); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">${label}</button>`;
+                            return `<button class="${s.restTimerDuration === v ? 'active' : ''}" onclick="updateSetting('restTimerDuration',${v}); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">${label}</button>`;
                         }).join('')}
                     </div>
                 </div>
             `,
             footer: `
                 <button class="btn-ghost" onclick="onboardingBack()">Back</button>
-                <button class="btn-redesign" style="flex:2;" onclick="completeOnboarding()"><i class="fas fa-check"></i> All set!</button>
+                <button class="btn-redesign onb-btn-wide" onclick="completeOnboarding()"><i class="fas fa-check"></i> All set!</button>
             `,
         },
     ];
