@@ -1083,6 +1083,9 @@ export async function editHistoricalWorkout(docIdOrDate) {
         exercises: workoutExercises,
     };
 
+    // Reset once-per-session UX flags
+    AppState._autofillHintShown = false;
+
     // Restore saved data (sets, reps, weights, notes)
     // Use the actual date from workoutData, not the docId
     AppState.savedData = {

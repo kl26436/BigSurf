@@ -163,6 +163,10 @@ dialog[open] > .modal-content {
     font-weight: 700;
 }
 
+/* Full-width button utility — replaces inline `style="width:100%"` on buttons. */
+.btn-block { width: 100%; }
+.recent-workouts-load-more { margin-top: var(--space-12); }
+
 /* Text color utilities — replace inline `style="color: var(--X);"` */
 .text-primary { color: var(--primary); }
 .text-success { color: var(--success); }

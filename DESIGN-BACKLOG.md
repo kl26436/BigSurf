@@ -62,38 +62,42 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
 
 ---
 
-## 🟡 Phase B — High-impact usability
+## 🟡 Phase B — High-impact usability ✅ COMPLETE (+ BW delta goal-setting follow-up shipped)
 
-### Active Workout
+### Active Workout ✅
 
-- [ ] **Two kebab menus on the same screen** (workout-level top-right + exercise-level in hero) with overlapping actions. Differentiate: workout kebab → `fa-ellipsis-v`; exercise hero → labeled "Edit exercise" button or `fa-cog`.
-- [ ] **Back button is an ambiguous chevron** with `awConfirmExit`. Use `fa-times` (close) or a micro-label "Exit" so the intent is clear.
-- [ ] **Autofill hint banner is persistent.** After the 5th workout, it's noise. Show once per workout (or once globally) gated behind `AppState.settings.autofillHintSeen`.
-- [ ] **Body-weight banner affordance is weak** — chevron is primary-colored but the banner body is muted, so it doesn't read as tappable. Tint with `--primary-bg-subtle`; brighten icon; make copy primary-colored.
-- [ ] **Equipment sheet section emptiness is inconsistent.** "For exercise" shows a line when empty; "At gym" and "Other equipment" just render empty. Fix: either show empty messages for all three sections, or hide all empty sections during search.
-- [ ] **Add-exercise sheet caps at 50 results with no pagination or truncation hint.** Fix: show "Showing 50 of 312 — refine your search" footer when truncated.
-- [ ] **"New equipment" form pre-selects "Machine" chip** regardless of exercise context. Fix: default chip from the exercise's category (e.g., Bench Press → Barbell).
-- [ ] **Superset link sheet: completed exercises show a green check** which reads as "selected" rather than "disabled/done". Fix: strike-through row + "Done" pill for completed.
-- [ ] **Notes textarea is `rows="1"` with no auto-grow** — long notes scroll inside one line. Fix: add `oninput` auto-grow handler, or render as "Add note" button opening a sheet.
-- [ ] **Unit-toggle text in set table is ~0.55rem** (under WCAG AA). Bump to `var(--font-2xs)` and ensure 32px min tap height.
-- [ ] **Inline `style="position: relative;"` on `.aw-body`** at [active-workout-ui.js:108](js/core/workout/active-workout-ui.js#L108) — violates "no inline styles" rule. Move to `.aw-body { position: relative; }` in active-workout-v2.css.
+- [x] **Two kebab menus differentiated** — workout-scope uses `fa-ellipsis-v`; exercise-hero now uses `fa-cog` with `aria-label="Edit exercise"` ([active-workout-ui.js:344](js/core/workout/active-workout-ui.js#L344)).
+- [x] **Back button** switched from `fa-chevron-left` → `fa-times` with `aria-label="Exit workout"`.
+- [x] **Autofill hint gated** to once per workout session — `AppState._autofillHintShown` flag reset in [workout-session.js:1086](js/core/workout/workout-session.js#L1086) on each workout start.
+- [x] **BW banner tokenized + `.bw-banner__chev` class** replaces inline chevron style. Base state uses `--cat-shoulders-bg` token.
+- [x] **Equipment sheet empty states consistent** — all three sections now render placeholder text when empty (non-search); empties hidden during search. Inline-style offenders removed via new classes: `.aw-equip-section__empty`, `.js-row__icon--equip`, `.js-row__loc-icon`, `.js-row--none`.
+- [x] **Add-exercise truncation hint** — "Showing 50 of N — refine your search" footer when results exceed cap.
+- [x] **New-equipment chip default is category-aware** — new `guessEquipmentType()` helper maps exercise name/category to likely type (Bench Press → Barbell, Plank → Bodyweight, etc.).
+- [x] **Superset completed-exercise affordance** redesigned — `.js-row--done` shows strike-through name + `.js-row__done-pill` ("Done") instead of a green check (which read as "selected").
+- [x] **Notes textarea auto-grows** via new `awAutoGrowNotes()` handler; auto-sizes on initial render too.
+- [x] **Unit-toggle WCAG fix** — shipped in Phase A (font bumped to `--font-2xs`).
+- [x] **Inline `position: relative` on `.aw-body`** moved to CSS; added a pill-color-semantics doc comment at the top of `active-workout-v2.css`.
 
-### Dashboard
+### Dashboard ✅
 
-- [ ] **Avatar circle is empty.** `.dash-greeting__avatar` has no initials, FA icon, or photo — reads like a placeholder. Fix: show first initial on colored background, OR use `fa-user` muted, OR drop the avatar and put a settings icon top-right.
-- [ ] **Stale muscle groups are double-de-emphasized** (sorted last AND `opacity: 0.55`). Reads as disabled. Fix: drop the opacity (or cap at 0.8). The `.stale-warn` text + sort order is enough.
-- [ ] **Composition section label flips** between "Body" (with data) and "Composition" (empty state). Pick one.
-- [ ] **`.bp-card__icon` (26px) is undersized** vs the active-workout `aw-hero__icon` (44px). Bump to match the mature proportion (~32-34px).
-- [ ] **Weekday derivation scattered** — `renderForToday` computes `dayName` from a hand-coded array; calendar and stats/history use their own. Centralize in `date-helpers.js` as `getDayName(date, format)`.
+- [x] **Avatar shows first-initial** of user's displayName (or email) — no more empty placeholder circle.
+- [x] **Stale muscle opacity** eased from `0.55` → `0.85`. `.stale-warn` text + sort order carries the signal.
+- [x] **Composition label unified** — always reads "Composition" (was flipping between "Body"/"Composition").
+- [x] **`.bp-card__icon` bumped** 26px → 32px with `--font-sm` (was `--font-xs`).
+- [x] **Weekday derivation centralized** — new `getDayName(date, format)` helper in [date-helpers.js](js/core/utils/date-helpers.js); dashboard `renderForToday` uses it.
 
-### History
+### History ✅
 
-- [ ] **Calendar and list aren't linked.** Tapping a calendar day jumps into the workout; selecting a list item doesn't reflect on the calendar. Fix: on day-tap, scroll matching list item into view with a brief `.is-selected` highlight.
-- [ ] **Month nav isn't sticky** — scroll into the list and you lose month context. Pin the month nav (or a compact "April 2026 · 12 workouts" summary) on scroll.
-- [ ] **Search + category filter stack vertically**, pushing calendar below the fold. Inline them as `1fr auto` at ≥360px.
-- [ ] **Status pill semantics vague.** Yellow minus for "incomplete" reads neutral; red X for "cancelled" feels error-coded for a user choice. Fix: `fa-circle-half-stroke` for incomplete; muted gray pill for cancelled.
-- [ ] **List row has a 28px status pill that's the brightest element** — steals attention from the workout name. Reduce to 20px or a 6px left-edge accent stripe.
-- [ ] **Cancelled-state language differs across calendar and list** — list uses `--danger`, calendar uses `opacity: 0.25`. Unify to muted gray + reduced opacity in both.
+- [x] **Calendar ↔ list linkage** — calendar day tap now also scrolls the matching list row into view and flashes `.is-selected` for 1.5s (`flashListRowForDate`).
+- [x] **Month nav sticky** with bg-app background; month context survives scroll.
+- [x] **Search + filter inline** — grid `1fr auto` layout; filter select hugs content.
+- [x] **Status pill semantics** — incomplete now uses `fa-circle-half-stroke`; cancelled is muted gray (`--bg-card-hi` + `--text-muted`), no longer error-coded red.
+- [x] **List row status pill reduced** 28px → 20px; font `--font-xs` → `--font-2xs`.
+- [x] **Cancelled-state unified across calendar + list** — both use muted gray; calendar `.cal-icon--cancelled` uses `--text-muted` + `0.6` opacity (was `0.25`).
+
+### Follow-up shipped
+
+- [x] **BW delta goal-setting** — `weightGoal: 'lose' | 'maintain' | 'gain' | null` added to `DEFAULT_SETTINGS`; Settings page has a segmented control to pick it ("Off / Lose / Maintain / Gain"); dashboard `.hero-chip__delta` tints `--good` / `--bad` via `getBwDeltaDirectionClass()` only when a goal is set. Default stays neutral.
 
 ---
 

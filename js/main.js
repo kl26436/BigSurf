@@ -90,6 +90,7 @@ import {
     awAddSet,
     awRemoveSet,
     awSaveNotes,
+    awAutoGrowNotes,
     awToggleExerciseMenu,
     awToggleWorkoutMenu,
     awCloseMenus,
@@ -528,6 +529,7 @@ window.awUpdateSet = awUpdateSet;
 window.awAddSet = awAddSet;
 window.awRemoveSet = awRemoveSet;
 window.awSaveNotes = awSaveNotes;
+window.awAutoGrowNotes = awAutoGrowNotes;
 window.awToggleExerciseMenu = awToggleExerciseMenu;
 window.awToggleWorkoutMenu = awToggleWorkoutMenu;
 window.awCloseMenus = awCloseMenus;

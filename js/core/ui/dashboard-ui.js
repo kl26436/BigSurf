@@ -7,7 +7,7 @@ import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
-import { getDateString } from '../utils/date-helpers.js';
+import { getDateString, getDayName } from '../utils/date-helpers.js';
 import { Config, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { loadAllWorkouts } from '../data/data-manager.js';
@@ -219,13 +219,15 @@ function renderGreetingHeader() {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    const displayName = AppState.currentUser?.displayName || AppState.currentUser?.email || '';
+    const initial = (displayName.trim().charAt(0) || '?').toUpperCase();
     return `
         <div class="dash-greeting">
             <div class="dash-greeting__text">
                 <h2>${greeting}</h2>
                 <span>${dateStr}</span>
             </div>
-            <div class="dash-greeting__avatar" onclick="navigateTo('settings')"></div>
+            <div class="dash-greeting__avatar" onclick="navigateTo('settings')" aria-label="Open settings">${escapeHtml(initial)}</div>
         </div>
     `;
 }
@@ -310,6 +312,7 @@ function renderHeroChipRow(streak, weekDone, weekGoal, bwData) {
     const bwVal = bwData ? Math.round(bwData.latest.displayWeight) : null;
     const bwUnit = bwData ? bwData.unit : '';
     const bwDelta = bwData ? bwData.delta : null;
+    const deltaDirClass = getBwDeltaDirectionClass(bwDelta);
 
     return `
         <div class="hero-chip-row">
@@ -326,10 +329,25 @@ function renderHeroChipRow(streak, weekDone, weekGoal, bwData) {
             <div class="hero-chip">
                 <div class="hero-chip__icon"><i class="fas fa-weight" style="color:var(--cat-shoulders);"></i></div>
                 <div class="hero-chip__val">${bwVal != null ? bwVal : '—'}<span class="hero-chip__unit">${bwVal != null ? ` ${bwUnit}` : ''}</span></div>
-                ${bwDelta != null ? `<div class="hero-chip__delta ${bwDelta < 0 ? 'up' : 'down'}">${bwDelta < 0 ? '↓' : '↑'} ${Math.abs(bwDelta).toFixed(1)} ${bwUnit}</div>` : '<div class="hero-chip__label">Body weight</div>'}
+                ${bwDelta != null ? `<div class="hero-chip__delta ${deltaDirClass}">${bwDelta < 0 ? '↓' : '↑'} ${Math.abs(bwDelta).toFixed(1)} ${bwUnit}</div>` : '<div class="hero-chip__label">Body weight</div>'}
             </div>
         </div>
     `;
+}
+
+// Color a body-weight delta only when the user has told us their goal direction.
+// Default (no goal set) is neutral — we never assume lose-is-good / gain-is-bad.
+function getBwDeltaDirectionClass(delta) {
+    if (delta == null) return '';
+    const goal = AppState.settings?.weightGoal;
+    if (!goal || goal === 'maintain') return '';
+    const losing = delta < 0;
+    const gaining = delta > 0;
+    if (goal === 'lose' && losing) return 'hero-chip__delta--good';
+    if (goal === 'lose' && gaining) return 'hero-chip__delta--bad';
+    if (goal === 'gain' && gaining) return 'hero-chip__delta--good';
+    if (goal === 'gain' && losing) return 'hero-chip__delta--bad';
+    return '';
 }
 
 // ===================================================================
@@ -358,7 +376,7 @@ function renderForToday(allWorkouts) {
     if (templates.length === 0) return '';
 
     const dow = new Date().getDay();
-    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dow];
+    const dayName = getDayName();
     const ranked = getTemplatesForDayOfWeek(templates, allWorkouts, dow).slice(0, 4);
     if (ranked.length === 0 || ranked[0].count === 0) return '';
 
@@ -464,7 +482,7 @@ async function renderCompositionCard(bwData) {
 
     let html = `
         <div class="dash-section-head">
-            <h3>Body</h3>
+            <h3>Composition</h3>
         </div>
     `;
 

@@ -561,7 +561,7 @@ export function getWorkoutHistory(appState) {
                         <div class="history-workout-status history-workout-status--${status}">
                             ${status === 'completed' ? '<i class="fas fa-check"></i>' :
                               status === 'cancelled' ? '<i class="fas fa-times"></i>' :
-                              '<i class="fas fa-minus"></i>'}
+                              '<i class="fas fa-circle-half-stroke"></i>'}
                         </div>
                     </div>
                 `;
@@ -570,7 +570,7 @@ export function getWorkoutHistory(appState) {
             html += '</div>';
 
             if (hasMore) {
-                html += `<button class="btn btn-secondary" style="width: 100%; margin-top: 0.75rem;" onclick="window.workoutHistory.loadMoreRecentWorkouts()">Load More</button>`;
+                html += `<button class="btn btn-secondary btn-block recent-workouts-load-more" onclick="window.workoutHistory.loadMoreRecentWorkouts()">Load More</button>`;
             }
 
             container.innerHTML = html;
@@ -1001,6 +1001,10 @@ export function getWorkoutHistory(appState) {
                             const dayNumber = day.querySelector('.day-number');
 
                             if (dayNumber && dateStr) {
+                                // Visual link: scroll the matching list row into view and
+                                // flash a brief highlight so calendar<->list correspondence is obvious.
+                                this.flashListRowForDate(dateStr);
+
                                 const calendarWorkouts = this.calendarWorkouts[dateStr];
                                 if (calendarWorkouts && calendarWorkouts.length > 0) {
                                     // Schema v3.0: Handle multiple workouts per day
@@ -1027,6 +1031,18 @@ export function getWorkoutHistory(appState) {
                     }
                 });
             }, 100);
+        },
+
+        // Flash a brief selected-state on the recent-workouts list row whose date matches.
+        // Gives the user a visual breadcrumb when tapping calendar days.
+        flashListRowForDate(dateStr) {
+            const row = document.querySelector(
+                `.recent-workouts-list .recent-workout-item[data-doc-id*="${dateStr}"]`
+            );
+            if (!row) return;
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.classList.add('is-selected');
+            setTimeout(() => row.classList.remove('is-selected'), 1500);
         },
 
         // Schema v3.0: Show picker when multiple workouts on same day

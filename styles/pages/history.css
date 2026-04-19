@@ -326,11 +326,26 @@
 }
 
 /* History search & filter bar */
+/* Inline layout: search input flexes, category filter hugs its content.
+   Keeps the calendar above the fold when search is expanded on ≥360px phones. */
 .history-search-bar {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr auto;
     gap: var(--space-8);
     margin-bottom: var(--space-16);
+    align-items: center;
+}
+.history-search-bar .field-search {
+    min-width: 0;
+}
+.history-search-bar select {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    padding: var(--space-10) var(--space-12);
+    font-family: inherit;
 }
 
 .history-search-clear {
@@ -387,6 +402,15 @@
     border-bottom: 1px solid var(--border-subtle);
     cursor: pointer;
     transition: background 0.15s;
+}
+/* Calendar-day tap flashes this state on the matching list row for 1.5s */
+.recent-workout-item.is-selected {
+    background: var(--primary-bg);
+    animation: recent-workout-flash 1.5s ease-out;
+}
+@keyframes recent-workout-flash {
+    0% { background: var(--primary-bg-strong); }
+    100% { background: transparent; }
 }
 .recent-workout-item:first-child {
     border-top: 1px solid var(--border-subtle);
@@ -499,7 +523,8 @@
 .cal-icon--cardio { color: var(--cat-cardio, var(--warning)); }
 .cal-icon--arms { color: var(--cat-arms, var(--danger)); }
 .cal-icon--other { color: var(--cat-other, var(--text-muted)); }
-.cal-icon--cancelled { opacity: 0.25; }
+/* Cancelled = muted user choice (not an error); keep on brand across list + calendar */
+.cal-icon--cancelled { color: var(--text-muted); opacity: 0.6; }
 .cal-icon--incomplete { opacity: 0.45; }
 .cal-dot-overflow {
     font-size: 8px;
@@ -551,14 +576,16 @@
     text-overflow: ellipsis;
     max-width: 250px;
 }
+/* Status pill — reduced to 20px so it doesn't out-shine the workout name.
+   Cancelled is treated as a neutral user-choice state (muted gray), NOT an error. */
 .history-workout-status {
-    width: 28px;
-    height: 28px;
+    width: 20px;
+    height: 20px;
     border-radius: var(--radius-pill);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--font-xs);
+    font-size: var(--font-2xs);
     flex-shrink: 0;
 }
 .history-workout-status--completed {
@@ -566,8 +593,8 @@
     color: var(--success);
 }
 .history-workout-status--cancelled {
-    background: var(--danger-bg);
-    color: var(--danger);
+    background: var(--bg-card-hi);
+    color: var(--text-muted);
 }
 .history-workout-status--incomplete {
     background: var(--warning-bg);
@@ -606,8 +633,13 @@
     font-size: var(--font-xs);
 }
 
-/* Month nav tighter */
+/* Month nav tighter + sticky so month context survives scroll into the list */
 .month-navigation {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    background: var(--bg-app);
+    padding: var(--space-6) 0;
     margin-bottom: var(--space-8);
     gap: var(--space-8);
 }

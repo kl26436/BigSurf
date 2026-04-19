@@ -105,16 +105,17 @@ export function renderAll() {
         ${renderWorkoutHeader()}
         ${renderProgressPills()}
         ${renderRestTimerBanner()}
-        <div class="aw-body" style="position: relative;">
+        <div class="aw-body">
             ${bodyContent}
         </div>
         ${renderFooter()}
     `;
 
-    // Scroll current pill into view
+    // Scroll current pill into view + auto-size any notes textareas to their content
     requestAnimationFrame(() => {
         const pill = container.querySelector('.aw-pill.current');
         pill?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        container.querySelectorAll('.aw-notes__textarea').forEach(awAutoGrowNotes);
     });
 }
 
@@ -131,8 +132,8 @@ function renderWorkoutHeader() {
 
     return `
         <div class="aw-header">
-            <button class="aw-back" onclick="awConfirmExit()">
-                <i class="fas fa-chevron-left"></i>
+            <button class="aw-back" onclick="awConfirmExit()" aria-label="Exit workout" title="Exit workout">
+                <i class="fas fa-times"></i>
             </button>
             <div class="aw-title">
                 <div class="aw-title__name">${escapeHtml(workoutName)}${locName ? ` <span class="aw-title__loc"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(locName)}</span>` : ''}</div>
@@ -328,6 +329,12 @@ function renderExerciseView(exercise, idx, savedEx) {
     // Same set table for ALL exercise types — always Reps | Weight | ✓
     const sets = buildSetRows(exercise, idx, savedEx, unit);
 
+    // Autofill hint: show only the first time it appears per workout session.
+    // After the user sees the explanation once, subsequent exercises with autofill
+    // don't repeat it (the dashed styling is enough of a cue after first exposure).
+    const showAutofillHint = sets.hasAutofill && !AppState._autofillHintShown;
+    if (showAutofillHint) AppState._autofillHintShown = true;
+
     // Weight column label
     let weightLabel = unit;
     if (isBW) weightLabel = `Added ${unit}`;
@@ -341,7 +348,7 @@ function renderExerciseView(exercise, idx, savedEx) {
                     <div class="aw-hero__title">${escapeHtml(exName)}</div>
                     <div class="aw-hero__sub">${completedSets > 0 ? `Set ${completedSets} done · ${remaining} left` : `${targetSets} sets · ${targetReps} reps target`}</div>
                 </div>
-                <button class="aw-hero__more" onclick="awToggleExerciseMenu(${idx})"><i class="fas fa-ellipsis-v"></i></button>
+                <button class="aw-hero__more" onclick="awToggleExerciseMenu(${idx})" aria-label="Edit exercise" title="Edit exercise"><i class="fas fa-cog"></i></button>
             </div>
             ${contextBanner}
             ${lastSessionHtml}
@@ -353,7 +360,7 @@ function renderExerciseView(exercise, idx, savedEx) {
             <span class="aw-sets-header__label">${weightLabel}</span>
             <button class="aw-sets-header__unit" onclick="awToggleUnit(${idx})" title="Tap to switch unit">${unit}</button>
         </div>
-        ${sets.hasAutofill ? '<div class="aw-autofill-hint"><i class="fas fa-magic"></i> Pre-filled from last session · tap ✓ to confirm or edit values</div>' : ''}
+        ${showAutofillHint ? '<div class="aw-autofill-hint"><i class="fas fa-magic"></i> Pre-filled from last session · tap ✓ to confirm or edit values</div>' : ''}
         <div class="aw-sets">
             ${sets.html}
             <div class="aw-set-actions">
@@ -363,6 +370,7 @@ function renderExerciseView(exercise, idx, savedEx) {
         </div>
         <div class="aw-notes">
             <textarea class="aw-notes__textarea" placeholder="Exercise notes…" rows="1"
+                oninput="awAutoGrowNotes(this)"
                 onchange="awSaveNotes(${idx}, this.value)">${escapeHtml(notes)}</textarea>
         </div>
     `;
@@ -397,7 +405,7 @@ function renderBWBanner() {
                     <div class="bw-banner__weight">Body weight not set</div>
                     <div class="bw-banner__hint">Tap to enter your weight for accurate volume tracking</div>
                 </div>
-                <i class="fas fa-chevron-right" style="color:var(--primary);"></i>
+                <i class="fas fa-chevron-right bw-banner__chev"></i>
             </div>
         `;
     }
@@ -808,6 +816,12 @@ export function awSaveNotes(exerciseIdx, value) {
     debouncedSaveWorkoutData(AppState);
 }
 
+export function awAutoGrowNotes(el) {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+}
+
 // ===================================================================
 // MENU ACTIONS
 // ===================================================================
@@ -972,12 +986,15 @@ function renderSupersetSheet() {
         const exName = getExerciseName(ex);
 
         if (isComplete) {
-            return `<div class="js-row disabled">
-                <div class="js-row__icon"><i class="fas fa-check" style="color:var(--success);"></i></div>
+            // Completed exercises can't be added to a new superset. Show a muted
+            // strike-through row + "Done" pill so it doesn't read as "selected"
+            // (which a green check mark would imply).
+            return `<div class="js-row disabled js-row--done">
                 <div class="js-row__info">
                     <div class="js-row__name">${i + 1}. ${escapeHtml(exName)}</div>
-                    <div class="js-row__meta">Done · can't link</div>
+                    <div class="js-row__meta">Can't link completed exercises</div>
                 </div>
+                <span class="js-row__done-pill">Done</span>
             </div>`;
         }
 
@@ -1101,30 +1118,32 @@ function renderEquipmentSheet(exerciseIdx) {
         const locStr = locs.length > 0 ? locs.join(', ') : '';
         return `
             <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}')">
-                <div class="js-row__icon" style="background:var(--bg-card-hi);color:var(--text-muted);"><i class="fas fa-cog"></i></div>
+                <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
                 <div class="js-row__info">
                     <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
-                    <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt" style="font-size:0.5rem;"></i> ${escapeHtml(locStr)}` : ''}</div>
+                    <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__loc-icon"></i> ${escapeHtml(locStr)}` : ''}</div>
                 </div>
             </div>
         `;
     };
 
+    // When searching: hide empty sections (keeps results tight).
+    // When not searching: show ALL sections with a placeholder so emptiness is consistent
+    // across all three groups rather than only the primary "For exercise" group.
     const renderSection = (title, list, emptyMsg) => {
         const filtered = applySearch(list);
         if (filtered.length === 0 && equipSearchQuery) return '';
-        if (filtered.length === 0 && !emptyMsg) return '';
         return `
             <div class="aw-equip-section">
                 <div class="aw-equip-section__title">${title}</div>
-                ${filtered.length > 0 ? filtered.map(renderRow).join('') : `<div style="padding:8px 4px;font-size:var(--font-xs);color:var(--text-muted);">${emptyMsg}</div>`}
+                ${filtered.length > 0 ? filtered.map(renderRow).join('') : `<div class="aw-equip-section__empty">${emptyMsg}</div>`}
             </div>
         `;
     };
 
     const noneRow = `
-        <div class="js-row ${!currentEquip ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '')" style="opacity:0.6;">
-            <div class="js-row__icon" style="background:var(--bg-card-hi);color:var(--text-muted);"><i class="fas fa-times"></i></div>
+        <div class="js-row js-row--none ${!currentEquip ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '')">
+            <div class="js-row__icon js-row__icon--equip"><i class="fas fa-times"></i></div>
             <div class="js-row__info">
                 <div class="js-row__name">None${!currentEquip ? ' ✓' : ''}</div>
                 <div class="js-row__meta">No equipment for this exercise</div>
@@ -1139,8 +1158,8 @@ function renderEquipmentSheet(exerciseIdx) {
         </div>
         <div id="aw-equip-list">
             ${renderSection(`For ${escapeHtml(exName)}`, forThisExercise, 'No equipment assigned to this exercise yet')}
-            ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, '') : ''}
-            ${renderSection('Other equipment', otherEquipment, '')}
+            ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, `No equipment saved at ${escapeHtml(locName)} yet`) : ''}
+            ${renderSection('Other equipment', otherEquipment, 'No other equipment saved')}
             ${noneRow}
         </div>
     `;
@@ -1252,6 +1271,7 @@ export function awQuickAddEquipment(exerciseIdx) {
     const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
 
     const types = ['Machine', 'Barbell', 'Dumbbell', 'Cable', 'Bench', 'Rack', 'Bodyweight', 'Other'];
+    const defaultType = guessEquipmentType(exercise);
 
     const body = `
         <div class="field" style="margin-bottom:12px;">
@@ -1261,7 +1281,7 @@ export function awQuickAddEquipment(exerciseIdx) {
         <div class="field" style="margin-bottom:12px;">
             <div style="font-size:var(--font-xs);color:var(--text-muted);margin-bottom:4px;">Type</div>
             <div class="aw-sheet__chips" id="aw-new-equip-type">
-                ${types.map(t => `<button class="aw-sheet__chip ${t === 'Machine' ? 'active' : ''}" onclick="document.querySelectorAll('#aw-new-equip-type .aw-sheet__chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')" data-type="${t}">${t}</button>`).join('')}
+                ${types.map(t => `<button class="aw-sheet__chip ${t === defaultType ? 'active' : ''}" onclick="document.querySelectorAll('#aw-new-equip-type .aw-sheet__chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')" data-type="${t}">${t}</button>`).join('')}
             </div>
         </div>
         <div class="field" style="margin-bottom:12px;">
@@ -1286,6 +1306,21 @@ export function awQuickAddEquipment(exerciseIdx) {
 
     // Focus name input
     setTimeout(() => document.getElementById('aw-new-equip-name')?.focus(), 300);
+}
+
+// Best-guess default equipment-type based on the exercise's name/category.
+// Used by the "New equipment" form so the user doesn't have to re-pick the chip.
+function guessEquipmentType(exercise) {
+    const name = (exercise?.name || exercise?.machine || '').toLowerCase();
+    const cat = (exercise?.category || '').toLowerCase();
+
+    if (/\bpull[- ]?up|\bpush[- ]?up|\bdip\b|\bplank\b|\bsit[- ]?up|crunch|burpee|\bchin[- ]?up/.test(name)) return 'Bodyweight';
+    if (/\bcable\b|lat pulldown|tricep pushdown|face pull/.test(name)) return 'Cable';
+    if (/\bdumbbell\b|\bdb\b|\bdbs\b|curl|fly\b|lateral raise|front raise/.test(name)) return 'Dumbbell';
+    if (/\bbarbell\b|\bbb\b|squat|deadlift|bench press|overhead press|ohp\b|\brow\b|clean|snatch/.test(name)) return 'Barbell';
+    if (cat === 'cardio') return 'Machine';
+    if (cat === 'core') return 'Bodyweight';
+    return 'Machine';
 }
 
 export async function awSaveNewEquipment(exerciseIdx) {
@@ -1389,7 +1424,8 @@ function renderAddExerciseSheet() {
                     <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
                 </div>`;
             }).join('')}
-            ${filtered.length === 0 ? '<div style="padding: 20px; text-align: center; color: var(--text-muted);">No exercises found</div>' : ''}
+            ${filtered.length > 50 ? `<div class="aw-add-ex-truncated">Showing 50 of ${filtered.length} — refine your search</div>` : ''}
+            ${filtered.length === 0 ? '<div class="aw-add-ex-empty">No exercises found</div>' : ''}
         </div>
     `;
 

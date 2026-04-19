@@ -1,6 +1,16 @@
 /* ============================================================================
    Active Workout V2 — Wizard-style one-exercise-at-a-time UI
+
+   Color semantics (apply consistently across pills, banners, accents):
+   - --primary  (green)  = the user's CURRENT focus (current set, current exercise)
+   - --success  (green)  = DONE (completed sets, completed exercises)
+   - --highlight-warm (orange) = SUPERSET context only — do not reuse for other states
+   - --danger   (red)    = destructive actions (remove set, cancel workout)
+   - --warning  (amber)  = attention needed (incomplete, stale, needs-review)
    ============================================================================ */
+
+/* Wizard body is the positioning context for absolutely-positioned menus */
+.aw-body { position: relative; }
 
 /* === HEADER === */
 .aw-header {
@@ -640,6 +650,12 @@
     border-bottom: 1px solid var(--border-subtle);
     margin-bottom: 2px;
 }
+.aw-equip-section__empty {
+    padding: 8px 4px;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    font-style: italic;
+}
 
 /* === JUMP SHEET ROWS === */
 .js-row {
@@ -656,6 +672,19 @@
 .js-row.current { background: var(--primary-bg); border-radius: var(--radius-sm); }
 .js-row.selected { background: var(--highlight-warm-bg); border-radius: var(--radius-sm); }
 .js-row.disabled { opacity: 0.5; pointer-events: none; }
+.js-row--none { opacity: 0.7; }
+.js-row--done .js-row__name { text-decoration: line-through; color: var(--text-muted); }
+.js-row__done-pill {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--success-bg);
+    color: var(--success);
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
 .js-row__icon {
     width: 32px; height: 32px;
     border-radius: var(--radius-xs);
@@ -663,6 +692,8 @@
     font-size: var(--font-xs);
     flex-shrink: 0;
 }
+.js-row__icon--equip { background: var(--bg-card-hi); color: var(--text-muted); }
+.js-row__loc-icon { font-size: var(--font-2xs); opacity: 0.8; }
 .js-row__info { flex: 1; min-width: 0; }
 .js-row__name {
     font-size: var(--font-sm);
@@ -919,6 +950,18 @@
 }
 .aw-add-ex-row__cat {
     font-size: var(--font-2xs);
+    color: var(--text-muted);
+}
+.aw-add-ex-truncated {
+    padding: 10px 4px;
+    text-align: center;
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    font-style: italic;
+}
+.aw-add-ex-empty {
+    padding: 20px;
+    text-align: center;
     color: var(--text-muted);
 }
 

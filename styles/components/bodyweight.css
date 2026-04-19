@@ -118,8 +118,8 @@
 
 /* ── BW BANNER (inside exercise card) ── */
 .bw-banner {
-    background: rgba(86, 182, 194, 0.08);
-    border: 1px solid rgba(86, 182, 194, 0.2);
+    background: var(--cat-shoulders-bg);
+    border: 1px solid var(--cat-shoulders-bg);
     border-radius: var(--radius-sm);
     padding: 10px 12px;
     display: flex;
@@ -130,8 +130,10 @@
 
 .bw-banner > i {
     color: var(--cat-shoulders);
-    font-size: 0.9rem;
+    font-size: var(--font-base);
 }
+
+.bw-banner__chev { color: var(--primary); font-size: var(--font-xs); }
 
 .bw-banner__info {
     flex: 1;

@@ -43,8 +43,15 @@
     height: 36px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--cat-push-bg), var(--cat-pull-bg));
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     transition: transform var(--anim-fast);
+    user-select: none;
 }
 .dash-greeting__avatar:active { transform: scale(0.95); }
 
@@ -93,12 +100,12 @@
     font-weight: 600;
     margin-top: 2px;
 }
-/* Delta is neutral (muted) by default — color coding a gain/loss assumes a goal
-   direction the app hasn't asked about. Future: tint based on user's weightGoal
-   setting ('lose' | 'gain' | 'maintain'). See DESIGN-BACKLOG Phase A → BW delta. */
+/* Delta is neutral by default — tinted only when the user has picked a goal
+   (settings.weightGoal) AND the delta direction matches/opposes that goal.
+   Logic lives in getBwDeltaDirectionClass() in dashboard-ui.js. */
 .hero-chip__delta { color: var(--text-muted); }
-.hero-chip__delta.up { color: var(--text-muted); }
-.hero-chip__delta.down { color: var(--text-muted); }
+.hero-chip__delta--good { color: var(--success); }
+.hero-chip__delta--bad { color: var(--danger); }
 .hero-chip--streak {
     background: linear-gradient(135deg, var(--highlight-warm-bg-gradient-start), var(--highlight-warm-bg-gradient-end));
     border-color: var(--highlight-warm-border);
@@ -136,7 +143,9 @@
     transition: transform 100ms;
 }
 .bp-card:active { transform: scale(0.99); }
-.bp-card.stale { opacity: 0.55; }
+/* Stale muscle groups are already sorted to the bottom and carry a .stale-warn line.
+   Keep a slight de-emphasis (0.85) rather than 0.55, which read as "disabled". */
+.bp-card.stale { opacity: 0.85; }
 .bp-card__head {
     display: flex;
     align-items: center;
@@ -152,13 +161,13 @@
     font-weight: 700;
 }
 .bp-card__icon {
-    width: 26px;
-    height: 26px;
+    width: 32px;
+    height: 32px;
     border-radius: var(--radius-xs);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--font-xs);
+    font-size: var(--font-sm);
     flex-shrink: 0;
 }
 .ic-chest { background: var(--cat-push-bg); color: var(--cat-push); }

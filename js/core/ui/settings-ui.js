@@ -18,6 +18,9 @@ const DEFAULT_SETTINGS = {
 
     // Goals
     weeklyGoal: 5,
+    // 'lose' | 'gain' | 'maintain' | null (neutral). Controls body-weight delta color
+    // on the dashboard hero chip. Null = color-neutral (no assumed direction).
+    weightGoal: null,
 
     // Plate Calculator
     plateLbs: [45, 35, 25, 10, 5, 2.5],
@@ -171,6 +174,19 @@ export function renderSettings() {
                         { value: 5, label: '5' },
                         { value: 6, label: '6' },
                     ], s.weeklyGoal, 'int')}
+                </div>
+                <div class="srow">
+                    <div class="srow-icon ic-primary"><i class="fas fa-weight"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Body weight goal</div>
+                        <div class="srow-desc">Colors the delta on the dashboard</div>
+                    </div>
+                    ${segmented('weightGoal', [
+                        { value: '', label: 'Off' },
+                        { value: 'lose', label: 'Lose' },
+                        { value: 'maintain', label: 'Maintain' },
+                        { value: 'gain', label: 'Gain' },
+                    ], s.weightGoal || '', 'string')}
                 </div>
             </div>
 
