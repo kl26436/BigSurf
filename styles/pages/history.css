@@ -565,7 +565,10 @@
     font-size: var(--font-xs);
 }
 
-/* Month nav — sticky so context survives scroll; compact gap. Canonical. */
+/* Month nav — sticky so context survives scroll; compact gap. Canonical.
+   Extends edge-to-edge with negative margins so the opaque background
+   covers the full scroll-container width and rows don't peek past the
+   sides as they scroll past. */
 .month-navigation {
     display: flex;
     align-items: center;
@@ -574,9 +577,10 @@
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
-    background: var(--bg-app);
-    padding: var(--space-6) 0;
-    margin-bottom: var(--space-8);
+    background-color: var(--bg-app);
+    padding: var(--space-8) var(--pad-page);
+    margin: 0 calc(-1 * var(--pad-page)) var(--space-8);
+    border-bottom: 1px solid var(--border-subtle);
 }
 .nav-button {
     width: 36px;
