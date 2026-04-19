@@ -313,9 +313,34 @@ console.log(window.AppState)  // Full app state
 - Keep `console.error()` with emoji prefixes (❌) for actual errors
 - Error handling: try/catch with `showNotification()` for user feedback; use severity levels ('silent', 'warn', 'error')
 - Comments: Explain "why", not "what"
-- **No inline styles in JS**: Use CSS classes instead of `element.style.*` or `style="..."` attributes. Only exception: truly dynamic values (width %, SVG coordinates)
-- **CSS tokens**: Use `var(--font-*)`, `var(--radius-*)`, `var(--cat-*)` etc. from tokens.css — never hardcode hex colors or rem values
-- **Card patterns**: Use `.hero-card` for dashboard widgets or `.row-card` for list items — don't create one-off card classes
+
+## Design System Rules
+
+These rules are canonical for all new CSS and JS that renders markup. When in doubt, consult [DESIGN-BACKLOG.md](DESIGN-BACKLOG.md). Rules are the output of the `design-critique-system.md` audit — follow them so drift doesn't reappear.
+
+### Pattern rules (what to reach for)
+
+1. **One row pattern, one card pattern.** Every list item with `[icon][title/subtitle][trailing]` uses `.row-card` (or a modifier like `.row-card--pr`). Every "section hero" card uses `.hero-card`. Don't create new `*-row` / `*-item` / `*-card-list` classes for the same shape. Canonical patterns live in [styles/components/cards.css](styles/components/cards.css).
+2. **One section header pattern.** `.section-header-row` (in [components/page-header.css](styles/components/page-header.css)) is the pinned page header (back arrow + title + optional action + safe-area-inset). Don't re-implement `.stats-section-header`, `.dash-section-head`, etc. — they've been consolidated.
+3. **One chip/pill pattern.** Use `.chip` / `.chip--sm` / category variants in [components/chips.css](styles/components/chips.css). Don't create `aw-sheet__chip`, `filter-pill`, `onb-chip`, etc. for the same shape.
+4. **One search field.** Use `.field-search` (optional `.field-search--sticky`) from [components/fields.css](styles/components/fields.css). The `history-search-input-wrapper` / `exercise-search-wrapper` / `aw-sheet__search` patterns have all been migrated.
+
+### Token rules (what to never hard-code)
+
+5. **No raw color literals in page/component CSS.** `pages/*.css` and `components/*.css` (other than `tokens.css`) must use `var(--*)` for color. For tints not in tokens, add a token to [styles/tokens.css](styles/tokens.css) — don't inline the RGBA.
+6. **No raw font sizes.** `font-size:` values use the `--font-2xs` / `--font-xs` / `--font-sm` / `--font-base` / `--font-md` / `--font-lg` / `--font-xl` / `--font-2xl` / `--font-3xl` scale only. Snap to nearest; don't add `0.82rem` as a one-off.
+7. **No raw radii.** `border-radius:` uses `--radius-xs` / `--radius-sm` / `--radius-md` / `--radius-lg` / `--radius-pill`. The sheet's top corners are `var(--radius-lg) var(--radius-lg) 0 0`, not `20px 20px 0 0`.
+8. **No inline styles in JS.** No `style="..."` in template strings; no `element.style.*` except for truly dynamic values (width %, transform translate, SVG coordinates) — and those should use CSS custom properties (`style.setProperty('--progress', pct + '%')` referenced by `width: var(--progress)` in CSS). For static colors/spacing/layout, create a utility class in [utilities.css](styles/utilities.css) (see `.text-primary`, `.text-muted`, `.btn-block`) or a component-internal class.
+
+### Structural rules (what to keep clean)
+
+9. **One namespacing convention: BEM-ish (`block__element--modifier`).** Decided convention for this codebase:
+   - **Block**: kebab-case, scoped with a short prefix when tied to a specific screen (`aw-pill`, `bp-card`, `dash-insight`). Visual primitives (like `.chip`, `.row-card`) go unscoped.
+   - **Element**: two underscores (`aw-pill__icon`, `dash-insight-text` where the hyphen is the block separator).
+   - **Modifier**: two hyphens (`hero-chip--streak`, `row-card--pr`, `js-row--done`).
+   - **Legacy hyphen-only classes** (`recent-workout-item`, `workout-picker-item`) are acceptable where they exist; rename them to BEM when doing neighboring work. Don't create new hyphen-only compound classes for new code.
+   - **Single-word utility classes** (`.text-primary`, `.btn-block`, `.hidden`) are fine — BEM applies to components, not utilities.
+10. **No duplicate class declarations across files.** A class is defined in **exactly one** file. If you find the same selector in two files, consolidate before adding new code. Ongoing offenders are tracked in DESIGN-BACKLOG.md Phase D.
 
 ## Important Notes
 

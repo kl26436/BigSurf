@@ -186,18 +186,13 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
 
 **Sustaining work that prevents regression. Low code-risk, high long-term value.**
 
-- [ ] **Pin the 10 design-system rules to [CLAUDE.md](CLAUDE.md)** (from `design-critique-system.md` Part 2 "Concrete Rules to Adopt"):
-  1. One row pattern (`.row-card`), one card pattern (`.hero-card`)
-  2. One section-header pattern (`.section-header-row` / future `.page-header`)
-  3. One chip/pill pattern (`components/chips.css`)
-  4. One search field (`.field-search`)
-  5. No raw color literals in page/component CSS — use `var(--*)`
-  6. No raw font sizes — use `--font-*` scale
-  7. No raw radii — use `--radius-*` scale
-  8. No inline styles in JS (truly dynamic → CSS custom property + class)
-  9. One namespacing convention (pick BEM `block__element--modifier` and apply to new CSS)
-  10. No duplicate class declarations across files — a class is defined in exactly one file
-- [ ] **Decide BEM vs hyphen-only naming convention** (Rule 9 enforcement). Current code mixes three: BEM (`aw-pill__icon`), hyphen-only (`recent-workout-item`), and compound words (`bodyweight-card`). Decision gates all future CSS naming. Recommend BEM-ish per spec, but document the call in CLAUDE.md.
+- [x] **Pinned the 10 design-system rules to [CLAUDE.md](CLAUDE.md)** under a new "Design System Rules" section (replaces the 3 terse bullets that were in Code Style Guidelines). Organized into Pattern rules (1-4), Token rules (5-8), Structural rules (9-10) with links to the canonical component files.
+- [x] **BEM-ish naming convention adopted** (Rule 9). Decision documented in CLAUDE.md:
+  - Block: kebab-case with optional short prefix (`aw-pill`, `bp-card`, `dash-insight`); visual primitives unscoped (`.chip`, `.row-card`)
+  - Element: `block__element` (two underscores)
+  - Modifier: `block--modifier` (two hyphens)
+  - Legacy hyphen-only classes acceptable where they exist — rename when doing neighboring work
+  - Utility classes (`.text-primary`, `.btn-block`, `.hidden`) are exempt — BEM applies to components, not utilities
 - [ ] **Write [styles/components/README.md](styles/components/README.md)** — one-page reference: "When you need a list item with [icon][title/subtitle][trailing] → `.row-card`. Section hero → `.hero-card`. Search field → `.field-search`. Action in page header → `.btn-save` (transparent) or `.btn-primary` (solid pill)." First thing a new contributor reads. (Opportunity 9 from design-critique-system.md)
 - [ ] **Add a design-system audit script** (Opportunity 10 from design-critique-system.md). A Node script runnable in CI that counts:
   - Inline `style="` occurrences in JS (fail if > 30)
