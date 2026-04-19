@@ -173,6 +173,15 @@ function routeToView(view) {
             showSettings();
             break;
 
+        case 'profile':
+            // Section content is populated by openProfile() before navigateTo runs.
+            // No-op here to prevent the default fallback to dashboard.
+            break;
+
+        case 'body-measurements-entry':
+            // Section content is populated by showWeightEntryModal() before navigateTo.
+            break;
+
         default:
             console.warn(`Unknown view: ${view}`);
             showDashboard();
