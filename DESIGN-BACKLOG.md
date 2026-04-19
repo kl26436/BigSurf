@@ -58,7 +58,7 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
 
 ### Follow-ups (moved to Phase B)
 
-- [ ] **BW delta goal-setting** (deferred from Phase A #3). Add `weightGoal: 'lose' | 'gain' | 'maintain'` to `preferences/settings`, wire into onboarding as an optional question, and re-enable colored `.up` / `.down` deltas based on goal. Default stays neutral.
+- [x] **BW delta goal-setting** (deferred from Phase A #3). `weightGoal: 'lose' | 'gain' | 'maintain' | null` stored in `preferences/settings`. Off/Lose/Keep/Gain segmented control in the "Goals" section of Settings. New optional onboarding step 3 (5 total steps) with Lose/Maintain/Gain chips + explicit **Skip** button that clears the value — skipping keeps deltas color-neutral. Dashboard `getBwDeltaDirectionClass` applies `.hero-chip__delta--good` / `--bad` only when goal is set and direction matches; `maintain` and `null` stay neutral. Exported `onboardingSkipWeightGoal` via window.
 
 ---
 

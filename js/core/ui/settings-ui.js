@@ -338,7 +338,7 @@ function renderOnboardingStep() {
     if (!overlay) return;
 
     const s = AppState.settings || {};
-    const totalSteps = 4;
+    const totalSteps = 5;
 
     // Progress dots
     const dots = Array.from({ length: totalSteps }, (_, i) =>
@@ -356,6 +356,12 @@ function renderOnboardingStep() {
         { value: 'beginner', label: 'Beginner', desc: '< 1 year consistent training', icon: 'fa-seedling' },
         { value: 'intermediate', label: 'Intermediate', desc: '1–3 years training', icon: 'fa-fire' },
         { value: 'advanced', label: 'Advanced', desc: '3+ years, know your lifts', icon: 'fa-bolt' },
+    ];
+
+    const weightGoalOptions = [
+        { value: 'lose',     label: 'Lose',     desc: 'Cutting — downward is good',  icon: 'fa-arrow-trend-down' },
+        { value: 'maintain', label: 'Maintain', desc: 'Holding weight steady',       icon: 'fa-equals' },
+        { value: 'gain',     label: 'Gain',     desc: 'Bulking — upward is good',    icon: 'fa-arrow-trend-up' },
     ];
 
     function chipHTML(options, settingKey, currentValue, isNumeric) {
@@ -419,7 +425,22 @@ function renderOnboardingStep() {
             `,
         },
 
-        // Step 3: Units & Preferences
+        // Step 3: Body-weight goal direction (optional)
+        {
+            body: `
+                <div class="onb-icon-hero ic-shoulders"><i class="fas fa-weight"></i></div>
+                <div class="onb-title">Body-weight goal</div>
+                <div class="onb-desc">Pick one so we can color your weight trend correctly. Skip to stay neutral — you can set it later.</div>
+                <div class="onb-chips">${chipHTML(weightGoalOptions, 'weightGoal', s.weightGoal, false)}</div>
+            `,
+            footer: `
+                <button class="btn-ghost" onclick="onboardingBack()">Back</button>
+                <button class="btn-ghost" onclick="onboardingSkipWeightGoal()">Skip</button>
+                <button class="btn-redesign onb-btn-wide" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
+            `,
+        },
+
+        // Step 4: Units & Preferences
         {
             body: `
                 <div class="onb-icon-hero ic-blue"><i class="fas fa-sliders-h"></i></div>
@@ -469,6 +490,13 @@ export function onboardingNext() {
 export function onboardingBack() {
     if (onboardingStep > 0) onboardingStep--;
     renderOnboardingStep();
+}
+
+// Skip the body-weight goal step — explicitly clear any stored value so the
+// dashboard stays color-neutral (per Phase A rule: never assume a direction).
+export function onboardingSkipWeightGoal() {
+    updateSetting('weightGoal', null);
+    onboardingNext();
 }
 
 export function completeOnboarding() {
