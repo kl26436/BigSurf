@@ -240,6 +240,10 @@ import {
     closeEditExerciseSection,
     saveExerciseFromSection,
     deleteExerciseFromSection,
+    setExerciseBodyPart,
+    setExerciseEquipmentType,
+    adjustExerciseStepper,
+    toggleEditExerciseMore,
     openEquipmentEditor,
     closeEquipmentEditor,
     addLocationToEquipmentEditor,
@@ -626,6 +630,10 @@ window.openEditExerciseSection = openEditExerciseSection;
 window.closeEditExerciseSection = closeEditExerciseSection;
 window.saveExerciseFromSection = saveExerciseFromSection;
 window.deleteExerciseFromSection = deleteExerciseFromSection;
+window.setExerciseBodyPart = setExerciseBodyPart;
+window.setExerciseEquipmentType = setExerciseEquipmentType;
+window.adjustExerciseStepper = adjustExerciseStepper;
+window.toggleEditExerciseMore = toggleEditExerciseMore;
 window.openEquipmentEditor = openEquipmentEditor;
 window.closeEquipmentEditor = closeEquipmentEditor;
 window.addLocationToEquipmentEditor = addLocationToEquipmentEditor;

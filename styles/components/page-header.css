@@ -201,6 +201,21 @@
     cursor: pointer;
 }
 
+/* Clickable section header — used for collapsible groupings like "More details".
+   Chevron rotates 180° when .sec-head--open is present. */
+.sec-head--toggle {
+    cursor: pointer;
+    user-select: none;
+}
+.sec-head__chev {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    transition: transform var(--anim-fast);
+}
+.sec-head--open .sec-head__chev {
+    transform: rotate(180deg);
+}
+
 /* Section header inside page content */
 .sec-head {
     display: flex;

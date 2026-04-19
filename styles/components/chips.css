@@ -76,6 +76,12 @@
     color: var(--cat-arms);
 }
 
+.chip.cat-shoulders.active {
+    background: var(--cat-shoulders-bg);
+    border-color: var(--cat-shoulders-border);
+    color: var(--cat-shoulders);
+}
+
 /* Removable chip (has x button) */
 .chip .chip-remove {
     background: transparent;

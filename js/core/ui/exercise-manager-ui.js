@@ -21,6 +21,23 @@ let currentEquipmentFilter = ''; // Current equipment filter
 let exerciseGridDelegationSetup = false;
 let exerciseUsageCounts = null; // Cache: exercise name → usage count
 
+// Edit-section chip state (Phase F §1 rewrite — replaces <select> dropdowns)
+let selectedBodyPart = 'Chest';
+let selectedEquipmentType = 'Machine';
+
+const BODY_PARTS = [
+    { value: 'Chest',     chipClass: 'cat-push' },
+    { value: 'Back',      chipClass: 'cat-pull' },
+    { value: 'Legs',      chipClass: 'cat-legs' },
+    { value: 'Shoulders', chipClass: 'cat-shoulders' },
+    { value: 'Arms',      chipClass: 'cat-arms' },
+    { value: 'Core',      chipClass: 'cat-core' },
+    { value: 'Calves',    chipClass: 'cat-legs' },
+    { value: 'Abs',       chipClass: 'cat-core' },
+];
+
+const EQUIPMENT_TYPES = ['Machine', 'Cable', 'Dumbbell', 'Barbell', 'Bodyweight'];
+
 // Equipment type to icon mapping
 const equipmentIcons = {
     Barbell: 'fa-dumbbell',
@@ -481,10 +498,10 @@ export function showAddExerciseModal() {
     openEditExerciseSection(null);
 }
 
-// Open the edit exercise section (full screen)
+// Open the edit exercise section (full screen, Phase F §1 spec-aligned)
 export function openEditExerciseSection(exercise) {
     const section = document.getElementById('edit-exercise-section');
-    const title = document.getElementById('edit-exercise-title');
+    if (!section) return;
 
     // Clear any previous selection state first
     selectedEquipmentId = null;
@@ -511,50 +528,192 @@ export function openEditExerciseSection(exercise) {
     const templateModal = document.getElementById('template-editor-section');
     if (templateModal) closeModal(templateModal);
 
-    // Show/hide delete button container based on add vs edit
-    const deleteContainer = document.getElementById('delete-exercise-container');
+    // Resolve title + initial field values (null `exercise` = create mode)
+    const isEdit = !!exercise;
+    currentEditingExercise = isEdit ? exercise : null;
 
-    // Set title based on add vs edit
-    if (exercise) {
-        currentEditingExercise = exercise;
-        if (title) {
-            // Special title for template exercise editing
-            if (exercise.isTemplateExercise) {
-                title.textContent = 'Edit Workout Exercise';
-            } else {
-                title.textContent = exercise.isOverride
-                    ? 'Edit Your Version'
-                    : exercise.isDefault
-                      ? 'Customize Exercise'
-                      : 'Edit Exercise';
-            }
-        }
-        populateEditForm(exercise);
-        // Show delete button when editing (but not for template exercises)
-        if (deleteContainer) {
-            if (exercise.isTemplateExercise) {
-                deleteContainer.classList.add('hidden');
-            } else {
-                deleteContainer.classList.remove('hidden');
-            }
-        }
-    } else {
-        currentEditingExercise = null;
-        if (title) title.textContent = 'Add New Exercise';
-        clearEditForm();
-        // Hide delete button when adding new
-        if (deleteContainer) deleteContainer.classList.add('hidden');
+    let title = 'New Exercise';
+    if (isEdit) {
+        if (exercise.isTemplateExercise) title = 'Edit Workout Exercise';
+        else if (exercise.isOverride) title = 'Edit Your Version';
+        else if (exercise.isDefault) title = 'Customize Exercise';
+        else title = 'Edit Exercise';
     }
 
+    const initial = {
+        name: exercise?.name || '',
+        bodyPart: exercise?.bodyPart || 'Chest',
+        equipmentType: exercise?.equipmentType || 'Machine',
+        sets: exercise?.sets ?? 3,
+        reps: exercise?.reps ?? 10,
+        weight: exercise?.weight ?? 50,
+        notes: exercise?.notes || '',
+        video: exercise?.video || '',
+        equipmentVideo: exercise?.equipmentVideo || '',
+    };
+    selectedBodyPart = initial.bodyPart;
+    selectedEquipmentType = initial.equipmentType;
+
+    const showDelete = isEdit && !exercise.isTemplateExercise;
+
+    section.innerHTML = renderEditExerciseMarkup(title, initial, showDelete);
+
     // Show the edit section
-    if (section) section.classList.remove('hidden');
+    section.classList.remove('hidden');
+
+    // Wire name-input validity listener
+    const nameInput = document.getElementById('edit-exercise-name');
+    if (nameInput) {
+        nameInput.addEventListener('input', updateEditExerciseValidity);
+    }
+
+    // Initial save-button state
+    updateEditExerciseValidity();
 
     // Populate equipment list for THIS exercise (will pre-select if exercise has equipment)
-    const exerciseName = (exercise?.name || exercise?.machine) ? getExerciseName(exercise) : null;
+    const exerciseName = isEdit && getExerciseName(exercise) ? getExerciseName(exercise) : null;
     populateEquipmentListForSection(exerciseName, exercise?.equipment, exercise?.equipmentLocation);
 
-    // Focus on name field
-    document.getElementById('edit-exercise-name')?.focus();
+    // Focus name field for new-exercise flow
+    if (!isEdit) nameInput?.focus();
+}
+
+function renderEditExerciseMarkup(title, v, showDelete) {
+    const bpChips = BODY_PARTS.map(b => `
+                    <div class="chip ${b.chipClass}${selectedBodyPart === b.value ? ' active' : ''}"
+                         data-bp="${escapeAttr(b.value)}"
+                         onclick="setExerciseBodyPart('${escapeAttr(b.value)}')">${escapeHtml(b.value)}</div>`).join('');
+
+    const eqChips = EQUIPMENT_TYPES.map(t => `
+                    <div class="chip${selectedEquipmentType === t ? ' active' : ''}"
+                         data-eqtype="${escapeAttr(t)}"
+                         onclick="setExerciseEquipmentType('${escapeAttr(t)}')"><i class="fas ${getEquipmentIcon(t)}"></i> ${escapeHtml(t)}</div>`).join('');
+
+    return `
+        <div class="page-header">
+            <div class="page-header__left">
+                <button class="page-header__back" aria-label="Go back" onclick="closeEditExerciseSection()">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-header__title">${escapeHtml(title)}</div>
+            </div>
+            <button id="edit-ex-save-header" class="page-header__save" onclick="saveExerciseFromSection()" disabled>Save</button>
+        </div>
+
+        <div class="content-section-body edit-exercise-body">
+            <div class="field">
+                <div class="field-label">Name</div>
+                <input id="edit-exercise-name" class="field-input" type="text" required
+                       placeholder="e.g., Bench Press" value="${escapeAttr(v.name)}">
+            </div>
+
+            <div class="field">
+                <div class="field-label">Body part</div>
+                <div class="chips" id="edit-ex-bp-row">${bpChips}
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Equipment type</div>
+                <div class="chips" id="edit-ex-eqtype-row">${eqChips}
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Default sets &amp; reps</div>
+                <div class="stepper-card">
+                    <div class="stepper-row">
+                        <div class="stepper-label">Sets</div>
+                        <div class="stepper" data-field="edit-exercise-sets">
+                            <button type="button" onclick="adjustExerciseStepper('edit-exercise-sets', -1, 1, 10)">−</button>
+                            <input id="edit-exercise-sets" type="number" inputmode="numeric" min="1" max="10" value="${v.sets}">
+                            <button type="button" onclick="adjustExerciseStepper('edit-exercise-sets', 1, 1, 10)">+</button>
+                        </div>
+                    </div>
+                    <div class="stepper-row">
+                        <div class="stepper-label">Reps</div>
+                        <div class="stepper" data-field="edit-exercise-reps">
+                            <button type="button" onclick="adjustExerciseStepper('edit-exercise-reps', -1, 1, 50)">−</button>
+                            <input id="edit-exercise-reps" type="number" inputmode="numeric" min="1" max="50" value="${v.reps}">
+                            <button type="button" onclick="adjustExerciseStepper('edit-exercise-reps', 1, 1, 50)">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Starting weight <span class="field-label__hint">(lbs)</span></div>
+                <input id="edit-exercise-weight" class="field-input" type="number"
+                       inputmode="decimal" min="0" max="1000" value="${v.weight}">
+            </div>
+
+            <div class="sec-head sec-head--toggle" onclick="toggleEditExerciseMore()" id="edit-ex-more-head">
+                <h3>More details</h3>
+                <i class="fas fa-chevron-down sec-head__chev"></i>
+            </div>
+            <div class="edit-ex-more hidden" id="edit-ex-more">
+                <div class="field">
+                    <div class="field-label">Notes</div>
+                    <textarea id="edit-exercise-notes" class="field-input"
+                              placeholder="Form cues, range of motion, etc.">${escapeHtml(v.notes)}</textarea>
+                </div>
+                <div class="field">
+                    <div class="field-label">Form video URL <span class="field-label__hint">(optional)</span></div>
+                    <input id="edit-exercise-video" class="field-input" type="url"
+                           placeholder="https://youtube.com/watch?v=..." value="${escapeAttr(v.video)}">
+                </div>
+            </div>
+
+            <div class="sec-head"><h3>Your equipment <span class="count">(optional)</span></h3></div>
+            <div class="field-helper">Equipment you use for this specific exercise.</div>
+
+            <div id="edit-selected-equipment" class="edit-selected-equipment hidden">
+                <i class="fas fa-check-circle"></i>
+                <span id="edit-selected-equipment-text"></span>
+                <button type="button" class="btn-clear" onclick="clearSelectedEquipment()" aria-label="Clear selection">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <h4 class="edit-subsection-title">Saved for this exercise</h4>
+            <div id="edit-equipment-list" class="edit-equipment-list">
+                <div class="edit-equipment-empty">No equipment saved for this exercise</div>
+            </div>
+
+            <h4 class="edit-subsection-title">Add new equipment</h4>
+            <div class="edit-equipment-form">
+                <div class="field">
+                    <input id="edit-equipment-name" class="field-input" type="text"
+                           placeholder="Equipment name (e.g., Life Fitness Chest Press)">
+                </div>
+                <div class="field">
+                    <input id="edit-equipment-location" class="field-input" type="text"
+                           placeholder="Location/Gym (e.g., LA Fitness Downtown)"
+                           list="edit-equipment-location-list">
+                    <datalist id="edit-equipment-location-list"></datalist>
+                </div>
+                <div class="field">
+                    <input id="edit-equipment-video" class="field-input" type="url"
+                           placeholder="Video URL (optional)">
+                </div>
+                <button type="button" class="btn-add-equipment" onclick="addEquipmentToList()">
+                    <i class="fas fa-plus"></i> Add Equipment
+                </button>
+            </div>
+
+            <div id="delete-exercise-container" class="danger-action-row ${showDelete ? '' : 'hidden'}">
+                <button type="button" class="danger-action-btn" onclick="deleteExerciseFromSection()">
+                    <i class="fas fa-trash"></i> Delete exercise
+                </button>
+            </div>
+        </div>
+
+        <div class="page-footer">
+            <button type="button" id="edit-ex-save-footer" class="btn-primary" onclick="saveExerciseFromSection()" disabled>
+                <i class="fas fa-check"></i> Save Exercise
+            </button>
+        </div>
+    `;
 }
 
 // Close the edit exercise section
@@ -598,30 +757,54 @@ export function closeEditExerciseSection() {
     selectedEquipmentData = null;
 }
 
-// Populate the edit form with exercise data
-function populateEditForm(exercise) {
-    document.getElementById('edit-exercise-name').value = exercise.name || '';
-    document.getElementById('edit-exercise-body-part').value = exercise.bodyPart || 'Chest';
-    document.getElementById('edit-exercise-equipment-type').value = exercise.equipmentType || 'Machine';
-    document.getElementById('edit-exercise-sets').value = exercise.sets || 3;
-    document.getElementById('edit-exercise-reps').value = exercise.reps || 10;
-    document.getElementById('edit-exercise-weight').value = exercise.weight || 50;
-    document.getElementById('edit-exercise-video').value = exercise.video || '';
-    document.getElementById('edit-equipment-video').value = exercise.equipmentVideo || '';
+// --- Create/Edit Exercise form interactions (Phase F §1) -------------------
+
+export function setExerciseBodyPart(value) {
+    selectedBodyPart = value;
+    const row = document.getElementById('edit-ex-bp-row');
+    if (!row) return;
+    row.querySelectorAll('.chip').forEach((chip) => {
+        chip.classList.toggle('active', chip.dataset.bp === value);
+    });
+    updateEditExerciseValidity();
 }
 
-// Clear the edit form
-function clearEditForm() {
-    document.getElementById('edit-exercise-name').value = '';
-    document.getElementById('edit-exercise-body-part').value = 'Chest';
-    document.getElementById('edit-exercise-equipment-type').value = 'Machine';
-    document.getElementById('edit-exercise-sets').value = 3;
-    document.getElementById('edit-exercise-reps').value = 10;
-    document.getElementById('edit-exercise-weight').value = 50;
-    document.getElementById('edit-exercise-video').value = '';
-    document.getElementById('edit-equipment-name').value = '';
-    document.getElementById('edit-equipment-location').value = '';
-    document.getElementById('edit-equipment-video').value = '';
+export function setExerciseEquipmentType(value) {
+    selectedEquipmentType = value;
+    const row = document.getElementById('edit-ex-eqtype-row');
+    if (!row) return;
+    row.querySelectorAll('.chip').forEach((chip) => {
+        chip.classList.toggle('active', chip.dataset.eqtype === value);
+    });
+    updateEditExerciseValidity();
+}
+
+export function adjustExerciseStepper(inputId, delta, min, max) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const current = parseInt(input.value, 10);
+    const base = Number.isNaN(current) ? min : current;
+    const next = Math.max(min, Math.min(max, base + delta));
+    input.value = String(next);
+    input.dispatchEvent(new Event('change'));
+}
+
+export function toggleEditExerciseMore() {
+    const body = document.getElementById('edit-ex-more');
+    const head = document.getElementById('edit-ex-more-head');
+    if (!body || !head) return;
+    const isOpen = !body.classList.contains('hidden');
+    body.classList.toggle('hidden');
+    head.classList.toggle('sec-head--open', !isOpen);
+}
+
+function updateEditExerciseValidity() {
+    const name = document.getElementById('edit-exercise-name')?.value.trim() || '';
+    const valid = name.length > 0 && !!selectedBodyPart && !!selectedEquipmentType;
+    const header = document.getElementById('edit-ex-save-header');
+    const footer = document.getElementById('edit-ex-save-footer');
+    if (header) header.disabled = !valid;
+    if (footer) footer.disabled = !valid;
 }
 
 // Populate location datalist with all saved gym locations
@@ -1143,11 +1326,12 @@ export async function saveExerciseFromSection() {
 
     const formData = {
         name: document.getElementById('edit-exercise-name')?.value.trim() || '',
-        bodyPart: document.getElementById('edit-exercise-body-part')?.value || 'Chest',
-        equipmentType: document.getElementById('edit-exercise-equipment-type')?.value || 'Machine',
+        bodyPart: selectedBodyPart || 'Chest',
+        equipmentType: selectedEquipmentType || 'Machine',
         sets: parseInt(document.getElementById('edit-exercise-sets')?.value) || 3,
         reps: parseInt(document.getElementById('edit-exercise-reps')?.value) || 10,
         weight: parseInt(document.getElementById('edit-exercise-weight')?.value) || 50,
+        notes: document.getElementById('edit-exercise-notes')?.value.trim() || '',
         video: document.getElementById('edit-exercise-video')?.value.trim() || '',
         equipment: equipmentName || null,
         equipmentLocation: locationName || null,
