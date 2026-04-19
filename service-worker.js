@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v7.2-profile-height';
+const CACHE_NAME = 'big-surf-v7.3-onboarding-resume';
 const STATIC_ASSETS = [
   '/index.html',
   '/styles/index.css',

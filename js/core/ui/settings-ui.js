@@ -197,6 +197,14 @@ export function renderSettings() {
                         { value: 'gain', label: 'Gain' },
                     ], s.weightGoal || '', 'string')}
                 </div>
+                <div class="srow srow--clickable" onclick="restartOnboarding()">
+                    <div class="srow-icon ic-muted"><i class="fas fa-flag-checkered"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Re-run onboarding</div>
+                        <div class="srow-desc">Revisit the setup questions to update your answers</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
             </div>
 
             <!-- Training -->
@@ -324,7 +332,11 @@ export async function checkOnboarding() {
 }
 
 function showOnboarding() {
-    onboardingStep = 0;
+    // Resume from the step the user last saw. Clamped to valid range so a stale
+    // persisted value (e.g. after adding/removing a step) can't out-of-bounds.
+    const totalSteps = 5;
+    const saved = AppState.settings?.onboardingStep;
+    onboardingStep = (typeof saved === 'number' && saved >= 0 && saved < totalSteps) ? saved : 0;
 
     const overlay = document.createElement('div');
     overlay.id = 'onboarding-overlay';
@@ -390,7 +402,7 @@ function renderOnboardingStep() {
         {
             body: `
                 <div class="onb-welcome-body">
-                    <img class="onb-welcome-logo" src="BigSurfNoBG.png" alt="Big Surf" onerror="this.style.display='none'">
+                    <img class="onb-welcome-logo" src="BigSurfNoBG.png" alt="Big Surf" onerror="this.classList.add('hidden')">
                     <div class="onb-title">Welcome to<br>Big Surf</div>
                     <div class="onb-desc">Track your lifts, hit PRs, see trends. Let's set up your profile in under a minute.</div>
                 </div>
@@ -485,11 +497,13 @@ function renderOnboardingStep() {
 
 export function onboardingNext() {
     onboardingStep++;
+    updateSetting('onboardingStep', onboardingStep);
     renderOnboardingStep();
 }
 
 export function onboardingBack() {
     if (onboardingStep > 0) onboardingStep--;
+    updateSetting('onboardingStep', onboardingStep);
     renderOnboardingStep();
 }
 
@@ -502,9 +516,28 @@ export function onboardingSkipWeightGoal() {
 
 export function completeOnboarding() {
     updateSetting('hasCompletedOnboarding', true);
+    // Clear the resume-step marker so any future re-run starts from step 0.
+    updateSetting('onboardingStep', 0);
 
     const overlay = document.getElementById('onboarding-overlay');
     if (overlay) overlay.remove();
+}
+
+/**
+ * Re-run onboarding from Settings (Phase F §6 follow-up C).
+ * Does NOT clear existing preference values — re-running lets the user
+ * update their answers. Existing selections appear pre-selected in each chip.
+ */
+export function restartOnboarding() {
+    updateSetting('hasCompletedOnboarding', false);
+    updateSetting('onboardingStep', 0);
+    onboardingStep = 0;
+
+    // Remove any stale overlay left over from a prior session.
+    const existing = document.getElementById('onboarding-overlay');
+    if (existing) existing.remove();
+
+    showOnboarding();
 }
 
 // ===================================================================
