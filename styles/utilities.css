@@ -31,6 +31,16 @@
 .pr-badge-animate {
     animation: prPop 0.5s ease;
 }
+/* Pulsing trophy icon used in set rows when a PR just happened */
+.pr-trophy-inline {
+    margin-left: 0.5rem;
+    animation: pulse 1s infinite;
+}
+/* Trailing date stamp in "last workout" hint rows */
+.last-workout-date {
+    color: var(--text-secondary);
+    margin-left: 0.5rem;
+}
 @keyframes prPop {
     0% {
         transform: scale(0);

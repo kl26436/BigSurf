@@ -1582,7 +1582,7 @@ async function toggleInlineProgress(exerciseName, equipment, exerciseIndex, btn)
             html += `
                 <div class="inline-progress-bar-col">
                     <div class="inline-progress-bar-label">${displayWt}</div>
-                    <div class="inline-progress-bar" style="height: ${barHeight}%"></div>
+                    <div class="inline-progress-bar" style="--bar-height: ${barHeight}%"></div>
                     <div class="inline-progress-bar-date">${dateLabel}</div>
                 </div>`;
         }
@@ -1594,11 +1594,11 @@ async function toggleInlineProgress(exerciseName, equipment, exerciseIndex, btn)
         const weightDiff = latest.bestWeight - first.bestWeight;
         const displayDiff = unit === 'kg' ? Math.round(weightDiff * 0.453592 * 2) / 2 : weightDiff;
         const trendIcon = weightDiff > 0 ? 'fa-arrow-up' : weightDiff < 0 ? 'fa-arrow-down' : 'fa-minus';
-        const trendColor = weightDiff > 0 ? 'var(--success)' : weightDiff < 0 ? 'var(--danger)' : 'var(--text-muted)';
+        const trendModifier = weightDiff > 0 ? 'up' : weightDiff < 0 ? 'down' : 'flat';
 
         html += `<div class="inline-progress-summary">
             <span>${sessions.length} sessions total</span>
-            <span style="color: ${trendColor}"><i class="fas ${trendIcon}"></i> ${displayDiff > 0 ? '+' : ''}${displayDiff} ${unit}</span>
+            <span class="inline-progress-summary__trend--${trendModifier}"><i class="fas ${trendIcon}"></i> ${displayDiff > 0 ? '+' : ''}${displayDiff} ${unit}</span>
         </div>`;
         html += '</div>';
 
@@ -1657,7 +1657,7 @@ async function checkSetForPR(exerciseIndex, setIndex) {
                 const prBadge = document.createElement('span');
                 prBadge.className = 'pr-badge';
                 prBadge.innerHTML =
-                    ' <i class="fas fa-trophy text-badge-gold" style="margin-left: 0.5rem; animation: pulse 1s infinite;"></i>';
+                    ' <i class="fas fa-trophy text-badge-gold pr-trophy-inline"></i>';
                 prBadge.title = `New ${prCheck.prType
                     .replace('max', '')
                     .replace(/([A-Z])/g, ' $1')
@@ -2772,7 +2772,7 @@ export async function loadLastWorkoutHint(exerciseName, exerciseIndex) {
             hintDiv.innerHTML = `
                 <i class="fas fa-history"></i>
                 <strong>Last:</strong> ${lastWorkoutData.sets.length} sets \u00D7 ${avgReps} reps \u00D7 ${avgWeight} lbs
-                <span style="color: var(--text-secondary); margin-left: 0.5rem;">(${new Date(lastWorkoutData.date).toLocaleDateString()})</span>
+                <span class="last-workout-date">(${new Date(lastWorkoutData.date).toLocaleDateString()})</span>
             `;
         } else {
             hintDiv.innerHTML = `<i class="fas fa-info-circle"></i> No previous workout found for this exercise`;

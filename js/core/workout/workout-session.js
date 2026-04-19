@@ -401,7 +401,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
     if (newPRs && newPRs.length > 0) {
         prsHtml = `
             <div class="completion-prs">
-                <h3><i class="fas fa-trophy" style="color: var(--badge-gold);"></i> New Personal Records!</h3>
+                <h3><i class="fas fa-trophy completion-prs__trophy"></i> New Personal Records!</h3>
                 ${newPRs.map(pr => `
                     <div class="completion-pr-item">
                         <strong>${escapeHtml(pr.exercise)}</strong>: ${pr.weight} ${pr.unit} &times; ${pr.reps}
@@ -414,7 +414,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
     content.innerHTML = `
         <div class="completion-summary">
             <div class="completion-header">
-                <i class="fas fa-check-circle" style="color: var(--success); font-size: 2.5rem;"></i>
+                <i class="fas fa-check-circle completion-header__icon"></i>
                 <h2>Workout Complete!</h2>
                 <p class="completion-workout-name">${escapeHtml(workoutData.workoutType || 'Workout')}</p>
             </div>
@@ -511,7 +511,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
             });
 
             const banner = document.getElementById('template-changes-banner');
-            if (banner) banner.innerHTML = '<i class="fas fa-check" style="color: var(--success);"></i> Template updated!';
+            if (banner) banner.innerHTML = '<i class="fas fa-check completion-template-saved"></i> Template updated!';
             showNotification('Template updated', 'success');
         } catch (err) {
             console.error('Error updating template:', err);
@@ -804,7 +804,7 @@ export function showMidWorkoutSummary() {
     content.innerHTML = `
         <div class="completion-summary">
             <div class="completion-header">
-                <i class="fas fa-chart-bar" style="color: var(--primary); font-size: 2.5rem;"></i>
+                <i class="fas fa-chart-bar completion-hero__chart"></i>
                 <h2>Session So Far</h2>
                 <p class="completion-workout-name">${escapeHtml(AppState.currentWorkout.workoutType || 'Workout')}</p>
             </div>

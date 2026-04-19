@@ -1684,7 +1684,7 @@ export async function showReassignEquipment() {
 function showSourceExercisePicker(exerciseTypes) {
     return new Promise((resolve) => {
         const choices = exerciseTypes.map(name =>
-            `<button class="btn btn-secondary btn-full" style="margin-bottom: 8px;" data-exercise="${escapeAttr(name)}">${escapeHtml(name)}</button>`
+            `<button class="btn btn-secondary btn-full reassign-source-btn" data-exercise="${escapeAttr(name)}">${escapeHtml(name)}</button>`
         ).join('');
 
         const modal = document.getElementById('reassign-equipment-modal');
@@ -1732,7 +1732,7 @@ export async function confirmReassignmentTarget() {
     if (!content || !headerEl) return;
 
     // Show loading
-    content.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Scanning workouts...</div>`;
+    content.innerHTML = `<div class="reassign-loading"><i class="fas fa-spinner fa-spin"></i> Scanning workouts...</div>`;
 
     // Count impact
     const impact = await countReassignmentImpact(reassignmentState.equipmentName, reassignmentState.oldExerciseName);
@@ -1741,13 +1741,13 @@ export async function confirmReassignmentTarget() {
 
     // Show confirmation preview
     headerEl.innerHTML = `
-        <h3 style="margin: 0 0 12px;">Confirm Reassignment</h3>
+        <h3 class="reassign-preview__title">Confirm Reassignment</h3>
         <div class="reassign-preview">
             <div class="reassign-from">
                 <span class="text-muted">From:</span>
                 <strong>${escapeHtml(reassignmentState.oldExerciseName)}</strong>
             </div>
-            <i class="fas fa-arrow-right" style="color: var(--primary); margin: 0 8px;"></i>
+            <i class="fas fa-arrow-right reassign-preview__arrow"></i>
             <div class="reassign-to">
                 <span class="text-muted">To:</span>
                 <strong>${escapeHtml(reassignmentState.newExerciseName)}</strong>
@@ -1762,12 +1762,12 @@ export async function confirmReassignmentTarget() {
                 This will update <strong>${impact.workouts}</strong> workout${impact.workouts !== 1 ? 's' : ''}
                 and <strong>${impact.templates}</strong> template${impact.templates !== 1 ? 's' : ''}.
             </p>
-            <p class="text-muted" style="font-size: 0.8rem; margin-top: 8px;">
+            <p class="text-muted reassign-impact__hint">
                 The equipment record "${escapeHtml(reassignmentState.equipmentName)}" will be moved to "${escapeHtml(reassignmentState.newExerciseName)}".
             </p>
         </div>
         <div id="reassign-progress" class="reassign-progress hidden">
-            <div class="reassign-progress-bar" style="width: 0%"></div>
+            <div class="reassign-progress-bar"></div>
             <span class="reassign-progress-text">Updating...</span>
         </div>
         <div class="reassign-confirm-actions">
@@ -1803,7 +1803,7 @@ export async function commitReassignment() {
             newExerciseName,
             (done, total) => {
                 const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                if (progressBar) progressBar.style.width = `${pct}%`;
+                if (progressBar) progressBar.style.setProperty('--progress', `${pct}%`);
                 if (progressText) progressText.textContent = `Updating ${done} of ${total} workouts...`;
             }
         );

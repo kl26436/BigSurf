@@ -191,6 +191,7 @@
     height: 100%;
     background: var(--bg-app);
     transition: width 1s linear;
+    width: var(--rest-pct, 100%);
 }
 .aw-rest-timer.flash {
     animation: aw-timer-flash 0.3s ease-out;
@@ -567,7 +568,7 @@
 .aw-sheet__title {
     font-size: var(--font-lg);
     font-weight: 800;
-    color: var(--text-strong);
+    color: var(--title-color, var(--text-strong));
 }
 .aw-sheet__subtitle {
     font-size: var(--font-xs);
@@ -719,6 +720,16 @@
     font-size: var(--font-2xs);
     color: var(--text-muted);
 }
+/* Tiny location pin icon inline in meta row */
+.js-row__meta-pin { font-size: var(--font-3xs, 0.5rem); }
+
+/* Inline "No matches / No exercises found" placeholders inside sheets */
+.aw-sheet__empty {
+    padding: var(--space-16);
+    text-align: center;
+    color: var(--text-muted);
+}
+.aw-sheet__empty--large { padding: var(--space-20); }
 .js-row__superset {
     display: inline-block;
     padding: 1px 5px;

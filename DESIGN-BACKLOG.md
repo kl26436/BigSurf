@@ -189,6 +189,20 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
   - `.page-header__save` disabled state uses `--bg-card-hi` + `--text-muted` (not opacity) ✓
   - Destructive actions use `.danger-action-*` pattern with confirmation ✓
 
+- [x] **§13 Long-tail follow-up wave 3 (Apr 2026)** — inline-style sweep continued deep into leaf files:
+  - `data-manager.js`: 11 → **0**. Added `.exercise-history-content__*` family (match/pr/pr-icon/pr-label/last/sets/set-chip/notes) + `.exercise-history-placeholder` / `--error` in [components/modals.css](styles/components/modals.css).
+  - `workout-session.js`: 4 → **0**. New `.completion-prs__trophy`, `.completion-header__icon`, `.completion-hero__chart`, `.completion-template-saved` in [components/completion-summary.css](styles/components/completion-summary.css).
+  - `exercise-manager-ui.js`: 6 → **0**. `.reassign-source-btn`, `.reassign-preview__title`, `.reassign-preview__arrow`, `.reassign-impact__hint`, `.reassign-loading`. Progress bar now uses `--progress` CSS var (also updated `commitReassignment` callback to use `setProperty('--progress', ...)`).
+  - `exercise-ui.js`: 4 → **1** (only `--bar-height` CSS var for dynamic bar chart). New `.inline-progress*` block in [components/charts.css](styles/components/charts.css) covering title/chart/bar-col/label/bar/date/summary + `--up/--down/--flat` trend modifiers. Plus `.pr-trophy-inline` and `.last-workout-date` utilities in [utilities.css](styles/utilities.css).
+  - `active-workout-ui.js`: 6 → **2** (CSS vars for `--rest-pct` and `--title-color`). Rest-timer fill reads `--rest-pct`; used existing `.js-row__icon--equip`; added `.js-row__meta-pin`, `.aw-sheet__empty` / `--large`.
+  - `equipment-library-ui.js`: already at 0 (prior wave).
+  - `plate-calculator.js`: 3 → **1** (CSS vars `--plate-h`/`--plate-color` for per-plate sizing). Moved `width:50px` + `width:70px` into CSS. Replaced literal `rgba(29, 211, 176, 0.1)` with `var(--primary-bg)`.
+  - `main.js`: 2 → **0** — Withings status icons use `.text-success` / `.text-primary` utilities.
+  - `template-selection.js`: 2 → **2** (CSS vars for per-category `--pill-color` and `--dot-color`).
+  - `dexa-scan-ui.js`: 2 → **2** (CSS vars — regional bars and VAT status color). Added `.vat-status--good/warn/bad` modifier classes (still used for typography; `<path>` stroke remains dynamic inline).
+  - Audit budgets ratcheted: `inlineStylesInJs 55→20`, `rawRgbaInPages 12→10`.
+  - **Tests**: 354/354 pass.
+
 - [x] **§12 Long-tail follow-up wave 2 (Apr 2026)** — inline-style sweep continued:
   - `workout-history.js`: 16 → **1** (only CSS custom property `--progress` on progress bar fill). New `.wh-detail-manual-notes`, `.wh-detail-actions`, `.wh-detail-meta`, `.wh-detail-meta__grid`, `.wh-detail-status--{completed,cancelled,partial}`, `.wh-detail-duration`, `.wh-detail-progress-bar`, `.wh-detail-exercises`, `.wh-detail-limited` in [history.css](styles/pages/history.css).
   - `dashboard-ui.js`: 13 → **1** (per-segment dot color). New `.hero-chip__icon--warm/--primary/--shoulders`, `.dash-skel--hero/--strip/--row`, `.dash-section-head__meta`, `.dash-section-head--tight`, `.bp-cell__icon--gold`, `.bc-card--composition`, `.bw-card-head__icon--primary` in [dashboard-v2.css](styles/pages/dashboard-v2.css).

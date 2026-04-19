@@ -913,8 +913,8 @@ function updateWithingsUI(connected, lastSync) {
     }
     if (statusIcon) {
         statusIcon.innerHTML = connected
-            ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>'
-            : '<i class="fas fa-link" style="color: var(--primary);"></i>';
+            ? '<i class="fas fa-check-circle text-success"></i>'
+            : '<i class="fas fa-link text-primary"></i>';
     }
 }
 

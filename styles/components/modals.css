@@ -60,6 +60,66 @@
     background: var(--bg-card);
     border-radius: var(--radius-sm);
 }
+/* Inner card rendered when history is loaded */
+.exercise-history-content {
+    background: var(--bg-secondary);
+    padding: var(--space-8) var(--space-12);
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-8);
+}
+.exercise-history-content__match {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+.exercise-history-content__pr {
+    margin-bottom: var(--space-6);
+    padding: var(--space-4) var(--space-8);
+    background: var(--primary-bg);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-xs);
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+.exercise-history-content__pr-icon {
+    color: var(--primary);
+    font-size: var(--font-base);
+}
+.exercise-history-content__pr-label {
+    color: var(--primary);
+    font-weight: 600;
+}
+.exercise-history-content__last {
+    margin-bottom: var(--space-4);
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+.exercise-history-content__sets {
+    display: flex;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+}
+.exercise-history-content__set-chip {
+    background: var(--bg-secondary);
+    padding: var(--space-4) var(--space-8);
+    border-radius: var(--radius-xs);
+    font-size: var(--font-sm);
+}
+.exercise-history-content__notes {
+    margin-top: var(--space-8);
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+/* Empty / error placeholder card */
+.exercise-history-placeholder {
+    background: var(--bg-secondary);
+    padding: var(--space-16);
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-16);
+    text-align: center;
+    color: var(--text-secondary);
+}
+.exercise-history-placeholder--error { color: var(--danger); }
 
 /* Exercise Unit Toggle in Modal — consolidated from nav.css */
 .exercise-unit-toggle {
@@ -483,7 +543,28 @@ dialog.modal:not([open]) {
     background: var(--primary);
     border-radius: var(--radius-xs);
     transition: width 0.3s ease;
+    width: var(--progress, 0%);
 }
+/* Preview header + icons + copy */
+.reassign-preview__arrow {
+    color: var(--primary);
+    margin: 0 var(--space-8);
+}
+.reassign-preview__title {
+    margin: 0 0 var(--space-12);
+}
+.reassign-impact__hint {
+    font-size: var(--font-sm);
+    margin-top: var(--space-8);
+}
+/* Loading state while scanning */
+.reassign-loading {
+    text-align: center;
+    padding: var(--space-24);
+    color: var(--text-muted);
+}
+/* Source-exercise picker buttons stack vertically with gap */
+.reassign-source-btn { margin-bottom: var(--space-8); }
 .reassign-progress-text {
     display: block;
     text-align: center;

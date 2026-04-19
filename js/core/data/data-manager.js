@@ -592,29 +592,29 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
                 const parts = [];
                 if (histEquipment) parts.push(escapeHtml(histEquipment));
                 if (histLocation) parts.push(escapeHtml(histLocation));
-                matchInfo = ` <span style="font-size: 0.8rem; color: var(--text-muted);">@ ${parts.join(' - ')}</span>`;
+                matchInfo = ` <span class="exercise-history-content__match">@ ${parts.join(' - ')}</span>`;
             }
 
             let historyHTML = `
-                <div class="exercise-history-content" style="background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 8px; margin-top: 0.5rem;">`;
+                <div class="exercise-history-content">`;
 
             // Show PR if available (only max weight with 5+ reps counts as a real PR)
             if (prs && prs.maxWeight && prs.maxWeight.reps >= 5) {
                 const prStoredUnit = prs.maxWeight.unit || 'lbs';
                 const prDisplayWeight = convertWeight(prs.maxWeight.weight, prStoredUnit, unit);
                 historyHTML += `
-                    <div style="margin-bottom: 0.4rem; padding: 0.3rem 0.5rem; background: rgba(64, 224, 208, 0.1); border-left: 3px solid var(--primary); border-radius: 4px; display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fas fa-trophy" style="color: var(--primary); font-size: 0.9rem;"></i>
-                        <span style="color: var(--primary); font-weight: 600;">PR:</span>
+                    <div class="exercise-history-content__pr">
+                        <i class="fas fa-trophy exercise-history-content__pr-icon"></i>
+                        <span class="exercise-history-content__pr-label">PR:</span>
                         <span>${prDisplayWeight} ${unit} × ${prs.maxWeight.reps}</span>
                     </div>`;
             }
 
             historyHTML += `
-                    <div style="margin-bottom: 0.3rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    <div class="exercise-history-content__last">
                         <strong>Last (${displayDate}):</strong>${matchInfo}
                     </div>
-                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <div class="exercise-history-content__sets">
             `;
 
             lastExerciseData.sets.forEach((set, index) => {
@@ -641,7 +641,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
                     }
 
                     historyHTML += `
-                        <div style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">
+                        <div class="exercise-history-content__set-chip">
                             Set ${index + 1}: ${set.reps} × ${displayWeight} ${unit}
                         </div>
                     `;
@@ -649,7 +649,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             });
 
             if (lastExerciseData.notes) {
-                historyHTML += `</div><div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);"><strong>Notes:</strong> ${escapeHtml(lastExerciseData.notes)}</div>`;
+                historyHTML += `</div><div class="exercise-history-content__notes"><strong>Notes:</strong> ${escapeHtml(lastExerciseData.notes)}</div>`;
             } else {
                 historyHTML += `</div>`;
             }
@@ -660,7 +660,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             historyDisplay.classList.remove('hidden');
         } else {
             historyDisplay.innerHTML = `
-                <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-top: 1rem; text-align: center; color: var(--text-secondary);">
+                <div class="exercise-history-placeholder">
                     No previous data found for this exercise
                 </div>
             `;
@@ -669,7 +669,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
     } catch (error) {
         console.error('Error loading exercise history:', error);
         historyDisplay.innerHTML = `
-            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-top: 1rem; text-align: center; color: var(--danger);">
+            <div class="exercise-history-placeholder exercise-history-placeholder--error">
                 Error loading exercise history
             </div>
         `;

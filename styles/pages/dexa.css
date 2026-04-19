@@ -649,6 +649,10 @@
     font-weight: 600;
     margin-top: var(--space-4);
 }
+/* Severity tint — mirrors existing .comp-vat--* pattern */
+.vat-status--good { color: var(--success); }
+.vat-status--warn { color: var(--warning); }
+.vat-status--bad  { color: var(--danger); }
 
 .vat-sparkline {
     flex-shrink: 0;

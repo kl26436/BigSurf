@@ -783,7 +783,7 @@ export async function showDexaDetail(scanId) {
                         <div class="regional-bar-row">
                             <div class="regional-bar-label">${r.label}</div>
                             <div class="regional-bar-track">
-                                <div class="regional-bar-fill" style="width:${r.pct}%;background:${r.color};"></div>
+                                <div class="regional-bar-fill" style="--bar-width:${r.pct}%;--bar-color:${r.color};"></div>
                             </div>
                             <div class="regional-bar-value">${r.value.toFixed(1)} ${unit}</div>
                         </div>
@@ -816,6 +816,7 @@ export async function showDexaDetail(scanId) {
     if (scan.vat != null) {
         const vatLevel = scan.vat < 1.5 ? 'Low' : scan.vat < 3 ? 'Moderate' : 'High';
         const vatStatus = scan.vat < 1.5 ? 'healthy range' : scan.vat < 3 ? 'monitor' : 'elevated';
+        const vatModifier = scan.vat < 1.5 ? 'good' : scan.vat < 3 ? 'warn' : 'bad';
         const vatColor = scan.vat < 1.5 ? 'var(--success)' : scan.vat < 3 ? 'var(--warning)' : 'var(--danger)';
 
         vatHTML = `
@@ -824,7 +825,7 @@ export async function showDexaDetail(scanId) {
                 <div class="vat-row">
                     <div class="vat-info">
                         <div class="stat-val vat-val">${scan.vat}<span class="stat-unit">${unit}</span></div>
-                        <div class="vat-status" style="color:${vatColor};">${vatLevel} \u00B7 ${vatStatus}</div>
+                        <div class="vat-status vat-status--${vatModifier}">${vatLevel} \u00B7 ${vatStatus}</div>
                     </div>
                     <svg class="vat-sparkline" width="80" height="40" viewBox="0 0 80 40">
                         <path d="M0,30 L15,28 L30,24 L45,20 L60,14 L80,8" fill="none" stroke="${vatColor}" stroke-width="2" stroke-linecap="round"/>

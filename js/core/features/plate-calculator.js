@@ -138,8 +138,7 @@ function getBarOptions(isKg, selectedBar) {
         <div class="plate-calc-bar-custom">
             <input type="number" id="plate-calc-bar-custom" class="form-input"
                    inputmode="decimal" placeholder="Custom"
-                   value="${isCustom ? selectedBar : ''}"
-                   style="width: 70px; text-align: center;">
+                   value="${isCustom ? selectedBar : ''}">
             <span>${unit}</span>
         </div>`;
 }
@@ -281,7 +280,7 @@ function plateEl(weight, maxPlate) {
     const maxH = 60;
     const height = minH + ((weight / maxPlate) * (maxH - minH));
     const color = PLATE_COLORS[weight] || 'var(--text-muted)';
-    return `<div class="barbell-plate" style="height:${height}px;background:${color};" title="${weight}"><span>${weight}</span></div>`;
+    return `<div class="barbell-plate" style="--plate-h:${height}px;--plate-color:${color};" title="${weight}"><span>${weight}</span></div>`;
 }
 
 // ===================================================================
@@ -368,7 +367,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
             <div class="popover-bar-row">
                 <span class="popover-bar-label">Bar:</span>
                 ${barPresets.map(v => `<button class="popover-bar-btn ${v === barWeight ? 'active' : ''}" data-bar="${v}">${v}</button>`).join('')}
-                <input type="number" id="popover-bar-custom" class="popover-bar-input" inputmode="decimal" placeholder="Other" style="width:50px;">
+                <input type="number" id="popover-bar-custom" class="popover-bar-input" inputmode="decimal" placeholder="Other">
             </div>
             <div id="popover-plate-result">
                 ${result && !result.error ? `

@@ -501,9 +501,9 @@
     transform: scale(0.95);
 }
 .category-pill.active {
-    background: var(--primary);
+    background: var(--pill-color, var(--primary));
     color: var(--bg-app);
-    border-color: var(--primary);
+    border-color: var(--pill-color, var(--primary));
     font-weight: 600;
 }
 .category-pill i {
@@ -545,6 +545,7 @@
     height: 10px;
     border-radius: 50%;
     flex-shrink: 0;
+    background: var(--dot-color, var(--text-muted));
 }
 
 /* Expand/collapse chevron */

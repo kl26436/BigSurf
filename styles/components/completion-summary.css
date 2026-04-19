@@ -111,3 +111,8 @@
     gap: var(--space-8);
     align-items: center;
 }
+/* Icon tints used in completion header / PR heading / template-saved banner */
+.completion-prs__trophy     { color: var(--badge-gold); }
+.completion-header__icon    { color: var(--success); font-size: var(--font-3xl); }
+.completion-hero__chart     { color: var(--primary); font-size: var(--font-3xl); }
+.completion-template-saved  { color: var(--success); }

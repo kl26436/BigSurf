@@ -49,7 +49,7 @@
     gap: var(--space-4);
 }
 .plate-calc-bar-custom input {
-    width: 64px; /* bar weight input constraint */
+    width: 70px; /* bar weight input constraint */
     padding: var(--space-8);
     min-height: var(--tap);
     background: var(--bg-card);
@@ -226,6 +226,9 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    /* Dynamic per-plate sizing/color set via CSS custom properties */
+    height: var(--plate-h, 32px);
+    background: var(--plate-color, var(--text-muted));
 }
 .barbell-plate span {
     font-size: 8px; /* plate label micro-text */
@@ -311,9 +314,10 @@
 .popover-bar-btn.active {
     border-color: var(--primary);
     color: var(--primary);
-    background: rgba(29, 211, 176, 0.1);
+    background: var(--primary-bg);
 }
 .popover-bar-input {
+    width: 50px;
     padding: var(--space-4);
     font-size: var(--font-xs);
     background: var(--bg-card);

@@ -222,7 +222,7 @@ function renderRestTimerBanner() {
                 <button class="aw-rest-timer__btn" onclick="event.stopPropagation(); awRestSkip()">Skip</button>
             </div>
             <div class="aw-rest-timer__bar">
-                <div class="aw-rest-timer__bar-fill" id="aw-rest-fill" style="width: ${pct}%"></div>
+                <div class="aw-rest-timer__bar-fill" id="aw-rest-fill" style="--rest-pct: ${pct}%"></div>
             </div>
         </div>
     `;
@@ -255,7 +255,7 @@ function updateRestTimerDisplay() {
     if (timeEl) timeEl.textContent = formatTimer(restTimerRemaining);
     if (fillEl) {
         const pct = restTimerDuration > 0 ? ((restTimerDuration - restTimerRemaining) / restTimerDuration * 100) : 0;
-        fillEl.style.width = `${pct}%`;
+        fillEl.style.setProperty('--rest-pct', `${pct}%`);
     }
 }
 
@@ -1203,10 +1203,10 @@ export function awEquipSearch(exerciseIdx, query) {
         const locStr = locs.length > 0 ? locs.join(', ') : '';
         return `
             <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}')">
-                <div class="js-row__icon" style="background:var(--bg-card-hi);color:var(--text-muted);"><i class="fas fa-cog"></i></div>
+                <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
                 <div class="js-row__info">
                     <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
-                    <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt" style="font-size:0.5rem;"></i> ${escapeHtml(locStr)}` : ''}</div>
+                    <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__meta-pin"></i> ${escapeHtml(locStr)}` : ''}</div>
                 </div>
             </div>
         `;
@@ -1214,7 +1214,7 @@ export function awEquipSearch(exerciseIdx, query) {
 
     listEl.innerHTML = matches.length > 0
         ? matches.map(renderRow).join('')
-        : '<div style="padding:16px;text-align:center;color:var(--text-muted);">No matches</div>';
+        : '<div class="aw-sheet__empty">No matches</div>';
 }
 
 export async function awSelectEquipment(exerciseIdx, equipName) {
@@ -1490,7 +1490,7 @@ function updateAddExerciseList() {
             <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
             <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
         </div>`;
-    }).join('') || '<div style="padding:20px;text-align:center;color:var(--text-muted);">No exercises found</div>';
+    }).join('') || '<div class="aw-sheet__empty aw-sheet__empty--large">No exercises found</div>';
 }
 
 export function awSetAddSearch(query) {
@@ -1729,7 +1729,7 @@ function openSheet({ title, titleColor, subtitle, body, actions }) {
     sheet.innerHTML = `
         <div class="aw-sheet__handle"></div>
         <div class="aw-sheet__header">
-            <div class="aw-sheet__title" ${titleColor ? `style="color: ${titleColor}"` : ''}>${title}</div>
+            <div class="aw-sheet__title" ${titleColor ? `style="--title-color: ${titleColor}"` : ''}>${title}</div>
             ${subtitle ? `<div class="aw-sheet__subtitle">${subtitle}</div>` : ''}
         </div>
         <div class="aw-sheet__body">${body}</div>

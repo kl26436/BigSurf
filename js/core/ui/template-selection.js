@@ -308,7 +308,7 @@ function renderCategoryPills(container, categories) {
         const isActive = activeSelectorCategory === cat;
         return `
             <button class="category-pill ${isActive ? 'active' : ''}"
-                    ${isActive ? `style="background: ${color}; border-color: ${color};"` : ''}
+                    ${isActive ? `style="--pill-color: ${color};"` : ''}
                     data-category="${escapeAttr(cat)}">
                 <i class="${getCategoryIcon(cat.toLowerCase())}"></i> ${escapeHtml(cat)}
             </button>
@@ -463,7 +463,7 @@ function renderSingleTemplateRow(template) {
 
     return `
         <div class="row-card template-row ${isExpanded ? 'expanded' : ''}" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}" data-action="toggleTemplateRow">
-            <div class="template-row__dot" style="background: ${color};"></div>
+            <div class="template-row__dot" style="--dot-color: ${color};"></div>
             <div class="row-card__content">
                 <div class="row-card__title">${escapeHtml(templateName)}</div>
                 <div class="row-card__subtitle">${exerciseCount} exercises${timeInfo}</div>
