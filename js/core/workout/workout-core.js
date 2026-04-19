@@ -95,6 +95,7 @@ export {
     awAddSet,
     awRemoveSet,
     awSaveNotes,
+    awAutoGrowNotes,
     awToggleExerciseMenu,
     awToggleWorkoutMenu,
     awCloseMenus,

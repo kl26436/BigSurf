@@ -1056,11 +1056,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.exercise-card-meta {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-    margin-top: var(--space-4);
-}
+/* .exercise-card-meta consolidated below (§9a). Keep as a single declaration. */
 .exercise-card-edit {
     width: var(--tap-sm);
     height: var(--tap-sm);
@@ -1095,17 +1091,7 @@
     flex-wrap: wrap;
     gap: var(--space-6);
 }
-.quick-add-chip {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-pill);
-    padding: var(--space-6) var(--space-12);
-    font-size: var(--font-sm);
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-    white-space: nowrap;
-}
+/* .quick-add-chip consolidated below (§9c). `:active` + `--used` kept here. */
 .quick-add-chip:active {
     background: var(--primary);
     border-color: var(--primary);

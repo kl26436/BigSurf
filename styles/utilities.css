@@ -85,17 +85,7 @@ dialog[open] > .modal-content {
     100% { background-color: transparent; }
 }
 
-/* Skeleton loading shimmer */
-.skeleton {
-    background: linear-gradient(90deg,
-        var(--bg-card) 25%,
-        var(--bg-card-hi) 50%,
-        var(--bg-card) 75%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-    border-radius: var(--radius-sm);
-}
+/* .skeleton canonical definition lives in components/empty-states.css */
 @keyframes shimmer {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }

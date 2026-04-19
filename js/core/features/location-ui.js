@@ -794,7 +794,7 @@ export function showLocationDetail(locationId) {
                 <i class="fas fa-arrow-left"></i>
             </button>
             <h2 class="section-title" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(location.name)}</h2>
-            <button class="btn-save" onclick="showLocationManagement()">Done</button>
+            <button class="page-header__save" onclick="showLocationManagement()">Done</button>
         `;
     }
 

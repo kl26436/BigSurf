@@ -362,7 +362,7 @@ export async function openEquipmentDetail(equipmentId) {
                 <i class="fas fa-arrow-left"></i>
             </button>
             <h2 style="font-size: 1rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(equipment.name)}</h2>
-            <button class="btn-save" onclick="backToEquipmentList()">Done</button>
+            <button class="page-header__save" onclick="backToEquipmentList()">Done</button>
         `;
     }
 

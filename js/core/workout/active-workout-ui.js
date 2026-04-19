@@ -1274,24 +1274,24 @@ export function awQuickAddEquipment(exerciseIdx) {
     const defaultType = guessEquipmentType(exercise);
 
     const body = `
-        <div class="field" style="margin-bottom:12px;">
-            <div style="font-size:var(--font-xs);color:var(--text-muted);margin-bottom:4px;">Name</div>
-            <input id="aw-new-equip-name" class="field-input" type="text" placeholder="e.g. Hammer Strength Incline" style="width:100%;box-sizing:border-box;">
+        <div class="field">
+            <div class="field-label">Name</div>
+            <input id="aw-new-equip-name" class="field-input" type="text" placeholder="e.g. Hammer Strength Incline">
         </div>
-        <div class="field" style="margin-bottom:12px;">
-            <div style="font-size:var(--font-xs);color:var(--text-muted);margin-bottom:4px;">Type</div>
+        <div class="field">
+            <div class="field-label">Type</div>
             <div class="aw-sheet__chips" id="aw-new-equip-type">
                 ${types.map(t => `<button class="aw-sheet__chip ${t === defaultType ? 'active' : ''}" onclick="document.querySelectorAll('#aw-new-equip-type .aw-sheet__chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')" data-type="${t}">${t}</button>`).join('')}
             </div>
         </div>
-        <div class="field" style="margin-bottom:12px;">
-            <div style="font-size:var(--font-xs);color:var(--text-muted);margin-bottom:4px;">Base weight (empty bar/carriage)</div>
-            <div style="display:flex;gap:8px;align-items:center;">
-                <input id="aw-new-equip-base" class="field-input" type="number" inputmode="decimal" step="0.5" placeholder="0" value="" style="width:80px;text-align:center;">
-                <span style="color:var(--text-muted);font-size:var(--font-xs);">lb</span>
+        <div class="field">
+            <div class="field-label">Base weight (empty bar/carriage)</div>
+            <div class="aw-new-equip__base-row">
+                <input id="aw-new-equip-base" class="field-input aw-new-equip__base-input" type="number" inputmode="decimal" step="0.5" placeholder="0" value="">
+                <span class="aw-new-equip__base-unit">lb</span>
             </div>
         </div>
-        ${locName ? `<div style="font-size:var(--font-xs);color:var(--text-muted);margin-top:8px;"><i class="fas fa-map-marker-alt"></i> Will be added to ${escapeHtml(locName)}</div>` : ''}
+        ${locName ? `<div class="aw-new-equip__location-hint"><i class="fas fa-map-marker-alt"></i> Will be added to ${escapeHtml(locName)}</div>` : ''}
     `;
 
     openSheet({

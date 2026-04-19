@@ -6,11 +6,30 @@
     margin-bottom: 16px;
 }
 
+/* Uppercase tracked label — matches PAGES-REDESIGN-IMPLEMENTATION.md §0 spec */
 .field-label {
-    font-size: 0.78rem;
+    font-size: var(--font-xs);
     font-weight: 600;
     color: var(--text-muted);
-    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: var(--space-6);
+    padding-left: 2px;
+}
+.field-label__hint {
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+    font-size: var(--font-xs);
+    margin-left: var(--space-4);
+}
+.field-helper {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-4);
+    padding-left: 2px;
+    line-height: 1.4;
 }
 
 .field-input {

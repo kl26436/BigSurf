@@ -58,12 +58,7 @@
     }
 }
 
-.skeleton {
-    background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hi) 50%, var(--bg-card) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-    border-radius: var(--radius-sm);
-}
+/* .skeleton canonical definition lives in components/empty-states.css */
 @keyframes shimmer {
     to {
         background-position: -200% 0;

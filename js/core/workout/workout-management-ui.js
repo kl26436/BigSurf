@@ -541,7 +541,7 @@ function showTemplateEditor() {
     // Replace the header action slot with a Save button
     const headerAction = templateEditor.querySelector('.full-page-header-action');
     if (headerAction) {
-        headerAction.innerHTML = `<button class="btn-save" onclick="saveCurrentTemplate()">Save</button>`;
+        headerAction.innerHTML = `<button class="page-header__save" onclick="saveCurrentTemplate()">Save</button>`;
     }
 
     // Build the workout editor form — redesigned (no duplicate header)
@@ -1827,11 +1827,11 @@ export function showCreateExerciseForm() {
 
     content.innerHTML = `
         <div class="page-header">
-            <div class="header-left">
-                <button class="back-btn" aria-label="Back" onclick="closeCreateExerciseModal()"><i class="fas fa-chevron-left"></i></button>
-                <div class="page-title">New Exercise</div>
+            <div class="page-header__left">
+                <button class="page-header__back" aria-label="Back" onclick="closeCreateExerciseModal()"><i class="fas fa-chevron-left"></i></button>
+                <div class="page-header__title">New Exercise</div>
             </div>
-            <button class="btn-save" id="create-ex-header-save" disabled onclick="createNewExercise(event)">Save</button>
+            <button class="page-header__save" id="create-ex-header-save" disabled onclick="createNewExercise(event)">Save</button>
         </div>
         <div style="padding:16px;padding-bottom:100px;overflow-y:auto;flex:1;">
             <div class="field">

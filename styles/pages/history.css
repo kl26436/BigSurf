@@ -46,12 +46,7 @@
     text-align: center;
     margin-top: var(--space-16);
 }
-.month-navigation {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-16);
-}
+/* .month-navigation canonical declaration is below (compact + sticky variant). */
 .month-nav {
     display: flex;
     align-items: center;
@@ -151,11 +146,6 @@
 /* ===========================================
    22. CALENDAR (Additional Styles)
    =========================================== */
-.month-navigation {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-}
 .nav-button {
     width: var(--tap);
     height: var(--tap);
@@ -419,8 +409,8 @@
     background: var(--bg-card-hi);
 }
 .recent-workout-name {
+    font-size: var(--font-sm);
     font-weight: 600;
-    font-size: var(--font-base);
     color: var(--text-strong);
     display: flex;
     align-items: center;
@@ -633,15 +623,18 @@
     font-size: var(--font-xs);
 }
 
-/* Month nav tighter + sticky so month context survives scroll into the list */
+/* Month nav — sticky so context survives scroll; compact gap. Canonical. */
 .month-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
     background: var(--bg-app);
     padding: var(--space-6) 0;
     margin-bottom: var(--space-8);
-    gap: var(--space-8);
 }
 .nav-button {
     width: 36px;
@@ -655,10 +648,6 @@
 .recent-workouts-items {
     gap: 0;
 }
-.recent-workout-name {
-    font-size: var(--font-sm);
-    font-weight: 600;
-}
 .recent-workout-exercises {
     max-width: 60vw;
 }
@@ -670,4 +659,82 @@
     letter-spacing: 0.5px;
     padding: var(--space-12) var(--space-8) var(--space-8);
     margin: 0;
+}
+
+/* ============================================================================
+   WORKOUT-HISTORY DETAIL MODAL — exercise cards + set table + notes
+   Replaces the ~70 lines of inline styles previously in workout-history.js.
+   ============================================================================ */
+
+.wh-detail-exercise {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    padding: var(--space-24);
+    margin-bottom: var(--space-16);
+    border: 1px solid var(--border);
+}
+.wh-detail-exercise__name {
+    color: var(--primary);
+    margin-bottom: var(--space-16);
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+.wh-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.wh-detail-table thead tr {
+    border-bottom: 1px solid var(--border);
+}
+.wh-detail-table th {
+    text-align: left;
+    padding: var(--space-12);
+    color: var(--text-secondary);
+}
+.wh-detail-table td {
+    padding: var(--space-12);
+    color: var(--text-main);
+}
+.wh-detail-table__set-row {
+    background: var(--success-bg-subtle);
+    border-bottom: 1px solid var(--success-border);
+}
+.wh-detail-table__empty {
+    padding: var(--space-32) !important;
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.wh-detail-notes {
+    background: var(--bg-secondary);
+    padding: var(--space-16);
+    border-radius: var(--radius-xs);
+    margin-top: var(--space-16);
+    border-left: 3px solid var(--primary);
+}
+.wh-detail-notes__label {
+    color: var(--primary);
+    display: block;
+    margin-bottom: var(--space-8);
+}
+
+.wh-detail-video-row {
+    margin-top: var(--space-16);
+}
+
+.wh-detail-placeholder {
+    background: var(--bg-secondary);
+    padding: var(--space-32);
+    border-radius: var(--radius-xs);
+    text-align: center;
+    color: var(--text-secondary);
+}
+.wh-detail-placeholder__icon {
+    font-size: var(--font-2xl);
+    margin-bottom: var(--space-16);
+    opacity: 0.5;
+    display: block;
 }

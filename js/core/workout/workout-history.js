@@ -753,18 +753,17 @@ export function getWorkoutHistory(appState) {
             if (workout.exercises && workout.exercises.length > 0) {
                 workout.exercises.forEach((exercise) => {
                     exerciseHTML += `
-                    <div style="background: var(--bg-secondary); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border);">
-                        <h4 style="color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <div class="wh-detail-exercise">
+                        <h4 class="wh-detail-exercise__name">
                             <i class="fas fa-trophy text-warning"></i>
                             ${escapeHtml(exercise.name)}
                         </h4>
-                        
-                        <table style="width: 100%; border-collapse: collapse;">
+                        <table class="wh-detail-table">
                             <thead>
-                                <tr style="border-bottom: 1px solid var(--border);">
-                                    <th style="text-align: left; padding: 0.75rem; color: var(--text-secondary);">Set</th>
-                                    <th style="text-align: left; padding: 0.75rem; color: var(--text-secondary);">Reps</th>
-                                    <th style="text-align: left; padding: 0.75rem; color: var(--text-secondary);">Weight</th>
+                                <tr>
+                                    <th>Set</th>
+                                    <th>Reps</th>
+                                    <th>Weight</th>
                                 </tr>
                             </thead>
                             <tbody>`;
@@ -773,17 +772,17 @@ export function getWorkoutHistory(appState) {
                         exercise.sets.forEach((set, index) => {
                             if (set && (set.reps || set.weight)) {
                                 exerciseHTML += `
-                                <tr style="background: rgba(40, 167, 69, 0.1); border-bottom: 1px solid rgba(40, 167, 69, 0.2);">
-                                    <td style="padding: 0.75rem; color: var(--text-primary);">Set ${index + 1}</td>
-                                    <td style="padding: 0.75rem; color: var(--text-primary);">${set.reps || '-'}</td>
-                                    <td style="padding: 0.75rem; color: var(--text-primary);">${set.weight ? (() => { const dw = displayWeight(set.weight, set.originalUnit || 'lbs', appState.globalUnit || 'lbs'); return dw.value + ' ' + dw.label; })() : '-'}</td>
+                                <tr class="wh-detail-table__set-row">
+                                    <td>Set ${index + 1}</td>
+                                    <td>${set.reps || '-'}</td>
+                                    <td>${set.weight ? (() => { const dw = displayWeight(set.weight, set.originalUnit || 'lbs', appState.globalUnit || 'lbs'); return dw.value + ' ' + dw.label; })() : '-'}</td>
                                 </tr>`;
                             }
                         });
                     } else {
                         exerciseHTML += `
                         <tr>
-                            <td colspan="3" style="padding: 2rem; text-align: center; color: var(--text-secondary); font-style: italic;">No sets recorded</td>
+                            <td colspan="3" class="wh-detail-table__empty">No sets recorded</td>
                         </tr>`;
                     }
 
@@ -791,15 +790,15 @@ export function getWorkoutHistory(appState) {
 
                     if (exercise.notes) {
                         exerciseHTML += `
-                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-top: 1rem; border-left: 3px solid var(--primary);">
-                            <strong style="color: var(--primary); display: block; margin-bottom: 0.5rem;">Notes:</strong>
+                        <div class="wh-detail-notes">
+                            <strong class="wh-detail-notes__label">Notes:</strong>
                             <span>${escapeHtml(exercise.notes)}</span>
                         </div>`;
                     }
 
                     if (exercise.video) {
                         exerciseHTML += `
-                        <div style="margin-top: 1rem;">
+                        <div class="wh-detail-video-row">
                             <button class="btn btn-primary btn-small" data-action="showExerciseVideo" data-video="${escapeAttr(exercise.video)}" data-exercise="${escapeAttr(exercise.name)}">
                                 <i class="fas fa-play"></i> Watch Form Video
                             </button>
@@ -810,8 +809,8 @@ export function getWorkoutHistory(appState) {
                 });
             } else {
                 exerciseHTML = `
-                <div style="background: var(--bg-secondary); padding: 2rem; border-radius: 8px; text-align: center; color: var(--text-secondary);">
-                    <i class="fas fa-dumbbell" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <div class="wh-detail-placeholder">
+                    <i class="fas fa-dumbbell wh-detail-placeholder__icon"></i>
                     <p>No exercise data available for this workout.</p>
                 </div>`;
             }

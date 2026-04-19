@@ -141,27 +141,33 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
 
 ---
 
-## 🧹 Phase D — Cleanup (CODE-AUDIT items)
+## 🧹 Phase D — Cleanup ✅ (most items shipped; long-tail deferred)
 
-- [ ] **Sweep remaining inline styles** in `ai-coach-ui.js`, `exercise-ui.js`, `app-initialization.js`, `data-manager.js`. ~95 multi-property inline styles remain across the top-3 files from Sprint 6. Next pass should tackle the workout-history detail-table extraction (highest payoff — ~30 LOC).
-- [ ] **PAGES-REDESIGN alignment — consolidate class-name drift before implementing the redesign.** Spec [PAGES-REDESIGN-IMPLEMENTATION.md](PAGES-REDESIGN-IMPLEMENTATION.md) conflicts with shipped work in three ways:
-  - §0 says "create `components/forms.css` (NEW)" — file already exists; spec patterns belong in `fields.css` / `chips.css` / `buttons.css` / `page-header.css`. Update spec doc to reflect this; do not create a new forms.css.
-  - `.btn-save` was consolidated into [page-header.css:60-71](styles/components/page-header.css#L60-L71) as transparent text-button. Spec uses `.page-header__save` with solid-pill visual (primary bg, radius-pill, 8/16 padding). Choose: revive solid pill on rename, or keep transparent and update spec. If renaming, must be atomic — all 6 `.btn-save` callsites + CSS in one PR.
-  - `.field-label` in [fields.css:9](styles/components/fields.css#L9) is sentence-case 0.78rem; spec wants uppercase `--font-xs` with 0.06em tracking. Adopting spec changes every form using `.field-label` today (equipment editor, manual workout). Accept the visual shift — it's the design intent.
-- [ ] **Delete `styles/pages/workout.css`** (1,138 LOC) if confirmed superseded by `active-workout-v2.css`. Audit live classes first (same process as dashboard.css). [CODE-AUDIT.md #2]
-- [ ] **Detail-page CSS gaps:** cross-reference [mockups/dashboard-final-v2.html](mockups/dashboard-final-v2.html) against `detail-pages.css` and `dashboard-v2.css` for missing chart/set-chip styles. [CODE-AUDIT.md #6]
-- [ ] **Chip/pill consolidation (Sprint 7 Phase B).** 9 chip patterns (`aw-pill`, `filter-pill`, `category-pill`, `set-chip`, `aw-sheet__chip`, `onb-chip`, `file-pill`, `hero-chip`, `favorite-chip`) should collapse into `chips.css` modifiers.
-- [ ] **Button variant audit (Sprint 7 Phase B).** ~25 `.btn-*` variants; confirm which fold into the canonical 8 in `buttons.css`.
-- [ ] **Remaining duplicate class declarations (Rule 10 from design-critique-system.md).** Eight classes still declared in 2+ files — creates cascade override bugs. Audit and consolidate:
-  - `.recent-workout-name` (history.css + ??)
-  - `.quick-add-chip` (3 files)
-  - `.month-navigation` (3 files)
-  - `.modal-rest-display` (3 files)
-  - `.exercise-unit-toggle` (3 files)
-  - `.exercise-card-meta` (3 files)
-  - `.skeleton` (3 files)
-- [ ] **"New equipment" form is 100% inline-styled** (7 separate `style=` attrs on labels, inputs, base-weight wrapper, info banner) in [active-workout-ui.js](js/core/workout/active-workout-ui.js). Replace with `.field` / `.field__label` / `.field__hint` from `components/fields.css`. Also covers `.aw-equip-section__empty`, `.js-row__icon--equip`, `.js-row__loc-icon`, `.js-row--none` inline styles.
-- [ ] **`transition: all var(--anim-fast)` sweep.** Expensive on mobile. Replace `all` with explicit property lists (e.g., `background var(--anim-fast), border-color var(--anim-fast)`) in `active-workout-v2.css`, `chips.css`, and any other hot-path files. Grep: `transition: *all`.
+### Shipped
+
+- [x] **PAGES-REDESIGN alignment** — all 3 conflict resolutions:
+  - forms.css disposition: existing file retained; spec doc updated with status note (§0 points to the actual component files).
+  - `.btn-save` → `.page-header__save` BEM rename + solid-pill visual per spec. Atomic migration across all 6 callsites (index.html, equipment-library-ui, workout-management-ui, location-ui). `.btn-back` / `.back-btn` → `.page-header__back` (circular). `.header-left` → `.page-header__left`. `.page-title` → `.page-header__title` where nested in page-header.
+  - `.field-label` adopts uppercase + `0.06em` letter-spacing per spec; added `.field-label__hint` and `.field-helper` helpers.
+- [x] **workout.css audit** — `.section-header-row` family migrated to [page-header.css](styles/components/page-header.css). File marked DEPRECATED with a header comment listing remaining classes to migrate (exercise-card, exercise-list, exercise-overflow-item, modal-rest-*, cardio-*, notes-area, compact-hero). File is not imported in `index.css`; remaining classes currently render unstyled. Full deletion deferred to a future sprint.
+- [x] **"New equipment" form inline styles** — 7 inline `style=` attrs replaced with `.field-label` + new `.aw-new-equip__base-row` / `__base-input` / `__base-unit` / `__location-hint` classes in [active-workout-v2.css](styles/pages/active-workout-v2.css).
+- [x] **`transition: all` sweep** — 7 occurrences in active-workout-v2.css replaced with explicit property lists (hot-path only; workout.css occurrences left alone since the file is deprecated).
+- [x] **Same-file duplicate classes consolidated** — `.month-navigation` (3→1 in history.css), `.recent-workout-name` (2→1), `.quick-add-chip` (2→1 in exercise-lib), `.exercise-card-meta` (2→1), `.skeleton` (removed dupes from nav.css + utilities.css, kept canonical in empty-states.css).
+- [x] **Detail-page CSS gaps** — cross-referenced `dashboard-final-v2.html` against live files. Added preemptive `.sec-head` pattern to [page-header.css](styles/components/page-header.css) so Phase F pages can use it. Other "gaps" are naming-only (mockup uses `.greeting`, live uses `.dash-greeting` — same thing).
+- [x] **Inline-style sweep pass** — `workout-history.js` detail modal: extracted the ~70-line inline-styled exercise card/table/notes/placeholder into a new `.wh-detail-*` family in [history.css](styles/pages/history.css). `style="` occurrences in workout-history.js: 59 (start) → 34 (Sprint 6) → **16** (now).
+- [x] **Bug fix: SyntaxError on `awAutoGrowNotes` import** — Phase B added the export but missed re-exporting from [workout-core.js](js/core/workout/workout-core.js) (the main.js import shim). Fixed.
+
+### Deferred / cross-file follow-ups (still open)
+
+- [ ] **Cross-file duplicate classes** — the easier same-file dupes are done. Remaining cross-file duplicates each represent separate use-sites and need case-by-case decisions:
+  - `.quick-add-chip` in exercise-lib.css (transparent/muted variant) + templates.css (primary-tinted variant) — two intentional looks, consider renaming one (e.g., `.quick-add-chip--accent`) instead of unifying.
+  - `.exercise-unit-toggle` in modals.css + nav.css — verify both callsites still need the class; consolidate to one file.
+  - `.modal-rest-display` in modals.css (canonical) vs dead declaration in deprecated workout.css — resolved when workout.css ships.
+  - `.exercise-card-meta` — workout.css has a third declaration that resolves when workout.css ships.
+- [ ] **workout.css full deletion** — after migrating exercise-card / exercise-list / exercise-overflow-item / modal-rest-* / cardio-* / notes-area / inline-progress / compact-hero (see DEPRECATED header in the file). Some of these classes are referenced by live JS but currently unstyled.
+- [ ] **Chip/pill consolidation** — 9 chip patterns (`aw-pill`, `filter-pill`, `category-pill`, `set-chip`, `aw-sheet__chip`, `onb-chip`, `file-pill`, `hero-chip`, `favorite-chip`) should collapse into `chips.css` modifiers. Deferred — each chip has context-specific sizing/behavior that needs audit before migration.
+- [ ] **Button variant audit** — ~25 `.btn-*` variants. Candidates to delete (confirmed orphans from earlier Sprint 7 audit): `.btn-add-exercise-bottom` (done), others TBD. Others that may fold into the canonical 8: `.btn-finish-footer`, `.btn-reorder`, `.btn-set-control`, `.btn-redesign`, `.btn-ghost`. Needs a file-by-file grep of actual usage vs CSS-only declarations.
+- [ ] **Inline-style sweep long-tail** — biggest remaining offenders in order: `workout-history.js` (16), `workout-management-ui.js` (~35), `composition-detail-ui.js` (~29), `location-ui.js` (~28), `equipment-library-ui.js` (~27), `metric-detail-ui.js` (~24), plus `ai-coach-ui.js`, `exercise-ui.js`, `app-initialization.js`, `data-manager.js`. Target: systematically extract per-file with dedicated CSS blocks as per the workout-history pattern from this sprint.
 
 ---
 

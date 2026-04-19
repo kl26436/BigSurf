@@ -1,6 +1,26 @@
-/* ===========================================
-   7. ACTIVE WORKOUT
-   =========================================== */
+/* ============================================================================
+   ⚠️  DEPRECATED — NOT IMPORTED IN styles/index.css  ⚠️
+
+   Superseded by styles/pages/active-workout-v2.css. This file is retained ONLY
+   because some legacy classes are still referenced by live JS (exercise-card,
+   exercise-list, exercise-overflow-item, modal-rest-*, cardio-input-row,
+   notes-area, etc.). Those classes currently render UNSTYLED in the live app.
+
+   Migration plan (tracked in DESIGN-BACKLOG.md Phase D):
+   - [x] .section-header-row family → components/page-header.css
+   - [ ] .exercise-card / .exercise-list / .exercise-overflow-item → pages/exercise-lib.css
+         or a new components/exercise-card.css
+   - [ ] .modal-rest-display / .modal-rest-timer / .rest-timer → a new
+         components/rest-timer.css (de-dupe with the declaration in modals.css)
+   - [ ] .cardio-input-row / .cardio-pace / .cardio-unit → pages/exercise-lib.css
+   - [ ] .notes-area → pages/exercise-lib.css
+   - [ ] .inline-progress* → pages/exercise-lib.css
+   - [ ] Verify .compact-hero is truly dead (Active Workout V2 replaced it)
+   - [ ] Delete this file once all the above are migrated.
+
+   DO NOT add new rules here. DO NOT re-import in styles/index.css.
+   ============================================================================ */
+
 /* #active-workout is now part of FULL-PAGE OVERLAY SECTIONS (see below) */
 #active-workout {
     z-index: 40;
