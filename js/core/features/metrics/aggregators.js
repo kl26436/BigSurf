@@ -291,17 +291,73 @@ export function bodyPartTrendPoints(workouts, bodyPart, { start, end }) {
 // ===================================================================
 
 /** Hero lift per body part — the signature exercise shown on each card. */
-const HERO_LIFT_BY_BODY_PART = {
-    chest: 'Bench Press',
-    back: 'Weighted Pull-up',
-    legs: 'Deadlift',
-    shoulders: 'Overhead Press',
-    arms: 'Barbell Curl',
-    core: 'Plank',
+// Preferred hero lifts — used as tiebreaker when user has data for multiple exercises
+const PREFERRED_HERO_LIFTS = {
+    chest: ['bench press', 'flat bench', 'incline bench', 'dumbbell press'],
+    back: ['deadlift', 'barbell row', 'pull-up', 'weighted pull-up', 'lat pulldown'],
+    legs: ['squat', 'back squat', 'leg press', 'deadlift', 'front squat'],
+    shoulders: ['overhead press', 'military press', 'shoulder press', 'lateral raise'],
+    arms: ['barbell curl', 'dumbbell curl', 'tricep extension', 'tricep pushdown'],
+    core: ['plank', 'cable crunch', 'ab wheel', 'leg raise'],
 };
 
-export function getHeroLiftForBodyPart(bodyPart) {
-    return HERO_LIFT_BY_BODY_PART[bodyPart] || '';
+// Cache so we don't recalculate every render
+let _heroLiftCache = {};
+let _heroLiftCacheKey = '';
+
+export function getHeroLiftForBodyPart(bodyPart, workouts) {
+    // If no workouts provided, fall back to preferred list
+    if (!workouts || workouts.length === 0) {
+        const prefs = PREFERRED_HERO_LIFTS[bodyPart];
+        return prefs ? prefs[0].split(' ').map(w => w[0].toUpperCase() + w.slice(1)).join(' ') : '';
+    }
+
+    // Cache key based on workout count to invalidate when data changes
+    const cacheKey = `${workouts.length}`;
+    if (cacheKey !== _heroLiftCacheKey) {
+        _heroLiftCache = {};
+        _heroLiftCacheKey = cacheKey;
+    }
+    if (_heroLiftCache[bodyPart]) return _heroLiftCache[bodyPart];
+
+    // Find the exercise with the heaviest single set for this body part
+    const exerciseMaxWeight = {};
+    for (const w of workouts) {
+        if (w.cancelledAt) continue;
+        for (const ex of Object.values(w.exercises || {})) {
+            if (classifyBodyPart(ex.name) !== bodyPart) continue;
+            if (!ex.name) continue;
+            for (const set of ex.sets || []) {
+                if (!set.weight || !set.reps) continue;
+                const current = exerciseMaxWeight[ex.name] || 0;
+                if (set.weight > current) {
+                    exerciseMaxWeight[ex.name] = set.weight;
+                }
+            }
+        }
+    }
+
+    // No exercises found for this body part
+    const entries = Object.entries(exerciseMaxWeight);
+    if (entries.length === 0) {
+        _heroLiftCache[bodyPart] = '';
+        return '';
+    }
+
+    // Sort by max weight descending, prefer well-known lifts as tiebreaker
+    const prefs = PREFERRED_HERO_LIFTS[bodyPart] || [];
+    entries.sort((a, b) => {
+        const wDiff = b[1] - a[1];
+        if (wDiff !== 0) return wDiff;
+        const aPreferred = prefs.some(p => a[0].toLowerCase().includes(p));
+        const bPreferred = prefs.some(p => b[0].toLowerCase().includes(p));
+        if (aPreferred && !bPreferred) return -1;
+        if (bPreferred && !aPreferred) return 1;
+        return 0;
+    });
+
+    _heroLiftCache[bodyPart] = entries[0][0];
+    return entries[0][0];
 }
 
 /**
@@ -410,7 +466,7 @@ export function aggregateBodyPartStats(workouts, bodyPart, range = 'W') {
     const prevVolume = prevBounds ? (aggregateVolumeByBodyPart(workouts, prevBounds)[bodyPart] || 0) : 0;
     const volumeDeltaPct = prevVolume ? ((volume - prevVolume) / prevVolume * 100) : null;
 
-    const heroLift = getHeroLiftForBodyPart(bodyPart);
+    const heroLift = getHeroLiftForBodyPart(bodyPart, workouts);
     const heaviest = heroLift ? aggregateHeaviestSet(workouts, heroLift, bounds) : null;
 
     const sessions = countSessions(workouts, bodyPart, bounds);

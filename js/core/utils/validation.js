@@ -37,6 +37,7 @@ export function validateWorkoutData(data) {
 
             if (ex.sets && Array.isArray(ex.sets)) {
                 ex.sets = ex.sets.map((set) => ({
+                    ...set, // preserve completed, _userEdited, isBodyweight, bodyWeight, addedWeight, group, etc.
                     reps: Math.max(0, Math.min(999, Number(set.reps) || 0)),
                     weight: Math.max(0, Math.min(9999, Number(set.weight) || 0)),
                     originalUnit: set.originalUnit === 'kg' ? 'kg' : 'lbs',

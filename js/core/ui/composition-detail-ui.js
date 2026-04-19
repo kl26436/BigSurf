@@ -57,7 +57,7 @@ export async function renderCompositionDetail() {
 }
 
 function renderDexaSummary(scan, prev) {
-    const fatPct = scan.totalBodyFat || 0;
+    const fatPct = Math.round(scan.totalBodyFat || 0);
     const leanMass = scan.totalLeanMass || scan.leanMass || 0;
     const fatMass = scan.totalFatMass || scan.fatMass || 0;
     const boneMass = scan.boneMass || 0;
@@ -81,10 +81,10 @@ function renderDexaSummary(scan, prev) {
 
         <div class="d-sec-head">Summary${prev ? ` <span style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400;">vs ${formatDate(prev.date)}</span>` : ''}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 14px 14px;">
-            ${renderStatCard('Body fat', fatPct, '%', prev?.totalBodyFat, true)}
-            ${renderStatCard('Lean mass', leanMass, ' lb', prev?.totalLeanMass || prev?.leanMass, false)}
-            ${renderStatCard('Fat mass', fatMass, ' lb', prev?.totalFatMass || prev?.fatMass, true)}
-            ${renderStatCard('Bone', boneMass, ' lb', prev?.boneMass, false)}
+            ${renderStatCard('Body fat', fatPct, '%', prev ? Math.round(prev.totalBodyFat || 0) : null, true)}
+            ${renderStatCard('Lean mass', Math.round(leanMass * 10) / 10, ` ${scan.unit || 'lb'}`, prev?.totalLeanMass || prev?.leanMass, false)}
+            ${renderStatCard('Fat mass', Math.round(fatMass * 10) / 10, ` ${scan.unit || 'lb'}`, prev?.totalFatMass || prev?.fatMass, true)}
+            ${renderStatCard('Bone', Math.round(boneMass * 10) / 10, ` ${scan.unit || 'lb'}`, prev?.boneMass, false)}
         </div>
 
         ${renderInsight(scan, prev)}
@@ -212,16 +212,25 @@ function renderBodyWeightSection(entries, unit) {
         `;
     }
 
-    const latest = entries[entries.length - 1];
-    const first = entries[0];
-    const delta = latest.weight - first.weight;
-    const points = entries.map((e, i) => ({ x: i, y: e.weight }));
+    // Convert all entries to user's preferred unit for display
+    const converted = entries.map(e => {
+        const stored = e.unit || 'lbs';
+        if (stored === unit) return e.weight;
+        if (stored === 'kg' && unit === 'lbs') return Math.round(e.weight * 2.20462 * 10) / 10;
+        if (stored === 'lbs' && unit === 'kg') return Math.round(e.weight * 0.453592 * 10) / 10;
+        return e.weight;
+    });
+
+    const latestW = converted[converted.length - 1];
+    const firstW = converted[0];
+    const delta = latestW - firstW;
+    const points = converted.map((w, i) => ({ x: i, y: w }));
 
     return `
         <div class="d-sec-head">Body weight</div>
         <div class="stat-card" style="margin:0 14px 14px;">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
-                <div class="stat-val">${latest.weight.toFixed(1)}<span class="stat-unit">${unit}</span></div>
+                <div class="stat-val">${latestW.toFixed(1)}<span class="stat-unit">${unit}</span></div>
                 <div class="stat-delta ${delta <= 0 ? 'down' : 'up'}">${delta < 0 ? '↓' : '↑'} ${Math.abs(delta).toFixed(1)} ${unit} · 90d</div>
             </div>
             ${chartSparkline({ points, color: 'var(--cat-shoulders)', width: 280, height: 48 })}

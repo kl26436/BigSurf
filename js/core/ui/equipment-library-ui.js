@@ -301,7 +301,27 @@ export function filterEquipmentByLocation(location) {
 
 export function filterEquipmentBySearch(term) {
     currentSearchTerm = term;
+
+    // Save search bar state, re-render list only, then restore search bar
+    const searchBar = document.getElementById('equip-search-bar');
+    const wasVisible = searchBar && !searchBar.classList.contains('hidden');
+
     renderEquipmentLibrary();
+
+    // Restore search bar visibility and re-focus input
+    if (wasVisible) {
+        const newBar = document.getElementById('equip-search-bar');
+        if (newBar) {
+            newBar.classList.remove('hidden');
+            const input = newBar.querySelector('input');
+            if (input) {
+                input.value = term;
+                input.focus();
+                // Move cursor to end
+                input.setSelectionRange(term.length, term.length);
+            }
+        }
+    }
 }
 
 // ===================================================================
@@ -406,8 +426,12 @@ export async function openEquipmentDetail(equipmentId) {
                 </div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
                     ${locations.map(loc => `
-                        <div class="chip active" style="padding-right: 6px;">
+                        <div class="chip active" style="padding-right: 4px; display: flex; align-items: center; gap: 4px;">
                             <i class="fas fa-map-marker-alt"></i> ${escapeHtml(loc)}
+                            <button style="background:none;border:none;color:var(--text-muted);font-size:0.7rem;cursor:pointer;padding:2px 4px;line-height:1;"
+                                    onclick="event.stopPropagation(); removeEquipmentLocation('${escapeAttr(equipmentId)}', '${escapeAttr(loc)}')">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
                     `).join('')}
                     ${locations.length === 0 ? '<span style="font-size: 0.78rem; color: var(--text-muted);">No locations yet</span>' : ''}
@@ -812,6 +836,21 @@ export async function confirmAddEquipment() {
 // ===================================================================
 
 let fieldSaveTimeout = null;
+
+export async function removeEquipmentLocation(equipmentId, locationName) {
+    try {
+        const eq = allEquipment.find(e => e.id === equipmentId);
+        if (!eq) return;
+        const locations = (eq.locations || []).filter(l => l !== locationName);
+        const userId = AppState.currentUser.uid;
+        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { locations });
+        eq.locations = locations;
+        // Re-render detail page
+        openEquipmentDetail(equipmentId);
+    } catch (error) {
+        console.error('Error removing location:', error);
+    }
+}
 
 export async function saveEquipmentField(equipmentId, field, value) {
     if (fieldSaveTimeout) clearTimeout(fieldSaveTimeout);

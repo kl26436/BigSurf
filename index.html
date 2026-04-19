@@ -182,8 +182,11 @@
                 </section>
 
                 <!-- Location Management -->
-                <section id="location-management-section" class="content-section hidden">
+                <section id="location-management-section" class="content-section pinned-header hidden">
                     <div class="section-header-row">
+                        <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
                         <h2 class="section-title"><i class="fas fa-map-marker-alt"></i> Locations</h2>
                         <button class="btn btn-primary" onclick="detectAndAddLocation()">
                             <i class="fas fa-plus"></i> New
@@ -241,98 +244,16 @@
 
                 <!-- Active Workout -->
                 <section id="active-workout" class="content-section hidden">
-                    <!-- Edit-mode close button (hidden during normal workout) -->
-                    <button
-                        id="edit-workout-close-btn"
-                        class="close-btn compact-hero__close hidden"
-                        onclick="discardEditedWorkout()"
-                        title="Close without saving"
-                        aria-label="Close without saving"
-                    >
-                        <i class="fas fa-times"></i>
-                    </button>
-
-                    <!-- Compact Hero Header -->
-                    <div class="compact-hero" id="workout-hero">
-                        <!-- Row 1: Identity + Timer -->
-                        <div class="compact-hero__row1">
-                            <div class="compact-hero__identity">
-                                <h2 class="compact-hero__title" id="current-workout-name">Current Workout</h2>
-                                <span class="compact-hero__location hidden" id="workout-location-indicator" onclick="changeWorkoutLocation()">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    <span id="workout-location-name">Unknown</span>
-                                    <i id="workout-location-lock" class="fas fa-lock" style="display: none" title="Location locked"></i>
-                                </span>
-                            </div>
-                            <div class="compact-hero__actions">
-                                <button class="compact-hero__overflow" onclick="toggleWorkoutOverflow()" aria-label="More options">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                                <div class="compact-hero__timer" id="workout-timer-badge">
-                                    <i class="fas fa-stopwatch"></i>
-                                    <span id="workout-duration">0:00</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Row 2: Progress bar + Stats -->
-                        <div class="compact-hero__row2">
-                            <div class="compact-hero__progress-bar">
-                                <div class="compact-hero__progress-fill" id="workout-progress-fill" style="width: 0%"></div>
-                            </div>
-                            <div class="compact-hero__stats">
-                                <span><strong id="set-count">0</strong>/<strong id="set-total">0</strong> sets</span>
-                                <span class="stat-dot">&middot;</span>
-                                <span><strong id="exercise-done-count">0</strong>/<strong id="exercise-total">0</strong> done</span>
-                                <span class="stat-dot">&middot;</span>
-                                <span class="compact-hero__rest" id="workout-rest-stat" onclick="skipHeaderRestTimer()" style="cursor: pointer;">
-                                    <span id="workout-rest-timer"></span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Overflow menu (hidden by default) -->
-                    <div id="workout-overflow-menu" class="workout-overflow-menu hidden">
-                        <button class="workout-overflow-item" onclick="addExerciseToActiveWorkout(); closeWorkoutOverflow();">
-                            <i class="fas fa-plus"></i> Add Exercise
-                        </button>
-                        <button class="workout-overflow-item" onclick="saveActiveWorkoutAsTemplate(); closeWorkoutOverflow();">
-                            <i class="fas fa-bookmark"></i> Save as Template
-                        </button>
-                        <button id="btn-reorder" class="workout-overflow-item" onclick="toggleReorderMode(); closeWorkoutOverflow();">
-                            <i class="fas fa-arrows-alt-v"></i> Reorder Exercises
-                        </button>
-                        <div class="workout-overflow-divider"></div>
-                        <button class="workout-overflow-item" onclick="showMidWorkoutSummary(); closeWorkoutOverflow();">
-                            <i class="fas fa-chart-bar"></i> Session Summary
-                        </button>
-                        <button class="workout-overflow-item" onclick="exportWorkoutDataAsCSV(); closeWorkoutOverflow();">
-                            <i class="fas fa-file-export"></i> Export Session
-                        </button>
-                        <div class="workout-overflow-divider"></div>
-                        <button class="workout-overflow-item workout-overflow-item--danger" onclick="cancelWorkout()">
-                            <i class="fas fa-times"></i> Cancel Workout
-                        </button>
-                    </div>
-
-                    <!-- Exercise List -->
-                    <div id="exercise-list" class="exercise-list">
-                        <!-- Populated by JavaScript -->
-                    </div>
-
-                    <!-- Sticky Finish Footer -->
-                    <div class="workout-footer-bar" id="workout-footer">
-                        <button class="btn-finish-footer" onclick="completeWorkout()">
-                            <i class="fas fa-check"></i> Finish Workout
-                        </button>
-                    </div>
+                    <!-- V2 wizard UI — rendered dynamically by active-workout-ui.js -->
                 </section>
 
                 <!-- Workout History -->
                 <section id="workout-history-section" class="content-section pinned-header hidden">
                     <!-- Section Header with search toggle -->
                     <div class="section-header-row">
+                        <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
                         <h2 class="section-title"><i class="fas fa-calendar-alt"></i> History</h2>
                         <div class="history-header-actions">
                             <button class="btn-icon-sm" onclick="toggleHistorySearch()" aria-label="Search">
@@ -396,15 +317,19 @@
                 </section>
 
                 <!-- Workout Management Section (Full Page, not a modal) -->
-                <section id="workout-management-section" class="content-section hidden">
+                <section id="workout-management-section" class="content-section pinned-header hidden">
                     <!-- Section Header -->
                     <div class="section-header-row">
-                        <h2 class="section-title"><i class="fas fa-clipboard-list"></i> Workout Library</h2>
+                        <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h2 class="section-title"><i class="fas fa-clipboard-list"></i> Workouts</h2>
                         <button class="btn btn-primary" onclick="createNewTemplate()">
                             <i class="fas fa-plus"></i> New
                         </button>
                     </div>
 
+                    <div class="content-section-body">
                     <!-- View 1: Category Grid (Entry Page) -->
                     <div id="workout-category-view" class="workout-library-view">
                         <!-- Search -->
@@ -467,6 +392,7 @@
                             <!-- Populated by JavaScript -->
                         </div>
                     </div>
+                    </div><!-- /content-section-body -->
                 </section>
             </main>
 
@@ -717,10 +643,10 @@
                     <span id="timer-countdown" aria-live="polite">0:00</span>
                 </div>
                 <div class="timer-controls">
-                    <button id="pause-rest-btn" class="btn btn-secondary" onclick="toggleRestTimer()" aria-label="Pause rest timer">
+                    <button id="pause-rest-btn" class="btn btn-secondary" onclick="toggleHeaderRestTimer()" aria-label="Pause rest timer">
                         <i class="fas fa-pause"></i>
                     </button>
-                    <button id="skip-rest-btn" class="btn btn-primary" onclick="skipRestTimer()">
+                    <button id="skip-rest-btn" class="btn btn-primary" onclick="skipHeaderRestTimer()">
                         <i class="fas fa-forward"></i> Skip
                     </button>
                 </div>
@@ -910,7 +836,10 @@
         <section id="exercise-manager-section" class="content-section pinned-header hidden">
             <!-- Section Header (pinned) -->
             <div class="section-header-row">
-                <h2 class="section-title"><i class="fas fa-dumbbell"></i> Exercise Library</h2>
+                <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2 class="section-title"><i class="fas fa-dumbbell"></i> Exercises</h2>
                 <button class="btn btn-primary" onclick="showAddExerciseModal()">
                     <i class="fas fa-plus"></i> New
                 </button>
@@ -1725,17 +1654,17 @@
         </dialog>
 
         <!-- Equipment Library Page -->
-        <section id="equipment-library-section" class="app-section hidden">
-            <div class="equip-lib-header">
-                <button class="btn-icon" onclick="navigateTo('dashboard')" aria-label="Back to dashboard">
+        <section id="equipment-library-section" class="content-section pinned-header hidden">
+            <div class="section-header-row">
+                <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h2>Equipment</h2>
-                <button class="btn btn-primary btn-small" onclick="showAddEquipmentFlow()">
+                <h2 class="section-title"><i class="fas fa-wrench"></i> Equipment</h2>
+                <button class="btn btn-primary" onclick="showAddEquipmentFlow()">
                     <i class="fas fa-plus"></i> Add
                 </button>
             </div>
-            <div id="equipment-library-content"></div>
+            <div class="content-section-body" id="equipment-library-content"></div>
         </section>
 
         <!-- Settings Page -->
@@ -1747,15 +1676,15 @@
             <div id="plate-calc-content" class="plate-calc-container"></div>
         </section>
 
-        <section id="settings-section" class="app-section hidden">
-            <div class="equip-lib-header">
-                <button class="btn-icon" onclick="navigateTo('dashboard')" aria-label="Back to dashboard">
+        <section id="settings-section" class="content-section pinned-header hidden">
+            <div class="section-header-row">
+                <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h2>Settings</h2>
+                <h2 class="section-title"><i class="fas fa-cog"></i> Settings</h2>
                 <div style="width: 36px;"></div>
             </div>
-            <div id="settings-content"></div>
+            <div class="content-section-body" id="settings-content"></div>
         </section>
 
         <!-- Error Log Modal -->

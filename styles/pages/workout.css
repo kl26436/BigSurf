@@ -948,38 +948,25 @@
 #workout-selector,
 #location-management-section,
 #workout-management-section,
-#exercise-manager-section,
+/* Edit exercise section sits above everything (dedicated editor) */
 #edit-exercise-section {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    bottom: 70px; /* Leave room for bottom nav */
+    bottom: 0;
     background: var(--bg-app);
     overflow-y: auto;
     overflow-x: hidden;
     padding: var(--space-16);
     padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
-}
-#workout-history-section {
-    z-index: 50;
-}
-#workout-selector {
-    z-index: 60;
-}
-#location-management-section {
-    z-index: 75;
-}
-#workout-management-section {
-    z-index: 100;
-}
-#exercise-manager-section {
-    z-index: 650;
-}
-#edit-exercise-section {
     z-index: 700;
 }
+
+/* All pinned-header sections use the same z-index (50, set in utilities.css).
+   They're mutually exclusive (only one visible at a time), so no stacking needed. */
 
 #active-workout.hidden,
 #workout-history-section.hidden,
@@ -998,27 +985,29 @@
 }
 .section-header-row {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: var(--space-8);
     min-height: 56px;
-    padding: var(--space-16);
-    padding-top: calc(var(--space-16) + env(safe-area-inset-top, 0px));
+    padding: var(--space-12) var(--space-16);
+    padding-top: calc(var(--space-12) + env(safe-area-inset-top, 0px));
     border-bottom: 1px solid var(--border-light);
     background: var(--bg-app);
     flex-shrink: 0;
 }
 .section-header-row .section-title {
-    font-size: var(--font-xl);
-    font-weight: 600;
+    font-size: var(--font-lg);
+    font-weight: 700;
     margin: 0;
     display: flex;
     align-items: center;
-    gap: var(--space-12);
+    gap: 8px;
     color: var(--text-strong);
+    flex: 1;
+    min-width: 0;
 }
 .section-header-row .section-title i {
     color: var(--primary);
-    font-size: var(--font-md);
+    font-size: var(--font-sm);
 }
 .section-header-row .btn-back {
     width: var(--icon-md);

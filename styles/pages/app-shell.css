@@ -27,67 +27,122 @@
     margin: 0;
 }
 
-/* Bottom Nav */
+/* Bottom Nav — 5-tab with elevated center FAB */
 .bottom-nav {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
     background: var(--bg-surface);
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--border-subtle);
     display: flex;
+    align-items: center;
     justify-content: space-around;
-    padding: var(--space-12) 0 env(safe-area-inset-bottom, var(--space-16));
-    z-index: 200;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    z-index: var(--z-header);
 }
-.bottom-nav-item {
+
+.bottom-nav__btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-4);
-    flex: 1 1 20%;
-    padding: var(--space-12) 0;
+    gap: 3px;
     color: var(--text-muted);
+    font-size: var(--font-2xs);
     background: none;
     border: none;
-    font-size: var(--font-xs);
+    min-height: var(--tap);
+    flex: 1 1 0;
+    transition: color var(--anim-fast);
     cursor: pointer;
-    transition: color 0.2s;
-    min-height: 48px;
 }
-.bottom-nav-item i {
-    font-size: var(--font-lg);
-}
-.bottom-nav-item.active,
-.bottom-nav-item:hover {
-    color: var(--primary);
-}
+.bottom-nav__btn.active { color: var(--primary); }
+.bottom-nav__btn i { font-size: var(--font-md); }
 
 /* Elevated center FAB — opens Workout picker */
-.bottom-nav-fab {
+.bottom-nav__fab {
+    position: relative;
     background: var(--primary);
     color: var(--bg-app);
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    flex: 0 0 50px;
+    border: none;
+    display: flex;
+    align-items: center;
     justify-content: center;
     transform: translateY(-10px);
     box-shadow: var(--shadow-md);
-    gap: 0;
-    padding: 0;
+    flex: 0 0 50px;
+    cursor: pointer;
     transition: transform var(--anim-fast);
 }
-.bottom-nav-fab i {
-    font-size: var(--font-lg);
-}
-.bottom-nav-fab:active {
+.bottom-nav__fab i { font-size: var(--font-lg); }
+.bottom-nav__fab:active {
     transform: translateY(-10px) scale(0.92);
 }
 /* FAB should always look the same — never get the "active tab" color */
-.bottom-nav-fab.active,
-.bottom-nav-fab:hover {
+.bottom-nav__fab.active,
+.bottom-nav__fab:hover {
     color: var(--bg-app);
+}
+
+/* === ACTIVE WORKOUT STATE === */
+/* When body has class .workout-active, the FAB animates */
+body.workout-active .bottom-nav__fab {
+    animation: fab-lift 2s ease-in-out infinite;
+}
+body.workout-active .bottom-nav__fab::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid var(--primary);
+    opacity: 0.6;
+    animation: fab-ring 2s ease-out infinite;
+    pointer-events: none;
+}
+body.workout-active .bottom-nav__fab::after {
+    content: '';
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    border: 2px solid var(--primary);
+    opacity: 0;
+    animation: fab-ring 2s ease-out infinite;
+    animation-delay: 1s;
+    pointer-events: none;
+}
+body.workout-active .bottom-nav__fab i {
+    animation: dumbbell-shake 2s ease-in-out infinite;
+}
+
+@keyframes fab-lift {
+    0%, 100% { transform: translateY(-10px) rotate(0deg); }
+    50%      { transform: translateY(-14px) rotate(-3deg); }
+}
+@keyframes fab-ring {
+    0%   { transform: scale(1);   opacity: 0.8; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes dumbbell-shake {
+    0%, 100% { transform: rotate(0deg); }
+    25%      { transform: rotate(-8deg); }
+    75%      { transform: rotate(8deg); }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    body.workout-active .bottom-nav__fab,
+    body.workout-active .bottom-nav__fab::before,
+    body.workout-active .bottom-nav__fab::after,
+    body.workout-active .bottom-nav__fab i {
+        animation: none;
+    }
+    body.workout-active .bottom-nav__fab {
+        box-shadow: 0 0 0 3px var(--primary), var(--shadow-md);
+    }
 }
 
 /* ===== Full-Page Sections (replacing modals) ===== */

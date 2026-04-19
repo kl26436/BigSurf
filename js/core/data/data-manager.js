@@ -112,8 +112,8 @@ export async function saveWorkoutData(state) {
         state.savedData.totalExercises = state.currentWorkout.exercises.length;
     }
 
-    // Convert weights to pounds for storage - FIXED to prevent corruption
-    const normalizedData = { ...state.savedData };
+    // Deep-clone so validation + normalization don't mutate AppState in-memory
+    const normalizedData = JSON.parse(JSON.stringify(state.savedData));
     if (normalizedData.exercises) {
         Object.keys(normalizedData.exercises).forEach((exerciseKey) => {
             const exerciseData = normalizedData.exercises[exerciseKey];

@@ -159,6 +159,15 @@
     padding: 4px 8px;
 }
 
+.bw-banner--prompt {
+    border-color: var(--primary-border);
+    background: var(--primary-bg);
+    cursor: pointer;
+}
+.bw-banner--prompt .bw-banner__weight {
+    color: var(--primary);
+}
+
 /* ── ADDED WEIGHT ROW ── */
 .bw-added-weight-row {
     background: var(--bg-card);

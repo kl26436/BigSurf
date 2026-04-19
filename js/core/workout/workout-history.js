@@ -546,9 +546,13 @@ export function getWorkoutHistory(appState) {
                 else if (wt.includes('leg') || wt.includes('quad') || wt.includes('glute') || wt.includes('hamstring')) cat = 'legs';
                 else if (wt.includes('cardio') || wt.includes('core')) cat = 'cardio';
 
+                const catIcon = CATEGORY_ICONS[cat] || CATEGORY_ICONS.other;
+
                 html += `
                     <div class="recent-workout-item" data-action="showFixedWorkout" data-doc-id="${escapeAttr(docId)}">
-                        <span class="cal-dot cal-dot--${cat}" style="width: 10px; height: 10px; flex-shrink: 0;"></span>
+                        <div class="workout-picker-icon ${cat}">
+                            <i class="fas ${catIcon}"></i>
+                        </div>
                         <div class="recent-workout-info">
                             <div class="recent-workout-name">${escapeHtml(workoutType)}</div>
                             ${exerciseNames ? `<div class="recent-workout-exercises">${escapeHtml(exerciseNames)}${extraCount > 0 ? ' +' + extraCount : ''}</div>` : ''}

@@ -219,6 +219,57 @@
     border: 6px solid var(--border-light);
     flex-shrink: 0;
 }
+.bc-dexa-ago {
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* Body Weight card (mockup style) */
+.bw-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.bw-card-title {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-strong);
+    flex: 1;
+}
+.bw-badge {
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    background: rgba(29, 211, 176, 0.12);
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.bw-card-value {
+    font-size: var(--font-2xl);
+    font-weight: 800;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+.bw-card-unit {
+    font-size: var(--font-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+}
+.bw-delta {
+    font-size: var(--font-xs);
+    color: var(--primary);
+    margin-top: 2px;
+}
+.bw-spark {
+    margin-top: 8px;
+}
 
 /* ===== INSIGHT CARD ===== */
 .dash-insight {

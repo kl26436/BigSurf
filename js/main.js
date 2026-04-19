@@ -65,6 +65,7 @@ import {
     loadExerciseHistory,
     autoStartRestTimer,
     toggleSetComplete,
+    toggleHeaderRestTimer,
     skipHeaderRestTimer,
     toggleReorderMode,
     toggleExerciseOverflow,
@@ -510,6 +511,7 @@ window.getSessionLocation = getSessionLocation;
 window.toggleModalRestTimer = toggleModalRestTimer;
 window.skipModalRestTimer = skipModalRestTimer;
 window.autoStartRestTimer = autoStartRestTimer;
+window.toggleHeaderRestTimer = toggleHeaderRestTimer;
 window.skipHeaderRestTimer = skipHeaderRestTimer;
 window.toggleReorderMode = toggleReorderMode;
 window.toggleExerciseOverflow = toggleExerciseOverflow;

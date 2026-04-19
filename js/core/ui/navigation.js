@@ -103,7 +103,11 @@ export function navigateTo(view) {
 }
 
 function routeToView(view) {
-    switch (view) {
+    // Normalize: getCurrentView() returns section IDs like 'muscle-group-detail-section'
+    // but callers may pass view names like 'muscle-group-detail'. Handle both.
+    const normalized = view.replace(/-section$/, '');
+
+    switch (normalized) {
         case 'dashboard':
             showDashboard();
             break;
@@ -114,6 +118,7 @@ function routeToView(view) {
 
         case 'workout':
         case 'start-workout':
+        case 'workout-selector':
             showWorkoutSelector();
             break;
 
@@ -134,22 +139,27 @@ function routeToView(view) {
             break;
 
         case 'history':
+        case 'workout-history':
             showHistory();
             break;
 
         case 'location':
+        case 'location-management':
             showLocationManagement();
             break;
 
         case 'exercises':
+        case 'exercise-manager':
             openExerciseManager();
             break;
 
         case 'templates':
+        case 'workout-management':
             showWorkoutManagement();
             break;
 
         case 'equipment':
+        case 'equipment-library':
             showEquipmentLibrary();
             break;
 
@@ -163,7 +173,7 @@ function routeToView(view) {
 
         default:
             console.warn(`Unknown view: ${view}`);
-            showWorkoutSelector();
+            showDashboard();
     }
 }
 
