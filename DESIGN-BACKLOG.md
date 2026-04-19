@@ -126,6 +126,9 @@ Legend: `[ ]` open · `[x]` done · `[~]` partially done · `[?]` needs verifica
 - [x] **"For day → All →" plumbing** — `openWorkoutSelectorForDay(dayName)` exported + window-bound; sets `AppState._workoutSelectorDayFilter` before navigating. Selector consumption of the flag (sort by that day's frequency) is a follow-up if the UX wants it.
 - [x] **`.bp-card__chev` → `.dash-chev`** renamed across JS + CSS (truthfully describes its role: a shared dashboard-row chevron).
 - [x] **`.rw-*` → `.dash-template-*`** renamed — `.rw-row` / `.rw-icon` / `.rw-info` / `.rw-name` / `.rw-meta` / `.rw-count` / `.rw-play` all migrated across dashboard-ui.js, composition-detail-ui.js, and dashboard-v2.css.
+- [~] **`.bp-card__icon` at 32px** — critique suggested 44px (parity with `.aw-hero__icon`). Kept at 32px because 6 stacked body-part cards would add ~100px of scroll. Revisit if the dashboard ever collapses to 3–4 cards.
+- [~] **`.aw-sets-header__unit` min-height 24px** — critique suggested 32px for a11y. Accepted as-is because this is a label-style segmented toggle inside the header, not a primary tap target. Revisit if an a11y audit flags it.
+- [ ] **Header-meta elapsed-time promotion (future polish)** — critique suggested making workout duration the header hero (larger type, "Exercise 3/7" smaller below). Currently same-size as meta. Tracked for a future readability pass; not a bug.
 
 ### History ✅
 
@@ -351,7 +354,7 @@ Walk on 375px viewport after next dev deploy:
 ### Archive source docs (this file is the single source of truth)
 All items from the docs below are now captured in this backlog. Archive once confident nothing is missed:
 - [ ] `design-critique-system.md` → archive (all items in Phase A/B/C/D/G)
-- [ ] `design-critique-dashboard.md` → archive (all items in Phase A/B/C)
+- [x] `design-critique-dashboard.md` → archived to `docs/archive/` (audit 2026-04-19: 33/35 shipped, 2 intentional trade-offs + 1 future polish item captured in Phase C Dashboard)
 - [x] `design-critique-history.md` → archived to `docs/archive/` (audit 2026-04-19: 17/19 shipped, 2 intentional exceptions captured in Phase C History section)
 - [ ] `CODE-AUDIT.md` → archive (all open items in Phase D/E; closed items in shipped list)
 - [ ] `DASHBOARD-V2-IMPLEMENTATION.md` → keep until Phase H Dashboard checklist is signed off; then archive
