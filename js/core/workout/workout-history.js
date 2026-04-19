@@ -563,9 +563,15 @@ export function getWorkoutHistory(appState) {
                 const docId = workout.docId || workout.id || workout.date;
                 const status = workout.cancelledAt ? 'cancelled' : workout.completedAt ? 'completed' : 'incomplete';
 
-                // Get exercise names for subtitle
+                // Get exercise names for subtitle. Names may live directly on
+                // the exercise object (newer saves) or in a parallel
+                // workout.exerciseNames map keyed by "exercise_N" (older saves).
                 const exerciseNames = workout.exercises
-                    ? Object.values(workout.exercises).map(ex => ex.name || '').filter(Boolean).slice(0, 3).join(', ')
+                    ? Object.entries(workout.exercises)
+                        .map(([key, ex]) => ex?.name || ex?.machine || workout.exerciseNames?.[key] || '')
+                        .filter(Boolean)
+                        .slice(0, 3)
+                        .join(', ')
                     : '';
                 const extraCount = exerciseCount > 3 ? exerciseCount - 3 : 0;
 
