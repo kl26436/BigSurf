@@ -92,6 +92,23 @@
     font-weight: 500;
 }
 
+/* Stacked variant: puts a full-width control (segmented, stepper, etc.)
+   below the icon + name row. Use when the control's labels don't fit
+   inline without squeezing the info column. */
+.srow--stacked {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+}
+.srow--stacked .srow-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+.srow--stacked .srow-info { flex: 1; min-width: 0; }
+.srow--stacked .segmented { width: 100%; }
+
 .srow-chev {
     font-size: 0.72rem;
 }

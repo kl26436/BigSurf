@@ -182,16 +182,18 @@ export function renderSettings() {
                         { value: 6, label: '6' },
                     ], s.weeklyGoal, 'int')}
                 </div>
-                <div class="srow">
-                    <div class="srow-icon ic-primary"><i class="fas fa-weight"></i></div>
-                    <div class="srow-info">
-                        <div class="srow-name">Body weight goal</div>
-                        <div class="srow-desc">Colors the delta on the dashboard</div>
+                <div class="srow srow--stacked">
+                    <div class="srow-head">
+                        <div class="srow-icon ic-primary"><i class="fas fa-weight"></i></div>
+                        <div class="srow-info">
+                            <div class="srow-name">Body weight goal</div>
+                            <div class="srow-desc">Tints the delta on your dashboard</div>
+                        </div>
                     </div>
                     ${segmented('weightGoal', [
                         { value: '', label: 'Off' },
                         { value: 'lose', label: 'Lose' },
-                        { value: 'maintain', label: 'Maintain' },
+                        { value: 'maintain', label: 'Keep' },
                         { value: 'gain', label: 'Gain' },
                     ], s.weightGoal || '', 'string')}
                 </div>
