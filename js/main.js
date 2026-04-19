@@ -19,7 +19,7 @@ import {
     saveEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
     saveEquipmentNotes, showAddEquipmentFlow,
     selectEquipType, updateEquipNamePreview, confirmAddEquipment,
-    saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField,
+    saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField, removeEquipmentLocation,
 } from './core/ui/equipment-library-ui.js';
 
 // Authentication functions
@@ -79,6 +79,47 @@ import {
     closeWorkoutLocationSelector,
     confirmWorkoutLocationChange,
     updateBodyweightSet,
+    // Active Workout V2
+    renderActiveWorkout,
+    loadAutofillForAllExercises,
+    awJumpTo,
+    awNextExercise,
+    awToggleSet,
+    awUpdateSet,
+    awAddSet,
+    awRemoveSet,
+    awSaveNotes,
+    awToggleExerciseMenu,
+    awToggleWorkoutMenu,
+    awCloseMenus,
+    awDeleteExercise,
+    awReplaceExercise,
+    awConfirmExit,
+    awCancelWorkout,
+    awFinishWorkout,
+    awUnlinkSuperset,
+    awUnlinkSupersetGroup,
+    awOpenJumpSheet,
+    awOpenSupersetSheet,
+    awToggleSupersetSelect,
+    awConfirmSupersetLink,
+    awOpenEquipmentSheet,
+    awSelectEquipment,
+    awAddExercise,
+    awSetAddFilter,
+    awSetAddSearch,
+    awInsertExercise,
+    awCloseSheet,
+    awRestAdd30,
+    awRestSkip,
+    awEditRestDuration,
+    awToggleUnit,
+    awToggleReorder,
+    awMoveExercise,
+    awEndReorder,
+    awEquipSearch,
+    awQuickAddEquipment,
+    awSaveNewEquipment,
 } from './core/workout/workout-core.js';
 
 // Template selection functionality
@@ -146,6 +187,7 @@ import {
     selectWorkoutCategory,
     showWorkoutCategoryView,
     handleWorkoutSearch,
+    toggleTemplateExerciseMenu,
     selectTemplateCategory,
     toggleTemplateDay,
 } from './core/workout/workout-management-ui.js';
@@ -474,6 +516,48 @@ window.toggleExerciseOverflow = toggleExerciseOverflow;
 window.supersetWithNext = supersetWithNext;
 window.ungroupExerciseFromWorkout = ungroupExerciseFromWorkout;
 
+// Active Workout V2 — wizard UI
+window.renderActiveWorkout = renderActiveWorkout;
+window.loadAutofillForAllExercises = loadAutofillForAllExercises;
+window.awJumpTo = awJumpTo;
+window.awNextExercise = awNextExercise;
+window.awToggleSet = awToggleSet;
+window.awUpdateSet = awUpdateSet;
+window.awAddSet = awAddSet;
+window.awRemoveSet = awRemoveSet;
+window.awSaveNotes = awSaveNotes;
+window.awToggleExerciseMenu = awToggleExerciseMenu;
+window.awToggleWorkoutMenu = awToggleWorkoutMenu;
+window.awCloseMenus = awCloseMenus;
+window.awDeleteExercise = awDeleteExercise;
+window.awReplaceExercise = awReplaceExercise;
+window.awConfirmExit = awConfirmExit;
+window.awCancelWorkout = awCancelWorkout;
+window.awFinishWorkout = awFinishWorkout;
+window.awUnlinkSuperset = awUnlinkSuperset;
+window.awUnlinkSupersetGroup = awUnlinkSupersetGroup;
+window.awOpenJumpSheet = awOpenJumpSheet;
+window.awOpenSupersetSheet = awOpenSupersetSheet;
+window.awToggleSupersetSelect = awToggleSupersetSelect;
+window.awConfirmSupersetLink = awConfirmSupersetLink;
+window.awOpenEquipmentSheet = awOpenEquipmentSheet;
+window.awSelectEquipment = awSelectEquipment;
+window.awAddExercise = awAddExercise;
+window.awSetAddFilter = awSetAddFilter;
+window.awSetAddSearch = awSetAddSearch;
+window.awInsertExercise = awInsertExercise;
+window.awCloseSheet = awCloseSheet;
+window.awRestAdd30 = awRestAdd30;
+window.awRestSkip = awRestSkip;
+window.awEditRestDuration = awEditRestDuration;
+window.awToggleUnit = awToggleUnit;
+window.awToggleReorder = awToggleReorder;
+window.awMoveExercise = awMoveExercise;
+window.awEndReorder = awEndReorder;
+window.awEquipSearch = awEquipSearch;
+window.awQuickAddEquipment = awQuickAddEquipment;
+window.awSaveNewEquipment = awSaveNewEquipment;
+
 // Plate Calculator (lazy-loaded)
 window.openPlateCalcPopover = async function (exerciseIndex) {
     const { openPlateCalcPopover } = await import('./core/features/plate-calculator.js');
@@ -704,6 +788,7 @@ window.cancelInlineAdd = cancelInlineAdd;
 window.selectWorkoutCategory = selectWorkoutCategory;
 window.showWorkoutCategoryView = showWorkoutCategoryView;
 window.handleWorkoutSearch = handleWorkoutSearch;
+window.toggleTemplateExerciseMenu = toggleTemplateExerciseMenu;
 
 // Authentication Functions
 window.signIn = signIn;
@@ -835,6 +920,7 @@ window.showAddEquipmentFlow = showAddEquipmentFlow;
 window.selectEquipType = selectEquipType;
 window.updateEquipNamePreview = updateEquipNamePreview;
 window.confirmAddEquipment = confirmAddEquipment;
+window.removeEquipmentLocation = removeEquipmentLocation;
 
 // Error Log
 window.showErrorLog = showErrorLog;

@@ -1034,7 +1034,7 @@ function createTemplateExerciseItem(exercise, index) {
 /**
  * Toggle the overflow menu for a template exercise row.
  */
-function toggleTemplateExerciseMenu(index) {
+export function toggleTemplateExerciseMenu(index) {
     const menu = document.getElementById(`template-ex-menu-${index}`);
     if (!menu) return;
     // Close all other menus

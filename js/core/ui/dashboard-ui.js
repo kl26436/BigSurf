@@ -2,7 +2,7 @@
 // Sections: Greeting → Active Pill → Hero Chips → Insight → For Today → Training → Composition → Recent PRs
 
 import { StatsTracker } from '../features/stats-tracker.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr, convertWeight } from './ui-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
@@ -189,14 +189,23 @@ async function loadBodyWeightData() {
 
         const userUnit = AppState.globalUnit || 'lbs';
         const converted = entries.map(e => {
-            const dw = displayWeight(e.weight, e.unit || 'lbs', userUnit);
+            // Withings stores in kg with unit:'kg', manual entries may vary
+            const storedUnit = e.unit || 'lbs';
+            const dw = displayWeight(e.weight, storedUnit, userUnit);
             return { ...e, displayWeight: dw.value, displayUnit: dw.label };
         });
         const latest = converted[converted.length - 1];
         const first = converted[0];
-        const delta = latest.displayWeight - first.displayWeight;
 
-        return { latest, delta, unit: latest.displayUnit || userUnit };
+        // Use last 30 days for delta, not full 90
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const thirtyDaysStr = thirtyDaysAgo.toISOString().split('T')[0];
+        const monthEntries = converted.filter(e => e.date >= thirtyDaysStr);
+        const monthFirst = monthEntries.length > 0 ? monthEntries[0] : first;
+        const delta = latest.displayWeight - monthFirst.displayWeight;
+
+        return { latest, entries: converted, delta, unit: latest.displayUnit || userUnit };
     } catch {
         return null;
     }
@@ -446,50 +455,93 @@ async function renderCompositionCard(bwData) {
         scan = await getLatestDexaScan();
     } catch { /* no dexa */ }
 
-    // DEXA fields are at top level: scan.totalBodyFat, scan.totalWeight, scan.muscleMass, etc.
     const hasDexa = scan && (scan.totalBodyFat != null || scan.muscleMass != null);
     const hasBw = bwData != null;
     if (!hasDexa && !hasBw) return renderConnectPrompt();
 
-    let segments = [];
+    let html = `
+        <div class="dash-section-head">
+            <h3>Body</h3>
+        </div>
+    `;
+
+    // --- Card 1: Body Weight (with Withings badge + sparkline) ---
+    if (hasBw) {
+        const source = bwData.latest.source === 'withings' ? '<span class="bw-badge">Withings</span>' : '';
+        const weightStr = bwData.latest.displayWeight.toFixed(1);
+        const deltaStr = bwData.delta != null
+            ? `<div class="bw-delta">${bwData.delta < 0 ? '↓' : '↑'} ${Math.abs(bwData.delta).toFixed(1)} ${bwData.unit} · 30 days</div>`
+            : '';
+
+        // Build sparkline from entries if available
+        let sparkHtml = '';
+        if (bwData.entries && bwData.entries.length > 2) {
+            const points = bwData.entries.map((e, i) => ({ x: i, y: e.displayWeight }));
+            sparkHtml = `<div class="bw-spark">${chartSparkline({ points, color: 'var(--primary)', width: 280, height: 32 })}</div>`;
+        }
+
+        html += `
+            <div class="bc-card" onclick="showCompositionDetail()">
+                <div class="bw-card-head">
+                    <i class="fas fa-weight" style="color:var(--primary);"></i>
+                    <span class="bw-card-title">Body Weight</span>
+                    ${source}
+                    <i class="fas fa-chevron-right bp-card__chev"></i>
+                </div>
+                <div class="bw-card-value">${weightStr} <span class="bw-card-unit">${bwData.unit}</span></div>
+                ${deltaStr}
+                ${sparkHtml}
+            </div>
+        `;
+    }
+
+    // --- Card 2: Body Composition (DEXA donut) ---
     if (hasDexa) {
-        const fatPct = scan.totalBodyFat || 0;
+        const fatPct = Math.round(scan.totalBodyFat || 0);
         const musclePct = scan.muscleMass && scan.totalWeight
             ? Math.round(scan.muscleMass / scan.totalWeight * 100)
             : 0;
         const waterPct = Math.max(0, 100 - fatPct - musclePct);
-        if (fatPct > 0 || musclePct > 0) {
-            segments = [
-                { label: `Muscle ${musclePct}%`, value: musclePct, color: 'var(--cat-legs)' },
-                { label: `Fat ${fatPct}%`, value: fatPct, color: 'var(--cat-pull)' },
-                { label: `Water ${waterPct}%`, value: waterPct, color: 'var(--cat-shoulders)' },
-            ];
+        const segments = [
+            { label: `Muscle ${musclePct}%`, value: musclePct, color: 'var(--cat-legs)' },
+            { label: `Fat ${fatPct}%`, value: fatPct, color: 'var(--cat-pull)' },
+            { label: `Water ${waterPct}%`, value: waterPct, color: 'var(--primary)' },
+        ];
+
+        // Days since DEXA
+        let dexaAgo = '';
+        if (scan.date) {
+            const daysAgo = Math.round((Date.now() - new Date(scan.date).getTime()) / 86400000);
+            if (daysAgo <= 1) dexaAgo = 'Today';
+            else if (daysAgo < 7) dexaAgo = `${daysAgo} days ago`;
+            else dexaAgo = `${Math.round(daysAgo / 7)} weeks ago`;
         }
+
+        // Muscle change from previous scan
+        let muscleDelta = '';
+        if (scan._prevMuscleMass != null && scan.muscleMass != null) {
+            const d = scan.muscleMass - scan._prevMuscleMass;
+            muscleDelta = ` · Muscle ${d >= 0 ? '↑' : '↓'} ${Math.abs(d).toFixed(1)} lb`;
+        }
+
+        html += `
+            <div class="bc-card" onclick="showCompositionDetail()" style="margin-top:12px;">
+                <div class="bw-card-head">
+                    <span class="bw-card-title">Body Composition</span>
+                    <i class="fas fa-chevron-right bp-card__chev"></i>
+                </div>
+                <div class="bc-row">
+                    ${chartDonut({ segments, size: 60 })}
+                    <div class="bc-legend">
+                        ${segments.map(s => `<div class="bc-leg"><div class="bc-dot" style="background:${s.color};"></div>${s.label}</div>`).join('')}
+                    </div>
+                </div>
+                ${dexaAgo ? `<div class="bc-dexa-ago">Last DEXA: ${dexaAgo}${muscleDelta}</div>` : ''}
+            </div>
+        `;
     }
 
-    return `
-        <div class="dash-section-head">
-            <h3>Composition</h3>
-            <a onclick="showCompositionDetail()">Details →</a>
-        </div>
-        <div class="bc-card" onclick="showCompositionDetail()"
-            <div class="bc-row">
-                ${segments.length ? chartDonut({ segments, size: 60 }) : '<div class="bc-donut-empty"></div>'}
-                <div class="bc-legend">
-                    ${segments.length
-                        ? segments.map(s => `<div class="bc-leg"><div class="bc-dot" style="background:${s.color};"></div>${s.label}</div>`).join('')
-                        : '<div class="bc-leg">No DEXA data yet</div>'}
-                </div>
-                <i class="fas fa-chevron-right bp-card__chev"></i>
-            </div>
-            ${hasBw ? `
-                <div class="bc-weight">
-                    <span>Body weight</span>
-                    <span><strong>${bwData.latest.displayWeight.toFixed(1)} ${bwData.unit}</strong>${bwData.delta != null ? ` · ${bwData.delta < 0 ? '↓' : '↑'} ${Math.abs(bwData.delta).toFixed(1)} ${bwData.unit} this month` : ''}</span>
-                </div>
-            ` : ''}
-        </div>
-    `;
+    return html;
 }
 
 function renderConnectPrompt() {
@@ -525,7 +577,7 @@ function renderRecentPRs(recentPRs) {
                     <div class="pr-name">${escapeHtml(pr.exercise)}</div>
                     <div class="pr-meta">${formatRelativeDateDash(pr.date)} · ${pr.reps} reps</div>
                 </div>
-                <div class="pr-val">${pr.weight} lb</div>
+                <div class="pr-val">${convertWeight(pr.weight, pr.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}</div>
             </div>
         `).join('')}
     `;
