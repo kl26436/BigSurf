@@ -79,6 +79,7 @@ export {
     restoreActiveTimerState,
     restoreTimerFromAppState,
     autoStartRestTimer,
+    toggleHeaderRestTimer,
     skipHeaderRestTimer,
 } from './rest-timer.js';
 
@@ -92,6 +93,7 @@ export {
     awToggleSet,
     awUpdateSet,
     awAddSet,
+    awRemoveSet,
     awSaveNotes,
     awToggleExerciseMenu,
     awToggleWorkoutMenu,

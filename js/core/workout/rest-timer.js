@@ -477,6 +477,13 @@ export function autoStartRestTimer(exerciseIndex, setIndex) {
     }
 }
 
+export function toggleHeaderRestTimer() {
+    // Pause/resume the active rest timer from the header
+    if (!AppState.activeRestTimer) return;
+    const exerciseIndex = AppState.activeRestTimer.exerciseIndex;
+    toggleModalRestTimer(exerciseIndex);
+}
+
 export function skipHeaderRestTimer() {
     // Skip the active rest timer from the header
     if (!AppState.activeRestTimer) return;

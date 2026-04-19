@@ -214,7 +214,7 @@
 
 .chat-msg.user {
     background: var(--primary);
-    color: #04201a;
+    color: var(--text-on-accent);
     align-self: flex-end;
     border-bottom-right-radius: 6px;
 }
@@ -261,7 +261,7 @@
     height: 38px;
     border-radius: 50%;
     background: var(--primary);
-    color: #04201a;
+    color: var(--text-on-accent);
     border: none;
     display: flex;
     align-items: center;

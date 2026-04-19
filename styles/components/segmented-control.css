@@ -26,5 +26,5 @@
 
 .segmented button.active {
     background: var(--primary);
-    color: #04201a;
+    color: var(--text-on-accent);
 }

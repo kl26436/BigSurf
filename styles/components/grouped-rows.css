@@ -135,7 +135,7 @@
 }
 
 .toggle.on::after {
-    background: #04201a;
+    background: var(--text-on-accent);
     transform: translateX(18px);
 }
 

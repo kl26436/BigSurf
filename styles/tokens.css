@@ -27,6 +27,9 @@
     --text-muted: #b0b8c1;
     --text-secondary: #9aa3ad;
 
+    /* Dark text on accent backgrounds */
+    --text-on-accent: #04201a;
+
     /* Borders - subtle */
     --border: #1a2028;
     --border-accent: rgba(29, 211, 176, 0.85);

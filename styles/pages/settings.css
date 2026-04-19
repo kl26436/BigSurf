@@ -132,7 +132,7 @@
     height: 20px;
     border-radius: 50%;
     background: var(--primary);
-    color: #04201a;
+    color: var(--text-on-accent);
     display: flex;
     align-items: center;
     justify-content: center;

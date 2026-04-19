@@ -327,7 +327,7 @@
     height: 30px;
     border-radius: 50%;
     background: var(--primary);
-    color: #04201a;
+    color: var(--text-on-accent);
     border: none;
     display: flex;
     align-items: center;

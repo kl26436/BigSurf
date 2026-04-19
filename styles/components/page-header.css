@@ -43,7 +43,7 @@
 
 .btn-save {
     background: var(--primary);
-    color: #04201a;
+    color: var(--text-on-accent);
     border: none;
     padding: 8px 16px;
     border-radius: var(--radius-pill);
@@ -143,7 +143,7 @@
 .btn-redesign {
     width: 100%;
     background: var(--primary);
-    color: #04201a;
+    color: var(--text-on-accent);
     border: none;
     border-radius: var(--radius-md);
     padding: 14px;
