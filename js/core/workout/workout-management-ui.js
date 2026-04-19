@@ -827,11 +827,6 @@ export async function saveCurrentTemplate() {
     if (!currentEditingTemplate) return;
 
     const nameInput = document.getElementById('template-name');
-    const categorySelect = document.getElementById('template-category');
-
-    // Get all checked day checkboxes
-    const dayCheckboxes = document.querySelectorAll('input[name="suggested-days"]:checked');
-    const selectedDays = Array.from(dayCheckboxes).map((cb) => cb.value);
 
     if (!nameInput?.value.trim()) {
         showNotification('Please enter a workout name', 'warning');
@@ -839,8 +834,9 @@ export async function saveCurrentTemplate() {
     }
 
     currentEditingTemplate.name = nameInput.value.trim();
-    currentEditingTemplate.category = categorySelect?.value || 'Other';
-    currentEditingTemplate.suggestedDays = selectedDays.length > 0 ? selectedDays : null;
+    // Category and suggestedDays are kept in sync by selectTemplateCategory() / toggleTemplateDay()
+    const days = currentEditingTemplate.suggestedDays;
+    currentEditingTemplate.suggestedDays = Array.isArray(days) && days.length > 0 ? days : null;
 
     if (currentEditingTemplate.exercises.length === 0) {
         showNotification('Please add at least one exercise to the workout', 'warning');

@@ -379,15 +379,26 @@ function renderForToday(allWorkouts) {
 
     const dow = new Date().getDay();
     const dayName = getDayName();
-    const ranked = getTemplatesForDayOfWeek(templates, allWorkouts, dow).slice(0, 4);
-    if (ranked.length === 0 || ranked[0].count === 0) return '';
+    const dayKey = dayName.toLowerCase();
+    const ranked = getTemplatesForDayOfWeek(templates, allWorkouts, dow)
+        .map(r => ({
+            ...r,
+            scheduled: Array.isArray(r.template.suggestedDays) && r.template.suggestedDays.includes(dayKey),
+        }))
+        .sort((a, b) => {
+            if (a.scheduled !== b.scheduled) return a.scheduled ? -1 : 1;
+            return b.count - a.count;
+        });
+
+    const visible = ranked.filter(r => r.count > 0 || r.scheduled).slice(0, 4);
+    if (visible.length === 0) return '';
 
     return `
         <div class="dash-section-head">
             <h3>For ${dayName}</h3>
             <a onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">All →</a>
         </div>
-        ${ranked.filter(r => r.count > 0).map((r, i) => renderForTodayRow(r, i === 0, dayName)).join('')}
+        ${visible.map((r, i) => renderForTodayRow(r, i === 0, dayName)).join('')}
     `;
 }
 
@@ -398,10 +409,16 @@ export function openWorkoutSelectorForDay(dayName) {
     window.bottomNavTo?.('workout');
 }
 
-function renderForTodayRow({ template, count }, isMostUsed, dayName) {
+function renderForTodayRow({ template, count, scheduled }, isMostUsed, dayName) {
     const category = template.category || getWorkoutCategory(template.name || template.day) || 'other';
     const icon = getCategoryIcon(category);
     const exCount = template.exercises ? template.exercises.length : 0;
+    const usageText = count > 0
+        ? `${count} ${count === 1 ? 'time' : 'times'} on ${dayName}s`
+        : `Scheduled for ${dayName}s`;
+    const badge = scheduled
+        ? '<span class="dash-template-count">Scheduled</span>'
+        : (isMostUsed && count >= 1 ? '<span class="dash-template-count">Most used</span>' : '');
 
     return `
         <div class="dash-template-row" onclick="startWorkout('${escapeAttr(template.id || template.name)}')">
@@ -409,9 +426,9 @@ function renderForTodayRow({ template, count }, isMostUsed, dayName) {
             <div class="dash-template-info">
                 <div class="dash-template-name">
                     ${escapeHtml(template.name || template.day)}
-                    ${isMostUsed && count >= 1 ? '<span class="dash-template-count">Most used</span>' : ''}
+                    ${badge}
                 </div>
-                <div class="dash-template-meta">${exCount} exercises · ${count} ${count === 1 ? 'time' : 'times'} on ${dayName}s</div>
+                <div class="dash-template-meta">${exCount} exercises · ${usageText}</div>
             </div>
             <button class="dash-template-play" onclick="event.stopPropagation(); startWorkout('${escapeAttr(template.id || template.name)}')">
                 <i class="fas fa-play"></i>
