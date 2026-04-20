@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v7.9-profile-exp-picker';
+const CACHE_NAME = 'big-surf-v8.0-page-header-sweep';
 const STATIC_ASSETS = [
   '/index.html',
   '/styles/index.css',

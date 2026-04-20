@@ -353,15 +353,19 @@ export async function openEquipmentDetail(equipmentId) {
     const container = document.getElementById('equipment-library-content');
     if (!container) return;
 
-    // Update the static header for detail view
+    // Update the static header for detail view (page-header BEM structure).
+    // Selector was previously .equip-lib-header which never matched any real
+    // element — fixed to target the canonical .page-header in index.html.
     const section = document.getElementById('equipment-library-section');
-    const staticHeader = section?.querySelector('.equip-lib-header');
+    const staticHeader = section?.querySelector('.page-header');
     if (staticHeader) {
         staticHeader.innerHTML = `
-            <button class="btn-icon" onclick="backToEquipmentList()" aria-label="Back">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <h2 class="equip-detail-title">${escapeHtml(equipment.name)}</h2>
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="backToEquipmentList()" aria-label="Back">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-header__title">${escapeHtml(equipment.name)}</div>
+            </div>
             <button class="page-header__save" onclick="backToEquipmentList()">Done</button>
         `;
     }
@@ -470,16 +474,19 @@ export async function openEquipmentDetail(equipmentId) {
 export function backToEquipmentList() {
     currentDetailId = null;
 
-    // Restore the static header for list view
+    // Restore the canonical .page-header for the list view (matches the
+    // markup in index.html so the DOM snaps back to its original shape).
     const section = document.getElementById('equipment-library-section');
-    const staticHeader = section?.querySelector('.equip-lib-header');
+    const staticHeader = section?.querySelector('.page-header');
     if (staticHeader) {
         staticHeader.innerHTML = `
-            <button class="btn-icon" onclick="navigateTo('dashboard')" aria-label="Back to dashboard">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <h2>Equipment</h2>
-            <button class="btn btn-primary btn-small" onclick="showAddEquipmentFlow()">
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-header__title">Equipment</div>
+            </div>
+            <button class="page-header__save" onclick="showAddEquipmentFlow()">
                 <i class="fas fa-plus"></i> Add
             </button>
         `;

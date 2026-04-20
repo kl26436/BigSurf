@@ -183,12 +183,14 @@
 
                 <!-- Location Management -->
                 <section id="location-management-section" class="content-section pinned-header hidden">
-                    <div class="section-header-row">
-                        <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <h2 class="section-title"><i class="fas fa-map-marker-alt"></i> Locations</h2>
-                        <button class="btn btn-primary" onclick="detectAndAddLocation()">
+                    <div class="page-header">
+                        <div class="page-header__left">
+                            <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="page-header__title">Locations</div>
+                        </div>
+                        <button class="page-header__save" onclick="detectAndAddLocation()">
                             <i class="fas fa-plus"></i> New
                         </button>
                     </div>
@@ -250,16 +252,18 @@
                 <!-- Workout History -->
                 <section id="workout-history-section" class="content-section pinned-header hidden">
                     <!-- Section Header with search toggle -->
-                    <div class="section-header-row">
-                        <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <h2 class="section-title"><i class="fas fa-calendar-alt"></i> History</h2>
-                        <div class="history-header-actions">
-                            <button class="btn-icon-sm" onclick="toggleHistorySearch()" aria-label="Search">
+                    <div class="page-header">
+                        <div class="page-header__left">
+                            <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="page-header__title">History</div>
+                        </div>
+                        <div class="page-header__actions">
+                            <button class="page-header__icon-btn" onclick="toggleHistorySearch()" aria-label="Search">
                                 <i class="fas fa-search"></i>
                             </button>
-                            <button class="btn-icon-sm" onclick="showAddManualWorkoutModal()" aria-label="Add missing workout" title="Add missing workout">
+                            <button class="page-header__icon-btn" onclick="showAddManualWorkoutModal()" aria-label="Add missing workout" title="Add missing workout">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -319,12 +323,14 @@
                 <!-- Workout Management Section (Full Page, not a modal) -->
                 <section id="workout-management-section" class="content-section pinned-header hidden">
                     <!-- Section Header -->
-                    <div class="section-header-row">
-                        <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <h2 class="section-title"><i class="fas fa-clipboard-list"></i> Workouts</h2>
-                        <button class="btn btn-primary" onclick="createNewTemplate()">
+                    <div class="page-header">
+                        <div class="page-header__left">
+                            <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="page-header__title">Workouts</div>
+                        </div>
+                        <button class="page-header__save" onclick="createNewTemplate()">
                             <i class="fas fa-plus"></i> New
                         </button>
                     </div>
@@ -416,16 +422,16 @@
 
                 <!-- Exercise Library (Full-Page Section) -->
                 <section id="exercise-library-section" class="full-page-section hidden">
-                    <div class="full-page-header">
-                        <button class="btn-icon" onclick="closeExerciseLibrary()" aria-label="Back">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <h3>Add Exercise</h3>
-                        <div class="full-page-header-action">
-                            <button class="btn btn-primary btn-small" onclick="showCreateExerciseForm()">
-                                <i class="fas fa-plus"></i> New
+                    <div class="page-header">
+                        <div class="page-header__left">
+                            <button class="page-header__back" onclick="closeExerciseLibrary()" aria-label="Back">
+                                <i class="fas fa-chevron-left"></i>
                             </button>
+                            <div class="page-header__title">Add Exercise</div>
                         </div>
+                        <button class="page-header__save" onclick="showCreateExerciseForm()">
+                            <i class="fas fa-plus"></i> New
+                        </button>
                     </div>
                     <div class="full-page-body" id="exercise-library-content">
                         <!-- Exercise Library Controls -->
@@ -477,12 +483,13 @@
 
                 <!-- Workout Details (Full-Page Section) -->
                 <section id="workout-detail-section" class="full-page-section hidden">
-                    <div class="full-page-header">
-                        <button class="btn-icon" onclick="closeWorkoutDetailModal()" aria-label="Back">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <h3 id="workout-detail-title">Workout Details</h3>
-                        <div class="full-page-header-action"></div>
+                    <div class="page-header">
+                        <div class="page-header__left">
+                            <button class="page-header__back" onclick="closeWorkoutDetailModal()" aria-label="Back">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="page-header__title" id="workout-detail-title">Workout Details</div>
+                        </div>
                     </div>
                     <div class="full-page-body" id="workout-detail-content">
                         <!-- Populated by JavaScript -->
@@ -615,12 +622,13 @@
 
                 <!-- Workout Editor (Full-Page Section) -->
                 <section id="template-editor-section" class="full-page-section hidden">
-                    <div class="full-page-header">
-                        <button class="btn-icon" onclick="closeTemplateEditor()" aria-label="Back">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <h3 id="template-editor-title">Create Workout</h3>
-                        <div class="full-page-header-action"></div>
+                    <div class="page-header">
+                        <div class="page-header__left">
+                            <button class="page-header__back" onclick="closeTemplateEditor()" aria-label="Back">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="page-header__title" id="template-editor-title">Create Workout</div>
+                        </div>
                     </div>
                     <div class="full-page-body" id="template-editor-content">
                         <!-- Populated by JavaScript -->
@@ -839,12 +847,14 @@
         <!-- Exercise Manager Section -->
         <section id="exercise-manager-section" class="content-section pinned-header hidden">
             <!-- Section Header (pinned) -->
-            <div class="section-header-row">
-                <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <h2 class="section-title"><i class="fas fa-dumbbell"></i> Exercises</h2>
-                <button class="btn btn-primary" onclick="showAddExerciseModal()">
+            <div class="page-header">
+                <div class="page-header__left">
+                    <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-header__title">Exercises</div>
+                </div>
+                <button class="page-header__save" onclick="showAddExerciseModal()">
                     <i class="fas fa-plus"></i> New
                 </button>
             </div>
@@ -1402,12 +1412,13 @@
 
         <!-- Weight History (Full-Page Section) -->
         <section id="weight-history-section" class="full-page-section hidden" aria-label="Weight history">
-            <div class="full-page-header">
-                <button class="btn-icon" onclick="closeWeightHistory()" aria-label="Back">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <h3>Weight History</h3>
-                <div class="full-page-header-action"></div>
+            <div class="page-header">
+                <div class="page-header__left">
+                    <button class="page-header__back" onclick="closeWeightHistory()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-header__title">Weight History</div>
+                </div>
             </div>
             <div class="full-page-body" id="weight-history-content">
                 <!-- Populated by JavaScript -->
@@ -1417,14 +1428,14 @@
 
         <!-- DEXA Scan Upload (Full-Page Section) -->
         <section id="dexa-upload-section" class="full-page-section hidden" aria-label="DEXA scan upload">
-            <div class="full-page-header">
-                <button class="btn-icon" onclick="closeDexaUploadModal()" aria-label="Back">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <h3>New DEXA Scan</h3>
-                <div class="full-page-header-action">
-                    <button id="dexa-save-btn" class="btn btn-primary btn-sm" disabled onclick="confirmDexaSave()">Save</button>
+            <div class="page-header">
+                <div class="page-header__left">
+                    <button class="page-header__back" onclick="closeDexaUploadModal()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-header__title">New DEXA Scan</div>
                 </div>
+                <button id="dexa-save-btn" class="page-header__save" disabled onclick="confirmDexaSave()">Save</button>
             </div>
             <div class="full-page-body" id="dexa-upload-content">
                 <!-- Populated by JavaScript -->
@@ -1433,12 +1444,13 @@
 
         <!-- DEXA Scan History (Full-Page Section) -->
         <section id="dexa-history-section" class="full-page-section hidden" aria-label="DEXA scan history">
-            <div class="full-page-header">
-                <button class="btn-icon" onclick="closeDexaHistory()" aria-label="Back">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <h3>DEXA History</h3>
-                <div class="full-page-header-action"></div>
+            <div class="page-header">
+                <div class="page-header__left">
+                    <button class="page-header__back" onclick="closeDexaHistory()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-header__title">DEXA History</div>
+                </div>
             </div>
             <div class="full-page-body" id="dexa-history-content">
                 <!-- Populated by JavaScript -->
@@ -1447,16 +1459,16 @@
 
         <!-- DEXA Scan Detail (Full-Page Section) -->
         <section id="dexa-detail-section" class="full-page-section hidden" aria-label="DEXA scan detail">
-            <div class="full-page-header">
-                <button class="btn-icon" onclick="closeDexaDetail()" aria-label="Back">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <h3 id="dexa-detail-title">DEXA Scan</h3>
-                <div class="full-page-header-action">
-                    <button class="btn-icon" id="dexa-detail-overflow" aria-label="More options">
-                        <i class="fas fa-ellipsis-v"></i>
+            <div class="page-header">
+                <div class="page-header__left">
+                    <button class="page-header__back" onclick="closeDexaDetail()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
                     </button>
+                    <div class="page-header__title" id="dexa-detail-title">DEXA Scan</div>
                 </div>
+                <button class="page-header__icon-btn" id="dexa-detail-overflow" aria-label="More options">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
             </div>
             <div class="full-page-body" id="dexa-detail-content">
                 <!-- Populated by JavaScript -->
@@ -1472,12 +1484,14 @@
 
         <!-- Equipment Library Page -->
         <section id="equipment-library-section" class="content-section pinned-header hidden">
-            <div class="section-header-row">
-                <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <h2 class="section-title"><i class="fas fa-wrench"></i> Equipment</h2>
-                <button class="btn btn-primary" onclick="showAddEquipmentFlow()">
+            <div class="page-header">
+                <div class="page-header__left">
+                    <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-header__title">Equipment</div>
+                </div>
+                <button class="page-header__save" onclick="showAddEquipmentFlow()">
                     <i class="fas fa-plus"></i> Add
                 </button>
             </div>
@@ -1494,24 +1508,26 @@
         </section>
 
         <section id="settings-section" class="content-section pinned-header hidden">
-            <div class="section-header-row">
-                <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <h2 class="section-title"><i class="fas fa-cog"></i> Settings</h2>
-                <div class="header-spacer"></div>
+            <div class="page-header">
+                <div class="page-header__left">
+                    <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-header__title">Settings</div>
+                </div>
             </div>
             <div class="content-section-body" id="settings-content"></div>
         </section>
 
         <!-- Profile Detail -->
         <section id="profile-section" class="content-section pinned-header hidden">
-            <div class="section-header-row">
-                <button class="btn-icon-sm" onclick="navigateBack()" aria-label="Back">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <h2 class="section-title"><i class="fas fa-user"></i> Profile</h2>
-                <div class="header-spacer"></div>
+            <div class="page-header">
+                <div class="page-header__left">
+                    <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-header__title">Profile</div>
+                </div>
             </div>
             <div class="content-section-body" id="profile-content"></div>
         </section>

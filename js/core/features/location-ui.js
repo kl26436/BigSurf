@@ -51,12 +51,18 @@ export async function showLocationManagement() {
     if (section) {
         section.classList.remove('hidden');
 
-        // Restore the static header for list view (in case we're returning from detail)
-        const staticHeader = section.querySelector('.section-header-row');
+        // Restore the canonical .page-header for the list view (in case we're
+        // returning from a detail view that mutated it).
+        const staticHeader = section.querySelector('.page-header');
         if (staticHeader) {
             staticHeader.innerHTML = `
-                <h2 class="section-title"><i class="fas fa-map-marker-alt"></i> Locations</h2>
-                <button class="btn btn-primary" onclick="detectAndAddLocation()">
+                <div class="page-header__left">
+                    <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-header__title">Locations</div>
+                </div>
+                <button class="page-header__save" onclick="detectAndAddLocation()">
                     <i class="fas fa-plus"></i> New
                 </button>
             `;
@@ -785,15 +791,18 @@ export function showLocationDetail(locationId) {
     const mapContainer = document.getElementById('location-map-container');
     if (mapContainer) mapContainer.classList.add('hidden');
 
-    // Update the static section header for detail view
+    // Update the canonical .page-header for the detail view. Title truncates
+    // automatically via .page-header__title ellipsis styling.
     const section = document.getElementById('location-management-section');
-    const staticHeader = section?.querySelector('.section-header-row');
+    const staticHeader = section?.querySelector('.page-header');
     if (staticHeader) {
         staticHeader.innerHTML = `
-            <button class="btn-icon btn-icon--back" onclick="showLocationManagement()" aria-label="Back">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <h2 class="section-title section-title--truncate">${escapeHtml(location.name)}</h2>
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="showLocationManagement()" aria-label="Back">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-header__title">${escapeHtml(location.name)}</div>
+            </div>
             <button class="page-header__save" onclick="showLocationManagement()">Done</button>
         `;
     }
@@ -883,6 +892,42 @@ export function showLocationDetail(locationId) {
             }
         });
     }
+
+    // Initialise a non-interactive Leaflet mini-map over the .loc-map-card__canvas
+    // placeholder. Non-interactive = no drag/zoom/scroll — matches the spec's
+    // "mini map card" intent (preview only; 'Use current' is the edit path).
+    if (hasGPS) {
+        setTimeout(() => initLocationDetailMiniMap(location.latitude, location.longitude), 0);
+    }
+}
+
+/** One-shot init for the read-only Leaflet preview inside .loc-map-card__canvas. */
+function initLocationDetailMiniMap(lat, lon) {
+    if (typeof window.L === 'undefined') return; // Leaflet not yet loaded
+    const canvas = document.querySelector('.loc-map-card__canvas');
+    if (!canvas) return;
+
+    // Clear the placeholder pin before mounting the Leaflet container so the
+    // map renders into a clean node.
+    canvas.innerHTML = '';
+
+    const map = window.L.map(canvas, {
+        zoomControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        touchZoom: false,
+        boxZoom: false,
+        keyboard: false,
+        tap: false,
+        attributionControl: false,
+    }).setView([lat, lon], 15);
+
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+    }).addTo(map);
+
+    window.L.marker([lat, lon]).addTo(map);
 }
 
 /**
