@@ -660,166 +660,146 @@
             </div>
         </div>
 
-        <!-- Add Manual Workout Modal -->
-        <dialog id="add-manual-workout-modal" class="modal">
-            <div class="modal-content manual-workout-modal">
-                <div class="modal-header">
-                    <h3 class="modal-title">Add Missing Workout</h3>
-                    <button class="close-btn" aria-label="Close" onclick="closeAddManualWorkoutModal()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <!-- Step 1: Date and Workout Selection -->
-                <div id="manual-step-1" class="manual-step">
-                    <div class="form-group">
-                        <label for="manual-workout-date">When did you work out? *</label>
-                        <input type="date" id="manual-workout-date" class="form-input" required />
-                    </div>
-
-                    <div class="manual-workout-source-section">
-                        <label class="section-label">Choose your workout:</label>
-
-                        <!-- Option: Select from Library -->
-                        <div class="workout-source-option" id="source-library-option">
-                            <div class="source-header" onclick="toggleManualWorkoutSource('library')">
-                                <i class="fas fa-list"></i>
-                                <span>Select from Workout Library</span>
-                                <i class="fas fa-chevron-down toggle-icon"></i>
-                            </div>
-                            <div id="manual-library-list" class="source-content hidden">
-                                <div class="library-loading">Loading workouts...</div>
-                            </div>
-                        </div>
-
-                        <!-- Option: Create Custom -->
-                        <div class="workout-source-option" id="source-custom-option">
-                            <div class="source-header" onclick="toggleManualWorkoutSource('custom')">
-                                <i class="fas fa-plus-circle"></i>
-                                <span>Create Custom Workout</span>
-                                <i class="fas fa-chevron-down toggle-icon"></i>
-                            </div>
-                            <div id="manual-custom-form" class="source-content hidden">
-                                <div class="form-group">
-                                    <label for="manual-workout-name">Workout Name *</label>
-                                    <input
-                                        type="text"
-                                        id="manual-workout-name"
-                                        class="form-input"
-                                        placeholder="e.g., Chest & Triceps, Upper Body"
-                                    />
-                                </div>
-                                <div class="form-group">
-                                    <label for="manual-workout-category">Category *</label>
-                                    <select id="manual-workout-category" class="form-input">
-                                        <option value="">Select category...</option>
-                                        <option value="Push">Push</option>
-                                        <option value="Pull">Pull</option>
-                                        <option value="Legs">Legs</option>
-                                        <option value="Cardio">Cardio</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <button type="button" class="btn btn-primary" onclick="startCustomManualWorkout()">
-                                    <i class="fas fa-arrow-right"></i> Continue
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="step-actions">
-                        <button type="button" class="btn btn-secondary" onclick="closeAddManualWorkoutModal()">
-                            Cancel
+        <!-- Manual Workout Entry (full-page, Phase F §3 rewrite) -->
+        <section id="manual-workout-section" class="content-section pinned-header hidden">
+            <!-- Step 1: Date + source picker -->
+            <div id="manual-step-1" class="manual-step">
+                <div class="page-header">
+                    <div class="page-header__left">
+                        <button class="page-header__back" onclick="closeAddManualWorkoutModal()" aria-label="Back">
+                            <i class="fas fa-chevron-left"></i>
                         </button>
+                        <div class="page-header__title">Add past workout</div>
                     </div>
                 </div>
-
-                <!-- Step 2: Enter Exercise Data -->
-                <div id="manual-step-2" class="manual-step hidden">
-                    <div class="page-header manual-page-header">
-                        <div class="page-header__left">
-                            <button class="page-header__back" onclick="backToManualStep1()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
-                            <div>
-                                <div class="page-header__eyebrow">Past Workout</div>
-                                <div class="page-header__title" id="manual-workout-title-display">Your Workout</div>
-                            </div>
-                        </div>
-                        <button class="page-header__save" onclick="saveManualWorkout()">Save</button>
+                <div class="content-section-body">
+                    <div class="field">
+                        <div class="field-label">When did you work out?</div>
+                        <input type="date" id="manual-workout-date" class="field-input" required />
                     </div>
+
+                    <div class="sec-head"><h3>Choose your workout</h3></div>
+
+                    <!-- Option: Select from Library -->
+                    <div class="workout-source-option" id="source-library-option">
+                        <div class="source-header" onclick="toggleManualWorkoutSource('library')">
+                            <i class="fas fa-list"></i>
+                            <span>Select from Workout Library</span>
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </div>
+                        <div id="manual-library-list" class="source-content hidden">
+                            <div class="library-loading">Loading workouts...</div>
+                        </div>
+                    </div>
+
+                    <!-- Option: Create Custom -->
+                    <div class="workout-source-option" id="source-custom-option">
+                        <div class="source-header" onclick="toggleManualWorkoutSource('custom')">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Create Custom Workout</span>
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </div>
+                        <div id="manual-custom-form" class="source-content hidden">
+                            <div class="field">
+                                <div class="field-label">Workout name</div>
+                                <input type="text" id="manual-workout-name" class="field-input" placeholder="e.g., Chest & Triceps" />
+                            </div>
+                            <div class="field">
+                                <div class="field-label">Category</div>
+                                <select id="manual-workout-category" class="field-input">
+                                    <option value="">Select category...</option>
+                                    <option value="Push">Push</option>
+                                    <option value="Pull">Pull</option>
+                                    <option value="Legs">Legs</option>
+                                    <option value="Cardio">Cardio</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-primary" onclick="startCustomManualWorkout()">
+                                <i class="fas fa-arrow-right"></i> Continue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Enter Exercise Data -->
+            <div id="manual-step-2" class="manual-step hidden">
+                <div class="page-header">
+                    <div class="page-header__left">
+                        <button class="page-header__back" onclick="backToManualStep1()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+                        <div>
+                            <div class="page-header__eyebrow">Past Workout</div>
+                            <div class="page-header__title" id="manual-workout-title-display">Your Workout</div>
+                        </div>
+                    </div>
+                    <button class="page-header__save" onclick="saveManualWorkout()">Save</button>
+                </div>
+                <div class="content-section-body">
+                    <!-- Inline date + duration editors (no prompt). The date chip uses
+                         an overlapping native <input type="date"> so tapping it opens
+                         the OS picker and updates the visible label on change. -->
                     <div class="manual-meta-chips">
-                        <button class="chip" onclick="editManualDate()"><i class="far fa-calendar"></i> <span id="manual-workout-date-display">Date</span></button>
-                        <button class="chip" onclick="editManualDuration()"><i class="far fa-clock"></i> <span id="manual-workout-duration-chip">Set duration</span></button>
+                        <label class="chip chip--input" for="manual-workout-date-step2">
+                            <i class="far fa-calendar"></i>
+                            <span id="manual-workout-date-display">Date</span>
+                            <input type="date" id="manual-workout-date-step2" class="chip__hidden-input"
+                                   onchange="applyManualDate(this.value)">
+                        </label>
+                        <div class="chip chip--stepper">
+                            <button type="button" class="chip-stepper__btn" onclick="adjustManualDuration(-5)" aria-label="Subtract 5 minutes">−</button>
+                            <span class="chip-stepper__val"><i class="far fa-clock"></i> <span id="manual-workout-duration-chip">60</span> min</span>
+                            <button type="button" class="chip-stepper__btn" onclick="adjustManualDuration(5)" aria-label="Add 5 minutes">+</button>
+                        </div>
                     </div>
 
                     <!-- Location Selector -->
-                    <div class="manual-location-section">
-                        <label class="section-label"><i class="fas fa-map-marker-alt"></i> Location</label>
-                        <div class="manual-location-row">
-                            <select id="manual-workout-location" class="form-input">
-                                <option value="">Select gym location...</option>
-                                <!-- Populated dynamically -->
-                            </select>
-                        </div>
+                    <div class="field">
+                        <div class="field-label"><i class="fas fa-map-marker-alt"></i> Location</div>
+                        <select id="manual-workout-location" class="field-input">
+                            <option value="">Select gym location...</option>
+                            <!-- Populated dynamically -->
+                        </select>
                     </div>
 
                     <!-- Exercise List -->
                     <div id="manual-exercises-container" class="manual-exercises-container">
-                        <!-- Exercises will be rendered here -->
+                        <!-- Exercises rendered here -->
                     </div>
 
                     <!-- Add Exercise Button (for custom workouts) -->
                     <div id="manual-add-exercise-section" class="manual-add-exercise-section hidden">
-                        <button class="btn btn-primary" onclick="openExercisePickerForManual()">
+                        <button class="btn-primary" onclick="openExercisePickerForManual()">
                             <i class="fas fa-plus"></i> Add Exercise
                         </button>
                     </div>
 
-                    <!-- Step 3: Final Details -->
-                    <div class="manual-final-details">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="manual-workout-duration">Duration (min)</label>
-                                <input
-                                    type="number"
-                                    id="manual-workout-duration"
-                                    class="form-input"
-                                    placeholder="45"
-                                    min="1"
-                                    max="300"
-                                    value="60"
-                                    inputmode="numeric"
-                                />
-                            </div>
-                            <div class="form-group">
-                                <label for="manual-workout-status">Status</label>
-                                <select id="manual-workout-status" class="form-input">
-                                    <option value="completed">Completed</option>
-                                    <option value="partial">Partial</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="manual-workout-notes">Notes (optional)</label>
-                            <textarea
-                                id="manual-workout-notes"
-                                class="form-input"
-                                rows="2"
-                                placeholder="Any notes about this workout..."
-                            ></textarea>
-                        </div>
+                    <!-- Final details -->
+                    <div class="sec-head"><h3>Details</h3></div>
+                    <div class="field">
+                        <div class="field-label">Status</div>
+                        <select id="manual-workout-status" class="field-input">
+                            <option value="completed">Completed</option>
+                            <option value="partial">Partial</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Notes <span class="field-label__hint">(optional)</span></div>
+                        <textarea id="manual-workout-notes" class="field-input" rows="2"
+                                  placeholder="Any notes about this workout..."></textarea>
                     </div>
 
-                    <div class="step-actions">
-                        <button type="button" class="btn btn-secondary" onclick="backToManualStep1()">
-                            <i class="fas fa-arrow-left"></i> Back
-                        </button>
-                        <button type="button" class="btn btn-success" onclick="saveManualWorkout()">
-                            <i class="fas fa-check"></i> Save Workout
-                        </button>
-                    </div>
+                    <!-- Hidden duration input kept for save-handler compatibility;
+                         mirrors the stepper chip value. -->
+                    <input type="hidden" id="manual-workout-duration" value="60">
+                </div>
+                <div class="page-footer">
+                    <button type="button" class="btn-primary" onclick="saveManualWorkout()">
+                        <i class="fas fa-check"></i> Save workout
+                    </button>
                 </div>
             </div>
-        </dialog>
+        </section>
 
         <!-- Manual Exercise Entry Modal -->
         <div id="manual-exercise-entry-modal" class="exercise-modal">

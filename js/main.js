@@ -212,6 +212,8 @@ import {
     saveManualWorkout,
     editManualDate,
     editManualDuration,
+    applyManualDate,
+    adjustManualDuration,
     openEquipmentPickerForManual,
     selectEquipmentForManual,
     closeEquipmentPickerForManual,
@@ -604,6 +606,8 @@ window.addToManualWorkoutFromLibrary = addToManualWorkoutFromLibrary;
 window.saveManualWorkout = saveManualWorkout;
 window.editManualDate = editManualDate;
 window.editManualDuration = editManualDuration;
+window.applyManualDate = applyManualDate;
+window.adjustManualDuration = adjustManualDuration;
 window.openEquipmentPickerForManual = openEquipmentPickerForManual;
 window.selectEquipmentForManual = selectEquipmentForManual;
 window.closeEquipmentPickerForManual = closeEquipmentPickerForManual;

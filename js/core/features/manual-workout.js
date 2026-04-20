@@ -1,8 +1,15 @@
 // Manual Workout Module - core/manual-workout.js
-// Simplified flow: Select date → Pick workout from library OR create custom → Enter sets → Save
+// Full-page two-step flow (§3 rewrite): pick date + source → enter sets → save.
+//
+// Step 1 and Step 2 share the #manual-workout-section container; the module
+// just toggles which step's wrapper is visible and delegates the page header
+// to each step's .page-header markup. Date/duration editing is inline (no
+// prompt dialogs) — the date chip wraps a hidden <input type="date"> and the
+// duration chip uses a ± stepper.
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
+import { navigateTo, navigateBack } from '../ui/navigation.js';
 
 // ===================================================================
 // STATE
@@ -26,8 +33,8 @@ let manualWorkoutState = {
 // ===================================================================
 
 export function showAddManualWorkoutModal() {
-    const modal = document.getElementById('add-manual-workout-modal');
-    if (!modal) return;
+    const section = document.getElementById('manual-workout-section');
+    if (!section) return;
 
     // Reset state
     resetManualWorkoutState();
@@ -44,13 +51,12 @@ export function showAddManualWorkoutModal() {
     // Load workout library for selection
     loadWorkoutLibraryForManual();
 
-    openModal(modal);
+    navigateTo('manual-workout-section');
 }
 
 export function closeAddManualWorkoutModal() {
-    const modal = document.getElementById('add-manual-workout-modal');
-    closeModal(modal);
     resetManualWorkoutState();
+    navigateBack();
 }
 
 function resetManualWorkoutState() {
@@ -102,11 +108,21 @@ function showManualStep(step) {
         if (step1) step1.classList.add('hidden');
         if (step2) step2.classList.remove('hidden');
 
-        // Update header
+        // Title
         const titleDisplay = document.getElementById('manual-workout-title-display');
-        const dateDisplay = document.getElementById('manual-workout-date-display');
         if (titleDisplay) titleDisplay.textContent = manualWorkoutState.workoutType || 'Your Workout';
+
+        // Date chip: seed hidden native input + friendly label
+        const dateDisplay = document.getElementById('manual-workout-date-display');
+        const dateHidden = document.getElementById('manual-workout-date-step2');
         if (dateDisplay) dateDisplay.textContent = formatDateForDisplay(manualWorkoutState.date);
+        if (dateHidden) dateHidden.value = manualWorkoutState.date;
+
+        // Duration chip + hidden input kept in lockstep
+        const durationChip = document.getElementById('manual-workout-duration-chip');
+        const durationInput = document.getElementById('manual-workout-duration');
+        if (durationChip) durationChip.textContent = String(manualWorkoutState.duration || 60);
+        if (durationInput) durationInput.value = String(manualWorkoutState.duration || 60);
 
         // Show/hide add exercise button based on custom vs library
         const addExerciseSection = document.getElementById('manual-add-exercise-section');
@@ -464,37 +480,37 @@ export function addToManualWorkoutFromLibrary(exerciseData) {
 }
 
 // ===================================================================
-// HEADER CHIP ACTIONS (§3)
+// HEADER CHIP ACTIONS (§3 — inline, no prompt dialogs)
 // ===================================================================
 
-/** Edit the workout date via prompt — updates manualWorkoutState.date and UI chip. */
-export function editManualDate() {
-    const current = manualWorkoutState.date || new Date().toISOString().split('T')[0];
-    const next = prompt('Workout date (YYYY-MM-DD):', current);
-    if (next && /^\d{4}-\d{2}-\d{2}$/.test(next.trim())) {
-        manualWorkoutState.date = next.trim();
-        const chipLabel = document.getElementById('manual-workout-date-display');
-        if (chipLabel) chipLabel.textContent = formatDateForDisplay(manualWorkoutState.date);
-    } else if (next != null) {
-        showNotification('Use YYYY-MM-DD format', 'warn');
-    }
+/** Called on change of the hidden <input type="date"> inside the date chip. */
+export function applyManualDate(value) {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
+    manualWorkoutState.date = value;
+    const chipLabel = document.getElementById('manual-workout-date-display');
+    if (chipLabel) chipLabel.textContent = formatDateForDisplay(value);
 }
 
-/** Edit the workout duration via prompt — updates the duration input + chip. */
-export function editManualDuration() {
+/** Stepper handler for the duration chip — keeps the display + the hidden
+ *  input used by saveManualWorkout in lockstep. Clamped to 1..300 minutes. */
+export function adjustManualDuration(delta) {
+    const chip = document.getElementById('manual-workout-duration-chip');
     const input = document.getElementById('manual-workout-duration');
-    const current = input?.value || '';
-    const next = prompt('Duration in minutes:', current);
-    if (next != null) {
-        const n = parseInt(next, 10);
-        if (isFinite(n) && n > 0) {
-            if (input) input.value = n;
-            const chipLabel = document.getElementById('manual-workout-duration-chip');
-            if (chipLabel) chipLabel.textContent = `${n} min`;
-        } else if (next.trim() !== '') {
-            showNotification('Enter a positive number', 'warn');
-        }
-    }
+    const current = parseInt(chip?.textContent || input?.value || '60', 10);
+    const next = Math.max(1, Math.min(300, (isFinite(current) ? current : 60) + delta));
+    if (chip) chip.textContent = String(next);
+    if (input) input.value = String(next);
+    manualWorkoutState.duration = next;
+}
+
+// Legacy aliases — still window-bound; now no-op stubs that route to the inline
+// editors so any lingering callers (documentation, stale event handlers) don't
+// blow up. Safe to remove after a dev cycle of no observed calls.
+export function editManualDate() {
+    document.getElementById('manual-workout-date-step2')?.showPicker?.();
+}
+export function editManualDuration() {
+    // The ± steppers are always visible — nothing to expand.
 }
 
 // ===================================================================

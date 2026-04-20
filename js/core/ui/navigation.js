@@ -23,6 +23,7 @@ const SECTION_IDS = [
     'profile-section',
     'body-measurements-entry-section',
     'ai-coach-section',
+    'manual-workout-section',
 ];
 
 const FADE_DURATION = 150; // ms, matches CSS transition
@@ -186,6 +187,14 @@ function routeToView(view) {
         case 'body-measurements-entry': {
             const bmSection = document.getElementById('body-measurements-entry-section');
             if (bmSection) bmSection.classList.remove('hidden');
+            setBottomNavVisible(true);
+            break;
+        }
+
+        case 'manual-workout': {
+            // showAddManualWorkoutModal renders content before calling navigateTo.
+            const mwSection = document.getElementById('manual-workout-section');
+            if (mwSection) mwSection.classList.remove('hidden');
             setBottomNavVisible(true);
             break;
         }

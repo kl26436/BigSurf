@@ -1,22 +1,75 @@
 /* ============================================================================
    MANUAL WORKOUT — past-workout entry form.
-   Spec §3 header uses page-header + eyebrow + editable date/duration chips.
+   Full-page section with .page-header + inline date picker + duration stepper.
    ============================================================================ */
-
-/* Header row is already shaped by .page-header; override only the layout
-   so the chip row can sit flush below it */
-.manual-page-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-8);
-    padding-bottom: var(--space-12);
-}
-.manual-page-header > .page-header__left + button { align-self: flex-end; }
 
 .manual-meta-chips {
     display: flex;
     gap: var(--space-8);
-    padding: 0 var(--pad-card-x) var(--space-12);
+    margin-bottom: var(--space-16);
+    flex-wrap: wrap;
+}
+
+/* .chip--input — chip that wraps a hidden input so the whole pill is a tap
+   target. Used by the date chip: tap opens the native date picker via
+   showPicker(); onchange fires applyManualDate. */
+.chip.chip--input {
+    position: relative;
+    cursor: pointer;
+    padding: 8px 14px;
+}
+.chip__hidden-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    color: transparent;
+    /* Hide native calendar icon; the chip already shows one */
+    width: 100%;
+    height: 100%;
+}
+.chip__hidden-input::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+
+/* .chip--stepper — chip-shaped ± stepper. Reuses the chip pill look but
+   swaps the content for <button>/<val>/<button>. */
+.chip.chip--stepper {
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+}
+.chip-stepper__btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: var(--font-base);
+    font-weight: 600;
+    padding: 0 var(--space-12);
+    height: 100%;
+    min-height: 32px;
+    cursor: pointer;
+    transition: background var(--anim-fast);
+}
+.chip-stepper__btn:active { background: var(--bg-card-hi); }
+.chip-stepper__val {
+    padding: 6px var(--space-8);
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    font-variant-numeric: tabular-nums;
 }
 
 
