@@ -201,6 +201,53 @@ export function showWeightEntryModal() {
 
     navigateTo('body-measurements-entry-section');
     setTimeout(() => document.getElementById('body-weight-input')?.focus(), 150);
+
+    // Surface freshness on the Withings row — "Synced 2h ago" / "Never synced"
+    // so users know whether tapping Sync will pull anything new.
+    refreshWithingsFreshnessLabel();
+}
+
+/** Update the Withings row's desc line with a freshness label. */
+async function refreshWithingsFreshnessLabel() {
+    const el = document.getElementById('bm-withings-status');
+    if (!el) return;
+    try {
+        const { getWithingsStatus } = await import('./withings-integration.js');
+        const status = await getWithingsStatus();
+        if (!status?.connected) {
+            el.textContent = 'Not connected — tap to set up';
+            return;
+        }
+        if (!status.lastSync) {
+            el.textContent = 'Connected · never synced';
+            return;
+        }
+        el.textContent = `Synced ${formatRelativeTimestamp(status.lastSync)}`;
+    } catch (err) {
+        // Non-fatal — leave the default text
+        console.warn('Could not refresh Withings freshness label:', err);
+    }
+}
+
+/** Format an ISO timestamp as a short relative string ("2h ago", "3d ago"). */
+function formatRelativeTimestamp(iso) {
+    if (!iso) return 'unknown';
+    const now = Date.now();
+    const then = new Date(iso).getTime();
+    if (isNaN(then)) return 'unknown';
+    const seconds = Math.max(0, Math.floor((now - then) / 1000));
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    const weeks = Math.floor(days / 7);
+    if (weeks < 5) return `${weeks}w ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    return `${Math.floor(days / 365)}y ago`;
 }
 
 function renderBmRow(inputId, label, icon, unit) {
@@ -257,7 +304,6 @@ export async function saveBodyWeightEntry() {
     const weightInput = document.getElementById('body-weight-input');
     const fatInput = document.getElementById('body-fat-input');
     const muscleInput = document.getElementById('muscle-mass-input');
-    const notesInput = document.getElementById('body-weight-notes');
 
     const weight = parseFloat(weightInput?.value);
     if (!weight || weight <= 0) {
@@ -267,7 +313,6 @@ export async function saveBodyWeightEntry() {
 
     const bodyFat = fatInput?.value ? parseFloat(fatInput.value) : null;
     const muscleMass = muscleInput?.value ? parseFloat(muscleInput.value) : null;
-    const notes = notesInput?.value?.trim() || '';
     const unit = AppState.globalUnit || 'lbs';
 
     // Circumference fields
@@ -294,7 +339,7 @@ export async function saveBodyWeightEntry() {
         }
     }
 
-    const extra = { bodyFat, muscleMass, notes };
+    const extra = { bodyFat, muscleMass };
     if (Object.keys(measurements).length > 0) extra.measurements = measurements;
     if (entryDate) extra.date = entryDate;
 

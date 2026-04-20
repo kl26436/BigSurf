@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v7.4-bw-detail-bmi';
+const CACHE_NAME = 'big-surf-v7.5-bm-phase1';
 const STATIC_ASSETS = [
   '/index.html',
   '/styles/index.css',

@@ -22,6 +22,9 @@ const DEFAULT_SETTINGS = {
     // 'lose' | 'gain' | 'maintain' | null (neutral). Controls body-weight delta color
     // on the dashboard hero chip. Null = color-neutral (no assumed direction).
     weightGoal: null,
+    // Target body weight in the user's preferred unit (lbs or kg, matching weightUnit).
+    // Used for the goal line on the body-weight detail chart + hero "Goal" stat.
+    bodyWeightGoal: null,
 
     // Plate Calculator
     plateLbs: [45, 35, 25, 10, 5, 2.5],
@@ -196,6 +199,19 @@ export function renderSettings() {
                         { value: 'maintain', label: 'Keep' },
                         { value: 'gain', label: 'Gain' },
                     ], s.weightGoal || '', 'string')}
+                </div>
+                <div class="srow srow--clickable" onclick="editBodyWeightGoal()">
+                    <div class="srow-icon ic-warm"><i class="fas fa-bullseye"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Target weight</div>
+                        <div class="srow-desc">Shown as a goal line on your weight chart</div>
+                    </div>
+                    <div class="srow-right">
+                        <span class="srow-value">${s.bodyWeightGoal != null
+                            ? `${s.bodyWeightGoal} ${s.weightUnit === 'kg' ? 'kg' : 'lb'}`
+                            : 'Not set'}</span>
+                        <i class="fas fa-chevron-right srow-chev"></i>
+                    </div>
                 </div>
                 <div class="srow srow--clickable" onclick="restartOnboarding()">
                     <div class="srow-icon ic-muted"><i class="fas fa-flag-checkered"></i></div>
@@ -512,6 +528,27 @@ export function onboardingBack() {
 export function onboardingSkipWeightGoal() {
     updateSetting('weightGoal', null);
     onboardingNext();
+}
+
+/** Prompt-based editor for Target weight (in the user's unit). */
+export function editBodyWeightGoal() {
+    const s = AppState.settings || DEFAULT_SETTINGS;
+    const unitLabel = s.weightUnit === 'kg' ? 'kg' : 'lb';
+    const current = s.bodyWeightGoal != null ? String(s.bodyWeightGoal) : '';
+    const next = prompt(`Target weight in ${unitLabel} (blank to clear):`, current);
+    if (next == null) return;
+    if (next.trim() === '') {
+        updateSetting('bodyWeightGoal', null);
+        renderSettings();
+        return;
+    }
+    const n = parseFloat(next);
+    if (!isFinite(n) || n <= 0) {
+        showNotification('Enter a positive number', 'warn');
+        return;
+    }
+    updateSetting('bodyWeightGoal', Math.round(n * 10) / 10);
+    renderSettings();
 }
 
 export function completeOnboarding() {

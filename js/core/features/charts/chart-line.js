@@ -10,13 +10,17 @@
  * @param {boolean} [opts.fill=false] — add gradient fill below line
  * @param {number} [opts.goalY] — draw a dashed goal line at this y value
  * @param {string} [opts.goalLabel] — label for goal line
+ * @param {Object} [opts.overlay] — optional second series drawn on top
+ * @param {Array<{x:*,y:number}>} [opts.overlay.points]
+ * @param {string} [opts.overlay.color]
  * @param {number} [opts.padding=8]
  */
-export function chartLine({ points, width, height, color, fill = false, goalY, goalLabel, padding = 8 }) {
+export function chartLine({ points, width, height, color, fill = false, goalY, goalLabel, overlay, padding = 8 }) {
     if (!points || points.length === 0) return '<svg></svg>';
     const ys = points.map(p => p.y);
-    const yMin = Math.min(...ys, goalY ?? Infinity);
-    const yMax = Math.max(...ys, goalY ?? -Infinity);
+    const overlayYs = overlay?.points?.map(p => p.y) || [];
+    const yMin = Math.min(...ys, ...overlayYs, goalY ?? Infinity);
+    const yMax = Math.max(...ys, ...overlayYs, goalY ?? -Infinity);
     const yRange = (yMax - yMin) || 1;
 
     const xStep = (width - padding * 2) / Math.max(1, points.length - 1);
@@ -27,6 +31,17 @@ export function chartLine({ points, width, height, color, fill = false, goalY, g
         const y = yToPx(p.y);
         return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
+
+    // Overlay uses the same x grid so it aligns point-for-point with the main series.
+    let overlayPath = '';
+    if (overlay?.points?.length) {
+        const op = overlay.points.map((p, i) => {
+            const x = padding + i * xStep;
+            const y = yToPx(p.y);
+            return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+        overlayPath = `<path d="${op}" fill="none" stroke="${overlay.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4,3" opacity="0.85"/>`;
+    }
 
     const gradId = `grad-${color.replace(/[^a-zA-Z0-9]/g, '')}`;
 
@@ -56,6 +71,7 @@ export function chartLine({ points, width, height, color, fill = false, goalY, g
               </defs>
               <path d="${fillPath}" fill="url(#${gradId})" opacity="0.3"/>` : ''}
             <path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            ${overlayPath}
         </svg>
     `;
 }

@@ -301,6 +301,15 @@ async function renderBodyWeightDetail(container, range) {
         const unitLabel = series[0]?.displayUnit || userUnit;
 
         const points = series.map((e, i) => ({ x: i, y: e.displayWeight }));
+        // 7-day moving average overlay — smooths noisy day-to-day swings. Uses a
+        // simple trailing window: for each point, avg the last 7 entries (or
+        // however many fit). Points align index-for-index with `points`.
+        const maPoints = series.map((_, i) => {
+            const start = Math.max(0, i - 6);
+            const window = series.slice(start, i + 1);
+            const sum = window.reduce((s, e) => s + e.displayWeight, 0);
+            return { x: i, y: sum / window.length };
+        });
         const latest = series[series.length - 1];
         const first = series[0];
         const delta = latest.displayWeight - first.displayWeight;
@@ -371,6 +380,11 @@ async function renderBodyWeightDetail(container, range) {
                 points, width: 300, height: 140, color: 'var(--cat-shoulders)',
                 fill: true,
                 goalY: goal || null, goalLabel: goal ? `Goal ${goal}` : null,
+                // Only draw the MA when there's at least ~2 weeks of data, otherwise
+                // it hugs the raw line and adds visual noise without value.
+                overlay: series.length >= 14
+                    ? { points: maPoints, color: 'var(--text-strong)' }
+                    : null,
             }),
             insight,
             breakdown: recentEntries || '<div class="md-empty-line">No recent entries.</div>',
