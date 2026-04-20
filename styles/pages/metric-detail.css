@@ -111,6 +111,23 @@
     font-weight: 700;
     color: var(--text-strong);
 }
+/* Trailing action button next to the Breakdown heading (e.g. "Log entry"). */
+.detail-breakdown-action {
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    color: var(--primary);
+    padding: 5px 11px;
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    transition: transform var(--anim-fast);
+}
+.detail-breakdown-action:active { transform: scale(0.97); }
+.detail-breakdown-action i { font-size: var(--font-xs); }
 
 /* Breakdown rows */
 .detail-row {

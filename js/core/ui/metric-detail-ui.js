@@ -114,7 +114,7 @@ function bmiCategory(bmi) {
     return              { key: 'ob3',    label: 'Obese III' };
 }
 
-function renderDetailLayout({ title, tag, range, hero, chart, insight, breakdown }) {
+function renderDetailLayout({ title, tag, range, hero, chart, insight, breakdown, breakdownAction }) {
     return `
         <div class="detail-page-header">
             <button class="detail-page-header__back" onclick="closeMetricDetail()">
@@ -128,7 +128,10 @@ function renderDetailLayout({ title, tag, range, hero, chart, insight, breakdown
             <div class="detail-hero">${hero}</div>
             <div class="detail-chart">${chart}</div>
             ${insight ? `<div class="detail-insight"><i class="fas fa-lightbulb"></i><div>${insight}</div></div>` : ''}
-            <div class="detail-breakdown-head"><h3>Breakdown</h3></div>
+            <div class="detail-breakdown-head">
+                <h3>Breakdown</h3>
+                ${breakdownAction || ''}
+            </div>
             ${breakdown}
         </div>
     `;
@@ -418,6 +421,7 @@ async function renderBodyWeightDetail(container, range) {
             }),
             insight,
             breakdown: recentEntries || '<div class="md-empty-line">No recent entries.</div>',
+            breakdownAction: `<button class="detail-breakdown-action" onclick="showWeightEntryModal()"><i class="fas fa-plus"></i> Log entry</button>`,
         });
     } catch (error) {
         console.error('❌ Error rendering body weight detail:', error);
