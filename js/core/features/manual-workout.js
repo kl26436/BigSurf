@@ -254,7 +254,10 @@ export function selectWorkoutForManual(templateIndex) {
     manualWorkoutState.isCustom = false;
     manualWorkoutState.sourceTemplateId = template.id;
 
-    // Copy exercises from template with empty sets for user to fill in
+    // Copy exercises from template. Every pre-filled set is flagged as
+    // autofill so users see dashed/muted values they can tap to confirm
+    // or overwrite — no more having to delete template defaults before
+    // typing actual weight/reps.
     manualWorkoutState.exercises = (template.exercises || []).map((ex) => ({
         name: ex.name || ex.machine,
         bodyPart: ex.bodyPart || '',
@@ -268,11 +271,41 @@ export function selectWorkoutForManual(templateIndex) {
                 reps: ex.reps || 10,
                 weight: ex.weight || 0,
                 completed: false,
+                autofill: true,
             })),
         notes: '',
     }));
 
+    // Kick off async last-session lookup for each exercise. When a match
+    // exists, replace the autofill values with the user's real last-session
+    // numbers (still flagged autofill so they render dashed). The screen
+    // re-renders after each exercise is resolved.
+    hydrateTemplateWithLastSessions();
+
     showManualStep(2);
+}
+
+async function hydrateTemplateWithLastSessions() {
+    try {
+        const { getLastSessionDefaults } = await import('../data/data-manager.js');
+        for (let i = 0; i < manualWorkoutState.exercises.length; i++) {
+            const ex = manualWorkoutState.exercises[i];
+            const last = await getLastSessionDefaults(ex.name, ex.equipment || null);
+            if (!last?.sets?.length) continue;
+            ex.sets = last.sets.map(s => ({
+                reps: s.reps ?? ex.defaultReps ?? 10,
+                weight: s.weight ?? ex.defaultWeight ?? 0,
+                completed: false,
+                autofill: true,
+            }));
+            ex.defaultReps = last.sets[0]?.reps ?? ex.defaultReps;
+            ex.defaultWeight = last.sets[0]?.weight ?? ex.defaultWeight;
+        }
+        renderManualExercises();
+    } catch (err) {
+        // Non-fatal — template autofill continues to show.
+        console.warn('Last-session hydrate failed:', err);
+    }
 }
 
 export function startCustomManualWorkout() {
@@ -375,23 +408,26 @@ function renderManualExercises() {
                     <div role="columnheader" aria-label="Remove set"></div>
                 </div>
                 ${exercise.sets.map((set, setIndex) => {
-                    const isDone = !!(set.reps && set.weight);
+                    const isDone = !!(set.reps && set.weight) && !set.autofill;
                     // Autofilled values render as dashed/muted until the user
                     // confirms by focusing the input. Active workout uses the
-                    // same pattern (.aw-set-row__input.autofill).
+                    // same pattern (.aw-set-row__input.autofill). On focus we
+                    // select-all so typing replaces the suggestion without
+                    // the user having to delete it first.
                     const autoCls = set.autofill ? ' manual-sets-grid__input--autofill' : '';
+                    const onFocus = `manualConfirmAutofill(${exIndex}, ${setIndex}); this.select();`;
                     return `
                 <div class="manual-sets-grid__row${isDone ? ' manual-sets-grid__row--done' : ''}" role="row">
                     <div class="manual-sets-grid__num">${setIndex + 1}</div>
                     <input type="number" inputmode="decimal" class="manual-sets-grid__input${autoCls}"
                            value="${set.weight || ''}" placeholder="0"
                            data-ex-index="${exIndex}" data-set-index="${setIndex}" data-field="weight"
-                           onfocus="manualConfirmAutofill(${exIndex}, ${setIndex})"
+                           onfocus="${onFocus}"
                            onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
                     <input type="number" inputmode="numeric" class="manual-sets-grid__input${autoCls}"
                            value="${set.reps || ''}" placeholder="0"
                            data-ex-index="${exIndex}" data-set-index="${setIndex}" data-field="reps"
-                           onfocus="manualConfirmAutofill(${exIndex}, ${setIndex})"
+                           onfocus="${onFocus}"
                            onchange="updateManualSet(${exIndex}, ${setIndex}, 'reps', this.value)">
                     <button class="manual-sets-grid__remove" onclick="removeManualSet(${exIndex}, ${setIndex})"
                             aria-label="Remove set ${setIndex + 1}">
@@ -431,8 +467,12 @@ export function updateManualSet(exIndex, setIndex, field, value) {
     if (!exercise || !exercise.sets[setIndex]) return;
 
     const numValue = parseFloat(value);
-    exercise.sets[setIndex][field] = isNaN(numValue) ? null : numValue;
-    exercise.sets[setIndex].completed = exercise.sets[setIndex].reps && exercise.sets[setIndex].weight;
+    const set = exercise.sets[setIndex];
+    set[field] = isNaN(numValue) ? null : numValue;
+    // User entered a real value → this set is no longer an unconfirmed
+    // autofill suggestion, so surface it as a "done" row with solid styling.
+    set.autofill = false;
+    set.completed = !!(set.reps && set.weight);
 }
 
 export function addManualSet(exIndex) {
@@ -441,11 +481,14 @@ export function addManualSet(exIndex) {
 
     // Copy-previous-set: pre-fill from the last set so logging a consistent
     // exercise is one tap + Save instead of retyping weight/reps per set.
+    // The new row is flagged autofill so the values render dashed and
+    // typing replaces them without a manual delete step.
     const prev = exercise.sets[exercise.sets.length - 1];
     exercise.sets.push({
         reps: prev?.reps ?? exercise.defaultReps ?? 10,
         weight: prev?.weight ?? exercise.defaultWeight ?? 0,
         completed: false,
+        autofill: true,
     });
 
     renderManualExercises();
@@ -690,14 +733,17 @@ export async function saveManualWorkout() {
             exerciseNames: {},
             originalWorkout: {
                 day: manualWorkoutState.workoutType,
+                // Firestore rejects undefined — coerce every optional field
+                // to null so a template without equipment/bodyPart doesn't
+                // reject the whole save.
                 exercises: manualWorkoutState.exercises.map((ex) => ({
-                    machine: ex.name,
-                    name: ex.name,
-                    sets: ex.sets.length,
-                    reps: ex.defaultReps,
-                    weight: ex.defaultWeight,
-                    equipment: ex.equipment,
-                    equipmentLocation: ex.equipmentLocation,
+                    machine: ex.name || null,
+                    name: ex.name || null,
+                    sets: ex.sets.length || 0,
+                    reps: Number(ex.defaultReps) || 0,
+                    weight: Number(ex.defaultWeight) || 0,
+                    equipment: ex.equipment ?? null,
+                    equipmentLocation: ex.equipmentLocation ?? null,
                     bodyPart: ex.bodyPart || null,
                 })),
             },

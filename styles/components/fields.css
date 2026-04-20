@@ -44,9 +44,23 @@
     font-size: 0.92rem;
     font-family: inherit;
 }
-/* iOS Safari renders <input type="date"> with a wide intrinsic width that
-   ignores max-width unless min-width is clamped too. */
-.field-input[type="date"] { min-width: 0; }
+/* iOS Safari gives <input type="date"> a fit-content intrinsic min-width
+   and its own padding/appearance that ignore max-width. Full reset: strip
+   native appearance, force display:block, clamp min-width, and re-apply
+   our own padding so the input obeys its parent's width. */
+.field-input[type="date"],
+.field-input[type="time"],
+.field-input[type="datetime-local"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+}
+.field-input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+}
 
 .field-input:focus {
     outline: none;

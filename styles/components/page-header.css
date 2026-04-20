@@ -51,6 +51,17 @@
     white-space: nowrap;
 }
 
+/* Wraps eyebrow + title as a single flex item inside .page-header__left.
+   Without its own min-width: 0, the long workout name could overflow the
+   container and push .page-header__save off-screen (or under the title). */
+.page-header__title-group {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
 /* Small eyebrow label above the title (used by Manual Workout "Past Workout") */
 .page-header__eyebrow {
     font-size: var(--font-2xs);
