@@ -88,15 +88,17 @@ export function convertWeight(weight, fromUnit, toUnit) {
         return 0;
     }
 
-    if (fromUnit === toUnit) return Math.round(weight);
+    // 1 decimal everywhere — dashboard and detail pages must agree on displayed
+    // values or users see mismatched numbers for the same underlying weight.
+    if (fromUnit === toUnit) return Math.round(weight * 10) / 10;
 
     if (fromUnit === 'lbs' && toUnit === 'kg') {
-        return Math.round(weight * 0.453592 * 10) / 10; // 1 decimal for kg
+        return Math.round(weight * 0.453592 * 10) / 10;
     } else if (fromUnit === 'kg' && toUnit === 'lbs') {
-        return Math.round(weight * 2.20462); // Whole number for lbs
+        return Math.round(weight * 2.20462 * 10) / 10;
     }
 
-    return weight;
+    return Math.round(weight * 10) / 10;
 }
 
 /**
@@ -111,14 +113,16 @@ export function displayWeight(weight, storedUnit, displayUnit) {
     if (!weight || isNaN(weight)) return { value: 0, label: displayUnit || 'lbs' };
     const unit = displayUnit || 'lbs';
     const stored = storedUnit || 'lbs';
-    if (stored === unit) return { value: Math.round(weight), label: unit };
+    // 1 decimal everywhere — consistent with convertWeight() so the same
+    // underlying weight reads identically on dashboard and detail views.
+    if (stored === unit) return { value: Math.round(weight * 10) / 10, label: unit };
     if (stored === 'lbs' && unit === 'kg') {
-        return { value: Math.round(weight * 0.453592 * 2) / 2, label: 'kg' };
+        return { value: Math.round(weight * 0.453592 * 10) / 10, label: 'kg' };
     }
     if (stored === 'kg' && unit === 'lbs') {
-        return { value: Math.round(weight * 2.20462), label: 'lbs' };
+        return { value: Math.round(weight * 2.20462 * 10) / 10, label: 'lbs' };
     }
-    return { value: Math.round(weight), label: unit };
+    return { value: Math.round(weight * 10) / 10, label: unit };
 }
 
 // ---------------------------------------------------------------------------

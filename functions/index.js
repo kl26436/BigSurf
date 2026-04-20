@@ -686,19 +686,53 @@ exports.withingsSyncWeight = functions.runWith({ secrets: [withingsClientId, wit
             }
 
             // Fetch measurements from Withings
-            // meastypes: 1=weight(kg), 4=height(m), 6=body fat(%), 8=fat mass(kg),
+            // meastypes: 1=weight(kg), 6=body fat(%), 8=fat mass(kg),
             //            76=muscle mass(kg), 77=hydration(kg), 88=bone mass(kg)
+            // Height (type 4) is pulled separately below with no date filter —
+            // users typically set height once during initial device setup, often
+            // years before the 30-day sync window.
             const sinceDays = (data && data.days) || 30;
             const startDate = Math.floor((Date.now() - sinceDays * 86400000) / 1000);
 
             const result = await httpsPost('wbsapi.withings.net', '/measure', {
                 action: 'getmeas',
                 access_token: accessToken,
-                meastypes: '1,4,6,8,76,77,88',
+                meastypes: '1,6,8,76,77,88',
                 category: '1', // Real measurements only (not goals)
                 startdate: startDate.toString(),
                 enddate: Math.floor(Date.now() / 1000).toString(),
             });
+
+            // Separate unbounded request for height so we capture profile values
+            // set at device setup years ago.
+            let latestHeightCm = null;
+            let latestHeightTs = 0;
+            try {
+                const heightResult = await httpsPost('wbsapi.withings.net', '/measure', {
+                    action: 'getmeas',
+                    access_token: accessToken,
+                    meastypes: '4',
+                    category: '1',
+                });
+                if (heightResult.status === 0) {
+                    const groups = heightResult.body?.measuregrps || [];
+                    for (const group of groups) {
+                        for (const measure of group.measures) {
+                            if (measure.type !== 4) continue;
+                            const value = measure.value * Math.pow(10, measure.unit);
+                            const cm = Math.round(value * 100 * 10) / 10;
+                            if (cm > 0 && group.date > latestHeightTs) {
+                                latestHeightCm = cm;
+                                latestHeightTs = group.date;
+                            }
+                        }
+                    }
+                } else {
+                    console.warn('Withings height lookup returned status', heightResult.status);
+                }
+            } catch (e) {
+                console.warn('Withings height lookup failed:', e.message);
+            }
 
             if (result.status !== 0) {
                 if (result.status === 401) {
@@ -711,11 +745,6 @@ exports.withingsSyncWeight = functions.runWith({ secrets: [withingsClientId, wit
 
             const measureGroups = result.body?.measuregrps || [];
             let saved = 0;
-            // Height is a profile value (meastype 4), not a time-series. Pick the
-            // most recent one we see in this batch and write it to the user's
-            // profile only when they don't already have a height set.
-            let latestHeightCm = null;
-            let latestHeightTs = 0;
 
             for (const group of measureGroups) {
                 const date = new Date(group.date * 1000);
@@ -737,14 +766,7 @@ exports.withingsSyncWeight = functions.runWith({ secrets: [withingsClientId, wit
                     if (measure.type === 76) muscleMassKg = Math.round(value * 100) / 100; // kg
                     if (measure.type === 77) hydrationKg = Math.round(value * 100) / 100; // kg
                     if (measure.type === 88) boneMassKg = Math.round(value * 100) / 100; // kg
-                    if (measure.type === 4) {
-                        // Withings reports height in meters; convert to cm (1 decimal).
-                        const cm = Math.round(value * 100 * 10) / 10;
-                        if (cm > 0 && group.date > latestHeightTs) {
-                            latestHeightCm = cm;
-                            latestHeightTs = group.date;
-                        }
-                    }
+                    // Height (type 4) captured by the separate unbounded request above.
                 }
 
                 if (weight) {

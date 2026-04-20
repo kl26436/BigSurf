@@ -4,17 +4,18 @@
 
 import { describe, it, expect } from 'vitest';
 
-// Extracted pure function (same logic as ui-helpers.js)
+// Extracted pure function (same logic as ui-helpers.js). 1 decimal everywhere
+// so dashboard and detail pages agree on displayed values for the same weight.
 function convertWeight(weight, fromUnit, toUnit) {
     if (!weight || isNaN(weight) || weight <= 0) return 0;
     if (weight > 1000) return 0;
-    if (fromUnit === toUnit) return Math.round(weight);
+    if (fromUnit === toUnit) return Math.round(weight * 10) / 10;
     if (fromUnit === 'lbs' && toUnit === 'kg') {
         return Math.round(weight * 0.453592 * 10) / 10;
     } else if (fromUnit === 'kg' && toUnit === 'lbs') {
-        return Math.round(weight * 2.20462);
+        return Math.round(weight * 2.20462 * 10) / 10;
     }
-    return weight;
+    return Math.round(weight * 10) / 10;
 }
 
 describe('convertWeight', () => {
@@ -23,11 +24,16 @@ describe('convertWeight', () => {
     });
 
     it('converts kg to lbs correctly', () => {
-        expect(convertWeight(45.4, 'kg', 'lbs')).toBe(100);
+        // 45.4 * 2.20462 = 100.09 → rounds to 100.1 at 1 decimal
+        expect(convertWeight(45.4, 'kg', 'lbs')).toBe(100.1);
     });
 
     it('returns same value for same unit', () => {
         expect(convertWeight(100, 'lbs', 'lbs')).toBe(100);
+    });
+
+    it('preserves 1 decimal for same-unit values', () => {
+        expect(convertWeight(184.3, 'lbs', 'lbs')).toBe(184.3);
     });
 
     it('returns 0 for zero weight', () => {
