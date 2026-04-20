@@ -403,8 +403,8 @@ function renderManualExercises() {
             <div class="manual-sets-grid" role="table" aria-label="Sets">
                 <div class="manual-sets-grid__head" role="row">
                     <div role="columnheader">#</div>
-                    <div role="columnheader">Weight</div>
                     <div role="columnheader">Reps</div>
+                    <div role="columnheader">Weight</div>
                     <div role="columnheader" aria-label="Remove set"></div>
                 </div>
                 ${exercise.sets.map((set, setIndex) => {
@@ -414,21 +414,22 @@ function renderManualExercises() {
                     // same pattern (.aw-set-row__input.autofill). On focus we
                     // select-all so typing replaces the suggestion without
                     // the user having to delete it first.
+                    // Column order matches Active Workout: # | Reps | Weight | ✕
                     const autoCls = set.autofill ? ' manual-sets-grid__input--autofill' : '';
                     const onFocus = `manualConfirmAutofill(${exIndex}, ${setIndex}); this.select();`;
                     return `
                 <div class="manual-sets-grid__row${isDone ? ' manual-sets-grid__row--done' : ''}" role="row">
                     <div class="manual-sets-grid__num">${setIndex + 1}</div>
-                    <input type="number" inputmode="decimal" class="manual-sets-grid__input${autoCls}"
-                           value="${set.weight || ''}" placeholder="0"
-                           data-ex-index="${exIndex}" data-set-index="${setIndex}" data-field="weight"
-                           onfocus="${onFocus}"
-                           onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
                     <input type="number" inputmode="numeric" class="manual-sets-grid__input${autoCls}"
                            value="${set.reps || ''}" placeholder="0"
                            data-ex-index="${exIndex}" data-set-index="${setIndex}" data-field="reps"
                            onfocus="${onFocus}"
                            onchange="updateManualSet(${exIndex}, ${setIndex}, 'reps', this.value)">
+                    <input type="number" inputmode="decimal" class="manual-sets-grid__input${autoCls}"
+                           value="${set.weight || ''}" placeholder="0"
+                           data-ex-index="${exIndex}" data-set-index="${setIndex}" data-field="weight"
+                           onfocus="${onFocus}"
+                           onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
                     <button class="manual-sets-grid__remove" onclick="removeManualSet(${exIndex}, ${setIndex})"
                             aria-label="Remove set ${setIndex + 1}">
                         <i class="fas fa-times"></i>
