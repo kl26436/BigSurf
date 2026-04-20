@@ -35,10 +35,10 @@
     text-align: center;
 }
 .onb-welcome-logo {
-    width: 120px;
-    height: 120px;
+    width: 220px;
+    height: 220px;
     object-fit: contain;
-    margin: 0 auto 18px;
+    margin: 0 auto 24px;
 }
 
 /* Onboarding footer button sizing */
