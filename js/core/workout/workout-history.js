@@ -663,7 +663,9 @@ export function getWorkoutHistory(appState) {
             }
         },
 
-        /** Populate the category dropdown from actual workout types */
+        /** Populate the category dropdown from actual workout types.
+         *  Hides the select entirely when no workout types exist so the
+         *  search input sits alone instead of next to an empty dropdown. */
         populateCategoryFilter() {
             const select = document.getElementById('history-category-filter');
             if (!select) return;
@@ -679,6 +681,7 @@ export function getWorkoutHistory(appState) {
                 html += `<option value="${escapeAttr(t)}">${escapeHtml(t)}</option>`;
             });
             select.innerHTML = html;
+            select.classList.toggle('hidden', sorted.length === 0);
         },
 
         getWorkoutIcon(workouts) {

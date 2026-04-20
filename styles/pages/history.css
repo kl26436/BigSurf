@@ -253,27 +253,26 @@
     position: relative;
 }
 
-/* History search & filter bar */
-/* Inline layout: search input flexes, category filter hugs its content.
-   Keeps the calendar above the fold when search is expanded on ≥360px phones. */
+/* History search & filter bar.
+   Stacks vertically so the text box gets full width (primary action after
+   tapping Search). Category select sits below as a secondary filter and
+   hides itself via .hidden when populateCategoryFilter finds no workout
+   types to offer. */
 .history-search-bar {
-    display: grid;
-    grid-template-columns: 1fr auto;
+    display: flex;
+    flex-direction: column;
     gap: var(--space-8);
     margin-bottom: var(--space-16);
-    align-items: center;
 }
 .history-search-bar .field-search {
     min-width: 0;
 }
-.history-search-bar select {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-main);
-    font-size: var(--font-sm);
-    padding: var(--space-10) var(--space-12);
-    font-family: inherit;
+/* Bump the search input to a more tap-friendly size — 44px min-height so it
+   reads as the primary control that just appeared in response to the tap. */
+.history-search-bar .field-search input {
+    padding: var(--space-12) var(--space-12) var(--space-12) var(--space-36);
+    font-size: var(--font-base);
+    min-height: 44px;
 }
 
 .history-search-clear {
@@ -289,7 +288,7 @@
 
 .history-search-bar select {
     width: 100%;
-    padding: var(--input-padding, 10px 14px);
+    padding: var(--space-10) var(--space-32) var(--space-10) var(--space-12);
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -303,7 +302,6 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right var(--space-12) center;
-    padding-right: var(--space-32);
 }
 
 .history-search-bar select:focus {
