@@ -83,81 +83,146 @@
 
 .manual-ex-head {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--space-10);
     margin-bottom: var(--space-12);
 }
-.manual-ex-drag { color: var(--text-muted); }
-.manual-ex-name-col { flex: 1; }
+.manual-ex-name-col { flex: 1; min-width: 0; }
 .manual-ex-name {
     font-size: var(--font-base);
     font-weight: 700;
     color: var(--text-strong);
 }
-.manual-ex-equip {
+/* Equipment pill under the exercise name — tap to open the picker. Uses
+   canonical .chip visual DNA so it matches other tappable pills in the app. */
+.manual-ex-equip-btn {
+    margin-top: var(--space-4);
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 4px 10px;
     font-size: var(--font-xs);
-    color: var(--text-muted);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: background var(--anim-fast), color var(--anim-fast);
 }
+.manual-ex-equip-btn:active { background: var(--primary-bg); color: var(--primary); }
+.manual-ex-equip-btn i { font-size: var(--font-xs); }
+.manual-ex-equip-empty { color: var(--text-muted); font-style: italic; }
 .manual-ex-overflow {
     background: transparent;
     border: none;
     color: var(--text-muted);
     cursor: pointer;
+    padding: var(--space-6);
+    border-radius: 50%;
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background var(--anim-fast), color var(--anim-fast);
 }
+.manual-ex-overflow:active { background: var(--danger-bg); color: var(--danger); }
 
-/* Sets table */
-.manual-sets-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
+/* Sets grid — CSS grid replacing the old <table>. Rows match the active
+   workout .aw-set-row DNA so the visual feels consistent. */
+.manual-sets-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
 }
-.manual-sets-table thead tr {
+.manual-sets-grid__head,
+.manual-sets-grid__row {
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr 32px;
+    gap: var(--space-8);
+    align-items: center;
+}
+.manual-sets-grid__head {
+    padding: 0 var(--space-4);
     font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-}
-.manual-sets-table th {
-    padding: var(--space-4);
     font-weight: 600;
 }
-.manual-sets-table__col-num { width: 24px; text-align: left; }
-.manual-sets-table__col-weight { width: 38%; text-align: center; }
-.manual-sets-table__col-reps { width: 38%; text-align: center; }
-.manual-sets-table__col-check { width: 32px; }
-.manual-sets-table td { padding: var(--space-4); }
-.manual-sets-table__num {
-    font-size: var(--font-sm);
+.manual-sets-grid__head > div:nth-child(2),
+.manual-sets-grid__head > div:nth-child(3) { text-align: center; }
+.manual-sets-grid__row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-8) var(--space-10);
+    transition: background var(--anim-fast), border-color var(--anim-fast);
+}
+.manual-sets-grid__row--done {
+    background: var(--success-bg-subtle);
+    border-color: var(--success-border);
+}
+.manual-sets-grid__num {
+    font-size: var(--font-md);
+    font-weight: 800;
     color: var(--text-muted);
-    font-weight: 600;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
 }
-.manual-sets-table__input {
+.manual-sets-grid__row--done .manual-sets-grid__num { color: var(--text-strong); }
+.manual-sets-grid__input {
     width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     background: var(--bg-app);
     border: 1px solid var(--border-light);
-    border-radius: var(--radius-xs);
-    padding: var(--space-8);
+    border-radius: var(--radius-sm);
+    padding: var(--space-10) var(--space-6);
     color: var(--text-strong);
-    font-size: var(--font-sm);
-    font-weight: 700;
+    font-size: var(--font-md);
+    font-weight: 800;
     text-align: center;
     font-variant-numeric: tabular-nums;
     outline: none;
+    transition: border-color var(--anim-fast);
 }
-.manual-sets-table__check { text-align: center; }
+.manual-sets-grid__input:focus { border-color: var(--primary); }
+.manual-sets-grid__remove {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--anim-fast), color var(--anim-fast);
+}
+.manual-sets-grid__remove:active { background: var(--danger-bg); color: var(--danger); }
 
 .manual-add-set-btn {
     width: 100%;
     background: transparent;
     border: 1px dashed var(--border-light);
-    border-radius: var(--radius-xs);
-    padding: var(--space-8);
+    border-radius: var(--radius-sm);
+    padding: var(--space-10);
     color: var(--primary);
     font-size: var(--font-sm);
     font-weight: 600;
-    margin-top: var(--space-8);
+    margin-top: var(--space-10);
     cursor: pointer;
+    transition: background var(--anim-fast);
 }
+.manual-add-set-btn:active { background: var(--primary-bg); }
 
 /* Library picker row inside the manual-workout "pick a template" flow.
    Consolidated from components/modals.css during dedup sweep. */

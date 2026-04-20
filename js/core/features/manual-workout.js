@@ -326,54 +326,52 @@ function renderManualExercises() {
     container.innerHTML = manualWorkoutState.exercises
         .map((exercise, exIndex) => {
             const equipmentDisplay = exercise.equipment || '';
-            const setsSummary = exercise.sets
-                .filter(s => s.reps && s.weight)
-                .slice(0, 4)
-                .map(s => `${s.weight}×${s.reps}`)
-                .join(', ');
+            const equipmentLabel = equipmentDisplay
+                ? escapeHtml(equipmentDisplay)
+                : '<span class="manual-ex-equip-empty">Pick equipment</span>';
 
             return `
-        <div class="manual-exercise-card">
+        <div class="manual-exercise-card" data-ex-index="${exIndex}">
             <div class="manual-ex-head">
-                <i class="fas fa-grip-vertical manual-ex-drag"></i>
                 <div class="manual-ex-name-col">
                     <div class="manual-ex-name">${escapeHtml(exercise.name)}</div>
-                    ${equipmentDisplay ? `<div class="manual-ex-equip">${escapeHtml(equipmentDisplay)}</div>` : ''}
+                    <button class="manual-ex-equip-btn" onclick="openEquipmentPickerForManual(${exIndex})"
+                            aria-label="Change equipment">
+                        <i class="fas fa-cog"></i> ${equipmentLabel}
+                    </button>
                 </div>
-                <button class="manual-ex-overflow" onclick="removeManualExercise(${exIndex})"><i class="fas fa-ellipsis-v"></i></button>
+                <button class="manual-ex-overflow" onclick="removeManualExercise(${exIndex})"
+                        aria-label="Remove exercise">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
-            <table class="manual-sets-table">
-                <thead>
-                    <tr>
-                        <th class="manual-sets-table__col-num">#</th>
-                        <th class="manual-sets-table__col-weight">Weight</th>
-                        <th class="manual-sets-table__col-reps">Reps</th>
-                        <th class="manual-sets-table__col-check"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${exercise.sets.map((set, setIndex) => {
-                        const isDone = !!(set.reps && set.weight);
-                        return `
-                    <tr>
-                        <td class="manual-sets-table__num">${setIndex + 1}</td>
-                        <td>
-                            <input type="number" inputmode="decimal" class="manual-sets-table__input"
-                                   value="${set.weight || ''}" placeholder="0"
-                                   onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
-                        </td>
-                        <td>
-                            <input type="number" inputmode="numeric" class="manual-sets-table__input"
-                                   value="${set.reps || ''}" placeholder="0"
-                                   onchange="updateManualSet(${exIndex}, ${setIndex}, 'reps', this.value)">
-                        </td>
-                        <td class="manual-sets-table__check">
-                            <i class="fas ${isDone ? 'fa-check-circle text-success' : 'fa-circle text-muted'}"></i>
-                        </td>
-                    </tr>`;
-                    }).join('')}
-                </tbody>
-            </table>
+            <div class="manual-sets-grid" role="table" aria-label="Sets">
+                <div class="manual-sets-grid__head" role="row">
+                    <div role="columnheader">#</div>
+                    <div role="columnheader">Weight</div>
+                    <div role="columnheader">Reps</div>
+                    <div role="columnheader" aria-label="Remove set"></div>
+                </div>
+                ${exercise.sets.map((set, setIndex) => {
+                    const isDone = !!(set.reps && set.weight);
+                    return `
+                <div class="manual-sets-grid__row${isDone ? ' manual-sets-grid__row--done' : ''}" role="row">
+                    <div class="manual-sets-grid__num">${setIndex + 1}</div>
+                    <input type="number" inputmode="decimal" class="manual-sets-grid__input"
+                           value="${set.weight || ''}" placeholder="0"
+                           data-ex-index="${exIndex}" data-set-index="${setIndex}" data-field="weight"
+                           onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
+                    <input type="number" inputmode="numeric" class="manual-sets-grid__input"
+                           value="${set.reps || ''}" placeholder="0"
+                           data-ex-index="${exIndex}" data-set-index="${setIndex}" data-field="reps"
+                           onchange="updateManualSet(${exIndex}, ${setIndex}, 'reps', this.value)">
+                    <button class="manual-sets-grid__remove" onclick="removeManualSet(${exIndex}, ${setIndex})"
+                            aria-label="Remove set ${setIndex + 1}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`;
+                }).join('')}
+            </div>
             <button class="manual-add-set-btn" onclick="addManualSet(${exIndex})">
                 <i class="fas fa-plus"></i> Add Set
             </button>
@@ -381,6 +379,23 @@ function renderManualExercises() {
     `;
         })
         .join('');
+}
+
+/** Focus the first empty input on the given exercise card. Called after
+ *  adding a new exercise or set so typing can continue without a click. */
+function focusFirstEmptyInput(exIndex) {
+    requestAnimationFrame(() => {
+        const container = document.getElementById('manual-exercises-container');
+        if (!container) return;
+        const card = container.querySelector(`.manual-exercise-card[data-ex-index="${exIndex}"]`);
+        if (!card) return;
+        const inputs = card.querySelectorAll('.manual-sets-grid__input');
+        for (const el of inputs) {
+            if (!el.value) { el.focus(); return; }
+        }
+        // All filled — focus the first anyway so user can edit
+        inputs[0]?.focus();
+    });
 }
 
 export function updateManualSet(exIndex, setIndex, field, value) {
@@ -396,13 +411,17 @@ export function addManualSet(exIndex) {
     const exercise = manualWorkoutState.exercises[exIndex];
     if (!exercise) return;
 
+    // Copy-previous-set: pre-fill from the last set so logging a consistent
+    // exercise is one tap + Save instead of retyping weight/reps per set.
+    const prev = exercise.sets[exercise.sets.length - 1];
     exercise.sets.push({
-        reps: exercise.defaultReps || 10,
-        weight: exercise.defaultWeight || 0,
+        reps: prev?.reps ?? exercise.defaultReps ?? 10,
+        weight: prev?.weight ?? exercise.defaultWeight ?? 0,
         completed: false,
     });
 
     renderManualExercises();
+    focusFirstEmptyInput(exIndex);
 }
 
 export function removeManualSet(exIndex, setIndex) {
@@ -471,7 +490,8 @@ export function addExerciseToManualWorkout(exerciseData) {
     }
 
     renderManualExercises();
-    // Silent success - exercise appears immediately in list
+    // Focus the new card's first empty input so typing picks up naturally.
+    focusFirstEmptyInput(manualWorkoutState.exercises.length - 1);
 }
 
 // Alias for backwards compatibility
