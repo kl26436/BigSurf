@@ -3,6 +3,26 @@
    Full-page section with .page-header + inline date picker + duration stepper.
    ============================================================================ */
 
+/* Each step is a flex column so the .page-header + .content-section-body +
+   .page-footer inside lay out like any other pinned-header page. Without
+   this, the body wouldn't scroll inside the step and the footer would
+   overlap the title/buttons instead of pinning to the bottom. */
+.manual-step {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+.manual-step.hidden { display: none; }
+.manual-step > .page-header,
+.manual-step > .page-footer { flex-shrink: 0; }
+.manual-step > .content-section-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .manual-meta-chips {
     display: flex;
     gap: var(--space-8);
@@ -193,6 +213,19 @@
     transition: border-color var(--anim-fast);
 }
 .manual-sets-grid__input:focus { border-color: var(--primary); }
+/* Autofill ghost values — pre-filled from last session. Dashed border + muted
+   weight to signal "this is a suggestion, tap to confirm or edit." Cleared on
+   focus via manualConfirmAutofill (removes this class + flag). */
+.manual-sets-grid__input--autofill {
+    color: var(--text-muted);
+    font-weight: 600;
+    border-style: dashed;
+}
+.manual-sets-grid__input--autofill:focus {
+    color: var(--text-strong);
+    font-weight: 800;
+    border-style: solid;
+}
 .manual-sets-grid__remove {
     background: transparent;
     border: none;

@@ -52,7 +52,7 @@ async function withRetry(fn, maxRetries = 2) {
  * Generate a unique workout ID
  * Format: {date}_{timestamp}_{random}
  */
-function generateWorkoutId(date) {
+export function generateWorkoutId(date) {
     const timestamp = Date.now();
     const arr = new Uint8Array(12);
     crypto.getRandomValues(arr);

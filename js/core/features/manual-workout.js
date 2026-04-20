@@ -376,16 +376,22 @@ function renderManualExercises() {
                 </div>
                 ${exercise.sets.map((set, setIndex) => {
                     const isDone = !!(set.reps && set.weight);
+                    // Autofilled values render as dashed/muted until the user
+                    // confirms by focusing the input. Active workout uses the
+                    // same pattern (.aw-set-row__input.autofill).
+                    const autoCls = set.autofill ? ' manual-sets-grid__input--autofill' : '';
                     return `
                 <div class="manual-sets-grid__row${isDone ? ' manual-sets-grid__row--done' : ''}" role="row">
                     <div class="manual-sets-grid__num">${setIndex + 1}</div>
-                    <input type="number" inputmode="decimal" class="manual-sets-grid__input"
+                    <input type="number" inputmode="decimal" class="manual-sets-grid__input${autoCls}"
                            value="${set.weight || ''}" placeholder="0"
                            data-ex-index="${exIndex}" data-set-index="${setIndex}" data-field="weight"
+                           onfocus="manualConfirmAutofill(${exIndex}, ${setIndex})"
                            onchange="updateManualSet(${exIndex}, ${setIndex}, 'weight', this.value)">
-                    <input type="number" inputmode="numeric" class="manual-sets-grid__input"
+                    <input type="number" inputmode="numeric" class="manual-sets-grid__input${autoCls}"
                            value="${set.reps || ''}" placeholder="0"
                            data-ex-index="${exIndex}" data-set-index="${setIndex}" data-field="reps"
+                           onfocus="manualConfirmAutofill(${exIndex}, ${setIndex})"
                            onchange="updateManualSet(${exIndex}, ${setIndex}, 'reps', this.value)">
                     <button class="manual-sets-grid__remove" onclick="removeManualSet(${exIndex}, ${setIndex})"
                             aria-label="Remove set ${setIndex + 1}">
@@ -487,10 +493,12 @@ export function openExercisePickerForManual() {
 export function addExerciseToManualWorkout(exerciseData, opts = {}) {
     const exercise = typeof exerciseData === 'string' ? JSON.parse(exerciseData) : exerciseData;
     // When `opts.lastSessionSets` is provided (e.g. from quickAddRecentExercise),
-    // use the real sets the user hit last time — one row per real set — instead
-    // of filling N identical rows from the template default.
+    // use the real sets the user hit last time — one row per real set — and
+    // flag each set as `.autofill` so the UI renders dashed/muted values the
+    // user can confirm or overwrite (matches active workout semantics).
     const lastSets = Array.isArray(opts.lastSessionSets) ? opts.lastSessionSets : null;
     const defaultSets = lastSets?.length || exercise.sets || 3;
+    const isAutofilled = !!lastSets;
 
     manualWorkoutState.exercises.push({
         name: exercise.name || exercise.machine,
@@ -509,6 +517,9 @@ export function addExerciseToManualWorkout(exerciseData, opts = {}) {
                     reps: last?.reps ?? exercise.reps ?? 10,
                     weight: last?.weight ?? exercise.weight ?? 0,
                     completed: false,
+                    // Autofill flag drives the dashed ghost style in the sets grid.
+                    // Clears on focus (see manualConfirmAutofill).
+                    autofill: isAutofilled,
                 };
             }),
         notes: '',
@@ -522,6 +533,21 @@ export function addExerciseToManualWorkout(exerciseData, opts = {}) {
     renderManualExercises();
     // Focus the new card's first empty input so typing picks up naturally.
     focusFirstEmptyInput(manualWorkoutState.exercises.length - 1);
+}
+
+/** Called from the input's onfocus. Clears autofill flag + dashed styling so
+ *  the ghost value becomes a confirmed value. No re-render — we mutate the
+ *  DOM node directly to avoid disrupting typing. */
+export function manualConfirmAutofill(exIndex, setIndex) {
+    const exercise = manualWorkoutState.exercises[exIndex];
+    const set = exercise?.sets?.[setIndex];
+    if (!set || !set.autofill) return;
+    set.autofill = false;
+
+    const card = document.querySelector(`.manual-exercise-card[data-ex-index="${exIndex}"]`);
+    if (!card) return;
+    card.querySelectorAll(`.manual-sets-grid__input[data-set-index="${setIndex}"]`)
+        .forEach(el => el.classList.remove('manual-sets-grid__input--autofill'));
 }
 
 /**
@@ -640,8 +666,16 @@ export async function saveManualWorkout() {
     manualWorkoutState.location = document.getElementById('manual-workout-location')?.value || '';
 
     try {
-        // Build workout data for Firebase
+        // Unique doc ID — matches the canonical live-workout save path
+        // (data-manager.generateWorkoutId). Prevents colliding with an
+        // existing workout doc for the same date (the old path used
+        // `date` as the docId, which silently overwrote or errored out).
+        const { generateWorkoutId } = await import('../data/data-manager.js');
+        const workoutId = generateWorkoutId(manualWorkoutState.date);
+
+        // Build workout data for Firebase (schema v3.0)
         const workoutData = {
+            workoutId,
             workoutType: manualWorkoutState.workoutType,
             category: manualWorkoutState.category,
             date: manualWorkoutState.date,
@@ -655,16 +689,21 @@ export async function saveManualWorkout() {
             exercises: {},
             exerciseNames: {},
             originalWorkout: {
+                day: manualWorkoutState.workoutType,
                 exercises: manualWorkoutState.exercises.map((ex) => ({
+                    machine: ex.name,
                     name: ex.name,
                     sets: ex.sets.length,
                     reps: ex.defaultReps,
                     weight: ex.defaultWeight,
                     equipment: ex.equipment,
                     equipmentLocation: ex.equipmentLocation,
+                    bodyPart: ex.bodyPart || null,
                 })),
             },
-            version: '2.0',
+            totalExercises: manualWorkoutState.exercises.length,
+            lastUpdated: new Date().toISOString(),
+            version: '3.0',
         };
 
         // Process exercises
@@ -672,10 +711,13 @@ export async function saveManualWorkout() {
             const key = `exercise_${index}`;
             workoutData.exerciseNames[key] = exercise.name;
             workoutData.exercises[key] = {
+                name: exercise.name,
                 sets: exercise.sets.map((s) => ({
-                    reps: s.reps || 0,
-                    weight: s.weight || 0,
-                    originalUnit: 'lbs',
+                    reps: Number(s.reps) || 0,
+                    weight: Number(s.weight) || 0,
+                    originalUnit: AppState.globalUnit || 'lbs',
+                    completed: true,
+                    type: 'working',
                 })),
                 notes: exercise.notes || '',
                 completed: true,
@@ -684,10 +726,15 @@ export async function saveManualWorkout() {
             };
         });
 
-        // Save to Firebase
-        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-        const workoutManager = new FirebaseWorkoutManager(AppState);
-        await workoutManager.saveWorkout(workoutData);
+        // Write directly to Firestore at the unique ID. We bypass the
+        // legacy FirebaseWorkoutManager.saveWorkout() path here because
+        // that path keys docs by `date` — colliding with live-tracked
+        // workouts on the same date.
+        const { db, doc, setDoc } = await import('../data/firebase-config.js');
+        const { validateWorkoutData } = await import('../utils/validation.js');
+        const validated = validateWorkoutData(workoutData) || workoutData;
+        const docRef = doc(db, 'users', AppState.currentUser.uid, 'workouts', workoutId);
+        await setDoc(docRef, validated);
 
         showNotification('Workout saved!', 'success');
 
@@ -702,15 +749,17 @@ export async function saveManualWorkout() {
 
         // Refresh calendar/history view if showing
         if (window.workoutHistory) {
-            // Reload workout history and regenerate calendar
             await window.workoutHistory.loadHistory();
             if (window.workoutHistory.initializeCalendar) {
                 await window.workoutHistory.initializeCalendar();
             }
         }
     } catch (error) {
-        console.error('Error saving manual workout:', error);
-        showNotification('Error saving workout', 'error');
+        console.error('❌ Error saving manual workout:', error);
+        // Surface the actual error message so a user reporting the bug can
+        // share something diagnosable instead of the generic fallback.
+        const msg = error?.message || error?.code || String(error);
+        showNotification(`Save failed: ${msg}`, 'error', 5000);
     }
 }
 

@@ -1033,21 +1033,8 @@ dialog.modal:not([open]) {
 }
 
 /* ===========================================
-   25. MANUAL WORKOUT MODAL
+   25. MANUAL WORKOUT (legacy modal styles removed — see pages/manual-workout.css)
    =========================================== */
-.manual-workout-modal {
-    max-height: 95vh;
-}
-.manual-step {
-    padding: var(--space-20);
-}
-.manual-step.hidden {
-    display: none;
-}
-
-.manual-workout-source-section {
-    margin-top: var(--space-20);
-}
 .section-label {
     display: block;
     font-size: var(--font-base);

@@ -210,6 +210,7 @@ import {
     addExerciseToManualWorkout,
     addToManualWorkoutFromLibrary,
     quickAddRecentExercise,
+    manualConfirmAutofill,
     saveManualWorkout,
     editManualDate,
     editManualDuration,
@@ -605,6 +606,7 @@ window.openExercisePickerForManual = openExercisePickerForManual;
 window.addExerciseToManualWorkout = addExerciseToManualWorkout;
 window.addToManualWorkoutFromLibrary = addToManualWorkoutFromLibrary;
 window.quickAddRecentExercise = quickAddRecentExercise;
+window.manualConfirmAutofill = manualConfirmAutofill;
 window.saveManualWorkout = saveManualWorkout;
 window.editManualDate = editManualDate;
 window.editManualDuration = editManualDuration;
