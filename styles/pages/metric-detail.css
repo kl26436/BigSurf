@@ -136,6 +136,27 @@
 .detail-row__delta.delta-up { color: var(--success); }
 .detail-row__delta.delta-down { color: var(--danger); }
 
+/* Trailing delete button (trash icon) on weight-entry breakdown rows. */
+.detail-row__del {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background var(--anim-fast), color var(--anim-fast);
+}
+.detail-row__del:hover,
+.detail-row__del:active {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
 /* Weight entry rows */
 .detail-weight-icon {
     width: 30px;

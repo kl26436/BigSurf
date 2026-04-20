@@ -481,6 +481,15 @@
 .md-bmi-val.bmi-ob1,
 .md-bmi-val.bmi-ob2,
 .md-bmi-val.bmi-ob3    { color: var(--danger); }
+/* BMI delta chip inside the hero minmax row. Follows the same semantic as
+   the weight delta above it: down = loss (cutting), up = gain. */
+.md-bmi-delta {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    margin-left: var(--space-4);
+}
+.md-bmi-delta.delta-up   { color: var(--success); }
+.md-bmi-delta.delta-down { color: var(--warning); }
 
 .md-bc-row {
     display: flex;

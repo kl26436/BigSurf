@@ -74,6 +74,29 @@ export function setDetailRange(range) {
     if (container && renderer) renderer(container, range);
 }
 
+/**
+ * Delete a body-weight entry from the breakdown list on the detail page.
+ * Confirms first, then re-renders the page so chart/hero reflect the delete.
+ */
+export async function deleteBodyWeightEntry(entryId) {
+    if (!entryId) return;
+    if (!window.confirm('Delete this weight entry? This cannot be undone.')) return;
+
+    try {
+        const { deleteBodyWeight } = await import('../features/body-measurements.js');
+        await deleteBodyWeight(entryId);
+    } catch (error) {
+        console.error('❌ Delete weight entry failed:', error);
+        return;
+    }
+
+    // Re-render at the current range so hero/chart/breakdown all refresh.
+    const range = AppState.dashboardRange || 'W';
+    const container = document.getElementById('metric-detail-content');
+    const renderer = DETAIL_RENDERERS[AppState.activeMetricDetail];
+    if (container && renderer) renderer(container, range);
+}
+
 // ===================================================================
 // SHARED LAYOUT TEMPLATE
 // ===================================================================
@@ -318,9 +341,10 @@ async function renderBodyWeightDetail(container, range) {
         const avg = series.reduce((s, e) => s + e.displayWeight, 0) / series.length;
         const goal = AppState.settings?.bodyWeightGoal;
 
-        // Recent entries list
+        // Recent entries list — each row has a delete action for typo fixes.
         const recentEntries = series.slice(-5).reverse().map(e => {
             const dateLabel = formatRelativeDate(e.date);
+            const entryId = escapeHtml(e.id || '');
             return `
                 <div class="detail-row">
                     <div class="detail-weight-icon"><i class="fas fa-weight"></i></div>
@@ -329,6 +353,10 @@ async function renderBodyWeightDetail(container, range) {
                         <div class="detail-row__sub">${e.source || 'Manual'}</div>
                     </div>
                     <div class="detail-row__val">${e.displayWeight.toFixed(1)} ${unitLabel}</div>
+                    <button class="detail-row__del" aria-label="Delete entry"
+                            onclick="event.stopPropagation(); deleteBodyWeightEntry('${entryId}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
             `;
         }).join('');
@@ -347,19 +375,21 @@ async function renderBodyWeightDetail(container, range) {
             }
         }
 
-        // BMI — uses the latest weight (converted to kg) and the user's height
-        // from the profile. Only rendered when height is set.
+        // BMI — uses height + weight. Shows current value, category, and
+        // delta across the selected range so users see the trend alongside.
         const heightCm = AppState.settings?.profileHeightCm;
         let bmiStr = '';
         if (heightCm && heightCm > 0) {
-            // Convert latest displayed weight back to kg for the BMI formula.
-            const latestKg = unitLabel === 'kg'
-                ? latest.displayWeight
-                : latest.displayWeight * 0.453592;
             const meters = heightCm / 100;
-            const bmi = latestKg / (meters * meters);
-            const cat = bmiCategory(bmi);
-            bmiStr = `<span>BMI <strong class="md-bmi-val bmi-${cat.key}">${bmi.toFixed(1)}</strong> <span class="md-bmi-cat">${cat.label}</span></span>`;
+            const toKg = (wVal) => unitLabel === 'kg' ? wVal : wVal * 0.453592;
+            const latestBmi = toKg(latest.displayWeight) / (meters * meters);
+            const firstBmi = toKg(first.displayWeight) / (meters * meters);
+            const bmiDelta = latestBmi - firstBmi;
+            const cat = bmiCategory(latestBmi);
+            const deltaLabel = Math.abs(bmiDelta) >= 0.1
+                ? ` <span class="md-bmi-delta delta-${bmiDelta <= 0 ? 'up' : 'down'}">${bmiDelta < 0 ? '↓' : '↑'}${Math.abs(bmiDelta).toFixed(1)}</span>`
+                : '';
+            bmiStr = `<span>BMI <strong class="md-bmi-val bmi-${cat.key}">${latestBmi.toFixed(1)}</strong> <span class="md-bmi-cat">${cat.label}</span>${deltaLabel}</span>`;
         }
 
         container.innerHTML = renderDetailLayout({

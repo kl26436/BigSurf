@@ -402,7 +402,7 @@ import {
 } from './core/ui/dashboard-ui.js';
 
 // Metric detail (drill-down from dashboard cards)
-import { openMetricDetail, closeMetricDetail, setDetailRange } from './core/ui/metric-detail-ui.js';
+import { openMetricDetail, closeMetricDetail, setDetailRange, deleteBodyWeightEntry } from './core/ui/metric-detail-ui.js';
 
 // Range filter
 import { setRange } from './core/features/metrics/range-filter.js';
@@ -713,6 +713,7 @@ window.setExerciseRange = async function (range) {
 window.openMetricDetail = openMetricDetail;
 window.closeMetricDetail = closeMetricDetail;
 window.setDetailRange = setDetailRange;
+window.deleteBodyWeightEntry = deleteBodyWeightEntry;
 window.setDashboardRange = (r) => { setRange(r); showDashboard(); };
 
 // Stats tab removed — drill-downs now live in dashboard v2
