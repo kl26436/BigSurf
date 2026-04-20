@@ -209,6 +209,7 @@ import {
     openExercisePickerForManual,
     addExerciseToManualWorkout,
     addToManualWorkoutFromLibrary,
+    quickAddRecentExercise,
     saveManualWorkout,
     editManualDate,
     editManualDuration,
@@ -603,6 +604,7 @@ window.removeManualExercise = removeManualExercise;
 window.openExercisePickerForManual = openExercisePickerForManual;
 window.addExerciseToManualWorkout = addExerciseToManualWorkout;
 window.addToManualWorkoutFromLibrary = addToManualWorkoutFromLibrary;
+window.quickAddRecentExercise = quickAddRecentExercise;
 window.saveManualWorkout = saveManualWorkout;
 window.editManualDate = editManualDate;
 window.editManualDuration = editManualDuration;

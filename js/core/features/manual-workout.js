@@ -310,12 +310,34 @@ function renderManualExercises() {
     const container = document.getElementById('manual-exercises-container');
     if (!container) return;
 
+    // Build the "recent exercises" quick-pick strip for custom workouts.
+    // Filters out anything already on the card list + autofills values from
+    // last session when the user taps one.
+    let recentStripHtml = '';
+    if (manualWorkoutState.isCustom) {
+        const existing = new Set(manualWorkoutState.exercises.map(e => e.name));
+        const remaining = getRecentExerciseNames(10).filter(n => !existing.has(n));
+        if (remaining.length > 0) {
+            recentStripHtml = `
+                <div class="sec-head"><h4>Recent exercises <span class="count">tap to add</span></h4></div>
+                <div class="manual-recent-chips">
+                    ${remaining.map(name => `
+                        <button class="chip manual-recent-chip" onclick="quickAddRecentExercise('${escapeAttr(name)}')">
+                            <i class="fas fa-plus"></i> ${escapeHtml(name)}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+    }
+
     if (manualWorkoutState.exercises.length === 0) {
         container.innerHTML = `
+            ${recentStripHtml}
             <div class="empty-state">
                 <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
                 <div class="empty-state-title">No exercises yet</div>
-                <div class="empty-state-description">Click "Add Exercise" to get started</div>
+                <div class="empty-state-description">${manualWorkoutState.isCustom ? 'Tap a recent exercise above or use Add Exercise.' : 'Click "Add Exercise" to get started.'}</div>
             </div>
         `;
         return;
@@ -323,7 +345,7 @@ function renderManualExercises() {
 
     const unit = AppState.globalUnit || 'lbs';
 
-    container.innerHTML = manualWorkoutState.exercises
+    container.innerHTML = recentStripHtml + manualWorkoutState.exercises
         .map((exercise, exIndex) => {
             const equipmentDisplay = exercise.equipment || '';
             const equipmentLabel = equipmentDisplay
@@ -462,8 +484,13 @@ export function openExercisePickerForManual() {
 }
 
 // Called by exercise library when exercise is selected
-export function addExerciseToManualWorkout(exerciseData) {
+export function addExerciseToManualWorkout(exerciseData, opts = {}) {
     const exercise = typeof exerciseData === 'string' ? JSON.parse(exerciseData) : exerciseData;
+    // When `opts.lastSessionSets` is provided (e.g. from quickAddRecentExercise),
+    // use the real sets the user hit last time — one row per real set — instead
+    // of filling N identical rows from the template default.
+    const lastSets = Array.isArray(opts.lastSessionSets) ? opts.lastSessionSets : null;
+    const defaultSets = lastSets?.length || exercise.sets || 3;
 
     manualWorkoutState.exercises.push({
         name: exercise.name || exercise.machine,
@@ -471,16 +498,19 @@ export function addExerciseToManualWorkout(exerciseData) {
         equipmentType: exercise.equipmentType || '',
         equipment: exercise.equipment || null,
         equipmentLocation: exercise.equipmentLocation || null,
-        defaultSets: exercise.sets || 3,
-        defaultReps: exercise.reps || 10,
-        defaultWeight: exercise.weight || 0,
-        sets: Array(exercise.sets || 3)
+        defaultSets,
+        defaultReps: lastSets?.[0]?.reps ?? exercise.reps ?? 10,
+        defaultWeight: lastSets?.[0]?.weight ?? exercise.weight ?? 0,
+        sets: Array(defaultSets)
             .fill(null)
-            .map(() => ({
-                reps: exercise.reps || 10,
-                weight: exercise.weight || 0,
-                completed: false,
-            })),
+            .map((_, i) => {
+                const last = lastSets?.[i];
+                return {
+                    reps: last?.reps ?? exercise.reps ?? 10,
+                    weight: last?.weight ?? exercise.weight ?? 0,
+                    completed: false,
+                };
+            }),
         notes: '',
     });
 
@@ -492,6 +522,50 @@ export function addExerciseToManualWorkout(exerciseData) {
     renderManualExercises();
     // Focus the new card's first empty input so typing picks up naturally.
     focusFirstEmptyInput(manualWorkoutState.exercises.length - 1);
+}
+
+/**
+ * Quick-add an exercise by name — pre-fills sets/reps/weight from the user's
+ * most recent session doing this exercise. Fires from the "recent exercises"
+ * chip strip above the exercise list.
+ */
+export async function quickAddRecentExercise(exerciseName) {
+    if (!exerciseName) return;
+    let last = null;
+    try {
+        const { getLastSessionDefaults } = await import('../data/data-manager.js');
+        last = await getLastSessionDefaults(exerciseName);
+    } catch (err) {
+        console.warn('Could not load last session for', exerciseName, err);
+    }
+    addExerciseToManualWorkout(
+        { name: exerciseName, sets: 3, reps: 10, weight: 0 },
+        { lastSessionSets: last?.sets }
+    );
+}
+
+/**
+ * Distinct exercise names from the user's most recent workouts.
+ * Limited by `limit` and de-duplicated in most-recent-first order.
+ */
+function getRecentExerciseNames(limit = 10) {
+    const workouts = Array.isArray(AppState.workouts) ? AppState.workouts : [];
+    const seen = new Set();
+    const names = [];
+    for (const w of workouts) {
+        if (!w || !w.exercises) continue;
+        for (const [key, ex] of Object.entries(w.exercises)) {
+            const idx = key.replace('exercise_', '');
+            const name = w.exerciseNames?.[key]
+                || w.originalWorkout?.exercises?.[idx]?.machine
+                || ex?.name;
+            if (!name || seen.has(name)) continue;
+            seen.add(name);
+            names.push(name);
+            if (names.length >= limit) return names;
+        }
+    }
+    return names;
 }
 
 // Alias for backwards compatibility
