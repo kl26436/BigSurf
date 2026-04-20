@@ -8,7 +8,7 @@
 import { AppState } from './core/utils/app-state.js';
 import { getCategoryIcon } from './core/utils/config.js';
 import { startApplication } from './core/app-initialization.js';
-import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal, completeOnboarding, restartOnboarding, rebuildPRsFromSettings, confirmDeleteAllData, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, closeProfile, editBodyWeightGoal } from './core/ui/settings-ui.js';
+import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal, completeOnboarding, restartOnboarding, rebuildPRsFromSettings, confirmDeleteAllData, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, selectProfileExperience, closeProfileExperiencePicker, closeProfile, editBodyWeightGoal } from './core/ui/settings-ui.js';
 import { exportWorkoutData } from './core/data/data-manager.js';
 import { dismissFirstUseTip } from './core/features/first-use-tips.js';
 import {
@@ -832,6 +832,8 @@ window.editProfileName = editProfileName;
 window.editProfileHeight = editProfileHeight;
 window.editProfileBirthday = editProfileBirthday;
 window.editProfileExperience = editProfileExperience;
+window.selectProfileExperience = selectProfileExperience;
+window.closeProfileExperiencePicker = closeProfileExperiencePicker;
 window.closeProfile = closeProfile;
 window.dismissFirstUseTip = dismissFirstUseTip;
 

@@ -64,6 +64,44 @@
     flex-direction: column;
 }
 
+/* Picker overlay — lightweight bottom-sheet modal used by Profile detail
+   editors (e.g. Experience level). Dimmed backdrop + slide-up sheet.
+   Shares the onb-chip family so option visuals match the onboarding step. */
+.picker-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal, 500);
+    background: var(--overlay-medium);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    animation: picker-fade-in var(--anim-fast) ease-out;
+}
+.picker-overlay__sheet {
+    width: 100%;
+    max-width: 480px;
+    background: var(--bg-app);
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
+    padding: var(--space-20);
+    padding-bottom: calc(var(--space-20) + env(safe-area-inset-bottom, 0px));
+    animation: picker-slide-up var(--anim-normal) var(--ease-out-expo);
+}
+.picker-overlay__title {
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+    margin-bottom: var(--space-16);
+    text-align: center;
+}
+.picker-overlay .onb-chips { margin-bottom: var(--space-16); }
+
+@keyframes picker-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes picker-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
 /* Onboarding content area */
 .onb-content {
     flex: 1;

@@ -45,6 +45,15 @@ const DEFAULT_SETTINGS = {
 
 let saveTimeout = null;
 
+// Single source of truth for the experience level picker — used both by
+// onboarding step 2 and the Profile detail editor (showExperiencePicker).
+// Keep labels / descriptions / icons in sync across both surfaces.
+const EXPERIENCE_OPTIONS = [
+    { value: 'beginner',     label: 'Beginner',     desc: '< 1 year consistent training', icon: 'fa-seedling' },
+    { value: 'intermediate', label: 'Intermediate', desc: '1–3 years training',           icon: 'fa-fire' },
+    { value: 'advanced',     label: 'Advanced',     desc: '3+ years, know your lifts',    icon: 'fa-bolt' },
+];
+
 /**
  * Load user settings from Firestore and merge with defaults.
  * Called once on app initialization after auth.
@@ -381,11 +390,8 @@ function renderOnboardingStep() {
         { value: 6, label: 'Hard · 6x / week', desc: 'Advanced training' },
     ];
 
-    const experienceOptions = [
-        { value: 'beginner', label: 'Beginner', desc: '< 1 year consistent training', icon: 'fa-seedling' },
-        { value: 'intermediate', label: 'Intermediate', desc: '1–3 years training', icon: 'fa-fire' },
-        { value: 'advanced', label: 'Advanced', desc: '3+ years, know your lifts', icon: 'fa-bolt' },
-    ];
+    // Experience options live at module scope (EXPERIENCE_OPTIONS) so the
+    // Profile detail picker can reuse them without duplicating labels/icons.
 
     const weightGoalOptions = [
         { value: 'lose',     label: 'Lose',     desc: 'Cutting — downward is good',  icon: 'fa-arrow-trend-down' },
@@ -446,7 +452,7 @@ function renderOnboardingStep() {
                 <div class="onb-icon-hero ic-warning"><i class="fas fa-star"></i></div>
                 <div class="onb-title">Experience level</div>
                 <div class="onb-desc">We'll use this to suggest starting weights and form tips.</div>
-                <div class="onb-chips">${chipHTML(experienceOptions, 'experienceLevel', s.experienceLevel || 'intermediate', false)}</div>
+                <div class="onb-chips">${chipHTML(EXPERIENCE_OPTIONS, 'profileExperience', s.profileExperience || s.experienceLevel || 'intermediate', false)}</div>
             `,
             footer: `
                 <button class="btn-ghost" onclick="onboardingBack()">Back</button>
@@ -604,8 +610,12 @@ export function renderProfileDetail() {
         ? formatHeight(s.profileHeightCm, s.weightUnit)
         : 'Not set';
     const birthdayDisplay = formatBirthday(s.profileBirthday);
-    const exp = s.profileExperience
-        ? s.profileExperience.charAt(0).toUpperCase() + s.profileExperience.slice(1)
+    // Fall back to the legacy `experienceLevel` key so answers entered during
+    // earlier onboarding builds still display here. Writes always go to
+    // profileExperience going forward.
+    const expKey = s.profileExperience || s.experienceLevel;
+    const exp = expKey
+        ? expKey.charAt(0).toUpperCase() + expKey.slice(1)
         : 'Not set';
 
     container.innerHTML = `
@@ -740,19 +750,58 @@ export function editProfileBirthday() {
         }
     }
 }
+/**
+ * Open the Experience level picker — same three chip options the user saw
+ * in onboarding step 2. Replaces the earlier prompt()-based editor because
+ * a free-text prompt let users type anything the validator would then reject.
+ */
 export function editProfileExperience() {
     const s = AppState.settings || DEFAULT_SETTINGS;
-    const current = s.profileExperience || '';
-    const next = prompt('Experience (beginner / intermediate / advanced):', current);
-    if (next != null) {
-        const cleaned = next.trim().toLowerCase();
-        if (cleaned === '' || ['beginner', 'intermediate', 'advanced'].includes(cleaned)) {
-            updateSetting('profileExperience', cleaned || null);
-            renderProfileDetail();
-        } else {
-            showNotification('Use beginner / intermediate / advanced', 'warn');
-        }
-    }
+    // Legacy fallback: pre-unification users have their choice under
+    // `experienceLevel`. Read it so the picker pre-selects correctly even
+    // before they re-save.
+    const current = s.profileExperience || s.experienceLevel || null;
+
+    const chips = EXPERIENCE_OPTIONS.map(o => {
+        const isSelected = current === o.value;
+        return `
+            <div class="onb-chip ${isSelected ? 'selected' : ''}"
+                 onclick="selectProfileExperience('${o.value}')">
+                <div class="onb-chip-icon ${isSelected ? 'ic-primary' : 'ic-muted'}">
+                    <i class="fas ${o.icon}"></i>
+                </div>
+                <div class="onb-chip-info">
+                    <div class="onb-chip-name">${escapeHtml(o.label)}</div>
+                    <div class="onb-chip-desc">${escapeHtml(o.desc)}</div>
+                </div>
+                ${isSelected ? '<div class="onb-chip-check"><i class="fas fa-check"></i></div>' : ''}
+            </div>
+        `;
+    }).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'profile-exp-picker';
+    overlay.className = 'picker-overlay';
+    overlay.onclick = (e) => { if (e.target === overlay) closeProfileExperiencePicker(); };
+    overlay.innerHTML = `
+        <div class="picker-overlay__sheet" role="dialog" aria-label="Experience level">
+            <div class="picker-overlay__title">Experience level</div>
+            <div class="onb-chips">${chips}</div>
+            <button type="button" class="btn-ghost onb-btn-full" onclick="closeProfileExperiencePicker()">Cancel</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+export function selectProfileExperience(value) {
+    updateSetting('profileExperience', value);
+    closeProfileExperiencePicker();
+    renderProfileDetail();
+}
+
+export function closeProfileExperiencePicker() {
+    const overlay = document.getElementById('profile-exp-picker');
+    if (overlay) overlay.remove();
 }
 export function closeProfile() { navigateTo('settings-section'); }
 
