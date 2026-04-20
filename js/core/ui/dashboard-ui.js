@@ -650,7 +650,7 @@ export function dismissInsight() {
     // A new insight with a different hash will resurface automatically.
     const card = document.querySelector('.dash-insight');
     const text = card?.querySelector('.dash-insight-text')?.textContent?.trim() || '';
-    const icon = card?.querySelector('> i')?.className?.match(/fa-[\w-]+/)?.[0] || '';
+    const icon = card?.querySelector(':scope > i')?.className?.match(/fa-[\w-]+/)?.[0] || '';
     if (text) updateSetting('insightDismissedHash', hashInsight({ icon, message: text }));
     if (card) card.remove();
 }
