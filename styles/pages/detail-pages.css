@@ -319,6 +319,25 @@
 /* 14px horizontal gutter + 14px bottom margin — shared "boxed card" spacing */
 .comp-boxed { margin: 0 14px 14px; }
 
+/* Clickable boxed card — routes to metric-detail for drill-down */
+.comp-boxed--clickable {
+    cursor: pointer;
+    transition: transform var(--anim-fast), border-color var(--anim-fast);
+}
+.comp-boxed--clickable:active { transform: scale(0.99); }
+
+.comp-boxed__more {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-4);
+    padding: var(--space-8) var(--space-12) var(--space-10);
+    font-size: var(--font-xs);
+    color: var(--primary);
+    font-weight: 600;
+}
+.comp-boxed__more i { font-size: 0.7rem; }
+
 .comp-donut-row {
     display: flex;
     align-items: center;
@@ -445,6 +464,23 @@
 .md-empty { color: var(--text-muted); }
 .md-empty-line { color: var(--text-muted); font-size: var(--font-sm); }
 .md-goal-strong { color: var(--primary); }
+
+/* BMI value + category label — tints follow CDC/WHO adult ranges.
+   "Normal" reads neutral (success), the rest escalate warn/danger. */
+.md-bmi-cat {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-left: var(--space-4);
+    font-weight: 600;
+}
+.md-bmi-val.bmi-normal { color: var(--success); }
+.md-bmi-val.bmi-under  { color: var(--warning); }
+.md-bmi-val.bmi-over   { color: var(--warning); }
+.md-bmi-val.bmi-ob1,
+.md-bmi-val.bmi-ob2,
+.md-bmi-val.bmi-ob3    { color: var(--danger); }
 
 .md-bc-row {
     display: flex;

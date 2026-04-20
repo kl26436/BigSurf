@@ -130,13 +130,25 @@ export async function syncWithingsWeight(days = 30, options = {}) {
         const sync = httpsCallable(functions, 'withingsSyncWeight');
         const result = await sync({ days });
 
-        if (result.data?.success && !silent) {
-            const count = result.data.synced || 0;
-            showNotification(
-                count > 0 ? `Synced ${count} weight entries from Withings` : 'Already up to date',
-                'success',
-                2000
-            );
+        if (result.data?.success) {
+            // Reload in-memory settings — the Cloud Function may have written
+            // profileHeightCm into preferences/settings (meastype 4) and the
+            // UI reads from AppState.settings, not Firestore live.
+            try {
+                const { loadUserSettings } = await import('../ui/settings-ui.js');
+                await loadUserSettings();
+            } catch (e) {
+                console.warn('Could not refresh settings after Withings sync:', e);
+            }
+
+            if (!silent) {
+                const count = result.data.synced || 0;
+                showNotification(
+                    count > 0 ? `Synced ${count} weight entries from Withings` : 'Already up to date',
+                    'success',
+                    2000
+                );
+            }
         }
     } catch (error) {
         console.error('❌ Withings sync error:', error);

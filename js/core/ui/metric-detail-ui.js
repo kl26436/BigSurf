@@ -78,6 +78,19 @@ export function setDetailRange(range) {
 // SHARED LAYOUT TEMPLATE
 // ===================================================================
 
+/**
+ * Classify a BMI value into standard CDC/WHO adult categories.
+ * Not medical advice — just a label to contextualize the number.
+ */
+function bmiCategory(bmi) {
+    if (bmi < 18.5)  return { key: 'under',  label: 'Underweight' };
+    if (bmi < 25)    return { key: 'normal', label: 'Normal' };
+    if (bmi < 30)    return { key: 'over',   label: 'Overweight' };
+    if (bmi < 35)    return { key: 'ob1',    label: 'Obese I' };
+    if (bmi < 40)    return { key: 'ob2',    label: 'Obese II' };
+    return              { key: 'ob3',    label: 'Obese III' };
+}
+
 function renderDetailLayout({ title, tag, range, hero, chart, insight, breakdown }) {
     return `
         <div class="detail-page-header">
@@ -325,6 +338,21 @@ async function renderBodyWeightDetail(container, range) {
             }
         }
 
+        // BMI — uses the latest weight (converted to kg) and the user's height
+        // from the profile. Only rendered when height is set.
+        const heightCm = AppState.settings?.profileHeightCm;
+        let bmiStr = '';
+        if (heightCm && heightCm > 0) {
+            // Convert latest displayed weight back to kg for the BMI formula.
+            const latestKg = unitLabel === 'kg'
+                ? latest.displayWeight
+                : latest.displayWeight * 0.453592;
+            const meters = heightCm / 100;
+            const bmi = latestKg / (meters * meters);
+            const cat = bmiCategory(bmi);
+            bmiStr = `<span>BMI <strong class="md-bmi-val bmi-${cat.key}">${bmi.toFixed(1)}</strong> <span class="md-bmi-cat">${cat.label}</span></span>`;
+        }
+
         container.innerHTML = renderDetailLayout({
             title: 'Body Weight',
             tag: latest.source === 'withings' ? 'Withings' : null,
@@ -336,6 +364,7 @@ async function renderBodyWeightDetail(container, range) {
                     <span>Min <strong>${min.toFixed(1)}</strong></span>
                     <span>Max <strong>${max.toFixed(1)}</strong></span>
                     ${goal ? `<span>Goal <strong class="md-goal-strong">${goal}</strong></span>` : ''}
+                    ${bmiStr}
                 </div>
             `,
             chart: chartLine({

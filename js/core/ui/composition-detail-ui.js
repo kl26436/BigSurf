@@ -229,12 +229,13 @@ function renderBodyWeightSection(entries, unit) {
 
     return `
         <div class="d-sec-head">Body weight</div>
-        <div class="stat-card comp-boxed">
+        <div class="stat-card comp-boxed comp-boxed--clickable" onclick="openMetricDetail('body-weight')">
             <div class="comp-bw-head">
                 <div class="stat-val">${latestW.toFixed(1)}<span class="stat-unit">${unit}</span></div>
                 <div class="stat-delta ${delta <= 0 ? 'down' : 'up'}">${delta < 0 ? '↓' : '↑'} ${Math.abs(delta).toFixed(1)} ${unit} · 90d</div>
             </div>
             ${chartSparkline({ points, color: 'var(--cat-shoulders)', width: 280, height: 48 })}
+            <div class="comp-boxed__more">View details <i class="fas fa-chevron-right"></i></div>
         </div>
     `;
 }
