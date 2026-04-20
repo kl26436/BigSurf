@@ -481,8 +481,28 @@ dialog.modal:not([open]) {
 }
 
 /* Equipment Reassignment Modal */
+.reassign-modal {
+    max-height: 85vh;
+}
 .reassign-header-info {
     margin-bottom: var(--space-8);
+    padding: 0 var(--space-16);
+}
+.reassign-search {
+    padding: var(--space-8) var(--space-16) 0;
+}
+.reassign-exercise-list {
+    padding: var(--space-8) var(--space-16) var(--space-16);
+    overflow-y: auto;
+    max-height: 50vh;
+}
+.reassign-actions {
+    padding: 0 var(--space-16) var(--space-16);
+    display: flex;
+    gap: var(--space-8);
+}
+.reassign-actions__btn {
+    flex: 1;
 }
 .reassign-current {
     margin-bottom: var(--space-6);

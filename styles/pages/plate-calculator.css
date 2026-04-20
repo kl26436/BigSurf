@@ -1,18 +1,9 @@
 /* ===========================================
    PLATE CALCULATOR PAGE & POPOVER
+   Header now uses the canonical .page-header component — see
+   styles/components/page-header.css. The legacy .plate-calc-page-header
+   rule was removed in the §12 final audit cleanup.
    =========================================== */
-
-/* Page header */
-.plate-calc-page-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-16) var(--pad-page);
-}
-.plate-calc-page-header h2 {
-    font-size: var(--font-lg);
-    margin: 0;
-}
 
 /* Container */
 .plate-calc-container {

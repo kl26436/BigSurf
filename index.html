@@ -606,20 +606,6 @@
                 </dialog>
 
                 <!-- Manual Workout Modal -->
-                <dialog id="manual-workout-modal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3>Add Manual Workout</h3>
-                            <button class="close-btn" aria-label="Close" onclick="closeAddManualWorkoutModal()">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body" id="manual-workout-content">
-                            <!-- Populated by JavaScript -->
-                        </div>
-                    </div>
-                </dialog>
-
                 <!-- Workout Editor (Full-Page Section) -->
                 <section id="template-editor-section" class="full-page-section hidden">
                     <div class="page-header">
@@ -800,29 +786,6 @@
                 </div>
             </div>
         </section>
-
-        <!-- Manual Exercise Entry Modal -->
-        <div id="manual-exercise-entry-modal" class="exercise-modal">
-            <div class="exercise-modal-content">
-                <div class="modal-header">
-                    <h3 id="manual-exercise-title">Exercise</h3>
-                    <button class="close-btn" aria-label="Close" onclick="closeManualExerciseEntry()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <div class="exercise-unit-toggle">
-                    <div class="unit-toggle">
-                        <button class="unit-btn active" data-unit="lbs">lbs</button>
-                        <button class="unit-btn" data-unit="kg">kg</button>
-                    </div>
-                </div>
-
-                <div id="manual-exercise-content">
-                    <!-- Exercise table will be populated here -->
-                </div>
-            </div>
-        </div>
 
         <!-- Exercise Manager Section -->
         <section id="exercise-manager-section" class="content-section pinned-header hidden">
@@ -1189,21 +1152,21 @@
 
         <!-- Equipment Reassignment Modal -->
         <dialog id="reassign-equipment-modal" class="modal">
-            <div class="modal-content" style="max-height: 85vh;">
+            <div class="modal-content reassign-modal">
                 <div class="modal-header">
                     <h3>Reassign Equipment</h3>
                     <button class="close-btn" aria-label="Close" data-action="closeReassignModal" onclick="closeReassignModal()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div class="reassign-header-info" style="padding: 0 16px;"></div>
-                <div style="padding: 8px 16px 0;">
+                <div class="reassign-header-info"></div>
+                <div class="reassign-search">
                     <input type="text" id="reassign-exercise-search" class="form-input" placeholder="Search exercises...">
                 </div>
-                <div class="reassign-exercise-list" style="padding: 8px 16px 16px; overflow-y: auto; max-height: 50vh;"></div>
-                <div style="padding: 0 16px 16px; display: flex; gap: 8px;">
-                    <button class="btn btn-secondary" style="flex: 1;" onclick="closeReassignModal()">Cancel</button>
-                    <button class="btn btn-primary" style="flex: 1;" onclick="confirmReassignmentTarget()">
+                <div class="reassign-exercise-list"></div>
+                <div class="reassign-actions">
+                    <button class="btn btn-secondary reassign-actions__btn" onclick="closeReassignModal()">Cancel</button>
+                    <button class="btn btn-primary reassign-actions__btn" onclick="confirmReassignmentTarget()">
                         <i class="fas fa-arrow-right"></i> Next
                     </button>
                 </div>
@@ -1302,53 +1265,6 @@
             </div>
         </dialog>
 
-        <!-- Location Selector Modal -->
-        <dialog id="location-selector-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Select Workout Location</h2>
-                    <button class="modal-close" aria-label="Close" onclick="closeLocationSelector()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <div class="modal-body">
-                    <p style="margin-bottom: 1.5rem; color: var(--text-secondary)">
-                        Track PRs per location and equipment. This helps compare progress accurately when using
-                        different machines at different gyms.
-                    </p>
-
-                    <!-- Saved Locations -->
-                    <div id="saved-locations-list" class="saved-locations-list">
-                        <!-- Populated dynamically -->
-                    </div>
-
-                    <!-- Add New Location -->
-                    <div class="form-group" style="margin-top: 1.5rem">
-                        <label for="new-location-input">Or enter a new location:</label>
-                        <div style="display: flex; gap: 0.5rem">
-                            <input
-                                type="text"
-                                id="new-location-input"
-                                class="input-field"
-                                placeholder="e.g., Gym A, Home Gym, 24 Hour Fitness"
-                            />
-                            <button class="btn btn-primary" onclick="selectNewLocation()">
-                                <i class="fas fa-plus"></i> Add
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Skip Option -->
-                    <div style="margin-top: 1.5rem; text-align: center">
-                        <button class="btn btn-secondary btn-small" onclick="skipLocationSelection()">
-                            Skip for now
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </dialog>
-
         <!-- Bottom Navigation Bar -->
         <nav id="bottom-nav" class="bottom-nav" role="navigation" aria-label="Quick navigation">
             <button class="bottom-nav__btn active" data-tab="dashboard" onclick="bottomNavTo('dashboard')" aria-current="page">
@@ -1384,11 +1300,6 @@
         <section id="body-measurements-entry-section" class="content-section pinned-header hidden">
             <!-- Populated by renderBodyMeasurementsEntry() -->
         </section>
-
-        <!-- Body Weight Entry Modal (legacy — kept for rollback reference) -->
-        <dialog id="weight-entry-modal" class="modal hidden" aria-hidden="true">
-            <div class="modal-content"></div>
-        </dialog>
 
         <!-- Weight History (Full-Page Section) -->
         <section id="weight-history-section" class="full-page-section hidden" aria-label="Weight history">
@@ -1478,11 +1389,15 @@
             <div class="content-section-body" id="equipment-library-content"></div>
         </section>
 
-        <!-- Settings Page -->
-        <section id="plate-calculator-section" class="app-section hidden">
-            <div class="plate-calc-page-header">
-                <button class="btn-text" onclick="navigateTo('dashboard')"><i class="fas fa-arrow-left"></i></button>
-                <h2>Plate Calculator</h2>
+        <!-- Plate Calculator Page -->
+        <section id="plate-calculator-section" class="content-section pinned-header hidden">
+            <div class="page-header">
+                <div class="page-header__left">
+                    <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-header__title">Plate Calculator</div>
+                </div>
             </div>
             <div id="plate-calc-content" class="plate-calc-container"></div>
         </section>
