@@ -1218,6 +1218,23 @@
     color: var(--text-muted);
 }
 
+/* Phase 4 — Equipment Picker section headers
+   Used to label the "Used before / At <gym> / All equipment" groupings inside
+   #equipment-picker-list. Reuses the existing .equipment-option row styles. */
+.eq-picker__section-header {
+    padding: var(--space-12) var(--space-4) var(--space-6);
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--space-6);
+}
+.eq-picker__section-header:first-child {
+    padding-top: var(--space-4);
+}
+
 /* ===========================================
    42. LIBRARY & WORKOUT ITEMS
    =========================================== */
