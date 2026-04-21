@@ -1541,7 +1541,7 @@ export function awToggleUnit(exerciseIdx) {
     if (savedEx?.sets) {
         savedEx.sets.forEach(set => {
             if (set.weight != null && set.weight > 0) {
-                set.weight = Math.round(convertWeight(set.weight, current, newUnit) * 2) / 2; // round to 0.5
+                set.weight = convertWeight(set.weight, current, newUnit);
             }
             set.originalUnit = newUnit;
         });
