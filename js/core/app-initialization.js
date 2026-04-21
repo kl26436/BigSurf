@@ -10,11 +10,14 @@ import {
     getRedirectResult,
     signOut,
     db,
+    doc,
+    getDoc,
+    setDoc,
 } from './data/firebase-config.js';
 import { GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { AppState } from './utils/app-state.js';
 import { debugLog } from './utils/config.js';
-import { showNotification, setTodayDisplay, initModalScrollLock, openModal, closeModal } from './ui/ui-helpers.js';
+import { showNotification, setTodayDisplay, initModalScrollLock, openModal, closeModal, escapeHtml } from './ui/ui-helpers.js';
 import { loadWorkoutPlans } from './data/data-manager.js'; // ADD loadWorkoutData here
 import { getExerciseLibrary } from './data/exercise-library.js';
 import { getWorkoutHistory } from './workout/workout-history.js';
@@ -346,6 +349,12 @@ export function setupAuthenticationListener() {
             const { loadUserSettings, checkOnboarding } = await import('./ui/settings-ui.js');
             await loadUserSettings();
 
+            // Equipment migration v2 — dry-run first, prompt user on destructive changes.
+            // Non-blocking: failures don't prevent login.
+            checkEquipmentMigrationV2(user.uid).catch((err) => {
+                console.error('❌ Equipment migration v2 check failed (non-fatal):', err);
+            });
+
             // Load ALL data FIRST (loadWorkoutPlans loads both plans AND exercises)
             await loadWorkoutPlans(AppState);
 
@@ -455,6 +464,206 @@ export function setupAuthenticationListener() {
             showSignInPrompt();
         }
     });
+}
+
+// ===================================================================
+// EQUIPMENT MIGRATION V2 (one-time)
+// ===================================================================
+
+/**
+ * Check whether equipment migration v2 needs to run, and if so either run it
+ * silently (non-destructive field normalization only) or prompt the user
+ * before committing destructive changes (dedup, rename cascades).
+ */
+async function checkEquipmentMigrationV2(userId) {
+    const { runEquipmentMigrationV2 } = await import('./data/equipment-migration.js');
+
+    const prefsRef = doc(db, 'users', userId, 'preferences', 'settings');
+    const prefsSnap = await getDoc(prefsRef);
+    if (prefsSnap.data()?.equipmentMigrationV2) {
+        return; // Already migrated
+    }
+
+    const result = await runEquipmentMigrationV2(userId, { dryRun: true });
+    if (!result || !result.preview) return;
+
+    const { duplicatesToMerge, renames, fieldsNormalized, totalRecords } = result.preview;
+
+    // Nothing to migrate (empty library): set the flag and move on
+    if (totalRecords === 0) {
+        await setDoc(prefsRef, { equipmentMigrationV2: true }, { merge: true });
+        return;
+    }
+
+    // Destructive changes → prompt the user
+    if (duplicatesToMerge > 0 || renames.length > 0) {
+        showEquipmentMigrationPrompt(result.preview, userId);
+        return;
+    }
+
+    // Only field normalization → run silently (no user-visible effect)
+    if (fieldsNormalized > 0) {
+        await runEquipmentMigrationV2(userId, { dryRun: false });
+        debugLog('Equipment migration v2: silent field normalization complete');
+        return;
+    }
+
+    // Nothing needed beyond setting the flag
+    await setDoc(prefsRef, { equipmentMigrationV2: true }, { merge: true });
+}
+
+function showEquipmentMigrationPrompt(preview, userId) {
+    const modal = document.getElementById('equipment-migration-modal');
+    const content = modal?.querySelector('.modal-content');
+    if (!modal || !content) {
+        console.error('❌ equipment-migration-modal not found in DOM');
+        return;
+    }
+
+    const summaryItems = [];
+    const cm = preview.catalogMatches || { tier1: 0, tier2: 0, tier3: 0, unmatched: 0 };
+    const catalogTotal = cm.tier1 + cm.tier2 + cm.tier3;
+
+    if (catalogTotal > 0) {
+        summaryItems.push(
+            `<li><strong>${catalogTotal}</strong> of ${preview.totalRecords} matched against the equipment catalog</li>`
+        );
+    }
+    if (preview.duplicatesToMerge > 0) {
+        summaryItems.push(
+            `<li><strong>${preview.duplicatesToMerge}</strong> duplicate${preview.duplicatesToMerge !== 1 ? 's' : ''} will be merged</li>`
+        );
+    }
+    if (preview.fieldsNormalized > 0) {
+        summaryItems.push(
+            `<li><strong>${preview.fieldsNormalized}</strong> record${preview.fieldsNormalized !== 1 ? 's' : ''} will have brand/line filled in</li>`
+        );
+    }
+    if (preview.workoutsAffected > 0) {
+        summaryItems.push(
+            `<li><strong>${preview.workoutsAffected}</strong> workout${preview.workoutsAffected !== 1 ? 's' : ''} will be updated</li>`
+        );
+    }
+    if (preview.templatesAffected > 0) {
+        summaryItems.push(
+            `<li><strong>${preview.templatesAffected}</strong> template${preview.templatesAffected !== 1 ? 's' : ''} will be updated</li>`
+        );
+    }
+    if (cm.unmatched > 0) {
+        summaryItems.push(
+            `<li class="migration-prompt__summary-muted">${cm.unmatched} unrecognized (string-parsed)</li>`
+        );
+    }
+
+    const tierLabel = (tier) => {
+        if (tier === 1) return 'catalog';
+        if (tier === 2) return 'fuzzy';
+        if (tier === 3) return 'brand only';
+        return 'string';
+    };
+
+    const renamesHtml = preview.renames.length > 0
+        ? `<details class="migration-prompt__details">
+               <summary>Preview name changes (${preview.renames.length})</summary>
+               <div class="migration-prompt__rename-list">
+                   ${preview.renames.map((r) => `
+                       <div class="migration-prompt__rename-row">
+                           <span class="migration-prompt__rename-old">${escapeHtml(r.old)}</span>
+                           <i class="fas fa-arrow-right"></i>
+                           <span class="migration-prompt__rename-new">${escapeHtml(r.new)}</span>
+                           <span class="migration-prompt__tier-badge migration-prompt__tier-badge--${r.tier ?? 0}">${tierLabel(r.tier ?? 0)}</span>
+                       </div>
+                   `).join('')}
+               </div>
+           </details>`
+        : '';
+
+    content.innerHTML = `
+        <div class="migration-prompt">
+            <div class="migration-prompt__icon"><i class="fas fa-wrench"></i></div>
+            <h3>Equipment Cleanup Ready</h3>
+            <ul class="migration-prompt__summary">${summaryItems.join('')}</ul>
+            ${renamesHtml}
+            <p class="migration-prompt__hint">
+                Tip: download a backup first. If anything looks wrong after cleanup,
+                you'll have a JSON snapshot of your equipment, workouts, and templates.
+            </p>
+            <div class="migration-prompt__actions">
+                <button class="btn btn-primary" onclick="executeEquipmentMigration()">Run Cleanup</button>
+                <button class="btn btn-secondary" onclick="downloadEquipmentMigrationBackup()">
+                    <i class="fas fa-download"></i> Download Backup
+                </button>
+                <button class="btn btn-text" onclick="dismissEquipmentMigration()">Not Now</button>
+            </div>
+        </div>
+    `;
+
+    // Stash userId on the modal so the action handlers can read it
+    modal.dataset.userId = userId;
+    openModal(modal);
+}
+
+export async function executeEquipmentMigration() {
+    const modal = document.getElementById('equipment-migration-modal');
+    const userId = modal?.dataset?.userId || AppState.currentUser?.uid;
+    if (!userId) return;
+
+    closeModal(modal);
+    showNotification('Cleaning up equipment…', 'info', 2000);
+
+    try {
+        const { runEquipmentMigrationV2 } = await import('./data/equipment-migration.js');
+        const result = await runEquipmentMigrationV2(userId, { dryRun: false });
+        const merged = result.merged || 0;
+        const cm = result.catalogMatches;
+        const catalogIdentified = cm ? cm.tier1 + cm.tier2 : 0;
+        const msg = catalogIdentified > 0
+            ? `Cleanup done — identified ${catalogIdentified} from catalog, merged ${merged} duplicate${merged !== 1 ? 's' : ''}`
+            : `Cleanup done — merged ${merged} duplicate${merged !== 1 ? 's' : ''}`;
+        showNotification(msg, 'success', 3500);
+    } catch (err) {
+        console.error('❌ Equipment migration failed:', err);
+        showNotification('Equipment cleanup failed — see console', 'error', 4000);
+    }
+}
+
+export function dismissEquipmentMigration() {
+    const modal = document.getElementById('equipment-migration-modal');
+    closeModal(modal);
+    // Flag stays false — we'll ask again next session.
+}
+
+/**
+ * Triggered from the "Download Backup" button in the migration prompt.
+ * Fetches equipment + workouts + templates, serializes to JSON, and
+ * triggers a browser download. Does not touch the migration flag or
+ * close the modal — user still needs to confirm/dismiss after saving.
+ */
+export async function downloadEquipmentMigrationBackup() {
+    const userId = AppState.currentUser?.uid;
+    if (!userId) return;
+
+    try {
+        showNotification('Preparing backup…', 'info', 1500);
+        const { exportPreMigrationSnapshot } = await import('./data/equipment-migration.js');
+        const snapshot = await exportPreMigrationSnapshot(userId);
+
+        const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const stamp = new Date().toISOString().slice(0, 10);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bigsurf-equipment-backup-${stamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showNotification('Backup downloaded', 'success', 2000);
+    } catch (err) {
+        console.error('❌ Equipment migration backup failed:', err);
+        showNotification('Backup failed — see console', 'error', 4000);
+    }
 }
 
 // ===================================================================

@@ -20,10 +20,11 @@ import {
     saveEquipmentNotes, showAddEquipmentFlow,
     selectEquipType, updateEquipNamePreview, confirmAddEquipment,
     saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField, removeEquipmentLocation,
+    setEquipmentView, toggleBrandSection,
 } from './core/ui/equipment-library-ui.js';
 
 // Authentication functions
-import { signIn, signOutUser } from './core/app-initialization.js';
+import { signIn, signOutUser, executeEquipmentMigration, dismissEquipmentMigration, downloadEquipmentMigrationBackup } from './core/app-initialization.js';
 
 // Workout core functionality
 import {
@@ -823,6 +824,11 @@ window.toggleTemplateExerciseMenu = toggleTemplateExerciseMenu;
 window.signIn = signIn;
 window.signOutUser = signOutUser;
 
+// Equipment migration v2 prompt callbacks (invoked from inline onclick in the modal)
+window.executeEquipmentMigration = executeEquipmentMigration;
+window.dismissEquipmentMigration = dismissEquipmentMigration;
+window.downloadEquipmentMigrationBackup = downloadEquipmentMigrationBackup;
+
 // Settings
 window.updateSetting = updateSetting;
 window.onboardingNext = onboardingNext;
@@ -965,6 +971,8 @@ window.selectEquipType = selectEquipType;
 window.updateEquipNamePreview = updateEquipNamePreview;
 window.confirmAddEquipment = confirmAddEquipment;
 window.removeEquipmentLocation = removeEquipmentLocation;
+window.setEquipmentView = setEquipmentView;
+window.toggleBrandSection = toggleBrandSection;
 
 // Error Log
 window.showErrorLog = showErrorLog;

@@ -267,4 +267,24 @@
 
     /* Warning RGB for rgba() usage */
     --warning-rgb: 245, 158, 11;
+
+    /* Equipment-type colors (icons + pills in the library).
+       Keyed to type, not body part. Background variants use 15% alpha
+       for the icon square / chip tint. */
+    --equip-machine: #4a90d9;
+    --equip-machine-bg: rgba(74, 144, 217, 0.15);
+    --equip-barbell: #d96a4a;
+    --equip-barbell-bg: rgba(217, 106, 74, 0.15);
+    --equip-dumbbell: #d9a74a;
+    --equip-dumbbell-bg: rgba(217, 167, 74, 0.15);
+    --equip-cable: #7b4ad9;
+    --equip-cable-bg: rgba(123, 74, 217, 0.15);
+    --equip-bench: #4ad9a7;
+    --equip-bench-bg: rgba(74, 217, 167, 0.15);
+    --equip-rack: #d94a7a;
+    --equip-rack-bg: rgba(217, 74, 122, 0.15);
+    --equip-bodyweight: #4ad9d9;
+    --equip-bodyweight-bg: rgba(74, 217, 217, 0.15);
+    --equip-other: var(--text-muted);
+    --equip-other-bg: var(--muted-bg);
 }

@@ -1217,3 +1217,355 @@ dialog.modal[open] .modal-content {
     resize: none;
     min-height: 60px;
 }
+
+/* ==========================================================================
+   Phase 2 — Equipment Library: Brand view, view toggle, detail hero
+   Target for extraction to styles/pages/equipment-library.css in Phase 7.
+   ========================================================================== */
+
+/* View toggle — segmented control at the top of the library list */
+.equip-view-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    margin: var(--space-8) var(--pad-page);
+}
+.equip-view-toggle__btn {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    padding: var(--space-8) var(--space-12);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: background var(--anim-normal), color var(--anim-normal);
+}
+.equip-view-toggle__btn.is-active {
+    background: var(--primary-bg-strong);
+    color: var(--primary);
+}
+
+/* Brand header — collapsible section header for a brand's machines */
+.brand-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--pad-page);
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+}
+.brand-header__name {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.brand-header__count {
+    font-size: var(--font-xs);
+    font-weight: 500;
+    color: var(--text-muted);
+}
+.brand-header__chevron {
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    transition: transform var(--anim-normal);
+}
+.brand-header__chevron.is-collapsed {
+    transform: rotate(-90deg);
+}
+.brand-section {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Line header — sub-header within a brand (e.g. "Fit Evo" under "Panatta") */
+.line-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--pad-page) var(--space-8) var(--space-24);
+    background: var(--bg-app);
+    color: var(--text-muted);
+}
+.line-header__name {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--font-sm);
+    font-weight: 600;
+}
+.line-header__name i {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+.line-header__count {
+    font-size: var(--font-2xs);
+    color: var(--text-secondary);
+}
+
+/* Equipment row — single machine line under a brand/line */
+.equip-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--pad-page);
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: background var(--anim-fast);
+}
+.equip-row:active {
+    background: var(--bg-card-hover);
+}
+.equip-row__icon {
+    width: var(--icon-md);
+    height: var(--icon-md);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-md);
+    flex-shrink: 0;
+}
+.equip-row__info {
+    flex: 1;
+    min-width: 0;
+}
+.equip-row__name {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.equip-row__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    margin-top: var(--space-2);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+.equip-row__meta-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.equip-row__type-pill {
+    display: inline-block;
+    padding: 1px var(--space-8);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+.equip-row__chevron {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+}
+
+/* Equipment-type color variants — applied to both the icon square and the pill.
+   `color` is the foreground tint; background uses the matching -bg token. */
+.equip-row__icon--machine    { color: var(--equip-machine);    background: var(--equip-machine-bg); }
+.equip-row__icon--barbell    { color: var(--equip-barbell);    background: var(--equip-barbell-bg); }
+.equip-row__icon--dumbbell   { color: var(--equip-dumbbell);   background: var(--equip-dumbbell-bg); }
+.equip-row__icon--cable      { color: var(--equip-cable);      background: var(--equip-cable-bg); }
+.equip-row__icon--bench      { color: var(--equip-bench);      background: var(--equip-bench-bg); }
+.equip-row__icon--rack       { color: var(--equip-rack);       background: var(--equip-rack-bg); }
+.equip-row__icon--bodyweight { color: var(--equip-bodyweight); background: var(--equip-bodyweight-bg); }
+.equip-row__icon--other      { color: var(--equip-other);      background: var(--equip-other-bg); }
+
+/* Detail-view hero — shown at the top of the equipment detail page */
+.equip-detail-hero {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+    padding: var(--space-20) var(--pad-page);
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--space-12);
+}
+.equip-detail-hero__icon {
+    width: var(--icon-xl);
+    height: var(--icon-xl);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xl);
+    flex-shrink: 0;
+}
+.equip-detail-hero__info {
+    flex: 1;
+    min-width: 0;
+}
+.equip-detail-hero__name {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.equip-detail-hero__subtitle {
+    margin-top: var(--space-2);
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+.equip-detail-hero__type-pill {
+    padding: var(--space-4) var(--space-10);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Equipment Migration v2 prompt
+   Shown once per user when the v2 migration has changes to make. Lets the
+   user preview duplicates and name changes before confirming.
+   ========================================================================== */
+.migration-prompt {
+    padding: var(--space-20) var(--space-16);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+}
+.migration-prompt__icon {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+    border-radius: var(--radius-pill);
+    background: var(--primary-bg);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-lg);
+    margin: 0 auto;
+}
+.migration-prompt h3 {
+    margin: 0;
+    text-align: center;
+    font-size: var(--font-lg);
+    color: var(--text-strong);
+}
+.migration-prompt__summary {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+.migration-prompt__summary li {
+    padding: var(--space-10) var(--space-12);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: var(--font-sm);
+}
+.migration-prompt__summary strong {
+    color: var(--text-strong);
+}
+.migration-prompt__details {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-8) var(--space-12);
+    background: var(--bg-surface);
+}
+.migration-prompt__details summary {
+    cursor: pointer;
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    padding: var(--space-4) 0;
+}
+.migration-prompt__rename-list {
+    margin-top: var(--space-8);
+    max-height: 240px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+.migration-prompt__rename-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto;
+    gap: var(--space-8);
+    align-items: center;
+    padding: var(--space-6) var(--space-8);
+    background: var(--bg-card);
+    border-radius: var(--radius-xs);
+    font-size: var(--font-xs);
+}
+.migration-prompt__rename-row i {
+    color: var(--text-muted);
+    font-size: var(--font-2xs);
+}
+.migration-prompt__rename-old {
+    color: var(--text-muted);
+    text-decoration: line-through;
+    word-break: break-word;
+}
+.migration-prompt__rename-new {
+    color: var(--text-strong);
+    word-break: break-word;
+}
+.migration-prompt__hint {
+    margin: 0;
+    padding: var(--space-10) var(--space-12);
+    background: var(--muted-bg);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    line-height: 1.4;
+}
+.migration-prompt__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+.migration-prompt__summary-muted {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    background: transparent !important;
+    border: none !important;
+    padding: 0 var(--space-12) !important;
+}
+.migration-prompt__tier-badge {
+    display: inline-block;
+    padding: 1px var(--space-6);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+.migration-prompt__tier-badge--1 {
+    background: var(--success-bg);
+    color: var(--success);
+}
+.migration-prompt__tier-badge--2 {
+    background: var(--warning-bg);
+    color: var(--warning);
+}
+.migration-prompt__tier-badge--3,
+.migration-prompt__tier-badge--0 {
+    background: var(--muted-bg);
+    color: var(--text-muted);
+}

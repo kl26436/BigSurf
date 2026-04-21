@@ -38,6 +38,55 @@ function withTimeout(promise, ms = Config.FIREBASE_TIMEOUT_MS) {
     ]);
 }
 
+// ===================================================================
+// EQUIPMENT NAME HELPERS (Phase 5 hardening)
+//
+// These pure helpers prevent near-duplicate equipment docs from being
+// created when a user enters the same machine with slight name variations
+// (e.g. "Hammer Strength — Chest Press" vs "Hammer Strength Chest Press").
+// They are used inside getOrCreateEquipment to widen the match beyond
+// strict case-insensitive equality.
+// ===================================================================
+
+function normalizeEquipName(name) {
+    return (name || '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function fuzzyEquipMatch(a, b) {
+    const na = normalizeEquipName(a);
+    const nb = normalizeEquipName(b);
+    if (!na || !nb) return false;
+    if (na === nb) return true;
+    const strip = (s) => s.replace(/[—–\-_·:]/g, ' ').replace(/\s+/g, ' ').trim();
+    return strip(na) === strip(nb);
+}
+
+/**
+ * Given a raw equipment name and the user's existing equipment, try to
+ * extract a {brand, function} split by matching against known brand
+ * prefixes. Returns { brand: null, function: null } when nothing matches —
+ * callers should treat those nulls as "unparsed", not as final values.
+ *
+ * Only considers brands that are neither falsy nor the sentinel "Unknown".
+ */
+function parseEquipmentName(rawName, knownEquipment) {
+    if (!rawName) return { brand: null, function: null };
+    const brands = [...new Set(
+        (knownEquipment || [])
+            .map((e) => e.brand)
+            .filter((b) => b && b !== 'Unknown')
+    )];
+    const lowerName = rawName.toLowerCase();
+    for (const brand of brands) {
+        const lowerBrand = brand.toLowerCase();
+        if (lowerName.startsWith(lowerBrand)) {
+            const rest = rawName.slice(brand.length).trim().replace(/^[—–\-·:]\s*/, '');
+            return { brand, function: rest || null };
+        }
+    }
+    return { brand: null, function: null };
+}
+
 export class FirebaseWorkoutManager {
     constructor(appState) {
         this.appState = appState;
@@ -952,13 +1001,42 @@ export class FirebaseWorkoutManager {
             const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'equipment', equipmentId);
 
             const validated = validateEquipmentData(equipmentData) || equipmentData;
+
+            // Accept legacy `model` as input but always write it under `line`.
+            const line = equipmentData.line ?? equipmentData.model ?? null;
+
+            // Accept legacy singular `location` + fold into `locations[]`.
+            let locations = Array.isArray(equipmentData.locations) ? [...equipmentData.locations] : [];
+            if (equipmentData.location && !locations.includes(equipmentData.location)) {
+                locations.push(equipmentData.location);
+            }
+
+            // Accept legacy singular `video` + fold into exerciseVideos map under
+            // the first exerciseType (best we can do without more context).
+            const exerciseVideos = { ...(equipmentData.exerciseVideos || {}) };
+            if (equipmentData.video) {
+                const firstEx = equipmentData.exerciseTypes?.[0];
+                if (firstEx && !exerciseVideos[firstEx]) {
+                    exerciseVideos[firstEx] = equipmentData.video;
+                }
+            }
+
             const equipmentToSave = {
                 id: equipmentId,
                 name: validated.name,
-                location: validated.location || null,
+                brand: equipmentData.brand || null,
+                line,
+                function: equipmentData.function || null,
+                equipmentType: equipmentData.equipmentType || 'Other',
+                baseWeight: typeof equipmentData.baseWeight === 'number' ? equipmentData.baseWeight : 0,
+                baseWeightUnit: equipmentData.baseWeightUnit || 'lbs',
+                locations,
                 exerciseTypes: equipmentData.exerciseTypes || [],
+                exerciseVideos,
+                notes: equipmentData.notes || '',
                 createdAt: equipmentData.createdAt || new Date().toISOString(),
                 lastUsed: new Date().toISOString(),
+                version: 2,
             };
 
             await setDoc(docRef, equipmentToSave);
@@ -1120,8 +1198,17 @@ export class FirebaseWorkoutManager {
         try {
             const allEquipment = await this.getUserEquipment();
 
-            // Look for existing equipment with same name (case-insensitive)
-            const existing = allEquipment.find((eq) => eq.name?.toLowerCase() === equipmentName.toLowerCase());
+            // 1) Exact case-insensitive match
+            let existing = allEquipment.find(
+                (eq) => eq.name?.toLowerCase() === equipmentName.toLowerCase()
+            );
+
+            // 2) Fuzzy match — collapses whitespace and strips separators so
+            //    "Hammer Strength — Chest Press" and "Hammer Strength Chest Press"
+            //    resolve to the same record.
+            if (!existing) {
+                existing = allEquipment.find((eq) => fuzzyEquipMatch(eq.name, equipmentName));
+            }
 
             if (existing) {
                 // Add location if provided and not already present
@@ -1135,15 +1222,32 @@ export class FirebaseWorkoutManager {
                 return existing;
             }
 
-            // Create new equipment
+            // Quick-add path: when the caller didn't explicitly provide brand/function,
+            // try to auto-parse a known brand prefix from the raw name.
+            // Only applies when brand AND function are both unset — if the library UI
+            // already split them out, trust that.
+            const shouldAutoParse = extraFields.brand == null && extraFields.function == null;
+            const parsed = shouldAutoParse
+                ? parseEquipmentName(equipmentName, allEquipment)
+                : { brand: null, function: null };
+
+            // Create new equipment. Order: computed defaults → extraFields override →
+            // exerciseVideos merged (so a videoUrl+exerciseName quick-add still lands
+            // in the map even if extraFields.exerciseVideos is also provided).
             const newEquipment = {
                 name: equipmentName,
+                brand: parsed.brand,
+                function: parsed.function,
                 locations: location ? [location] : [],
-                location: null,
                 exerciseTypes: exerciseName ? [exerciseName] : [],
-                video: videoUrl || null,
                 ...extraFields,
             };
+
+            const videoMap = { ...(extraFields.exerciseVideos || {}) };
+            if (videoUrl && exerciseName && !videoMap[exerciseName]) {
+                videoMap[exerciseName] = videoUrl;
+            }
+            newEquipment.exerciseVideos = videoMap;
 
             const equipmentId = await this.saveEquipment(newEquipment);
             return { id: equipmentId, ...newEquipment };

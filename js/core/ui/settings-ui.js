@@ -41,6 +41,10 @@ const DEFAULT_SETTINGS = {
     // Meta
     hasCompletedOnboarding: false,
     seenTips: [],
+
+    // Migration flags (set true after one-time migrations have run).
+    // Not user-configurable — checked by app-initialization.js on login.
+    equipmentMigrationV2: false,
 };
 
 let saveTimeout = null;
