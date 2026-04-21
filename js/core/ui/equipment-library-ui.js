@@ -5,6 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, getDoc } from '../data/firebase-config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
+import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
 
 let workoutManager = null;
 let allEquipment = [];
@@ -897,16 +898,16 @@ export async function deleteEquipmentFromLibrary(equipmentId) {
 }
 
 // ===================================================================
-// ADD EQUIPMENT FLOW
+// ADD EQUIPMENT FLOW — 3-step state machine (Phase 3)
+//
+// Step 1: Pick Brand (existing + catalog + "New Brand")
+// Step 2: Pick Line (existing + catalog + "New Line" + "Skip")
+// Step 3: Name Function + Type + live preview
+//
+// The catalog provides a large initial pool of brands/lines; the user's own
+// equipment augments it. State lives in `addFlowState` so back/forward and
+// "Add Another" preserve the selection.
 // ===================================================================
-
-// Known brands for autocomplete
-const KNOWN_BRANDS = [
-    'Pannatta', 'Hammer Strength', 'Life Fitness', 'Cybex', 'Nautilus',
-    'Precor', 'Technogym', 'Rogue', 'Atlantis', 'Hoist', 'Matrix',
-    'Star Trac', 'Body-Solid', 'Arsenal Strength', 'Prime Fitness',
-    'REP Fitness', 'Eleiko', 'Concept2', 'AssaultFitness',
-];
 
 const EQUIPMENT_TYPES_LIST = ['Machine', 'Barbell', 'Dumbbell', 'Cable', 'Bench', 'Rack', 'Bodyweight', 'Other'];
 
@@ -919,138 +920,369 @@ const BASE_WEIGHT_SUGGESTIONS = {
     Cable: 5,
 };
 
-function getExistingBrands() {
-    const brands = [...new Set(allEquipment.map(e => e.brand).filter(Boolean))];
-    return [...new Set([...KNOWN_BRANDS, ...brands])].sort();
+const addFlowState = {
+    step: 1,        // 1, 2, or 3
+    brand: null,    // selected brand name
+    line: null,     // selected line name (null = skipped)
+    func: '',       // typed function name
+    type: 'Machine',
+};
+
+/**
+ * Merge user's existing brands (with usage counts) and catalog brands into a
+ * single list ordered by: used-by-user desc, then alpha. Used brands win over
+ * catalog-only brands for display ordering so the user sees their own gym first.
+ */
+function getAddFlowBrandList() {
+    const userCounts = new Map();
+    for (const eq of allEquipment) {
+        if (!eq.brand || eq.brand === 'Unknown') continue;
+        userCounts.set(eq.brand, (userCounts.get(eq.brand) || 0) + 1);
+    }
+    const catalogBrands = EQUIPMENT_CATALOG.map((b) => b.brand);
+    const allNames = new Set([...userCounts.keys(), ...catalogBrands]);
+
+    return [...allNames]
+        .map((name) => ({ name, count: userCounts.get(name) || 0 }))
+        .sort((a, b) => {
+            if (b.count !== a.count) return b.count - a.count;
+            return a.name.localeCompare(b.name);
+        });
 }
 
-function generateEquipmentDisplayName(brand, model, func) {
-    const parts = [brand, model].filter(Boolean).join(' ');
-    if (parts && func) return `${parts} — ${func}`;
-    if (func) return func;
-    return parts || 'Unnamed Equipment';
+/**
+ * Lines for the chosen brand — user's actual lines under this brand + the
+ * catalog's line list for this brand (if any). Sorted alpha.
+ */
+function getAddFlowLinesForBrand(brand) {
+    if (!brand) return [];
+    const userLines = new Map();
+    for (const eq of allEquipment) {
+        if (eq.brand !== brand || !eq.line) continue;
+        userLines.set(eq.line, (userLines.get(eq.line) || 0) + 1);
+    }
+    const catalogEntry = EQUIPMENT_CATALOG.find((b) => b.brand === brand);
+    const catalogLines = catalogEntry ? catalogEntry.lines.map((l) => l.name) : [];
+    const allNames = new Set([...userLines.keys(), ...catalogLines]);
+
+    return [...allNames]
+        .map((name) => ({ name, count: userLines.get(name) || 0 }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function getAddFlowFunctionsForBrandLine(brand, line) {
+    // Suggest machines from the catalog entry (if the combination is known).
+    const brandEntry = EQUIPMENT_CATALOG.find((b) => b.brand === brand);
+    if (!brandEntry) return [];
+    const lineEntry = brandEntry.lines.find((l) => l.name === line);
+    if (!lineEntry) return [];
+    return lineEntry.machines.map((m) => m.name);
+}
+
+function addFlowGeneratedName() {
+    const { brand, line, func } = addFlowState;
+    if (brand && line && func) return `${brand} ${line} — ${func}`;
+    if (brand && func)         return `${brand} — ${func}`;
+    if (brand && line)         return `${brand} ${line}`;
+    if (func)                  return func;
+    return brand || '';
 }
 
 export function showAddEquipmentFlow() {
+    addFlowState.step = 1;
+    addFlowState.brand = null;
+    addFlowState.line = null;
+    addFlowState.func = '';
+    addFlowState.type = 'Machine';
+    renderAddFlow();
+}
+
+function renderAddFlow() {
     const container = document.getElementById('equipment-library-content');
     if (!container) return;
 
-    const brands = getExistingBrands();
-    const existingFunctions = [...new Set(allEquipment.flatMap(e => e.exerciseTypes || []))].sort();
+    // Rewrite the page header for the flow — "Add Equipment" title + back btn
+    // behaves per step (returns to list on step 1, prior step otherwise).
+    const section = document.getElementById('equipment-library-section');
+    const staticHeader = section?.querySelector('.page-header');
+    if (staticHeader) {
+        const backAction = addFlowState.step === 1 ? 'backToEquipmentList()' : 'addFlowBack()';
+        staticHeader.innerHTML = `
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="${backAction}" aria-label="Back">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-header__title">Add Equipment</div>
+            </div>
+        `;
+    }
+
+    const progressHTML = `
+        <div class="add-progress" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="${addFlowState.step}">
+            ${[1, 2, 3].map((n) => {
+                let cls = 'add-progress__step';
+                if (n < addFlowState.step) cls += ' is-done';
+                else if (n === addFlowState.step) cls += ' is-active';
+                return `<div class="${cls}"></div>`;
+            }).join('')}
+        </div>
+    `;
+
+    const breadcrumbs = [];
+    if (addFlowState.step >= 2 && addFlowState.brand) {
+        breadcrumbs.push(`<span class="add-crumb"><i class="fas fa-industry"></i> ${escapeHtml(addFlowState.brand)}</span>`);
+    }
+    if (addFlowState.step >= 3 && addFlowState.line) {
+        breadcrumbs.push(`<span class="add-crumb"><i class="fas fa-layer-group"></i> ${escapeHtml(addFlowState.line)}</span>`);
+    } else if (addFlowState.step >= 3 && addFlowState.line === null && addFlowState.brand) {
+        breadcrumbs.push(`<span class="add-crumb add-crumb--muted"><i class="fas fa-minus"></i> No line</span>`);
+    }
+    const breadcrumbHTML = breadcrumbs.length > 0
+        ? `<div class="add-crumbs">${breadcrumbs.join('')}</div>`
+        : '';
+
+    let stepHTML;
+    switch (addFlowState.step) {
+        case 1: stepHTML = renderAddBrandStep(); break;
+        case 2: stepHTML = renderAddLineStep(); break;
+        case 3: stepHTML = renderAddNameStep(); break;
+        default: stepHTML = '';
+    }
 
     container.innerHTML = `
-        <div class="equip-add">
-            <div class="equip-add__header">
-                <button class="btn-icon" onclick="backToEquipmentList()" aria-label="Back">
-                    <i class="fas fa-arrow-left"></i>
+        <div class="add-flow">
+            ${progressHTML}
+            ${breadcrumbHTML}
+            ${stepHTML}
+        </div>
+    `;
+}
+
+function renderAddBrandStep() {
+    const brands = getAddFlowBrandList();
+
+    return `
+        <div class="add-step">
+            <div class="add-step__label">Pick a Brand</div>
+            <div class="add-step__hint">Choose a brand you already have, or add a new one.</div>
+            <div class="add-grid">
+                ${brands.map((b) => `
+                    <div class="add-option" onclick="addFlowSelectBrand('${escapeAttr(b.name)}')">
+                        <div class="add-option__icon"><i class="fas fa-industry"></i></div>
+                        <div class="add-option__name">${escapeHtml(b.name)}</div>
+                        ${b.count > 0 ? `<div class="add-option__count">${b.count} machine${b.count !== 1 ? 's' : ''}</div>` : '<div class="add-option__count add-option__count--muted">from catalog</div>'}
+                    </div>
+                `).join('')}
+                <div class="add-option add-option--new" onclick="addFlowShowNewBrand()">
+                    <div class="add-option__icon add-option__icon--accent"><i class="fas fa-plus-circle"></i></div>
+                    <div class="add-option__name">New Brand</div>
+                </div>
+            </div>
+            <div id="add-flow-new-brand" class="add-input-row hidden">
+                <label for="add-flow-new-brand-input">Brand name</label>
+                <input type="text" id="add-flow-new-brand-input"
+                       placeholder="e.g., Life Fitness, Cybex"
+                       onkeydown="if(event.key==='Enter') addFlowSelectBrand(this.value.trim())">
+                <button class="btn btn-primary" onclick="addFlowSelectBrand(document.getElementById('add-flow-new-brand-input').value.trim())">
+                    Next <i class="fas fa-chevron-right"></i>
                 </button>
-                <h3 class="equip-add__title">Add Equipment</h3>
+            </div>
+        </div>
+    `;
+}
+
+function renderAddLineStep() {
+    const lines = getAddFlowLinesForBrand(addFlowState.brand);
+
+    return `
+        <div class="add-step">
+            <div class="add-step__label">Pick a Line</div>
+            <div class="add-step__hint">Product line within <strong>${escapeHtml(addFlowState.brand)}</strong> — or skip if this brand doesn't use lines.</div>
+            <div class="add-grid">
+                ${lines.map((l) => `
+                    <div class="add-option" onclick="addFlowSelectLine('${escapeAttr(l.name)}')">
+                        <div class="add-option__icon"><i class="fas fa-layer-group"></i></div>
+                        <div class="add-option__name">${escapeHtml(l.name)}</div>
+                        ${l.count > 0 ? `<div class="add-option__count">${l.count} machine${l.count !== 1 ? 's' : ''}</div>` : '<div class="add-option__count add-option__count--muted">from catalog</div>'}
+                    </div>
+                `).join('')}
+                <div class="add-option add-option--new" onclick="addFlowShowNewLine()">
+                    <div class="add-option__icon add-option__icon--accent"><i class="fas fa-plus-circle"></i></div>
+                    <div class="add-option__name">New Line</div>
+                </div>
+            </div>
+            <div id="add-flow-new-line" class="add-input-row hidden">
+                <label for="add-flow-new-line-input">Line name</label>
+                <input type="text" id="add-flow-new-line-input"
+                       placeholder="e.g., Monolith, Plate-Loaded"
+                       onkeydown="if(event.key==='Enter') addFlowSelectLine(this.value.trim())">
+                <button class="btn btn-primary" onclick="addFlowSelectLine(document.getElementById('add-flow-new-line-input').value.trim())">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <button class="btn btn-text add-flow__skip" onclick="addFlowSkipLine()">
+                Skip — this brand doesn't use lines
+            </button>
+        </div>
+    `;
+}
+
+function renderAddNameStep() {
+    const suggestions = getAddFlowFunctionsForBrandLine(addFlowState.brand, addFlowState.line);
+    const previewName = addFlowGeneratedName() || '—';
+
+    return `
+        <div class="add-step">
+            <div class="add-step__label">Name &amp; Type</div>
+            <div class="add-step__hint">What does this machine do?</div>
+
+            <div class="add-field">
+                <label for="add-flow-func" class="add-field__label">Function</label>
+                <input type="text" id="add-flow-func" class="add-field__input"
+                       placeholder="e.g., Leg Press, Lat Pulldown"
+                       value="${escapeAttr(addFlowState.func)}"
+                       list="add-flow-func-suggestions"
+                       oninput="addFlowSetFunction(this.value)">
+                ${suggestions.length > 0 ? `
+                    <datalist id="add-flow-func-suggestions">
+                        ${suggestions.map((s) => `<option value="${escapeAttr(s)}">`).join('')}
+                    </datalist>
+                ` : ''}
             </div>
 
-            <div class="form-group equip-add__group">
-                <label class="form-label">Brand</label>
-                <input type="text" id="equip-brand" class="form-input"
-                    placeholder="e.g., Hammer Strength, Rogue"
-                    list="brand-suggestions"
-                    oninput="updateEquipNamePreview()">
-                <datalist id="brand-suggestions">
-                    ${brands.map(b => `<option value="${escapeAttr(b)}">`).join('')}
-                </datalist>
-            </div>
-
-            <div class="form-group equip-add__group">
-                <label class="form-label">Model / Line <span class="equip-add__optional">(optional)</span></label>
-                <input type="text" id="equip-model" class="form-input"
-                    placeholder="e.g., Monolith, Plate-Loaded"
-                    oninput="updateEquipNamePreview()">
-            </div>
-
-            <div class="form-group equip-add__group">
-                <label class="form-label">What is it?</label>
-                <input type="text" id="equip-function" class="form-input"
-                    placeholder="e.g., Leg Press, Lat Pulldown"
-                    list="function-suggestions"
-                    oninput="updateEquipNamePreview()">
-                <datalist id="function-suggestions">
-                    ${existingFunctions.map(f => `<option value="${escapeAttr(f)}">`).join('')}
-                </datalist>
-            </div>
-
-            <div class="form-group equip-add__group">
-                <label class="form-label">Type</label>
-                <div class="equip-add__type-row">
-                    ${EQUIPMENT_TYPES_LIST.map(t => `
-                        <button class="btn btn-secondary btn-small equip-type-btn" data-type="${t}"
-                            onclick="selectEquipType(this, '${t}')">
+            <div class="add-field">
+                <div class="add-field__label">Type</div>
+                <div class="add-type-chips">
+                    ${EQUIPMENT_TYPES_LIST.map((t) => `
+                        <button class="add-type-chip ${addFlowState.type === t ? 'is-active' : ''}"
+                                onclick="addFlowSetType('${t}')">
                             ${t}
                         </button>
                     `).join('')}
                 </div>
             </div>
 
-            <div class="equip-add__preview">
-                <span class="equip-add__preview-label">Preview:</span>
-                <strong id="equip-name-preview" class="equip-add__preview-val">—</strong>
+            <div class="add-preview">
+                <span class="add-preview__label">Will be named:</span>
+                <strong class="add-preview__val">${escapeHtml(previewName)}</strong>
             </div>
 
-            <button class="btn btn-primary equip-add__submit" onclick="confirmAddEquipment()">
-                <i class="fas fa-plus"></i> Add Equipment
-            </button>
+            <div class="add-step__actions">
+                <button class="btn btn-primary" onclick="confirmAddEquipment()">
+                    <i class="fas fa-plus"></i> Add Equipment
+                </button>
+                ${addFlowState.line ? `
+                    <button class="btn btn-secondary" onclick="confirmAddEquipment(true)">
+                        Add Another to ${escapeHtml(addFlowState.line)}
+                    </button>
+                ` : ''}
+            </div>
         </div>
     `;
 }
 
-let selectedEquipType = 'Machine';
+// --- Flow actions (all wired to window via main.js) ---
 
-export function selectEquipType(btn, type) {
-    selectedEquipType = type;
-    document.querySelectorAll('.equip-type-btn').forEach(b => b.classList.remove('btn-primary'));
-    btn.classList.remove('btn-secondary');
-    btn.classList.add('btn-primary');
-    // Remove btn-secondary from selected, add to others
-    document.querySelectorAll('.equip-type-btn').forEach(b => {
-        if (b !== btn) {
-            b.classList.remove('btn-primary');
-            b.classList.add('btn-secondary');
-        }
-    });
+export function addFlowBack() {
+    if (addFlowState.step <= 1) return;
+    addFlowState.step--;
+    renderAddFlow();
 }
 
-export function updateEquipNamePreview() {
-    const brand = document.getElementById('equip-brand')?.value?.trim() || '';
-    const model = document.getElementById('equip-model')?.value?.trim() || '';
-    const func = document.getElementById('equip-function')?.value?.trim() || '';
-    const preview = document.getElementById('equip-name-preview');
-    if (preview) {
-        preview.textContent = generateEquipmentDisplayName(brand, model, func) || '—';
+export function addFlowSelectBrand(brandName) {
+    const name = (brandName || '').trim();
+    if (!name) {
+        showNotification('Enter a brand name', 'error', 1500);
+        return;
     }
+    addFlowState.brand = name;
+    addFlowState.step = 2;
+    renderAddFlow();
 }
 
-export async function confirmAddEquipment() {
-    const brand = document.getElementById('equip-brand')?.value?.trim() || '';
-    const model = document.getElementById('equip-model')?.value?.trim() || '';
-    const func = document.getElementById('equip-function')?.value?.trim() || '';
-    const name = generateEquipmentDisplayName(brand, model, func);
+export function addFlowShowNewBrand() {
+    const row = document.getElementById('add-flow-new-brand');
+    const input = document.getElementById('add-flow-new-brand-input');
+    if (row) row.classList.remove('hidden');
+    if (input) input.focus();
+}
 
-    if (!name || name === 'Unnamed Equipment') {
-        showNotification('Please fill in at least one field', 'error');
+export function addFlowSelectLine(lineName) {
+    const name = (lineName || '').trim();
+    if (!name) {
+        showNotification('Enter a line name (or tap Skip)', 'error', 1500);
+        return;
+    }
+    addFlowState.line = name;
+    addFlowState.step = 3;
+    renderAddFlow();
+}
+
+export function addFlowShowNewLine() {
+    const row = document.getElementById('add-flow-new-line');
+    const input = document.getElementById('add-flow-new-line-input');
+    if (row) row.classList.remove('hidden');
+    if (input) input.focus();
+}
+
+export function addFlowSkipLine() {
+    addFlowState.line = null;
+    addFlowState.step = 3;
+    renderAddFlow();
+}
+
+export function addFlowSetFunction(value) {
+    addFlowState.func = value;
+    // Reactive preview update — target just the span so the input keeps focus.
+    const preview = document.querySelector('.add-preview__val');
+    if (preview) preview.textContent = addFlowGeneratedName() || '—';
+}
+
+export function addFlowSetType(type) {
+    if (!EQUIPMENT_TYPES_LIST.includes(type)) return;
+    addFlowState.type = type;
+    // Only the type chip row changes — re-render the whole step to keep things simple.
+    // (Re-renders the step only; flow state stays put.)
+    renderAddFlow();
+}
+
+export async function confirmAddEquipment(addAnother = false) {
+    const { brand, line, func, type } = addFlowState;
+    const cleanFunc = (func || '').trim();
+
+    if (!cleanFunc) {
+        showNotification('Enter a function name (e.g., Leg Press)', 'error', 2000);
         return;
     }
 
-    // Set default base weight based on equipment type
-    const defaultBW = BASE_WEIGHT_SUGGESTIONS[selectedEquipType] || 0;
+    const name = addFlowGeneratedName();
+    const defaultBW = BASE_WEIGHT_SUGGESTIONS[type] || 0;
 
     try {
         const result = await getManager().getOrCreateEquipment(name, {
             brand: brand || null,
-            model: model || null,
-            function: func || null,
-            equipmentType: selectedEquipType,
+            line: line || null,
+            function: cleanFunc,
+            equipmentType: type,
             baseWeight: defaultBW,
             baseWeightUnit: 'lbs',
         });
-        if (result) {
-            allEquipment = await getManager().getUserEquipment();
+        if (!result) {
+            showNotification('Failed to add equipment', 'error');
+            return;
+        }
+        allEquipment = await getManager().getUserEquipment();
+        AppState._cachedEquipment = allEquipment;
+
+        if (addAnother) {
+            showNotification(`Added — ${name}`, 'success', 1200);
+            // Stay on step 3, keep brand+line+type, clear function for the next entry.
+            addFlowState.func = '';
+            renderAddFlow();
+            setTimeout(() => {
+                document.getElementById('add-flow-func')?.focus();
+            }, 30);
+        } else {
             showNotification('Equipment added', 'success', 1500);
             openEquipmentDetail(result.id);
         }

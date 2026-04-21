@@ -17,10 +17,12 @@ import {
     toggleEquipmentSearch, toggleEquipmentExercise,
     assignExerciseToEquipment, filterAssignList, confirmAssignExercise, unassignExercise,
     saveEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
-    saveEquipmentNotes, showAddEquipmentFlow,
-    selectEquipType, updateEquipNamePreview, confirmAddEquipment,
+    saveEquipmentNotes, showAddEquipmentFlow, confirmAddEquipment,
     saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField, removeEquipmentLocation,
     setEquipmentView, toggleBrandSection,
+    addFlowBack, addFlowSelectBrand, addFlowShowNewBrand,
+    addFlowSelectLine, addFlowShowNewLine, addFlowSkipLine,
+    addFlowSetFunction, addFlowSetType,
 } from './core/ui/equipment-library-ui.js';
 
 // Authentication functions
@@ -967,12 +969,20 @@ window.saveEquipmentExerciseVideoFromLib = saveEquipmentExerciseVideoFromLib;
 window.deleteEquipmentFromLibrary = deleteEquipmentFromLibrary;
 window.saveEquipmentNotes = saveEquipmentNotes;
 window.showAddEquipmentFlow = showAddEquipmentFlow;
-window.selectEquipType = selectEquipType;
-window.updateEquipNamePreview = updateEquipNamePreview;
 window.confirmAddEquipment = confirmAddEquipment;
 window.removeEquipmentLocation = removeEquipmentLocation;
 window.setEquipmentView = setEquipmentView;
 window.toggleBrandSection = toggleBrandSection;
+
+// Equipment "Add" stepped flow (Phase 3)
+window.addFlowBack = addFlowBack;
+window.addFlowSelectBrand = addFlowSelectBrand;
+window.addFlowShowNewBrand = addFlowShowNewBrand;
+window.addFlowSelectLine = addFlowSelectLine;
+window.addFlowShowNewLine = addFlowShowNewLine;
+window.addFlowSkipLine = addFlowSkipLine;
+window.addFlowSetFunction = addFlowSetFunction;
+window.addFlowSetType = addFlowSetType;
 
 // Error Log
 window.showErrorLog = showErrorLog;

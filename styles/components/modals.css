@@ -1437,6 +1437,231 @@ dialog.modal[open] .modal-content {
 }
 
 /* ==========================================================================
+   Phase 3 — Add Equipment stepped flow (Brand -> Line -> Name & Type)
+   Target for extraction to styles/pages/equipment-library.css in Phase 7.
+   ========================================================================== */
+
+.add-flow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    padding: var(--space-16) var(--pad-page) var(--space-80);
+}
+
+/* Progress bar — 3 segments, filling left-to-right */
+.add-progress {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-6);
+}
+.add-progress__step {
+    height: var(--accent-bar);
+    background: var(--bg-surface);
+    border-radius: var(--radius-pill);
+    transition: background var(--anim-normal);
+}
+.add-progress__step.is-active {
+    background: var(--primary);
+}
+.add-progress__step.is-done {
+    background: var(--primary-bg-intensity-2);
+}
+
+/* Breadcrumb chips — selected brand + line shown on later steps */
+.add-crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+}
+.add-crumb {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    padding: var(--space-4) var(--space-10);
+    background: var(--primary-bg);
+    color: var(--primary);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+}
+.add-crumb--muted {
+    background: var(--muted-bg);
+    color: var(--text-muted);
+}
+.add-crumb i {
+    font-size: var(--font-2xs);
+}
+
+.add-step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+.add-step__label {
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.add-step__hint {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    margin-top: calc(-1 * var(--space-8));
+}
+.add-step__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
+}
+
+/* 2-col grid of tappable options (brands in step 1, lines in step 2) */
+.add-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-8);
+}
+.add-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-6);
+    padding: var(--space-16) var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color var(--anim-fast), background var(--anim-fast);
+    min-height: 96px;
+}
+.add-option:active {
+    background: var(--bg-card-hover);
+    border-color: var(--primary);
+}
+.add-option--new {
+    border-style: dashed;
+    border-color: var(--primary-border);
+    background: var(--primary-bg-subtle);
+}
+.add-option__icon {
+    font-size: var(--font-lg);
+    color: var(--text-secondary);
+}
+.add-option__icon--accent {
+    color: var(--primary);
+}
+.add-option__name {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.add-option__count {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+}
+.add-option__count--muted {
+    font-style: italic;
+}
+
+/* Inline "new brand" / "new line" input row — hidden until user taps "New ___" */
+.add-input-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding: var(--space-12);
+    background: var(--bg-surface);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+}
+.add-input-row label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    font-weight: 600;
+}
+.add-input-row input {
+    padding: var(--input-padding);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    min-height: var(--input-height);
+}
+
+.add-flow__skip {
+    align-self: center;
+    margin-top: var(--space-8);
+}
+
+/* Step 3 form fields */
+.add-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+.add-field__label {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.add-field__input {
+    padding: var(--input-padding);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    min-height: var(--input-height);
+}
+
+/* Type chip row — single-select */
+.add-type-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+}
+.add-type-chip {
+    appearance: none;
+    padding: var(--space-6) var(--space-12);
+    border-radius: var(--radius-pill);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--anim-fast), color var(--anim-fast), border-color var(--anim-fast);
+}
+.add-type-chip.is-active {
+    background: var(--primary-bg-strong);
+    color: var(--primary);
+    border-color: var(--primary-border);
+}
+
+/* Live name preview strip shown above the primary action */
+.add-preview {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-8);
+    padding: var(--space-10) var(--space-12);
+    background: var(--bg-surface);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border);
+}
+.add-preview__label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.add-preview__val {
+    color: var(--text-strong);
+    font-size: var(--font-sm);
+    word-break: break-word;
+}
+
+/* ==========================================================================
    Equipment Migration v2 prompt
    Shown once per user when the v2 migration has changes to make. Lets the
    user preview duplicates and name changes before confirming.
