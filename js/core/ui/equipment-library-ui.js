@@ -1190,7 +1190,9 @@ function getAddFlowLinesForBrand(brand) {
         if (eq.brand !== brand || !eq.line) continue;
         userLines.set(eq.line, (userLines.get(eq.line) || 0) + 1);
     }
-    const catalogEntry = EQUIPMENT_CATALOG.find((b) => b.brand === brand);
+    // Case-insensitive lookup so "arsenal strength" matches catalog "Arsenal Strength".
+    const brandLC = brand.toLowerCase();
+    const catalogEntry = EQUIPMENT_CATALOG.find((b) => b.brand.toLowerCase() === brandLC);
     const catalogLines = catalogEntry ? catalogEntry.lines.map((l) => l.name) : [];
     const allNames = new Set([...userLines.keys(), ...catalogLines]);
 
@@ -1201,9 +1203,12 @@ function getAddFlowLinesForBrand(brand) {
 
 function getAddFlowFunctionsForBrandLine(brand, line) {
     // Suggest machines from the catalog entry (if the combination is known).
-    const brandEntry = EQUIPMENT_CATALOG.find((b) => b.brand === brand);
+    if (!brand) return [];
+    const brandLC = brand.toLowerCase();
+    const brandEntry = EQUIPMENT_CATALOG.find((b) => b.brand.toLowerCase() === brandLC);
     if (!brandEntry) return [];
-    const lineEntry = brandEntry.lines.find((l) => l.name === line);
+    const lineLC = (line || '').toLowerCase();
+    const lineEntry = brandEntry.lines.find((l) => l.name.toLowerCase() === lineLC);
     if (!lineEntry) return [];
     return lineEntry.machines.map((m) => m.name);
 }

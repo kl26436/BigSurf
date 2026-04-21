@@ -4,6 +4,38 @@
 import { AppState } from '../../utils/app-state.js';
 
 // ===================================================================
+// EXERCISE NAME RESOLVER
+// ===================================================================
+
+/**
+ * Resolve an exercise's display name. Workouts store names at the workout
+ * level in `w.exerciseNames[key]`, NOT on the exercise object — so reading
+ * `ex.name` directly returns undefined for most workouts. Fall back through
+ * every place the name might live so body-part classification works
+ * consistently regardless of how the workout was created.
+ */
+function getExerciseName(ex, key, workout) {
+    return ex?.name
+        || ex?.machine
+        || workout?.exerciseNames?.[key]
+        || null;
+}
+
+/**
+ * Iterate a workout's exercises with `name` resolved from the workout-level
+ * exerciseNames map. Returns an array of shallow-copied exercise objects with
+ * `.name` populated — safe to use anywhere `Object.values(w.exercises)` was
+ * previously used.
+ */
+function withResolvedNames(workout) {
+    const exercises = workout?.exercises || {};
+    return Object.entries(exercises).map(([key, ex]) => ({
+        ...ex,
+        name: getExerciseName(ex, key, workout),
+    }));
+}
+
+// ===================================================================
 // BODY PART CLASSIFICATION
 // ===================================================================
 
@@ -59,7 +91,7 @@ export function aggregateVolume(workouts, { start, end }) {
     for (const w of workouts) {
         if (!isInRange(w.date, start, end)) continue;
         if (w.cancelledAt) continue;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             for (const set of ex.sets || []) {
                 if (set.reps && set.weight) total += set.reps * set.weight;
             }
@@ -77,7 +109,7 @@ export function aggregateVolumeByBodyPart(workouts, { start, end }) {
     for (const w of workouts) {
         if (!isInRange(w.date, start, end)) continue;
         if (w.cancelledAt) continue;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             const part = classifyBodyPart(ex.name);
             if (!out.hasOwnProperty(part)) out[part] = 0;
             for (const set of ex.sets || []) {
@@ -104,7 +136,7 @@ export function aggregateVolumeTimeseries(workouts, { start, end }, bucketBy = '
         const key = bucketKey(d, bucketBy);
         if (!buckets.has(key)) buckets.set(key, { date: key, chest: 0, back: 0, legs: 0, arms: 0, core: 0, shoulders: 0 });
         const bucket = buckets.get(key);
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             const part = classifyBodyPart(ex.name);
             for (const set of ex.sets || []) {
                 if (set.reps && set.weight) {
@@ -142,7 +174,7 @@ export function aggregate1RMSeries(workouts, exerciseName, { start, end }) {
         if (!isInRange(w.date, start, end)) continue;
         if (w.cancelledAt) continue;
         let best = 0;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             if (ex.name !== exerciseName) continue;
             for (const set of ex.sets || []) {
                 if (!set.reps || !set.weight || set.reps === 0) continue;
@@ -192,7 +224,7 @@ export function getTopLiftsTrendPoints(workouts, { start, end }) {
         if (w.cancelledAt) continue;
         let combined = dateMap.get(w.date) || 0;
         for (const lift of BIG_LIFTS) {
-            for (const ex of Object.values(w.exercises || {})) {
+            for (const ex of withResolvedNames(w)) {
                 if (ex.name !== lift) continue;
                 for (const set of ex.sets || []) {
                     if (!set.reps || !set.weight) continue;
@@ -220,7 +252,7 @@ export function getTopLiftsTrendPoints(workouts, { start, end }) {
         const dayWorkouts = workouts.filter(w => w.date === date && !w.cancelledAt);
         for (const lift of BIG_LIFTS) {
             for (const w of dayWorkouts) {
-                for (const ex of Object.values(w.exercises || {})) {
+                for (const ex of withResolvedNames(w)) {
                     if (ex.name !== lift) continue;
                     for (const set of ex.sets || []) {
                         if (set.reps && set.weight) {
@@ -251,7 +283,7 @@ export function countSessionsAndSets(workouts, bodyPart, { start, end }) {
         if (!isInRange(w.date, start, end)) continue;
         if (w.cancelledAt) continue;
         let foundInSession = false;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             if (classifyBodyPart(ex.name) === bodyPart) {
                 if (!foundInSession) { sessions++; foundInSession = true; }
                 sets += (ex.sets || []).filter(s => s.reps && s.weight).length;
@@ -270,7 +302,7 @@ export function bodyPartTrendPoints(workouts, bodyPart, { start, end }) {
         if (!isInRange(w.date, start, end)) continue;
         if (w.cancelledAt) continue;
         let vol = 0;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             if (classifyBodyPart(ex.name) !== bodyPart) continue;
             for (const set of ex.sets || []) {
                 if (set.reps && set.weight) vol += set.reps * set.weight;
@@ -324,7 +356,7 @@ export function getHeroLiftForBodyPart(bodyPart, workouts) {
     const exerciseMaxWeight = {};
     for (const w of workouts) {
         if (w.cancelledAt) continue;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             if (classifyBodyPart(ex.name) !== bodyPart) continue;
             if (!ex.name) continue;
             for (const set of ex.sets || []) {
@@ -393,7 +425,7 @@ export function getLastTrainedDate(workouts, bodyPart) {
     let latest = null;
     for (const w of workouts) {
         if (w.cancelledAt) continue;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             if (classifyBodyPart(ex.name) !== bodyPart) continue;
             if (!latest || w.date > latest) latest = w.date;
             break;
@@ -414,7 +446,7 @@ export function aggregateHeaviestSet(workouts, exerciseName, { start, end }) {
     for (const w of workouts) {
         if (!isInRange(w.date, start, end)) continue;
         if (w.cancelledAt) continue;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             if (ex.name !== exerciseName) continue;
             for (const set of ex.sets || []) {
                 if (!set.weight || !set.reps) continue;
@@ -439,7 +471,7 @@ export function countSessions(workouts, bodyPart, { start, end }) {
     for (const w of workouts) {
         if (!isInRange(w.date, start, end)) continue;
         if (w.cancelledAt) continue;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             if (classifyBodyPart(ex.name) === bodyPart) { count++; break; }
         }
     }
@@ -490,7 +522,7 @@ export function getExercisesForBodyPart(workouts, bodyPart, range = 'M') {
     for (const w of workouts) {
         if (!isInRange(w.date, bounds.start, bounds.end)) continue;
         if (w.cancelledAt) continue;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             if (classifyBodyPart(ex.name) !== bodyPart) continue;
             if (!exerciseMap.has(ex.name)) {
                 exerciseMap.set(ex.name, { name: ex.name, bodyPart, sessions: 0, sets: 0, volume: 0, heaviest: null, dates: [] });
@@ -525,7 +557,7 @@ export function getExercisesForBodyPart(workouts, bodyPart, range = 'M') {
             for (const w of workouts) {
                 if (!isInRange(w.date, prevBounds.start, prevBounds.end)) continue;
                 if (w.cancelledAt) continue;
-                for (const ex of Object.values(w.exercises || {})) {
+                for (const ex of withResolvedNames(w)) {
                     if (ex.name !== entry.name) continue;
                     for (const set of ex.sets || []) {
                         if (set.weight && set.reps) prevVolume += set.weight * set.reps;
@@ -549,7 +581,7 @@ export function getPRsForBodyPart(workouts, bodyPart) {
     const sorted = [...workouts].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     for (const w of sorted) {
         if (w.cancelledAt) continue;
-        for (const ex of Object.values(w.exercises || {})) {
+        for (const ex of withResolvedNames(w)) {
             if (classifyBodyPart(ex.name) !== bodyPart) continue;
             for (const set of ex.sets || []) {
                 if (!set.weight || !set.reps) continue;
@@ -575,7 +607,7 @@ export function aggregateExerciseStats(workouts, exerciseName, range = 'All') {
     for (const w of workouts) {
         if (!isInRange(w.date, bounds.start, bounds.end)) continue;
         if (w.cancelledAt) continue;
-        const matching = Object.values(w.exercises || {}).filter(e => e.name === exerciseName);
+        const matching = withResolvedNames(w).filter(e => e.name === exerciseName);
         if (matching.length === 0) continue;
 
         const sessionSets = matching.flatMap(e => e.sets || []).filter(s => s.weight && s.reps);
