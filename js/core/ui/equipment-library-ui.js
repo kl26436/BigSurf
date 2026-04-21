@@ -814,25 +814,38 @@ export async function openEquipmentDetail(equipmentId) {
                            onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'name', this.value)">
                 </div>
 
-                <!-- Brand -->
+                <!-- Brand — datalist populated from catalog + user's existing brands -->
                 <div class="field">
                     <div class="field-label">Brand</div>
                     <input class="field-input" value="${escapeAttr(equipment.brand || '')}" placeholder="e.g., Hammer Strength"
-                           onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'brand', this.value)">
+                           list="equip-detail-brands-${escapeAttr(equipmentId)}"
+                           onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'brand', this.value); openEquipmentDetail('${escapeAttr(equipmentId)}');">
+                    <datalist id="equip-detail-brands-${escapeAttr(equipmentId)}">
+                        ${getDetailBrandSuggestions().map(b => `<option value="${escapeAttr(b)}">`).join('')}
+                    </datalist>
                 </div>
 
-                <!-- Line (product line within brand, e.g. "Fit Evo" for Panatta) -->
+                <!-- Line — datalist filtered to the currently-saved brand. Edits to
+                     brand re-render the page so this datalist refreshes too. -->
                 <div class="field">
                     <div class="field-label">Line</div>
                     <input class="field-input" value="${escapeAttr(equipment.line || '')}" placeholder="e.g., Fit Evo, Plate-Loaded"
-                           onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'line', this.value)">
+                           list="equip-detail-lines-${escapeAttr(equipmentId)}"
+                           onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'line', this.value); openEquipmentDetail('${escapeAttr(equipmentId)}');">
+                    <datalist id="equip-detail-lines-${escapeAttr(equipmentId)}">
+                        ${getDetailLineSuggestions(equipment.brand).map(l => `<option value="${escapeAttr(l)}">`).join('')}
+                    </datalist>
                 </div>
 
-                <!-- Function (the machine's purpose, e.g. "Leg Extension") -->
+                <!-- Function — datalist filtered to the saved brand + line combo -->
                 <div class="field">
                     <div class="field-label">Function</div>
                     <input class="field-input" value="${escapeAttr(equipment.function || '')}" placeholder="e.g., Leg Extension"
+                           list="equip-detail-funcs-${escapeAttr(equipmentId)}"
                            onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'function', this.value)">
+                    <datalist id="equip-detail-funcs-${escapeAttr(equipmentId)}">
+                        ${getDetailFunctionSuggestions(equipment.brand, equipment.line).map(f => `<option value="${escapeAttr(f)}">`).join('')}
+                    </datalist>
                 </div>
 
                 <!-- Type chips -->
@@ -1211,6 +1224,66 @@ function getAddFlowFunctionsForBrandLine(brand, line) {
     const lineEntry = brandEntry.lines.find((l) => l.name.toLowerCase() === lineLC);
     if (!lineEntry) return [];
     return lineEntry.machines.map((m) => m.name);
+}
+
+// ---------------------------------------------------------------------------
+// Detail-view datalist suggestions — give the Brand/Line/Function inputs the
+// same catalog-backed dropdowns the Add flow has, so users editing existing
+// equipment can pick from known options instead of typing free-form (which
+// risked typos like "M1" instead of "M-1").
+// ---------------------------------------------------------------------------
+
+function getDetailBrandSuggestions() {
+    const userBrands = new Set(
+        (allEquipment || [])
+            .map(e => e.brand)
+            .filter(b => b && b !== 'Unknown')
+    );
+    const catalogBrands = EQUIPMENT_CATALOG.map(b => b.brand);
+    return [...new Set([...userBrands, ...catalogBrands])].sort((a, b) => a.localeCompare(b));
+}
+
+function getDetailLineSuggestions(brand) {
+    if (!brand) return [];
+    const brandLC = brand.toLowerCase();
+    const userLines = new Set(
+        (allEquipment || [])
+            .filter(e => e.brand?.toLowerCase() === brandLC && e.line)
+            .map(e => e.line)
+    );
+    const catalogEntry = EQUIPMENT_CATALOG.find(b => b.brand.toLowerCase() === brandLC);
+    const catalogLines = catalogEntry ? catalogEntry.lines.map(l => l.name) : [];
+    return [...new Set([...userLines, ...catalogLines])].sort((a, b) => a.localeCompare(b));
+}
+
+function getDetailFunctionSuggestions(brand, line) {
+    if (!brand) return [];
+    const brandLC = brand.toLowerCase();
+    const lineLC = (line || '').toLowerCase();
+    // User's existing functions for this brand+line combo (helps when the
+    // catalog doesn't cover the brand at all).
+    const userFns = new Set(
+        (allEquipment || [])
+            .filter(e =>
+                e.brand?.toLowerCase() === brandLC &&
+                (e.line || '').toLowerCase() === lineLC &&
+                e.function
+            )
+            .map(e => e.function)
+    );
+    // Catalog machines for this brand+line combo.
+    const brandEntry = EQUIPMENT_CATALOG.find(b => b.brand.toLowerCase() === brandLC);
+    let catalogFns = [];
+    if (brandEntry) {
+        if (line) {
+            const lineEntry = brandEntry.lines.find(l => l.name.toLowerCase() === lineLC);
+            if (lineEntry) catalogFns = lineEntry.machines.map(m => m.name);
+        } else {
+            // No line specified — surface every machine across all lines for the brand.
+            catalogFns = brandEntry.lines.flatMap(l => l.machines.map(m => m.name));
+        }
+    }
+    return [...new Set([...userFns, ...catalogFns])].sort((a, b) => a.localeCompare(b));
 }
 
 function addFlowGeneratedName() {
