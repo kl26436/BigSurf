@@ -19,6 +19,14 @@ let currentDetailId = null;
 let currentView = 'brand'; // 'brand' | 'bodypart'
 const expandedBrands = new Set();
 
+// Phase 6: scan-history state. unlinkedEquipment is populated lazily on the
+// first library open (background scan); the review view rebuilds from it.
+// dismissedUnlinked is per-session — names the user said "ignore" to. The
+// banner hides automatically when (unlinked - dismissed) is empty.
+let unlinkedEquipment = null;       // Map<name, {exercises, locations, count}> | null
+const dismissedUnlinked = new Set(); // names dismissed this session
+let scanReviewActive = false;       // when true, library shows the review list instead of the normal grid
+
 function getManager() {
     if (!workoutManager) workoutManager = new FirebaseWorkoutManager(AppState);
     return workoutManager;
@@ -142,15 +150,206 @@ export async function openEquipmentLibrary() {
     if (!section) return;
 
     section.classList.remove('hidden');
+    scanReviewActive = false; // always land on the normal list, not the review view
     allEquipment = await getManager().getUserEquipment();
     // Cache for cross-module access (plate calculator, weight calculations)
     AppState._cachedEquipment = allEquipment;
     renderEquipmentLibrary();
+
+    // Background scan for workout-history equipment names that don't appear in
+    // the library. Non-blocking — banner appears on the next render once the
+    // scan completes.
+    scanForUnlinkedEquipment().then(() => {
+        if (!scanReviewActive) renderEquipmentLibrary();
+    }).catch((err) => {
+        console.error('❌ Equipment scan failed:', err);
+    });
+}
+
+/**
+ * Phase 6 — scan workout history for equipment name strings that don't match
+ * any record in the user's equipment library. Stores results in module-scoped
+ * `unlinkedEquipment` for the banner + review view to render.
+ *
+ * Names are compared after normalization (lowercase, collapsed whitespace) so
+ * trivial casing differences don't trigger false positives.
+ */
+async function scanForUnlinkedEquipment() {
+    const norm = (s) => (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+
+    const knownNorm = new Set((allEquipment || []).map((e) => norm(e.name)));
+    const workouts = await getManager().getUserWorkouts();
+    const found = new Map();
+
+    for (const w of workouts) {
+        const exercises = w.exercises || {};
+        for (const key of Object.keys(exercises)) {
+            const ex = exercises[key];
+            const equipName = ex?.equipment;
+            if (!equipName) continue;
+            if (knownNorm.has(norm(equipName))) continue;
+
+            if (!found.has(equipName)) {
+                found.set(equipName, {
+                    exercises: new Set(),
+                    locations: new Set(),
+                    count: 0,
+                });
+            }
+            const entry = found.get(equipName);
+            if (ex.name) entry.exercises.add(ex.name);
+            if (w.location) entry.locations.add(w.location);
+            entry.count++;
+        }
+    }
+
+    unlinkedEquipment = found;
+}
+
+function getUnlinkedActive() {
+    if (!unlinkedEquipment) return [];
+    return [...unlinkedEquipment.entries()]
+        .filter(([name]) => !dismissedUnlinked.has(name))
+        .map(([name, meta]) => ({ name, ...meta }));
+}
+
+/** Switch the library content area to the scan review list. */
+export function reviewDiscoveredEquipment() {
+    scanReviewActive = true;
+    renderEquipmentLibrary();
+}
+
+/** Render the review list — one row per unlinked name with Add / Dismiss. */
+function renderScanReview() {
+    const container = document.getElementById('equipment-library-content');
+    if (!container) return;
+
+    // Rewrite the page header for the review view (back goes to the list).
+    const section = document.getElementById('equipment-library-section');
+    const staticHeader = section?.querySelector('.page-header');
+    if (staticHeader) {
+        staticHeader.innerHTML = `
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="exitScanReview()" aria-label="Back">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-header__title">Review history</div>
+            </div>
+        `;
+    }
+
+    const items = getUnlinkedActive();
+    if (items.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-compact">
+                <i class="fas fa-check-circle"></i>
+                <p>All caught up</p>
+                <p class="empty-state-hint">Every machine in your workout history is in the library.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const rowsHTML = items.map((item) => {
+        const exerciseList = [...item.exercises].slice(0, 3).join(', ');
+        const exerciseSuffix = item.exercises.size > 3 ? `, +${item.exercises.size - 3}` : '';
+        const locationStr = [...item.locations].join(', ');
+        const metaParts = [
+            `${item.count} session${item.count !== 1 ? 's' : ''}`,
+            exerciseList ? `${exerciseList}${exerciseSuffix}` : null,
+            locationStr,
+        ].filter(Boolean).join(' · ');
+
+        return `
+            <div class="scan-review-row">
+                <div class="scan-review-row__info">
+                    <div class="scan-review-row__name">${escapeHtml(item.name)}</div>
+                    <div class="scan-review-row__meta">${escapeHtml(metaParts)}</div>
+                </div>
+                <div class="scan-review-row__actions">
+                    <button class="btn btn-primary btn-small" onclick="addUnlinkedEquipment('${escapeAttr(item.name)}')">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                    <button class="btn btn-text btn-small" onclick="dismissUnlinkedEquipment('${escapeAttr(item.name)}')">
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="scan-review">
+            <div class="scan-review__hint">
+                These equipment names appear in your workout history but aren't in your library.
+                Add them to merge their history with a real machine, or dismiss to ignore.
+            </div>
+            <div class="scan-review__list">${rowsHTML}</div>
+        </div>
+    `;
+}
+
+/** Exit the review view and return to the normal library list. */
+export function exitScanReview() {
+    scanReviewActive = false;
+    // Restore the standard page header
+    const section = document.getElementById('equipment-library-section');
+    const staticHeader = section?.querySelector('.page-header');
+    if (staticHeader) {
+        staticHeader.innerHTML = `
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-header__title">Equipment</div>
+            </div>
+            <button class="page-header__save" onclick="showAddEquipmentFlow()">
+                <i class="fas fa-plus"></i> Add
+            </button>
+        `;
+    }
+    renderEquipmentLibrary();
+}
+
+/** Create an equipment doc for a discovered name, then refresh + remove from list. */
+export async function addUnlinkedEquipment(name) {
+    try {
+        const result = await getManager().getOrCreateEquipment(name);
+        if (result) {
+            // Re-read library so the new doc shows up everywhere
+            allEquipment = await getManager().getUserEquipment();
+            AppState._cachedEquipment = allEquipment;
+            // Drop from the unlinked map (now linked) — also rescan in case more changed
+            if (unlinkedEquipment) unlinkedEquipment.delete(name);
+            showNotification(`${name} added to library`, 'success', 1500);
+            renderEquipmentLibrary();
+        }
+    } catch (err) {
+        console.error('❌ Failed to add unlinked equipment:', err);
+        showNotification('Failed to add equipment', 'error');
+    }
+}
+
+/** Hide the row for this session. Doesn't persist (next session re-prompts). */
+export function dismissUnlinkedEquipment(name) {
+    dismissedUnlinked.add(name);
+    if (getUnlinkedActive().length === 0) {
+        // Auto-exit review when nothing remains
+        exitScanReview();
+    } else {
+        renderEquipmentLibrary();
+    }
 }
 
 function renderEquipmentLibrary() {
     const container = document.getElementById('equipment-library-content');
     if (!container) return;
+
+    // Phase 6: when the user is in the review view, render that instead of the list.
+    if (scanReviewActive) {
+        renderScanReview();
+        return;
+    }
 
     // Collect all locations for filter pills
     const locationSet = new Set();
@@ -180,6 +379,19 @@ function renderEquipmentLibrary() {
             eq.location === currentLocationFilter
         );
     }
+
+    // Phase 6 banner — only shown when the scan found names that aren't dismissed.
+    const unlinked = getUnlinkedActive();
+    const scanBannerHTML = unlinked.length > 0 ? `
+        <div class="scan-banner">
+            <div class="scan-banner__icon"><i class="fas fa-history"></i></div>
+            <div class="scan-banner__text">
+                <div class="scan-banner__title">${unlinked.length} machine${unlinked.length !== 1 ? 's' : ''} found in history</div>
+                <div class="scan-banner__sub">Not yet in your library</div>
+            </div>
+            <button class="scan-banner__btn" onclick="reviewDiscoveredEquipment()">Review</button>
+        </div>
+    ` : '';
 
     // View toggle (Phase 2) — always present so users can switch while empty
     const viewToggleHTML = `
@@ -238,6 +450,7 @@ function renderEquipmentLibrary() {
     }
 
     container.innerHTML =
+        scanBannerHTML +
         viewToggleHTML +
         filterHTML +
         searchHTML +

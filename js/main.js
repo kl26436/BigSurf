@@ -23,6 +23,7 @@ import {
     addFlowBack, addFlowSelectBrand, addFlowShowNewBrand,
     addFlowSelectLine, addFlowShowNewLine, addFlowSkipLine,
     addFlowSetFunction, addFlowSetType,
+    reviewDiscoveredEquipment, exitScanReview, addUnlinkedEquipment, dismissUnlinkedEquipment,
 } from './core/ui/equipment-library-ui.js';
 
 // Authentication functions
@@ -983,6 +984,12 @@ window.addFlowShowNewLine = addFlowShowNewLine;
 window.addFlowSkipLine = addFlowSkipLine;
 window.addFlowSetFunction = addFlowSetFunction;
 window.addFlowSetType = addFlowSetType;
+
+// Equipment scan-history banner (Phase 6)
+window.reviewDiscoveredEquipment = reviewDiscoveredEquipment;
+window.exitScanReview = exitScanReview;
+window.addUnlinkedEquipment = addUnlinkedEquipment;
+window.dismissUnlinkedEquipment = dismissUnlinkedEquipment;
 
 // Error Log
 window.showErrorLog = showErrorLog;

@@ -1662,6 +1662,110 @@ dialog.modal[open] .modal-content {
 }
 
 /* ==========================================================================
+   Phase 6 — Scan history banner + review view
+   Surfaces equipment names found in workout history that aren't in the
+   library, lets the user add or dismiss each one.
+   ========================================================================== */
+
+.scan-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--pad-page);
+    margin: var(--space-8) var(--pad-page);
+    background: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+    border-radius: var(--radius-md);
+}
+.scan-banner__icon {
+    width: var(--icon-md);
+    height: var(--icon-md);
+    border-radius: var(--radius-pill);
+    background: var(--warning-bg);
+    color: var(--warning);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.scan-banner__text {
+    flex: 1;
+    min-width: 0;
+}
+.scan-banner__title {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.scan-banner__sub {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-2);
+}
+.scan-banner__btn {
+    appearance: none;
+    padding: var(--space-6) var(--space-12);
+    background: var(--primary);
+    color: var(--text-on-accent);
+    border: 0;
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.scan-review {
+    padding: var(--space-16) var(--pad-page) var(--space-80);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+}
+.scan-review__hint {
+    padding: var(--space-12);
+    background: var(--bg-surface);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    line-height: 1.4;
+}
+.scan-review__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+.scan-review-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-16);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.scan-review-row__info {
+    flex: 1;
+    min-width: 0;
+}
+.scan-review-row__name {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-strong);
+    word-break: break-word;
+}
+.scan-review-row__meta {
+    margin-top: var(--space-4);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.scan-review-row__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
    Equipment Migration v2 prompt
    Shown once per user when the v2 migration has changes to make. Lets the
    user preview duplicates and name changes before confirming.
