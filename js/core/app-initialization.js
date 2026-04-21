@@ -351,7 +351,7 @@ export function setupAuthenticationListener() {
 
             // Equipment migration v2 — dry-run first, prompt user on destructive changes.
             // Non-blocking: failures don't prevent login.
-            checkEquipmentMigrationV2(user.uid).catch((err) => {
+            checkEquipmentMigrationV3(user.uid).catch((err) => {
                 console.error('❌ Equipment migration v2 check failed (non-fatal):', err);
             });
 
@@ -475,23 +475,23 @@ export function setupAuthenticationListener() {
  * silently (non-destructive field normalization only) or prompt the user
  * before committing destructive changes (dedup, rename cascades).
  */
-async function checkEquipmentMigrationV2(userId) {
-    const { runEquipmentMigrationV2 } = await import('./data/equipment-migration.js');
+async function checkEquipmentMigrationV3(userId) {
+    const { runEquipmentMigrationV3 } = await import('./data/equipment-migration.js');
 
     const prefsRef = doc(db, 'users', userId, 'preferences', 'settings');
     const prefsSnap = await getDoc(prefsRef);
-    if (prefsSnap.data()?.equipmentMigrationV2) {
+    if (prefsSnap.data()?.equipmentMigrationV3) {
         return; // Already migrated
     }
 
-    const result = await runEquipmentMigrationV2(userId, { dryRun: true });
+    const result = await runEquipmentMigrationV3(userId, { dryRun: true });
     if (!result || !result.preview) return;
 
     const { duplicatesToMerge, renames, fieldsNormalized, totalRecords } = result.preview;
 
     // Nothing to migrate (empty library): set the flag and move on
     if (totalRecords === 0) {
-        await setDoc(prefsRef, { equipmentMigrationV2: true }, { merge: true });
+        await setDoc(prefsRef, { equipmentMigrationV3: true }, { merge: true });
         return;
     }
 
@@ -503,13 +503,13 @@ async function checkEquipmentMigrationV2(userId) {
 
     // Only field normalization → run silently (no user-visible effect)
     if (fieldsNormalized > 0) {
-        await runEquipmentMigrationV2(userId, { dryRun: false });
+        await runEquipmentMigrationV3(userId, { dryRun: false });
         debugLog('Equipment migration v2: silent field normalization complete');
         return;
     }
 
     // Nothing needed beyond setting the flag
-    await setDoc(prefsRef, { equipmentMigrationV2: true }, { merge: true });
+    await setDoc(prefsRef, { equipmentMigrationV3: true }, { merge: true });
 }
 
 function showEquipmentMigrationPrompt(preview, userId) {
@@ -567,11 +567,14 @@ function showEquipmentMigrationPrompt(preview, userId) {
                <summary>Preview name changes (${preview.renames.length})</summary>
                <div class="migration-prompt__rename-list">
                    ${preview.renames.map((r) => `
-                       <div class="migration-prompt__rename-row">
-                           <span class="migration-prompt__rename-old">${escapeHtml(r.old)}</span>
-                           <i class="fas fa-arrow-right"></i>
-                           <span class="migration-prompt__rename-new">${escapeHtml(r.new)}</span>
-                           <span class="migration-prompt__tier-badge migration-prompt__tier-badge--${r.tier ?? 0}">${tierLabel(r.tier ?? 0)}</span>
+                       <div class="migration-prompt__rename-item">
+                           <div class="migration-prompt__rename-row">
+                               <span class="migration-prompt__rename-old">${escapeHtml(r.old)}</span>
+                               <i class="fas fa-arrow-right"></i>
+                               <span class="migration-prompt__rename-new">${escapeHtml(r.new)}</span>
+                               <span class="migration-prompt__tier-badge migration-prompt__tier-badge--${r.tier ?? 0}">${tierLabel(r.tier ?? 0)}</span>
+                           </div>
+                           ${r.note ? `<div class="migration-prompt__rename-note">${escapeHtml(r.note)}</div>` : ''}
                        </div>
                    `).join('')}
                </div>
@@ -612,8 +615,8 @@ export async function executeEquipmentMigration() {
     showNotification('Cleaning up equipment…', 'info', 2000);
 
     try {
-        const { runEquipmentMigrationV2 } = await import('./data/equipment-migration.js');
-        const result = await runEquipmentMigrationV2(userId, { dryRun: false });
+        const { runEquipmentMigrationV3 } = await import('./data/equipment-migration.js');
+        const result = await runEquipmentMigrationV3(userId, { dryRun: false });
         const merged = result.merged || 0;
         const cm = result.catalogMatches;
         const catalogIdentified = cm ? cm.tier1 + cm.tier2 : 0;
@@ -816,255 +819,4 @@ function showInProgressWorkoutPrompt(workoutData) {
         card.classList.remove('hidden');
 
         // Scroll to top so card is visible
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-        // Fallback to old confirm dialog if card elements not found
-        console.warn('Resume card elements not found, using fallback confirm dialog');
-        const workoutDate = new Date(workoutData.date).toLocaleDateString();
-        const message = `You have an in-progress "${workoutData.workoutType}" workout from ${workoutDate}.\n\nWould you like to continue where you left off?`;
-
-        setTimeout(() => {
-            if (confirm(message)) {
-                import('./workout/workout-core.js').then((module) => {
-                    module.continueInProgressWorkout();
-                });
-            } else {
-                import('./workout/workout-core.js').then((module) => {
-                    module.discardInProgressWorkout();
-                });
-            }
-            window.showingProgressPrompt = false;
-        }, 1000);
-    }
-}
-
-// ===================================================================
-// GLOBAL EVENT LISTENERS
-// ===================================================================
-
-export function setupEventListeners() {
-    setTimeout(() => {
-        setupSignInListeners();
-    }, 500);
-    setupOtherEventListeners();
-}
-
-function setupSignInListeners() {
-    const signInButtons = document.querySelectorAll('#sign-in-btn, #loading-signin-btn');
-
-    signInButtons.forEach((btn) => {
-        btn.onclick = null;
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            if (typeof window.signIn === 'function') {
-                window.signIn();
-            } else {
-                console.error(' window.signIn is not a function');
-            }
-        });
-    });
-
-    // Sign-out button
-    const signOutBtn = document.getElementById('sign-out-btn');
-    if (signOutBtn) {
-        signOutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            signOutUser();
-        });
-    }
-}
-
-function setupOtherEventListeners() {
-    // Global unit toggle
-    const globalUnitToggle = document.querySelector('.global-settings .unit-toggle');
-    if (globalUnitToggle) {
-        globalUnitToggle.addEventListener('click', (e) => {
-            if (e.target.classList.contains('unit-btn')) {
-                import('./workout/workout-core.js').then((module) => {
-                    module.setGlobalUnit(e.target.dataset.unit);
-                });
-            }
-        });
-    }
-
-    // Close modal buttons
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('close-modal') || e.target.closest('.close-modal')) {
-            const modal = e.target.closest('.modal');
-            if (modal) {
-                closeModal(modal);
-            }
-        }
-    });
-
-    // Close modal on backdrop click (div modals and dialog modals)
-    document.addEventListener('click', (e) => {
-        // For div modals: clicking the overlay background
-        if (e.target.classList.contains('modal') && e.target.tagName !== 'DIALOG') {
-            closeModal(e.target);
-        }
-        // For dialog modals: clicking outside .modal-content closes the dialog
-        if (e.target.tagName === 'DIALOG' && e.target.classList.contains('modal')) {
-            const rect = e.target.querySelector('.modal-content')?.getBoundingClientRect();
-            if (rect && (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom)) {
-                closeModal(e.target);
-            }
-        }
-    });
-
-    // ESC key to close modals (dialog handles ESC natively, this covers div modals)
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            const activeModal = document.querySelector('.modal:not(.hidden):not(dialog)');
-            if (activeModal) {
-                closeModal(activeModal);
-            }
-        }
-    });
-}
-
-export function setupKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
-        // Don't trigger shortcuts when typing in inputs
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-            return;
-        }
-
-        // Ctrl/Cmd + K for search
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-            e.preventDefault();
-            const searchInput = document.getElementById('workout-search') || document.getElementById('exercise-search');
-            if (searchInput) {
-                searchInput.focus();
-            }
-        }
-
-        // Space to pause/resume timer
-        if (e.key === ' ' && AppState.globalRestTimer) {
-            e.preventDefault();
-            // Toggle timer pause (would need to implement pause functionality)
-        }
-
-        // ESC to close any open div modals (dialog modals handle ESC natively)
-        if (e.key === 'Escape') {
-            const activeModal = document.querySelector('.modal:not(.hidden):not(dialog)');
-            if (activeModal) {
-                e.preventDefault();
-                closeModal(activeModal);
-            }
-        }
-    });
-}
-
-// ===================================================================
-// WORKOUT SELECTOR SETUP
-// ===================================================================
-
-function setupWorkoutFilters() {
-    const filterButtons = document.querySelectorAll('.workout-filter-btn');
-    filterButtons.forEach((btn) => {
-        btn.addEventListener('click', (e) => {
-            const category = e.target.dataset.category;
-            filterWorkoutsByCategory(category);
-        });
-    });
-}
-
-function setupWorkoutSearch() {
-    const searchInput = document.getElementById('workout-search');
-    if (searchInput) {
-        searchInput.addEventListener('input', debounceWorkoutSearch);
-    }
-}
-
-function filterWorkoutsByCategory(category) {
-    // Update active filter
-    document.querySelectorAll('.workout-filter-btn').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.category === category);
-    });
-
-    // Import and use template selection module
-    import('./ui/template-selection.js').then((module) => {
-        module.filterTemplates(category);
-    });
-}
-
-function debounceWorkoutSearch(event) {
-    clearTimeout(debounceWorkoutSearch.timeout);
-    debounceWorkoutSearch.timeout = setTimeout(() => {
-        const query = event.target.value;
-
-        // Import and use template selection module
-        import('./ui/template-selection.js').then((module) => {
-            module.searchTemplates(query);
-        });
-    }, 300);
-}
-
-function renderInitialWorkouts() {
-    // Import and use template selection module
-    import('./ui/template-selection.js').then((module) => {
-        module.loadTemplatesByCategory();
-    });
-}
-
-// ===================================================================
-// GLOBAL SETUP HELPERS
-// ===================================================================
-
-export function setupGlobalVariables() {
-    window.showingProgressPrompt = false;
-    window.historyListenersSetup = false;
-}
-
-export function initializeModules() {
-    try {
-        initializeWorkoutManagement(AppState);
-        setTodayDisplay();
-    } catch (error) {
-        console.error('Error initializing modules:', error);
-        showNotification('Some features may not work properly', 'warning');
-    }
-}
-
-// ===================================================================
-// MAIN ENTRY POINT
-// ===================================================================
-
-export function startApplication() {
-    registerServiceWorker();
-    setupGlobalVariables();
-    initializeWorkoutApp();
-    setupEventListeners();
-    setupKeyboardShortcuts();
-    initializeModules();
-    initializeEnhancedWorkoutSelector();
-}
-
-// ===================================================================
-// SERVICE WORKER REGISTRATION
-// ===================================================================
-
-function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker
-                .register('./service-worker.js')
-                .then((registration) => {
-                    registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                showNotification('App update available! Refresh to update.', 'info');
-                            }
-                        });
-                    });
-                })
-                .catch((error) => {
-                    console.error('Service Worker registration failed:', error);
-                });
-        });
-    }
-}
+        window.scrollTo({ top: 0, behavior: 'smooth'

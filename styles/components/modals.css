@@ -1287,15 +1287,26 @@ dialog.modal[open] .modal-content {
     flex-direction: column;
     gap: var(--space-6);
 }
+.migration-prompt__rename-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-6) var(--space-8);
+    background: var(--bg-card);
+    border-radius: var(--radius-xs);
+}
 .migration-prompt__rename-row {
     display: grid;
     grid-template-columns: 1fr auto 1fr auto;
     gap: var(--space-8);
     align-items: center;
-    padding: var(--space-6) var(--space-8);
-    background: var(--bg-card);
-    border-radius: var(--radius-xs);
     font-size: var(--font-xs);
+}
+.migration-prompt__rename-note {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    font-style: italic;
+    padding-left: var(--space-4);
 }
 .migration-prompt__rename-row i {
     color: var(--text-muted);
