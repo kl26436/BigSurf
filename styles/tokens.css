@@ -285,6 +285,15 @@
     --equip-rack-bg: rgba(217, 74, 122, 0.15);
     --equip-bodyweight: #4ad9d9;
     --equip-bodyweight-bg: rgba(74, 217, 217, 0.15);
+    /* Plate-Loaded — distinct steel-blue (separates from Machine's lighter blue) */
+    --equip-plate-loaded: #5b7fb8;
+    --equip-plate-loaded-bg: rgba(91, 127, 184, 0.15);
+    /* Selectorized — pin-loaded stack machines, teal */
+    --equip-selectorized: #56c2b6;
+    --equip-selectorized-bg: rgba(86, 194, 182, 0.15);
+    /* Cardio — heart-rate red */
+    --equip-cardio: #e35d6a;
+    --equip-cardio-bg: rgba(227, 93, 106, 0.15);
     --equip-other: var(--text-muted);
     --equip-other-bg: var(--muted-bg);
 }

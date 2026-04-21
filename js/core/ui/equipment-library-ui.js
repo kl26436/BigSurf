@@ -32,15 +32,22 @@ function getManager() {
     return workoutManager;
 }
 
+// Equipment-type icons. The `color` field here is documentary — actual colors
+// come from the .equip-row__icon--{type} modifier classes in equipment-library.css
+// which read --equip-{type} tokens. Keep "Machine" for legacy data; v3 migration
+// reclassifies most to Plate-Loaded / Selectorized via catalog match.
 const EQUIPMENT_TYPE_ICONS = {
-    Machine:    { icon: 'fa-cog',        color: '#4A90D9' },
-    Barbell:    { icon: 'fa-dumbbell',   color: '#D96A4A' },
-    Dumbbell:   { icon: 'fa-dumbbell',   color: '#D9A74A' },
-    Cable:      { icon: 'fa-link',       color: '#7B4AD9' },
-    Bench:      { icon: 'fa-couch',      color: '#4AD9A7' },
-    Rack:       { icon: 'fa-border-all', color: '#D94A7A' },
-    Bodyweight: { icon: 'fa-child',      color: '#4AD9D9' },
-    Other:      { icon: 'fa-wrench',     color: 'var(--text-muted)' },
+    'Plate-Loaded': { icon: 'fa-cog',           color: 'var(--equip-plate-loaded)' },
+    Selectorized:   { icon: 'fa-th-list',       color: 'var(--equip-selectorized)' },
+    Machine:        { icon: 'fa-cog',           color: 'var(--equip-machine)' },
+    Cable:          { icon: 'fa-link',          color: 'var(--equip-cable)' },
+    Barbell:        { icon: 'fa-dumbbell',      color: 'var(--equip-barbell)' },
+    Dumbbell:       { icon: 'fa-dumbbell',      color: 'var(--equip-dumbbell)' },
+    Bench:          { icon: 'fa-couch',         color: 'var(--equip-bench)' },
+    Rack:           { icon: 'fa-border-all',    color: 'var(--equip-rack)' },
+    Cardio:         { icon: 'fa-heartbeat',     color: 'var(--equip-cardio)' },
+    Bodyweight:     { icon: 'fa-child',         color: 'var(--equip-bodyweight)' },
+    Other:          { icon: 'fa-wrench',        color: 'var(--equip-other)' },
 };
 
 // Body part classification + display config
@@ -368,6 +375,7 @@ function renderEquipmentLibrary() {
             eq.brand?.toLowerCase().includes(term) ||
             eq.line?.toLowerCase().includes(term) ||
             eq.function?.toLowerCase().includes(term) ||
+            eq.equipmentType?.toLowerCase().includes(term) ||
             (eq.exerciseTypes || []).some(t => t.toLowerCase().includes(term))
         );
     }
@@ -1122,10 +1130,18 @@ export async function deleteEquipmentFromLibrary(equipmentId) {
 // "Add Another" preserve the selection.
 // ===================================================================
 
-const EQUIPMENT_TYPES_LIST = ['Machine', 'Barbell', 'Dumbbell', 'Cable', 'Bench', 'Rack', 'Bodyweight', 'Other'];
+// Type vocabulary matches the v3 spec (EQUIPMENT-OVERHAUL-IMPLEMENTATION.md L60).
+// "Machine" stays in the list for legacy records that haven't been reclassified
+// yet by the catalog migration; new equipment should pick Plate-Loaded or
+// Selectorized instead.
+const EQUIPMENT_TYPES_LIST = [
+    'Plate-Loaded', 'Selectorized', 'Machine',
+    'Cable', 'Barbell', 'Dumbbell', 'Bench', 'Rack',
+    'Cardio', 'Bodyweight', 'Other',
+];
 
 /** Equipment types that have a meaningful base/bar weight */
-const BASE_WEIGHT_TYPES = ['Machine', 'Barbell', 'Cable', 'Bench', 'Rack'];
+const BASE_WEIGHT_TYPES = ['Plate-Loaded', 'Machine', 'Barbell', 'Cable', 'Bench', 'Rack'];
 
 /** Suggested default base weights when switching type */
 const BASE_WEIGHT_SUGGESTIONS = {

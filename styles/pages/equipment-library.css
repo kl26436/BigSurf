@@ -171,14 +171,17 @@
 
 /* Equipment-type color variants — applied to both the icon square and the pill.
    `color` is the foreground tint; background uses the matching -bg token. */
-.equip-row__icon--machine    { color: var(--equip-machine);    background: var(--equip-machine-bg); }
-.equip-row__icon--barbell    { color: var(--equip-barbell);    background: var(--equip-barbell-bg); }
-.equip-row__icon--dumbbell   { color: var(--equip-dumbbell);   background: var(--equip-dumbbell-bg); }
-.equip-row__icon--cable      { color: var(--equip-cable);      background: var(--equip-cable-bg); }
-.equip-row__icon--bench      { color: var(--equip-bench);      background: var(--equip-bench-bg); }
-.equip-row__icon--rack       { color: var(--equip-rack);       background: var(--equip-rack-bg); }
-.equip-row__icon--bodyweight { color: var(--equip-bodyweight); background: var(--equip-bodyweight-bg); }
-.equip-row__icon--other      { color: var(--equip-other);      background: var(--equip-other-bg); }
+.equip-row__icon--plate-loaded { color: var(--equip-plate-loaded); background: var(--equip-plate-loaded-bg); }
+.equip-row__icon--selectorized { color: var(--equip-selectorized); background: var(--equip-selectorized-bg); }
+.equip-row__icon--machine      { color: var(--equip-machine);      background: var(--equip-machine-bg); }
+.equip-row__icon--barbell      { color: var(--equip-barbell);      background: var(--equip-barbell-bg); }
+.equip-row__icon--dumbbell     { color: var(--equip-dumbbell);     background: var(--equip-dumbbell-bg); }
+.equip-row__icon--cable        { color: var(--equip-cable);        background: var(--equip-cable-bg); }
+.equip-row__icon--bench        { color: var(--equip-bench);        background: var(--equip-bench-bg); }
+.equip-row__icon--rack         { color: var(--equip-rack);         background: var(--equip-rack-bg); }
+.equip-row__icon--cardio       { color: var(--equip-cardio);       background: var(--equip-cardio-bg); }
+.equip-row__icon--bodyweight   { color: var(--equip-bodyweight);   background: var(--equip-bodyweight-bg); }
+.equip-row__icon--other        { color: var(--equip-other);        background: var(--equip-other-bg); }
 
 /* Detail-view hero — shown at the top of the equipment detail page */
 .equip-detail-hero {
