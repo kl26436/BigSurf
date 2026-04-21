@@ -818,5 +818,255 @@ function showInProgressWorkoutPrompt(workoutData) {
         // Show the card
         card.classList.remove('hidden');
 
-        // Scroll to top so card is visible
-        window.scrollTo({ top: 0, behavior: 'smooth'
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        // Fallback to old confirm dialog if card elements not found
+        console.warn('Resume card elements not found, using fallback confirm dialog');
+        const workoutDate = new Date(workoutData.date).toLocaleDateString();
+        const message = `You have an in-progress "${workoutData.workoutType}" workout from ${workoutDate}.\n\nWould you like to continue where you left off?`;
+
+        setTimeout(() => {
+            if (confirm(message)) {
+                import('./workout/workout-core.js').then((module) => {
+                    module.continueInProgressWorkout();
+                });
+            } else {
+                import('./workout/workout-core.js').then((module) => {
+                    module.discardInProgressWorkout();
+                });
+            }
+            window.showingProgressPrompt = false;
+        }, 1000);
+    }
+}
+
+// ===================================================================
+// GLOBAL EVENT LISTENERS
+// ===================================================================
+
+export function setupEventListeners() {
+    setTimeout(() => {
+        setupSignInListeners();
+    }, 500);
+    setupOtherEventListeners();
+}
+
+function setupSignInListeners() {
+    const signInButtons = document.querySelectorAll('#sign-in-btn, #loading-signin-btn');
+
+    signInButtons.forEach((btn) => {
+        btn.onclick = null;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (typeof window.signIn === 'function') {
+                window.signIn();
+            } else {
+                console.error(' window.signIn is not a function');
+            }
+        });
+    });
+
+    // Sign-out button
+    const signOutBtn = document.getElementById('sign-out-btn');
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            signOutUser();
+        });
+    }
+}
+
+function setupOtherEventListeners() {
+    // Global unit toggle
+    const globalUnitToggle = document.querySelector('.global-settings .unit-toggle');
+    if (globalUnitToggle) {
+        globalUnitToggle.addEventListener('click', (e) => {
+            if (e.target.classList.contains('unit-btn')) {
+                import('./workout/workout-core.js').then((module) => {
+                    module.setGlobalUnit(e.target.dataset.unit);
+                });
+            }
+        });
+    }
+
+    // Close modal buttons
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('close-modal') || e.target.closest('.close-modal')) {
+            const modal = e.target.closest('.modal');
+            if (modal) {
+                closeModal(modal);
+            }
+        }
+    });
+
+    // Close modal on backdrop click (div modals and dialog modals)
+    document.addEventListener('click', (e) => {
+        // For div modals: clicking the overlay background
+        if (e.target.classList.contains('modal') && e.target.tagName !== 'DIALOG') {
+            closeModal(e.target);
+        }
+        // For dialog modals: clicking outside .modal-content closes the dialog
+        if (e.target.tagName === 'DIALOG' && e.target.classList.contains('modal')) {
+            const rect = e.target.querySelector('.modal-content')?.getBoundingClientRect();
+            if (rect && (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom)) {
+                closeModal(e.target);
+            }
+        }
+    });
+
+    // ESC key to close modals (dialog handles ESC natively, this covers div modals)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const activeModal = document.querySelector('.modal:not(.hidden):not(dialog)');
+            if (activeModal) {
+                closeModal(activeModal);
+            }
+        }
+    });
+}
+
+export function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Don't trigger shortcuts when typing in inputs
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        // Ctrl/Cmd + K for search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            const searchInput = document.getElementById('workout-search') || document.getElementById('exercise-search');
+            if (searchInput) {
+                searchInput.focus();
+            }
+        }
+
+        // Space to pause/resume timer
+        if (e.key === ' ' && AppState.globalRestTimer) {
+            e.preventDefault();
+            // Toggle timer pause (would need to implement pause functionality)
+        }
+
+        // ESC to close any open div modals (dialog modals handle ESC natively)
+        if (e.key === 'Escape') {
+            const activeModal = document.querySelector('.modal:not(.hidden):not(dialog)');
+            if (activeModal) {
+                e.preventDefault();
+                closeModal(activeModal);
+            }
+        }
+    });
+}
+
+// ===================================================================
+// WORKOUT SELECTOR SETUP
+// ===================================================================
+
+function setupWorkoutFilters() {
+    const filterButtons = document.querySelectorAll('.workout-filter-btn');
+    filterButtons.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            const category = e.target.dataset.category;
+            filterWorkoutsByCategory(category);
+        });
+    });
+}
+
+function setupWorkoutSearch() {
+    const searchInput = document.getElementById('workout-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', debounceWorkoutSearch);
+    }
+}
+
+function filterWorkoutsByCategory(category) {
+    // Update active filter
+    document.querySelectorAll('.workout-filter-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.category === category);
+    });
+
+    // Import and use template selection module
+    import('./ui/template-selection.js').then((module) => {
+        module.filterTemplates(category);
+    });
+}
+
+function debounceWorkoutSearch(event) {
+    clearTimeout(debounceWorkoutSearch.timeout);
+    debounceWorkoutSearch.timeout = setTimeout(() => {
+        const query = event.target.value;
+
+        // Import and use template selection module
+        import('./ui/template-selection.js').then((module) => {
+            module.searchTemplates(query);
+        });
+    }, 300);
+}
+
+function renderInitialWorkouts() {
+    // Import and use template selection module
+    import('./ui/template-selection.js').then((module) => {
+        module.loadTemplatesByCategory();
+    });
+}
+
+// ===================================================================
+// GLOBAL SETUP HELPERS
+// ===================================================================
+
+export function setupGlobalVariables() {
+    window.showingProgressPrompt = false;
+    window.historyListenersSetup = false;
+}
+
+export function initializeModules() {
+    try {
+        initializeWorkoutManagement(AppState);
+        setTodayDisplay();
+    } catch (error) {
+        console.error('Error initializing modules:', error);
+        showNotification('Some features may not work properly', 'warning');
+    }
+}
+
+// ===================================================================
+// MAIN ENTRY POINT
+// ===================================================================
+
+export function startApplication() {
+    registerServiceWorker();
+    setupGlobalVariables();
+    initializeWorkoutApp();
+    setupEventListeners();
+    setupKeyboardShortcuts();
+    initializeModules();
+    initializeEnhancedWorkoutSelector();
+}
+
+// ===================================================================
+// SERVICE WORKER REGISTRATION
+// ===================================================================
+
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker
+                .register('./service-worker.js')
+                .then((registration) => {
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showNotification('App update available! Refresh to update.', 'info');
+                            }
+                        });
+                    });
+                })
+                .catch((error) => {
+                    console.error('Service Worker registration failed:', error);
+                });
+        });
+    }
+}
