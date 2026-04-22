@@ -1165,68 +1165,15 @@ const BASE_WEIGHT_SUGGESTIONS = {
 };
 
 const addFlowState = {
-    step: 1,        // 1, 2, or 3
     brand: null,    // selected brand name
     line: null,     // selected line name (null = skipped)
     func: '',       // typed function name
     type: 'Machine',
 };
 
-/**
- * Merge user's existing brands (with usage counts) and catalog brands into a
- * single list ordered by: used-by-user desc, then alpha. Used brands win over
- * catalog-only brands for display ordering so the user sees their own gym first.
- */
-function getAddFlowBrandList() {
-    const userCounts = new Map();
-    for (const eq of allEquipment) {
-        if (!eq.brand || eq.brand === 'Unknown') continue;
-        userCounts.set(eq.brand, (userCounts.get(eq.brand) || 0) + 1);
-    }
-    const catalogBrands = EQUIPMENT_CATALOG.map((b) => b.brand);
-    const allNames = new Set([...userCounts.keys(), ...catalogBrands]);
-
-    return [...allNames]
-        .map((name) => ({ name, count: userCounts.get(name) || 0 }))
-        .sort((a, b) => {
-            if (b.count !== a.count) return b.count - a.count;
-            return a.name.localeCompare(b.name);
-        });
-}
-
-/**
- * Lines for the chosen brand — user's actual lines under this brand + the
- * catalog's line list for this brand (if any). Sorted alpha.
- */
-function getAddFlowLinesForBrand(brand) {
-    if (!brand) return [];
-    const userLines = new Map();
-    for (const eq of allEquipment) {
-        if (eq.brand !== brand || !eq.line) continue;
-        userLines.set(eq.line, (userLines.get(eq.line) || 0) + 1);
-    }
-    // Case-insensitive lookup so "arsenal strength" matches catalog "Arsenal Strength".
-    const brandLC = brand.toLowerCase();
-    const catalogEntry = EQUIPMENT_CATALOG.find((b) => b.brand.toLowerCase() === brandLC);
-    const catalogLines = catalogEntry ? catalogEntry.lines.map((l) => l.name) : [];
-    const allNames = new Set([...userLines.keys(), ...catalogLines]);
-
-    return [...allNames]
-        .map((name) => ({ name, count: userLines.get(name) || 0 }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function getAddFlowFunctionsForBrandLine(brand, line) {
-    // Suggest machines from the catalog entry (if the combination is known).
-    if (!brand) return [];
-    const brandLC = brand.toLowerCase();
-    const brandEntry = EQUIPMENT_CATALOG.find((b) => b.brand.toLowerCase() === brandLC);
-    if (!brandEntry) return [];
-    const lineLC = (line || '').toLowerCase();
-    const lineEntry = brandEntry.lines.find((l) => l.name.toLowerCase() === lineLC);
-    if (!lineEntry) return [];
-    return lineEntry.machines.map((m) => m.name);
-}
+// Add-flow suggestion helpers removed — the cascading picker (fieldPickerState
+// with mode='add') now calls getDetail{Brand,Line,Function}Suggestions directly
+// via computeFieldPickerScope, so there's one code path for both modes.
 
 // ---------------------------------------------------------------------------
 // Detail-view datalist suggestions — give the Brand/Line/Function inputs the
@@ -1311,19 +1258,27 @@ function getDetailFunctionSuggestions(brand, line) {
 // ---------------------------------------------------------------------------
 
 const fieldPickerState = {
-    equipmentId: null,
+    mode: 'edit',         // 'edit' | 'add'
+    equipmentId: null,    // only used in edit mode
     field: null,          // 'brand' | 'line' | 'function'
     searchTerm: '',
     customMode: false,
 };
 
-export function openBrandPicker(equipmentId)    { openFieldPicker(equipmentId, 'brand'); }
-export function openLinePicker(equipmentId)     { openFieldPicker(equipmentId, 'line'); }
-export function openFunctionPicker(equipmentId) { openFieldPicker(equipmentId, 'function'); }
+// Edit-mode entry points — open the picker scoped to an existing equipment doc.
+export function openBrandPicker(equipmentId)    { openFieldPicker(equipmentId, 'brand', 'edit'); }
+export function openLinePicker(equipmentId)     { openFieldPicker(equipmentId, 'line', 'edit'); }
+export function openFunctionPicker(equipmentId) { openFieldPicker(equipmentId, 'function', 'edit'); }
 
-function openFieldPicker(equipmentId, field) {
-    if (!allEquipment.find(e => e.id === equipmentId)) return;
-    fieldPickerState.equipmentId = equipmentId;
+// Add-mode entry points — open the picker scoped to the in-progress addFlowState draft.
+export function openAddFlowBrandPicker()    { openFieldPicker(null, 'brand', 'add'); }
+export function openAddFlowLinePicker()     { openFieldPicker(null, 'line', 'add'); }
+export function openAddFlowFunctionPicker() { openFieldPicker(null, 'function', 'add'); }
+
+function openFieldPicker(equipmentId, field, mode = 'edit') {
+    if (mode === 'edit' && !allEquipment.find(e => e.id === equipmentId)) return;
+    fieldPickerState.mode = mode;
+    fieldPickerState.equipmentId = mode === 'edit' ? equipmentId : null;
     fieldPickerState.field = field;
     fieldPickerState.searchTerm = '';
     fieldPickerState.customMode = false;
@@ -1337,8 +1292,13 @@ function openFieldPicker(equipmentId, field) {
  * same modal chrome handle all three pickers.
  */
 function computeFieldPickerScope() {
-    const { equipmentId, field } = fieldPickerState;
-    const eq = allEquipment.find(e => e.id === equipmentId) || {};
+    const { equipmentId, field, mode } = fieldPickerState;
+    // In add mode, read from the in-progress addFlowState draft. addFlowState
+    // uses `func` for the function field — translate here so downstream logic
+    // is identical across both modes.
+    const eq = mode === 'add'
+        ? { brand: addFlowState.brand, line: addFlowState.line, function: addFlowState.func }
+        : (allEquipment.find(e => e.id === equipmentId) || {});
 
     if (field === 'brand') {
         return {
@@ -1504,7 +1464,27 @@ export async function selectFieldValue(equipmentId, field, value) {
         return;
     }
 
-    // Build the update object with cascading clears.
+    // Add mode — route the selection to the in-progress addFlowState draft.
+    // addFlowState uses `func` for the function field; cascade clears apply
+    // identically (brand → clear line + func; line → clear func).
+    if (fieldPickerState.mode === 'add') {
+        if (field === 'brand') {
+            addFlowState.brand = v;
+            addFlowState.line = null;
+            addFlowState.func = '';
+        } else if (field === 'line') {
+            addFlowState.line = v;
+            addFlowState.func = '';
+        } else {
+            addFlowState.func = v;
+        }
+        closeModal('function-picker-modal');
+        renderAddFlow();
+        return;
+    }
+
+    // Edit mode — persist to Firestore + the local cache, then re-render the
+    // detail page. Cascade clears are applied in a single update object.
     const update = { [field]: v };
     if (field === 'brand') { update.line = null; update.function = null; }
     if (field === 'line')  { update.function = null; }
@@ -1513,7 +1493,6 @@ export async function selectFieldValue(equipmentId, field, value) {
         const userId = AppState.currentUser.uid;
         await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), update);
 
-        // Mirror the cascade in the local cache so the re-render picks it up.
         const eq = allEquipment.find(e => e.id === equipmentId);
         if (eq) Object.assign(eq, update);
 
@@ -1539,7 +1518,6 @@ function addFlowGeneratedName() {
 }
 
 export function showAddEquipmentFlow() {
-    addFlowState.step = 1;
     addFlowState.brand = null;
     addFlowState.line = null;
     addFlowState.func = '';
@@ -1547,19 +1525,23 @@ export function showAddEquipmentFlow() {
     renderAddFlow();
 }
 
+/**
+ * Single-page Add Equipment form. Uses the same cascading Brand → Line →
+ * Function picker as the detail view (opened via openAddFlow*Picker entry
+ * points that set fieldPickerState.mode = 'add'). Type is a chip row below
+ * the pickers; preview string shows the generated display name.
+ */
 function renderAddFlow() {
     const container = document.getElementById('equipment-library-content');
     if (!container) return;
 
-    // Rewrite the page header for the flow — "Add Equipment" title + back btn
-    // behaves per step (returns to list on step 1, prior step otherwise).
+    // Page header — back always returns to the list (no more steps).
     const section = document.getElementById('equipment-library-section');
     const staticHeader = section?.querySelector('.page-header');
     if (staticHeader) {
-        const backAction = addFlowState.step === 1 ? 'backToEquipmentList()' : 'addFlowBack()';
         staticHeader.innerHTML = `
             <div class="page-header__left">
-                <button class="page-header__back" onclick="${backAction}" aria-label="Back">
+                <button class="page-header__back" onclick="backToEquipmentList()" aria-label="Back">
                     <i class="fas fa-chevron-left"></i>
                 </button>
                 <div class="page-header__title">Add Equipment</div>
@@ -1567,144 +1549,49 @@ function renderAddFlow() {
         `;
     }
 
-    const progressHTML = `
-        <div class="add-progress" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="${addFlowState.step}">
-            ${[1, 2, 3].map((n) => {
-                let cls = 'add-progress__step';
-                if (n < addFlowState.step) cls += ' is-done';
-                else if (n === addFlowState.step) cls += ' is-active';
-                return `<div class="${cls}"></div>`;
-            }).join('')}
-        </div>
-    `;
-
-    const breadcrumbs = [];
-    if (addFlowState.step >= 2 && addFlowState.brand) {
-        breadcrumbs.push(`<span class="add-crumb"><i class="fas fa-industry"></i> ${escapeHtml(addFlowState.brand)}</span>`);
-    }
-    if (addFlowState.step >= 3 && addFlowState.line) {
-        breadcrumbs.push(`<span class="add-crumb"><i class="fas fa-layer-group"></i> ${escapeHtml(addFlowState.line)}</span>`);
-    } else if (addFlowState.step >= 3 && addFlowState.line === null && addFlowState.brand) {
-        breadcrumbs.push(`<span class="add-crumb add-crumb--muted"><i class="fas fa-minus"></i> No line</span>`);
-    }
-    const breadcrumbHTML = breadcrumbs.length > 0
-        ? `<div class="add-crumbs">${breadcrumbs.join('')}</div>`
-        : '';
-
-    let stepHTML;
-    switch (addFlowState.step) {
-        case 1: stepHTML = renderAddBrandStep(); break;
-        case 2: stepHTML = renderAddLineStep(); break;
-        case 3: stepHTML = renderAddNameStep(); break;
-        default: stepHTML = '';
-    }
+    const { brand, line, func, type } = addFlowState;
+    const previewName = addFlowGeneratedName() || '—';
 
     container.innerHTML = `
         <div class="add-flow">
-            ${progressHTML}
-            ${breadcrumbHTML}
-            ${stepHTML}
-        </div>
-    `;
-}
+            <div class="add-step__label">New Equipment</div>
+            <div class="add-step__hint">Pick a brand, its product line, then the specific machine.</div>
 
-function renderAddBrandStep() {
-    const brands = getAddFlowBrandList();
-
-    return `
-        <div class="add-step">
-            <div class="add-step__label">Pick a Brand</div>
-            <div class="add-step__hint">Choose a brand you already have, or add a new one.</div>
-            <div class="add-grid">
-                ${brands.map((b) => `
-                    <div class="add-option" onclick="addFlowSelectBrand('${escapeAttr(b.name)}')">
-                        <div class="add-option__icon"><i class="fas fa-industry"></i></div>
-                        <div class="add-option__name">${escapeHtml(b.name)}</div>
-                        ${b.count > 0 ? `<div class="add-option__count">${b.count} machine${b.count !== 1 ? 's' : ''}</div>` : '<div class="add-option__count add-option__count--muted">from catalog</div>'}
-                    </div>
-                `).join('')}
-                <div class="add-option add-option--new" onclick="addFlowShowNewBrand()">
-                    <div class="add-option__icon add-option__icon--accent"><i class="fas fa-plus-circle"></i></div>
-                    <div class="add-option__name">New Brand</div>
-                </div>
-            </div>
-            <div id="add-flow-new-brand" class="add-input-row hidden">
-                <label for="add-flow-new-brand-input">Brand name</label>
-                <input type="text" id="add-flow-new-brand-input"
-                       placeholder="e.g., Life Fitness, Cybex"
-                       onkeydown="if(event.key==='Enter') addFlowSelectBrand(this.value.trim())">
-                <button class="btn btn-primary" onclick="addFlowSelectBrand(document.getElementById('add-flow-new-brand-input').value.trim())">
-                    Next <i class="fas fa-chevron-right"></i>
+            <div class="field">
+                <div class="field-label">Brand</div>
+                <button class="field-picker-row" onclick="openAddFlowBrandPicker()" aria-haspopup="dialog">
+                    <span class="field-picker-row__value ${!brand ? 'field-picker-row__value--placeholder' : ''}">
+                        ${escapeHtml(brand || 'Select a brand…')}
+                    </span>
+                    <i class="fas fa-chevron-down field-picker-row__chevron"></i>
                 </button>
             </div>
-        </div>
-    `;
-}
 
-function renderAddLineStep() {
-    const lines = getAddFlowLinesForBrand(addFlowState.brand);
-
-    return `
-        <div class="add-step">
-            <div class="add-step__label">Pick a Line</div>
-            <div class="add-step__hint">Product line within <strong>${escapeHtml(addFlowState.brand)}</strong> — or skip if this brand doesn't use lines.</div>
-            <div class="add-grid">
-                ${lines.map((l) => `
-                    <div class="add-option" onclick="addFlowSelectLine('${escapeAttr(l.name)}')">
-                        <div class="add-option__icon"><i class="fas fa-layer-group"></i></div>
-                        <div class="add-option__name">${escapeHtml(l.name)}</div>
-                        ${l.count > 0 ? `<div class="add-option__count">${l.count} machine${l.count !== 1 ? 's' : ''}</div>` : '<div class="add-option__count add-option__count--muted">from catalog</div>'}
-                    </div>
-                `).join('')}
-                <div class="add-option add-option--new" onclick="addFlowShowNewLine()">
-                    <div class="add-option__icon add-option__icon--accent"><i class="fas fa-plus-circle"></i></div>
-                    <div class="add-option__name">New Line</div>
-                </div>
-            </div>
-            <div id="add-flow-new-line" class="add-input-row hidden">
-                <label for="add-flow-new-line-input">Line name</label>
-                <input type="text" id="add-flow-new-line-input"
-                       placeholder="e.g., Monolith, Plate-Loaded"
-                       onkeydown="if(event.key==='Enter') addFlowSelectLine(this.value.trim())">
-                <button class="btn btn-primary" onclick="addFlowSelectLine(document.getElementById('add-flow-new-line-input').value.trim())">
-                    Next <i class="fas fa-chevron-right"></i>
+            <div class="field">
+                <div class="field-label">Line</div>
+                <button class="field-picker-row" onclick="openAddFlowLinePicker()" aria-haspopup="dialog">
+                    <span class="field-picker-row__value ${!line ? 'field-picker-row__value--placeholder' : ''}">
+                        ${escapeHtml(line || (brand ? 'Select a line…' : 'Pick brand first'))}
+                    </span>
+                    <i class="fas fa-chevron-down field-picker-row__chevron"></i>
                 </button>
             </div>
-            <button class="btn btn-text add-flow__skip" onclick="addFlowSkipLine()">
-                Skip — this brand doesn't use lines
-            </button>
-        </div>
-    `;
-}
 
-function renderAddNameStep() {
-    const suggestions = getAddFlowFunctionsForBrandLine(addFlowState.brand, addFlowState.line);
-    const previewName = addFlowGeneratedName() || '—';
-
-    return `
-        <div class="add-step">
-            <div class="add-step__label">Name &amp; Type</div>
-            <div class="add-step__hint">What does this machine do?</div>
-
-            <div class="add-field">
-                <label for="add-flow-func" class="add-field__label">Function</label>
-                <input type="text" id="add-flow-func" class="add-field__input"
-                       placeholder="e.g., Leg Press, Lat Pulldown"
-                       value="${escapeAttr(addFlowState.func)}"
-                       list="add-flow-func-suggestions"
-                       oninput="addFlowSetFunction(this.value)">
-                ${suggestions.length > 0 ? `
-                    <datalist id="add-flow-func-suggestions">
-                        ${suggestions.map((s) => `<option value="${escapeAttr(s)}">`).join('')}
-                    </datalist>
-                ` : ''}
+            <div class="field">
+                <div class="field-label">Function</div>
+                <button class="field-picker-row" onclick="openAddFlowFunctionPicker()" aria-haspopup="dialog">
+                    <span class="field-picker-row__value ${!func ? 'field-picker-row__value--placeholder' : ''}">
+                        ${escapeHtml(func || (brand ? 'Select a function…' : 'Pick brand first'))}
+                    </span>
+                    <i class="fas fa-chevron-down field-picker-row__chevron"></i>
+                </button>
             </div>
 
             <div class="add-field">
                 <div class="add-field__label">Type</div>
                 <div class="add-type-chips">
                     ${EQUIPMENT_TYPES_LIST.map((t) => `
-                        <button class="add-type-chip ${addFlowState.type === t ? 'is-active' : ''}"
+                        <button class="add-type-chip ${type === t ? 'is-active' : ''}"
                                 onclick="addFlowSetType('${t}')">
                             ${t}
                         </button>
@@ -1721,9 +1608,9 @@ function renderAddNameStep() {
                 <button class="btn btn-primary" onclick="confirmAddEquipment()">
                     <i class="fas fa-plus"></i> Add Equipment
                 </button>
-                ${addFlowState.line ? `
+                ${line ? `
                     <button class="btn btn-secondary" onclick="confirmAddEquipment(true)">
-                        Add Another to ${escapeHtml(addFlowState.line)}
+                        Add Another to ${escapeHtml(line)}
                     </button>
                 ` : ''}
             </div>
@@ -1731,68 +1618,9 @@ function renderAddNameStep() {
     `;
 }
 
-// --- Flow actions (all wired to window via main.js) ---
-
-export function addFlowBack() {
-    if (addFlowState.step <= 1) return;
-    addFlowState.step--;
-    renderAddFlow();
-}
-
-export function addFlowSelectBrand(brandName) {
-    const name = (brandName || '').trim();
-    if (!name) {
-        showNotification('Enter a brand name', 'error', 1500);
-        return;
-    }
-    addFlowState.brand = name;
-    addFlowState.step = 2;
-    renderAddFlow();
-}
-
-export function addFlowShowNewBrand() {
-    const row = document.getElementById('add-flow-new-brand');
-    const input = document.getElementById('add-flow-new-brand-input');
-    if (row) row.classList.remove('hidden');
-    if (input) input.focus();
-}
-
-export function addFlowSelectLine(lineName) {
-    const name = (lineName || '').trim();
-    if (!name) {
-        showNotification('Enter a line name (or tap Skip)', 'error', 1500);
-        return;
-    }
-    addFlowState.line = name;
-    addFlowState.step = 3;
-    renderAddFlow();
-}
-
-export function addFlowShowNewLine() {
-    const row = document.getElementById('add-flow-new-line');
-    const input = document.getElementById('add-flow-new-line-input');
-    if (row) row.classList.remove('hidden');
-    if (input) input.focus();
-}
-
-export function addFlowSkipLine() {
-    addFlowState.line = null;
-    addFlowState.step = 3;
-    renderAddFlow();
-}
-
-export function addFlowSetFunction(value) {
-    addFlowState.func = value;
-    // Reactive preview update — target just the span so the input keeps focus.
-    const preview = document.querySelector('.add-preview__val');
-    if (preview) preview.textContent = addFlowGeneratedName() || '—';
-}
-
 export function addFlowSetType(type) {
     if (!EQUIPMENT_TYPES_LIST.includes(type)) return;
     addFlowState.type = type;
-    // Only the type chip row changes — re-render the whole step to keep things simple.
-    // (Re-renders the step only; flow state stays put.)
     renderAddFlow();
 }
 
