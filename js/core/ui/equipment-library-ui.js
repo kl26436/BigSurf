@@ -814,27 +814,27 @@ export async function openEquipmentDetail(equipmentId) {
                            onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'name', this.value)">
                 </div>
 
-                <!-- Brand — datalist populated from catalog + user's existing brands -->
+                <!-- Brand — tappable picker row. Opens the generic field picker
+                     modal populated with catalog brands + user's existing brands. -->
                 <div class="field">
                     <div class="field-label">Brand</div>
-                    <input class="field-input" value="${escapeAttr(equipment.brand || '')}" placeholder="e.g., Hammer Strength"
-                           list="equip-detail-brands-${escapeAttr(equipmentId)}"
-                           onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'brand', this.value); openEquipmentDetail('${escapeAttr(equipmentId)}');">
-                    <datalist id="equip-detail-brands-${escapeAttr(equipmentId)}">
-                        ${getDetailBrandSuggestions().map(b => `<option value="${escapeAttr(b)}">`).join('')}
-                    </datalist>
+                    <button class="field-picker-row" onclick="openBrandPicker('${escapeAttr(equipmentId)}')" aria-haspopup="dialog">
+                        <span class="field-picker-row__value ${!equipment.brand || equipment.brand === 'Unknown' ? 'field-picker-row__value--placeholder' : ''}">
+                            ${escapeHtml(equipment.brand && equipment.brand !== 'Unknown' ? equipment.brand : 'Select a brand…')}
+                        </span>
+                        <i class="fas fa-chevron-down field-picker-row__chevron"></i>
+                    </button>
                 </div>
 
-                <!-- Line — datalist filtered to the currently-saved brand. Edits to
-                     brand re-render the page so this datalist refreshes too. -->
+                <!-- Line — tappable picker row, scoped to the current brand. -->
                 <div class="field">
                     <div class="field-label">Line</div>
-                    <input class="field-input" value="${escapeAttr(equipment.line || '')}" placeholder="e.g., Fit Evo, Plate-Loaded"
-                           list="equip-detail-lines-${escapeAttr(equipmentId)}"
-                           onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'line', this.value); openEquipmentDetail('${escapeAttr(equipmentId)}');">
-                    <datalist id="equip-detail-lines-${escapeAttr(equipmentId)}">
-                        ${getDetailLineSuggestions(equipment.brand).map(l => `<option value="${escapeAttr(l)}">`).join('')}
-                    </datalist>
+                    <button class="field-picker-row" onclick="openLinePicker('${escapeAttr(equipmentId)}')" aria-haspopup="dialog">
+                        <span class="field-picker-row__value ${!equipment.line ? 'field-picker-row__value--placeholder' : ''}">
+                            ${escapeHtml(equipment.line || (equipment.brand && equipment.brand !== 'Unknown' ? 'Select a line…' : 'Pick brand first'))}
+                        </span>
+                        <i class="fas fa-chevron-down field-picker-row__chevron"></i>
+                    </button>
                 </div>
 
                 <!-- Function — tappable picker row that opens a bottom-sheet selector.
@@ -1258,12 +1258,18 @@ function getDetailLineSuggestions(brand) {
     return [...new Set([...userLines, ...catalogLines])].sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * Returns the machine options shown in the Function picker. Strictly scoped to
+ * the given brand + line so the user doesn't get a wall of unrelated machines.
+ *   - Both brand + line match catalog → that line's machines.
+ *   - Only brand matches → that brand's machines across all its lines.
+ *   - Neither matches → user's own custom functions for this combo (no catalog
+ *     noise). The picker UI also shows a hint when this happens.
+ */
 function getDetailFunctionSuggestions(brand, line) {
-    if (!brand) return [];
-    const brandLC = brand.toLowerCase();
+    const brandLC = (brand || '').toLowerCase();
     const lineLC = (line || '').toLowerCase();
-    // User's existing functions for this brand+line combo (helps when the
-    // catalog doesn't cover the brand at all).
+
     const userFns = new Set(
         (allEquipment || [])
             .filter(e =>
@@ -1273,71 +1279,148 @@ function getDetailFunctionSuggestions(brand, line) {
             )
             .map(e => e.function)
     );
-    // Catalog machines for this brand+line combo.
-    const brandEntry = EQUIPMENT_CATALOG.find(b => b.brand.toLowerCase() === brandLC);
+
     let catalogFns = [];
+    const brandEntry = brandLC && brandLC !== 'unknown'
+        ? EQUIPMENT_CATALOG.find(b => b.brand.toLowerCase() === brandLC)
+        : null;
+
     if (brandEntry) {
-        if (line) {
-            const lineEntry = brandEntry.lines.find(l => l.name.toLowerCase() === lineLC);
-            if (lineEntry) catalogFns = lineEntry.machines.map(m => m.name);
-        } else {
-            // No line specified — surface every machine across all lines for the brand.
+        const lineEntry = line
+            ? brandEntry.lines.find(l => l.name.toLowerCase() === lineLC)
+            : null;
+        if (lineEntry) {
+            catalogFns = lineEntry.machines.map(m => m.name);
+        } else if (!line) {
+            // No line selected yet — show every machine for the brand so the
+            // user can browse. Once a line is set, the list tightens.
             catalogFns = brandEntry.lines.flatMap(l => l.machines.map(m => m.name));
         }
+        // If line is set but not in catalog, show nothing from catalog — the
+        // user's own entries (if any) still surface.
     }
+
     return [...new Set([...userFns, ...catalogFns])].sort((a, b) => a.localeCompare(b));
 }
 
 // ---------------------------------------------------------------------------
-// Function picker — bottom-sheet modal for selecting the Function (machine type)
-// on an equipment record. Replaces the old text-input + datalist which didn't
-// feel like a picker on mobile. Invoked from the detail view's Function row.
+// Generic field picker — one bottom-sheet modal drives selection for Brand,
+// Line, and Function. The three openBrandPicker/openLinePicker/openFunctionPicker
+// entry points below all delegate here. Cascading clear: changing brand clears
+// line + function; changing line clears function.
 // ---------------------------------------------------------------------------
 
-const functionPickerState = {
-    equipmentId: null,   // which equipment we're editing
-    brand: null,
-    line: null,
+const fieldPickerState = {
+    equipmentId: null,
+    field: null,          // 'brand' | 'line' | 'function'
     searchTerm: '',
     customMode: false,
 };
 
-export function openFunctionPicker(equipmentId) {
-    const equipment = allEquipment.find(e => e.id === equipmentId);
-    if (!equipment) return;
+export function openBrandPicker(equipmentId)    { openFieldPicker(equipmentId, 'brand'); }
+export function openLinePicker(equipmentId)     { openFieldPicker(equipmentId, 'line'); }
+export function openFunctionPicker(equipmentId) { openFieldPicker(equipmentId, 'function'); }
 
-    functionPickerState.equipmentId = equipmentId;
-    functionPickerState.brand = equipment.brand || null;
-    functionPickerState.line = equipment.line || null;
-    functionPickerState.searchTerm = '';
-    functionPickerState.customMode = false;
-
-    renderFunctionPicker();
+function openFieldPicker(equipmentId, field) {
+    if (!allEquipment.find(e => e.id === equipmentId)) return;
+    fieldPickerState.equipmentId = equipmentId;
+    fieldPickerState.field = field;
+    fieldPickerState.searchTerm = '';
+    fieldPickerState.customMode = false;
+    renderFieldPicker();
     openModal('function-picker-modal');
 }
 
-function renderFunctionPicker() {
+/**
+ * Build the {options, currentValue, title, scopeLabel, scopeHint, placeholder}
+ * for whichever field we're editing. Separating this from the render lets the
+ * same modal chrome handle all three pickers.
+ */
+function computeFieldPickerScope() {
+    const { equipmentId, field } = fieldPickerState;
+    const eq = allEquipment.find(e => e.id === equipmentId) || {};
+
+    if (field === 'brand') {
+        return {
+            options: getDetailBrandSuggestions(),
+            currentValue: eq.brand && eq.brand !== 'Unknown' ? eq.brand : null,
+            title: 'Select Brand',
+            scopeLabel: 'Catalog + your equipment',
+            scopeHint: null,
+            placeholder: 'e.g., Hammer Strength',
+        };
+    }
+
+    if (field === 'line') {
+        const hasBrand = eq.brand && eq.brand !== 'Unknown';
+        return {
+            options: hasBrand ? getDetailLineSuggestions(eq.brand) : [],
+            currentValue: eq.line || null,
+            title: 'Select Line',
+            scopeLabel: hasBrand ? eq.brand : 'No brand set',
+            scopeHint: hasBrand ? null : 'Set a brand first so we can filter the line list.',
+            placeholder: 'e.g., Fit Evo, Plate-Loaded',
+        };
+    }
+
+    // field === 'function'
+    const brand = eq.brand;
+    const line = eq.line;
+    const brandLC = (brand || '').toLowerCase();
+    const brandEntry = brandLC && brandLC !== 'unknown'
+        ? EQUIPMENT_CATALOG.find(b => b.brand.toLowerCase() === brandLC)
+        : null;
+    const lineEntry = brandEntry && line
+        ? brandEntry.lines.find(l => l.name.toLowerCase() === line.toLowerCase())
+        : null;
+
+    let scopeLabel;
+    let scopeHint = null;
+    if (brandEntry && lineEntry) {
+        scopeLabel = `${brandEntry.brand} · ${lineEntry.name}`;
+    } else if (brandEntry && line) {
+        scopeLabel = brandEntry.brand;
+        scopeHint = `Line "${line}" isn't in the catalog — showing all ${brandEntry.brand} machines.`;
+    } else if (brandEntry) {
+        scopeLabel = brandEntry.brand;
+        scopeHint = 'No line selected — showing every machine for this brand.';
+    } else if (brand && brand !== 'Unknown') {
+        scopeLabel = brand;
+        scopeHint = `Brand "${brand}" isn't in the catalog — showing your custom entries only.`;
+    } else {
+        scopeLabel = 'No brand set';
+        scopeHint = 'Set a brand on this equipment to see catalog machines.';
+    }
+
+    return {
+        options: getDetailFunctionSuggestions(brand, line),
+        currentValue: eq.function || null,
+        title: 'Select Function',
+        scopeLabel,
+        scopeHint,
+        placeholder: 'e.g., Leg Extension',
+    };
+}
+
+function renderFieldPicker() {
     const modal = document.getElementById('function-picker-modal');
     const content = modal?.querySelector('.modal-content');
     if (!modal || !content) return;
 
-    const { equipmentId, brand, line, searchTerm, customMode } = functionPickerState;
-    const options = getDetailFunctionSuggestions(brand, line);
+    const { equipmentId, field, searchTerm, customMode } = fieldPickerState;
+    const { options, currentValue, title, scopeLabel, scopeHint, placeholder } = computeFieldPickerScope();
+
     const term = searchTerm.trim().toLowerCase();
     const filtered = term
         ? options.filter(o => o.toLowerCase().includes(term))
         : options;
 
-    const currentFn = allEquipment.find(e => e.id === equipmentId)?.function || null;
-
-    const scopeLabel = [brand, line].filter(b => b && b !== 'Unknown').join(' · ') || 'all machines';
-
     const rowsHTML = filtered.length > 0
         ? filtered.map(name => `
-            <button class="function-picker__row ${name === currentFn ? 'is-current' : ''}"
-                    onclick="selectFunction('${escapeAttr(equipmentId)}', '${escapeAttr(name)}')">
+            <button class="function-picker__row ${name === currentValue ? 'is-current' : ''}"
+                    onclick="selectFieldValue('${escapeAttr(equipmentId)}', '${escapeAttr(field)}', '${escapeAttr(name)}')">
                 <span class="function-picker__row-name">${escapeHtml(name)}</span>
-                ${name === currentFn ? '<i class="fas fa-check function-picker__row-check"></i>' : ''}
+                ${name === currentValue ? '<i class="fas fa-check function-picker__row-check"></i>' : ''}
             </button>
         `).join('')
         : `<div class="function-picker__empty">No matches — use Custom below to enter a new one.</div>`;
@@ -1346,17 +1429,17 @@ function renderFunctionPicker() {
         ? `
             <div class="function-picker__custom-row">
                 <input type="text" class="function-picker__custom-input" id="function-picker-custom-input"
-                       placeholder="Enter a custom name…"
+                       placeholder="${escapeAttr(placeholder || 'Enter a custom name…')}"
                        value="${escapeAttr(searchTerm)}"
-                       onkeydown="if(event.key==='Enter') selectFunction('${escapeAttr(equipmentId)}', this.value.trim())">
+                       onkeydown="if(event.key==='Enter') selectFieldValue('${escapeAttr(equipmentId)}', '${escapeAttr(field)}', this.value.trim())">
                 <button class="btn btn-primary function-picker__custom-btn"
-                        onclick="selectFunction('${escapeAttr(equipmentId)}', document.getElementById('function-picker-custom-input').value.trim())">
+                        onclick="selectFieldValue('${escapeAttr(equipmentId)}', '${escapeAttr(field)}', document.getElementById('function-picker-custom-input').value.trim())">
                     Use
                 </button>
             </div>
         `
         : `
-            <button class="function-picker__custom-toggle" onclick="showFunctionPickerCustom()">
+            <button class="function-picker__custom-toggle" onclick="showFieldPickerCustom()">
                 <i class="fas fa-pen"></i> Custom name…
             </button>
         `;
@@ -1364,24 +1447,24 @@ function renderFunctionPicker() {
     content.innerHTML = `
         <div class="function-picker">
             <div class="function-picker__header">
-                <h3 class="function-picker__title">Select Function</h3>
+                <h3 class="function-picker__title">${escapeHtml(title)}</h3>
                 <div class="function-picker__scope">${escapeHtml(scopeLabel)}</div>
-                <button class="close-btn" aria-label="Close" onclick="closeFunctionPicker()">
+                <button class="close-btn" aria-label="Close" onclick="closeFieldPicker()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
+            ${scopeHint ? `<div class="function-picker__hint">${escapeHtml(scopeHint)}</div>` : ''}
             <div class="function-picker__search">
                 <i class="fas fa-search"></i>
-                <input type="text" placeholder="Search functions…"
+                <input type="text" placeholder="Search…"
                        value="${escapeAttr(searchTerm)}"
-                       oninput="filterFunctionPicker(this.value)">
+                       oninput="filterFieldPicker(this.value)">
             </div>
             <div class="function-picker__list">${rowsHTML}</div>
             ${customHTML}
         </div>
     `;
 
-    // Restore focus to the custom input if we're in custom mode (after render).
     if (customMode) {
         setTimeout(() => {
             const input = document.getElementById('function-picker-custom-input');
@@ -1391,12 +1474,9 @@ function renderFunctionPicker() {
     }
 }
 
-export function filterFunctionPicker(term) {
-    functionPickerState.searchTerm = term || '';
-    // Only re-render the list (keeping search focused) by finding the list element
-    // and replacing just its children. Simpler: full re-render but reselect search.
-    renderFunctionPicker();
-    // Restore focus to the search box + caret position after re-render
+export function filterFieldPicker(term) {
+    fieldPickerState.searchTerm = term || '';
+    renderFieldPicker();
     setTimeout(() => {
         const search = document.querySelector('.function-picker__search input');
         if (search) {
@@ -1406,33 +1486,46 @@ export function filterFunctionPicker(term) {
     }, 0);
 }
 
-export function showFunctionPickerCustom() {
-    functionPickerState.customMode = true;
-    renderFunctionPicker();
+export function showFieldPickerCustom() {
+    fieldPickerState.customMode = true;
+    renderFieldPicker();
 }
 
-export async function selectFunction(equipmentId, funcName) {
-    const value = (funcName || '').trim();
-    if (!value) {
-        showNotification('Enter a function name', 'error', 1500);
+/**
+ * Save the picked value for the active field. Cascading clear: changing
+ * `brand` nulls both `line` and `function`; changing `line` nulls `function`.
+ * Updates Firestore + the local cache, closes the modal, and re-renders the
+ * detail page so all three picker rows show the new state.
+ */
+export async function selectFieldValue(equipmentId, field, value) {
+    const v = (value || '').trim();
+    if (!v) {
+        showNotification('Enter a value', 'error', 1500);
         return;
     }
 
+    // Build the update object with cascading clears.
+    const update = { [field]: v };
+    if (field === 'brand') { update.line = null; update.function = null; }
+    if (field === 'line')  { update.function = null; }
+
     try {
         const userId = AppState.currentUser.uid;
-        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { function: value });
+        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), update);
+
+        // Mirror the cascade in the local cache so the re-render picks it up.
         const eq = allEquipment.find(e => e.id === equipmentId);
-        if (eq) eq.function = value;
+        if (eq) Object.assign(eq, update);
 
         closeModal('function-picker-modal');
         openEquipmentDetail(equipmentId);
     } catch (err) {
-        console.error('Error saving function:', err);
-        showNotification('Failed to save function', 'error');
+        console.error(`Error saving ${field}:`, err);
+        showNotification(`Failed to save ${field}`, 'error');
     }
 }
 
-export function closeFunctionPicker() {
+export function closeFieldPicker() {
     closeModal('function-picker-modal');
 }
 
@@ -1771,13 +1864,17 @@ export async function removeEquipmentLocation(equipmentId, locationName) {
 }
 
 export async function saveEquipmentField(equipmentId, field, value) {
+    // Optimistic local update — mutate the in-memory cache FIRST so any
+    // re-render triggered alongside this save (e.g., onchange cascades)
+    // sees the new value. The Firestore write is still debounced.
+    const eq = allEquipment.find(e => e.id === equipmentId);
+    if (eq) eq[field] = value;
+
     if (fieldSaveTimeout) clearTimeout(fieldSaveTimeout);
     fieldSaveTimeout = setTimeout(async () => {
         try {
             const userId = AppState.currentUser.uid;
             await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { [field]: value });
-            const eq = allEquipment.find(e => e.id === equipmentId);
-            if (eq) eq[field] = value;
         } catch (error) {
             console.error(`Error saving equipment ${field}:`, error);
         }

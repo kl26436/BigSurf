@@ -24,7 +24,8 @@ import {
     addFlowSelectLine, addFlowShowNewLine, addFlowSkipLine,
     addFlowSetFunction, addFlowSetType,
     reviewDiscoveredEquipment, exitScanReview, addUnlinkedEquipment, dismissUnlinkedEquipment,
-    openFunctionPicker, selectFunction, filterFunctionPicker, showFunctionPickerCustom, closeFunctionPicker,
+    openBrandPicker, openLinePicker, openFunctionPicker,
+    selectFieldValue, filterFieldPicker, showFieldPickerCustom, closeFieldPicker,
 } from './core/ui/equipment-library-ui.js';
 
 // Authentication functions
@@ -994,12 +995,14 @@ window.exitScanReview = exitScanReview;
 window.addUnlinkedEquipment = addUnlinkedEquipment;
 window.dismissUnlinkedEquipment = dismissUnlinkedEquipment;
 
-// Equipment detail Function picker
+// Equipment detail cascading Brand → Line → Function picker
+window.openBrandPicker = openBrandPicker;
+window.openLinePicker = openLinePicker;
 window.openFunctionPicker = openFunctionPicker;
-window.selectFunction = selectFunction;
-window.filterFunctionPicker = filterFunctionPicker;
-window.showFunctionPickerCustom = showFunctionPickerCustom;
-window.closeFunctionPicker = closeFunctionPicker;
+window.selectFieldValue = selectFieldValue;
+window.filterFieldPicker = filterFieldPicker;
+window.showFieldPickerCustom = showFieldPickerCustom;
+window.closeFieldPicker = closeFieldPicker;
 
 // Error Log
 window.showErrorLog = showErrorLog;

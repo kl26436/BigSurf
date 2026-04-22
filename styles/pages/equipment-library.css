@@ -621,6 +621,14 @@
     top: var(--space-12);
     right: var(--space-12);
 }
+.function-picker__hint {
+    padding: var(--space-8) var(--space-16);
+    background: var(--warning-bg);
+    color: var(--text-main);
+    font-size: var(--font-xs);
+    line-height: 1.4;
+    border-bottom: 1px solid var(--warning-border);
+}
 .function-picker__search {
     display: flex;
     align-items: center;
