@@ -24,6 +24,7 @@ import {
     addFlowSelectLine, addFlowShowNewLine, addFlowSkipLine,
     addFlowSetFunction, addFlowSetType,
     reviewDiscoveredEquipment, exitScanReview, addUnlinkedEquipment, dismissUnlinkedEquipment,
+    openFunctionPicker, selectFunction, filterFunctionPicker, showFunctionPickerCustom, closeFunctionPicker,
 } from './core/ui/equipment-library-ui.js';
 
 // Authentication functions
@@ -126,6 +127,7 @@ import {
     awEquipSearch,
     awQuickAddEquipment,
     awSaveNewEquipment,
+    awDeleteEquipment,
 } from './core/workout/workout-core.js';
 
 // Template selection functionality
@@ -578,6 +580,7 @@ window.awEndReorder = awEndReorder;
 window.awEquipSearch = awEquipSearch;
 window.awQuickAddEquipment = awQuickAddEquipment;
 window.awSaveNewEquipment = awSaveNewEquipment;
+window.awDeleteEquipment = awDeleteEquipment;
 
 // Plate Calculator (lazy-loaded)
 window.openPlateCalcPopover = async function (exerciseIndex) {
@@ -990,6 +993,13 @@ window.reviewDiscoveredEquipment = reviewDiscoveredEquipment;
 window.exitScanReview = exitScanReview;
 window.addUnlinkedEquipment = addUnlinkedEquipment;
 window.dismissUnlinkedEquipment = dismissUnlinkedEquipment;
+
+// Equipment detail Function picker
+window.openFunctionPicker = openFunctionPicker;
+window.selectFunction = selectFunction;
+window.filterFunctionPicker = filterFunctionPicker;
+window.showFunctionPickerCustom = showFunctionPickerCustom;
+window.closeFunctionPicker = closeFunctionPicker;
 
 // Error Log
 window.showErrorLog = showErrorLog;

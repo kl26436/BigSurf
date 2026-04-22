@@ -1126,6 +1126,9 @@ function renderEquipmentSheet(exerciseIdx) {
                     <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
                     <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__loc-icon"></i> ${escapeHtml(locStr)}` : ''}</div>
                 </div>
+                <button class="js-row__delete" onclick="event.stopPropagation(); awDeleteEquipment('${escapeAttr(eq.id)}', ${exerciseIdx})" aria-label="Delete equipment">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
             </div>
         `;
     };
@@ -1209,6 +1212,9 @@ export function awEquipSearch(exerciseIdx, query) {
                     <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
                     <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__meta-pin"></i> ${escapeHtml(locStr)}` : ''}</div>
                 </div>
+                <button class="js-row__delete" onclick="event.stopPropagation(); awDeleteEquipment('${escapeAttr(eq.id)}', ${exerciseIdx})" aria-label="Delete equipment">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
             </div>
         `;
     };
@@ -1389,6 +1395,52 @@ export async function awSaveNewEquipment(exerciseIdx) {
     } catch (err) {
         console.error('Error creating equipment:', err);
         showNotification('Failed to create equipment', 'error');
+    }
+}
+
+/**
+ * Delete an equipment record from the library. Called from the trash icon in
+ * the equipment picker sheet rows. Confirms before deleting; if the current
+ * exercise was using this equipment, clears the selection after deletion.
+ */
+export async function awDeleteEquipment(equipId, exerciseIdx) {
+    const eq = (AppState._cachedEquipment || []).find((e) => e.id === equipId);
+    const eqName = eq?.name || 'this equipment';
+
+    if (!confirm(`Delete "${eqName}"? This removes it from your equipment library.`)) {
+        return;
+    }
+
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        await mgr.deleteEquipment(equipId);
+
+        // Drop from local cache
+        if (AppState._cachedEquipment) {
+            AppState._cachedEquipment = AppState._cachedEquipment.filter((e) => e.id !== equipId);
+        }
+
+        // If the current exercise was using this equipment, clear the selection
+        // on both the in-memory workout and the savedData we persist.
+        const key = `exercise_${exerciseIdx}`;
+        if (AppState.savedData?.exercises?.[key]?.equipment === eqName) {
+            AppState.savedData.exercises[key].equipment = null;
+        }
+        const liveEx = AppState.currentWorkout?.exercises?.[exerciseIdx];
+        if (liveEx && liveEx.equipment === eqName) {
+            liveEx.equipment = null;
+        }
+
+        showNotification(`${eqName} deleted`, 'success');
+
+        // Re-render the picker sheet (if still open) so the row disappears
+        if (typeof awOpenEquipmentSheet === 'function') {
+            awOpenEquipmentSheet(exerciseIdx);
+        }
+    } catch (err) {
+        console.error('❌ Failed to delete equipment:', err);
+        showNotification('Failed to delete equipment', 'error');
     }
 }
 

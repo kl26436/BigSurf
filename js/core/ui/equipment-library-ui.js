@@ -837,15 +837,17 @@ export async function openEquipmentDetail(equipmentId) {
                     </datalist>
                 </div>
 
-                <!-- Function — datalist filtered to the saved brand + line combo -->
+                <!-- Function — tappable picker row that opens a bottom-sheet selector.
+                     Replaces the previous text-input-with-datalist because datalists on
+                     mobile don't feel like a picker (no visible dropdown affordance). -->
                 <div class="field">
                     <div class="field-label">Function</div>
-                    <input class="field-input" value="${escapeAttr(equipment.function || '')}" placeholder="e.g., Leg Extension"
-                           list="equip-detail-funcs-${escapeAttr(equipmentId)}"
-                           onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'function', this.value)">
-                    <datalist id="equip-detail-funcs-${escapeAttr(equipmentId)}">
-                        ${getDetailFunctionSuggestions(equipment.brand, equipment.line).map(f => `<option value="${escapeAttr(f)}">`).join('')}
-                    </datalist>
+                    <button class="field-picker-row" onclick="openFunctionPicker('${escapeAttr(equipmentId)}')" aria-haspopup="dialog">
+                        <span class="field-picker-row__value ${!equipment.function ? 'field-picker-row__value--placeholder' : ''}">
+                            ${escapeHtml(equipment.function || 'Select a function…')}
+                        </span>
+                        <i class="fas fa-chevron-down field-picker-row__chevron"></i>
+                    </button>
                 </div>
 
                 <!-- Type chips -->
@@ -1284,6 +1286,154 @@ function getDetailFunctionSuggestions(brand, line) {
         }
     }
     return [...new Set([...userFns, ...catalogFns])].sort((a, b) => a.localeCompare(b));
+}
+
+// ---------------------------------------------------------------------------
+// Function picker — bottom-sheet modal for selecting the Function (machine type)
+// on an equipment record. Replaces the old text-input + datalist which didn't
+// feel like a picker on mobile. Invoked from the detail view's Function row.
+// ---------------------------------------------------------------------------
+
+const functionPickerState = {
+    equipmentId: null,   // which equipment we're editing
+    brand: null,
+    line: null,
+    searchTerm: '',
+    customMode: false,
+};
+
+export function openFunctionPicker(equipmentId) {
+    const equipment = allEquipment.find(e => e.id === equipmentId);
+    if (!equipment) return;
+
+    functionPickerState.equipmentId = equipmentId;
+    functionPickerState.brand = equipment.brand || null;
+    functionPickerState.line = equipment.line || null;
+    functionPickerState.searchTerm = '';
+    functionPickerState.customMode = false;
+
+    renderFunctionPicker();
+    openModal('function-picker-modal');
+}
+
+function renderFunctionPicker() {
+    const modal = document.getElementById('function-picker-modal');
+    const content = modal?.querySelector('.modal-content');
+    if (!modal || !content) return;
+
+    const { equipmentId, brand, line, searchTerm, customMode } = functionPickerState;
+    const options = getDetailFunctionSuggestions(brand, line);
+    const term = searchTerm.trim().toLowerCase();
+    const filtered = term
+        ? options.filter(o => o.toLowerCase().includes(term))
+        : options;
+
+    const currentFn = allEquipment.find(e => e.id === equipmentId)?.function || null;
+
+    const scopeLabel = [brand, line].filter(b => b && b !== 'Unknown').join(' · ') || 'all machines';
+
+    const rowsHTML = filtered.length > 0
+        ? filtered.map(name => `
+            <button class="function-picker__row ${name === currentFn ? 'is-current' : ''}"
+                    onclick="selectFunction('${escapeAttr(equipmentId)}', '${escapeAttr(name)}')">
+                <span class="function-picker__row-name">${escapeHtml(name)}</span>
+                ${name === currentFn ? '<i class="fas fa-check function-picker__row-check"></i>' : ''}
+            </button>
+        `).join('')
+        : `<div class="function-picker__empty">No matches — use Custom below to enter a new one.</div>`;
+
+    const customHTML = customMode
+        ? `
+            <div class="function-picker__custom-row">
+                <input type="text" class="function-picker__custom-input" id="function-picker-custom-input"
+                       placeholder="Enter a custom name…"
+                       value="${escapeAttr(searchTerm)}"
+                       onkeydown="if(event.key==='Enter') selectFunction('${escapeAttr(equipmentId)}', this.value.trim())">
+                <button class="btn btn-primary function-picker__custom-btn"
+                        onclick="selectFunction('${escapeAttr(equipmentId)}', document.getElementById('function-picker-custom-input').value.trim())">
+                    Use
+                </button>
+            </div>
+        `
+        : `
+            <button class="function-picker__custom-toggle" onclick="showFunctionPickerCustom()">
+                <i class="fas fa-pen"></i> Custom name…
+            </button>
+        `;
+
+    content.innerHTML = `
+        <div class="function-picker">
+            <div class="function-picker__header">
+                <h3 class="function-picker__title">Select Function</h3>
+                <div class="function-picker__scope">${escapeHtml(scopeLabel)}</div>
+                <button class="close-btn" aria-label="Close" onclick="closeFunctionPicker()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="function-picker__search">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search functions…"
+                       value="${escapeAttr(searchTerm)}"
+                       oninput="filterFunctionPicker(this.value)">
+            </div>
+            <div class="function-picker__list">${rowsHTML}</div>
+            ${customHTML}
+        </div>
+    `;
+
+    // Restore focus to the custom input if we're in custom mode (after render).
+    if (customMode) {
+        setTimeout(() => {
+            const input = document.getElementById('function-picker-custom-input');
+            input?.focus();
+            input?.setSelectionRange(input.value.length, input.value.length);
+        }, 30);
+    }
+}
+
+export function filterFunctionPicker(term) {
+    functionPickerState.searchTerm = term || '';
+    // Only re-render the list (keeping search focused) by finding the list element
+    // and replacing just its children. Simpler: full re-render but reselect search.
+    renderFunctionPicker();
+    // Restore focus to the search box + caret position after re-render
+    setTimeout(() => {
+        const search = document.querySelector('.function-picker__search input');
+        if (search) {
+            search.focus();
+            search.setSelectionRange(search.value.length, search.value.length);
+        }
+    }, 0);
+}
+
+export function showFunctionPickerCustom() {
+    functionPickerState.customMode = true;
+    renderFunctionPicker();
+}
+
+export async function selectFunction(equipmentId, funcName) {
+    const value = (funcName || '').trim();
+    if (!value) {
+        showNotification('Enter a function name', 'error', 1500);
+        return;
+    }
+
+    try {
+        const userId = AppState.currentUser.uid;
+        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { function: value });
+        const eq = allEquipment.find(e => e.id === equipmentId);
+        if (eq) eq.function = value;
+
+        closeModal('function-picker-modal');
+        openEquipmentDetail(equipmentId);
+    } catch (err) {
+        console.error('Error saving function:', err);
+        showNotification('Failed to save function', 'error');
+    }
+}
+
+export function closeFunctionPicker() {
+    closeModal('function-picker-modal');
 }
 
 function addFlowGeneratedName() {

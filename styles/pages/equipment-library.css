@@ -550,3 +550,179 @@
     gap: var(--space-4);
     flex-shrink: 0;
 }
+
+/* --------------------------------------------------------------------------
+   Function picker — tappable row in the detail view + modal contents
+   -------------------------------------------------------------------------- */
+
+/* Picker-style row that visually reads as "tap to open a dropdown". Styled
+   to match the existing .field-input inputs so the row sits naturally among
+   them; the chevron is the only affordance that signals pick-ness. */
+.field-picker-row {
+    appearance: none;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    padding: var(--input-padding);
+    min-height: var(--input-height);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color var(--anim-fast);
+}
+.field-picker-row:active {
+    border-color: var(--primary);
+}
+.field-picker-row__value {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.field-picker-row__value--placeholder {
+    color: var(--text-muted);
+}
+.field-picker-row__chevron {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+}
+
+.function-picker {
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+    min-height: 50vh;
+}
+.function-picker__header {
+    position: relative;
+    padding: var(--space-16) var(--space-16) var(--space-12);
+    border-bottom: 1px solid var(--border);
+}
+.function-picker__title {
+    margin: 0;
+    font-size: var(--font-lg);
+    color: var(--text-strong);
+}
+.function-picker__scope {
+    margin-top: var(--space-4);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.function-picker__header .close-btn {
+    position: absolute;
+    top: var(--space-12);
+    right: var(--space-12);
+}
+.function-picker__search {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-10) var(--space-16);
+    border-bottom: 1px solid var(--border);
+}
+.function-picker__search i {
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+}
+.function-picker__search input {
+    flex: 1;
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    outline: none;
+}
+.function-picker__list {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-6) 0;
+}
+.function-picker__row {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    width: 100%;
+    padding: var(--space-12) var(--space-16);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--anim-fast);
+}
+.function-picker__row:active {
+    background: var(--bg-card-hover);
+}
+.function-picker__row.is-current {
+    background: var(--primary-bg);
+}
+.function-picker__row-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.function-picker__row-check {
+    color: var(--primary);
+    font-size: var(--font-sm);
+}
+.function-picker__empty {
+    padding: var(--space-20) var(--space-16);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+}
+.function-picker__custom-toggle {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    margin: var(--space-12) var(--space-16);
+    padding: var(--space-10) var(--space-12);
+    background: var(--bg-surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+.function-picker__custom-toggle:active {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.function-picker__custom-row {
+    display: flex;
+    gap: var(--space-8);
+    padding: var(--space-12) var(--space-16);
+    border-top: 1px solid var(--border);
+    background: var(--bg-surface);
+}
+.function-picker__custom-input {
+    flex: 1;
+    padding: var(--input-padding);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    min-height: var(--input-height);
+}
+.function-picker__custom-btn {
+    flex-shrink: 0;
+}
