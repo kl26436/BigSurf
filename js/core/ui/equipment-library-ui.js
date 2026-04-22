@@ -1182,27 +1182,45 @@ const addFlowState = {
 // risked typos like "M1" instead of "M-1").
 // ---------------------------------------------------------------------------
 
+/**
+ * Suggestion-helper return shape: `[{ name, source }]` where `source` is
+ * `'catalog'` (from EQUIPMENT_CATALOG) or `'user'` (derived from the user's
+ * own equipment records). Catalog entries take priority when a value exists
+ * in both — prevents a user's old record with the same name from being
+ * labelled as their own custom entry.
+ */
+function mergeSuggestions(catalogNames, userNames) {
+    const catalogSet = new Set(catalogNames.map(n => n.toLowerCase()));
+    const out = catalogNames.map(name => ({ name, source: 'catalog' }));
+    for (const name of userNames) {
+        if (!catalogSet.has(name.toLowerCase())) {
+            out.push({ name, source: 'user' });
+        }
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function getDetailBrandSuggestions() {
-    const userBrands = new Set(
+    const userBrands = [...new Set(
         (allEquipment || [])
             .map(e => e.brand)
             .filter(b => b && b !== 'Unknown')
-    );
+    )];
     const catalogBrands = EQUIPMENT_CATALOG.map(b => b.brand);
-    return [...new Set([...userBrands, ...catalogBrands])].sort((a, b) => a.localeCompare(b));
+    return mergeSuggestions(catalogBrands, userBrands);
 }
 
 function getDetailLineSuggestions(brand) {
     if (!brand) return [];
     const brandLC = brand.toLowerCase();
-    const userLines = new Set(
+    const userLines = [...new Set(
         (allEquipment || [])
             .filter(e => e.brand?.toLowerCase() === brandLC && e.line)
             .map(e => e.line)
-    );
+    )];
     const catalogEntry = EQUIPMENT_CATALOG.find(b => b.brand.toLowerCase() === brandLC);
     const catalogLines = catalogEntry ? catalogEntry.lines.map(l => l.name) : [];
-    return [...new Set([...userLines, ...catalogLines])].sort((a, b) => a.localeCompare(b));
+    return mergeSuggestions(catalogLines, userLines);
 }
 
 /**
@@ -1217,7 +1235,7 @@ function getDetailFunctionSuggestions(brand, line) {
     const brandLC = (brand || '').toLowerCase();
     const lineLC = (line || '').toLowerCase();
 
-    const userFns = new Set(
+    const userFns = [...new Set(
         (allEquipment || [])
             .filter(e =>
                 e.brand?.toLowerCase() === brandLC &&
@@ -1225,7 +1243,7 @@ function getDetailFunctionSuggestions(brand, line) {
                 e.function
             )
             .map(e => e.function)
-    );
+    )];
 
     let catalogFns = [];
     const brandEntry = brandLC && brandLC !== 'unknown'
@@ -1239,15 +1257,11 @@ function getDetailFunctionSuggestions(brand, line) {
         if (lineEntry) {
             catalogFns = lineEntry.machines.map(m => m.name);
         } else if (!line) {
-            // No line selected yet — show every machine for the brand so the
-            // user can browse. Once a line is set, the list tightens.
             catalogFns = brandEntry.lines.flatMap(l => l.machines.map(m => m.name));
         }
-        // If line is set but not in catalog, show nothing from catalog — the
-        // user's own entries (if any) still surface.
     }
 
-    return [...new Set([...userFns, ...catalogFns])].sort((a, b) => a.localeCompare(b));
+    return mergeSuggestions(catalogFns, userFns);
 }
 
 // ---------------------------------------------------------------------------
@@ -1372,15 +1386,16 @@ function renderFieldPicker() {
 
     const term = searchTerm.trim().toLowerCase();
     const filtered = term
-        ? options.filter(o => o.toLowerCase().includes(term))
+        ? options.filter(o => o.name.toLowerCase().includes(term))
         : options;
 
     const rowsHTML = filtered.length > 0
-        ? filtered.map(name => `
-            <button class="function-picker__row ${name === currentValue ? 'is-current' : ''}"
-                    onclick="selectFieldValue('${escapeAttr(equipmentId)}', '${escapeAttr(field)}', '${escapeAttr(name)}')">
-                <span class="function-picker__row-name">${escapeHtml(name)}</span>
-                ${name === currentValue ? '<i class="fas fa-check function-picker__row-check"></i>' : ''}
+        ? filtered.map(opt => `
+            <button class="function-picker__row ${opt.name === currentValue ? 'is-current' : ''}"
+                    onclick="selectFieldValue('${escapeAttr(equipmentId)}', '${escapeAttr(field)}', '${escapeAttr(opt.name)}')">
+                <span class="function-picker__row-name">${escapeHtml(opt.name)}</span>
+                ${opt.source === 'user' ? '<span class="function-picker__row-source">your equipment</span>' : ''}
+                ${opt.name === currentValue ? '<i class="fas fa-check function-picker__row-check"></i>' : ''}
             </button>
         `).join('')
         : `<div class="function-picker__empty">No matches — use Custom below to enter a new one.</div>`;

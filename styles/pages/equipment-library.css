@@ -688,6 +688,15 @@
     color: var(--primary);
     font-size: var(--font-sm);
 }
+.function-picker__row-source {
+    padding: 1px var(--space-6);
+    border-radius: var(--radius-pill);
+    background: var(--muted-bg);
+    color: var(--text-muted);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    flex-shrink: 0;
+}
 .function-picker__empty {
     padding: var(--space-20) var(--space-16);
     text-align: center;
