@@ -127,5 +127,4 @@ export {
     awEquipSearch,
     awQuickAddEquipment,
     awSaveNewEquipment,
-    awDeleteEquipment,
 } from './active-workout-ui.js';

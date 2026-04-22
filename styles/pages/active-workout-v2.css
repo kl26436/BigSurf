@@ -727,30 +727,6 @@
 /* Tiny location pin icon inline in meta row */
 .js-row__meta-pin { font-size: var(--font-3xs, 0.5rem); }
 
-/* Trailing delete button in equipment picker rows — tap to remove the
-   equipment record from the library (confirms first). Click bubbles are
-   stopped in the JS so tapping here doesn't also select the row. */
-.js-row__delete {
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    background: none;
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-    border-radius: var(--radius-xs);
-    cursor: pointer;
-    transition: color var(--anim-fast), background var(--anim-fast);
-    -webkit-tap-highlight-color: transparent;
-}
-.js-row__delete:active {
-    color: var(--danger);
-    background: var(--danger-bg);
-}
-
 /* Inline "No matches / No exercises found" placeholders inside sheets */
 .aw-sheet__empty {
     padding: var(--space-16);

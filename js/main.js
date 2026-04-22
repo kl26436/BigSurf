@@ -127,7 +127,6 @@ import {
     awEquipSearch,
     awQuickAddEquipment,
     awSaveNewEquipment,
-    awDeleteEquipment,
 } from './core/workout/workout-core.js';
 
 // Template selection functionality
@@ -580,7 +579,6 @@ window.awEndReorder = awEndReorder;
 window.awEquipSearch = awEquipSearch;
 window.awQuickAddEquipment = awQuickAddEquipment;
 window.awSaveNewEquipment = awSaveNewEquipment;
-window.awDeleteEquipment = awDeleteEquipment;
 
 // Plate Calculator (lazy-loaded)
 window.openPlateCalcPopover = async function (exerciseIndex) {
