@@ -27,6 +27,7 @@
 @import url('components/page-header.css');
 @import url('components/fields.css');
 @import url('components/completion-summary.css');
+@import url('components/toast.css');
 
 /* 4. Page-specific layouts */
 @import url('pages/app-shell.css');

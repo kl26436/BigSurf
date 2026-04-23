@@ -30,37 +30,21 @@ export function showNotification(message, type = 'info') {
     if (existing) existing.remove();
 
     const isError = type === 'error';
-    const borderColor = type === 'success' ? 'var(--success)' : isError ? 'var(--danger)' : 'var(--primary)';
+    const variantClass = type === 'success' ? 'app-toast--success'
+        : isError ? 'app-toast--error'
+        : 'app-toast--info';
     const duration = isError ? 4000 : 1500;
 
     const notification = document.createElement('div');
-    notification.className = 'app-toast';
+    notification.className = `app-toast ${variantClass}`;
     notification.setAttribute('role', 'alert');
-    notification.style.cssText = `
-        position: fixed;
-        bottom: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--bg-card, #0a0f15);
-        color: var(--text-main, #c4cad4);
-        padding: 8px 16px;
-        border-radius: 20px;
-        border: 1px solid ${borderColor};
-        z-index: 10000;
-        font-size: 0.8rem;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-        max-width: 85vw;
-        text-align: center;
-        pointer-events: none;
-    `;
     notification.textContent = message;
 
     document.body.appendChild(notification);
-    requestAnimationFrame(() => { notification.style.opacity = '1'; });
+    requestAnimationFrame(() => { notification.classList.add('app-toast--show'); });
 
     setTimeout(() => {
-        notification.style.opacity = '0';
+        notification.classList.remove('app-toast--show');
         setTimeout(() => notification.remove(), 200);
     }, duration);
 }

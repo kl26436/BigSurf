@@ -1,0 +1,42 @@
+/* ============================================================================
+   Toast / transient notifications
+   --------------------------------------------------------------------------
+   .app-toast       — bottom-center pill toast (success / error / info)
+   .app-startup-error — fatal startup error banner (top-center, red)
+   ============================================================================ */
+
+.app-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card);
+    color: var(--text-main);
+    padding: 8px 16px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--primary);
+    z-index: var(--z-toast);
+    font-size: var(--font-sm);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    max-width: 85vw;
+    text-align: center;
+    pointer-events: none;
+}
+.app-toast--show { opacity: 1; }
+.app-toast--error { border-color: var(--danger); }
+.app-toast--success { border-color: var(--success); }
+.app-toast--info { border-color: var(--primary); }
+
+.app-startup-error {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--danger);
+    color: #fff;
+    padding: 1rem 2rem;
+    border-radius: var(--radius-sm);
+    z-index: var(--z-toast);
+    font-weight: bold;
+}

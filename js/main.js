@@ -1104,11 +1104,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Show error to user
         const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: #dc3545; color: white; padding: 1rem 2rem;
-            border-radius: 8px; z-index: 10000; font-weight: bold;
-        `;
+        errorDiv.className = 'app-startup-error';
+        errorDiv.setAttribute('role', 'alert');
         errorDiv.textContent = 'App failed to start. Check console for details.';
         document.body.appendChild(errorDiv);
     }
