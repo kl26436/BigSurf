@@ -1316,8 +1316,11 @@ export function closeExerciseLibrary() {
         modal.classList.add('hidden');
     }
 
-    // Clear the active workout flag
+    // Clear the active workout flags so the next time the library opens it's
+    // treated as a fresh Add (a leftover replacingExerciseIndex would cause
+    // the add to be delegated to replace on the wrong exercise).
     window.addingToActiveWorkout = false;
+    window.replacingExerciseIndex = null;
 
     // Clear search
     const searchInput = document.getElementById('exercise-library-search');
@@ -1467,6 +1470,21 @@ let pendingExerciseForEquipment = null;
 
 function selectExerciseFromLibrary(exercise) {
     const exerciseName = exercise.name || exercise.machine;
+
+    // Swap mode: one-tap commit. The "Swap Exercise" action sets
+    // replacingExerciseIndex — in that case, tapping an exercise should
+    // replace immediately. Previously this fell through to the equipment
+    // picker, which was easy to miss and made the swap feel broken.
+    // Users can set equipment afterward via "Change Equipment".
+    if (window.replacingExerciseIndex !== undefined && window.replacingExerciseIndex !== null) {
+        if (window.confirmExerciseAddToWorkout) {
+            window.confirmExerciseAddToWorkout(exercise);
+        }
+        const librarySection = document.getElementById('exercise-library-section');
+        if (librarySection) librarySection.classList.add('hidden');
+        window.addingToActiveWorkout = false;
+        return;
+    }
 
     // Check if we're adding to active workout
     if (window.addingToActiveWorkout && window.confirmExerciseAddToWorkout) {
