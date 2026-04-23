@@ -35,15 +35,24 @@ export async function getWorkoutCount(startDate, endDate) {
 
     try {
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+        // Query by date field (when workout occurred), not completedAt (when saved).
+        // Edited historical workouts must count on their actual date, not the edit time.
+        const startStr = getDateString(startDate);
+        const endStr = getDateString(endDate);
         const q = query(
             workoutsRef,
-            where('completedAt', '!=', null),
-            where('completedAt', '>=', startDate.toISOString()),
-            where('completedAt', '<=', endDate.toISOString())
+            where('date', '>=', startStr),
+            where('date', '<=', endStr)
         );
 
         const snapshot = await getDocs(q);
-        return snapshot.size;
+        // Filter out incomplete and cancelled workouts client-side.
+        let count = 0;
+        snapshot.forEach((doc) => {
+            const d = doc.data();
+            if (d.completedAt && !d.cancelledAt) count++;
+        });
+        return count;
     } catch (error) {
         console.error('Error getting workout count:', error);
         return 0;
@@ -92,19 +101,21 @@ export async function getRecentWorkouts(count = 3) {
 
     try {
         const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        const q = query(workoutsRef, where('completedAt', '!=', null), orderBy('completedAt', 'desc'), limit(count));
+        // Order by date (when workout occurred), not completedAt (when saved).
+        // Over-fetch so we can drop incomplete/cancelled client-side and still
+        // end up with the requested count.
+        const q = query(workoutsRef, orderBy('date', 'desc'), limit(count * 3));
 
         const snapshot = await getDocs(q);
         const workouts = [];
 
         snapshot.forEach((doc) => {
-            workouts.push({
-                id: doc.id,
-                ...doc.data(),
-            });
+            const d = doc.data();
+            if (!d.completedAt || d.cancelledAt) return;
+            workouts.push({ id: doc.id, ...d });
         });
 
-        return workouts;
+        return workouts.slice(0, count);
     } catch (error) {
         console.error('Error getting recent workouts:', error);
         return [];
