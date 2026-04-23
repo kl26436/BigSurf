@@ -9,7 +9,7 @@ import { getSetTotalWeight, getSetVolume } from '../utils/weight-calculations.js
 import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults, clearLastSessionCache } from '../data/data-manager.js';
 import { getNextInGroup, getExerciseGroups, isLastInGroupRound, groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import { haptic } from '../utils/haptics.js';
-import { navigateTo, setWorkoutActiveState } from '../ui/navigation.js';
+import { navigateTo } from '../ui/navigation.js';
 import { ensureFreshBodyWeight } from '../features/bodyweight-prompt.js';
 
 // ===================================================================
@@ -899,12 +899,11 @@ export function awConfirmExit() {
 
 export function awCancelWorkout() {
     if (!confirm('Cancel this workout? All progress will be lost.')) return;
-    AppState.savedData.cancelledAt = new Date().toISOString();
-    saveWorkoutData(AppState);
+    // Delegate to the canonical cancelWorkout() so AppState.reset() runs and
+    // the dashboard doesn't still think a workout is active. Skip its inner
+    // confirm since we just showed one.
     cleanup();
-    setWorkoutActiveState(false);
-    window.inProgressWorkout = null;
-    navigateTo('dashboard');
+    window.cancelWorkout?.(true);
 }
 
 export async function awFinishWorkout() {

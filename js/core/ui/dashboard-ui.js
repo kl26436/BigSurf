@@ -668,7 +668,9 @@ export function confirmCancelActiveWorkout() {
     if (!confirm('Cancel this workout? Logged sets will be saved as an incomplete entry.')) return;
     stopPillTimer();
     document.getElementById('active-workout-pill')?.remove();
-    window.cancelWorkout?.();
+    // Pass true so cancelWorkout() doesn't show a second confirm dialog —
+    // the pill button already confirmed once.
+    window.cancelWorkout?.(true);
 }
 
 export async function startWorkoutFromHistory(workoutId) {
