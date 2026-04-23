@@ -15,6 +15,25 @@ import { haptic } from '../utils/haptics.js';
 // Global timer state to persist across modal re-renders
 let activeRestTimer = null;
 
+// iOS Safari pauses requestAnimationFrame when the tab/PWA is backgrounded.
+// Timer math is elapsed-time based (Date.now() deltas), so the underlying
+// computation stays correct — but the RAF loop doesn't tick while hidden,
+// and on resume it can take a while (or a tap) before the display updates.
+// This listener force-resyncs the active timer as soon as the app is visible
+// again by calling timerData.resync(), which cancels the stale RAF, runs a
+// checkTime() with the real elapsed time, and restarts the loop.
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) return;
+        const idx = AppState.activeRestTimer?.exerciseIndex;
+        if (idx === undefined || idx === null) return;
+        const modalTimer = document.getElementById(`modal-rest-timer-${idx}`);
+        if (modalTimer?.timerData?.resync) {
+            modalTimer.timerData.resync();
+        }
+    });
+}
+
 // ===================================================================
 // REST TIMER FUNCTIONS
 // ===================================================================
@@ -189,6 +208,16 @@ function startModalRestTimer(exerciseIndex, duration = Config.DEFAULT_REST_TIMER
             // Cancel the server-side scheduled notification
             cancelRestNotification().catch(() => {});
         },
+
+        resync: () => {
+            if (modalTimer.timerData?.animationFrame) {
+                cancelAnimationFrame(modalTimer.timerData.animationFrame);
+            }
+            checkTime();
+            if (timeLeft > 0 && modalTimer.timerData) {
+                modalTimer.timerData.animationFrame = requestAnimationFrame(timerLoop);
+            }
+        },
     };
 
     // Store timer state in AppState for dashboard display
@@ -338,6 +367,16 @@ export function restoreModalRestTimer(exerciseIndex, timerState) {
             modalTimer.classList.add('hidden');
             timerDisplay.classList.remove('timer-complete');
             modalTimer.timerData = null;
+        },
+
+        resync: () => {
+            if (modalTimer.timerData?.animationFrame) {
+                cancelAnimationFrame(modalTimer.timerData.animationFrame);
+            }
+            checkTime();
+            if (timeLeft > 0 && modalTimer.timerData) {
+                modalTimer.timerData.animationFrame = requestAnimationFrame(timerLoop);
+            }
         },
     };
 }
