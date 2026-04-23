@@ -20,13 +20,40 @@ let currentExerciseIdx = 0;
 let exerciseMenuOpen = false;
 let workoutMenuOpen = false;
 let durationInterval = null;
-let elapsedSeconds = 0;
 
-// Rest timer state
+// Rest timer state. restTimerEndsAt is the authoritative target timestamp —
+// display is always recomputed from it, so a stale setInterval after iOS
+// backgrounding can't drift. restTimerRemaining mirrors the computed value
+// for the view helpers that still read it.
 let restTimerInterval = null;
 let restTimerRemaining = 0;
 let restTimerDuration = 0;
+let restTimerEndsAt = 0;
 let restTimerActive = false;
+
+// When the app comes back from the lock screen / another app, setInterval
+// will resume but the next tick may not fire for up to a second. Force an
+// immediate recompute of both timers so the display snaps to real elapsed
+// time instead of waiting.
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) return;
+
+        // Workout duration (aw-title)
+        if (durationInterval && AppState.workoutStartTime) {
+            const elapsed = Math.floor((Date.now() - AppState.workoutStartTime.getTime()) / 1000);
+            const elapsedEl = document.querySelector('.aw-title__elapsed');
+            if (elapsedEl) elapsedEl.textContent = formatElapsed(elapsed);
+        }
+
+        // Rest timer
+        if (restTimerActive && restTimerEndsAt > 0) {
+            restTimerRemaining = Math.max(0, Math.ceil((restTimerEndsAt - Date.now()) / 1000));
+            updateRestTimerDisplay();
+            if (restTimerRemaining <= 0) onRestTimerComplete();
+        }
+    });
+}
 
 // Track if exercises were reordered for template save prompt
 let exercisesReordered = false;
@@ -232,6 +259,7 @@ function renderRestTimerBanner() {
 function startRestTimer(duration) {
     clearRestTimer();
     restTimerDuration = duration || Config.DEFAULT_REST_TIMER_SECONDS;
+    restTimerEndsAt = Date.now() + restTimerDuration * 1000;
     restTimerRemaining = restTimerDuration;
     restTimerActive = true;
 
@@ -240,8 +268,10 @@ function startRestTimer(duration) {
     if (banner) banner.classList.remove('hidden');
     updateRestTimerDisplay();
 
+    // Each tick recomputes from restTimerEndsAt so a paused setInterval
+    // (iOS backgrounding) catches up as soon as it resumes.
     restTimerInterval = setInterval(() => {
-        restTimerRemaining--;
+        restTimerRemaining = Math.max(0, Math.ceil((restTimerEndsAt - Date.now()) / 1000));
         updateRestTimerDisplay();
 
         if (restTimerRemaining <= 0) {
@@ -281,8 +311,9 @@ function clearRestTimer() {
 
 export function awRestAdd30() {
     if (!restTimerActive) return;
-    restTimerRemaining += 30;
+    restTimerEndsAt += 30 * 1000;
     restTimerDuration += 30;
+    restTimerRemaining = Math.max(0, Math.ceil((restTimerEndsAt - Date.now()) / 1000));
     updateRestTimerDisplay();
 }
 
@@ -290,6 +321,7 @@ export function awRestSkip() {
     clearRestTimer();
     restTimerActive = false;
     restTimerRemaining = 0;
+    restTimerEndsAt = 0;
     const banner = document.getElementById('aw-rest-banner');
     if (banner) banner.classList.add('hidden');
 }
@@ -1890,19 +1922,20 @@ function isBodyweightExercise(exercise) {
 
 function startDurationTimer() {
     clearDurationTimer();
-    elapsedSeconds = 0;
 
-    // Calculate elapsed from start time
-    if (AppState.workoutStartTime) {
-        elapsedSeconds = Math.floor((Date.now() - AppState.workoutStartTime.getTime()) / 1000);
-    }
-
-    durationInterval = setInterval(() => {
-        elapsedSeconds++;
-        // Surgically update just the elapsed number — no re-render, no meta rewrite
+    // Recompute elapsed from AppState.workoutStartTime on every tick instead
+    // of incrementing a local counter. iOS pauses setInterval when backgrounded;
+    // a counter-based approach loses those seconds forever, but timestamp-based
+    // math catches up as soon as the interval resumes.
+    const tick = () => {
+        if (!AppState.workoutStartTime) return;
+        const elapsed = Math.floor((Date.now() - AppState.workoutStartTime.getTime()) / 1000);
         const elapsedEl = document.querySelector('.aw-title__elapsed');
-        if (elapsedEl) elapsedEl.textContent = formatElapsed(elapsedSeconds);
-    }, 1000);
+        if (elapsedEl) elapsedEl.textContent = formatElapsed(elapsed);
+    };
+
+    tick();
+    durationInterval = setInterval(tick, 1000);
 }
 
 function clearDurationTimer() {
