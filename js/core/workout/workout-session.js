@@ -20,6 +20,7 @@ import {
 import { renderExercises, toggleExerciseExpansion } from './exercise-ui.js';
 import { renderActiveWorkout, loadAutofillForAllExercises } from './active-workout-ui.js';
 import { haptic } from '../utils/haptics.js';
+import { cancelRestNotification } from '../utils/push-notification-manager.js';
 
 // ===================================================================
 // TEMPLATE CHANGE DETECTION
@@ -258,6 +259,10 @@ export async function completeWorkout() {
     AppState.clearTimers();
     stopActiveWorkoutRestTimer();
     setWorkoutActiveState(false);
+
+    // Cancel any pending server-side rest push so the user doesn't get a
+    // lock-screen "Rest Complete" notification minutes after they've finished.
+    cancelRestNotification().catch(() => {});
 
     const isEditingHistorical = window.editingHistoricalWorkout === true;
 
@@ -919,6 +924,10 @@ export async function cancelWorkout(skipConfirmation = false) {
     saveWorkoutData(AppState).catch(err => {
         console.error('Error saving cancelled workout:', err);
     });
+
+    // Cancel any pending rest push so it doesn't fire after the workout
+    // has been cancelled.
+    cancelRestNotification().catch(() => {});
 
     AppState.reset();
     AppState.clearTimers();
