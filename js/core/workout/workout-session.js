@@ -886,7 +886,16 @@ export function saveActiveWorkoutAsTemplate() {
 }
 
 export async function cancelWorkout(skipConfirmation = false) {
-    if (!AppState.currentWorkout) return;
+    // The dashboard pill can be shown from window.inProgressWorkout alone
+    // (a resumable workout from a previous session) without AppState.currentWorkout
+    // ever being restored. Without this fallback, tapping Cancel from that state
+    // would hit the early return and silently do nothing. Hydrate savedData from
+    // the in-progress record so the rest of the function can mark it cancelled
+    // and persist to Firestore.
+    if (!AppState.currentWorkout && window.inProgressWorkout) {
+        AppState.savedData = { ...window.inProgressWorkout };
+    }
+    if (!AppState.currentWorkout && !AppState.savedData?.workoutId) return;
 
     // Confirm cancellation unless explicitly skipped
     if (!skipConfirmation) {
