@@ -1,29 +1,50 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v8.8-final-audit-cleanup';
+const CACHE_NAME = 'big-surf-v8.9-catalog-opus';
+// Precache list — mirrors styles/index.css @import order. Add new CSS files here when
+// they're added to index.css, otherwise the first-paint on install misses them (cache-first
+// fetch will still pick them up on first navigation, but precaching avoids the blip).
 const STATIC_ASSETS = [
   '/index.html',
   '/styles/index.css',
   '/styles/tokens.css',
   '/styles/reset.css',
+  '/styles/animations.css',
+  '/styles/utilities.css',
   '/styles/components/cards.css',
   '/styles/components/buttons.css',
   '/styles/components/forms.css',
   '/styles/components/modals.css',
   '/styles/components/nav.css',
   '/styles/components/empty-states.css',
+  '/styles/components/active-pill.css',
+  '/styles/components/range-filter.css',
+  '/styles/components/metric-card.css',
+  '/styles/components/charts.css',
+  '/styles/components/bodyweight.css',
+  '/styles/components/segmented-control.css',
+  '/styles/components/chips.css',
+  '/styles/components/grouped-rows.css',
+  '/styles/components/page-header.css',
+  '/styles/components/fields.css',
+  '/styles/components/completion-summary.css',
   '/styles/pages/app-shell.css',
+  '/styles/pages/active-workout-v2.css',
+  '/styles/pages/dashboard-v2.css',
+  '/styles/pages/detail-pages.css',
   '/styles/pages/templates.css',
   '/styles/pages/history.css',
-  '/styles/pages/stats.css',
   '/styles/pages/exercise-lib.css',
+  '/styles/pages/locations.css',
+  '/styles/pages/manual-workout.css',
   '/styles/pages/settings.css',
   '/styles/pages/plate-calculator.css',
   '/styles/pages/body-measurements.css',
   '/styles/pages/ai-coach.css',
   '/styles/pages/dexa.css',
-  '/styles/utilities.css',
+  '/styles/pages/error-log.css',
+  '/styles/pages/metric-detail.css',
   '/BigSurf.png',
   '/js/main.js',
   '/js/core/app-initialization.js',
