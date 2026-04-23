@@ -168,14 +168,18 @@ export async function startWorkout(workoutType) {
         templateIsDefault: workout.isDefault || false,
     };
 
-    // Snapshot the initial template for change detection at completion
-    // Stored on window so saveWorkoutData's originalWorkout overwrites don't affect it
-    window._initialTemplateSnapshot = {
+    // Snapshot the initial template for change detection at completion.
+    // Persisted on AppState.savedData (so it lands in Firestore) AND mirrored
+    // on window for in-memory reads. The window copy alone isn't enough —
+    // iOS can tear down the PWA between start and completion; on resume
+    // only the Firestore-backed field survives.
+    AppState.savedData.initialTemplateSnapshot = {
         exercises: workout.exercises.map(ex => ({
             machine: ex.machine || ex.name,
             name: ex.name || ex.machine,
         })),
     };
+    window._initialTemplateSnapshot = AppState.savedData.initialTemplateSnapshot;
 
     // Initialize exercise units
     AppState.exerciseUnits = {};
@@ -318,12 +322,15 @@ export async function completeWorkout() {
         });
     }
 
-    // Detect structural changes (reorder, swap, add, remove) for template update prompt
-    // Compare current exercises against the INITIAL template snapshot (not the overwritten originalWorkout)
+    // Detect structural changes (reorder, swap, add, remove) for template update prompt.
+    // Compare current exercises against the INITIAL template snapshot. Prefer the
+    // persisted copy on savedData so resumed workouts (where the window mirror was
+    // lost to PWA teardown) still get the prompt.
     let templateChanges = null;
     if (!isEditingHistorical) {
         const currentExercises = AppState.currentWorkout?.exercises || [];
-        const initialSnapshot = window._initialTemplateSnapshot;
+        const initialSnapshot = AppState.savedData?.initialTemplateSnapshot
+            || window._initialTemplateSnapshot;
         if (initialSnapshot?.exercises) {
             templateChanges = detectTemplateChanges(currentExercises, initialSnapshot);
         }
