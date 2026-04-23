@@ -2,7 +2,7 @@
 import { AppState } from '../utils/app-state.js';
 import { getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal, convertWeight } from '../ui/ui-helpers.js';
 import { saveWorkoutData } from '../data/data-manager.js';
 import { formatCategory } from '../utils/workout-helpers.js';
 import { reorderTemplateExercise, normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
@@ -960,7 +960,7 @@ function createTemplateExerciseItem(exercise, index) {
 
     const weight = exercise.weight || 0;
     const unit = AppState.globalUnit || 'lbs';
-    const displayWeight = unit === 'kg' ? Math.round(weight * 0.453592 * 2) / 2 : weight;
+    const displayWeight = unit === 'kg' ? convertWeight(weight, 'lbs', 'kg') : weight;
 
     item.innerHTML = `
         <div class="ex-row" onclick="editTemplateExercise(${index})">

@@ -520,7 +520,7 @@ export function createExerciseCard(exercise, index) {
             .slice(0, 4)
             .map(s => {
                 let w = s.weight;
-                if (unit === 'kg') w = Math.round(w * 0.453592 * 2) / 2;
+                if (unit === 'kg') w = convertWeight(w, 'lbs', 'kg');
                 return `${w}×${s.reps}`;
             })
             .join(', ');
@@ -627,7 +627,7 @@ export function createExerciseCard(exercise, index) {
                 .slice(0, 4)
                 .map(s => {
                     let w = s.weight;
-                    if (unit === 'kg') w = Math.round(w * 0.453592 * 2) / 2;
+                    if (unit === 'kg') w = convertWeight(w, 'lbs', 'kg');
                     return `${w}×${s.reps}`;
                 })
                 .join(', ');
@@ -1022,7 +1022,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
         let displayWeight = (set.weight !== '' && set.weight !== null && set.weight !== undefined && set.weight !== 0)
             ? set.weight : '';
         if (displayWeight !== '' && unit === 'kg') {
-            displayWeight = Math.round(displayWeight * 0.453592 * 2) / 2;
+            displayWeight = convertWeight(displayWeight, 'lbs', 'kg');
         }
 
         // Determine placeholder from last session or template defaults
@@ -1033,7 +1033,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
             if (ls.reps) repsPlaceholder = ls.reps;
             if (ls.weight) {
                 weightPlaceholder = unit === 'kg'
-                    ? Math.round(ls.weight * 0.453592 * 2) / 2
+                    ? convertWeight(ls.weight, 'lbs', 'kg')
                     : ls.weight;
             }
         }
@@ -1128,7 +1128,7 @@ async function generateBodyweightExerciseTable(exercise, exerciseIndex, unit) {
 
     // Convert BW to display unit
     const bwDisplay = bwLbs && !bwSkipped
-        ? (isKg ? Math.round(bwLbs * 0.453592 * 2) / 2 : Math.round(bwLbs * 10) / 10)
+        ? (isKg ? convertWeight(bwLbs, 'lbs', 'kg') : Math.round(bwLbs * 10) / 10)
         : null;
     const unitLabel = isKg ? 'kg' : 'lb';
 
@@ -1187,11 +1187,11 @@ async function generateBodyweightExerciseTable(exercise, exerciseIndex, unit) {
 
     // Compute totals
     const addedInLbs = savedAddedWeight
-        ? (isKg ? Math.round(savedAddedWeight * 2.20462) : savedAddedWeight)
+        ? (isKg ? convertWeight(savedAddedWeight, 'kg', 'lbs') : savedAddedWeight)
         : 0;
     const totalPerRepLbs = (bwLbs || 0) + addedInLbs;
     const totalPerRepDisplay = isKg
-        ? Math.round(totalPerRepLbs * 0.453592 * 2) / 2
+        ? convertWeight(totalPerRepLbs, 'lbs', 'kg')
         : Math.round(totalPerRepLbs * 10) / 10;
 
     // Set table
@@ -1382,11 +1382,11 @@ function updateBodyweightTotals(exerciseIndex) {
 
     const addedInput = document.querySelector(`.bw-added-weight-input[data-exercise="${exerciseIndex}"]`);
     const addedRaw = parseFloat(addedInput?.value) || 0;
-    const addedLbs = isKg ? Math.round(addedRaw * 2.20462) : addedRaw;
+    const addedLbs = isKg ? convertWeight(addedRaw, 'kg', 'lbs') : addedRaw;
     const bwLbs = AppState.currentSessionBodyWeightLbs || 0;
     const totalPerRepLbs = bwLbs + addedLbs;
     const totalPerRepDisplay = isKg
-        ? Math.round(totalPerRepLbs * 0.453592 * 2) / 2
+        ? convertWeight(totalPerRepLbs, 'lbs', 'kg')
         : Math.round(totalPerRepLbs * 10) / 10;
 
     // Update all total cells
@@ -1577,7 +1577,7 @@ async function toggleInlineProgress(exerciseName, equipment, exerciseIndex, btn)
             const d = new Date(s.date + 'T00:00:00');
             const dateLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             const barHeight = Math.max(20, ((s.bestWeight - minWeight) / weightRange) * 80 + 20);
-            const displayWt = unit === 'kg' ? Math.round(s.bestWeight * 0.453592 * 2) / 2 : s.bestWeight;
+            const displayWt = unit === 'kg' ? convertWeight(s.bestWeight, 'lbs', 'kg') : s.bestWeight;
 
             html += `
                 <div class="inline-progress-bar-col">
@@ -1592,7 +1592,11 @@ async function toggleInlineProgress(exerciseName, equipment, exerciseIndex, btn)
         const latest = recent[recent.length - 1];
         const first = recent[0];
         const weightDiff = latest.bestWeight - first.bestWeight;
-        const displayDiff = unit === 'kg' ? Math.round(weightDiff * 0.453592 * 2) / 2 : weightDiff;
+        // convertWeight returns 0 for non-positive values, so convert the
+        // magnitude and restore the sign manually for regressions.
+        const displayDiff = unit === 'kg'
+            ? Math.sign(weightDiff) * convertWeight(Math.abs(weightDiff), 'lbs', 'kg')
+            : weightDiff;
         const trendIcon = weightDiff > 0 ? 'fa-arrow-up' : weightDiff < 0 ? 'fa-arrow-down' : 'fa-minus';
         const trendModifier = weightDiff > 0 ? 'up' : weightDiff < 0 ? 'down' : 'flat';
 

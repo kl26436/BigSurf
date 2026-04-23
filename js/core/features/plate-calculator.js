@@ -305,8 +305,9 @@ export async function openPlateCalcPopover(exerciseIndex) {
     let barWeight;
     const equipmentDoc = resolveEquipmentDoc(exercise.equipment);
     if (equipmentDoc && equipmentDoc.baseWeight > 0) {
-        // Convert equipment base weight to display unit
-        const { convertWeight } = window; // available globally via ui-helpers
+        // Plate-math rounding intentionally snaps to 0.5 kg / 1 lb — these are
+        // the real plate increments, so bar and target display as loadable
+        // values. Don't switch to convertWeight() here (which gives 1-decimal).
         const baseUnit = equipmentDoc.baseWeightUnit || 'lbs';
         barWeight = baseUnit === unit
             ? equipmentDoc.baseWeight
