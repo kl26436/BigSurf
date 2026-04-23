@@ -153,6 +153,9 @@ export function renderAll() {
 function renderWorkoutHeader() {
     const workoutName = AppState.savedData?.workoutType || AppState.currentWorkout?.name || 'Workout';
     const exerciseCount = AppState.currentWorkout.exercises.length;
+    const elapsedSeconds = AppState.workoutStartTime
+        ? Math.floor((Date.now() - AppState.workoutStartTime.getTime()) / 1000)
+        : 0;
     const elapsed = formatElapsed(elapsedSeconds);
     const location = AppState.savedData?.location;
     const locName = typeof location === 'object' ? location?.name : location;
