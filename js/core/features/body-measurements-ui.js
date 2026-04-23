@@ -3,7 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification, openModal, closeModal, displayWeight, formatHeight, parseHeightToCm } from '../ui/ui-helpers.js';
-import { formatRelativeDate } from '../utils/date-helpers.js';
+import { formatRelativeDate, getDateString } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import {
     saveBodyWeight,
@@ -110,7 +110,7 @@ export function showWeightEntryModal() {
     const unit = AppState.globalUnit || 'lbs';
     const unitLabel = unit === 'kg' ? 'kg' : 'lb';
     const circumUnit = unit === 'kg' ? 'cm' : 'in';
-    const today = AppState.getTodayDateString?.() || new Date().toISOString().split('T')[0];
+    const today = AppState.getTodayDateString?.() || getDateString(new Date());
 
     const lastEntry = AppState._lastBodyWeight;
     const lastValueStr = lastEntry
@@ -597,7 +597,7 @@ export async function renderBodyWeightChart() {
         default: startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
     }
 
-    const startDateStr = startDate.toISOString().split('T')[0];
+    const startDateStr = getDateString(startDate);
     const entries = await getBodyWeightSince(startDateStr);
 
     if (entries.length === 0) {

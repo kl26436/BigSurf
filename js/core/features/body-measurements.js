@@ -17,6 +17,7 @@ import {
 import { AppState } from '../utils/app-state.js';
 import { showNotification } from '../ui/ui-helpers.js';
 import { debugLog } from '../utils/config.js';
+import { getDateString } from '../utils/date-helpers.js';
 
 // ===================================================================
 // PURE FUNCTIONS (also used by tests)
@@ -84,7 +85,7 @@ export function calculateWeightTrend(entries) {
     // Find earliest entry within ~7 days
     const sevenDaysAgo = new Date(recent.date);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+    const sevenDaysAgoStr = getDateString(sevenDaysAgo);
 
     let compareEntry = null;
     for (const entry of entries) {

@@ -968,7 +968,10 @@ function workoutHasEquipmentForExercise(data, equipmentName, exerciseName) {
         for (const [key, ex] of Object.entries(data.exercises)) {
             if (ex.equipment === equipmentName) {
                 const idx = parseInt(key.split('_')[1]);
-                const name = data.exerciseNames?.[key] || data.originalWorkout?.exercises?.[idx]?.machine;
+                const name = ex.name
+                    || ex.machine
+                    || data.exerciseNames?.[key]
+                    || data.originalWorkout?.exercises?.[idx]?.machine;
                 if (name === exerciseName) return true;
             }
         }
@@ -995,7 +998,7 @@ function templateHasEquipmentForExercise(data, equipmentName, exerciseName) {
  * @param {string} oldExerciseName - The exercise it's currently associated with
  * @param {string} newExerciseName - The exercise it should be associated with
  * @param {function} onProgress - Optional callback(updatedSoFar, total) for progress
- * @returns {Promise<{workouts: number, templates: number}>} Count of updated documents
+ * @returns {Promise<{workouts: number, templates: number, prsMigrated: number, prMergeConflicts: number, videoMigrated: boolean}>}
  */
 export async function reassignEquipment(equipmentId, equipmentName, oldExerciseName, newExerciseName, onProgress) {
     const userId = AppState.currentUser?.uid;
@@ -1015,49 +1018,72 @@ export async function reassignEquipment(equipmentId, equipmentName, oldExerciseN
 
     for (const docSnap of allWorkouts.docs) {
         const data = docSnap.data();
-        let needsUpdate = false;
         const updates = {};
 
-        // Update originalWorkout.exercises array
+        // Collect all exercise indices/keys that match the old equipment+name combo, from any source.
+        // A workout can match via originalWorkout.exercises[idx] OR data.exercises[key] (or both).
+        const matchedIndices = new Set();
+        const matchedKeys = new Set();
+
         if (data.originalWorkout?.exercises) {
-            const updatedExercises = data.originalWorkout.exercises.map(ex => {
-                if (ex.equipment === equipmentName && (ex.machine === oldExerciseName || ex.name === oldExerciseName)) {
-                    needsUpdate = true;
-                    return { ...ex, machine: newExerciseName, name: newExerciseName };
+            data.originalWorkout.exercises.forEach((ex, idx) => {
+                if (ex?.equipment === equipmentName && (ex.machine === oldExerciseName || ex.name === oldExerciseName)) {
+                    matchedIndices.add(idx);
+                    matchedKeys.add(`exercise_${idx}`);
                 }
-                return ex;
             });
-            if (needsUpdate) {
-                updates['originalWorkout.exercises'] = updatedExercises;
-            }
         }
 
-        // Update exercises object and exerciseNames
         if (data.exercises) {
             for (const [key, ex] of Object.entries(data.exercises)) {
-                if (ex.equipment === equipmentName) {
-                    const idx = parseInt(key.split('_')[1]);
-                    const name = data.exerciseNames?.[key] || data.originalWorkout?.exercises?.[idx]?.machine;
-                    if (name === oldExerciseName) {
-                        needsUpdate = true;
-                        // exerciseNames stores the display name
-                        updates[`exerciseNames.${key}`] = newExerciseName;
-                    }
+                if (ex?.equipment !== equipmentName) continue;
+                const idx = parseInt(key.split('_')[1]);
+                const name = ex.name
+                    || ex.machine
+                    || data.exerciseNames?.[key]
+                    || data.originalWorkout?.exercises?.[idx]?.machine;
+                if (name === oldExerciseName) {
+                    matchedKeys.add(key);
+                    if (!isNaN(idx)) matchedIndices.add(idx);
                 }
             }
         }
 
-        if (needsUpdate) {
-            updates['lastUpdated'] = new Date().toISOString();
-            currentBatch.update(docSnap.ref, updates);
-            opCount++;
-            workoutCount++;
+        if (matchedKeys.size === 0 && matchedIndices.size === 0) {
+            totalProcessed++;
+            if (onProgress) onProgress(totalProcessed, totalDocs);
+            continue;
+        }
 
-            if (opCount >= BATCH_SIZE) {
-                await currentBatch.commit();
-                currentBatch = writeBatch(db);
-                opCount = 0;
+        // Rewrite originalWorkout.exercises (whole-array write — it's an array, not a map).
+        if (data.originalWorkout?.exercises && matchedIndices.size > 0) {
+            updates['originalWorkout.exercises'] = data.originalWorkout.exercises.map((ex, idx) =>
+                matchedIndices.has(idx) ? { ...ex, machine: newExerciseName, name: newExerciseName } : ex
+            );
+        }
+
+        // For each matched key: update exerciseNames map AND inner exercises[key].name/.machine if present.
+        // Cover both cases (originalWorkout-only match and inner-exercises match) by deriving keys from indices too.
+        const allKeys = new Set(matchedKeys);
+        for (const idx of matchedIndices) allKeys.add(`exercise_${idx}`);
+        for (const key of allKeys) {
+            updates[`exerciseNames.${key}`] = newExerciseName;
+            const ex = data.exercises?.[key];
+            if (ex) {
+                if (ex.name !== undefined) updates[`exercises.${key}.name`] = newExerciseName;
+                if (ex.machine !== undefined) updates[`exercises.${key}.machine`] = newExerciseName;
             }
+        }
+
+        updates['lastUpdated'] = new Date().toISOString();
+        currentBatch.update(docSnap.ref, updates);
+        opCount++;
+        workoutCount++;
+
+        if (opCount >= BATCH_SIZE) {
+            await currentBatch.commit();
+            currentBatch = writeBatch(db);
+            opCount = 0;
         }
 
         totalProcessed++;
@@ -1110,7 +1136,9 @@ export async function reassignEquipment(equipmentId, equipmentName, oldExerciseN
         await currentBatch.commit();
     }
 
-    // 3. Update equipment document's exerciseTypes
+    // 3. Update equipment document's exerciseTypes AND exerciseVideos map.
+    // The exerciseVideos map is keyed by exercise name — without migration the form video orphans.
+    let videoMigrated = false;
     const equipRef = doc(db, 'users', userId, 'equipment', equipmentId);
     const equipSnap = await getDoc(equipRef);
     if (equipSnap.exists()) {
@@ -1120,10 +1148,44 @@ export async function reassignEquipment(equipmentId, equipmentName, oldExerciseN
         if (!updated.includes(newExerciseName)) {
             updated.push(newExerciseName);
         }
-        await setDoc(equipRef, { ...equipData, exerciseTypes: updated, lastUsed: new Date().toISOString() });
+
+        const exerciseVideos = { ...(equipData.exerciseVideos || {}) };
+        if (exerciseVideos[oldExerciseName] !== undefined) {
+            // Don't clobber an existing video on the destination — user may have set one already.
+            if (exerciseVideos[newExerciseName] === undefined) {
+                exerciseVideos[newExerciseName] = exerciseVideos[oldExerciseName];
+            }
+            delete exerciseVideos[oldExerciseName];
+            videoMigrated = true;
+        }
+
+        await setDoc(equipRef, {
+            ...equipData,
+            exerciseTypes: updated,
+            exerciseVideos,
+            lastUsed: new Date().toISOString(),
+        });
     }
 
-    return { workouts: workoutCount, templates: templateCount };
+    // 4. Migrate PR records keyed by old exercise name → new exercise name (merging on collision).
+    let prsMigrated = 0;
+    let prMergeConflicts = 0;
+    try {
+        const { renamePREquipmentExercise } = await import('../features/pr-tracker.js');
+        const prResult = await renamePREquipmentExercise(equipmentName, oldExerciseName, newExerciseName);
+        prsMigrated = prResult.migrated;
+        prMergeConflicts = prResult.mergedConflicts;
+    } catch (err) {
+        console.error('❌ PR migration failed during equipment reassignment:', err);
+    }
+
+    return {
+        workouts: workoutCount,
+        templates: templateCount,
+        prsMigrated,
+        prMergeConflicts,
+        videoMigrated,
+    };
 }
 
 /**
@@ -1169,7 +1231,7 @@ export async function exportWorkoutData(state) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const today = new Date().toISOString().split('T')[0];
+        const today = getDateString(new Date());
         a.download = `bigsurf-export-${today}.json`;
         document.body.appendChild(a);
         a.click();

@@ -13,6 +13,7 @@ import {
 } from './firebase-config.js';
 import { showNotification, escapeHtml } from '../ui/ui-helpers.js';
 import { openModal, closeModal } from '../ui/ui-helpers.js';
+import { getDateString } from '../utils/date-helpers.js';
 import { AppState } from '../utils/app-state.js';
 import { debugLog } from '../utils/config.js';
 
@@ -106,7 +107,7 @@ export async function exportWorkoutDataAsCSV() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const today = new Date().toISOString().split('T')[0];
+        const today = getDateString(new Date());
         a.download = `bigsurf-workouts-${today}.csv`;
         document.body.appendChild(a);
         a.click();

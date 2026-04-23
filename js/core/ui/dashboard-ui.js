@@ -202,7 +202,7 @@ async function loadBodyWeightData() {
         // Use last 30 days for delta, not full 90
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const thirtyDaysStr = thirtyDaysAgo.toISOString().split('T')[0];
+        const thirtyDaysStr = getDateString(thirtyDaysAgo);
         const monthEntries = converted.filter(e => e.date >= thirtyDaysStr);
         const monthFirst = monthEntries.length > 0 ? monthEntries[0] : first;
         const delta = latest.displayWeight - monthFirst.displayWeight;
