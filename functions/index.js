@@ -983,10 +983,14 @@ exports.getTrainingRecommendation = functions.runWith({
             );
         }
 
-        // Call Claude API via HTTPS (no SDK dependency needed)
+        // Call Claude API via HTTPS (no SDK dependency needed).
+        // Opus 4.7 + adaptive thinking: coaching benefits from deeper reasoning
+        // when interpreting plateaus, volume patterns, and tradeoffs. max_tokens
+        // raised to accommodate thinking tokens + full recommendation.
         const requestBody = JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 1500,
+            model: 'claude-opus-4-7',
+            max_tokens: 8000,
+            thinking: { type: 'adaptive' },
             system: TRAINING_SCIENCE_PROMPT,
             messages: [{
                 role: 'user',
@@ -1027,7 +1031,10 @@ exports.getTrainingRecommendation = functions.runWith({
             req.end();
         });
 
-        const recommendation = response.content?.[0]?.text || 'No recommendation generated.';
+        // Find the text block. With adaptive thinking, content[0] may be a
+        // thinking block — we want the user-visible text, not the reasoning.
+        const recommendation = response.content?.find(b => b.type === 'text')?.text
+            || 'No recommendation generated.';
 
         // Update rate limit timestamp
         await db.collection('users').doc(userId)
@@ -1104,8 +1111,8 @@ Weight unit: ${unit || 'lbs'}
 Build the workout now. Return ONLY the JSON object.`;
 
         const requestBody = JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 2000,
+            model: 'claude-opus-4-7',
+            max_tokens: 4000,
             system: WORKOUT_BUILDER_PROMPT,
             messages: [{
                 role: 'user',
@@ -1279,8 +1286,8 @@ exports.extractDexaData = functions.runWith({
 
         // Call Claude API with PDF document
         const requestBody = JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 3000,
+            model: 'claude-opus-4-7',
+            max_tokens: 4000,
             system: DEXA_EXTRACTION_PROMPT,
             messages: [{
                 role: 'user',
