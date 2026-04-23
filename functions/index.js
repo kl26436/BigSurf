@@ -7,7 +7,11 @@
  * Uses Web Push API directly (more reliable on iOS Safari than FCM)
  */
 
-const functions = require('firebase-functions');
+// v1 API is preserved under the /v1 subpath from firebase-functions v5+.
+// All the exports below use v1 (functions.https.onCall, functions.pubsub,
+// functions.runWith) so we import the v1 namespace explicitly rather than
+// rewriting every handler to v2.
+const functions = require('firebase-functions/v1');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
