@@ -1,0 +1,552 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Equipment Migration Preview</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:20px;background:#0f172a;color:#e2e8f0}
+h1{color:#f1f5f9;font-size:1.4rem}h2{color:#94a3b8;font-size:1.1rem;margin-top:2rem}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.85rem}
+th{background:#1e293b;color:#94a3b8;text-align:left;padding:8px 10px;border-bottom:2px solid #334155;position:sticky;top:0}
+td{padding:6px 10px;border-bottom:1px solid #1e293b;vertical-align:top}
+tr:hover td{background:#1e293b}
+.tier{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.75rem;font-weight:600;color:#fff}
+.changed{color:#fbbf24}.arrow{color:#64748b}.old{color:#94a3b8;text-decoration:line-through}
+.new{color:#f1f5f9;font-weight:500}.same{color:#64748b}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:16px 0}
+.stat{background:#1e293b;border-radius:8px;padding:14px}.stat-num{font-size:1.5rem;font-weight:700}.stat-label{font-size:.8rem;color:#94a3b8}
+.dup{background:#1e293b;border-left:3px solid #ef4444;padding:10px;margin:8px 0;border-radius:0 6px 6px 0}
+.issue{background:#1e293b;border-left:3px solid #f97316;padding:10px;margin:8px 0;border-radius:0 6px 6px 0}
+</style></head><body>
+<h1>Equipment Migration Preview</h1>
+<p>45 records analyzed against 731-machine catalog</p>
+<div class="summary">
+<div class="stat"><div class="stat-num" style="color:#22c55e">13</div><div class="stat-label">Exact Match</div></div>
+<div class="stat"><div class="stat-num" style="color:#eab308">5</div><div class="stat-label">Fuzzy Match</div></div>
+<div class="stat"><div class="stat-num" style="color:#3b82f6">26</div><div class="stat-label">Brand Only</div></div>
+<div class="stat"><div class="stat-num" style="color:#999">1</div><div class="stat-label">Unmatched</div></div>
+<div class="stat"><div class="stat-num" style="color:#ef4444">5</div><div class="stat-label">Duplicate Groups</div></div>
+<div class="stat"><div class="stat-num" style="color:#f97316">17</div><div class="stat-label">Type Changes</div></div>
+</div>
+<h2>Full Migration Table</h2>
+<table><tr><th>Tier</th><th>Current Name</th><th></th><th>New Name</th><th>Brand</th><th>Line</th><th>Function</th><th>Type</th><th>Notes</th></tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Edition 80</span></td>
+<td class="arrow">→</td>
+<td class="new">gym80</td>
+<td>gym80</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Brand alias ("edition 80")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Panatta Fit Evo — Abdominal Crunch</td>
+<td class="arrow">=</td>
+<td class="same">Panatta Fit Evo — Abdominal Crunch</td>
+<td>Panatta</td>
+<td>Fit Evo</td>
+<td>Abdominal Crunch</td>
+<td><span class="changed">Selectorized</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Selectorized</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Arsenal Strength M-1 — Lat Pulldown</td>
+<td class="arrow">=</td>
+<td class="same">Arsenal Strength M-1 — Lat Pulldown</td>
+<td>Arsenal Strength</td>
+<td>M-1</td>
+<td>Lat Pulldown</td>
+<td><span class="changed">Selectorized</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Selectorized</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td>Gymleco</td>
+<td class="arrow">=</td>
+<td class="same">Gymleco</td>
+<td>Gymleco</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Brand detected in function field ("gymleco")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">M-Torture Plated</span></td>
+<td class="arrow">→</td>
+<td class="new">Newtech M-Torture</td>
+<td>Newtech</td>
+<td>M-Torture</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Line→Brand restructured ("m-torture")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Arsenal Strength — M1</span></td>
+<td class="arrow">→</td>
+<td class="new">Arsenal Strength</td>
+<td>Arsenal Strength</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Panatta — Evo Fit</span></td>
+<td class="arrow">→</td>
+<td class="new">Panatta</td>
+<td>Panatta</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#eab308">Fuzzy</span></td>
+<td><span class="old">45 Degree Mega Mass</span></td>
+<td class="arrow">→</td>
+<td class="new">MegaMass — 45 Degree Linear Iso Row Pro</td>
+<td>MegaMass</td>
+<td>—</td>
+<td>45 Degree Linear Iso Row Pro</td>
+<td><span class="changed">Plate-Loaded</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Brand detected in function field ("mega mass"); Type: Other → Plate-Loaded; 100% match</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Panatta Fit Evo — Lateral Raise</td>
+<td class="arrow">=</td>
+<td class="same">Panatta Fit Evo — Lateral Raise</td>
+<td>Panatta</td>
+<td>Fit Evo</td>
+<td>Lateral Raise</td>
+<td><span class="changed">Selectorized</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Selectorized</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Panatta Fit Evo — Lower Back</td>
+<td class="arrow">=</td>
+<td class="same">Panatta Fit Evo — Lower Back</td>
+<td>Panatta</td>
+<td>Fit Evo</td>
+<td>Lower Back</td>
+<td><span class="changed">Selectorized</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Selectorized</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Roger’s Athletic</span></td>
+<td class="arrow">→</td>
+<td class="new">Rogers Athletic Pendulum</td>
+<td>Rogers Athletic</td>
+<td>Pendulum</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Brand corrected ("roger’s athletic")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#eab308">Fuzzy</span></td>
+<td><span class="old">Gymleco Bicep Curl</span></td>
+<td class="arrow">→</td>
+<td class="new">Gymleco — Biceps Curl</td>
+<td>Gymleco</td>
+<td>—</td>
+<td>Biceps Curl</td>
+<td><span class="changed">Selectorized</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Brand detected in function field ("gymleco"); Type: Other → Selectorized; 100% match</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td>Hammer Strength</td>
+<td class="arrow">=</td>
+<td class="same">Hammer Strength</td>
+<td>Hammer Strength</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td>Matrix</td>
+<td class="arrow">=</td>
+<td class="same">Matrix</td>
+<td>Matrix</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Hamemr Strength</span></td>
+<td class="arrow">→</td>
+<td class="new">Hammer Strength</td>
+<td>Hammer Strength</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Typo corrected ("hamemr strength")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Panatta Fit Evo — Dips Press</td>
+<td class="arrow">=</td>
+<td class="same">Panatta Fit Evo — Dips Press</td>
+<td>Panatta</td>
+<td>Fit Evo</td>
+<td>Dips Press</td>
+<td><span class="changed">Selectorized</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Selectorized</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td>Arsenal Strength</td>
+<td class="arrow">=</td>
+<td class="same">Arsenal Strength</td>
+<td>Arsenal Strength</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Panatta Fit Evo — Lat Pulldown</td>
+<td class="arrow">=</td>
+<td class="same">Panatta Fit Evo — Lat Pulldown</td>
+<td>Panatta</td>
+<td>Fit Evo</td>
+<td>Lat Pulldown</td>
+<td><span class="changed">Selectorized</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Selectorized</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Panatta — Cable</span></td>
+<td class="arrow">→</td>
+<td class="new">Panatta</td>
+<td>Panatta</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Arsenal Cable</span></td>
+<td class="arrow">→</td>
+<td class="new">Arsenal Strength</td>
+<td>Arsenal Strength</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Brand detected from name ("arsenal cable")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Atlantis Plated</span></td>
+<td class="arrow">→</td>
+<td class="new">Atlantis Strength</td>
+<td>Atlantis Strength</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Brand alias ("atlantis")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#eab308">Fuzzy</span></td>
+<td><span class="old">Pendulum Glute Ham</span></td>
+<td class="arrow">→</td>
+<td class="new">Rogers Athletic Pendulum — Reverse Glute-Ham</td>
+<td>Rogers Athletic</td>
+<td>Pendulum</td>
+<td>Reverse Glute-Ham</td>
+<td><span class="changed">Plate-Loaded</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Line→Brand restructured ("pendulum"); Type: Other → Plate-Loaded; 100% match</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Panatta Fit Evo — Calf Machine</td>
+<td class="arrow">=</td>
+<td class="same">Panatta Fit Evo — Calf Machine</td>
+<td>Panatta</td>
+<td>Fit Evo</td>
+<td>Calf Machine</td>
+<td><span class="changed">Selectorized</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Selectorized</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Panatta — Circular Cable</span></td>
+<td class="arrow">→</td>
+<td class="new">Panatta — Circular</td>
+<td>Panatta</td>
+<td>—</td>
+<td>Circular</td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#eab308">Fuzzy</span></td>
+<td><span class="old">Mega Mass Super Row</span></td>
+<td class="arrow">→</td>
+<td class="new">MegaMass — Plate-Loaded Row</td>
+<td>MegaMass</td>
+<td>—</td>
+<td>Plate-Loaded Row</td>
+<td><span class="changed">Plate-Loaded</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Brand detected in function field ("mega mass"); Type: Other → Plate-Loaded; 50% match</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Panatta FreeWeight HP — Row</td>
+<td class="arrow">=</td>
+<td class="same">Panatta FreeWeight HP — Row</td>
+<td>Panatta</td>
+<td>FreeWeight HP</td>
+<td>Row</td>
+<td><span class="changed">Plate-Loaded</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Plate-Loaded</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Panatta FreeWeight Special — Super Rowing</td>
+<td class="arrow">=</td>
+<td class="same">Panatta FreeWeight Special — Super Rowing</td>
+<td>Panatta</td>
+<td>FreeWeight Special</td>
+<td>Super Rowing</td>
+<td><span class="changed">Plate-Loaded</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Plate-Loaded</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Panatta — Deltoid Cable</span></td>
+<td class="arrow">→</td>
+<td class="new">Panatta — Deltoid</td>
+<td>Panatta</td>
+<td>—</td>
+<td>Deltoid</td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">M-Torture</span></td>
+<td class="arrow">→</td>
+<td class="new">Newtech M-Torture</td>
+<td>Newtech</td>
+<td>M-Torture</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Line→Brand restructured ("m-torture")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td>Hoist</td>
+<td class="arrow">=</td>
+<td class="same">Hoist</td>
+<td>Hoist</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td>Newtech</td>
+<td class="arrow">=</td>
+<td class="same">Newtech</td>
+<td>Newtech</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Mega Mass</span></td>
+<td class="arrow">→</td>
+<td class="new">MegaMass</td>
+<td>MegaMass</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Brand detected in function field ("mega mass")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Hammer Strength — Cable</span></td>
+<td class="arrow">→</td>
+<td class="new">Hammer Strength</td>
+<td>Hammer Strength</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td>Precor</td>
+<td class="arrow">=</td>
+<td class="same">Precor</td>
+<td>Precor</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td>Life Fitness</td>
+<td class="arrow">=</td>
+<td class="same">Life Fitness</td>
+<td>Life Fitness</td>
+<td>—</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Magnum Plated</span></td>
+<td class="arrow">→</td>
+<td class="new">Matrix Magnum</td>
+<td>Matrix</td>
+<td>Magnum</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Brand→Line restructured ("magnum")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td><span class="old">Ultra Triceps Extension</span></td>
+<td class="arrow">→</td>
+<td class="new">Matrix Ultra — Triceps Extension</td>
+<td>Matrix</td>
+<td>Ultra</td>
+<td>Triceps Extension</td>
+<td><span class="changed">Selectorized</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Brand→Line restructured ("ultra"); Type: Other → Selectorized</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Ultra</span></td>
+<td class="arrow">→</td>
+<td class="new">Matrix Ultra</td>
+<td>Matrix</td>
+<td>Ultra</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Brand→Line restructured ("ultra")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#999">Unmatched</span></td>
+<td>Dumbell</td>
+<td class="arrow">=</td>
+<td class="same">Dumbell</td>
+<td>Unknown</td>
+<td>—</td>
+<td>Dumbell</td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td><span class="old">M-Torture High Row</span></td>
+<td class="arrow">→</td>
+<td class="new">Newtech M-Torture — High Row</td>
+<td>Newtech</td>
+<td>M-Torture</td>
+<td>High Row</td>
+<td><span class="changed">Plate-Loaded</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Line→Brand restructured ("m-torture"); Type: Other → Plate-Loaded</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Panatta Fit Evo — Leg Press</td>
+<td class="arrow">=</td>
+<td class="same">Panatta Fit Evo — Leg Press</td>
+<td>Panatta</td>
+<td>Fit Evo</td>
+<td>Leg Press</td>
+<td><span class="changed">Selectorized</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Selectorized</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#22c55e">Exact</span></td>
+<td>Arsenal Strength Reloaded — Power Squat</td>
+<td class="arrow">=</td>
+<td class="same">Arsenal Strength Reloaded — Power Squat</td>
+<td>Arsenal Strength</td>
+<td>Reloaded</td>
+<td>Power Squat</td>
+<td><span class="changed">Plate-Loaded</span></td>
+<td style="font-size:.75rem;color:#94a3b8">Type: Machine → Plate-Loaded</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td><span class="old">Pendulum</span></td>
+<td class="arrow">→</td>
+<td class="new">Rogers Athletic Pendulum</td>
+<td>Rogers Athletic</td>
+<td>Pendulum</td>
+<td><em style="color:#64748b">TBD</em></td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8">Line→Brand restructured ("pendulum")</td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#3b82f6">Brand Only</span></td>
+<td>Panatta — Master Glutes</td>
+<td class="arrow">=</td>
+<td class="same">Panatta — Master Glutes</td>
+<td>Panatta</td>
+<td>—</td>
+<td>Master Glutes</td>
+<td>Other</td>
+<td style="font-size:.75rem;color:#94a3b8"></td>
+</tr>
+<tr>
+<td><span class="tier" style="background:#eab308">Fuzzy</span></td>
+<td><span class="old">Rouge — Curl Bar</span></td>
+<td class="arrow">→</td>
+<td class="new">Rogue Barbells — EZ Curl Bar</td>
+<td>Rogue</td>
+<td>Barbells</td>
+<td>EZ Curl Bar</td>
+<td>Barbell</td>
+<td style="font-size:.75rem;color:#94a3b8">Typo corrected ("rouge"); 100% match</td>
+</tr>
+</table>
+<h2>Duplicate Groups (will merge)</h2>
+<div class="dup"><strong>Newtech M-Torture</strong> — 2 records merging<br>
+&nbsp;&nbsp;• <span class="old">M-Torture Plated</span> (2 exercises)<br>
+&nbsp;&nbsp;• <span class="old">M-Torture</span> (1 exercises)<br>
+&nbsp;&nbsp;→ Merged: 3 exercises: Shoulder Press Machine, Overhead Triceps Extension, Triceps Pushdown</div>
+<div class="dup"><strong>Arsenal Strength</strong> — 3 records merging<br>
+&nbsp;&nbsp;• <span class="old">Arsenal Strength — M1</span> (4 exercises)<br>
+&nbsp;&nbsp;• <span class="old">Arsenal Strength</span> (5 exercises)<br>
+&nbsp;&nbsp;• <span class="old">Arsenal Cable</span> (1 exercises)<br>
+&nbsp;&nbsp;→ Merged: 10 exercises: Cable Overhead Triceps Extension, Triceps Pushdown, Dumbbell Tricep Extensions, Overhead Triceps Extension, Rope Face Pulls, Leg Press, Back Extension Machine, Standing Leg Press, Lateral Raise Machine, Leg Curl Machine</div>
+<div class="dup"><strong>Panatta</strong> — 2 records merging<br>
+&nbsp;&nbsp;• <span class="old">Panatta — Evo Fit</span> (4 exercises)<br>
+&nbsp;&nbsp;• <span class="old">Panatta — Cable</span> (5 exercises)<br>
+&nbsp;&nbsp;→ Merged: 9 exercises: Lateral Raise Machine, Cable Bicep Curl, Hip Abduction Machine, Seated Chest Press, Leg Curl Machine, Leg Extension, Standing Multi Flight, Dumbbell Bicep Curls, Adductor Machine</div>
+<div class="dup"><strong>Rogers Athletic Pendulum</strong> — 2 records merging<br>
+&nbsp;&nbsp;• <span class="old">Roger’s Athletic</span> (1 exercises)<br>
+&nbsp;&nbsp;• <span class="old">Pendulum</span> (1 exercises)<br>
+&nbsp;&nbsp;→ Merged: 2 exercises: Hip Press, Machine Squat</div>
+<div class="dup"><strong>Hammer Strength</strong> — 3 records merging<br>
+&nbsp;&nbsp;• <span class="old">Hammer Strength</span> (4 exercises)<br>
+&nbsp;&nbsp;• <span class="old">Hamemr Strength</span> (3 exercises)<br>
+&nbsp;&nbsp;• <span class="old">Hammer Strength — Cable</span> (2 exercises)<br>
+&nbsp;&nbsp;→ Merged: 9 exercises: Hanging Leg Raise / Cable Knee Tuck, Seated Leg Curl Machine, Seated Chest Press, Lat Pulldown, Hip Abduction Machine, Pec Deck, Shoulder Press Machine, Machine Crunch, Incline Chest Press (Machine)</div>
+<h2>Location Issues</h2>
+<div class="issue"><strong>Gymleco Bicep Curl</strong><br>
+&nbsp;&nbsp;⚠️ Combined string needs splitting<br>
+&nbsp;&nbsp;Current: [Absolute Recomp | Absolute Recomp, Planet Fitness Waterbury]</div>
+</body></html>

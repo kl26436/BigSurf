@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Features Redesign — DEXA, AI Coach, Equipment</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --warning:#f0c24b; --danger:#e35d6a; --highlight-warm:#f7a865;
+    --cat-push:#4A90D9; --cat-pull:#D94A7A; --cat-legs:#7B4AD9; --cat-core:#4AD9A7; --cat-cardio:#D9A74A;
+    --cat-arms:#D96A4A; --cat-shoulders:#56B6C2;
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+    --shadow-md:0 8px 14px rgba(0,0,0,0.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:24px 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.88rem;margin-bottom:20px;text-align:center;max-width:900px;margin-left:auto;margin-right:auto;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:24px;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .wrap-label{color:var(--text-strong);font-size:0.92rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.74rem;text-align:center;max-width:300px;}
+  .phone{width:340px;height:740px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .status{height:28px;background:var(--bg-app);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:0.7rem;color:var(--text-main);flex-shrink:0;}
+  .page-header{position:sticky;top:0;z-index:100;background:var(--bg-app);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;min-height:56px;border-bottom:1px solid var(--border-subtle);}
+  .header-left{display:flex;align-items:center;gap:10px;}
+  .back{width:36px;height:36px;border-radius:50%;background:var(--bg-card);color:var(--text-main);display:flex;align-items:center;justify-content:center;font-size:0.82rem;border:none;}
+  .page-title{font-size:1rem;font-weight:700;color:var(--text-strong);}
+  .btn-save{background:var(--primary);color:#04201a;border:none;padding:8px 16px;border-radius:var(--radius-pill);font-size:0.82rem;font-weight:700;}
+  .content{flex:1;overflow-y:auto;padding:14px 16px 100px;}
+  .content::-webkit-scrollbar{display:none;}
+  .field{margin-bottom:16px;}
+  .field-label{font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:6px;padding-left:2px;}
+  .field-input{width:100%;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px 16px;color:var(--text-strong);font-size:0.95rem;font-weight:500;outline:none;}
+  .sec-head{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px;padding:0 2px;}
+  .sec-head h3{font-size:0.88rem;font-weight:700;color:var(--text-strong);}
+  .sec-head .count{font-size:0.72rem;color:var(--text-muted);font-weight:500;margin-left:6px;}
+  .footer{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top, var(--bg-app) 70%, transparent);padding:16px 16px 20px;}
+  .btn-primary{width:100%;background:var(--primary);color:#04201a;border:none;border-radius:var(--radius-md);padding:14px;font-size:0.95rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}
+
+  /* DEXA upload zone */
+  .drop-zone{background:var(--bg-card);border:2px dashed var(--primary-border);border-radius:var(--radius-md);padding:40px 20px;text-align:center;margin-bottom:14px;}
+  .drop-icon{width:64px;height:64px;border-radius:50%;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.4rem;}
+  .drop-title{font-size:1rem;color:var(--text-strong);font-weight:700;margin-bottom:4px;}
+  .drop-desc{font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;}
+  .drop-btn{background:var(--primary);color:#04201a;border:none;padding:10px 18px;border-radius:var(--radius-pill);font-size:0.82rem;font-weight:700;}
+  .file-pill{background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:var(--radius-pill);padding:6px 12px;display:inline-flex;align-items:center;gap:8px;font-size:0.78rem;color:var(--primary);}
+
+  /* Stat cards for DEXA detail */
+  .stat-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;}
+  .stat-label{font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
+  .stat-val{font-size:1.4rem;font-weight:800;color:var(--text-strong);line-height:1;}
+  .stat-unit{font-size:0.75rem;color:var(--text-muted);font-weight:500;margin-left:3px;}
+  .stat-delta{font-size:0.7rem;font-weight:600;margin-top:4px;}
+  .stat-delta.up{color:var(--success);}
+  .stat-delta.down{color:var(--danger);}
+
+  /* AI Coach */
+  .chat-msg{max-width:80%;padding:12px 14px;border-radius:18px;font-size:0.88rem;line-height:1.5;margin-bottom:8px;}
+  .chat-msg.user{background:var(--primary);color:#04201a;align-self:flex-end;border-bottom-right-radius:6px;}
+  .chat-msg.bot{background:var(--bg-card);color:var(--text-main);align-self:flex-start;border-bottom-left-radius:6px;border:1px solid var(--border-subtle);}
+  .chat-wrap{display:flex;flex-direction:column;}
+  .chat-input{position:absolute;bottom:0;left:0;right:0;background:var(--bg-app);border-top:1px solid var(--border-subtle);padding:12px 14px;display:flex;gap:8px;align-items:center;}
+  .chat-input input{flex:1;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-pill);padding:10px 16px;color:var(--text-strong);font-size:0.9rem;outline:none;}
+  .chat-send{width:38px;height:38px;border-radius:50%;background:var(--primary);color:#04201a;border:none;display:flex;align-items:center;justify-content:center;font-size:0.85rem;}
+
+  .prompt-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px;display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;}
+  .prompt-icon{width:32px;height:32px;border-radius:var(--radius-sm);background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:0.82rem;flex-shrink:0;}
+  .prompt-txt{font-size:0.82rem;color:var(--text-main);line-height:1.4;}
+
+  /* Equipment edit */
+  .equip-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+  .equip-ic{width:40px;height:40px;border-radius:var(--radius-sm);background:var(--bg-card-hi);display:flex;align-items:center;justify-content:center;color:var(--text-secondary);flex-shrink:0;}
+  .equip-info{flex:1;min-width:0;}
+  .equip-name{font-size:0.9rem;font-weight:600;color:var(--text-strong);}
+  .equip-meta{font-size:0.72rem;color:var(--text-muted);margin-top:2px;}
+  .equip-menu{width:32px;height:32px;background:transparent;border:none;color:var(--text-muted);}
+  .chip{flex-shrink:0;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-pill);padding:6px 12px;font-size:0.76rem;color:var(--text-secondary);display:flex;align-items:center;gap:6px;font-weight:500;white-space:nowrap;}
+  .chip.active{background:var(--primary-bg);border-color:var(--primary-border);color:var(--primary);font-weight:600;}
+  .chip i{font-size:0.72rem;}
+
+  .link-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .link-row-info{flex:1;font-size:0.84rem;color:var(--text-strong);font-weight:500;}
+  .link-row-action{color:var(--primary);font-size:0.76rem;font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- ==================== DEXA ==================== -->
+
+<h1 class="sec">DEXA Scan — Redesign</h1>
+<p class="desc">Upload flow: clean drop zone. Detail view: grouped stat cards (body comp / regional / trends), insight card, actions row. No collapsible chevron sections. No raw selects.</p>
+
+<div class="row">
+
+  <!-- DEXA Upload -->
+  <div class="wrap">
+    <div class="wrap-label">Upload new scan</div>
+    <div class="wrap-sub">Drop PDF/CSV, auto-parse, confirm date + unit system before saving</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">New DEXA Scan</div></div>
+        <button class="btn-save" disabled>Save</button>
+      </div>
+      <div class="content">
+        <div class="drop-zone">
+          <div class="drop-icon"><i class="fas fa-file-upload"></i></div>
+          <div class="drop-title">Upload scan results</div>
+          <div class="drop-desc">PDF or CSV from your DEXA facility</div>
+          <button class="drop-btn">Choose file</button>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:18px;">
+          <div class="file-pill"><i class="fas fa-file-pdf"></i> Supports PDF</div>
+          <div class="file-pill" style="background:var(--bg-card);border-color:var(--border-light);color:var(--text-secondary);"><i class="fas fa-file-csv"></i> CSV / Excel</div>
+        </div>
+        <div class="sec-head"><h3>Or enter manually</h3></div>
+        <div class="field"><div class="field-label">Scan date</div><input class="field-input" value="April 3, 2026"></div>
+        <div class="field"><div class="field-label">Facility (optional)</div><input class="field-input" placeholder="e.g. DexaFit Boston" style="color:var(--text-muted);"></div>
+        <div class="field"><div class="field-label">Units</div>
+          <div style="display:flex;gap:8px;">
+            <div class="chip active"><i class="fas fa-check"></i> lb / inches</div>
+            <div class="chip">kg / cm</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><button class="btn-primary"><i class="fas fa-arrow-right"></i> Continue to results</button></div>
+    </div>
+  </div>
+
+  <!-- DEXA Detail -->
+  <div class="wrap">
+    <div class="wrap-label">Scan detail</div>
+    <div class="wrap-sub">Summary cards, regional breakdown, comparison with last scan, insight</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">DEXA · Apr 3</div></div>
+        <button style="background:transparent;border:none;color:var(--text-muted);font-size:1rem;"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+      <div class="content">
+
+        <!-- Summary -->
+        <div class="sec-head"><h3>Summary</h3><span style="font-size:0.72rem;color:var(--text-muted);">vs Dec 14, 2025</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+          <div class="stat-card">
+            <div class="stat-label">Body fat</div>
+            <div class="stat-val">18.2<span class="stat-unit">%</span></div>
+            <div class="stat-delta down">↓ 1.8%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Lean mass</div>
+            <div class="stat-val">150.8<span class="stat-unit">lb</span></div>
+            <div class="stat-delta up">↑ 2.4 lb</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Fat mass</div>
+            <div class="stat-val">33.4<span class="stat-unit">lb</span></div>
+            <div class="stat-delta down">↓ 3.6 lb</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Bone</div>
+            <div class="stat-val">7.1<span class="stat-unit">lb</span></div>
+            <div class="stat-delta up">↑ 0.1 lb</div>
+          </div>
+        </div>
+
+        <!-- Insight -->
+        <div style="background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:18px;display:flex;gap:10px;align-items:flex-start;">
+          <i class="fas fa-lightbulb" style="color:var(--primary);margin-top:2px;"></i>
+          <div style="font-size:0.82rem;color:var(--text-main);line-height:1.45;">Strong recomp trend: you added <strong>2.4 lb of lean mass</strong> while losing <strong>3.6 lb of fat</strong> in 4 months.</div>
+        </div>
+
+        <!-- Regional -->
+        <div class="sec-head"><h3>Regional lean mass</h3></div>
+        <div class="stat-card" style="margin-bottom:14px;">
+          <!-- Body silhouette with region highlights (simplified as rows) -->
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:grid;grid-template-columns:70px 1fr 60px;align-items:center;gap:10px;">
+              <div style="font-size:0.78rem;color:var(--text-secondary);">Trunk</div>
+              <div style="height:8px;background:var(--border-light);border-radius:4px;overflow:hidden;"><div style="height:100%;width:72%;background:var(--cat-push);"></div></div>
+              <div style="font-size:0.78rem;color:var(--text-strong);font-weight:600;text-align:right;font-variant-numeric:tabular-nums;">72.4 lb</div>
+            </div>
+            <div style="display:grid;grid-template-columns:70px 1fr 60px;align-items:center;gap:10px;">
+              <div style="font-size:0.78rem;color:var(--text-secondary);">Arms</div>
+              <div style="height:8px;background:var(--border-light);border-radius:4px;overflow:hidden;"><div style="height:100%;width:34%;background:var(--cat-arms);"></div></div>
+              <div style="font-size:0.78rem;color:var(--text-strong);font-weight:600;text-align:right;font-variant-numeric:tabular-nums;">16.8 lb</div>
+            </div>
+            <div style="display:grid;grid-template-columns:70px 1fr 60px;align-items:center;gap:10px;">
+              <div style="font-size:0.78rem;color:var(--text-secondary);">Legs</div>
+              <div style="height:8px;background:var(--border-light);border-radius:4px;overflow:hidden;"><div style="height:100%;width:86%;background:var(--cat-legs);"></div></div>
+              <div style="font-size:0.78rem;color:var(--text-strong);font-weight:600;text-align:right;font-variant-numeric:tabular-nums;">54.2 lb</div>
+            </div>
+            <div style="display:grid;grid-template-columns:70px 1fr 60px;align-items:center;gap:10px;">
+              <div style="font-size:0.78rem;color:var(--text-secondary);">L/R bal.</div>
+              <div style="display:flex;align-items:center;gap:4px;"><div style="flex:1;text-align:center;font-size:0.72rem;color:var(--success);">Balanced</div></div>
+              <div style="font-size:0.78rem;color:var(--success);font-weight:600;text-align:right;">0.4%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visceral -->
+        <div class="sec-head"><h3>Visceral fat</h3></div>
+        <div class="stat-card">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="flex:1;">
+              <div class="stat-val" style="font-size:1.3rem;">1.12<span class="stat-unit">lb</span></div>
+              <div style="font-size:0.72rem;color:var(--success);font-weight:600;margin-top:4px;">Low · healthy range</div>
+            </div>
+            <svg width="80" height="40" viewBox="0 0 80 40">
+              <path d="M0,30 L15,28 L30,24 L45,20 L60,14 L80,8" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== AI COACH ==================== -->
+
+<h1 class="sec">AI Coach — Redesign</h1>
+<p class="desc">Prompt cards front-and-center when empty. Chat bubbles for the conversation. History tab for past sessions. No prompt textarea at the top taking up half the screen.</p>
+
+<div class="row">
+
+  <!-- AI Coach empty -->
+  <div class="wrap">
+    <div class="wrap-label">Empty state · prompt cards</div>
+    <div class="wrap-sub">Tap a suggestion or type your own. Cards are context-aware (e.g. "your bench press plateaued")</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">AI Coach</div></div>
+        <button style="background:transparent;border:none;color:var(--text-muted);"><i class="fas fa-history"></i></button>
+      </div>
+      <div class="content" style="padding-bottom:80px;">
+        <div style="text-align:center;padding:20px 0 24px;">
+          <div style="width:64px;height:64px;border-radius:50%;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:1.5rem;"><i class="fas fa-robot"></i></div>
+          <div style="font-size:1.1rem;color:var(--text-strong);font-weight:700;margin-bottom:4px;">Ask anything</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);">I know your training history. Try:</div>
+        </div>
+
+        <div class="prompt-card">
+          <div class="prompt-icon"><i class="fas fa-chart-line"></i></div>
+          <div class="prompt-txt">Why has my <strong>bench press</strong> stalled? Suggest a deload.</div>
+        </div>
+        <div class="prompt-card">
+          <div class="prompt-icon" style="background:rgba(240,194,75,0.1);color:var(--warning);"><i class="fas fa-balance-scale"></i></div>
+          <div class="prompt-txt">Check my <strong>push / pull volume</strong> balance this month.</div>
+        </div>
+        <div class="prompt-card">
+          <div class="prompt-icon" style="background:rgba(247,168,101,0.1);color:var(--highlight-warm);"><i class="fas fa-calendar-alt"></i></div>
+          <div class="prompt-txt">Plan a <strong>5-day split</strong> for my goals.</div>
+        </div>
+        <div class="prompt-card">
+          <div class="prompt-icon" style="background:rgba(74,217,167,0.1);color:var(--cat-core);"><i class="fas fa-running"></i></div>
+          <div class="prompt-txt">Help me deload next week — I'm feeling beat up.</div>
+        </div>
+      </div>
+      <div class="chat-input">
+        <input placeholder="Ask your coach anything…">
+        <button class="chat-send"><i class="fas fa-arrow-up"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Coach active chat -->
+  <div class="wrap">
+    <div class="wrap-label">Conversation</div>
+    <div class="wrap-sub">Bubbles with context references (links to specific exercises/workouts)</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">AI Coach</div></div>
+        <button style="background:transparent;border:none;color:var(--text-muted);"><i class="fas fa-history"></i></button>
+      </div>
+      <div class="content" style="padding-bottom:80px;">
+        <div class="chat-wrap">
+          <div class="chat-msg user">Why has my bench press stalled?</div>
+          <div class="chat-msg bot">
+            Looking at your last <strong>6 bench sessions</strong>, you've been training at <strong>85–90% 1RM</strong> consistently with minimal variation — that's usually the culprit.
+            <br><br>
+            Two things I'd try:
+            <br>• Drop to <strong>70% for a deload week</strong>
+            <br>• Add <strong>incline DB press</strong> 2×/wk as an accessory
+            <br><br>
+            Want me to adjust your Push template?
+          </div>
+          <div class="chat-msg user">Yes, add incline DB</div>
+          <div class="chat-msg bot">
+            Added <strong>Incline DB Press · 3×10</strong> to your "Chest &amp; Triceps" template after the bench.
+            <br><br>
+            <div style="background:var(--bg-card-hi);border-radius:var(--radius-sm);padding:10px 12px;margin-top:4px;display:flex;align-items:center;gap:10px;border:1px solid var(--border-light);">
+              <i class="fas fa-dumbbell" style="color:var(--cat-push);"></i>
+              <div style="flex:1;"><div style="font-size:0.82rem;color:var(--text-strong);font-weight:600;">Chest &amp; Triceps</div><div style="font-size:0.7rem;color:var(--text-muted);">Updated · 7 exercises</div></div>
+              <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.7rem;"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input">
+        <input placeholder="Reply…">
+        <button class="chat-send"><i class="fas fa-arrow-up"></i></button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== EQUIPMENT EDIT ==================== -->
+
+<h1 class="sec">Equipment Edit / Location Edit</h1>
+<p class="desc">Consistent with exercise editor: name + category chips + associated-items list + sticky save. Equipment can belong to multiple locations via chips. Linked exercises shown inline with remove buttons.</p>
+
+<div class="row">
+
+  <!-- Equipment edit -->
+  <div class="wrap">
+    <div class="wrap-label">Edit equipment</div>
+    <div class="wrap-sub">Name, type, locations, and linked exercises all on one page</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">Hammer Strength ISO Press</div></div>
+        <button class="btn-save">Save</button>
+      </div>
+      <div class="content">
+        <div class="field"><div class="field-label">Name</div><input class="field-input" value="Hammer Strength ISO Press"></div>
+        <div class="field"><div class="field-label">Brand</div><input class="field-input" value="Hammer Strength"></div>
+        <div class="field"><div class="field-label">Type</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <div class="chip">Barbell</div>
+            <div class="chip">Dumbbell</div>
+            <div class="chip"><i class="fas fa-cog"></i> Plate-loaded</div>
+            <div class="chip active"><i class="fas fa-cog"></i> Machine</div>
+            <div class="chip">Cable</div>
+            <div class="chip">Bodyweight</div>
+          </div>
+        </div>
+
+        <!-- Base / bar weight — shows when type is Barbell, Plate-loaded, Machine, or Cable -->
+        <div class="field">
+          <div class="field-label">Base weight <span style="color:var(--text-muted);text-transform:none;letter-spacing:0;font-weight:500;font-size:0.7rem;margin-left:4px;">(empty machine / bar)</span></div>
+          <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px 16px;display:flex;align-items:center;gap:12px;">
+            <input style="flex:1;background:transparent;border:none;color:var(--text-strong);font-size:1.1rem;font-weight:700;outline:none;font-variant-numeric:tabular-nums;" value="25">
+            <div style="display:flex;gap:6px;">
+              <div class="chip active" style="padding:5px 12px;font-size:0.74rem;">lb</div>
+              <div class="chip" style="padding:5px 12px;font-size:0.74rem;">kg</div>
+            </div>
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-muted);margin-top:6px;padding-left:2px;">Hammer Strength ISO carriage is ~25 lb. Added to plate weight when logging sets and shown in the plate calculator.</div>
+        </div>
+
+        <div class="sec-head"><h3>Locations <span class="count">2</span></h3><span style="color:var(--primary);font-size:0.78rem;font-weight:600;">+ Add</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <div class="chip active" style="padding-right:6px;">
+            <i class="fas fa-map-marker-alt"></i> Downtown Gym
+            <button style="background:transparent;border:none;color:var(--primary);margin-left:4px;"><i class="fas fa-times"></i></button>
+          </div>
+          <div class="chip active" style="padding-right:6px;">
+            <i class="fas fa-map-marker-alt"></i> Hotel Gym (NYC)
+            <button style="background:transparent;border:none;color:var(--primary);margin-left:4px;"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+
+        <div class="sec-head"><h3>Used for <span class="count">3 exercises</span></h3></div>
+        <div class="link-row">
+          <div class="equip-ic" style="background:rgba(74,144,217,0.15);color:var(--cat-push);"><i class="fas fa-hand-paper"></i></div>
+          <div class="link-row-info">Bench Press</div>
+          <button class="link-row-action">View</button>
+        </div>
+        <div class="link-row">
+          <div class="equip-ic" style="background:rgba(74,144,217,0.15);color:var(--cat-push);"><i class="fas fa-hand-paper"></i></div>
+          <div class="link-row-info">Incline Press</div>
+          <button class="link-row-action">View</button>
+        </div>
+        <div class="link-row">
+          <div class="equip-ic" style="background:rgba(74,144,217,0.15);color:var(--cat-push);"><i class="fas fa-hand-paper"></i></div>
+          <div class="link-row-info">Decline Press</div>
+          <button class="link-row-action">View</button>
+        </div>
+
+        <div style="margin-top:24px;text-align:center;">
+          <button style="background:transparent;border:none;color:var(--danger);font-size:0.82rem;font-weight:600;"><i class="fas fa-trash"></i> Delete equipment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Location edit -->
+  <div class="wrap">
+    <div class="wrap-label">Edit location</div>
+    <div class="wrap-sub">GPS match, equipment list, and scheduled workouts for this location</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">Downtown Gym</div></div>
+        <button class="btn-save">Save</button>
+      </div>
+      <div class="content">
+        <div class="field"><div class="field-label">Name</div><input class="field-input" value="Downtown Gym"></div>
+
+        <!-- Mini map card -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;margin-bottom:14px;">
+          <div style="height:100px;background:linear-gradient(135deg,#1a2838,#0d1218);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:10px;">
+            <i class="fas fa-map-marker-alt" style="color:var(--primary);font-size:1.8rem;"></i>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-strong);font-weight:600;">123 Main St, Boston</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);">42.3601° N, 71.0589° W</div>
+            </div>
+            <button style="background:var(--primary-bg);border:1px solid var(--primary-border);color:var(--primary);padding:6px 12px;border-radius:var(--radius-pill);font-size:0.72rem;font-weight:600;"><i class="fas fa-crosshairs"></i> Use current</button>
+          </div>
+        </div>
+
+        <div class="field"><div class="field-label">Match radius</div>
+          <div style="display:flex;gap:8px;">
+            <div class="chip">100m</div>
+            <div class="chip active">500m</div>
+            <div class="chip">1 km</div>
+          </div>
+        </div>
+
+        <div class="sec-head"><h3>Equipment here <span class="count">18 items</span></h3></div>
+        <div class="link-row">
+          <div class="equip-ic"><i class="fas fa-dumbbell"></i></div>
+          <div class="link-row-info">Hammer Strength ISO Press</div>
+          <button class="link-row-action">View</button>
+        </div>
+        <div class="link-row">
+          <div class="equip-ic"><i class="fas fa-dumbbell"></i></div>
+          <div class="link-row-info">Rogue Power Rack</div>
+          <button class="link-row-action">View</button>
+        </div>
+        <div class="link-row">
+          <div class="equip-ic"><i class="fas fa-dumbbell"></i></div>
+          <div class="link-row-info">Cable Crossover</div>
+          <button class="link-row-action">View</button>
+        </div>
+        <div style="text-align:center;margin-top:4px;"><button style="background:transparent;border:none;color:var(--primary);font-size:0.78rem;font-weight:600;">View all 18 →</button></div>
+
+        <div style="margin-top:24px;text-align:center;">
+          <button style="background:transparent;border:none;color:var(--danger);font-size:0.82rem;font-weight:600;"><i class="fas fa-trash"></i> Delete location</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== BODYWEIGHT EXERCISES ==================== -->
+
+<h1 class="sec">Bodyweight Exercises — Weight Tracking</h1>
+<p class="desc">Big improvement to current logging: app pulls your latest body weight from measurements (or asks once if stale). Each set then logs your bodyweight + any added weight (belt + plate, weighted vest, etc.) as a real total volume number.</p>
+
+<div class="row">
+
+  <!-- 1. Stale BW — needs update -->
+  <div class="wrap">
+    <div class="wrap-label">Stale body weight prompt</div>
+    <div class="wrap-sub">First bodyweight exercise of the session, no recent measurement (&gt;14 days). Quick-input modal.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">Pull-ups</div></div>
+        <button style="background:transparent;border:none;color:var(--text-muted);font-size:1rem;"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+      <div class="content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-top:40px;">
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(86,182,194,0.15);color:var(--cat-shoulders);display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:1.4rem;"><i class="fas fa-weight"></i></div>
+        <div style="font-size:1.1rem;color:var(--text-strong);font-weight:700;margin-bottom:6px;">What's your body weight today?</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:24px;line-height:1.5;max-width:240px;">We use this to track total volume on bodyweight exercises like pull-ups and dips.</div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:18px;width:100%;max-width:260px;margin-bottom:14px;">
+          <div style="display:flex;align-items:baseline;gap:8px;justify-content:center;">
+            <input style="background:transparent;border:none;color:var(--text-strong);font-size:2rem;font-weight:800;outline:none;width:140px;text-align:center;font-variant-numeric:tabular-nums;" value="184.2">
+            <span style="color:var(--cat-shoulders);font-size:1rem;font-weight:600;">lb</span>
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-muted);margin-top:8px;">Last entry: 186.0 lb · 23 days ago</div>
+        </div>
+
+        <button class="btn-primary" style="max-width:260px;"><i class="fas fa-check"></i> Use this weight</button>
+        <button style="background:transparent;border:none;color:var(--text-muted);font-size:0.78rem;font-weight:500;padding:10px;margin-top:8px;">Skip · log without bodyweight</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Active BW exercise card with autofilled BW -->
+  <div class="wrap">
+    <div class="wrap-label">Bodyweight exercise · auto-filled</div>
+    <div class="wrap-sub">Recent weight pulled in. "+Add weight" for weighted variations (belt, vest). Total volume calculated correctly.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">Pull-ups</div></div>
+        <button style="background:transparent;border:none;color:var(--text-muted);font-size:1rem;"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+      <div class="content">
+
+        <!-- Bodyweight banner — auto-filled, dismissible -->
+        <div style="background:rgba(86,182,194,0.08);border:1px solid rgba(86,182,194,0.2);border-radius:var(--radius-md);padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <i class="fas fa-weight" style="color:var(--cat-shoulders);"></i>
+          <div style="flex:1;">
+            <div style="font-size:0.78rem;color:var(--text-strong);font-weight:600;">Body weight: 184.2 lb</div>
+            <div style="font-size:0.66rem;color:var(--text-muted);">Auto-filled from this morning's measurement</div>
+          </div>
+          <button style="background:transparent;border:none;color:var(--primary);font-size:0.74rem;font-weight:600;">Edit</button>
+        </div>
+
+        <!-- Optional added weight -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">
+          <i class="fas fa-plus" style="color:var(--text-muted);"></i>
+          <div style="flex:1;">
+            <div style="font-size:0.82rem;color:var(--text-strong);font-weight:600;">Added weight (optional)</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);">Belt + plate, weighted vest, dip belt, etc.</div>
+          </div>
+          <input style="width:80px;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.95rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;" placeholder="0">
+          <span style="font-size:0.74rem;color:var(--text-muted);">lb</span>
+        </div>
+
+        <!-- Set table — same pattern as active workout, but column shows TOTAL with BW + added -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:0.92rem;font-weight:700;color:var(--text-strong);">Sets</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);">Total per rep = BW + added</div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+            <thead>
+              <tr style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;">
+                <th style="width:22px;text-align:left;padding:4px;font-weight:600;">#</th>
+                <th style="width:32%;text-align:center;padding:4px;font-weight:600;">Reps</th>
+                <th style="width:36%;text-align:center;padding:4px;font-weight:600;">Total / rep</th>
+                <th style="width:32px;padding:4px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">1</td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;" value="10"></td>
+                <td style="padding:4px;text-align:center;font-size:0.86rem;font-weight:700;color:var(--text-secondary);font-variant-numeric:tabular-nums;">184.2 lb</td>
+                <td style="padding:4px;text-align:center;"><i class="fas fa-check-circle" style="color:var(--success);"></i></td>
+              </tr>
+              <tr>
+                <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">2</td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;" value="8"></td>
+                <td style="padding:4px;text-align:center;font-size:0.86rem;font-weight:700;color:var(--text-secondary);font-variant-numeric:tabular-nums;">184.2 lb</td>
+                <td style="padding:4px;text-align:center;"><i class="fas fa-check-circle" style="color:var(--success);"></i></td>
+              </tr>
+              <tr>
+                <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">3</td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;" value="6"></td>
+                <td style="padding:4px;text-align:center;font-size:0.86rem;font-weight:700;color:var(--text-secondary);font-variant-numeric:tabular-nums;">184.2 lb</td>
+                <td style="padding:4px;text-align:center;"><i class="far fa-circle" style="color:var(--text-muted);"></i></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;font-size:0.74rem;">
+            <span style="color:var(--text-muted);">Volume so far</span>
+            <span style="color:var(--text-strong);font-weight:700;font-variant-numeric:tabular-nums;">3,316 lb</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Weighted variation (belt + plate) -->
+  <div class="wrap">
+    <div class="wrap-label">Weighted pull-ups · belt + 45 lb</div>
+    <div class="wrap-sub">Same UI but with added weight populated. Total per rep includes both. Plate calc available.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">Weighted Pull-ups</div></div>
+        <button style="background:transparent;border:none;color:var(--text-muted);font-size:1rem;"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+      <div class="content">
+
+        <div style="background:rgba(86,182,194,0.08);border:1px solid rgba(86,182,194,0.2);border-radius:var(--radius-md);padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <i class="fas fa-weight" style="color:var(--cat-shoulders);"></i>
+          <div style="flex:1;">
+            <div style="font-size:0.78rem;color:var(--text-strong);font-weight:600;">Body weight: 184.2 lb</div>
+            <div style="font-size:0.66rem;color:var(--text-muted);">Auto-filled · used for total volume</div>
+          </div>
+          <button style="background:transparent;border:none;color:var(--primary);font-size:0.74rem;font-weight:600;">Edit</button>
+        </div>
+
+        <div style="background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">
+          <i class="fas fa-plus" style="color:var(--primary);"></i>
+          <div style="flex:1;">
+            <div style="font-size:0.82rem;color:var(--text-strong);font-weight:600;">Added weight</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);">Belt + 1×45 lb plate</div>
+          </div>
+          <input style="width:80px;background:var(--bg-app);border:1px solid var(--primary-border);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.95rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;" value="45">
+          <span style="font-size:0.74rem;color:var(--text-muted);">lb</span>
+        </div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:0.92rem;font-weight:700;color:var(--text-strong);">Sets</div>
+            <button style="background:transparent;border:none;color:var(--primary);font-size:0.72rem;font-weight:600;"><i class="fas fa-calculator"></i> Plate calc</button>
+          </div>
+          <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+            <thead>
+              <tr style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;">
+                <th style="width:22px;text-align:left;padding:4px;font-weight:600;">#</th>
+                <th style="width:32%;text-align:center;padding:4px;font-weight:600;">Reps</th>
+                <th style="width:36%;text-align:center;padding:4px;font-weight:600;">Total / rep</th>
+                <th style="width:32px;padding:4px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">1</td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;" value="6"></td>
+                <td style="padding:4px;text-align:center;font-size:0.86rem;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums;">229.2 lb</td>
+                <td style="padding:4px;text-align:center;"><i class="fas fa-check-circle" style="color:var(--success);"></i></td>
+              </tr>
+              <tr>
+                <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">2</td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;" value="5"></td>
+                <td style="padding:4px;text-align:center;font-size:0.86rem;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums;">229.2 lb</td>
+                <td style="padding:4px;text-align:center;"><i class="fas fa-check-circle" style="color:var(--success);"></i></td>
+              </tr>
+              <tr>
+                <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">3</td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;outline:none;" value="4"></td>
+                <td style="padding:4px;text-align:center;font-size:0.86rem;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums;">229.2 lb</td>
+                <td style="padding:4px;text-align:center;"><i class="far fa-circle" style="color:var(--text-muted);"></i></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;font-size:0.74rem;">
+            <span style="color:var(--text-muted);">Total volume</span>
+            <span style="color:var(--text-strong);font-weight:700;font-variant-numeric:tabular-nums;">3,438 lb</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

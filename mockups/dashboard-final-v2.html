@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard v2 — Full scroll + body-part drill-downs</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --warning:#f0c24b; --danger:#e35d6a; --highlight-warm:#f7a865;
+    --cat-push:#4A90D9; --cat-pull:#D94A7A; --cat-legs:#7B4AD9; --cat-core:#4AD9A7;
+    --cat-cardio:#D9A74A; --cat-arms:#D96A4A; --cat-shoulders:#56B6C2;
+    --badge-gold:#ffd700;
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+    --shadow-md:0 8px 14px rgba(0,0,0,0.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:24px 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;text-align:center;max-width:900px;margin-left:auto;margin-right:auto;line-height:1.5;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:28px;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .wrap-label{color:var(--text-strong);font-size:0.95rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.74rem;text-align:center;max-width:320px;line-height:1.5;}
+  .phone{width:340px;height:760px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .status{height:28px;background:var(--bg-app);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:0.7rem;color:var(--text-main);flex-shrink:0;}
+
+  /* Dashboard styles */
+  .content{flex:1;overflow-y:auto;padding:12px 14px 80px;}
+  .content::-webkit-scrollbar{display:none;}
+  .greeting{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .greeting h2{color:var(--text-strong);font-size:1.25rem;font-weight:700;}
+  .greeting span{color:var(--text-secondary);font-size:0.76rem;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--cat-push),var(--cat-pull));}
+
+  /* Active workout pill (conditional) */
+  .active-pill{background:linear-gradient(135deg,var(--primary),#0fa48a);color:#04201a;border-radius:var(--radius-pill);padding:7px 8px 7px 14px;display:flex;align-items:center;gap:10px;min-height:38px;box-shadow:0 4px 12px rgba(29,211,176,0.2);margin-bottom:12px;}
+  .ap-pulse{width:8px;height:8px;border-radius:50%;background:#04201a;}
+  .ap-info{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;overflow:hidden;}
+  .ap-name{font-size:0.82rem;font-weight:700;}
+  .ap-meta{font-size:0.7rem;opacity:0.78;font-weight:500;font-variant-numeric:tabular-nums;}
+  .ap-resume{width:28px;height:28px;border-radius:50%;background:#04201a;color:var(--primary);border:none;display:flex;align-items:center;justify-content:center;font-size:0.7rem;}
+  .ap-cancel-row{display:flex;justify-content:center;margin:4px 0 10px;}
+  .ap-cancel{background:transparent;border:none;color:var(--text-muted);font-size:0.68rem;font-weight:500;padding:4px 12px;}
+
+  /* HERO CHIP ROW — Streak, Week, Body weight */
+  .hero-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;}
+  .hero-chip{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;padding:10px 10px;text-align:center;}
+  .hero-chip__icon{font-size:0.9rem;margin-bottom:4px;}
+  .hero-chip__val{font-size:1.25rem;font-weight:800;color:var(--text-strong);line-height:1;font-variant-numeric:tabular-nums;}
+  .hero-chip__unit{font-size:0.6rem;color:var(--text-muted);font-weight:500;margin-left:2px;}
+  .hero-chip__label{font-size:0.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-top:3px;}
+  .hero-chip__delta{font-size:0.58rem;font-weight:600;margin-top:2px;}
+  .hero-chip__delta.up{color:var(--success);}
+  .hero-chip__delta.down{color:var(--danger);}
+  .hero-chip.streak{background:linear-gradient(135deg,rgba(247,168,101,0.15),rgba(247,168,101,0.04));border-color:rgba(247,168,101,0.25);}
+  .hero-chip.streak .hero-chip__val{color:var(--highlight-warm);}
+
+  /* Section header */
+  .sec-head{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;}
+  .sec-head h3{font-size:0.82rem;font-weight:700;color:var(--text-strong);}
+  .sec-head a{font-size:0.7rem;color:var(--primary);font-weight:600;}
+
+  /* Body part mini-card (Variant C — split) */
+  .bp-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px;margin-bottom:8px;position:relative;cursor:pointer;transition:transform 100ms;}
+  .bp-card:active{transform:scale(0.99);}
+  .bp-card.stale{opacity:0.55;}
+  .bp-card__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .bp-card__label{display:flex;align-items:center;gap:8px;font-size:0.82rem;color:var(--text-strong);font-weight:700;}
+  .bp-card__icon{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.74rem;flex-shrink:0;}
+  .ic-chest{background:rgba(74,144,217,0.15);color:var(--cat-push);}
+  .ic-back{background:rgba(217,74,122,0.15);color:var(--cat-pull);}
+  .ic-legs{background:rgba(123,74,217,0.15);color:var(--cat-legs);}
+  .ic-shoulders{background:rgba(86,182,194,0.15);color:var(--cat-shoulders);}
+  .ic-arms{background:rgba(217,106,74,0.15);color:var(--cat-arms);}
+  .ic-core{background:rgba(74,217,167,0.15);color:var(--cat-core);}
+  .bp-card__chev{color:var(--text-muted);font-size:0.72rem;}
+  .bp-card__grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;}
+  .bp-cell{background:var(--bg-card-hi);border-radius:8px;padding:8px 10px;}
+  .bp-cell__label{font-size:0.56rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:flex;align-items:center;gap:3px;}
+  .bp-cell__val{font-size:0.95rem;font-weight:800;color:var(--text-strong);line-height:1.1;font-variant-numeric:tabular-nums;}
+  .bp-cell__unit{font-size:0.62rem;color:var(--text-muted);font-weight:500;margin-left:2px;}
+  .bp-cell__sub{font-size:0.58rem;color:var(--success);font-weight:600;margin-top:2px;}
+  .bp-cell__sub.down{color:var(--danger);}
+  .bp-spark{width:100%;height:24px;}
+  .stale-warn{font-size:0.62rem;color:var(--warning);font-weight:600;text-align:center;margin-top:2px;}
+
+  /* Body composition dashboard card */
+  .bc-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px;cursor:pointer;margin-bottom:8px;}
+  .bc-row{display:flex;align-items:center;gap:12px;}
+  .bc-legend{display:flex;flex-direction:column;gap:4px;font-size:0.72rem;flex:1;}
+  .bc-leg{display:flex;align-items:center;gap:6px;color:var(--text-main);}
+  .bc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .bc-weight{font-size:0.66rem;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;}
+  .bc-weight strong{color:var(--text-strong);font-variant-numeric:tabular-nums;}
+
+  /* Insight card */
+  .insight{background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:8px;display:flex;gap:8px;align-items:flex-start;}
+  .insight i{color:var(--primary);font-size:0.8rem;margin-top:2px;}
+  .insight-text{font-size:0.76rem;color:var(--text-main);line-height:1.4;}
+  .insight-text strong{color:var(--text-strong);}
+
+  /* Recent workout row */
+  .rw-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .rw-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:0.82rem;flex-shrink:0;}
+  .rw-info{flex:1;min-width:0;}
+  .rw-name{font-size:0.82rem;font-weight:600;color:var(--text-strong);}
+  .rw-meta{font-size:0.66rem;color:var(--text-muted);margin-top:1px;}
+  .rw-count{background:rgba(29,211,176,0.1);color:var(--primary);font-size:0.58rem;padding:2px 6px;border-radius:var(--radius-pill);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-left:6px;}
+  .rw-play{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#04201a;border:none;display:flex;align-items:center;justify-content:center;font-size:0.7rem;flex-shrink:0;}
+
+  /* Recent PR row */
+  .pr-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .pr-badge{width:30px;height:30px;border-radius:50%;background:rgba(255,215,0,0.14);color:var(--badge-gold);display:flex;align-items:center;justify-content:center;font-size:0.78rem;flex-shrink:0;}
+  .pr-info{flex:1;min-width:0;}
+  .pr-name{font-size:0.82rem;font-weight:600;color:var(--text-strong);}
+  .pr-meta{font-size:0.66rem;color:var(--text-muted);}
+  .pr-val{font-size:0.86rem;font-weight:800;color:var(--text-strong);font-variant-numeric:tabular-nums;}
+
+  /* Nav */
+  .nav{height:60px;background:var(--bg-surface);border-top:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-around;position:absolute;bottom:0;left:0;right:0;}
+  .nbtn{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-muted);font-size:0.62rem;}
+  .nbtn.active{color:var(--primary);}
+  .nbtn i{font-size:0.94rem;}
+  .nbtn.fab{background:var(--primary);color:#04201a;width:46px;height:46px;border-radius:50%;justify-content:center;transform:translateY(-8px);box-shadow:var(--shadow-md);gap:0;}
+  .nbtn.fab i{font-size:1rem;}
+
+  /* ========== DETAIL PAGE ========== */
+  .d-header{position:sticky;top:0;z-index:10;background:var(--bg-app);padding:10px 14px;display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--border-subtle);}
+  .d-back{width:32px;height:32px;border-radius:50%;background:var(--bg-card);color:var(--text-main);border:none;display:flex;align-items:center;justify-content:center;font-size:0.78rem;flex-shrink:0;}
+  .d-header-info{flex:1;min-width:0;display:flex;align-items:center;gap:10px;}
+  .d-header-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:0.84rem;flex-shrink:0;}
+  .d-title{font-size:1rem;font-weight:700;color:var(--text-strong);line-height:1;}
+  .d-subtitle{font-size:0.68rem;color:var(--text-muted);font-variant-numeric:tabular-nums;margin-top:2px;}
+  .d-menu{width:32px;height:32px;background:transparent;border:none;color:var(--text-muted);}
+
+  .range-pills{display:flex;gap:4px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-pill);padding:3px;margin:12px 14px;}
+  .range-pills button{flex:1;background:transparent;border:none;color:var(--text-muted);font-size:0.68rem;font-weight:600;padding:5px 0;border-radius:var(--radius-pill);}
+  .range-pills button.active{background:var(--primary-bg);color:var(--primary);}
+
+  .d-hero-stats{padding:0 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+  .d-stat{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px;}
+  .d-stat__label{font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;display:flex;align-items:center;gap:4px;font-weight:700;}
+  .d-stat__val{font-size:1.6rem;font-weight:800;color:var(--text-strong);line-height:1;font-variant-numeric:tabular-nums;}
+  .d-stat__unit{font-size:0.72rem;color:var(--text-muted);font-weight:500;margin-left:2px;}
+  .d-stat__delta{font-size:0.66rem;font-weight:600;margin-top:4px;}
+  .d-stat__delta.up{color:var(--success);}
+  .d-stat__delta.down{color:var(--danger);}
+
+  .d-chart-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;margin:0 14px 12px;}
+  .d-chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .d-chart-title{font-size:0.76rem;font-weight:700;color:var(--text-strong);}
+  .d-chart-legend{font-size:0.6rem;color:var(--text-muted);}
+
+  .d-exercise-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px 12px;display:flex;align-items:center;gap:10px;margin:0 14px 6px;cursor:pointer;}
+  .d-ex-spark{width:54px;height:24px;flex-shrink:0;}
+  .d-ex-info{flex:1;min-width:0;}
+  .d-ex-name{font-size:0.82rem;font-weight:600;color:var(--text-strong);}
+  .d-ex-meta{font-size:0.62rem;color:var(--text-muted);margin-top:1px;}
+  .d-ex-right{text-align:right;}
+  .d-ex-val{font-size:0.8rem;font-weight:700;color:var(--text-strong);font-variant-numeric:tabular-nums;}
+  .d-ex-delta{font-size:0.6rem;color:var(--success);font-weight:600;}
+  .d-ex-delta.down{color:var(--danger);}
+
+  .d-pr-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px 12px;display:flex;align-items:center;gap:10px;margin:0 14px 6px;}
+
+  .d-sec-head{font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin:14px 16px 8px;}
+  .d-content{flex:1;overflow-y:auto;padding-bottom:20px;}
+  .d-content::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+
+<h1 class="sec">Dashboard v2 — Full scroll + drill-downs</h1>
+<p class="desc">Left phone: the whole dashboard scrollable top-to-bottom. Middle phone: what you see when you tap the "Chest" card. Right phone: what you see when you tap "Legs" — same template adapts to the body part.</p>
+
+<div class="row">
+
+  <!-- =============== DASHBOARD FULL =============== -->
+  <div class="wrap">
+    <div class="wrap-label">Dashboard — full scroll</div>
+    <div class="wrap-sub">Active workout (conditional) → Hero chips → Body parts (Variant C) → Body → Today's workouts → PRs</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="content">
+        <div class="greeting">
+          <div><h2>Good morning</h2><span>Tuesday, April 14</span></div>
+          <div class="avatar"></div>
+        </div>
+
+        <!-- Active workout pill (shown when active) -->
+        <div class="active-pill">
+          <div class="ap-pulse"></div>
+          <div class="ap-info"><div class="ap-name">Chest &amp; Triceps</div><div class="ap-meta">3/6 · 32:14</div></div>
+          <button class="ap-resume"><i class="fas fa-arrow-right"></i></button>
+        </div>
+        <div class="ap-cancel-row"><button class="ap-cancel"><i class="fas fa-times"></i> Cancel workout</button></div>
+
+        <!-- HERO CHIP ROW: streak + week + body weight -->
+        <div class="hero-row">
+          <div class="hero-chip streak">
+            <div class="hero-chip__icon"><i class="fas fa-fire"></i></div>
+            <div class="hero-chip__val">21</div>
+            <div class="hero-chip__label">Streak</div>
+          </div>
+          <div class="hero-chip">
+            <div class="hero-chip__icon" style="color:var(--primary);"><i class="fas fa-bullseye"></i></div>
+            <div class="hero-chip__val">4<span class="hero-chip__unit">/5</span></div>
+            <div class="hero-chip__label">This week</div>
+          </div>
+          <div class="hero-chip">
+            <div class="hero-chip__icon" style="color:var(--cat-shoulders);"><i class="fas fa-weight"></i></div>
+            <div class="hero-chip__val">184<span class="hero-chip__unit">lb</span></div>
+            <div class="hero-chip__delta down">↓ 1.2 lb</div>
+          </div>
+        </div>
+
+        <!-- INSIGHT (moved up) -->
+        <div class="insight">
+          <i class="fas fa-lightbulb"></i>
+          <div class="insight-text">Your <strong>core volume</strong> is down 22% this month — add 2 core sets to your next session.</div>
+        </div>
+
+        <!-- TODAY'S WORKOUTS (moved up) -->
+        <div class="sec-head"><h3>For Tuesday</h3><a>All →</a></div>
+        <div class="rw-row">
+          <div class="rw-icon ic-legs"><i class="fas fa-walking"></i></div>
+          <div class="rw-info">
+            <div class="rw-name">Leg Day <span class="rw-count">Most used</span></div>
+            <div class="rw-meta">5 exercises · last Tue · 42 Tuesdays</div>
+          </div>
+          <button class="rw-play"><i class="fas fa-play"></i></button>
+        </div>
+        <div class="rw-row">
+          <div class="rw-icon ic-pull" style="background:rgba(217,74,122,0.15);color:var(--cat-pull);"><i class="fas fa-fist-raised"></i></div>
+          <div class="rw-info">
+            <div class="rw-name">Back &amp; Biceps</div>
+            <div class="rw-meta">7 exercises · 12 Tuesdays</div>
+          </div>
+          <button class="rw-play"><i class="fas fa-play"></i></button>
+        </div>
+        <div class="rw-row">
+          <div class="rw-icon ic-core"><i class="fas fa-bullseye"></i></div>
+          <div class="rw-info">
+            <div class="rw-name">Core &amp; Conditioning</div>
+            <div class="rw-meta">4 exercises · 4 Tuesdays</div>
+          </div>
+          <button class="rw-play"><i class="fas fa-play"></i></button>
+        </div>
+
+        <!-- TRAINING (renamed from Body Parts) -->
+        <div class="sec-head"><h3>Training</h3><a>This month</a></div>
+
+        <div class="bp-card">
+          <div class="bp-card__head">
+            <div class="bp-card__label"><div class="bp-card__icon ic-chest"><i class="fas fa-hand-paper"></i></div>Chest</div>
+            <i class="fas fa-chevron-right bp-card__chev"></i>
+          </div>
+          <div class="bp-card__grid">
+            <div class="bp-cell"><div class="bp-cell__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> Bench Max</div><div class="bp-cell__val">225<span class="bp-cell__unit">×5</span></div><div class="bp-cell__sub">↑ 10 lb · 3d</div></div>
+            <div class="bp-cell"><div class="bp-cell__label">Volume · wk</div><div class="bp-cell__val">10.2k<span class="bp-cell__unit">lb</span></div><div class="bp-cell__sub">↑ 12%</div></div>
+          </div>
+          <svg class="bp-spark" viewBox="0 0 280 24" preserveAspectRatio="none"><path d="M0,18 L40,16 L80,14 L120,12 L160,8 L200,10 L240,6 L280,4" fill="none" stroke="var(--cat-push)" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+
+        <div class="bp-card">
+          <div class="bp-card__head">
+            <div class="bp-card__label"><div class="bp-card__icon ic-back"><i class="fas fa-fist-raised"></i></div>Back</div>
+            <i class="fas fa-chevron-right bp-card__chev"></i>
+          </div>
+          <div class="bp-card__grid">
+            <div class="bp-cell"><div class="bp-cell__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> Weighted pull-up</div><div class="bp-cell__val">BW+45<span class="bp-cell__unit"></span></div><div class="bp-cell__sub">↑ 5 lb · 6d</div></div>
+            <div class="bp-cell"><div class="bp-cell__label">Volume · wk</div><div class="bp-cell__val">8.4k<span class="bp-cell__unit">lb</span></div><div class="bp-cell__sub">↑ 8%</div></div>
+          </div>
+          <svg class="bp-spark" viewBox="0 0 280 24" preserveAspectRatio="none"><path d="M0,14 L40,16 L80,10 L120,12 L160,8 L200,10 L240,6 L280,4" fill="none" stroke="var(--cat-pull)" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+
+        <div class="bp-card">
+          <div class="bp-card__head">
+            <div class="bp-card__label"><div class="bp-card__icon ic-legs"><i class="fas fa-walking"></i></div>Legs</div>
+            <i class="fas fa-chevron-right bp-card__chev"></i>
+          </div>
+          <div class="bp-card__grid">
+            <div class="bp-cell"><div class="bp-cell__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> Deadlift Max</div><div class="bp-cell__val">315<span class="bp-cell__unit">×3</span></div><div class="bp-cell__sub">↑ 10 lb · 2w</div></div>
+            <div class="bp-cell"><div class="bp-cell__label">Volume · wk</div><div class="bp-cell__val">12.8k<span class="bp-cell__unit">lb</span></div><div class="bp-cell__sub">↑ 18%</div></div>
+          </div>
+          <svg class="bp-spark" viewBox="0 0 280 24" preserveAspectRatio="none"><path d="M0,20 L40,16 L80,14 L120,10 L160,6 L200,8 L240,4 L280,2" fill="none" stroke="var(--cat-legs)" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+
+        <div class="bp-card">
+          <div class="bp-card__head">
+            <div class="bp-card__label"><div class="bp-card__icon ic-shoulders"><i class="fas fa-arrows-alt-v"></i></div>Shoulders</div>
+            <i class="fas fa-chevron-right bp-card__chev"></i>
+          </div>
+          <div class="bp-card__grid">
+            <div class="bp-cell"><div class="bp-cell__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> OHP</div><div class="bp-cell__val">135<span class="bp-cell__unit">lb</span></div><div class="bp-cell__sub">same · 1w</div></div>
+            <div class="bp-cell"><div class="bp-cell__label">Volume · wk</div><div class="bp-cell__val">4.2k<span class="bp-cell__unit">lb</span></div><div class="bp-cell__sub">↑ 3%</div></div>
+          </div>
+          <svg class="bp-spark" viewBox="0 0 280 24" preserveAspectRatio="none"><path d="M0,14 L40,12 L80,14 L120,10 L160,12 L200,10 L240,8 L280,10" fill="none" stroke="var(--cat-shoulders)" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+
+        <div class="bp-card stale">
+          <div class="bp-card__head">
+            <div class="bp-card__label"><div class="bp-card__icon ic-arms"><i class="fas fa-hand-rock"></i></div>Arms</div>
+            <i class="fas fa-chevron-right bp-card__chev"></i>
+          </div>
+          <div class="bp-card__grid">
+            <div class="bp-cell"><div class="bp-cell__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> Curl 1RM</div><div class="bp-cell__val">55<span class="bp-cell__unit">lb</span></div><div class="bp-cell__sub">same · 2w</div></div>
+            <div class="bp-cell"><div class="bp-cell__label">Volume · wk</div><div class="bp-cell__val">2.8k<span class="bp-cell__unit">lb</span></div><div class="bp-cell__sub down">↓ 15%</div></div>
+          </div>
+          <div class="stale-warn">⚠ Last trained 4 days ago</div>
+        </div>
+
+        <div class="bp-card stale">
+          <div class="bp-card__head">
+            <div class="bp-card__label"><div class="bp-card__icon ic-core"><i class="fas fa-bullseye"></i></div>Core</div>
+            <i class="fas fa-chevron-right bp-card__chev"></i>
+          </div>
+          <div class="bp-card__grid">
+            <div class="bp-cell"><div class="bp-cell__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> Plank</div><div class="bp-cell__val">3:20</div><div class="bp-cell__sub">same · 2w</div></div>
+            <div class="bp-cell"><div class="bp-cell__label">Volume · wk</div><div class="bp-cell__val">1.4k<span class="bp-cell__unit">lb</span></div><div class="bp-cell__sub down">↓ 22%</div></div>
+          </div>
+          <div class="stale-warn">⚠ Last trained 8 days ago — consider a core day</div>
+        </div>
+
+        <!-- COMPOSITION SECTION (renamed from Body) -->
+        <div class="sec-head"><h3>Composition</h3><a>Details →</a></div>
+        <div class="bc-card">
+          <div class="bc-row">
+            <svg width="60" height="60" viewBox="0 0 42 42">
+              <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--cat-legs)" stroke-width="6" stroke-dasharray="38 62" stroke-dashoffset="25" transform="rotate(-90 21 21)"/>
+              <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--cat-pull)" stroke-width="6" stroke-dasharray="18 82" stroke-dashoffset="-13" transform="rotate(-90 21 21)"/>
+              <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--cat-shoulders)" stroke-width="6" stroke-dasharray="44 56" stroke-dashoffset="-31" transform="rotate(-90 21 21)"/>
+            </svg>
+            <div class="bc-legend">
+              <div class="bc-leg"><div class="bc-dot" style="background:var(--cat-legs);"></div>Muscle 38%</div>
+              <div class="bc-leg"><div class="bc-dot" style="background:var(--cat-pull);"></div>Fat 18%</div>
+              <div class="bc-leg"><div class="bc-dot" style="background:var(--cat-shoulders);"></div>Water 44%</div>
+            </div>
+            <i class="fas fa-chevron-right bp-card__chev"></i>
+          </div>
+          <div class="bc-weight">
+            <span>Body weight</span>
+            <span><strong>184.2 lb</strong> · ↓ 1.2 lb this month</span>
+          </div>
+        </div>
+
+        <!-- RECENT PRS -->
+        <div class="sec-head"><h3>Recent PRs</h3><a>All →</a></div>
+        <div class="pr-row">
+          <div class="pr-badge"><i class="fas fa-trophy"></i></div>
+          <div class="pr-info">
+            <div class="pr-name">Bench Press</div>
+            <div class="pr-meta">3 days ago · +5 lb</div>
+          </div>
+          <div class="pr-val">225 lb</div>
+        </div>
+        <div class="pr-row">
+          <div class="pr-badge"><i class="fas fa-trophy"></i></div>
+          <div class="pr-info">
+            <div class="pr-name">Weighted Pull-up</div>
+            <div class="pr-meta">6 days ago · +5 lb</div>
+          </div>
+          <div class="pr-val">BW+45</div>
+        </div>
+      </div>
+      <div class="nav"><div class="nbtn active"><i class="fas fa-home"></i><span>Home</span></div><div class="nbtn"><i class="fas fa-chart-line"></i><span>Stats</span></div><div class="nbtn fab"><i class="fas fa-dumbbell"></i></div><div class="nbtn"><i class="fas fa-calendar"></i><span>History</span></div><div class="nbtn"><i class="fas fa-ellipsis-h"></i><span>More</span></div></div>
+    </div>
+  </div>
+
+  <!-- =============== DRILL-DOWN: CHEST =============== -->
+  <div class="wrap">
+    <div class="wrap-label">Chest — drill-down</div>
+    <div class="wrap-sub">Tapped the Chest card. Range pills at top. Hero stats. Chart. Insight. Per-exercise breakdown. Chest PRs. Recent chest sessions.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="d-header">
+        <button class="d-back"><i class="fas fa-chevron-left"></i></button>
+        <div class="d-header-info">
+          <div class="d-header-icon ic-chest"><i class="fas fa-hand-paper"></i></div>
+          <div>
+            <div class="d-title">Chest</div>
+            <div class="d-subtitle">8 sessions · past 30 days</div>
+          </div>
+        </div>
+        <button class="d-menu"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+
+      <div class="d-content">
+        <div class="range-pills">
+          <button>W</button>
+          <button class="active">M</button>
+          <button>3M</button>
+          <button>Y</button>
+          <button>All</button>
+        </div>
+
+        <!-- Hero stats -->
+        <div class="d-hero-stats">
+          <div class="d-stat">
+            <div class="d-stat__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> Heaviest · Bench</div>
+            <div class="d-stat__val">225<span class="d-stat__unit">× 5</span></div>
+            <div class="d-stat__delta up">↑ 10 lb · 30d</div>
+          </div>
+          <div class="d-stat">
+            <div class="d-stat__label">Total volume</div>
+            <div class="d-stat__val">42.3k<span class="d-stat__unit">lb</span></div>
+            <div class="d-stat__delta up">↑ 18% vs prev</div>
+          </div>
+        </div>
+
+        <!-- Chart: Volume + 1RM dual chart -->
+        <div class="d-chart-card">
+          <div class="d-chart-head">
+            <div class="d-chart-title">Volume &amp; est. 1RM</div>
+            <div class="d-chart-legend"><span style="color:var(--cat-push);">● Volume</span> · <span style="color:var(--badge-gold);">● 1RM</span></div>
+          </div>
+          <svg width="100%" height="140" viewBox="0 0 300 140" preserveAspectRatio="none">
+            <line x1="0" y1="35" x2="300" y2="35" stroke="var(--border-light)" stroke-dasharray="2,4"/>
+            <line x1="0" y1="70" x2="300" y2="70" stroke="var(--border-light)" stroke-dasharray="2,4"/>
+            <line x1="0" y1="105" x2="300" y2="105" stroke="var(--border-light)" stroke-dasharray="2,4"/>
+            <!-- Volume bars (muted) -->
+            <rect x="20" y="90" width="20" height="50" fill="var(--cat-push)" opacity="0.3" rx="2"/>
+            <rect x="60" y="80" width="20" height="60" fill="var(--cat-push)" opacity="0.35" rx="2"/>
+            <rect x="100" y="70" width="20" height="70" fill="var(--cat-push)" opacity="0.4" rx="2"/>
+            <rect x="140" y="60" width="20" height="80" fill="var(--cat-push)" opacity="0.5" rx="2"/>
+            <rect x="180" y="55" width="20" height="85" fill="var(--cat-push)" opacity="0.6" rx="2"/>
+            <rect x="220" y="45" width="20" height="95" fill="var(--cat-push)" opacity="0.75" rx="2"/>
+            <rect x="260" y="30" width="20" height="110" fill="var(--cat-push)" opacity="0.85" rx="2"/>
+            <!-- 1RM line overlay -->
+            <path d="M30,80 L70,75 L110,68 L150,58 L190,52 L230,40 L270,28" fill="none" stroke="var(--badge-gold)" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="30" cy="80" r="3" fill="var(--badge-gold)"/>
+            <circle cx="70" cy="75" r="3" fill="var(--badge-gold)"/>
+            <circle cx="110" cy="68" r="3" fill="var(--badge-gold)"/>
+            <circle cx="150" cy="58" r="3" fill="var(--badge-gold)"/>
+            <circle cx="190" cy="52" r="3" fill="var(--badge-gold)"/>
+            <circle cx="230" cy="40" r="3" fill="var(--badge-gold)"/>
+            <circle cx="270" cy="28" r="4" fill="var(--badge-gold)" stroke="var(--bg-card)" stroke-width="2"/>
+          </svg>
+        </div>
+
+        <!-- Insight -->
+        <div class="insight" style="margin:0 14px 12px;">
+          <i class="fas fa-lightbulb"></i>
+          <div class="insight-text">Bench press 1RM up <strong>10 lb</strong> in 30d. You're progressing fastest when hitting chest <strong>2×/week</strong>.</div>
+        </div>
+
+        <!-- Per-exercise breakdown -->
+        <div class="d-sec-head">Exercises · this month</div>
+        <div class="d-exercise-row">
+          <svg class="d-ex-spark" viewBox="0 0 54 24"><path d="M0,18 L9,16 L18,14 L27,12 L36,8 L45,10 L54,4" fill="none" stroke="var(--cat-push)" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="d-ex-info">
+            <div class="d-ex-name">Bench Press</div>
+            <div class="d-ex-meta">8 sessions · 32 sets · best 225×5</div>
+          </div>
+          <div class="d-ex-right"><div class="d-ex-val">14.4k lb</div><div class="d-ex-delta">↑ 22%</div></div>
+        </div>
+        <div class="d-exercise-row">
+          <svg class="d-ex-spark" viewBox="0 0 54 24"><path d="M0,14 L9,12 L18,14 L27,10 L36,8 L45,6 L54,8" fill="none" stroke="var(--cat-push)" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="d-ex-info">
+            <div class="d-ex-name">Incline DB Press</div>
+            <div class="d-ex-meta">7 sessions · 21 sets · best 70×8</div>
+          </div>
+          <div class="d-ex-right"><div class="d-ex-val">11.2k lb</div><div class="d-ex-delta">↑ 14%</div></div>
+        </div>
+        <div class="d-exercise-row">
+          <svg class="d-ex-spark" viewBox="0 0 54 24"><path d="M0,10 L9,12 L18,14 L27,12 L36,10 L45,12 L54,14" fill="none" stroke="var(--cat-push)" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="d-ex-info">
+            <div class="d-ex-name">Cable Fly</div>
+            <div class="d-ex-meta">6 sessions · 18 sets · best 50×10</div>
+          </div>
+          <div class="d-ex-right"><div class="d-ex-val">9.8k lb</div><div class="d-ex-delta down">↓ 4%</div></div>
+        </div>
+        <div class="d-exercise-row">
+          <svg class="d-ex-spark" viewBox="0 0 54 24"><path d="M0,16 L9,14 L18,12 L27,10 L36,6 L45,4 L54,2" fill="none" stroke="var(--cat-push)" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="d-ex-info">
+            <div class="d-ex-name">Dips</div>
+            <div class="d-ex-meta">5 sessions · 15 sets · best BW×12</div>
+          </div>
+          <div class="d-ex-right"><div class="d-ex-val">6.9k lb</div><div class="d-ex-delta">↑ 38%</div></div>
+        </div>
+
+        <!-- PRs for this body part -->
+        <div class="d-sec-head">Chest PRs</div>
+        <div class="d-pr-row">
+          <div class="pr-badge"><i class="fas fa-trophy"></i></div>
+          <div class="pr-info">
+            <div class="pr-name">Bench Press</div>
+            <div class="pr-meta">3 days ago · +5 lb</div>
+          </div>
+          <div class="pr-val">225 lb</div>
+        </div>
+        <div class="d-pr-row">
+          <div class="pr-badge"><i class="fas fa-trophy"></i></div>
+          <div class="pr-info">
+            <div class="pr-name">Incline DB Press</div>
+            <div class="pr-meta">2 weeks ago</div>
+          </div>
+          <div class="pr-val">70 × 8</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============== DRILL-DOWN: LEGS =============== -->
+  <div class="wrap">
+    <div class="wrap-label">Legs — same template</div>
+    <div class="wrap-sub">Shows how the template adapts: different body part, different hero lift (Deadlift), same structure.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="d-header">
+        <button class="d-back"><i class="fas fa-chevron-left"></i></button>
+        <div class="d-header-info">
+          <div class="d-header-icon ic-legs"><i class="fas fa-walking"></i></div>
+          <div>
+            <div class="d-title">Legs</div>
+            <div class="d-subtitle">6 sessions · past 30 days</div>
+          </div>
+        </div>
+        <button class="d-menu"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+
+      <div class="d-content">
+        <div class="range-pills">
+          <button>W</button>
+          <button class="active">M</button>
+          <button>3M</button>
+          <button>Y</button>
+          <button>All</button>
+        </div>
+
+        <div class="d-hero-stats">
+          <div class="d-stat">
+            <div class="d-stat__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> Heaviest · Deadlift</div>
+            <div class="d-stat__val">315<span class="d-stat__unit">× 3</span></div>
+            <div class="d-stat__delta up">↑ 15 lb · 30d</div>
+          </div>
+          <div class="d-stat">
+            <div class="d-stat__label">Total volume</div>
+            <div class="d-stat__val">56.8k<span class="d-stat__unit">lb</span></div>
+            <div class="d-stat__delta up">↑ 32% vs prev</div>
+          </div>
+        </div>
+
+        <div class="d-chart-card">
+          <div class="d-chart-head">
+            <div class="d-chart-title">Volume &amp; est. 1RM</div>
+            <div class="d-chart-legend"><span style="color:var(--cat-legs);">● Volume</span> · <span style="color:var(--badge-gold);">● 1RM</span></div>
+          </div>
+          <svg width="100%" height="140" viewBox="0 0 300 140" preserveAspectRatio="none">
+            <line x1="0" y1="35" x2="300" y2="35" stroke="var(--border-light)" stroke-dasharray="2,4"/>
+            <line x1="0" y1="70" x2="300" y2="70" stroke="var(--border-light)" stroke-dasharray="2,4"/>
+            <line x1="0" y1="105" x2="300" y2="105" stroke="var(--border-light)" stroke-dasharray="2,4"/>
+            <rect x="20" y="95" width="20" height="45" fill="var(--cat-legs)" opacity="0.3" rx="2"/>
+            <rect x="60" y="70" width="20" height="70" fill="var(--cat-legs)" opacity="0.4" rx="2"/>
+            <rect x="100" y="85" width="20" height="55" fill="var(--cat-legs)" opacity="0.35" rx="2"/>
+            <rect x="140" y="50" width="20" height="90" fill="var(--cat-legs)" opacity="0.55" rx="2"/>
+            <rect x="180" y="35" width="20" height="105" fill="var(--cat-legs)" opacity="0.7" rx="2"/>
+            <rect x="220" y="25" width="20" height="115" fill="var(--cat-legs)" opacity="0.85" rx="2"/>
+            <rect x="260" y="20" width="20" height="120" fill="var(--cat-legs)" opacity="1" rx="2"/>
+            <path d="M30,85 L70,78 L110,72 L150,60 L190,48 L230,38 L270,28" fill="none" stroke="var(--badge-gold)" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="30" cy="85" r="3" fill="var(--badge-gold)"/>
+            <circle cx="70" cy="78" r="3" fill="var(--badge-gold)"/>
+            <circle cx="110" cy="72" r="3" fill="var(--badge-gold)"/>
+            <circle cx="150" cy="60" r="3" fill="var(--badge-gold)"/>
+            <circle cx="190" cy="48" r="3" fill="var(--badge-gold)"/>
+            <circle cx="230" cy="38" r="3" fill="var(--badge-gold)"/>
+            <circle cx="270" cy="28" r="4" fill="var(--badge-gold)" stroke="var(--bg-card)" stroke-width="2"/>
+          </svg>
+        </div>
+
+        <div class="insight" style="margin:0 14px 12px;">
+          <i class="fas fa-lightbulb"></i>
+          <div class="insight-text">Leg volume is up <strong>32%</strong>. Deadlift PR coming soon — last 3 sessions have been climbing.</div>
+        </div>
+
+        <div class="d-sec-head">Exercises · this month</div>
+        <div class="d-exercise-row">
+          <svg class="d-ex-spark" viewBox="0 0 54 24"><path d="M0,20 L9,16 L18,12 L27,8 L36,6 L45,4 L54,2" fill="none" stroke="var(--cat-legs)" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="d-ex-info">
+            <div class="d-ex-name">Deadlift</div>
+            <div class="d-ex-meta">4 sessions · 12 sets · best 335×3</div>
+          </div>
+          <div class="d-ex-right"><div class="d-ex-val">22.6k lb</div><div class="d-ex-delta">↑ 42%</div></div>
+        </div>
+        <div class="d-exercise-row">
+          <svg class="d-ex-spark" viewBox="0 0 54 24"><path d="M0,16 L9,14 L18,10 L27,8 L36,6 L45,8 L54,4" fill="none" stroke="var(--cat-legs)" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="d-ex-info">
+            <div class="d-ex-name">Back Squat</div>
+            <div class="d-ex-meta">5 sessions · 20 sets · best 245×5</div>
+          </div>
+          <div class="d-ex-right"><div class="d-ex-val">18.4k lb</div><div class="d-ex-delta">↑ 24%</div></div>
+        </div>
+        <div class="d-exercise-row">
+          <svg class="d-ex-spark" viewBox="0 0 54 24"><path d="M0,12 L9,10 L18,14 L27,12 L36,10 L45,12 L54,10" fill="none" stroke="var(--cat-legs)" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="d-ex-info">
+            <div class="d-ex-name">Leg Press</div>
+            <div class="d-ex-meta">6 sessions · 18 sets · best 450×10</div>
+          </div>
+          <div class="d-ex-right"><div class="d-ex-val">10.2k lb</div><div class="d-ex-delta">↑ 8%</div></div>
+        </div>
+        <div class="d-exercise-row">
+          <svg class="d-ex-spark" viewBox="0 0 54 24"><path d="M0,14 L9,12 L18,10 L27,8 L36,6 L45,4 L54,2" fill="none" stroke="var(--cat-legs)" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="d-ex-info">
+            <div class="d-ex-name">Bulgarian Split Squat</div>
+            <div class="d-ex-meta">4 sessions · 12 sets · best 45×10</div>
+          </div>
+          <div class="d-ex-right"><div class="d-ex-val">5.6k lb</div><div class="d-ex-delta">↑ 18%</div></div>
+        </div>
+
+        <div class="d-sec-head">Leg PRs</div>
+        <div class="d-pr-row">
+          <div class="pr-badge"><i class="fas fa-trophy"></i></div>
+          <div class="pr-info">
+            <div class="pr-name">Deadlift</div>
+            <div class="pr-meta">2 weeks ago · +10 lb</div>
+          </div>
+          <div class="pr-val">355 lb</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</div>
+
+<!-- ================================================
+     EXERCISE DETAIL — 3rd level drill-down
+     ================================================ -->
+<h1 class="sec">Exercise detail — 3rd level</h1>
+<p class="desc">Tap any exercise row inside the Training → Chest page (or Legs, or any muscle group) and you get the full exercise deep-dive. Every workout logged, 1RM trend, best sets, form video, equipment, notes. The chevron on each exercise row on the body-part page is the entry point.</p>
+
+<div class="row">
+
+  <!-- Exercise detail: Bench Press -->
+  <div class="wrap">
+    <div class="wrap-label">Bench Press detail</div>
+    <div class="wrap-sub">From Training → Chest → Bench Press. 1RM trend, best sets table, recent sessions, form video thumbnail, equipment, PR history.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="d-header">
+        <button class="d-back"><i class="fas fa-chevron-left"></i></button>
+        <div class="d-header-info">
+          <div class="d-header-icon ic-chest"><i class="fas fa-hand-paper"></i></div>
+          <div>
+            <div class="d-title">Bench Press</div>
+            <div class="d-subtitle">Chest · 48 sessions all-time</div>
+          </div>
+        </div>
+        <button class="d-menu"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+
+      <div class="d-content">
+        <div class="range-pills">
+          <button>M</button>
+          <button>3M</button>
+          <button class="active">6M</button>
+          <button>Y</button>
+          <button>All</button>
+        </div>
+
+        <!-- Hero stats: MAX WEIGHT (actual) + heaviest set -->
+        <div class="d-hero-stats">
+          <div class="d-stat">
+            <div class="d-stat__label"><i class="fas fa-trophy" style="color:var(--badge-gold);"></i> Max weight</div>
+            <div class="d-stat__val">225<span class="d-stat__unit">lb</span></div>
+            <div class="d-stat__delta up">↑ 15 lb · 6mo</div>
+          </div>
+          <div class="d-stat">
+            <div class="d-stat__label">Heaviest set</div>
+            <div class="d-stat__val">225<span class="d-stat__unit">× 5</span></div>
+            <div class="d-stat__delta up">3 days ago</div>
+          </div>
+        </div>
+
+        <!-- Secondary metric strip (Est 1RM + total volume) -->
+        <div style="display:flex;gap:6px;margin:0 14px 12px;font-size:0.66rem;">
+          <div style="flex:1;background:var(--bg-card-hi);padding:7px 10px;border-radius:var(--radius-pill);color:var(--text-muted);">Est. 1RM <strong style="color:var(--text-strong);margin-left:3px;">245 lb</strong></div>
+          <div style="flex:1;background:var(--bg-card-hi);padding:7px 10px;border-radius:var(--radius-pill);color:var(--text-muted);">Volume (6mo) <strong style="color:var(--text-strong);margin-left:3px;">218k lb</strong></div>
+        </div>
+
+        <!-- Heaviest weight per session chart -->
+        <div class="d-chart-card">
+          <div class="d-chart-head">
+            <div class="d-chart-title">Heaviest weight per session</div>
+            <div class="d-chart-legend">↑ 15 lb vs 6mo ago</div>
+          </div>
+          <svg width="100%" height="140" viewBox="0 0 300 140" preserveAspectRatio="none">
+            <line x1="0" y1="35" x2="300" y2="35" stroke="var(--border-light)" stroke-dasharray="2,4"/>
+            <line x1="0" y1="70" x2="300" y2="70" stroke="var(--border-light)" stroke-dasharray="2,4"/>
+            <line x1="0" y1="105" x2="300" y2="105" stroke="var(--border-light)" stroke-dasharray="2,4"/>
+            <text x="4" y="32" fill="var(--text-muted)" font-size="8">225</text>
+            <text x="4" y="72" fill="var(--text-muted)" font-size="8">205</text>
+            <text x="4" y="108" fill="var(--text-muted)" font-size="8">185</text>
+            <defs>
+              <linearGradient id="bgrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="var(--cat-push)"/>
+                <stop offset="1" stop-color="var(--cat-push)" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,105 L25,100 L50,95 L75,88 L100,92 L125,82 L150,70 L175,72 L200,60 L225,55 L250,45 L275,38 L300,30 L300,140 L0,140 Z" fill="url(#bgrad)" opacity="0.3"/>
+            <path d="M0,105 L25,100 L50,95 L75,88 L100,92 L125,82 L150,70 L175,72 L200,60 L225,55 L250,45 L275,38 L300,30" fill="none" stroke="var(--cat-push)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="300" cy="30" r="4" fill="var(--cat-push)" stroke="var(--bg-card)" stroke-width="2"/>
+            <!-- PR markers -->
+            <circle cx="125" cy="82" r="3" fill="var(--badge-gold)"/>
+            <circle cx="225" cy="55" r="3" fill="var(--badge-gold)"/>
+            <circle cx="275" cy="38" r="3" fill="var(--badge-gold)"/>
+          </svg>
+          <div style="display:flex;gap:12px;font-size:0.64rem;color:var(--text-muted);margin-top:6px;">
+            <span><i class="fas fa-circle" style="color:var(--cat-push);font-size:0.5rem;"></i> Top set weight</span>
+            <span><i class="fas fa-circle" style="color:var(--badge-gold);font-size:0.5rem;"></i> PR</span>
+          </div>
+        </div>
+
+        <!-- Equipment + form video -->
+        <div style="display:flex;gap:8px;margin:0 14px 12px;">
+          <div style="flex:1;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px 12px;display:flex;align-items:center;gap:10px;">
+            <div style="width:28px;height:28px;border-radius:8px;background:var(--bg-card-hi);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:0.72rem;"><i class="fas fa-cog"></i></div>
+            <div style="flex:1;min-width:0;"><div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Equipment</div><div style="font-size:0.78rem;font-weight:600;color:var(--text-strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Rogue Power Bar</div></div>
+          </div>
+          <div style="width:92px;background:linear-gradient(135deg,var(--bg-card-hi),var(--bg-card));border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:0;display:flex;align-items:center;justify-content:center;flex-direction:column;position:relative;cursor:pointer;">
+            <i class="fas fa-play" style="color:var(--primary);font-size:1rem;opacity:0.9;"></i>
+            <div style="font-size:0.56rem;color:var(--text-muted);margin-top:2px;">Form video</div>
+          </div>
+        </div>
+
+        <!-- Insight for this exercise -->
+        <div class="insight" style="margin:0 14px 12px;">
+          <i class="fas fa-lightbulb"></i>
+          <div class="insight-text">Pressing <strong>2×/week</strong> correlates with your fastest PR gains on this lift.</div>
+        </div>
+
+        <!-- Best sets ever table -->
+        <div class="d-sec-head">Best sets ever</div>
+        <div style="margin:0 14px 8px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden;">
+          <div style="display:grid;grid-template-columns:40px 1fr 1fr 1fr;gap:6px;padding:8px 12px;font-size:0.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;border-bottom:1px solid var(--border-subtle);">
+            <div>Reps</div><div>Weight</div><div>1RM est</div><div style="text-align:right;">Date</div>
+          </div>
+          <div style="display:grid;grid-template-columns:40px 1fr 1fr 1fr;gap:6px;padding:10px 12px;font-size:0.78rem;color:var(--text-strong);align-items:center;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--border-subtle);">
+            <div style="font-weight:700;">1</div><div>215 lb</div><div style="color:var(--badge-gold);font-weight:700;">215</div><div style="text-align:right;color:var(--text-muted);font-size:0.7rem;">Apr 11 <i class="fas fa-trophy" style="color:var(--badge-gold);font-size:0.64rem;"></i></div>
+          </div>
+          <div style="display:grid;grid-template-columns:40px 1fr 1fr 1fr;gap:6px;padding:10px 12px;font-size:0.78rem;color:var(--text-strong);align-items:center;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--border-subtle);">
+            <div style="font-weight:700;">5</div><div>225 lb</div><div style="color:var(--badge-gold);font-weight:700;">245</div><div style="text-align:right;color:var(--text-muted);font-size:0.7rem;">Apr 11 <i class="fas fa-trophy" style="color:var(--badge-gold);font-size:0.64rem;"></i></div>
+          </div>
+          <div style="display:grid;grid-template-columns:40px 1fr 1fr 1fr;gap:6px;padding:10px 12px;font-size:0.78rem;color:var(--text-strong);align-items:center;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--border-subtle);">
+            <div style="font-weight:700;">8</div><div>195 lb</div><div>224</div><div style="text-align:right;color:var(--text-muted);font-size:0.7rem;">Mar 25</div>
+          </div>
+          <div style="display:grid;grid-template-columns:40px 1fr 1fr 1fr;gap:6px;padding:10px 12px;font-size:0.78rem;color:var(--text-strong);align-items:center;font-variant-numeric:tabular-nums;">
+            <div style="font-weight:700;">10</div><div>185 lb</div><div>225</div><div style="text-align:right;color:var(--text-muted);font-size:0.7rem;">Mar 18</div>
+          </div>
+        </div>
+
+        <!-- Recent sessions -->
+        <div class="d-sec-head">Recent sessions</div>
+        <div style="margin:0 14px 6px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px 12px;cursor:pointer;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="font-size:0.78rem;color:var(--text-strong);font-weight:600;">Apr 11 · Tuesday</div>
+            <div style="font-size:0.64rem;color:var(--badge-gold);font-weight:700;"><i class="fas fa-trophy"></i> PR</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:0.7rem;color:var(--text-secondary);font-variant-numeric:tabular-nums;">
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">135×10</span>
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">185×8</span>
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">205×6</span>
+            <span style="background:rgba(255,215,0,0.14);color:var(--badge-gold);padding:2px 8px;border-radius:var(--radius-pill);font-weight:700;">225×5 PR</span>
+          </div>
+        </div>
+        <div style="margin:0 14px 6px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px 12px;cursor:pointer;">
+          <div style="font-size:0.78rem;color:var(--text-strong);font-weight:600;margin-bottom:4px;">Apr 4 · Tuesday</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:0.7rem;color:var(--text-secondary);font-variant-numeric:tabular-nums;">
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">135×10</span>
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">180×8</span>
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">200×6</span>
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">215×5</span>
+          </div>
+        </div>
+        <div style="margin:0 14px 6px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px 12px;cursor:pointer;">
+          <div style="font-size:0.78rem;color:var(--text-strong);font-weight:600;margin-bottom:4px;">Mar 28 · Tuesday</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:0.7rem;color:var(--text-secondary);font-variant-numeric:tabular-nums;">
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">135×10</span>
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">175×8</span>
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">195×6</span>
+            <span style="background:var(--bg-card-hi);padding:2px 8px;border-radius:var(--radius-pill);">210×4</span>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin:10px 14px 20px;">
+          <button style="background:transparent;border:1px solid var(--border-light);color:var(--primary);padding:8px 16px;border-radius:var(--radius-pill);font-size:0.74rem;font-weight:600;">See all 48 sessions →</button>
+        </div>
+
+        <!-- Notes -->
+        <div class="d-sec-head">Notes</div>
+        <div style="margin:0 14px 12px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px 12px;font-size:0.76rem;color:var(--text-main);line-height:1.5;">
+          Arch back, feet planted, elbows at 45°. Pause at chest on heavy sets.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="max-width:880px;margin:0 auto;background:var(--bg-card);border-radius:var(--radius-md);padding:20px;font-size:0.88rem;line-height:1.6;">
+  <h3 style="color:var(--text-strong);margin-bottom:12px;">Updated dashboard composition</h3>
+  <p style="margin-bottom:12px;"><strong style="color:var(--primary);">New section names:</strong></p>
+  <ul style="margin:0 0 16px 20px;color:var(--text-main);">
+    <li style="margin-bottom:6px;"><s style="color:var(--text-muted);">Body Parts</s> → <strong style="color:var(--text-strong);">Training</strong> — how you're training each muscle group (or alt: "Muscles", "Lifts", "Strength")</li>
+    <li><s style="color:var(--text-muted);">Body</s> → <strong style="color:var(--text-strong);">Composition</strong> — what your body is made of (donut, weight trend)</li>
+  </ul>
+  <p style="margin-bottom:12px;"><strong style="color:var(--primary);">New section order (top to bottom):</strong></p>
+  <ol style="margin:0 0 16px 20px;color:var(--text-main);">
+    <li style="margin-bottom:4px;">Greeting + avatar</li>
+    <li style="margin-bottom:4px;">Active workout pill (conditional)</li>
+    <li style="margin-bottom:4px;">3-chip hero row (Streak · Week · Body weight)</li>
+    <li style="margin-bottom:4px;"><strong>Insight card</strong> (moved up — actionable, demands attention)</li>
+    <li style="margin-bottom:4px;"><strong>For [today]</strong> (moved up — your fastest path to starting)</li>
+    <li style="margin-bottom:4px;"><strong>Training</strong> (6 muscle-group cards)</li>
+    <li style="margin-bottom:4px;"><strong>Composition</strong> (donut + weight)</li>
+    <li>Recent PRs</li>
+  </ol>
+  <p style="margin-bottom:12px;"><strong style="color:var(--primary);">3-level navigation:</strong></p>
+  <ul style="margin:0 0 0 20px;color:var(--text-main);">
+    <li style="margin-bottom:4px;"><strong>Level 1:</strong> Dashboard (summary)</li>
+    <li style="margin-bottom:4px;"><strong>Level 2:</strong> Muscle group detail (tap Chest card) — per-exercise breakdown</li>
+    <li><strong>Level 3:</strong> Exercise detail (tap Bench Press row inside Chest) — 1RM trend, best sets, every session, form video, equipment, notes</li>
+  </ul>
+</div>
+
+</body>
+</html>

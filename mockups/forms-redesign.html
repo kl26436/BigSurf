@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forms Redesign — Create Exercise, Body Measurements, Manual Workout</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --warning:#f0c24b; --danger:#e35d6a; --highlight-warm:#f7a865;
+    --cat-push:#4A90D9; --cat-pull:#D94A7A; --cat-legs:#7B4AD9; --cat-core:#4AD9A7; --cat-cardio:#D9A74A;
+    --cat-arms:#D96A4A; --cat-shoulders:#56B6C2; --cat-fullbody:#4AD9D9;
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+    --shadow-md:0 8px 14px rgba(0,0,0,0.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:24px 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.88rem;margin-bottom:20px;text-align:center;max-width:900px;margin-left:auto;margin-right:auto;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:24px;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .wrap-label{color:var(--text-strong);font-size:0.92rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.74rem;text-align:center;max-width:300px;}
+  .phone{width:340px;height:740px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .status{height:28px;background:var(--bg-app);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:0.7rem;color:var(--text-main);flex-shrink:0;}
+
+  /* Sticky page header */
+  .page-header{position:sticky;top:0;z-index:100;background:var(--bg-app);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;min-height:56px;border-bottom:1px solid var(--border-subtle);}
+  .header-left{display:flex;align-items:center;gap:10px;}
+  .back{width:36px;height:36px;border-radius:50%;background:var(--bg-card);color:var(--text-main);display:flex;align-items:center;justify-content:center;font-size:0.82rem;border:none;}
+  .page-title{font-size:1rem;font-weight:700;color:var(--text-strong);}
+  .btn-save{background:var(--primary);color:#04201a;border:none;padding:8px 16px;border-radius:var(--radius-pill);font-size:0.82rem;font-weight:700;}
+  .btn-save:disabled{background:var(--bg-card-hi);color:var(--text-muted);}
+
+  .content{flex:1;overflow-y:auto;padding:14px 16px 100px;}
+  .content::-webkit-scrollbar{display:none;}
+
+  /* Common form */
+  .field{margin-bottom:16px;}
+  .field-label{font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:6px;padding-left:2px;}
+  .field-helper{font-size:0.7rem;color:var(--text-muted);margin-top:4px;padding-left:2px;}
+  .field-input{width:100%;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px 16px;color:var(--text-strong);font-size:0.95rem;font-weight:500;outline:none;transition:border-color 150ms;}
+  .field-input:focus{border-color:var(--primary);}
+  .field-input.placeholder{color:var(--text-muted);font-weight:400;}
+
+  /* Pill chips (for category, equipment type, etc.) */
+  .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{flex-shrink:0;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-pill);padding:8px 14px;font-size:0.8rem;color:var(--text-secondary);display:flex;align-items:center;gap:6px;font-weight:500;white-space:nowrap;}
+  .chip i{font-size:0.85rem;}
+  .chip.active{background:var(--primary-bg);border-color:var(--primary-border);color:var(--primary);font-weight:600;}
+  .chip.cat-push.active{background:rgba(74,144,217,0.12);border-color:rgba(74,144,217,0.4);color:var(--cat-push);}
+  .chip.cat-pull.active{background:rgba(217,74,122,0.12);border-color:rgba(217,74,122,0.4);color:var(--cat-pull);}
+  .chip.cat-legs.active{background:rgba(123,74,217,0.12);border-color:rgba(123,74,217,0.4);color:var(--cat-legs);}
+  .chip.cat-core.active{background:rgba(74,217,167,0.12);border-color:rgba(74,217,167,0.4);color:var(--cat-core);}
+
+  /* Two-column grid for paired fields */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  /* Stepper input — compact, fixed width */
+  .stepper{display:inline-flex;align-items:stretch;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-pill);overflow:hidden;width:120px;height:36px;}
+  .stepper button{width:32px;background:transparent;border:none;color:var(--text-secondary);font-size:0.9rem;}
+  .stepper input{flex:1;background:transparent;border:none;color:var(--text-strong);font-size:0.95rem;font-weight:700;text-align:center;outline:none;font-variant-numeric:tabular-nums;width:40px;}
+  .stepper-row{display:flex;gap:16px;align-items:center;}
+  .stepper-label{font-size:0.82rem;color:var(--text-secondary);font-weight:500;min-width:42px;}
+
+  /* Toggle row */
+  .toggle-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;}
+  .toggle-row-info{flex:1;min-width:0;}
+  .toggle-row-name{font-size:0.9rem;color:var(--text-strong);font-weight:600;}
+  .toggle-row-desc{font-size:0.74rem;color:var(--text-muted);margin-top:2px;}
+  .toggle{width:44px;height:26px;background:var(--bg-card-hi);border-radius:999px;position:relative;flex-shrink:0;border:none;transition:background 150ms;}
+  .toggle::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--text-secondary);transition:transform 150ms;}
+  .toggle.on{background:var(--primary);}
+  .toggle.on::after{background:#04201a;transform:translateX(18px);}
+
+  /* Section header */
+  .sec-head{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px;padding:0 2px;}
+  .sec-head h3{font-size:0.88rem;font-weight:700;color:var(--text-strong);}
+  .sec-head .count{font-size:0.72rem;color:var(--text-muted);font-weight:500;margin-left:6px;}
+
+  /* Footer */
+  .footer{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top, var(--bg-app) 70%, transparent);padding:16px 16px 20px;}
+  .btn-primary{width:100%;background:var(--primary);color:#04201a;border:none;border-radius:var(--radius-md);padding:14px;font-size:0.95rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .btn-primary:disabled{background:var(--bg-card-hi);color:var(--text-muted);}
+
+  /* Body measurements specific */
+  .meas-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px 14px;display:flex;align-items:center;gap:14px;margin-bottom:8px;}
+  .meas-icon{width:36px;height:36px;border-radius:50%;background:var(--bg-card-hi);display:flex;align-items:center;justify-content:center;color:var(--text-secondary);flex-shrink:0;}
+  .meas-info{flex:1;min-width:0;}
+  .meas-name{font-size:0.86rem;font-weight:600;color:var(--text-strong);}
+  .meas-prev{font-size:0.7rem;color:var(--text-muted);margin-top:2px;}
+  .meas-input{width:80px;background:transparent;border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text-strong);font-size:0.95rem;font-weight:600;text-align:right;outline:none;font-variant-numeric:tabular-nums;}
+  .meas-unit{font-size:0.7rem;color:var(--text-muted);font-weight:500;width:24px;text-align:left;}
+
+  /* Empty state */
+  .empty{background:var(--bg-card);border:1.5px dashed var(--border-light);border-radius:var(--radius-md);padding:40px 20px;text-align:center;}
+  .empty-icon{width:48px;height:48px;border-radius:50%;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:1.1rem;}
+  .empty-title{font-size:0.92rem;color:var(--text-strong);font-weight:600;margin-bottom:4px;}
+  .empty-desc{font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;}
+</style>
+</head>
+<body>
+
+<!-- ==================== CREATE EXERCISE ==================== -->
+
+<h1 class="sec">Create Exercise</h1>
+<p class="desc">Same patterns as Create Workout: light field labels, category chip row with colored icons, no asterisks, sticky save in header + footer. Equipment is its own dedicated picker, not a freeform text field. Optional fields (notes, video URL) collapsed under "More details".</p>
+
+<div class="row">
+
+  <!-- Phone 1: Create Exercise empty -->
+  <div class="wrap">
+    <div class="wrap-label">Empty state</div>
+    <div class="wrap-sub">New exercise · Save disabled until name + category set</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">New Exercise</div></div>
+        <button class="btn-save" disabled>Save</button>
+      </div>
+      <div class="content">
+        <div class="field"><div class="field-label">Name</div><input class="field-input placeholder" placeholder="e.g. Bulgarian Split Squat"></div>
+        <div class="field"><div class="field-label">Category</div>
+          <div class="chips">
+            <div class="chip cat-push"><i class="fas fa-hand-paper"></i> Push</div>
+            <div class="chip cat-pull"><i class="fas fa-fist-raised"></i> Pull</div>
+            <div class="chip cat-legs"><i class="fas fa-walking"></i> Legs</div>
+            <div class="chip cat-core"><i class="fas fa-bullseye"></i> Core</div>
+            <div class="chip"><i class="fas fa-heartbeat" style="color:var(--cat-cardio);"></i> Cardio</div>
+            <div class="chip"><i class="fas fa-hand-rock" style="color:var(--cat-arms);"></i> Arms</div>
+          </div>
+        </div>
+        <div class="field"><div class="field-label">Default sets &amp; reps</div>
+          <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+            <div class="stepper-row">
+              <div class="stepper-label">Sets</div>
+              <div class="stepper"><button>−</button><input value="3"><button>+</button></div>
+            </div>
+            <div class="stepper-row">
+              <div class="stepper-label">Reps</div>
+              <div class="stepper"><button>−</button><input value="10"><button>+</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="sec-head"><h3>Equipment</h3></div>
+        <div class="empty">
+          <div class="empty-icon"><i class="fas fa-cog"></i></div>
+          <div class="empty-title">Pick equipment</div>
+          <div class="empty-desc">Bodyweight, barbell, or pick a specific machine</div>
+          <button style="background:var(--primary);color:#04201a;border:none;padding:10px 18px;border-radius:var(--radius-pill);font-size:0.82rem;font-weight:700;">Choose equipment</button>
+        </div>
+        <div style="margin-top:18px;text-align:center;font-size:0.78rem;color:var(--primary);font-weight:600;">+ More details (notes, video URL)</div>
+      </div>
+      <div class="footer"><button class="btn-primary" disabled><i class="fas fa-check"></i> Save Exercise</button></div>
+    </div>
+  </div>
+
+  <!-- Phone 2: Create Exercise filled -->
+  <div class="wrap">
+    <div class="wrap-label">Filled · with equipment + advanced</div>
+    <div class="wrap-sub">Name + category + equipment + expanded "More details"</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">New Exercise</div></div>
+        <button class="btn-save">Save</button>
+      </div>
+      <div class="content">
+        <div class="field"><div class="field-label">Name</div><input class="field-input" value="Bulgarian Split Squat"></div>
+        <div class="field"><div class="field-label">Category</div>
+          <div class="chips">
+            <div class="chip cat-push"><i class="fas fa-hand-paper"></i> Push</div>
+            <div class="chip cat-pull"><i class="fas fa-fist-raised"></i> Pull</div>
+            <div class="chip cat-legs active"><i class="fas fa-walking"></i> Legs</div>
+            <div class="chip cat-core"><i class="fas fa-bullseye"></i> Core</div>
+            <div class="chip"><i class="fas fa-heartbeat" style="color:var(--cat-cardio);"></i> Cardio</div>
+          </div>
+        </div>
+        <div class="field"><div class="field-label">Default sets &amp; reps</div>
+          <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+            <div class="stepper-row">
+              <div class="stepper-label">Sets</div>
+              <div class="stepper"><button>−</button><input value="3"><button>+</button></div>
+            </div>
+            <div class="stepper-row">
+              <div class="stepper-label">Reps</div>
+              <div class="stepper"><button>−</button><input value="10"><button>+</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="field"><div class="field-label">Equipment</div>
+          <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px 14px;display:flex;align-items:center;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:var(--radius-sm);background:rgba(123,74,217,0.15);color:var(--cat-legs);display:flex;align-items:center;justify-content:center;"><i class="fas fa-dumbbell"></i></div>
+            <div style="flex:1;"><div style="font-size:0.86rem;font-weight:600;color:var(--text-strong);">Dumbbells</div><div style="font-size:0.7rem;color:var(--text-muted);">Bodyweight + DB · No specific machine</div></div>
+            <button style="background:transparent;border:none;color:var(--primary);font-size:0.78rem;font-weight:600;">Change</button>
+          </div>
+        </div>
+        <div class="sec-head"><h3>More details</h3><i class="fas fa-chevron-up" style="color:var(--text-muted);font-size:0.78rem;"></i></div>
+        <div class="field"><div class="field-label">Notes</div><textarea class="field-input" rows="2" style="resize:none;font-family:inherit;">Front foot flat, back foot elevated 12 inches</textarea></div>
+        <div class="field"><div class="field-label">Form video URL (optional)</div><input class="field-input placeholder" placeholder="YouTube or direct video link"></div>
+      </div>
+      <div class="footer"><button class="btn-primary"><i class="fas fa-check"></i> Save Exercise</button></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== BODY MEASUREMENTS ==================== -->
+
+<h1 class="sec">Log Body Measurements</h1>
+<p class="desc">Replaces the sparse modal with a tidy row-based entry. Each measurement shows last value as a hint, only fields the user actually fills get saved. Quick-weight at the top because that's what 90% of users come here to do.</p>
+
+<div class="row">
+
+  <!-- Phone: Body Measurements modal -->
+  <div class="wrap">
+    <div class="wrap-label">Quick weight + full measurements</div>
+    <div class="wrap-sub">Today's date pre-filled · Each row shows last reading · Connected sources tagged</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">Log Measurements</div></div>
+        <button class="btn-save">Save</button>
+      </div>
+      <div class="content">
+        <div class="field"><div class="field-label">Date</div><input class="field-input" value="Today, April 14, 2026"></div>
+
+        <!-- Body weight - hero card style -->
+        <div class="sec-head"><h3>Weight</h3></div>
+        <div style="background:linear-gradient(135deg,rgba(86,182,194,0.12),rgba(86,182,194,0.02));border:1px solid rgba(86,182,194,0.25);border-radius:var(--radius-md);padding:16px;margin-bottom:14px;">
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
+            <input style="background:transparent;border:none;color:var(--text-strong);font-size:1.5rem;font-weight:800;outline:none;width:120px;font-variant-numeric:tabular-nums;" value="184.2">
+            <span style="color:var(--cat-shoulders);font-size:0.9rem;font-weight:600;">lb</span>
+            <div style="flex:1;text-align:right;">
+              <div style="font-size:0.64rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;">Last</div>
+              <div style="font-size:0.74rem;color:var(--text-secondary);font-variant-numeric:tabular-nums;">184.8 lb · yesterday</div>
+            </div>
+          </div>
+          <div class="chips">
+            <div class="chip active" style="background:rgba(86,182,194,0.15);border-color:rgba(86,182,194,0.4);color:var(--cat-shoulders);">lb</div>
+            <div class="chip">kg</div>
+          </div>
+        </div>
+
+        <!-- Body composition -->
+        <div class="sec-head"><h3>Body composition <span class="count">(optional)</span></h3></div>
+        <div class="meas-row">
+          <div class="meas-icon"><i class="fas fa-percent"></i></div>
+          <div class="meas-info"><div class="meas-name">Body fat</div><div class="meas-prev">Last: 18.2% · 1 week ago</div></div>
+          <input class="meas-input" placeholder="18.0"><div class="meas-unit">%</div>
+        </div>
+        <div class="meas-row">
+          <div class="meas-icon"><i class="fas fa-fire"></i></div>
+          <div class="meas-info"><div class="meas-name">Muscle mass</div><div class="meas-prev">Last: 84.4 lb</div></div>
+          <input class="meas-input" placeholder="84.4"><div class="meas-unit">lb</div>
+        </div>
+
+        <!-- Circumference -->
+        <div class="sec-head"><h3>Circumference <span class="count">(optional)</span></h3></div>
+        <div class="meas-row">
+          <div class="meas-icon"><i class="fas fa-ruler-horizontal"></i></div>
+          <div class="meas-info"><div class="meas-name">Chest</div><div class="meas-prev">Last: 42.5"</div></div>
+          <input class="meas-input" placeholder="42.5"><div class="meas-unit">in</div>
+        </div>
+        <div class="meas-row">
+          <div class="meas-icon"><i class="fas fa-ruler-horizontal"></i></div>
+          <div class="meas-info"><div class="meas-name">Waist</div><div class="meas-prev">Last: 33.0"</div></div>
+          <input class="meas-input" placeholder="33"><div class="meas-unit">in</div>
+        </div>
+        <div class="meas-row">
+          <div class="meas-icon"><i class="fas fa-ruler-horizontal"></i></div>
+          <div class="meas-info"><div class="meas-name">Arm (L/R avg)</div><div class="meas-prev">Last: 15.2"</div></div>
+          <input class="meas-input" placeholder="15.2"><div class="meas-unit">in</div>
+        </div>
+
+        <!-- Or import from a connected source -->
+        <div class="sec-head"><h3>Or import from</h3></div>
+        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border-subtle);">
+            <div style="width:36px;height:36px;border-radius:var(--radius-sm);background:rgba(74,144,217,0.15);color:var(--cat-push);display:flex;align-items:center;justify-content:center;"><i class="fas fa-link"></i></div>
+            <div style="flex:1;"><div style="font-size:0.88rem;font-weight:600;color:var(--text-strong);">Withings</div><div style="font-size:0.7rem;color:var(--success);">Connected · last sync 2h ago</div></div>
+            <button style="background:var(--primary-bg);border:1px solid var(--primary-border);color:var(--primary);padding:6px 12px;border-radius:var(--radius-pill);font-size:0.74rem;font-weight:600;">Sync now</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border-subtle);">
+            <div style="width:36px;height:36px;border-radius:var(--radius-sm);background:rgba(247,168,101,0.15);color:var(--highlight-warm);display:flex;align-items:center;justify-content:center;"><i class="fas fa-x-ray"></i></div>
+            <div style="flex:1;"><div style="font-size:0.88rem;font-weight:600;color:var(--text-strong);">Upload DEXA scan</div><div style="font-size:0.7rem;color:var(--text-muted);">PDF or CSV from your facility</div></div>
+            <button style="background:transparent;border:none;color:var(--primary);font-size:0.78rem;font-weight:600;">Upload</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 14px;">
+            <div style="width:36px;height:36px;border-radius:var(--radius-sm);background:var(--bg-card-hi);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;"><i class="fab fa-apple"></i></div>
+            <div style="flex:1;"><div style="font-size:0.88rem;font-weight:600;color:var(--text-strong);">Apple Health</div><div style="font-size:0.7rem;color:var(--text-muted);">Sync weight &amp; body fat</div></div>
+            <button style="background:transparent;border:none;color:var(--primary);font-size:0.78rem;font-weight:600;">Connect</button>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><button class="btn-primary"><i class="fas fa-check"></i> Save Entry</button></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== MANUAL WORKOUT ==================== -->
+
+<h1 class="sec">Manual Workout Entry</h1>
+<p class="desc">Same UI as active workout — exercise cards, set table, swipe-to-delete, drag handles. Just labeled "Past Workout" with date/duration in the header instead of a live timer, and no rest timer / exercise-completion tracking. Skip the redundant "type" picker since template name implies it.</p>
+
+<div class="row">
+
+  <div class="wrap">
+    <div class="wrap-label">Past workout · same as active</div>
+    <div class="wrap-sub">Date in header (no live timer). Otherwise identical to active-workout cards.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+
+      <!-- Header — note "PAST" tag and date instead of live timer -->
+      <div class="page-header" style="flex-direction:column;align-items:stretch;gap:8px;padding-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="header-left">
+            <button class="back"><i class="fas fa-chevron-left"></i></button>
+            <div>
+              <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">Past Workout</div>
+              <div class="page-title" style="line-height:1.1;">Chest &amp; Triceps</div>
+            </div>
+          </div>
+          <button class="btn-save">Save</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div class="chip" style="padding:5px 12px;font-size:0.74rem;"><i class="far fa-calendar"></i> Apr 12, 2026</div>
+          <div class="chip" style="padding:5px 12px;font-size:0.74rem;"><i class="far fa-clock"></i> 58 min</div>
+        </div>
+      </div>
+
+      <div class="content" style="padding-top:12px;">
+
+        <!-- Exercise card — identical pattern to active workout -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <i class="fas fa-grip-vertical" style="color:var(--text-muted);"></i>
+            <div style="width:32px;height:32px;border-radius:var(--radius-sm);background:rgba(74,144,217,0.15);color:var(--cat-push);display:flex;align-items:center;justify-content:center;font-size:0.78rem;"><i class="fas fa-hand-paper"></i></div>
+            <div style="flex:1;font-size:0.95rem;font-weight:700;color:var(--text-strong);">Bench Press</div>
+            <button style="background:transparent;border:none;color:var(--text-muted);"><i class="fas fa-ellipsis-v"></i></button>
+          </div>
+          <!-- Set table — narrower weight/reps columns (this fixes the "too wide" complaint) -->
+          <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+            <thead>
+              <tr style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;">
+                <th style="width:24px;text-align:left;padding:4px;font-weight:600;">#</th>
+                <th style="width:38%;text-align:center;padding:4px;font-weight:600;">Weight</th>
+                <th style="width:38%;text-align:center;padding:4px;font-weight:600;">Reps</th>
+                <th style="width:32px;padding:4px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">1</td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;" value="135"></td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;" value="10"></td>
+                <td style="padding:4px;text-align:center;"><i class="fas fa-check-circle" style="color:var(--success);font-size:1rem;"></i></td>
+              </tr>
+              <tr>
+                <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">2</td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;" value="145"></td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;" value="8"></td>
+                <td style="padding:4px;text-align:center;"><i class="fas fa-check-circle" style="color:var(--success);font-size:1rem;"></i></td>
+              </tr>
+              <tr>
+                <td style="padding:4px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">3</td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;" value="155"></td>
+                <td style="padding:4px;"><input style="width:100%;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:8px;color:var(--text-strong);font-size:0.88rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;" value="6"></td>
+                <td style="padding:4px;text-align:center;"><i class="fas fa-check-circle" style="color:var(--success);font-size:1rem;"></i></td>
+              </tr>
+            </tbody>
+          </table>
+          <button style="width:100%;background:transparent;border:1px dashed var(--border-light);border-radius:8px;padding:8px;color:var(--primary);font-size:0.76rem;font-weight:600;margin-top:8px;"><i class="fas fa-plus"></i> Add Set</button>
+        </div>
+
+        <!-- Collapsed exercise card -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <i class="fas fa-grip-vertical" style="color:var(--text-muted);"></i>
+            <div style="width:32px;height:32px;border-radius:var(--radius-sm);background:rgba(74,144,217,0.15);color:var(--cat-push);display:flex;align-items:center;justify-content:center;font-size:0.78rem;"><i class="fas fa-hand-paper"></i></div>
+            <div style="flex:1;"><div style="font-size:0.95rem;font-weight:700;color:var(--text-strong);">Incline DB Press</div><div style="font-size:0.72rem;color:var(--text-muted);">3 sets · 65 lb × 10 / 65 × 9 / 70 × 6</div></div>
+            <button style="background:transparent;border:none;color:var(--text-muted);"><i class="fas fa-ellipsis-v"></i></button>
+          </div>
+        </div>
+
+        <button style="width:100%;background:transparent;border:1.5px dashed var(--border-light);border-radius:var(--radius-md);padding:14px;color:var(--primary);font-size:0.88rem;font-weight:600;"><i class="fas fa-plus"></i> Add Exercise</button>
+      </div>
+      <div class="footer"><button class="btn-primary"><i class="fas fa-check"></i> Save Past Workout</button></div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

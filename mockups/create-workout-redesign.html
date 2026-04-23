@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Workout — Redesign</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --warning:#f0c24b; --danger:#e35d6a; --highlight-warm:#f7a865;
+    --cat-push:#4A90D9; --cat-pull:#D94A7A; --cat-legs:#7B4AD9; --cat-core:#4AD9A7;
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+    --shadow-md:0 8px 14px rgba(0,0,0,0.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:0 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;text-align:center;max-width:880px;margin-left:auto;margin-right:auto;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .wrap-label{color:var(--text-strong);font-size:0.95rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.75rem;text-align:center;max-width:300px;}
+  .phone{width:340px;height:740px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .status{height:28px;background:var(--bg-app);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:0.7rem;color:var(--text-main);flex-shrink:0;}
+
+  /* Sticky header */
+  .page-header{
+    position:sticky;top:0;z-index:100;
+    background:var(--bg-app);
+    padding:10px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+    min-height:56px;
+    border-bottom:1px solid var(--border-subtle);
+  }
+  .header-left{display:flex;align-items:center;gap:10px;}
+  .back{
+    width:36px;height:36px;border-radius:50%;background:var(--bg-card);
+    color:var(--text-main);display:flex;align-items:center;justify-content:center;
+    font-size:0.82rem;border:none;
+  }
+  .page-title{font-size:1rem;font-weight:700;color:var(--text-strong);}
+  .btn-save{
+    background:var(--primary);color:#04201a;border:none;
+    padding:8px 16px;border-radius:var(--radius-pill);
+    font-size:0.82rem;font-weight:700;
+  }
+  .btn-save:disabled{background:var(--bg-card-hi);color:var(--text-muted);}
+
+  .content{flex:1;overflow-y:auto;padding:14px 16px 100px;}
+  .content::-webkit-scrollbar{display:none;}
+
+  /* Form field */
+  .field{margin-bottom:16px;}
+  .field-label{
+    font-size:0.7rem;color:var(--text-muted);
+    text-transform:uppercase;letter-spacing:0.06em;font-weight:600;
+    margin-bottom:6px;padding-left:2px;
+  }
+  .field-input{
+    width:100%;
+    background:var(--bg-card);
+    border:1px solid var(--border-subtle);
+    border-radius:var(--radius-md);
+    padding:14px 16px;
+    color:var(--text-strong);
+    font-size:0.95rem;
+    font-weight:500;
+    outline:none;
+    transition:border-color 150ms;
+  }
+  .field-input:focus{border-color:var(--primary);}
+  .field-input.placeholder{color:var(--text-muted);font-weight:400;}
+
+  /* Category chip row */
+  .cat-chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;}
+  .cat-chips::-webkit-scrollbar{display:none;}
+  .cat-chip{
+    flex-shrink:0;
+    background:var(--bg-card);
+    border:1px solid var(--border-subtle);
+    border-radius:var(--radius-pill);
+    padding:8px 14px;
+    font-size:0.8rem;
+    color:var(--text-secondary);
+    display:flex;align-items:center;gap:6px;
+    font-weight:500;
+    white-space:nowrap;
+  }
+  .cat-chip.active{background:var(--primary-bg);border-color:var(--primary-border);color:var(--primary);font-weight:600;}
+  .cat-chip i{font-size:0.85rem;}
+
+  /* Day chips */
+  .day-chips{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .day-chip{
+    aspect-ratio:1;
+    background:var(--bg-card);
+    border:1.5px solid var(--border-subtle);
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:0.78rem;font-weight:600;color:var(--text-secondary);
+  }
+  .day-chip.active{background:var(--primary);border-color:var(--primary);color:#04201a;}
+
+  /* Section header */
+  .sec-head{
+    display:flex;justify-content:space-between;align-items:center;
+    margin:20px 0 10px;padding:0 2px;
+  }
+  .sec-head h3{font-size:0.88rem;font-weight:700;color:var(--text-strong);}
+  .sec-head .count{font-size:0.72rem;color:var(--text-muted);font-weight:500;margin-left:6px;}
+
+  /* Exercise row — the critical rebuild */
+  .ex-row{
+    background:var(--bg-card);
+    border:1px solid var(--border-subtle);
+    border-radius:var(--radius-md);
+    padding:12px;
+    display:flex;align-items:center;gap:12px;
+    margin-bottom:8px;
+    position:relative;
+  }
+  .ex-drag{
+    color:var(--text-muted);
+    font-size:0.9rem;
+    cursor:grab;
+    padding:4px;
+    margin-left:-4px;
+    touch-action:none;
+  }
+  .ex-info{flex:1;min-width:0;}
+  .ex-name{font-size:0.92rem;font-weight:600;color:var(--text-strong);margin-bottom:3px;}
+  .ex-meta{
+    display:flex;align-items:center;gap:8px;
+    font-size:0.72rem;color:var(--text-muted);
+  }
+  .ex-meta-chip{
+    background:var(--bg-card-hi);
+    padding:2px 8px;
+    border-radius:var(--radius-pill);
+    font-variant-numeric:tabular-nums;
+  }
+  .ex-equip{
+    display:flex;align-items:center;gap:4px;
+    font-size:0.7rem;color:var(--text-secondary);
+  }
+  .ex-equip i{font-size:0.68rem;color:var(--primary);opacity:0.8;}
+  /* Single overflow menu instead of two buttons */
+  .ex-menu{
+    width:32px;height:32px;border-radius:50%;
+    background:transparent;
+    color:var(--text-muted);
+    display:flex;align-items:center;justify-content:center;
+    border:none;flex-shrink:0;
+  }
+
+  /* Swipe hint */
+  .swipe-hint{
+    position:absolute;right:-80px;top:0;bottom:0;
+    background:var(--danger);color:#fff;
+    width:80px;display:flex;align-items:center;justify-content:center;
+    border-radius:0 var(--radius-md) var(--radius-md) 0;
+  }
+
+  /* Add exercise — dashed */
+  .add-ex{
+    width:100%;
+    background:transparent;
+    border:1.5px dashed var(--border-light);
+    border-radius:var(--radius-md);
+    padding:14px;
+    color:var(--primary);
+    font-size:0.88rem;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    margin-top:6px;
+  }
+
+  /* Estimated stats */
+  .est-stats{
+    background:var(--bg-card);
+    border:1px solid var(--border-subtle);
+    border-radius:var(--radius-md);
+    padding:12px 14px;
+    display:flex;justify-content:space-around;
+    margin-bottom:16px;
+    margin-top:10px;
+  }
+  .est-stat{text-align:center;}
+  .est-val{font-size:1.1rem;font-weight:700;color:var(--text-strong);}
+  .est-label{font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;}
+
+  /* Bottom sticky footer for save */
+  .footer{
+    position:absolute;bottom:0;left:0;right:0;
+    background:linear-gradient(to top, var(--bg-app) 70%, transparent);
+    padding:16px 16px 20px;
+  }
+  .btn-primary{
+    width:100%;background:var(--primary);color:#04201a;
+    border:none;border-radius:var(--radius-md);
+    padding:14px;font-size:0.95rem;font-weight:700;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+
+  /* Annotation for problems */
+  .prob-label{
+    position:absolute;top:-6px;left:-6px;
+    background:var(--danger);color:#fff;
+    font-size:0.68rem;font-weight:700;
+    padding:2px 8px;border-radius:var(--radius-pill);
+    z-index:5;
+  }
+  .prob-note{
+    font-size:0.72rem;color:var(--danger);
+    max-width:320px;line-height:1.5;margin-top:4px;
+  }
+  .fix-label{
+    background:rgba(54,196,107,0.15);color:var(--success);
+    font-size:0.7rem;padding:3px 10px;border-radius:var(--radius-pill);
+    font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
+    display:inline-block;margin-bottom:4px;
+  }
+
+  /* Issues panel */
+  .issues{
+    max-width:560px;margin:0 auto 24px;
+    background:var(--bg-card);border:1px solid var(--border-subtle);
+    border-radius:var(--radius-md);padding:18px 22px;
+  }
+  .issues h4{color:var(--text-strong);font-size:1rem;margin:0 0 10px;font-weight:700;}
+  .issues ul{list-style:none;padding:0;margin:0;}
+  .issues li{
+    display:flex;gap:10px;padding:6px 0;
+    font-size:0.88rem;color:var(--text-main);line-height:1.5;
+  }
+  .issues li i{color:var(--danger);margin-top:4px;}
+  .issues li strong{color:var(--text-strong);}
+</style>
+</head>
+<body>
+
+<h1 class="sec">Create Workout — Redesign</h1>
+<p class="desc">What's wrong with the current form and how the polished version fixes it. Matches the .hero-card / .row-card / drag-handle patterns used elsewhere in the redesigned app.</p>
+
+<div class="issues">
+  <h4>Problems with current form</h4>
+  <ul>
+    <li><i class="fas fa-times-circle"></i><div><strong>Mystery checkbox</strong> on each exercise row — no label, no clear purpose. Cut it.</div></li>
+    <li><i class="fas fa-times-circle"></i><div><strong>Up/down arrows for reordering</strong> — wrong pattern on mobile. Use drag handles like the rest of the app.</div></li>
+    <li><i class="fas fa-times-circle"></i><div><strong>Two heavy icon buttons</strong> (edit pencil + trash) competing for space. Consolidate into one overflow menu, and tap the row to edit.</div></li>
+    <li><i class="fas fa-times-circle"></i><div><strong>Category is a dropdown</strong> — feels legal. Use the same colored category chips as everywhere else.</div></li>
+    <li><i class="fas fa-times-circle"></i><div><strong>Day chips are rectangles</strong> with inconsistent tap targets. Use uniform circle chips in a 7-column grid.</div></li>
+    <li><i class="fas fa-times-circle"></i><div><strong>Asterisk-required labels + oversized input rows</strong> — nothing else in the app uses this pattern. Use lighter uppercase field labels.</div></li>
+    <li><i class="fas fa-times-circle"></i><div><strong>No Save button visible</strong> without scrolling. Pin it as a sticky footer with a top-right quick-save too.</div></li>
+    <li><i class="fas fa-times-circle"></i><div><strong>No estimate preview</strong>. Show total sets / reps / est duration so you know what you're building before saving.</div></li>
+  </ul>
+</div>
+
+<div class="row">
+
+  <!-- Phone 1: Clean form -->
+  <div class="wrap">
+    <div class="fix-label">Redesigned</div>
+    <div class="wrap-label">Create Workout · filled state</div>
+    <div class="wrap-sub">Category chips, uniform day circles, drag-to-reorder, single overflow menu per row, sticky Save in both header and footer.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+
+      <div class="page-header">
+        <div class="header-left">
+          <button class="back"><i class="fas fa-chevron-left"></i></button>
+          <div class="page-title">Create Workout</div>
+        </div>
+        <button class="btn-save">Save</button>
+      </div>
+
+      <div class="content">
+
+        <div class="field">
+          <div class="field-label">Name</div>
+          <input class="field-input" value="Hard Monday">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Category</div>
+          <div class="cat-chips">
+            <div class="cat-chip active" style="color:var(--cat-push);border-color:rgba(74,144,217,0.4);background:rgba(74,144,217,0.1);"><i class="fas fa-hand-paper"></i> Push</div>
+            <div class="cat-chip"><i class="fas fa-fist-raised" style="color:var(--cat-pull);"></i> Pull</div>
+            <div class="cat-chip"><i class="fas fa-walking" style="color:var(--cat-legs);"></i> Legs</div>
+            <div class="cat-chip"><i class="fas fa-bullseye" style="color:var(--cat-core);"></i> Core</div>
+            <div class="cat-chip"><i class="fas fa-heartbeat" style="color:var(--warning);"></i> Cardio</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Schedule (optional)</div>
+          <div class="day-chips">
+            <div class="day-chip active">M</div>
+            <div class="day-chip">T</div>
+            <div class="day-chip">W</div>
+            <div class="day-chip">T</div>
+            <div class="day-chip">F</div>
+            <div class="day-chip">S</div>
+            <div class="day-chip">S</div>
+          </div>
+        </div>
+
+        <div class="sec-head"><h3>Exercises <span class="count">3</span></h3></div>
+
+        <div class="est-stats">
+          <div class="est-stat"><div class="est-val">10</div><div class="est-label">Sets</div></div>
+          <div class="est-stat"><div class="est-val">108</div><div class="est-label">Reps</div></div>
+          <div class="est-stat"><div class="est-val">~42m</div><div class="est-label">Est time</div></div>
+        </div>
+
+        <div class="ex-row">
+          <i class="fas fa-grip-vertical ex-drag"></i>
+          <div class="ex-info">
+            <div class="ex-name">Seated Chest Press</div>
+            <div class="ex-meta">
+              <span class="ex-meta-chip">4 × 10 @ 110 lb</span>
+            </div>
+            <div class="ex-equip" style="margin-top:4px;"><i class="fas fa-cog"></i> Arsenal Strength Plated</div>
+          </div>
+          <button class="ex-menu"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+
+        <div class="ex-row">
+          <i class="fas fa-grip-vertical ex-drag"></i>
+          <div class="ex-info">
+            <div class="ex-name">Pec Deck</div>
+            <div class="ex-meta">
+              <span class="ex-meta-chip">3 × 12 @ 70 lb</span>
+            </div>
+            <div class="ex-equip" style="margin-top:4px;"><i class="fas fa-cog"></i> Gymleco</div>
+          </div>
+          <button class="ex-menu"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+
+        <div class="ex-row">
+          <i class="fas fa-grip-vertical ex-drag"></i>
+          <div class="ex-info">
+            <div class="ex-name">Shoulder Press Machine</div>
+            <div class="ex-meta">
+              <span class="ex-meta-chip">3 × 10 @ 80 lb</span>
+            </div>
+            <div class="ex-equip" style="margin-top:4px;"><i class="fas fa-cog"></i> Hammer Strength</div>
+          </div>
+          <button class="ex-menu"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+
+        <button class="add-ex"><i class="fas fa-plus"></i> Add Exercise</button>
+
+      </div>
+
+      <div class="footer">
+        <button class="btn-primary"><i class="fas fa-check"></i> Save Workout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phone 2: Row tapped / overflow open -->
+  <div class="wrap">
+    <div class="fix-label">Redesigned</div>
+    <div class="wrap-label">Exercise row — tapped / overflow menu</div>
+    <div class="wrap-sub">Tapping the row opens the exercise edit sheet (change sets/reps/weight/equipment). Tapping ⋮ opens a small menu — Edit, Swap, Duplicate, Remove.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+
+      <div class="page-header">
+        <div class="header-left">
+          <button class="back"><i class="fas fa-chevron-left"></i></button>
+          <div class="page-title">Create Workout</div>
+        </div>
+        <button class="btn-save">Save</button>
+      </div>
+
+      <div class="content">
+
+        <div class="field">
+          <div class="field-label">Name</div>
+          <input class="field-input" value="Hard Monday">
+        </div>
+
+        <div class="sec-head"><h3>Exercises <span class="count">3</span></h3></div>
+
+        <div class="ex-row" style="border-color:var(--primary-border);box-shadow:0 0 0 3px var(--primary-bg);">
+          <i class="fas fa-grip-vertical ex-drag"></i>
+          <div class="ex-info">
+            <div class="ex-name">Seated Chest Press</div>
+            <!-- Inline edit chips -->
+            <div style="display:flex;gap:6px;margin-top:6px;">
+              <div style="background:var(--bg-card-hi);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:4px 8px;font-size:0.72rem;color:var(--text-strong);display:flex;align-items:center;gap:4px;">Sets <strong>4</strong> <i class="fas fa-chevron-down" style="font-size:0.56rem;color:var(--text-muted);"></i></div>
+              <div style="background:var(--bg-card-hi);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:4px 8px;font-size:0.72rem;color:var(--text-strong);display:flex;align-items:center;gap:4px;">Reps <strong>10</strong> <i class="fas fa-chevron-down" style="font-size:0.56rem;color:var(--text-muted);"></i></div>
+              <div style="background:var(--bg-card-hi);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:4px 8px;font-size:0.72rem;color:var(--text-strong);display:flex;align-items:center;gap:4px;">Weight <strong>110</strong> <i class="fas fa-chevron-down" style="font-size:0.56rem;color:var(--text-muted);"></i></div>
+            </div>
+            <div class="ex-equip" style="margin-top:8px;"><i class="fas fa-cog"></i> Arsenal Strength Plated · <span style="color:var(--primary);">Change</span></div>
+          </div>
+        </div>
+
+        <div class="ex-row">
+          <i class="fas fa-grip-vertical ex-drag"></i>
+          <div class="ex-info">
+            <div class="ex-name">Pec Deck</div>
+            <div class="ex-meta">
+              <span class="ex-meta-chip">3 × 12 @ 70 lb</span>
+            </div>
+          </div>
+          <!-- Overflow menu open -->
+          <div style="position:absolute;right:14px;top:44px;z-index:20;background:var(--bg-card-hi);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:4px 0;box-shadow:var(--shadow-md);min-width:160px;">
+            <div style="padding:10px 14px;font-size:0.82rem;color:var(--text-main);display:flex;align-items:center;gap:10px;"><i class="fas fa-pen" style="width:14px;color:var(--text-muted);"></i>Edit details</div>
+            <div style="padding:10px 14px;font-size:0.82rem;color:var(--text-main);display:flex;align-items:center;gap:10px;"><i class="fas fa-exchange-alt" style="width:14px;color:var(--text-muted);"></i>Swap exercise</div>
+            <div style="padding:10px 14px;font-size:0.82rem;color:var(--text-main);display:flex;align-items:center;gap:10px;"><i class="fas fa-copy" style="width:14px;color:var(--text-muted);"></i>Duplicate</div>
+            <div style="border-top:1px solid var(--border-subtle);padding:10px 14px;font-size:0.82rem;color:var(--danger);display:flex;align-items:center;gap:10px;"><i class="fas fa-trash" style="width:14px;"></i>Remove</div>
+          </div>
+          <button class="ex-menu" style="color:var(--primary);"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+
+        <div class="ex-row">
+          <i class="fas fa-grip-vertical ex-drag"></i>
+          <div class="ex-info">
+            <div class="ex-name">Shoulder Press Machine</div>
+            <div class="ex-meta"><span class="ex-meta-chip">3 × 10 @ 80 lb</span></div>
+          </div>
+          <button class="ex-menu"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+
+        <button class="add-ex"><i class="fas fa-plus"></i> Add Exercise</button>
+
+      </div>
+
+      <div class="footer">
+        <button class="btn-primary"><i class="fas fa-check"></i> Save Workout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phone 3: Empty state -->
+  <div class="wrap">
+    <div class="fix-label">Redesigned</div>
+    <div class="wrap-label">Empty state</div>
+    <div class="wrap-sub">New template with no exercises yet. Save is disabled until there's at least a name + 1 exercise. Clear call-to-action in the empty exercise area.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+
+      <div class="page-header">
+        <div class="header-left">
+          <button class="back"><i class="fas fa-chevron-left"></i></button>
+          <div class="page-title">Create Workout</div>
+        </div>
+        <button class="btn-save" disabled>Save</button>
+      </div>
+
+      <div class="content">
+
+        <div class="field">
+          <div class="field-label">Name</div>
+          <input class="field-input placeholder" placeholder="e.g. Push Day">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Category</div>
+          <div class="cat-chips">
+            <div class="cat-chip"><i class="fas fa-hand-paper" style="color:var(--cat-push);"></i> Push</div>
+            <div class="cat-chip"><i class="fas fa-fist-raised" style="color:var(--cat-pull);"></i> Pull</div>
+            <div class="cat-chip"><i class="fas fa-walking" style="color:var(--cat-legs);"></i> Legs</div>
+            <div class="cat-chip"><i class="fas fa-bullseye" style="color:var(--cat-core);"></i> Core</div>
+            <div class="cat-chip"><i class="fas fa-heartbeat" style="color:var(--warning);"></i> Cardio</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Schedule (optional)</div>
+          <div class="day-chips">
+            <div class="day-chip">M</div>
+            <div class="day-chip">T</div>
+            <div class="day-chip">W</div>
+            <div class="day-chip">T</div>
+            <div class="day-chip">F</div>
+            <div class="day-chip">S</div>
+            <div class="day-chip">S</div>
+          </div>
+        </div>
+
+        <div class="sec-head"><h3>Exercises <span class="count">0</span></h3></div>
+
+        <!-- Empty state -->
+        <div style="background:var(--bg-card);border:1.5px dashed var(--border-light);border-radius:var(--radius-md);padding:40px 20px;text-align:center;">
+          <div style="width:48px;height:48px;border-radius:50%;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:1.1rem;"><i class="fas fa-dumbbell"></i></div>
+          <div style="font-size:0.92rem;color:var(--text-strong);font-weight:600;margin-bottom:4px;">No exercises yet</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;">Add exercises from your library or create new ones</div>
+          <button style="background:var(--primary);color:#04201a;border:none;padding:10px 18px;border-radius:var(--radius-pill);font-size:0.82rem;font-weight:700;"><i class="fas fa-plus"></i> Add Exercise</button>
+        </div>
+
+      </div>
+
+      <div class="footer">
+        <button class="btn-primary" style="background:var(--bg-card-hi);color:var(--text-muted);" disabled><i class="fas fa-check"></i> Save Workout</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

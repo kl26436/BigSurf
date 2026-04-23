@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Equipment Migration Editor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+:root {
+    --bg: #0f172a; --bg-card: #1e293b; --bg-hover: #334155;
+    --text: #e2e8f0; --text-muted: #94a3b8; --text-dim: #64748b;
+    --border: #334155; --primary: #3b82f6; --primary-bg: rgba(59,130,246,.15);
+    --success: #22c55e; --success-bg: rgba(34,197,94,.12);
+    --warn: #eab308; --warn-bg: rgba(234,179,8,.12);
+    --danger: #ef4444; --danger-bg: rgba(239,68,68,.1);
+    --orange: #f97316;
+    --radius: 8px; --radius-sm: 6px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); padding: 16px; line-height: 1.5; }
+h1 { font-size: 1.3rem; margin-bottom: 4px; }
+h2 { font-size: 1.05rem; color: var(--text-muted); margin: 20px 0 10px; }
+p.subtitle { color: var(--text-dim); font-size: .85rem; margin-bottom: 16px; }
+
+/* Auth */
+#auth-section { text-align: center; padding: 60px 20px; }
+#auth-section button { font-size: 1rem; padding: 12px 28px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius); cursor: pointer; }
+#auth-section button:hover { opacity: .9; }
+#auth-status { color: var(--text-muted); font-size: .85rem; margin-top: 12px; }
+
+/* Summary */
+.summary { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
+.stat { background: var(--bg-card); border-radius: var(--radius); padding: 10px 14px; min-width: 90px; }
+.stat-num { font-size: 1.3rem; font-weight: 700; }
+.stat-label { font-size: .72rem; color: var(--text-muted); }
+
+/* Toolbar */
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; align-items: center; }
+.toolbar input[type="text"] { flex: 1; min-width: 200px; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: .85rem; }
+.toolbar select { padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: .85rem; }
+.btn { padding: 8px 16px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: .85rem; font-weight: 500; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-outline { background: none; border: 1px solid var(--border); color: var(--text-muted); }
+.btn-sm { padding: 4px 10px; font-size: .75rem; }
+.btn:hover { opacity: .85; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Gym section */
+.gym-section { margin-bottom: 24px; }
+.gym-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--bg-card); border-radius: var(--radius); cursor: pointer; border-left: 4px solid var(--primary); margin-bottom: 2px; }
+.gym-header:hover { background: var(--bg-hover); }
+.gym-header__name { font-weight: 700; font-size: 1rem; flex: 1; }
+.gym-header__name i { margin-right: 6px; color: var(--primary); font-size: .85rem; }
+.gym-header__stats { font-size: .75rem; color: var(--text-dim); }
+.gym-body { padding-left: 8px; }
+.gym-body.collapsed { display: none; }
+
+/* Exercise group (nested under gym) */
+.ex-group { margin-bottom: 8px; margin-top: 8px; }
+.ex-group__header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg-card); border-radius: var(--radius-sm) var(--radius-sm) 0 0; cursor: pointer; border-left: 3px solid var(--border); }
+.ex-group__header:hover { background: var(--bg-hover); }
+.ex-group__name { font-weight: 600; font-size: .9rem; flex: 1; }
+.ex-group__count { font-size: .73rem; color: var(--text-dim); }
+.ex-group__machines { font-size: .73rem; color: var(--text-muted); }
+.ex-group__body { border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+.ex-group__body.collapsed { display: none; }
+
+/* Machine row within an exercise group */
+.machine-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.04); }
+.machine-row:last-child { border-bottom: none; }
+.machine-row__info { flex: 1; min-width: 0; }
+.machine-row__equip { font-size: .88rem; font-weight: 500; }
+.machine-row__equip.unset { color: var(--text-dim); font-style: italic; }
+.machine-row__meta { font-size: .75rem; color: var(--text-dim); display: flex; gap: 8px; flex-wrap: wrap; }
+.machine-row__gym { color: var(--text-muted); }
+.machine-row__dates { color: var(--text-dim); }
+.machine-row__count { background: var(--primary-bg); color: var(--primary); padding: 1px 7px; border-radius: 10px; font-size: .7rem; font-weight: 600; }
+.machine-row__actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* Mapped indicator */
+.machine-row.mapped { background: var(--success-bg); }
+.machine-row.mapped .machine-row__equip { color: var(--success); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .7rem; font-weight: 600; }
+.badge-mapped { background: var(--success-bg); color: var(--success); }
+.badge-unmapped { background: var(--warn-bg); color: var(--warn); }
+.badge-none { background: rgba(100,100,100,.2); color: var(--text-dim); }
+.badge-applied { background: var(--success-bg); color: var(--success); border: 1px solid rgba(34,197,94,.25); }
+.machine-row.applied { background: rgba(34,197,94,.06); opacity: .7; }
+.machine-row.applied:hover { opacity: 1; }
+
+/* Catalog picker modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; }
+.modal-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.modal-header h3 { margin: 0; font-size: 1rem; }
+.modal-header .modal-subtitle { font-size: .8rem; color: var(--text-dim); margin-top: 2px; }
+.modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+.modal-body { overflow-y: auto; padding: 12px 16px; flex: 1; }
+.modal-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.pick-list { display: flex; flex-direction: column; gap: 2px; }
+.pick-item { padding: 8px 10px; border-radius: 4px; cursor: pointer; font-size: .85rem; }
+.pick-item:hover { background: var(--bg-hover); }
+.pick-item.selected { background: var(--primary-bg); color: var(--primary); }
+.pick-item__sub { font-size: .75rem; color: var(--text-dim); }
+.pick-search { width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: .85rem; margin-bottom: 10px; }
+.pick-breadcrumb { font-size: .8rem; color: var(--text-dim); margin-bottom: 10px; }
+.pick-breadcrumb span { color: var(--primary); cursor: pointer; }
+.pick-breadcrumb span:hover { text-decoration: underline; }
+
+/* Export */
+#export-section { margin: 24px 0; padding: 16px; background: var(--bg-card); border-radius: var(--radius); }
+#export-output { width: 100%; min-height: 200px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: monospace; font-size: .78rem; padding: 10px; margin-top: 10px; }
+
+.hidden { display: none !important; }
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<h1>Equipment Migration Editor</h1>
+<p class="subtitle">Review exercises from your workout history. Map each exercise's machine to the catalog, fix names, update gyms. Exports a migration script — nothing is written to Firebase.</p>
+
+<!-- Auth -->
+<div id="auth-section">
+    <p>Sign in to load your workout history and equipment.</p>
+    <button onclick="doSignIn()">Sign in with Google</button>
+    <div id="auth-status"></div>
+</div>
+
+<!-- Main -->
+<div id="main-section" class="hidden">
+    <div id="loading"><span class="spinner"></span> Loading workout history...</div>
+    <div id="editor" class="hidden">
+        <div class="summary" id="summary-bar"></div>
+        <div class="toolbar">
+            <input type="text" id="search-input" placeholder="Search exercises, equipment, gyms..." oninput="renderList()">
+            <select id="filter-status" onchange="renderList()">
+                <option value="all">All exercises</option>
+                <option value="unmapped">Needs machine</option>
+                <option value="mapped">Machine set</option>
+                <option value="no-equip">No equipment</option>
+                <option value="modified">Pending</option>
+                <option value="applied">Applied ✓</option>
+            </select>
+            <button class="btn btn-success" id="apply-btn" onclick="applyMigration()">🚀 Apply to Firebase</button>
+            <button class="btn btn-outline" style="border-color:var(--warn);color:var(--warn)" onclick="cleanupDuplicates()">🧹 Merge Dupes</button>
+            <button class="btn btn-outline" style="border-color:var(--primary);color:var(--primary)" onclick="fixMissingLocations()">📍 Locations</button>
+            <button class="btn btn-outline" style="border-color:var(--danger);color:var(--danger)" onclick="deleteOrphans()">🗑️ Orphans</button>
+            <button class="btn btn-outline" style="border-color:var(--orange);color:var(--orange)" onclick="backfillFunctionField()">🔧 Fix Display</button>
+            <button class="btn btn-outline" onclick="exportMigration()">Export JSON</button>
+            <button class="btn btn-outline" onclick="saveProgress()">💾 Save Progress</button>
+            <button class="btn btn-outline" onclick="loadProgress()">📂 Load Progress</button>
+            <input type="file" id="load-file" accept=".json" class="hidden" onchange="handleLoadFile(event)">
+        </div>
+        <div id="exercise-list"></div>
+        <div id="export-section" class="hidden">
+            <h3 style="font-size:.95rem;margin-bottom:4px;">Migration Script</h3>
+            <p class="subtitle">Review the JSON below, then Apply to write changes to Firebase.</p>
+            <textarea id="export-output" readonly></textarea>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="copyExport()">Copy to Clipboard</button>
+                <button class="btn btn-outline" onclick="downloadExport()">Download JSON</button>
+            </div>
+        </div>
+        <div id="apply-log" class="hidden" style="margin-top:12px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:monospace;font-size:.78rem;max-height:300px;overflow-y:auto;white-space:pre-wrap;"></div>
+    </div>
+</div>
+
+<!-- Catalog picker modal -->
+<div id="catalog-modal" class="modal-overlay hidden" onclick="if(event.target===this)closePicker()">
+    <div class="modal">
+        <div class="modal-header">
+            <div>
+                <h3 id="picker-title">Pick Machine</h3>
+                <div class="modal-subtitle" id="picker-context"></div>
+            </div>
+            <button class="modal-close" onclick="closePicker()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="text" class="pick-search" id="picker-search" placeholder="Search all machines..." oninput="renderPicker()">
+            <div class="pick-breadcrumb" id="picker-breadcrumb"></div>
+            <div class="pick-list" id="picker-list"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="clearMachine()">Clear Machine</button>
+            <button class="btn btn-outline" onclick="closePicker()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+// =========================================================================
+// Firebase
+// =========================================================================
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, collection, query, getDocs, doc, updateDoc, setDoc, deleteDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+const firebaseConfig = {
+    apiKey: 'AIzaSyAbzL4bGY026Z-oWiWcYLfDgkmmgAfUY3k',
+    authDomain: 'workout-tracker-b94b6.firebaseapp.com',
+    projectId: 'workout-tracker-b94b6',
+    storageBucket: 'workout-tracker-b94b6.appspot.com',
+    messagingSenderId: '111958991290',
+    appId: '1:111958991290:web:23e1014ab2ba27df6ebd83',
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+// =========================================================================
+// Catalog
+// =========================================================================
+let CATALOG = [];
+let catalogIndex = [];
+
+async function loadCatalog() {
+    try {
+        const resp = await fetch('./js/core/data/equipment-catalog.js');
+        let src = await resp.text();
+        src = src.replace(/export\s+/g, '');
+        const fn = new Function(src + '\nreturn EQUIPMENT_CATALOG;');
+        CATALOG = fn();
+    } catch (e) { console.error('Catalog load failed:', e); }
+    catalogIndex = [];
+    for (const b of CATALOG) {
+        for (const l of b.lines) {
+            for (const m of l.machines) {
+                catalogIndex.push({
+                    brand: b.brand, line: l.name, machine: m.name,
+                    type: m.type || l.type, bodyPart: m.bodyPart,
+                    searchStr: `${b.brand} ${l.name} ${m.name}`.toLowerCase(),
+                    displayName: generateName(b.brand, l.name, m.name),
+                });
+            }
+        }
+    }
+}
+
+function generateName(brand, line, machine) {
+    const displayLine = (line && line !== 'General') ? line : null;
+    if (brand && displayLine && machine) return `${brand} ${displayLine} — ${machine}`;
+    if (brand && machine) return `${brand} — ${machine}`;
+    if (brand && displayLine) return `${brand} ${displayLine}`;
+    if (machine) return machine;
+    return brand || 'Unknown Equipment';
+}
+
+// =========================================================================
+// State
+// =========================================================================
+let userId = null;
+let workouts = [];
+let equipmentDocs = [];       // Raw equipment docs from Firestore
+let equipmentByName = {};     // name -> equipment doc
+
+// gymMap: gymName -> Map<exerciseName, Map<equipKey, MachineEntry>>
+// MachineEntry: { equipName, workoutCount, lastDate, firstDate, workoutIds[], equipDoc }
+let gymMap = new Map();
+let allGyms = [];             // sorted list of gym names
+let changes = new Map();      // "exerciseName|||oldEquipName" -> { newEquipName, newBrand, newLine, newMachine, newType }
+let applied = new Set();      // keys that have been successfully written to Firebase
+
+// Picker state
+let pickerKey = null;         // "exerciseName|||equipName" being edited
+let pickerStep = 'brand';
+let pickerBrand = null;
+let pickerLine = null;
+let applyInProgress = false;  // Prevent double-clicks on Apply
+
+// Warn on accidental page close with unsaved changes
+window.addEventListener('beforeunload', (e) => {
+    if (changes.size > 0) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// =========================================================================
+// Auth
+// =========================================================================
+window.doSignIn = async () => {
+    try { await signInWithPopup(auth, provider); }
+    catch (e) { document.getElementById('auth-status').textContent = 'Failed: ' + e.message; }
+};
+
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        userId = user.uid;
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('main-section').classList.remove('hidden');
+        await loadCatalog();
+        await loadData();
+    }
+});
+
+// =========================================================================
+// Load data
+// =========================================================================
+async function loadData() {
+    const loading = document.getElementById('loading');
+    const editor = document.getElementById('editor');
+
+    try {
+        // Load equipment docs
+        const equipSnap = await getDocs(query(collection(db, 'users', userId, 'equipment')));
+        equipmentDocs = [];
+        equipSnap.forEach(d => equipmentDocs.push({ id: d.id, ...d.data() }));
+        equipmentByName = {};
+        for (const eq of equipmentDocs) { equipmentByName[eq.name] = eq; }
+
+        // Load workouts
+        const workoutSnap = await getDocs(query(collection(db, 'users', userId, 'workouts')));
+        workouts = [];
+        workoutSnap.forEach(d => workouts.push({ id: d.id, ...d.data() }));
+
+        // Build gym -> exercise -> machine map
+        buildGymMap();
+
+        loading.classList.add('hidden');
+        editor.classList.remove('hidden');
+        renderSummary();
+        renderList();
+    } catch (e) {
+        loading.innerHTML = `<span style="color:var(--danger)">Error: ${e.message}</span>`;
+        console.error(e);
+    }
+}
+
+function buildGymMap() {
+    gymMap = new Map();
+
+    for (const w of workouts) {
+        // Skip cancelled and empty workouts
+        if (w.cancelledAt) continue;
+        const exercises = w.exercises || {};
+        const entries = Array.isArray(exercises)
+            ? exercises.map((ex, i) => [i, ex])
+            : Object.entries(exercises);
+        if (entries.length === 0) continue;
+        if (!entries.some(([, ex]) => ex && ex.name)) continue;
+        const gym = w.location
+            ? (typeof w.location === 'object' ? w.location.name : w.location)
+            : null;
+        const gymKey = gym || '(No Gym)';
+        const date = w.date || w.completedAt?.split('T')[0] || '?';
+
+        if (!gymMap.has(gymKey)) gymMap.set(gymKey, new Map());
+        const gymExercises = gymMap.get(gymKey);
+
+        for (const [key, ex] of entries) {
+            if (!ex) continue;
+            const exName = ex.name || ex.machine || `exercise_${key}`;
+            const equipName = ex.equipment || null;
+
+            if (!gymExercises.has(exName)) gymExercises.set(exName, new Map());
+            const machines = gymExercises.get(exName);
+
+            const machineKey = equipName || '__none__';
+            if (!machines.has(machineKey)) {
+                machines.set(machineKey, {
+                    equipName,
+                    workoutCount: 0,
+                    lastDate: date,
+                    firstDate: date,
+                    workoutIds: [],
+                    equipDoc: equipName ? equipmentByName[equipName] || null : null,
+                });
+            }
+            const m = machines.get(machineKey);
+            m.workoutCount++;
+            if (date > m.lastDate) m.lastDate = date;
+            if (date < m.firstDate) m.firstDate = date;
+            m.workoutIds.push(w.id);
+        }
+    }
+
+    // Sort gyms: real gyms alphabetically, "(No Gym)" last
+    allGyms = [...gymMap.keys()].sort((a, b) => {
+        if (a === '(No Gym)') return 1;
+        if (b === '(No Gym)') return -1;
+        return a.localeCompare(b);
+    });
+
+    // Sort exercises within each gym
+    for (const [gymKey, exercises] of gymMap) {
+        const sorted = new Map([...exercises.entries()].sort((a, b) => a[0].localeCompare(b[0])));
+        gymMap.set(gymKey, sorted);
+    }
+}
+
+// =========================================================================
+// Rendering
+// =========================================================================
+function renderSummary() {
+    let totalRows = 0, withEquip = 0, withoutEquip = 0, needsMachine = 0, modified = 0, appliedCount = 0;
+    const exerciseSet = new Set();
+    // Count real workouts (not cancelled/empty)
+    const realWorkouts = workouts.filter(w => {
+        if (w.cancelledAt) return false;
+        const ex = w.exercises || {};
+        const entries = Array.isArray(ex) ? ex : Object.values(ex);
+        return entries.some(e => e && e.name);
+    });
+
+    for (const [gymKey, exercises] of gymMap) {
+        for (const [exName, machines] of exercises) {
+            exerciseSet.add(exName);
+            for (const [machineKey, m] of machines) {
+                totalRows++;
+                const key = exName + '|||' + (m.equipName || '');
+                if (machineKey === '__none__') withoutEquip++;
+                else withEquip++;
+                if (applied.has(key)) appliedCount++;
+                else if (changes.has(key)) modified++;
+                const doc = m.equipDoc;
+                if (machineKey !== '__none__' && !applied.has(key) && !changes.has(key) && !(doc && (doc.function || doc.machine))) needsMachine++;
+            }
+        }
+    }
+
+    document.getElementById('summary-bar').innerHTML = `
+        <div class="stat"><div class="stat-num">${allGyms.length}</div><div class="stat-label">Gyms</div></div>
+        <div class="stat"><div class="stat-num">${exerciseSet.size}</div><div class="stat-label">Exercises</div></div>
+        <div class="stat"><div class="stat-num">${realWorkouts.length}</div><div class="stat-label">Workouts</div></div>
+        <div class="stat"><div class="stat-num">${equipmentDocs.length}</div><div class="stat-label">Equipment Docs</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--success)">${withEquip}</div><div class="stat-label">With Equipment</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--text-dim)">${withoutEquip}</div><div class="stat-label">No Equipment</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--orange)">${needsMachine}</div><div class="stat-label">Needs Machine</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--warn)">${modified}</div><div class="stat-label">Pending</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--success)">${appliedCount}</div><div class="stat-label">Applied ✓</div></div>
+    `;
+}
+
+function filterMachineRows(exName, machineRows, filter, search) {
+    let rows = machineRows;
+
+    if (filter === 'unmapped') {
+        rows = rows.filter(([k, m]) => {
+            if (k === '__none__') return false;
+            const doc = m.equipDoc;
+            const change = changes.get(exName + '|||' + (m.equipName || ''));
+            return !change && !(doc && (doc.function || doc.machine));
+        });
+    } else if (filter === 'mapped') {
+        rows = rows.filter(([k, m]) => {
+            const doc = m.equipDoc;
+            const change = changes.get(exName + '|||' + (m.equipName || ''));
+            return change || (doc && (doc.function || doc.machine));
+        });
+    } else if (filter === 'no-equip') {
+        rows = rows.filter(([k]) => k === '__none__');
+    } else if (filter === 'modified') {
+        rows = rows.filter(([k, m]) => {
+            const key = exName + '|||' + (m.equipName || '');
+            return changes.has(key) && !applied.has(key);
+        });
+    } else if (filter === 'applied') {
+        rows = rows.filter(([k, m]) => applied.has(exName + '|||' + (m.equipName || '')));
+    }
+
+    if (search) {
+        const exMatch = exName.toLowerCase().includes(search);
+        if (!exMatch) {
+            rows = rows.filter(([k, m]) => (m.equipName || '').toLowerCase().includes(search));
+        }
+    }
+
+    return rows;
+}
+
+window.renderList = function() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const filter = document.getElementById('filter-status').value;
+    const container = document.getElementById('exercise-list');
+    let html = '';
+
+    for (const gymKey of allGyms) {
+        const exercises = gymMap.get(gymKey);
+        if (!exercises) continue;
+
+        // Also filter by search on gym name
+        const gymMatch = !search || gymKey.toLowerCase().includes(search);
+
+        let gymExerciseHtml = '';
+        let gymExCount = 0;
+        let gymMachineCount = 0;
+        const gymWorkoutIds = new Set();
+
+        for (const [exName, machines] of exercises) {
+            let machineRows = [...machines.entries()];
+            machineRows = filterMachineRows(exName, machineRows, filter, gymMatch ? '' : search);
+
+            if (machineRows.length === 0) continue;
+
+            machineRows.sort((a, b) => b[1].workoutCount - a[1].workoutCount);
+            gymExCount++;
+
+            const totalCount = machineRows.reduce((s, [, m]) => s + m.workoutCount, 0);
+            for (const [, m] of machineRows) { for (const id of m.workoutIds) gymWorkoutIds.add(id); }
+            gymMachineCount += machineRows.filter(([k]) => k !== '__none__').length;
+
+            const machineNames = machineRows
+                .filter(([k]) => k !== '__none__')
+                .map(([, m]) => m.equipName)
+                .slice(0, 3);
+
+            const groupId = cssId(gymKey + '-' + exName);
+            gymExerciseHtml += `
+            <div class="ex-group">
+                <div class="ex-group__header" onclick="toggleGroup('${esc(groupId)}')">
+                    <div class="ex-group__name">${esc(exName)}</div>
+                    <div class="ex-group__machines">${machineNames.length > 0 ? esc(machineNames.join(', ')) : '<span style="color:var(--text-dim)">no equip</span>'}</div>
+                    <div class="ex-group__count">${totalCount}× · ${machineRows.length} machine${machineRows.length !== 1 ? 's' : ''}</div>
+                </div>
+                <div class="ex-group__body" id="group-${esc(groupId)}">
+                    ${machineRows.map(([machineKey, m]) => renderMachineRow(exName, machineKey, m)).join('')}
+                </div>
+            </div>
+            `;
+        }
+
+        if (!gymExerciseHtml) continue;
+
+        const gymId = cssId('gym-' + gymKey);
+        html += `
+        <div class="gym-section">
+            <div class="gym-header" onclick="toggleGym('${esc(gymId)}')">
+                <div class="gym-header__name"><i class="fas fa-map-marker-alt"></i>${esc(gymKey)}</div>
+                <div class="gym-header__stats">${gymExCount} exercises · ${gymMachineCount} machines · ${gymWorkoutIds.size} workouts</div>
+            </div>
+            <div class="gym-body" id="${esc(gymId)}">
+                ${gymExerciseHtml}
+            </div>
+        </div>
+        `;
+    }
+
+    if (!html) {
+        html = '<div style="text-align:center;padding:40px;color:var(--text-dim)">No exercises match your filters.</div>';
+    }
+
+    container.innerHTML = html;
+};
+
+function renderMachineRow(exName, machineKey, m) {
+    const key = exName + '|||' + (m.equipName || '');
+    const change = changes.get(key);
+    const doc = m.equipDoc;
+
+    const isApplied = applied.has(key);
+    const currentMachine = change?.newMachine || doc?.machine || doc?.function || null;
+    const currentBrand = change?.newBrand || doc?.brand || null;
+    const currentLine = change?.newLine || doc?.line || null;
+    const currentType = change?.newType || doc?.equipmentType || null;
+    const isModified = !!change && !isApplied;
+    const isMapped = !!currentMachine;
+
+    const oldEquipDisplay = m.equipName || '(no equipment)';
+    const isNone = machineKey === '__none__';
+
+    // When there's a pending change, show NEW name as the heading; old name struck through below
+    // When applied, show the applied name as heading
+    // Otherwise show the old equipment name
+    let headingHtml;
+    if (isModified && change) {
+        headingHtml = `
+            <div class="machine-row__equip" style="color:var(--success)">${esc(change.newEquipName)}</div>
+            <div style="font-size:.72rem;color:var(--text-dim);text-decoration:line-through">${esc(oldEquipDisplay)}</div>`;
+    } else if (isApplied && change) {
+        headingHtml = `<div class="machine-row__equip" style="color:var(--success)">✅ ${esc(change.newEquipName)}</div>`;
+    } else {
+        headingHtml = `<div class="machine-row__equip ${isNone ? 'unset' : ''}">${esc(oldEquipDisplay)}</div>`;
+    }
+
+    // Catalog metadata line (brand · line · type)
+    const catalogLine = currentBrand
+        ? `<span style="font-size:.72rem;color:var(--text-dim)">${esc(currentBrand)}${currentLine && currentLine !== 'General' ? ' · ' + esc(currentLine) : ''}${currentType ? ' · ' + esc(currentType) : ''}</span>`
+        : '';
+
+    // Status badge — only show machine badge when there's no change (from existing doc data)
+    let machineBadge = '';
+    if (!change && isMapped) {
+        machineBadge = `<span class="badge badge-mapped">${esc(currentMachine)}</span>`;
+    } else if (!change && !isNone) {
+        machineBadge = `<span class="badge badge-unmapped">needs machine</span>`;
+    }
+
+    const rowClass = isApplied ? 'applied' : isModified ? 'mapped' : '';
+    return `
+    <div class="machine-row ${rowClass}">
+        <div class="machine-row__info">
+            ${headingHtml}
+            <div style="margin:2px 0">${machineBadge} ${catalogLine}</div>
+            <div class="machine-row__meta">
+                <span class="machine-row__dates">${esc(m.firstDate)}${m.firstDate !== m.lastDate ? ' → ' + esc(m.lastDate) : ''}</span>
+                <span class="machine-row__count">${m.workoutCount}×</span>
+            </div>
+        </div>
+        <div class="machine-row__actions">
+            ${!isNone && !isApplied ? `<button class="btn btn-outline btn-sm" onclick="openPicker('${escJs(exName)}','${escJs(m.equipName || '')}')">Map</button>` : ''}
+            ${isModified ? `<button class="btn btn-outline btn-sm" onclick="resetChange('${escJs(key)}')">Reset</button>` : ''}
+            ${isApplied ? `<button class="btn btn-outline btn-sm" onclick="openPicker('${escJs(exName)}','${escJs(m.equipName || '')}')">Re-map</button>` : ''}
+        </div>
+    </div>
+    `;
+}
+
+function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escJs(s) {
+    return String(s || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+function cssId(s) {
+    return String(s).replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+}
+
+window.toggleGroup = function(groupId) {
+    const el = document.getElementById('group-' + groupId);
+    if (el) el.classList.toggle('collapsed');
+};
+
+window.toggleGym = function(gymId) {
+    const el = document.getElementById(gymId);
+    if (el) el.classList.toggle('collapsed');
+};
+
+window.resetChange = function(key) {
+    changes.delete(key);
+    renderSummary();
+    renderList();
+};
+
+// =========================================================================
+// Catalog Picker
+// =========================================================================
+window.openPicker = function(exName, equipName) {
+    pickerKey = exName + '|||' + equipName;
+    pickerStep = 'brand';
+    pickerBrand = null;
+    pickerLine = null;
+    document.getElementById('picker-search').value = '';
+    document.getElementById('picker-context').textContent = `${exName} → ${equipName || '(none)'}`;
+    document.getElementById('catalog-modal').classList.remove('hidden');
+    document.getElementById('picker-search').focus();
+    renderPicker();
+};
+
+window.closePicker = function() {
+    document.getElementById('catalog-modal').classList.add('hidden');
+    pickerKey = null;
+};
+
+window.clearMachine = function() {
+    if (!pickerKey) return;
+    changes.delete(pickerKey);
+    closePicker();
+    renderSummary();
+    renderList();
+};
+
+window.renderPicker = function() {
+    const search = (document.getElementById('picker-search').value || '').toLowerCase().trim();
+    const listEl = document.getElementById('picker-list');
+    const breadcrumbEl = document.getElementById('picker-breadcrumb');
+    const titleEl = document.getElementById('picker-title');
+
+    // Global search across all machines (when not drilled into a brand/line)
+    if (search.length >= 2 && pickerStep === 'brand') {
+        titleEl.textContent = 'Search Results';
+        breadcrumbEl.innerHTML = '<span style="color:var(--text-dim)">Searching all machines…</span>';
+        const results = catalogIndex.filter(c => c.searchStr.includes(search)).slice(0, 60);
+        listEl.innerHTML = results.map(c => `
+            <div class="pick-item" onclick="pickEntry('${escJs(c.brand)}','${escJs(c.line)}','${escJs(c.machine)}','${escJs(c.type)}')">
+                <div>${esc(c.machine)}</div>
+                <div class="pick-item__sub">${esc(c.brand)} · ${esc(c.line === 'General' ? c.type : c.line)} · ${esc(c.type)}</div>
+            </div>
+        `).join('') || '<div style="color:var(--text-dim);padding:10px">No matches</div>';
+        return;
+    }
+
+    if (pickerStep === 'brand') {
+        titleEl.textContent = 'Select Brand';
+        breadcrumbEl.innerHTML = '';
+        let brands = CATALOG;
+        if (search) brands = brands.filter(b => b.brand.toLowerCase().includes(search));
+        listEl.innerHTML = brands.map(b => {
+            const mc = b.lines.reduce((s, l) => s + l.machines.length, 0);
+            return `<div class="pick-item" onclick="pBrand('${escJs(b.brand)}')">
+                <div>${esc(b.brand)}</div>
+                <div class="pick-item__sub">${b.lines.length} line${b.lines.length!==1?'s':''} · ${mc} machines</div>
+            </div>`;
+        }).sort().join('') || '<div style="color:var(--text-dim);padding:10px">No brands match</div>';
+    } else if (pickerStep === 'line') {
+        titleEl.textContent = 'Select Line';
+        breadcrumbEl.innerHTML = `<span onclick="pickerStep='brand';document.getElementById('picker-search').value='';renderPicker()">${esc(pickerBrand)}</span> &gt; ...`;
+        const brand = CATALOG.find(b => b.brand === pickerBrand);
+        if (!brand) return;
+
+        if (brand.lines.length === 1 && brand.lines[0].name === 'General') {
+            pickerLine = 'General'; pickerStep = 'machine'; renderPicker(); return;
+        }
+
+        // Search within brand: filter lines, OR show matching machines from any line in this brand
+        let lines = brand.lines;
+        let crossLineResults = [];
+        if (search) {
+            lines = lines.filter(l => l.name.toLowerCase().includes(search));
+            // Also search machine names across all lines in this brand
+            crossLineResults = [];
+            for (const l of brand.lines) {
+                for (const m of l.machines) {
+                    if (m.name.toLowerCase().includes(search)) {
+                        crossLineResults.push({ line: l, machine: m });
+                    }
+                }
+            }
+        }
+
+        let html = lines.map(l => `
+            <div class="pick-item" onclick="pLine('${escJs(l.name)}')">
+                <div>${l.name === 'General' ? '(General)' : esc(l.name)}</div>
+                <div class="pick-item__sub">${esc(l.type)} · ${l.machines.length} machine${l.machines.length!==1?'s':''}</div>
+            </div>
+        `).join('');
+
+        if (crossLineResults.length > 0) {
+            html += `<div style="margin-top:10px;padding:6px 0;border-top:1px solid var(--border);font-size:.75rem;color:var(--text-dim)">Machines matching "${esc(search)}" in ${esc(pickerBrand)}</div>`;
+            html += crossLineResults.map(({ line: l, machine: m }) => `
+                <div class="pick-item" onclick="pickEntry('${escJs(pickerBrand)}','${escJs(l.name)}','${escJs(m.name)}','${escJs(m.type || l.type)}')">
+                    <div>${esc(m.name)}</div>
+                    <div class="pick-item__sub">${esc(l.name === 'General' ? '' : l.name + ' · ')}${esc(m.bodyPart)} · ${esc(m.type || l.type)}</div>
+                </div>
+            `).join('');
+        }
+
+        listEl.innerHTML = html || '<div style="color:var(--text-dim);padding:10px">No lines or machines match</div>';
+    } else if (pickerStep === 'machine') {
+        titleEl.textContent = 'Select Machine';
+        const lineDisplay = pickerLine === 'General' ? '' : ` &gt; <span onclick="pickerStep='line';document.getElementById('picker-search').value='';renderPicker()">${esc(pickerLine)}</span>`;
+        breadcrumbEl.innerHTML = `<span onclick="pickerStep='brand';document.getElementById('picker-search').value='';renderPicker()">${esc(pickerBrand)}</span>${lineDisplay} &gt; ...`;
+        const brand = CATALOG.find(b => b.brand === pickerBrand);
+        const line = brand?.lines.find(l => l.name === pickerLine);
+        if (!line) return;
+
+        let machines = line.machines;
+        if (search) machines = machines.filter(m => m.name.toLowerCase().includes(search) || (m.bodyPart || '').toLowerCase().includes(search));
+
+        listEl.innerHTML = machines.map(m => `
+            <div class="pick-item" onclick="pickEntry('${escJs(pickerBrand)}','${escJs(pickerLine)}','${escJs(m.name)}','${escJs(m.type || line.type)}')">
+                <div>${esc(m.name)}</div>
+                <div class="pick-item__sub">${esc(m.bodyPart)} · ${esc(m.type || line.type)}</div>
+            </div>
+        `).join('') || '<div style="color:var(--text-dim);padding:10px">No machines match</div>';
+    }
+};
+
+window.pBrand = function(brand) {
+    pickerBrand = brand; pickerStep = 'line';
+    document.getElementById('picker-search').value = '';
+    renderPicker();
+};
+window.pLine = function(line) {
+    pickerLine = line; pickerStep = 'machine';
+    document.getElementById('picker-search').value = '';
+    renderPicker();
+};
+
+window.pickEntry = function(brand, line, machine, type) {
+    if (!pickerKey) return;
+    const newEquipName = generateName(brand, line, machine);
+    changes.set(pickerKey, { newEquipName, newBrand: brand, newLine: line, newMachine: machine, newType: type });
+    closePicker();
+    renderSummary();
+    renderList();
+};
+
+// =========================================================================
+// Export
+// =========================================================================
+window.exportMigration = function() {
+    const output = {
+        _meta: {
+            exportedAt: new Date().toISOString(),
+            description: 'Exercise-first equipment migration. Apply to update equipment docs and rewrite workout history refs.',
+        },
+        equipmentUpdates: [],    // { id, name, brand, line, machine, equipmentType }
+        nameMapping: {},         // oldEquipName -> newEquipName (for rewriting workout refs)
+        exerciseMachineMap: {},  // exerciseName -> { oldEquipName -> newEquipName }
+    };
+
+    const seenEquipUpdates = new Map(); // equipName -> update object
+
+    for (const [key, change] of changes) {
+        const [exName, oldEquipName] = key.split('|||');
+        if (!oldEquipName) continue;
+
+        // Track per-exercise mapping
+        if (!output.exerciseMachineMap[exName]) output.exerciseMachineMap[exName] = {};
+        output.exerciseMachineMap[exName][oldEquipName] = change.newEquipName;
+
+        // Global name mapping for workout rewriting
+        if (oldEquipName !== change.newEquipName) {
+            output.nameMapping[oldEquipName] = change.newEquipName;
+        }
+
+        // Equipment doc update (dedupe by old equip name — same equip may appear under multiple exercises)
+        if (!seenEquipUpdates.has(oldEquipName)) {
+            const doc = equipmentByName[oldEquipName];
+            const update = {
+                id: doc?.id || null,
+                originalName: oldEquipName,
+                name: change.newEquipName,
+                brand: change.newBrand,
+                line: change.newLine,
+                machine: change.newMachine,
+                equipmentType: change.newType,
+            };
+            seenEquipUpdates.set(oldEquipName, update);
+            output.equipmentUpdates.push(update);
+        }
+    }
+
+    output._meta.equipmentUpdates = output.equipmentUpdates.length;
+    output._meta.nameMappings = Object.keys(output.nameMapping).length;
+    output._meta.exercisesAffected = Object.keys(output.exerciseMachineMap).length;
+
+    const json = JSON.stringify(output, null, 2);
+    document.getElementById('export-output').value = json;
+    document.getElementById('export-section').classList.remove('hidden');
+    document.getElementById('export-section').scrollIntoView({ behavior: 'smooth' });
+};
+
+window.copyExport = function() {
+    const ta = document.getElementById('export-output');
+    ta.select();
+    navigator.clipboard.writeText(ta.value).then(() => alert('Copied!'));
+};
+
+window.downloadExport = function() {
+    const json = document.getElementById('export-output').value;
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `equipment-migration-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+};
+
+// =========================================================================
+// Apply Migration to Firebase
+// =========================================================================
+window.applyMigration = async function() {
+    if (applyInProgress) return;
+    const logEl = document.getElementById('apply-log');
+    const btn = document.getElementById('apply-btn');
+    logEl.classList.remove('hidden');
+    logEl.textContent = '';
+    const log = (msg) => { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+    // Only apply unapplied changes
+    const pendingChanges = new Map();
+    for (const [key, val] of changes) {
+        if (!applied.has(key)) pendingChanges.set(key, val);
+    }
+
+    if (pendingChanges.size === 0) { log('❌ No pending changes to apply (all already applied).'); return; }
+
+    // ---- Pre-flight: build the migration plan ----
+    // Each pending change is: "exerciseName|||oldEquipName" → { newEquipName, newBrand, newLine, newMachine, newType }
+    //
+    // PLAN:
+    //   1. Group by NEW equipment name — one equipment doc per unique new name.
+    //      Collect ALL exercises and ALL old names that feed into each new name.
+    //   2. For each new name, find or create exactly ONE equipment doc.
+    //      Track which old-name docs we've "claimed" so we don't reuse one twice.
+    //   3. Rewrite workout history exercise-by-exercise (match on both ex.name AND ex.equipment).
+    //   4. Only mark a change key as applied if its Firebase ops succeeded.
+
+    // Step 0: Group changes by NEW equipment name
+    const byNewName = new Map(); // newEquipName → { change, exercises: Set, oldNames: Set, changeKeys: [] }
+    for (const [key, change] of pendingChanges) {
+        const [exName, oldEquipName] = key.split('|||');
+        if (!oldEquipName) continue;
+        if (!byNewName.has(change.newEquipName)) {
+            byNewName.set(change.newEquipName, {
+                change,
+                exercises: new Set(),
+                oldNames: new Set(),
+                changeKeys: [],
+            });
+        }
+        const entry = byNewName.get(change.newEquipName);
+        entry.exercises.add(exName);
+        entry.oldNames.add(oldEquipName);
+        entry.changeKeys.push(key);
+    }
+
+    // Show summary
+    let summaryMsg = `Apply ${pendingChanges.size} change(s) → ${byNewName.size} unique equipment doc(s)?\n\n`;
+    for (const [newName, entry] of byNewName) {
+        summaryMsg += `• ${newName}\n  Exercises: ${[...entry.exercises].join(', ')}\n  From: ${[...entry.oldNames].join(', ')}\n\n`;
+    }
+    summaryMsg += `This writes to your LIVE data. Make sure you have a backup.`;
+
+    if (!confirm(summaryMsg)) { log('Cancelled.'); return; }
+
+    applyInProgress = true;
+    btn.disabled = true;
+    btn.textContent = '⏳ Applying...';
+
+    const successfulKeys = new Set(); // Only mark these as applied
+
+    try {
+        // ---- Step 1: Equipment docs ----
+        let eqUpdated = 0, eqCreated = 0;
+        const claimedDocIds = new Set(); // Track docs already renamed/claimed
+
+        log(`\n📦 Step 1: Equipment docs (${byNewName.size} unique machines)...`);
+
+        for (const [newName, entry] of byNewName) {
+            const ch = entry.change;
+            const allExercises = [...entry.exercises];
+
+            try {
+                // Priority 1: Does a doc with the target name already exist?
+                const existingByNewName = equipmentByName[newName];
+
+                // Priority 2: Can we reuse/rename an old-name doc? (only if not already claimed)
+                let existingByOldName = null;
+                for (const oldName of entry.oldNames) {
+                    const d = equipmentByName[oldName];
+                    if (d && !claimedDocIds.has(d.id)) {
+                        existingByOldName = d;
+                        break;
+                    }
+                }
+
+                // Derive locations from ALL old names' workout data
+                const derivedLocations = new Set();
+                for (const oldName of entry.oldNames) {
+                    for (const w of workouts) {
+                        if (w.cancelledAt || !w.location) continue;
+                        const gym = typeof w.location === 'object' ? w.location.name : w.location;
+                        const exObj = w.exercises || {};
+                        const exEntries = Array.isArray(exObj) ? exObj : Object.values(exObj);
+                        if (exEntries.some(e => e && e.equipment === oldName)) derivedLocations.add(gym);
+                    }
+                }
+
+                if (existingByNewName && !claimedDocIds.has(existingByNewName.id)) {
+                    // Doc exists with target name — merge exercises + locations into it
+                    claimedDocIds.add(existingByNewName.id);
+                    const ref = doc(db, 'users', userId, 'equipment', existingByNewName.id);
+                    const mergedTypes = [...new Set([...(existingByNewName.exerciseTypes || []), ...allExercises])];
+                    const mergedLocs = [...new Set([...(existingByNewName.locations || []), ...derivedLocations])];
+                    await updateDoc(ref, {
+                        brand: ch.newBrand,
+                        line: ch.newLine,
+                        machine: ch.newMachine,
+                        function: ch.newMachine,
+                        equipmentType: ch.newType,
+                        exerciseTypes: mergedTypes,
+                        locations: mergedLocs,
+                        lastUpdated: new Date().toISOString(),
+                    });
+                    eqUpdated++;
+                    log(`  ✅ Updated: "${newName}" — exercises: [${mergedTypes.join(', ')}], locations: [${mergedLocs.join(', ')}]`);
+                    entry.changeKeys.forEach(k => successfulKeys.add(k));
+
+                } else if (existingByOldName) {
+                    // Rename an existing doc
+                    claimedDocIds.add(existingByOldName.id);
+                    const ref = doc(db, 'users', userId, 'equipment', existingByOldName.id);
+                    const mergedTypes = [...new Set([...(existingByOldName.exerciseTypes || []), ...allExercises])];
+                    const mergedLocs = [...new Set([...(existingByOldName.locations || []), ...derivedLocations])];
+                    await updateDoc(ref, {
+                        name: newName,
+                        brand: ch.newBrand,
+                        line: ch.newLine,
+                        machine: ch.newMachine,
+                        function: ch.newMachine,
+                        equipmentType: ch.newType,
+                        exerciseTypes: mergedTypes,
+                        locations: mergedLocs,
+                        lastUpdated: new Date().toISOString(),
+                    });
+                    eqUpdated++;
+                    log(`  ✅ Renamed: "${existingByOldName.name}" → "${newName}" — exercises: [${mergedTypes.join(', ')}], locations: [${mergedLocs.join(', ')}]`);
+                    entry.changeKeys.forEach(k => successfulKeys.add(k));
+
+                } else {
+                    // Create new doc — copy base fields from any available old doc
+                    let base = {};
+                    for (const oldName of entry.oldNames) {
+                        if (equipmentByName[oldName]) { base = equipmentByName[oldName]; break; }
+                    }
+                    const mergedLocs = [...new Set([...(base.locations || []), ...derivedLocations])];
+                    const newId = 'equipment_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                    const ref = doc(db, 'users', userId, 'equipment', newId);
+                    await setDoc(ref, {
+                        name: newName,
+                        brand: ch.newBrand,
+                        line: ch.newLine,
+                        machine: ch.newMachine,
+                        function: ch.newMachine,
+                        equipmentType: ch.newType,
+                        baseWeight: base.baseWeight || 0,
+                        baseWeightUnit: base.baseWeightUnit || 'lbs',
+                        locations: mergedLocs,
+                        exerciseTypes: allExercises,
+                        exerciseVideos: base.exerciseVideos || {},
+                        notes: base.notes || '',
+                        createdAt: new Date().toISOString(),
+                        lastUsed: base.lastUsed || new Date().toISOString(),
+                    });
+                    eqCreated++;
+                    log(`  🆕 Created: "${newName}" — exercises: [${allExercises.join(', ')}], locations: [${mergedLocs.join(', ')}]`);
+                    entry.changeKeys.forEach(k => successfulKeys.add(k));
+                }
+            } catch (e) {
+                log(`  ❌ Failed "${newName}": ${e.message}`);
+                // Don't add changeKeys to successfulKeys — this one failed
+            }
+        }
+        log(`  Done: ${eqUpdated} updated, ${eqCreated} created.`);
+
+        // ---- Step 2: Rewrite workout history (EXERCISE-AWARE) ----
+        // Build mapping from the ORIGINAL pendingChanges (each exercise+equip pair
+        // maps independently, so conflicts are handled correctly)
+        const exerciseMapping = new Map(); // exName → Map<oldEquipName, newEquipName>
+        for (const [key, change] of pendingChanges) {
+            if (!successfulKeys.has(key)) continue; // Skip if Step 1 failed for this change
+            const [exName, oldEquipName] = key.split('|||');
+            if (!oldEquipName || oldEquipName === change.newEquipName) continue;
+            if (!exerciseMapping.has(exName)) exerciseMapping.set(exName, new Map());
+            exerciseMapping.get(exName).set(oldEquipName, change.newEquipName);
+        }
+
+        if (exerciseMapping.size === 0) {
+            log(`\n📝 Step 2: No name changes — skipping workout history rewrite.`);
+        } else {
+            log(`\n📝 Step 2: Rewriting equipment names in workouts (exercise-aware)...`);
+            for (const [exName, mapping] of exerciseMapping) {
+                for (const [oldE, newE] of mapping) {
+                    log(`  ${exName}: "${oldE}" → "${newE}"`);
+                }
+            }
+
+            let workoutsModified = 0;
+            let exercisesRewritten = 0;
+            let skipped = 0;
+
+            for (const w of workouts) {
+                if (w.cancelledAt) continue;
+                const exObj = w.exercises || {};
+                const entries = Array.isArray(exObj)
+                    ? exObj.map((ex, i) => [String(i), ex])
+                    : Object.entries(exObj);
+
+                if (!entries.some(([, e]) => e && e.name)) continue;
+
+                let modified = false;
+                const updatedFields = {};
+
+                for (const [key, ex] of entries) {
+                    if (!ex || !ex.equipment || !ex.name) continue;
+                    const exMap = exerciseMapping.get(ex.name);
+                    if (exMap && exMap.has(ex.equipment)) {
+                        updatedFields['exercises.' + key + '.equipment'] = exMap.get(ex.equipment);
+                        modified = true;
+                        exercisesRewritten++;
+                    }
+                }
+
+                if (modified) {
+                    try {
+                        const ref = doc(db, 'users', userId, 'workouts', w.id);
+                        await updateDoc(ref, updatedFields);
+                        workoutsModified++;
+                    } catch (e) {
+                        skipped++;
+                    }
+                }
+            }
+
+            log(`  Done: ${workoutsModified} workout(s) updated, ${exercisesRewritten} exercise refs rewritten.${skipped > 0 ? ` Skipped ${skipped} missing docs.` : ''}`);
+        }
+
+        // ---- Step 3: Mark only successful changes as applied ----
+        for (const key of successfulKeys) {
+            applied.add(key);
+        }
+        const failedCount = pendingChanges.size - successfulKeys.size;
+
+        log(`\n🎉 Migration complete! ${successfulKeys.size} applied.${failedCount > 0 ? ` ${failedCount} failed — check errors above.` : ''}`);
+        showToast(`Applied ${successfulKeys.size} changes`);
+        renderSummary();
+        renderList();
+
+    } catch (e) {
+        log(`\n❌ Error: ${e.message}`);
+        console.error(e);
+        showToast('Migration failed — check log', true);
+    } finally {
+        applyInProgress = false;
+        btn.disabled = false;
+        btn.textContent = '🚀 Apply to Firebase';
+    }
+};
+
+// =========================================================================
+// Merge Duplicate Equipment Docs
+// =========================================================================
+window.cleanupDuplicates = async function() {
+    const logEl = document.getElementById('apply-log');
+    logEl.classList.remove('hidden');
+    logEl.textContent = '';
+    const log = (msg) => { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+    if (!userId) { log('❌ Not signed in.'); return; }
+
+    log('🔍 Scanning equipment docs for duplicates...\n');
+
+    // Group docs by name
+    const byName = new Map();
+    for (const eq of equipmentDocs) {
+        const name = (eq.name || '').trim();
+        if (!name) continue;
+        if (!byName.has(name)) byName.set(name, []);
+        byName.get(name).push(eq);
+    }
+
+    // Find duplicates
+    const dupes = [];
+    for (const [name, docs] of byName) {
+        if (docs.length > 1) dupes.push({ name, docs });
+    }
+
+    if (dupes.length === 0) {
+        log('✅ No duplicates found — all equipment names are unique.');
+        return;
+    }
+
+    log(`Found ${dupes.length} equipment name(s) with duplicates:\n`);
+    let totalToDelete = 0;
+    for (const { name, docs } of dupes) {
+        log(`  "${name}" — ${docs.length} docs`);
+        for (const d of docs) {
+            const types = (d.exerciseTypes || []).join(', ') || '(none)';
+            const locs = (d.locations || []).length;
+            const vids = Object.keys(d.exerciseVideos || {}).length;
+            log(`    • ${d.id} — exercises: [${types}], ${locs} location(s), ${vids} video(s)`);
+        }
+        totalToDelete += docs.length - 1;
+    }
+
+    const confirmed = confirm(
+        `Found ${dupes.length} duplicate equipment name(s) (${totalToDelete} extra doc(s) to delete).\n\n` +
+        `This will:\n` +
+        `• Keep the oldest doc for each name\n` +
+        `• Merge exerciseTypes, locations, and exerciseVideos from duplicates\n` +
+        `• Delete the extra docs\n\n` +
+        `Continue?`
+    );
+    if (!confirmed) { log('\nCancelled.'); return; }
+
+    log('\n🔧 Merging...\n');
+    let merged = 0, deleted = 0;
+
+    for (const { name, docs } of dupes) {
+        // Sort by createdAt (keep oldest) — fallback to id
+        docs.sort((a, b) => (a.createdAt || a.id).localeCompare(b.createdAt || b.id));
+        const keeper = docs[0];
+        const extras = docs.slice(1);
+
+        // Merge fields from extras into keeper
+        let mergedTypes = new Set(keeper.exerciseTypes || []);
+        let mergedLocations = new Set(keeper.locations || []);
+        let mergedVideos = { ...(keeper.exerciseVideos || {}) };
+        let bestBaseWeight = keeper.baseWeight || 0;
+        let bestNotes = keeper.notes || '';
+
+        for (const extra of extras) {
+            for (const t of (extra.exerciseTypes || [])) mergedTypes.add(t);
+            for (const l of (extra.locations || [])) mergedLocations.add(l);
+            for (const [k, v] of Object.entries(extra.exerciseVideos || {})) {
+                if (v && !mergedVideos[k]) mergedVideos[k] = v;
+            }
+            if (!bestBaseWeight && extra.baseWeight) bestBaseWeight = extra.baseWeight;
+            if (!bestNotes && extra.notes) bestNotes = extra.notes;
+        }
+        // Also derive locations from workout data
+        for (const w of workouts) {
+            if (w.cancelledAt || !w.location) continue;
+            const gym = typeof w.location === 'object' ? w.location.name : w.location;
+            const exObj = w.exercises || {};
+            const exEntries = Array.isArray(exObj) ? exObj : Object.values(exObj);
+            if (exEntries.some(e => e && e.equipment === name)) mergedLocations.add(gym);
+        }
+
+        try {
+            // Update keeper with merged data
+            const keeperRef = doc(db, 'users', userId, 'equipment', keeper.id);
+            await updateDoc(keeperRef, {
+                exerciseTypes: [...mergedTypes],
+                locations: [...mergedLocations],
+                exerciseVideos: mergedVideos,
+                baseWeight: bestBaseWeight,
+                notes: bestNotes,
+                lastUpdated: new Date().toISOString(),
+            });
+            log(`  ✅ Kept "${name}" (${keeper.id}) — exercises: [${[...mergedTypes].join(', ')}]`);
+            merged++;
+
+            // Delete extras
+            for (const extra of extras) {
+                const extraRef = doc(db, 'users', userId, 'equipment', extra.id);
+                await deleteDoc(extraRef);
+                log(`  🗑️ Deleted duplicate: ${extra.id}`);
+                deleted++;
+            }
+        } catch (e) {
+            log(`  ❌ Failed "${name}": ${e.message}`);
+        }
+    }
+
+    log(`\n🎉 Cleanup complete: ${merged} merged, ${deleted} duplicate(s) deleted.`);
+    showToast(`Merged ${merged} equipment, deleted ${deleted} duplicates`);
+
+    // Reload data to reflect changes
+    log('Reloading data...');
+    await loadData();
+    renderSummary();
+    renderList();
+    log('Done — view refreshed.');
+};
+
+// =========================================================================
+// Fix Missing Locations — scan workouts, add gym locations to equipment docs
+// =========================================================================
+window.fixMissingLocations = async function() {
+    const logEl = document.getElementById('apply-log');
+    logEl.classList.remove('hidden');
+    logEl.textContent = '';
+    const log = (msg) => { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+    if (!userId) { log('❌ Not signed in.'); return; }
+
+    log('🔍 Scanning workouts for equipment → location associations...\n');
+
+    // Build map: equipmentName -> Set<locationName>
+    const equipLocations = new Map();
+    for (const w of workouts) {
+        if (w.cancelledAt) continue;
+        const gym = w.location
+            ? (typeof w.location === 'object' ? w.location.name : w.location)
+            : null;
+        if (!gym) continue;
+
+        const exercises = w.exercises || {};
+        const entries = Array.isArray(exercises)
+            ? exercises.map((ex, i) => [String(i), ex])
+            : Object.entries(exercises);
+
+        for (const [, ex] of entries) {
+            if (!ex || !ex.equipment) continue;
+            if (!equipLocations.has(ex.equipment)) equipLocations.set(ex.equipment, new Set());
+            equipLocations.get(ex.equipment).add(gym);
+        }
+    }
+
+    // Find equipment docs with missing locations
+    const toFix = [];
+    for (const eq of equipmentDocs) {
+        const workoutLocs = equipLocations.get(eq.name);
+        if (!workoutLocs) continue;
+        const docLocs = new Set(eq.locations || []);
+        const missing = [...workoutLocs].filter(l => !docLocs.has(l));
+        if (missing.length > 0) {
+            toFix.push({ eq, currentLocs: [...docLocs], addLocs: missing, allLocs: [...new Set([...docLocs, ...missing])] });
+        }
+    }
+
+    if (toFix.length === 0) {
+        log('✅ All equipment docs already have correct locations.');
+        return;
+    }
+
+    log(`Found ${toFix.length} equipment doc(s) with missing locations:\n`);
+    for (const fix of toFix) {
+        log(`  "${fix.eq.name}"`);
+        log(`    Current: [${fix.currentLocs.join(', ') || 'none'}]`);
+        log(`    Adding:  [${fix.addLocs.join(', ')}]`);
+    }
+
+    const confirmed = confirm(`Add missing locations to ${toFix.length} equipment doc(s)?`);
+    if (!confirmed) { log('\nCancelled.'); return; }
+
+    log('\n🔧 Updating...\n');
+    let fixed = 0;
+    for (const fix of toFix) {
+        try {
+            const ref = doc(db, 'users', userId, 'equipment', fix.eq.id);
+            await updateDoc(ref, {
+                locations: fix.allLocs,
+                lastUpdated: new Date().toISOString(),
+            });
+            fixed++;
+            log(`  ✅ "${fix.eq.name}" → locations: [${fix.allLocs.join(', ')}]`);
+        } catch (e) {
+            log(`  ❌ "${fix.eq.name}": ${e.message}`);
+        }
+    }
+
+    log(`\n🎉 Fixed ${fixed} equipment doc(s).`);
+    showToast(`Added locations to ${fixed} equipment docs`);
+
+    log('Reloading data...');
+    await loadData();
+    renderSummary();
+    renderList();
+    log('Done.');
+};
+
+// =========================================================================
+// Diagnose a specific equipment name — check if doc exists, fields, workout refs
+// =========================================================================
+window.diagnose = async function(searchName) {
+    const logEl = document.getElementById('apply-log');
+    logEl.classList.remove('hidden');
+    logEl.textContent = '';
+    const log = (msg) => { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+    if (!searchName) { searchName = prompt('Equipment name to diagnose (partial match OK):'); }
+    if (!searchName) return;
+    const term = searchName.toLowerCase();
+
+    log(`🔍 Diagnosing equipment matching "${searchName}"...\n`);
+
+    // Check equipment docs
+    const matchingDocs = equipmentDocs.filter(eq => eq.name?.toLowerCase().includes(term));
+    if (matchingDocs.length === 0) {
+        log(`❌ No equipment doc found matching "${searchName}"`);
+        log(`\nAll equipment doc names:`);
+        equipmentDocs.forEach(eq => log(`  • "${eq.name}"`));
+    } else {
+        for (const eq of matchingDocs) {
+            log(`📦 Equipment Doc: "${eq.name}" (${eq.id})`);
+            log(`   brand: ${eq.brand || '(missing)'}`);
+            log(`   line: ${eq.line || '(missing)'}`);
+            log(`   machine: ${eq.machine || '(missing)'}`);
+            log(`   function: ${eq.function || '(missing)'} ← app uses this for display`);
+            log(`   equipmentType: ${eq.equipmentType || '(missing)'}`);
+            log(`   locations: [${(eq.locations || []).join(', ') || 'EMPTY'}]`);
+            log(`   exerciseTypes: [${(eq.exerciseTypes || []).join(', ') || 'EMPTY'}]`);
+            log(`   lastUsed: ${eq.lastUsed || '⚠️ MISSING — will not appear in library query!'}`);
+            log(`   baseWeight: ${eq.baseWeight || 0} ${eq.baseWeightUnit || 'lbs'}`);
+            log('');
+        }
+    }
+
+    // Check workout references
+    log(`\n📝 Workout references matching "${searchName}":`);
+    let refCount = 0;
+    for (const w of workouts) {
+        if (w.cancelledAt) continue;
+        const exObj = w.exercises || {};
+        const entries = Array.isArray(exObj) ? exObj : Object.values(exObj);
+        for (const ex of entries) {
+            if (ex && ex.equipment && ex.equipment.toLowerCase().includes(term)) {
+                log(`  ${w.date || '?'} | ${ex.name} → equipment: "${ex.equipment}" (workout: ${w.id})`);
+                refCount++;
+            }
+        }
+    }
+    if (refCount === 0) {
+        log(`  ❌ No workout exercises reference equipment matching "${searchName}"`);
+        log(`  This means the name in workout history doesn't match the doc name.`);
+    } else {
+        log(`  ${refCount} reference(s) found.`);
+    }
+
+    // Check pending changes
+    log(`\n🔄 Pending changes matching "${searchName}":`);
+    let changeCount = 0;
+    for (const [key, change] of changes) {
+        if (key.toLowerCase().includes(term) || change.newEquipName?.toLowerCase().includes(term)) {
+            const isApplied = applied.has(key);
+            log(`  ${isApplied ? '✅' : '⏳'} ${key} → ${change.newEquipName}`);
+            changeCount++;
+        }
+    }
+    if (changeCount === 0) log(`  (none)`);
+
+    log(`\n--- Diagnosis complete ---`);
+};
+
+// =========================================================================
+// Backfill function field — the app reads `function` but editor wrote `machine`
+// =========================================================================
+window.backfillFunctionField = async function() {
+    const logEl = document.getElementById('apply-log');
+    logEl.classList.remove('hidden');
+    logEl.textContent = '';
+    const log = (msg) => { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+    if (!userId) { log('❌ Not signed in.'); return; }
+
+    log('🔍 Scanning equipment docs for missing "function" field...\n');
+
+    // Fix BOTH: missing function AND function that doesn't match machine (stale from old data)
+    const toFix = equipmentDocs.filter(eq => eq.machine && eq.function !== eq.machine);
+
+    if (toFix.length === 0) {
+        log('✅ All equipment docs have "function" matching "machine".');
+        return;
+    }
+
+    log(`Found ${toFix.length} doc(s) to fix:\n`);
+    for (const eq of toFix) {
+        if (!eq.function) {
+            log(`  "${eq.name}" — function: (missing), machine: "${eq.machine}"`);
+        } else {
+            log(`  "${eq.name}" — function: "${eq.function}" ≠ machine: "${eq.machine}" ← STALE`);
+        }
+    }
+
+    const confirmed = confirm(`Fix "function" field on ${toFix.length} equipment doc(s)?`);
+    if (!confirmed) { log('\nCancelled.'); return; }
+
+    log('\n🔧 Updating...\n');
+    let fixed = 0;
+    for (const eq of toFix) {
+        try {
+            const ref = doc(db, 'users', userId, 'equipment', eq.id);
+            await updateDoc(ref, { function: eq.machine });
+            fixed++;
+            log(`  ✅ "${eq.name}" — function set to "${eq.machine}"`);
+        } catch (e) {
+            log(`  ❌ "${eq.name}": ${e.message}`);
+        }
+    }
+
+    log(`\n🎉 Fixed ${fixed} doc(s).`);
+    showToast(`Backfilled function field on ${fixed} docs`);
+    await loadData();
+    renderSummary();
+    renderList();
+};
+
+// =========================================================================
+// Delete Orphaned Equipment — docs whose names don't appear in any workout
+// =========================================================================
+window.deleteOrphans = async function() {
+    const logEl = document.getElementById('apply-log');
+    logEl.classList.remove('hidden');
+    logEl.textContent = '';
+    const log = (msg) => { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+    if (!userId) { log('❌ Not signed in.'); return; }
+
+    log('🔍 Scanning for orphaned equipment docs...\n');
+
+    // Build set of all equipment names referenced in workouts
+    const usedNames = new Set();
+    for (const w of workouts) {
+        if (w.cancelledAt) continue;
+        const exObj = w.exercises || {};
+        const entries = Array.isArray(exObj) ? exObj : Object.values(exObj);
+        for (const ex of entries) {
+            if (ex && ex.equipment) usedNames.add(ex.equipment);
+        }
+    }
+
+    // Also check templates
+    const templateSnap = await getDocs(collection(db, 'users', userId, 'templates'));
+    templateSnap.forEach(d => {
+        const t = d.data();
+        const exObj = t.exercises || {};
+        const entries = Array.isArray(exObj) ? exObj : Object.values(exObj);
+        for (const ex of entries) {
+            if (ex && ex.equipment) usedNames.add(ex.equipment);
+        }
+    });
+
+    // Also protect equipment names referenced by pending changes (old AND new names)
+    for (const [key, change] of changes) {
+        const [, oldEquip] = key.split('|||');
+        if (oldEquip) usedNames.add(oldEquip);
+        if (change.newEquipName) usedNames.add(change.newEquipName);
+    }
+
+    log(`Found ${usedNames.size} unique equipment names in workouts/templates/pending changes.\n`);
+
+    // Find equipment docs not referenced anywhere
+    const orphans = equipmentDocs.filter(eq => !usedNames.has(eq.name));
+
+    if (orphans.length === 0) {
+        log('✅ No orphans — every equipment doc is referenced in workout history or templates.');
+        return;
+    }
+
+    log(`Found ${orphans.length} orphaned equipment doc(s):\n`);
+    for (const eq of orphans) {
+        const types = (eq.exerciseTypes || []).join(', ') || '(none)';
+        const locs = (eq.locations || []).join(', ') || '(none)';
+        log(`  🔸 "${eq.name}" (${eq.id})`);
+        log(`     exercises: [${types}], locations: [${locs}]`);
+    }
+
+    const confirmed = confirm(
+        `Delete ${orphans.length} orphaned equipment doc(s)?\n\n` +
+        `These equipment names don't appear in any workout or template.\n` +
+        `This cannot be undone.`
+    );
+    if (!confirmed) { log('\nCancelled.'); return; }
+
+    log('\n🗑️ Deleting...\n');
+    let deleted = 0;
+    for (const eq of orphans) {
+        try {
+            const ref = doc(db, 'users', userId, 'equipment', eq.id);
+            await deleteDoc(ref);
+            deleted++;
+            log(`  ✅ Deleted: "${eq.name}" (${eq.id})`);
+        } catch (e) {
+            log(`  ❌ "${eq.name}": ${e.message}`);
+        }
+    }
+
+    log(`\n🎉 Deleted ${deleted} orphaned doc(s).`);
+    showToast(`Deleted ${deleted} orphaned equipment docs`);
+
+    log('Reloading data...');
+    await loadData();
+    renderSummary();
+    renderList();
+    log('Done.');
+};
+
+// =========================================================================
+// Save / Load Progress
+// =========================================================================
+window.saveProgress = function() {
+    const data = {
+        _meta: {
+            savedAt: new Date().toISOString(),
+            description: 'Equipment editor work-in-progress. Load this file to resume editing.',
+            changesCount: changes.size,
+            appliedCount: applied.size,
+        },
+        changes: Object.fromEntries(changes),
+        applied: [...applied],
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `equipment-editor-progress-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    showToast(`Saved ${changes.size} change${changes.size !== 1 ? 's' : ''}`);
+};
+
+window.loadProgress = function() {
+    document.getElementById('load-file').click();
+};
+
+window.handleLoadFile = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data.changes) {
+                const loaded = new Map(Object.entries(data.changes));
+                let merged = 0;
+                for (const [key, val] of loaded) {
+                    if (!changes.has(key)) merged++;
+                    changes.set(key, val);
+                }
+                // Restore applied state
+                let restoredApplied = 0;
+                if (data.applied && Array.isArray(data.applied)) {
+                    for (const key of data.applied) {
+                        applied.add(key);
+                        restoredApplied++;
+                    }
+                }
+                renderSummary();
+                renderList();
+                showToast(`Loaded ${loaded.size} changes (${merged} new, ${restoredApplied} applied)`);
+            } else {
+                showToast('No changes found in file', true);
+            }
+        } catch (err) {
+            showToast('Invalid JSON file', true);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+};
+
+function showToast(msg, isError) {
+    const toast = document.createElement('div');
+    toast.textContent = msg;
+    Object.assign(toast.style, {
+        position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+        padding: '10px 20px', borderRadius: '8px', fontSize: '.85rem', fontWeight: '500',
+        background: isError ? 'var(--danger)' : 'var(--success)', color: '#fff', zIndex: '999',
+        transition: 'opacity .3s',
+    });
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 2000);
+}
+</script>
+</body>
+</html>

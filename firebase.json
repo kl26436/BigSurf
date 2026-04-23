@@ -10,7 +10,12 @@
         "**/*.md",
         "**/*.py",
         "functions/**",
-        "tests/**"
+        "tests/**",
+        "mockups/**",
+        "specs/**",
+        "equipment-editor.html",
+        "equipment-migration-preview.html",
+        "debug-equipment-migration.js"
       ],
       "rewrites": [
         {
@@ -49,7 +54,12 @@
         "**/*.md",
         "**/*.py",
         "functions/**",
-        "tests/**"
+        "tests/**",
+        "mockups/**",
+        "specs/**",
+        "equipment-editor.html",
+        "equipment-migration-preview.html",
+        "debug-equipment-migration.js"
       ],
       "rewrites": [
         {

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings + Onboarding Redesign</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --warning:#f0c24b; --danger:#e35d6a; --highlight-warm:#f7a865;
+    --cat-push:#4A90D9; --cat-pull:#D94A7A; --cat-legs:#7B4AD9; --cat-core:#4AD9A7;
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+    --shadow-md:0 8px 14px rgba(0,0,0,0.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:24px 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.88rem;margin-bottom:20px;text-align:center;max-width:900px;margin-left:auto;margin-right:auto;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:24px;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .wrap-label{color:var(--text-strong);font-size:0.92rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.74rem;text-align:center;max-width:300px;}
+  .phone{width:340px;height:740px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .status{height:28px;background:var(--bg-app);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:0.7rem;color:var(--text-main);flex-shrink:0;}
+  .page-header{position:sticky;top:0;z-index:100;background:var(--bg-app);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;min-height:56px;border-bottom:1px solid var(--border-subtle);}
+  .header-left{display:flex;align-items:center;gap:10px;}
+  .back{width:36px;height:36px;border-radius:50%;background:var(--bg-card);color:var(--text-main);display:flex;align-items:center;justify-content:center;font-size:0.82rem;border:none;}
+  .page-title{font-size:1rem;font-weight:700;color:var(--text-strong);}
+  .content{flex:1;overflow-y:auto;padding:14px 16px 80px;}
+  .content::-webkit-scrollbar{display:none;}
+
+  /* Profile hero */
+  .profile-card{background:linear-gradient(135deg,var(--bg-card-hi),var(--bg-card));border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:18px;display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .profile-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--cat-push),var(--cat-pull));flex-shrink:0;}
+  .profile-info{flex:1;min-width:0;}
+  .profile-name{font-size:1.1rem;font-weight:700;color:var(--text-strong);}
+  .profile-email{font-size:0.74rem;color:var(--text-muted);margin-top:2px;}
+
+  /* Settings group */
+  .group-label{font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin:18px 2px 8px;}
+  .group{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden;}
+  .srow{display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border-subtle);}
+  .srow:last-child{border-bottom:none;}
+  .srow-icon{width:32px;height:32px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:0.85rem;flex-shrink:0;}
+  .srow-info{flex:1;min-width:0;}
+  .srow-name{font-size:0.9rem;color:var(--text-strong);font-weight:500;}
+  .srow-desc{font-size:0.7rem;color:var(--text-muted);margin-top:2px;}
+  .srow-right{display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:0.82rem;}
+  .srow-value{color:var(--text-secondary);font-size:0.82rem;font-weight:500;}
+  .srow-chev{font-size:0.72rem;}
+
+  /* Toggle */
+  .toggle{width:44px;height:26px;background:var(--bg-card-hi);border-radius:999px;position:relative;flex-shrink:0;border:none;transition:background 150ms;}
+  .toggle::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--text-secondary);transition:transform 150ms;}
+  .toggle.on{background:var(--primary);}
+  .toggle.on::after{background:#04201a;transform:translateX(18px);}
+
+  /* Segmented control (inline picker for unit / rest timer) */
+  .segmented{display:flex;background:var(--bg-card-hi);border-radius:var(--radius-pill);padding:3px;}
+  .segmented button{flex:1;background:transparent;border:none;color:var(--text-muted);font-size:0.74rem;font-weight:600;padding:5px 10px;border-radius:var(--radius-pill);}
+  .segmented button.active{background:var(--primary);color:#04201a;}
+
+  /* Icon tints */
+  .ic-primary{background:rgba(29,211,176,0.12);color:var(--primary);}
+  .ic-warning{background:rgba(240,194,75,0.12);color:var(--warning);}
+  .ic-warm{background:rgba(247,168,101,0.12);color:var(--highlight-warm);}
+  .ic-danger{background:rgba(227,93,106,0.12);color:var(--danger);}
+  .ic-blue{background:rgba(74,144,217,0.12);color:var(--cat-push);}
+  .ic-purple{background:rgba(123,74,217,0.12);color:var(--cat-legs);}
+  .ic-muted{background:var(--bg-card-hi);color:var(--text-secondary);}
+
+  /* Onboarding */
+  .onb-content{flex:1;display:flex;flex-direction:column;padding:20px 20px 0;}
+  .onb-progress{display:flex;gap:6px;margin-bottom:24px;}
+  .onb-dot{flex:1;height:4px;border-radius:2px;background:var(--border-light);}
+  .onb-dot.active{background:var(--primary);}
+  .onb-icon-hero{width:80px;height:80px;border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:18px;}
+  .onb-title{font-size:1.6rem;font-weight:800;color:var(--text-strong);margin-bottom:8px;line-height:1.2;}
+  .onb-desc{font-size:0.92rem;color:var(--text-secondary);line-height:1.5;margin-bottom:24px;}
+  .onb-chips{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
+  .onb-chip{background:var(--bg-card);border:1.5px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;display:flex;align-items:center;gap:12px;}
+  .onb-chip.selected{border-color:var(--primary);background:var(--primary-bg);}
+  .onb-chip-icon{width:36px;height:36px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .onb-chip-info{flex:1;}
+  .onb-chip-name{font-size:0.92rem;font-weight:600;color:var(--text-strong);}
+  .onb-chip-desc{font-size:0.72rem;color:var(--text-muted);margin-top:2px;}
+  .onb-chip.selected .onb-chip-check{width:20px;height:20px;border-radius:50%;background:var(--primary);color:#04201a;display:flex;align-items:center;justify-content:center;font-size:0.68rem;}
+  .onb-footer{padding:20px;display:flex;gap:10px;border-top:1px solid var(--border-subtle);}
+  .btn-ghost{flex:1;background:transparent;border:1px solid var(--border-light);color:var(--text-main);padding:14px;border-radius:var(--radius-md);font-weight:600;}
+  .btn-primary{flex:2;background:var(--primary);color:#04201a;border:none;padding:14px;border-radius:var(--radius-md);font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}
+</style>
+</head>
+<body>
+
+<!-- ==================== SETTINGS ==================== -->
+
+<h1 class="sec">Settings — Redesign</h1>
+<p class="desc">Grouped row cards, no dropdowns. Unit/timer/goal inline with segmented controls. Toggles replace checkboxes. Profile card at top. Destructive actions clearly separated and tinted danger.</p>
+
+<div class="row">
+
+  <!-- Settings Main -->
+  <div class="wrap">
+    <div class="wrap-label">Settings · main</div>
+    <div class="wrap-sub">Profile · Preferences · Training · Connections · Data · Danger zone</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">Settings</div></div>
+      </div>
+      <div class="content">
+
+        <div class="profile-card">
+          <div class="profile-avatar"></div>
+          <div class="profile-info">
+            <div class="profile-name">Kevin Laperriere</div>
+            <div class="profile-email">kevin.laperriere@gmail.com</div>
+          </div>
+          <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i>
+        </div>
+
+        <div class="group-label">Preferences</div>
+        <div class="group">
+          <div class="srow">
+            <div class="srow-icon ic-blue"><i class="fas fa-weight-hanging"></i></div>
+            <div class="srow-info"><div class="srow-name">Weight unit</div></div>
+            <div class="segmented"><button class="active">lb</button><button>kg</button></div>
+          </div>
+          <div class="srow">
+            <div class="srow-icon ic-primary"><i class="fas fa-stopwatch"></i></div>
+            <div class="srow-info"><div class="srow-name">Rest timer</div></div>
+            <div class="segmented" style="font-size:0.7rem;"><button>60s</button><button class="active">90s</button><button>120s</button></div>
+          </div>
+          <div class="srow">
+            <div class="srow-icon ic-warm"><i class="fas fa-bullseye"></i></div>
+            <div class="srow-info"><div class="srow-name">Weekly goal</div></div>
+            <div class="segmented" style="font-size:0.7rem;"><button>3</button><button>4</button><button class="active">5</button><button>6</button></div>
+          </div>
+        </div>
+
+        <div class="group-label">Training</div>
+        <div class="group">
+          <div class="srow">
+            <div class="srow-icon ic-primary"><i class="fas fa-bell"></i></div>
+            <div class="srow-info"><div class="srow-name">Rest timer sound</div><div class="srow-desc">Chime when rest period ends</div></div>
+            <button class="toggle on"></button>
+          </div>
+          <div class="srow">
+            <div class="srow-icon ic-warning"><i class="fas fa-trophy"></i></div>
+            <div class="srow-info"><div class="srow-name">PR celebrations</div><div class="srow-desc">Confetti &amp; haptic on new records</div></div>
+            <button class="toggle on"></button>
+          </div>
+          <div class="srow">
+            <div class="srow-icon ic-purple"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="srow-info"><div class="srow-name">Auto-detect gym</div><div class="srow-desc">Use GPS to match saved locations</div></div>
+            <button class="toggle on"></button>
+          </div>
+          <div class="srow">
+            <div class="srow-icon ic-muted"><i class="fas fa-eye"></i></div>
+            <div class="srow-info"><div class="srow-name">Show warmup sets</div></div>
+            <button class="toggle"></button>
+          </div>
+        </div>
+
+        <div class="group-label">Connections</div>
+        <div class="group">
+          <div class="srow">
+            <div class="srow-icon ic-blue"><i class="fas fa-link"></i></div>
+            <div class="srow-info"><div class="srow-name">Withings</div><div class="srow-desc">Weight &amp; body composition</div></div>
+            <div class="srow-right"><span style="color:var(--success);font-size:0.74rem;font-weight:600;">Connected</span></div>
+          </div>
+          <div class="srow">
+            <div class="srow-icon ic-muted"><i class="fab fa-apple"></i></div>
+            <div class="srow-info"><div class="srow-name">Apple Health</div><div class="srow-desc">Sync heart rate &amp; sleep</div></div>
+            <div class="srow-right"><span style="color:var(--primary);font-size:0.74rem;font-weight:600;">Connect</span></div>
+          </div>
+        </div>
+
+        <div class="group-label">Data</div>
+        <div class="group">
+          <div class="srow">
+            <div class="srow-icon ic-muted"><i class="fas fa-download"></i></div>
+            <div class="srow-info"><div class="srow-name">Export workouts</div><div class="srow-desc">Download CSV or JSON</div></div>
+            <i class="fas fa-chevron-right srow-chev"></i>
+          </div>
+          <div class="srow">
+            <div class="srow-icon ic-muted"><i class="fas fa-upload"></i></div>
+            <div class="srow-info"><div class="srow-name">Import</div></div>
+            <i class="fas fa-chevron-right srow-chev"></i>
+          </div>
+        </div>
+
+        <div class="group-label" style="color:var(--danger);">Danger zone</div>
+        <div class="group">
+          <div class="srow">
+            <div class="srow-icon ic-danger"><i class="fas fa-sign-out-alt"></i></div>
+            <div class="srow-info"><div class="srow-name" style="color:var(--danger);">Sign out</div></div>
+          </div>
+          <div class="srow">
+            <div class="srow-icon ic-danger"><i class="fas fa-trash"></i></div>
+            <div class="srow-info"><div class="srow-name" style="color:var(--danger);">Delete all data</div><div class="srow-desc">Permanently remove all workouts</div></div>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin-top:20px;font-size:0.7rem;color:var(--text-muted);">Big Surf v1.4.0 · Build 247</div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Detail view -->
+  <div class="wrap">
+    <div class="wrap-label">Detail view · Profile</div>
+    <div class="wrap-sub">When Profile row is tapped — name, email, avatar change, default weekly goal, plus sign-out at the bottom</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="page-header">
+        <div class="header-left"><button class="back"><i class="fas fa-chevron-left"></i></button><div class="page-title">Profile</div></div>
+      </div>
+      <div class="content">
+        <div style="text-align:center;padding:20px 0 14px;">
+          <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--cat-push),var(--cat-pull));margin:0 auto 12px;position:relative;">
+            <button style="position:absolute;bottom:0;right:0;width:30px;height:30px;border-radius:50%;background:var(--primary);color:#04201a;border:3px solid var(--bg-app);font-size:0.7rem;"><i class="fas fa-camera"></i></button>
+          </div>
+          <div style="font-size:1.2rem;font-weight:700;color:var(--text-strong);">Kevin Laperriere</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);">kevin.laperriere@gmail.com</div>
+        </div>
+
+        <div class="group-label">Account</div>
+        <div class="group">
+          <div class="srow"><div class="srow-icon ic-muted"><i class="fas fa-user"></i></div><div class="srow-info"><div class="srow-name">Display name</div></div><div class="srow-right"><span class="srow-value">Kevin</span><i class="fas fa-chevron-right srow-chev"></i></div></div>
+          <div class="srow"><div class="srow-icon ic-muted"><i class="fas fa-envelope"></i></div><div class="srow-info"><div class="srow-name">Email</div></div><div class="srow-right"><span class="srow-value" style="font-size:0.7rem;">kevin.la…@gmail.com</span><i class="fas fa-chevron-right srow-chev"></i></div></div>
+        </div>
+
+        <div class="group-label">Fitness profile</div>
+        <div class="group">
+          <div class="srow"><div class="srow-icon ic-warm"><i class="fas fa-ruler-vertical"></i></div><div class="srow-info"><div class="srow-name">Height</div></div><div class="srow-right"><span class="srow-value">5'11"</span><i class="fas fa-chevron-right srow-chev"></i></div></div>
+          <div class="srow"><div class="srow-icon ic-primary"><i class="fas fa-calendar"></i></div><div class="srow-info"><div class="srow-name">Birthday</div></div><div class="srow-right"><span class="srow-value">Mar 1985</span><i class="fas fa-chevron-right srow-chev"></i></div></div>
+          <div class="srow"><div class="srow-icon ic-blue"><i class="fas fa-star"></i></div><div class="srow-info"><div class="srow-name">Experience level</div></div><div class="srow-right"><span class="srow-value">Advanced</span><i class="fas fa-chevron-right srow-chev"></i></div></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== ONBOARDING ==================== -->
+
+<h1 class="sec">Onboarding — Redesign</h1>
+<p class="desc">Five-step setup: Welcome → Goal → Experience → Units → Done. Each step has a hero icon, large heading, and big-tap selection chips. Progress bar at the top. Clear Next / Skip for each step.</p>
+
+<div class="row">
+
+  <!-- Step 1 -->
+  <div class="wrap">
+    <div class="wrap-label">Step 1 · Welcome</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="onb-content">
+        <div class="onb-progress"><div class="onb-dot active"></div><div class="onb-dot"></div><div class="onb-dot"></div><div class="onb-dot"></div></div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;">
+          <img src="../BigSurfNoBG.png" alt="Big Surf" style="width:120px;height:120px;object-fit:contain;margin:0 auto 18px;" />
+          <div class="onb-title">Welcome to<br>Big Surf</div>
+          <div class="onb-desc">Track your lifts, hit PRs, see trends. Let's set up your profile in under a minute.</div>
+        </div>
+      </div>
+      <div class="onb-footer">
+        <button class="btn-primary" style="flex:1;">Get Started <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Goal -->
+  <div class="wrap">
+    <div class="wrap-label">Step 2 · Weekly goal</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="onb-content">
+        <div class="onb-progress"><div class="onb-dot active"></div><div class="onb-dot active"></div><div class="onb-dot"></div><div class="onb-dot"></div></div>
+        <div class="onb-icon-hero ic-warm"><i class="fas fa-bullseye"></i></div>
+        <div class="onb-title">How often?</div>
+        <div class="onb-desc">How many workouts per week are you aiming for? You can change this anytime.</div>
+
+        <div class="onb-chips">
+          <div class="onb-chip"><div class="onb-chip-icon ic-muted">3</div><div class="onb-chip-info"><div class="onb-chip-name">Casual · 3x / week</div><div class="onb-chip-desc">Just getting started</div></div></div>
+          <div class="onb-chip"><div class="onb-chip-icon ic-muted">4</div><div class="onb-chip-info"><div class="onb-chip-name">Balanced · 4x / week</div><div class="onb-chip-desc">Most lifters</div></div></div>
+          <div class="onb-chip selected"><div class="onb-chip-icon ic-primary">5</div><div class="onb-chip-info"><div class="onb-chip-name">Serious · 5x / week</div><div class="onb-chip-desc">PPL split or Upper/Lower</div></div><div class="onb-chip-check"><i class="fas fa-check"></i></div></div>
+          <div class="onb-chip"><div class="onb-chip-icon ic-muted">6</div><div class="onb-chip-info"><div class="onb-chip-name">Hard · 6x / week</div><div class="onb-chip-desc">Advanced training</div></div></div>
+        </div>
+      </div>
+      <div class="onb-footer">
+        <button class="btn-ghost">Back</button>
+        <button class="btn-primary">Next <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Experience -->
+  <div class="wrap">
+    <div class="wrap-label">Step 3 · Experience</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="onb-content">
+        <div class="onb-progress"><div class="onb-dot active"></div><div class="onb-dot active"></div><div class="onb-dot active"></div><div class="onb-dot"></div></div>
+        <div class="onb-icon-hero ic-warning"><i class="fas fa-star"></i></div>
+        <div class="onb-title">Experience level</div>
+        <div class="onb-desc">We'll use this to suggest starting weights and form tips.</div>
+
+        <div class="onb-chips">
+          <div class="onb-chip"><div class="onb-chip-icon ic-muted"><i class="fas fa-seedling"></i></div><div class="onb-chip-info"><div class="onb-chip-name">Beginner</div><div class="onb-chip-desc">&lt; 1 year consistent training</div></div></div>
+          <div class="onb-chip"><div class="onb-chip-icon ic-muted"><i class="fas fa-fire"></i></div><div class="onb-chip-info"><div class="onb-chip-name">Intermediate</div><div class="onb-chip-desc">1–3 years training</div></div></div>
+          <div class="onb-chip selected"><div class="onb-chip-icon ic-primary"><i class="fas fa-bolt"></i></div><div class="onb-chip-info"><div class="onb-chip-name">Advanced</div><div class="onb-chip-desc">3+ years, know your lifts</div></div><div class="onb-chip-check"><i class="fas fa-check"></i></div></div>
+        </div>
+      </div>
+      <div class="onb-footer">
+        <button class="btn-ghost">Back</button>
+        <button class="btn-primary">Next <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: Units -->
+  <div class="wrap">
+    <div class="wrap-label">Step 4 · Units &amp; preferences</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="onb-content">
+        <div class="onb-progress"><div class="onb-dot active"></div><div class="onb-dot active"></div><div class="onb-dot active"></div><div class="onb-dot active"></div></div>
+        <div class="onb-icon-hero ic-blue"><i class="fas fa-sliders-h"></i></div>
+        <div class="onb-title">Your units</div>
+        <div class="onb-desc">Set defaults. Changeable later in Settings.</div>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:8px;">Weight</div>
+          <div class="segmented" style="background:var(--bg-card);padding:4px;"><button class="active" style="padding:10px;">Pounds (lb)</button><button style="padding:10px;">Kilograms (kg)</button></div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:8px;">Rest timer default</div>
+          <div class="segmented" style="background:var(--bg-card);padding:4px;"><button style="padding:10px;">60s</button><button class="active" style="padding:10px;">90s</button><button style="padding:10px;">2 min</button><button style="padding:10px;">3 min</button></div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:8px;">Body measurements</div>
+          <div class="segmented" style="background:var(--bg-card);padding:4px;"><button class="active" style="padding:10px;">Inches</button><button style="padding:10px;">Centimeters</button></div>
+        </div>
+      </div>
+      <div class="onb-footer">
+        <button class="btn-ghost">Back</button>
+        <button class="btn-primary"><i class="fas fa-check"></i> All set!</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

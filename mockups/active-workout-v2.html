@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Active Workout v2 — Wizard + Jump-List Hybrid</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-dark:#0fa48a; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --warning:#f0c24b; --danger:#e35d6a; --highlight-warm:#f7a865;
+    --cat-push:#4A90D9; --cat-pull:#D94A7A; --cat-legs:#7B4AD9; --cat-core:#4AD9A7;
+    --cat-shoulders:#56B6C2; --cat-arms:#D96A4A;
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+    --shadow-md:0 8px 14px rgba(0,0,0,0.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:24px 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;text-align:center;max-width:940px;margin-left:auto;margin-right:auto;line-height:1.5;}
+  .row{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:32px;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:360px;}
+  .wrap-tag{background:var(--primary-bg);color:var(--primary);padding:3px 10px;border-radius:var(--radius-pill);font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;}
+  .wrap-name{color:var(--text-strong);font-size:0.92rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.74rem;text-align:center;line-height:1.4;}
+
+  .phone{width:340px;height:740px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .status{height:28px;background:var(--bg-app);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:0.7rem;color:var(--text-main);flex-shrink:0;}
+
+  /* ===== Header + progress bar ===== */
+  .w-header{background:var(--bg-app);padding:8px 14px;display:flex;align-items:center;gap:8px;min-height:48px;}
+  .w-back{width:32px;height:32px;border-radius:50%;background:var(--bg-card);color:var(--text-main);border:none;display:flex;align-items:center;justify-content:center;font-size:0.74rem;flex-shrink:0;}
+  .w-title{flex:1;text-align:center;min-width:0;}
+  .w-title-name{font-size:0.86rem;font-weight:700;color:var(--text-strong);}
+  .w-title-meta{font-size:0.64rem;color:var(--text-muted);font-variant-numeric:tabular-nums;}
+  .w-menu{width:32px;height:32px;background:transparent;border:none;color:var(--text-muted);}
+
+  /* Progress pills — each exercise as a dot/pill, tap to jump */
+  .w-pills{
+    display:flex;gap:4px;padding:4px 14px 10px;
+    border-bottom:1px solid var(--border-subtle);
+    overflow-x:auto;scrollbar-width:none;
+  }
+  .w-pills::-webkit-scrollbar{display:none;}
+  .w-pill{
+    flex-shrink:0;
+    background:transparent;border:1.5px solid var(--border-light);
+    border-radius:var(--radius-pill);
+    padding:4px 10px;
+    font-size:0.64rem;
+    color:var(--text-muted);
+    font-weight:600;
+    white-space:nowrap;
+    display:flex;align-items:center;gap:5px;
+    cursor:pointer;
+  }
+  .w-pill.done{background:var(--success-bg,rgba(54,196,107,0.1));border-color:rgba(54,196,107,0.3);color:var(--success);}
+  .w-pill.current{background:var(--primary);border-color:var(--primary);color:#04201a;font-weight:800;}
+  .w-pill.superset{border-color:var(--highlight-warm);color:var(--highlight-warm);}
+  .w-pill-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+  /* ===== Clean rest timer (teal/primary, no yellow) ===== */
+  .rest-timer{
+    background:linear-gradient(135deg,var(--primary-dark),var(--primary));
+    color:#04201a;
+    padding:10px 14px;
+    display:flex;align-items:center;gap:10px;
+    position:relative;overflow:hidden;
+  }
+  .rest-timer__icon{width:26px;height:26px;border-radius:50%;background:rgba(4,32,26,0.18);display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;}
+  .rest-timer__info{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;}
+  .rest-timer__label{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;opacity:0.7;}
+  .rest-timer__time{font-size:1.2rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;}
+  .rest-timer__controls{display:flex;gap:5px;flex-shrink:0;}
+  .rest-timer__btn{background:rgba(4,32,26,0.2);border:none;color:#04201a;padding:5px 10px;border-radius:var(--radius-pill);font-size:0.66rem;font-weight:700;}
+  .rest-timer__bar{position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(4,32,26,0.25);}
+  .rest-timer__bar-fill{height:100%;background:#04201a;}
+
+  /* ===== Exercise hero ===== */
+  .ex-hero{padding:14px 16px 8px;}
+  .ex-hero-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .ex-hero-icon{width:44px;height:44px;border-radius:12px;background:rgba(74,144,217,0.15);color:var(--cat-push);display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0;}
+  .ex-hero-name{flex:1;min-width:0;}
+  .ex-hero-title{font-size:1.25rem;font-weight:800;color:var(--text-strong);line-height:1.1;}
+  .ex-hero-sub{font-size:0.72rem;color:var(--text-muted);margin-top:3px;}
+  .ex-hero-more{width:34px;height:34px;background:transparent;border:1px solid var(--border-light);border-radius:50%;color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:0.82rem;flex-shrink:0;}
+
+  /* Equipment — compact single line, no card */
+  .equip-line{
+    display:flex;align-items:center;gap:6px;
+    padding:0 2px;margin-bottom:10px;
+    font-size:0.74rem;color:var(--text-muted);
+  }
+  .equip-line > i{font-size:0.7rem;opacity:0.7;}
+  .equip-line-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary);font-weight:500;}
+  .equip-line-change{color:var(--primary);font-size:0.72rem;font-weight:600;background:transparent;border:none;padding:2px 6px;}
+
+  /* Last session card */
+  .last-card{
+    background:var(--bg-card-hi);border-radius:10px;padding:9px 12px;
+    display:flex;align-items:center;gap:10px;margin-bottom:12px;
+  }
+  .last-card i{color:var(--text-muted);font-size:0.82rem;}
+  .last-card-info{flex:1;min-width:0;}
+  .last-card-label{font-size:0.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;}
+  .last-card-val{font-size:0.78rem;color:var(--text-main);font-weight:500;font-variant-numeric:tabular-nums;}
+
+  /* Set rows */
+  .sets-list{padding:0 16px;}
+  .set-row{
+    background:var(--bg-card);border:1px solid var(--border-subtle);
+    border-radius:var(--radius-md);padding:10px 12px;
+    display:grid;grid-template-columns:28px 1fr 1fr 38px;gap:8px;align-items:center;
+    margin-bottom:8px;
+  }
+  .set-row.done{background:rgba(54,196,107,0.08);border-color:rgba(54,196,107,0.2);}
+  .set-row.current{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-bg);}
+  .set-row__num{font-size:0.92rem;font-weight:800;color:var(--text-muted);}
+  .set-row.done .set-row__num,.set-row.current .set-row__num{color:var(--text-strong);}
+  .set-row__input{width:100%;min-width:0;box-sizing:border-box;background:var(--bg-app);border:1px solid var(--border-light);border-radius:8px;padding:10px 6px;color:var(--text-strong);font-size:1rem;font-weight:800;text-align:center;outline:none;font-variant-numeric:tabular-nums;}
+  .set-row__input:focus{border-color:var(--primary);}
+  .set-row__input.done-val{background:transparent;border:none;color:var(--success);font-weight:700;}
+  /* Auto-filled from last session — muted style, tap to edit */
+  .set-row__input.autofill{color:var(--text-muted);font-weight:600;border-style:dashed;}
+  .set-row__input.autofill:focus{color:var(--text-strong);font-weight:800;border-style:solid;}
+  .set-row__check{width:38px;height:38px;border-radius:50%;background:var(--bg-card-hi);color:var(--text-muted);border:none;font-size:0.95rem;display:flex;align-items:center;justify-content:center;}
+  .set-row__check.done{background:var(--success);color:#fff;}
+  .add-set-btn{width:100%;background:transparent;border:1.5px dashed var(--border-light);border-radius:var(--radius-md);padding:10px;color:var(--primary);font-size:0.8rem;font-weight:600;margin-top:4px;}
+
+  /* Footer — dual action: jump (All exercises) + next */
+  .w-footer{padding:12px 14px;border-top:1px solid var(--border-subtle);background:var(--bg-app);display:flex;gap:8px;align-items:center;}
+  .w-fab-list{background:var(--bg-card);border:1px solid var(--border-light);color:var(--text-main);border-radius:var(--radius-md);padding:10px 14px;font-weight:600;font-size:0.78rem;display:flex;align-items:center;gap:6px;}
+  .w-btn-next{flex:1;background:var(--primary);color:#04201a;border:none;border-radius:var(--radius-md);padding:12px;font-size:0.88rem;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .w-btn-next.finish{background:linear-gradient(135deg,var(--primary),var(--primary-dark));}
+
+  /* ========== Bottom sheet — Jump to exercise ========== */
+  .sheet-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.6);z-index:20;}
+  .sheet{
+    position:absolute;bottom:0;left:0;right:0;
+    background:var(--bg-surface);
+    border-top-left-radius:22px;border-top-right-radius:22px;
+    padding:10px 0 20px;z-index:25;
+    max-height:70%;overflow-y:auto;
+    box-shadow:0 -10px 30px rgba(0,0,0,0.5);
+  }
+  .sheet-grab{width:36px;height:4px;background:var(--border-light);border-radius:2px;margin:0 auto 10px;}
+  .sheet-head{padding:0 18px 10px;display:flex;justify-content:space-between;align-items:center;}
+  .sheet-head h2{font-size:1rem;color:var(--text-strong);font-weight:700;}
+  .sheet-head .sheet-meta{font-size:0.7rem;color:var(--text-muted);}
+  .sheet-ex{
+    padding:10px 18px;display:flex;align-items:center;gap:12px;
+    border-top:1px solid var(--border-subtle);cursor:pointer;
+  }
+  .sheet-ex:first-of-type{border-top:none;}
+  .sheet-ex.current{background:var(--primary-bg);}
+  .sheet-ex-icon{width:32px;height:32px;border-radius:8px;background:var(--bg-card-hi);display:flex;align-items:center;justify-content:center;font-size:0.72rem;flex-shrink:0;}
+  .sheet-ex-info{flex:1;min-width:0;}
+  .sheet-ex-name{font-size:0.86rem;font-weight:600;color:var(--text-strong);}
+  .sheet-ex-meta{font-size:0.66rem;color:var(--text-muted);margin-top:2px;}
+  .sheet-ex-status{font-size:0.68rem;color:var(--text-muted);flex-shrink:0;}
+  .sheet-ex-status.done{color:var(--success);}
+  .sheet-ex-status.current{color:var(--primary);font-weight:700;}
+  .sheet-actions{padding:10px 18px 0;display:flex;gap:8px;border-top:1px solid var(--border-subtle);margin-top:6px;padding-top:12px;}
+  .sheet-act{flex:1;background:var(--bg-card);border:1px solid var(--border-light);color:var(--text-main);border-radius:var(--radius-md);padding:10px;font-size:0.76rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;}
+
+  /* Superset badge within sheet */
+  .superset-badge{background:rgba(247,168,101,0.15);color:var(--highlight-warm);font-size:0.58rem;padding:2px 6px;border-radius:var(--radius-pill);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-left:6px;}
+
+  /* ========== SUPERSET MODE — two exercises stacked ========== */
+  .superset-banner{
+    background:linear-gradient(90deg, rgba(247,168,101,0.15), rgba(247,168,101,0.05));
+    border:1px solid rgba(247,168,101,0.3);
+    border-radius:var(--radius-md);
+    padding:8px 12px;margin:12px 16px 10px;
+    display:flex;align-items:center;gap:8px;
+    font-size:0.72rem;color:var(--highlight-warm);font-weight:700;
+  }
+  .ss-ex{padding:12px 16px;margin-bottom:6px;}
+  .ss-ex.active{background:var(--primary-bg);border-left:3px solid var(--primary);}
+  .ss-ex-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .ss-ex-num{width:22px;height:22px;border-radius:50%;background:var(--highlight-warm);color:#2a1504;font-size:0.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .ss-ex-name{flex:1;font-size:0.92rem;color:var(--text-strong);font-weight:700;}
+  .ss-ex-meta{font-size:0.66rem;color:var(--text-muted);}
+
+  /* Workflow caption for each phone */
+  .caption{background:var(--bg-card);border-left:3px solid var(--primary);padding:8px 12px;font-size:0.76rem;color:var(--text-main);line-height:1.4;max-width:320px;}
+  .caption strong{color:var(--primary);}
+
+  /* Add exercise sheet */
+  .add-list{padding:0 18px;}
+  .add-item{padding:10px 0;border-top:1px solid var(--border-subtle);display:flex;align-items:center;gap:10px;cursor:pointer;}
+  .add-item:first-of-type{border-top:none;}
+  .add-item-icon{width:28px;height:28px;border-radius:8px;background:rgba(74,144,217,0.15);color:var(--cat-push);display:flex;align-items:center;justify-content:center;font-size:0.72rem;flex-shrink:0;}
+  .add-item-name{flex:1;font-size:0.82rem;color:var(--text-strong);font-weight:500;}
+
+  .search-bar{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-pill);padding:8px 12px;display:flex;align-items:center;gap:8px;margin:0 18px 10px;}
+  .search-bar input{flex:1;background:transparent;border:none;color:var(--text-strong);outline:none;font-size:0.82rem;}
+  .search-bar i{color:var(--text-muted);font-size:0.76rem;}
+</style>
+</head>
+<body>
+
+<h1 class="sec">Active Workout v2 — Refined wizard with superset support</h1>
+<p class="desc">Option B was on the right track. Changes: <strong>primary/teal rest timer</strong> (no yellow), <strong>clear equipment card</strong> with Change button, <strong>tap any pill at the top</strong> or tap "All exercises" at the bottom to jump — gets you the superset agility of Option A without losing Option B's focus.</p>
+
+<!-- ================================================
+     FLOW 1: Active exercise — normal state
+     ================================================ -->
+
+<h1 class="sec" style="font-size:1rem;">Flow 1 · Normal exercise view</h1>
+
+<div class="row">
+
+  <div class="wrap">
+    <div class="wrap-tag">Step 1</div>
+    <div class="wrap-name">You tap "Start" on a template</div>
+    <div class="wrap-sub">First exercise loads. Equipment is pre-filled from template. Last session shown for reference.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+
+      <div class="w-header">
+        <button class="w-back"><i class="fas fa-chevron-left"></i></button>
+        <div class="w-title">
+          <div class="w-title-name">Chest &amp; Triceps</div>
+          <div class="w-title-meta">Exercise 1 of 6 · 0:00</div>
+        </div>
+        <button class="w-menu"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+
+      <!-- Top progress pills — tap to jump -->
+      <div class="w-pills">
+        <button class="w-pill current">1. Bench</button>
+        <button class="w-pill">2. Incline DB</button>
+        <button class="w-pill">3. Cable Fly</button>
+        <button class="w-pill">4. Tricep PD</button>
+        <button class="w-pill">5. OH Ext</button>
+        <button class="w-pill">6. Dips</button>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;">
+        <div class="ex-hero">
+          <div class="ex-hero-top">
+            <div class="ex-hero-icon"><i class="fas fa-hand-paper"></i></div>
+            <div class="ex-hero-name">
+              <div class="ex-hero-title">Bench Press</div>
+              <div class="ex-hero-sub">4 sets · 8 reps target</div>
+            </div>
+            <button class="ex-hero-more"><i class="fas fa-ellipsis-v"></i></button>
+          </div>
+
+          <!-- Equipment — compact inline line, not a card -->
+          <div class="equip-line">
+            <i class="fas fa-cog"></i>
+            <span class="equip-line-name">Rogue Power Bar · 45 lb</span>
+            <button class="equip-line-change">Change</button>
+          </div>
+
+          <!-- Last session -->
+          <div class="last-card">
+            <i class="fas fa-history"></i>
+            <div class="last-card-info">
+              <div class="last-card-label">Last session · 3 days ago</div>
+              <div class="last-card-val">135×10 · 185×8 · 205×6 · 225×5 <span style="color:var(--highlight-warm);">PR</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:0 16px 6px;font-size:0.64rem;color:var(--text-muted);">
+          <i class="fas fa-magic" style="color:var(--primary);"></i> Pre-filled from last session · tap any cell to edit
+        </div>
+
+        <div class="sets-list">
+          <div class="set-row current">
+            <div class="set-row__num">1</div>
+            <input class="set-row__input autofill" value="135">
+            <input class="set-row__input autofill" value="10">
+            <button class="set-row__check"><i class="far fa-circle"></i></button>
+          </div>
+          <div class="set-row">
+            <div class="set-row__num">2</div>
+            <input class="set-row__input autofill" value="185">
+            <input class="set-row__input autofill" value="8">
+            <button class="set-row__check"><i class="far fa-circle"></i></button>
+          </div>
+          <div class="set-row">
+            <div class="set-row__num">3</div>
+            <input class="set-row__input autofill" value="205">
+            <input class="set-row__input autofill" value="6">
+            <button class="set-row__check"><i class="far fa-circle"></i></button>
+          </div>
+          <div class="set-row">
+            <div class="set-row__num">4</div>
+            <input class="set-row__input autofill" value="225">
+            <input class="set-row__input autofill" value="5">
+            <button class="set-row__check"><i class="far fa-circle"></i></button>
+          </div>
+          <button class="add-set-btn"><i class="fas fa-plus"></i> Add set</button>
+        </div>
+      </div>
+
+      <div class="w-footer">
+        <button class="w-fab-list"><i class="fas fa-list"></i> All</button>
+        <button class="w-btn-next">Next exercise <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="wrap-tag">Step 2</div>
+    <div class="wrap-name">Log a set · teal rest timer</div>
+    <div class="wrap-sub">Tap the ✓ after a set. Rest timer slides in at top (primary/teal, not yellow). +30s / Skip inline. Progress bar at bottom of banner.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+
+      <div class="w-header">
+        <button class="w-back"><i class="fas fa-chevron-left"></i></button>
+        <div class="w-title">
+          <div class="w-title-name">Chest &amp; Triceps</div>
+          <div class="w-title-meta">Exercise 1 of 6 · 2:34</div>
+        </div>
+        <button class="w-menu"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+
+      <div class="w-pills">
+        <button class="w-pill current">1. Bench</button>
+        <button class="w-pill">2. Incline DB</button>
+        <button class="w-pill">3. Cable Fly</button>
+        <button class="w-pill">4. Tricep PD</button>
+        <button class="w-pill">5. OH Ext</button>
+        <button class="w-pill">6. Dips</button>
+      </div>
+
+      <!-- Rest timer — teal/primary -->
+      <div class="rest-timer">
+        <div class="rest-timer__icon"><i class="fas fa-stopwatch"></i></div>
+        <div class="rest-timer__info">
+          <div>
+            <div class="rest-timer__label">Rest</div>
+            <div class="rest-timer__time">1:12</div>
+          </div>
+        </div>
+        <div class="rest-timer__controls">
+          <button class="rest-timer__btn">+30s</button>
+          <button class="rest-timer__btn">Skip</button>
+        </div>
+        <div class="rest-timer__bar"><div class="rest-timer__bar-fill" style="width:40%;"></div></div>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;">
+        <div class="ex-hero">
+          <div class="ex-hero-top">
+            <div class="ex-hero-icon"><i class="fas fa-hand-paper"></i></div>
+            <div class="ex-hero-name">
+              <div class="ex-hero-title">Bench Press</div>
+              <div class="ex-hero-sub">Set 1 done · 3 left</div>
+            </div>
+            <button class="ex-hero-more"><i class="fas fa-ellipsis-v"></i></button>
+          </div>
+          <div class="equip-card">
+            <div class="equip-ic"><i class="fas fa-cog"></i></div>
+            <div class="equip-info">
+              <div class="equip-label">Equipment</div>
+              <div class="equip-name">Rogue Power Bar · 45 lb</div>
+            </div>
+            <button class="equip-change">Change</button>
+          </div>
+        </div>
+
+        <div class="sets-list">
+          <div class="set-row done">
+            <div class="set-row__num">1</div>
+            <input class="set-row__input done-val" value="135" readonly>
+            <input class="set-row__input done-val" value="10" readonly>
+            <button class="set-row__check done"><i class="fas fa-check"></i></button>
+          </div>
+          <div class="set-row current">
+            <div class="set-row__num">2</div>
+            <input class="set-row__input" value="185">
+            <input class="set-row__input" value="8">
+            <button class="set-row__check"><i class="far fa-circle"></i></button>
+          </div>
+          <div class="set-row">
+            <div class="set-row__num">3</div>
+            <input class="set-row__input autofill" value="205">
+            <input class="set-row__input autofill" value="6">
+            <button class="set-row__check"><i class="far fa-circle"></i></button>
+          </div>
+          <div class="set-row">
+            <div class="set-row__num">4</div>
+            <input class="set-row__input autofill" value="225">
+            <input class="set-row__input autofill" value="5">
+            <button class="set-row__check"><i class="far fa-circle"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-footer">
+        <button class="w-fab-list"><i class="fas fa-list"></i> All</button>
+        <button class="w-btn-next">Next exercise <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="wrap-tag">Step 3</div>
+    <div class="wrap-name">Change equipment mid-session</div>
+    <div class="wrap-sub">Tap "Change" on the equipment card. Bottom sheet lists options for this exercise — auto-picks most recently used at current location.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div style="filter:brightness(0.4);flex:1;">
+        <div class="w-header">
+          <button class="w-back"><i class="fas fa-chevron-left"></i></button>
+          <div class="w-title">
+            <div class="w-title-name">Chest &amp; Triceps</div>
+            <div class="w-title-meta">Exercise 1 of 6 · 0:15</div>
+          </div>
+          <button class="w-menu"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+        <div class="w-pills">
+          <button class="w-pill current">1. Bench</button>
+          <button class="w-pill">2. Incline DB</button>
+          <button class="w-pill">3. Cable Fly</button>
+        </div>
+        <div class="ex-hero">
+          <div class="ex-hero-top">
+            <div class="ex-hero-icon"><i class="fas fa-hand-paper"></i></div>
+            <div class="ex-hero-name">
+              <div class="ex-hero-title">Bench Press</div>
+              <div class="ex-hero-sub">4 sets · 8 reps target</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Equipment picker sheet -->
+      <div class="sheet-backdrop"></div>
+      <div class="sheet">
+        <div class="sheet-grab"></div>
+        <div class="sheet-head">
+          <h2>Choose equipment</h2>
+          <span class="sheet-meta">Bench Press</span>
+        </div>
+        <div class="sheet-ex">
+          <div class="sheet-ex-icon" style="background:var(--primary-bg);color:var(--primary);"><i class="fas fa-cog"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">Rogue Power Bar</div>
+            <div class="sheet-ex-meta">45 lb bar · last used today</div>
+          </div>
+          <div class="sheet-ex-status current">Current</div>
+        </div>
+        <div class="sheet-ex">
+          <div class="sheet-ex-icon"><i class="fas fa-cog"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">Technique Bar</div>
+            <div class="sheet-ex-meta">33 lb bar · used last Mon</div>
+          </div>
+        </div>
+        <div class="sheet-ex">
+          <div class="sheet-ex-icon"><i class="fas fa-cog"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">Smith Machine</div>
+            <div class="sheet-ex-meta">15 lb carriage · hotel gym</div>
+          </div>
+        </div>
+        <div class="sheet-actions">
+          <button class="sheet-act"><i class="fas fa-plus"></i> Add equipment</button>
+          <button class="sheet-act" style="background:var(--primary-bg);border-color:var(--primary-border);color:var(--primary);">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================================================
+     FLOW 2: Jump / Superset / Add
+     ================================================ -->
+
+<h1 class="sec" style="font-size:1rem;">Flow 2 · Jump to another exercise (for supersets) + add / reorder mid-workout</h1>
+
+<div class="row">
+
+  <div class="wrap">
+    <div class="wrap-tag">Step 4</div>
+    <div class="wrap-name">Tap "All" → workout list drawer</div>
+    <div class="wrap-sub">Drawer slides up. See every exercise with status. Tap any to jump. Tap "Link superset" on two to pair them. Also where you add / reorder / swap.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div style="filter:brightness(0.4);flex:1;">
+        <div class="w-header">
+          <button class="w-back"><i class="fas fa-chevron-left"></i></button>
+          <div class="w-title"><div class="w-title-name">Chest &amp; Triceps</div><div class="w-title-meta">Exercise 1 of 6 · 2:34</div></div>
+          <button class="w-menu"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+        <div class="w-pills">
+          <button class="w-pill current">1. Bench</button>
+          <button class="w-pill">2. Incline DB</button>
+          <button class="w-pill">3. Cable Fly</button>
+        </div>
+      </div>
+
+      <div class="sheet-backdrop"></div>
+      <div class="sheet">
+        <div class="sheet-grab"></div>
+        <div class="sheet-head">
+          <h2>Chest &amp; Triceps</h2>
+          <span class="sheet-meta">1 done · 5 to go</span>
+        </div>
+
+        <div class="sheet-ex current">
+          <div class="sheet-ex-icon" style="background:var(--primary-bg);color:var(--primary);"><i class="fas fa-hand-paper"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">1. Bench Press</div>
+            <div class="sheet-ex-meta">Set 2 of 4 · 185×8</div>
+          </div>
+          <div class="sheet-ex-status current">●</div>
+        </div>
+        <div class="sheet-ex">
+          <div class="sheet-ex-icon"><i class="fas fa-hand-paper"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">2. Incline DB Press <span class="superset-badge">SS A</span></div>
+            <div class="sheet-ex-meta">3 × 10 · 65 lb</div>
+          </div>
+          <div class="sheet-ex-status">Up next</div>
+        </div>
+        <div class="sheet-ex">
+          <div class="sheet-ex-icon"><i class="fas fa-hand-paper"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">3. Cable Fly <span class="superset-badge">SS A</span></div>
+            <div class="sheet-ex-meta">3 × 12 · 45 lb</div>
+          </div>
+          <div class="sheet-ex-status">After</div>
+        </div>
+        <div class="sheet-ex">
+          <div class="sheet-ex-icon"><i class="fas fa-hand-paper"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">4. Tricep Pushdown</div>
+            <div class="sheet-ex-meta">3 × 10 · 55 lb</div>
+          </div>
+        </div>
+        <div class="sheet-ex">
+          <div class="sheet-ex-icon"><i class="fas fa-hand-paper"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">5. Overhead Extension</div>
+            <div class="sheet-ex-meta">3 × 12 · 40 lb</div>
+          </div>
+        </div>
+        <div class="sheet-ex">
+          <div class="sheet-ex-icon"><i class="fas fa-hand-paper"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">6. Dips</div>
+            <div class="sheet-ex-meta">3 × AMRAP · BW</div>
+          </div>
+        </div>
+
+        <div class="sheet-actions">
+          <button class="sheet-act"><i class="fas fa-plus"></i> Add</button>
+          <button class="sheet-act"><i class="fas fa-link"></i> Superset</button>
+          <button class="sheet-act" style="color:var(--primary);border-color:var(--primary-border);">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="wrap-tag">Step 5a — Start linking</div>
+    <div class="wrap-name">Tap "Superset" → select mode</div>
+    <div class="wrap-sub">In the drawer, tap "Superset". Checkboxes appear next to each exercise. Tap to pick the ones you want to pair (2 or more).</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div style="filter:brightness(0.4);flex:1;">
+        <div class="w-header"><div class="w-title"><div class="w-title-name">Chest &amp; Triceps</div></div></div>
+      </div>
+
+      <div class="sheet-backdrop"></div>
+      <div class="sheet">
+        <div class="sheet-grab"></div>
+        <div class="sheet-head">
+          <h2 style="color:var(--highlight-warm);"><i class="fas fa-link"></i> Link as superset</h2>
+          <button style="background:transparent;border:none;color:var(--text-muted);font-size:0.76rem;">Cancel</button>
+        </div>
+        <div style="padding:0 18px 10px;font-size:0.72rem;color:var(--text-muted);line-height:1.4;">Tap exercises to include them. They'll alternate sets together with shared rest.</div>
+
+        <div class="sheet-ex" style="opacity:0.5;">
+          <div class="sheet-ex-icon" style="background:rgba(54,196,107,0.1);color:var(--success);"><i class="fas fa-check"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">1. Bench Press</div>
+            <div class="sheet-ex-meta">Done · can't link</div>
+          </div>
+        </div>
+
+        <div class="sheet-ex" style="background:rgba(247,168,101,0.08);">
+          <div style="width:22px;height:22px;border-radius:50%;background:var(--highlight-warm);color:#2a1504;display:flex;align-items:center;justify-content:center;font-size:0.64rem;font-weight:800;flex-shrink:0;"><i class="fas fa-check"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name" style="color:var(--highlight-warm);">2. Incline DB Press</div>
+            <div class="sheet-ex-meta">3 × 10 · 65 lb</div>
+          </div>
+        </div>
+
+        <div class="sheet-ex" style="background:rgba(247,168,101,0.08);">
+          <div style="width:22px;height:22px;border-radius:50%;background:var(--highlight-warm);color:#2a1504;display:flex;align-items:center;justify-content:center;font-size:0.64rem;font-weight:800;flex-shrink:0;"><i class="fas fa-check"></i></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name" style="color:var(--highlight-warm);">3. Cable Fly</div>
+            <div class="sheet-ex-meta">3 × 12 · 45 lb</div>
+          </div>
+        </div>
+
+        <div class="sheet-ex">
+          <div style="width:22px;height:22px;border-radius:50%;border:2px solid var(--border-light);flex-shrink:0;"></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">4. Tricep Pushdown</div>
+            <div class="sheet-ex-meta">3 × 10 · 55 lb</div>
+          </div>
+        </div>
+
+        <div class="sheet-ex">
+          <div style="width:22px;height:22px;border-radius:50%;border:2px solid var(--border-light);flex-shrink:0;"></div>
+          <div class="sheet-ex-info">
+            <div class="sheet-ex-name">5. Overhead Extension</div>
+            <div class="sheet-ex-meta">3 × 12 · 40 lb</div>
+          </div>
+        </div>
+
+        <div class="sheet-actions">
+          <button class="sheet-act">Cancel</button>
+          <button class="sheet-act" style="flex:2;background:var(--highlight-warm);color:#2a1504;border:none;"><i class="fas fa-link"></i> Link 2 exercises</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="wrap-tag">Step 5b — Superset mode</div>
+    <div class="wrap-name">Linked — two exercises in one view</div>
+    <div class="wrap-sub">Exercises 2 &amp; 3 paired as superset. Both visible simultaneously. Active half highlighted. Swipe to switch between them.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+
+      <div class="w-header">
+        <button class="w-back"><i class="fas fa-chevron-left"></i></button>
+        <div class="w-title">
+          <div class="w-title-name">Chest &amp; Triceps</div>
+          <div class="w-title-meta">Superset A · 8:24</div>
+        </div>
+        <button class="w-menu"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+
+      <div class="w-pills">
+        <button class="w-pill done">1. Bench ✓</button>
+        <button class="w-pill superset current">A1. Incline DB</button>
+        <button class="w-pill superset">A2. Cable Fly</button>
+        <button class="w-pill">4. Tricep PD</button>
+      </div>
+
+      <div class="superset-banner">
+        <i class="fas fa-link"></i>
+        Superset A · alternate between these
+      </div>
+
+      <div style="flex:1;overflow-y:auto;">
+        <!-- Exercise 1 of superset -->
+        <div class="ss-ex active">
+          <div class="ss-ex-head">
+            <div class="ss-ex-num">A1</div>
+            <div class="ss-ex-name">Incline DB Press</div>
+            <span class="ss-ex-meta">65 lb · set 2</span>
+          </div>
+          <div class="set-row current" style="padding:8px;">
+            <div class="set-row__num">2</div>
+            <input class="set-row__input" value="65">
+            <input class="set-row__input" value="10">
+            <button class="set-row__check"><i class="far fa-circle"></i></button>
+          </div>
+        </div>
+
+        <!-- Exercise 2 of superset -->
+        <div class="ss-ex">
+          <div class="ss-ex-head">
+            <div class="ss-ex-num" style="background:var(--warning);">A2</div>
+            <div class="ss-ex-name" style="color:var(--text-main);">Cable Fly</div>
+            <span class="ss-ex-meta">45 lb · set 2 pending</span>
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-muted);padding:4px 8px;">Will continue after Incline DB set 2 ✓</div>
+        </div>
+
+        <div style="padding:12px 16px;">
+          <div class="last-card" style="margin-bottom:0;">
+            <i class="fas fa-history"></i>
+            <div class="last-card-info">
+              <div class="last-card-label">Last time</div>
+              <div class="last-card-val">Incline 60×10, Fly 40×12 · Sun</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-footer">
+        <button class="w-fab-list"><i class="fas fa-list"></i> All</button>
+        <button class="w-btn-next">Next in superset <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="wrap-tag">Step 6 — Add / swap</div>
+    <div class="wrap-name">Add an exercise mid-workout</div>
+    <div class="wrap-sub">Tap "Add" in the drawer → exercise picker. Filtered by body part. Inserts after current exercise.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div style="filter:brightness(0.4);flex:1;">
+        <div class="w-header">
+          <button class="w-back"><i class="fas fa-chevron-left"></i></button>
+          <div class="w-title"><div class="w-title-name">Chest &amp; Triceps</div></div>
+        </div>
+      </div>
+
+      <div class="sheet-backdrop"></div>
+      <div class="sheet">
+        <div class="sheet-grab"></div>
+        <div class="sheet-head">
+          <h2>Add exercise</h2>
+          <span class="sheet-meta">After current</span>
+        </div>
+        <div class="search-bar">
+          <i class="fas fa-search"></i>
+          <input placeholder="Search exercises...">
+        </div>
+        <div style="padding:0 18px 6px;display:flex;gap:6px;overflow-x:auto;">
+          <button class="w-pill" style="background:var(--primary-bg);border-color:var(--primary-border);color:var(--primary);">Chest</button>
+          <button class="w-pill">Triceps</button>
+          <button class="w-pill">Shoulders</button>
+          <button class="w-pill">All</button>
+        </div>
+        <div class="add-list">
+          <div class="add-item">
+            <div class="add-item-icon"><i class="fas fa-hand-paper"></i></div>
+            <div class="add-item-name">Decline Bench Press</div>
+            <i class="fas fa-plus" style="color:var(--primary);"></i>
+          </div>
+          <div class="add-item">
+            <div class="add-item-icon"><i class="fas fa-hand-paper"></i></div>
+            <div class="add-item-name">Chest Dips</div>
+            <i class="fas fa-plus" style="color:var(--primary);"></i>
+          </div>
+          <div class="add-item">
+            <div class="add-item-icon"><i class="fas fa-hand-paper"></i></div>
+            <div class="add-item-name">Machine Chest Press</div>
+            <i class="fas fa-plus" style="color:var(--primary);"></i>
+          </div>
+          <div class="add-item">
+            <div class="add-item-icon"><i class="fas fa-hand-paper"></i></div>
+            <div class="add-item-name">Dumbbell Fly</div>
+            <i class="fas fa-plus" style="color:var(--primary);"></i>
+          </div>
+          <div class="add-item">
+            <div class="add-item-icon" style="background:var(--primary-bg);color:var(--primary);border:1.5px dashed var(--primary-border);"><i class="fas fa-plus"></i></div>
+            <div class="add-item-name" style="color:var(--primary);">Create new exercise</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================================================
+     FLOW 3: Finish
+     ================================================ -->
+
+<h1 class="sec" style="font-size:1rem;">Flow 3 · Last exercise → finish</h1>
+
+<div class="row">
+
+  <div class="wrap">
+    <div class="wrap-tag">Step 7 — Last exercise</div>
+    <div class="wrap-name">Next button becomes "Finish"</div>
+    <div class="wrap-sub">When all sets of the final exercise are done (or you're on the last one), the primary CTA changes to "Finish workout" with a gradient treatment.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="w-header">
+        <button class="w-back"><i class="fas fa-chevron-left"></i></button>
+        <div class="w-title"><div class="w-title-name">Chest &amp; Triceps</div><div class="w-title-meta">Exercise 6 of 6 · 58:12</div></div>
+        <button class="w-menu"><i class="fas fa-ellipsis-v"></i></button>
+      </div>
+      <div class="w-pills">
+        <button class="w-pill done">1 ✓</button>
+        <button class="w-pill done">2 ✓</button>
+        <button class="w-pill done">3 ✓</button>
+        <button class="w-pill done">4 ✓</button>
+        <button class="w-pill done">5 ✓</button>
+        <button class="w-pill current">6. Dips</button>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;">
+        <div class="ex-hero">
+          <div class="ex-hero-top">
+            <div class="ex-hero-icon"><i class="fas fa-hand-paper"></i></div>
+            <div class="ex-hero-name">
+              <div class="ex-hero-title">Dips</div>
+              <div class="ex-hero-sub">3 sets · AMRAP · bodyweight</div>
+            </div>
+            <button class="ex-hero-more"><i class="fas fa-ellipsis-v"></i></button>
+          </div>
+
+          <div style="background:rgba(86,182,194,0.08);border:1px solid rgba(86,182,194,0.2);border-radius:var(--radius-md);padding:9px 12px;display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <i class="fas fa-weight" style="color:var(--cat-shoulders);"></i>
+            <div style="flex:1;">
+              <div style="font-size:0.72rem;color:var(--text-strong);font-weight:600;">Body weight: 184.2 lb</div>
+              <div style="font-size:0.62rem;color:var(--text-muted);">Auto-filled · added to volume</div>
+            </div>
+            <button class="equip-change">Edit</button>
+          </div>
+
+          <div class="last-card">
+            <i class="fas fa-history"></i>
+            <div class="last-card-info">
+              <div class="last-card-label">Last session</div>
+              <div class="last-card-val">BW×12 · BW×10 · BW×8</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sets-list">
+          <div class="set-row done">
+            <div class="set-row__num">1</div>
+            <input class="set-row__input done-val" value="BW" readonly>
+            <input class="set-row__input done-val" value="14" readonly>
+            <button class="set-row__check done"><i class="fas fa-check"></i></button>
+          </div>
+          <div class="set-row done">
+            <div class="set-row__num">2</div>
+            <input class="set-row__input done-val" value="BW" readonly>
+            <input class="set-row__input done-val" value="11" readonly>
+            <button class="set-row__check done"><i class="fas fa-check"></i></button>
+          </div>
+          <div class="set-row current">
+            <div class="set-row__num">3</div>
+            <input class="set-row__input" value="BW" readonly>
+            <input class="set-row__input" value="9">
+            <button class="set-row__check"><i class="far fa-circle"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-footer">
+        <button class="w-fab-list"><i class="fas fa-list"></i> All</button>
+        <button class="w-btn-next finish"><i class="fas fa-flag-checkered"></i> Finish workout</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="wrap-tag">Step 8 — Summary</div>
+    <div class="wrap-name">Finish → summary modal</div>
+    <div class="wrap-sub">PRs celebrated, total stats, duration, share button. Save writes to history.</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div style="filter:brightness(0.4);flex:1;">
+        <div class="w-header"><div class="w-title"><div class="w-title-name">Chest &amp; Triceps</div></div></div>
+      </div>
+
+      <div class="sheet-backdrop"></div>
+      <div class="sheet" style="max-height:85%;">
+        <div class="sheet-grab"></div>
+        <div style="text-align:center;padding:12px 18px 8px;">
+          <div style="width:64px;height:64px;border-radius:50%;background:var(--primary);color:#04201a;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:1.4rem;"><i class="fas fa-flag-checkered"></i></div>
+          <div style="font-size:1.3rem;font-weight:800;color:var(--text-strong);margin-bottom:2px;">Workout complete</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);">Chest &amp; Triceps · 58:12</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 18px 12px;">
+          <div style="background:var(--bg-card);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:var(--text-strong);">6</div><div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;">Exercises</div></div>
+          <div style="background:var(--bg-card);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:var(--text-strong);">19</div><div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;">Sets</div></div>
+          <div style="background:var(--bg-card);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:var(--text-strong);">11.4k</div><div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;">Volume lb</div></div>
+        </div>
+
+        <div style="padding:0 18px;">
+          <div style="background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,215,0,0.04));border:1px solid rgba(255,215,0,0.25);border-radius:var(--radius-md);padding:12px;display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,215,0,0.2);color:#ffd700;display:flex;align-items:center;justify-content:center;font-size:0.95rem;"><i class="fas fa-trophy"></i></div>
+            <div style="flex:1;">
+              <div style="font-size:0.78rem;color:var(--text-strong);font-weight:700;">New PR!</div>
+              <div style="font-size:0.68rem;color:var(--text-muted);">Bench Press · 225×5 (+5 lb)</div>
+            </div>
+          </div>
+          <div style="background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:var(--radius-md);padding:10px 12px;font-size:0.74rem;color:var(--text-main);display:flex;align-items:flex-start;gap:8px;margin-bottom:12px;">
+            <i class="fas fa-lightbulb" style="color:var(--primary);margin-top:2px;"></i>
+            <div>Chest volume up <strong style="color:var(--text-strong);">12%</strong> this week. Nice.</div>
+          </div>
+
+          <div style="display:flex;gap:8px;">
+            <button class="sheet-act"><i class="fas fa-share"></i> Share</button>
+            <button class="sheet-act" style="flex:2;background:var(--primary);color:#04201a;border:none;"><i class="fas fa-check"></i> Save &amp; done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="max-width:940px;margin:0 auto;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:18px 22px;font-size:0.86rem;line-height:1.6;">
+  <h3 style="color:var(--text-strong);margin-bottom:12px;">What changed vs Option B</h3>
+  <ul style="margin:0 0 16px 18px;color:var(--text-main);">
+    <li style="margin-bottom:4px;"><strong style="color:var(--primary);">Rest timer is teal/primary</strong>, not yellow. Matches the app accent. Still prominent at the top.</li>
+    <li style="margin-bottom:4px;"><strong style="color:var(--primary);">Equipment is a dedicated card</strong> with a "Change" button. One tap to switch mid-workout. Auto-picks most-recently-used.</li>
+    <li style="margin-bottom:4px;"><strong style="color:var(--primary);">Top progress pills</strong> replace the dots — each exercise is a named pill you can tap to jump to.</li>
+    <li style="margin-bottom:4px;"><strong style="color:var(--primary);">"All" button</strong> in the bottom-left opens a drawer showing the full workout. Tap any exercise to jump.</li>
+    <li style="margin-bottom:4px;"><strong style="color:var(--primary);">Superset mode</strong> shows both paired exercises stacked in one view with the active half highlighted. Pair via the drawer → "Superset" button.</li>
+    <li style="margin-bottom:4px;"><strong style="color:var(--primary);">Bodyweight exercises</strong> (Dips example) get the same BW banner from MD 2 — no special UI difference.</li>
+    <li style="margin-bottom:4px;"><strong style="color:var(--primary);">Auto-fill from last session (KEPT from current app)</strong> — every set cell is pre-populated with what you did last time (dashed muted border, muted text color). Tap a cell to edit → border goes solid, text brightens. Tap ✓ to confirm the autofilled values verbatim. Fastest possible logging when you're repeating numbers.</li>
+    <li><strong style="color:var(--primary);">Finish button</strong> only becomes "Finish workout" on the last exercise; otherwise it's "Next exercise".</li>
+  </ul>
+
+  <h3 style="color:var(--text-strong);margin-bottom:12px;">How the workflow chains together</h3>
+  <p style="margin-bottom:10px;">
+    <strong style="color:var(--text-strong);">Start workout</strong> from template →
+    <strong style="color:var(--text-strong);">Exercise 1 loads</strong> (pills at top, equipment card, last session, set table) →
+    <strong style="color:var(--text-strong);">log sets</strong> (rest timer auto-appears after each ✓) →
+    <strong style="color:var(--text-strong);">Next exercise</strong> button OR
+    <strong style="color:var(--text-strong);">tap a pill</strong> OR
+    <strong style="color:var(--text-strong);">"All" → sheet</strong> to jump →
+    <strong style="color:var(--text-strong);">Finish button</strong> on the last exercise →
+    <strong style="color:var(--text-strong);">Summary modal</strong> with PRs + stats + save.
+  </p>
+  <p style="margin-bottom:0;color:var(--text-secondary);font-size:0.82rem;">
+    Supersets: open "All" drawer, tap "Superset", select 2+ exercises, done. Those exercises now render in the grouped superset view when you reach them. Alternatively: long-press an exercise in the drawer to toggle "Link with next" quickly.
+  </p>
+</div>
+
+</body>
+</html>

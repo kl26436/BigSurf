@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workout Selector — Redesign Mockup</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app: #0a1a1f;
+    --bg-card: #0f2a32;
+    --border-light: rgba(255,255,255,0.08);
+    --text-strong: #f0f4f5;
+    --text-primary: #c8d6da;
+    --text-secondary: #8aa3ac;
+    --text-muted: #5a7a85;
+    --primary: #1dd3b0;
+    --cat-push: #1dd3b0;
+    --cat-pull: #a78bfa;
+    --cat-legs: #f59e0b;
+    --cat-core: #f97316;
+    --cat-cardio: #ef4444;
+    --cat-other: #64748b;
+    --font-xs: 0.7rem;
+    --font-sm: 0.8rem;
+    --font-md: 0.95rem;
+    --font-lg: 1.15rem;
+    --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-10: 10px;
+    --space-12: 12px; --space-16: 16px; --space-20: 20px;
+    --radius-sm: 6px; --radius-md: 10px; --radius-pill: 50px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  .phone-frame {
+    width: 390px; height: 844px;
+    background: var(--bg-app);
+    border-radius: 40px;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px #222, 0 0 40px rgba(0,0,0,0.5);
+  }
+  .phone-content { height:100%; overflow-y:auto; padding-bottom:80px; }
+  .phone-content::-webkit-scrollbar { display:none; }
+  .version-label {
+    text-align:center; color:var(--text-muted); font-size:14px;
+    margin-bottom:12px; font-weight:600; letter-spacing:0.05em;
+  }
+  .version-label span { color:var(--primary); }
+
+  /* ── CURRENT ── */
+  .current .page-header {
+    padding: 54px 20px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .current .page-header h1 {
+    font-size: 1.5rem; color: var(--text-strong);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .current .page-header h1 i { color: var(--primary); }
+  .current .add-btn {
+    background: var(--primary); color: var(--bg-app); border: none;
+    padding: 10px 18px; border-radius: var(--radius-md);
+    font-weight: 700; font-size: var(--font-sm);
+  }
+
+  .current .category-card {
+    margin: 10px 20px;
+    padding: 24px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+  }
+  .current .cat-icon {
+    width: 48px; height: 48px;
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+  }
+  .current .cat-content { flex: 1; }
+  .current .cat-name {
+    font-size: var(--font-lg); font-weight: 700; color: var(--text-strong);
+  }
+  .current .cat-count {
+    font-size: var(--font-xs); color: var(--text-muted); margin-top: 4px;
+  }
+  .current .cat-arrow {
+    color: var(--text-muted); font-size: var(--font-md);
+  }
+
+  /* ── REDESIGN ── */
+  .redesign .page-header {
+    padding: 54px 20px 8px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .redesign .page-header h1 {
+    font-size: var(--font-lg); font-weight: 700; color: var(--text-strong);
+  }
+  .redesign .add-btn {
+    background: none; border: 1px solid var(--border-light);
+    color: var(--text-secondary); padding: 6px 14px;
+    border-radius: var(--radius-pill); font-weight: 500;
+    font-size: var(--font-xs); display: flex; align-items: center; gap: 6px;
+  }
+
+  .redesign .pill-row {
+    display: flex; gap: 6px; padding: 8px 20px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .redesign .pill-row::-webkit-scrollbar { display: none; }
+  .redesign .pill {
+    white-space: nowrap; padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-light);
+    background: transparent; color: var(--text-muted);
+    font-size: var(--font-xs); font-weight: 500;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .redesign .pill.active {
+    background: var(--primary); color: var(--bg-app);
+    border-color: var(--primary); font-weight: 600;
+  }
+
+  .redesign .template-row {
+    margin: 0 16px 6px;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer;
+  }
+  .redesign .template-row:active {
+    transform: scale(0.98);
+    transition: transform 0.1s;
+  }
+  .redesign .t-indicator {
+    width: 3px; height: 40px; border-radius: 2px; flex-shrink: 0;
+  }
+  .redesign .t-content { flex: 1; min-width: 0; }
+  .redesign .t-row1 {
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .redesign .t-name {
+    font-size: var(--font-sm); font-weight: 600; color: var(--text-strong);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .redesign .t-edit {
+    width: 28px; height: 28px; border: none; background: none;
+    color: var(--text-muted); font-size: var(--font-xs);
+    cursor: pointer; display: flex; align-items: center;
+    justify-content: center; border-radius: var(--radius-sm);
+    opacity: 0.4; flex-shrink: 0;
+  }
+  .redesign .t-sub {
+    font-size: var(--font-xs); color: var(--text-muted); margin-top: 2px;
+  }
+  .redesign .t-ghost {
+    font-size: var(--font-xs); color: var(--text-secondary);
+    margin-top: 2px; font-variant-numeric: tabular-nums;
+  }
+  .redesign .t-ghost--new { color: var(--primary); font-weight: 500; }
+  .redesign .btn-start {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--primary); color: var(--bg-app);
+    border: none; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0;
+    font-size: var(--font-xs); cursor: pointer;
+  }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 68px; background: var(--bg-card);
+    border-top: 1px solid var(--border-light);
+    display: flex; justify-content: space-around;
+    align-items: center; padding: 0 8px 8px;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 3px; color: var(--text-muted); font-size: 0.6rem; font-weight: 500;
+  }
+  .nav-item i { font-size: 1.1rem; }
+  .nav-item.active { color: var(--primary); }
+</style>
+</head>
+<body>
+
+<!-- CURRENT -->
+<div>
+  <div class="version-label">CURRENT — <span>~195px per category card</span></div>
+  <div class="phone-frame current">
+    <div class="phone-content">
+      <div class="page-header">
+        <h1><i class="fas fa-dumbbell"></i> Start Workout</h1>
+        <button class="add-btn">+ New</button>
+      </div>
+
+      <div class="category-card">
+        <div class="cat-icon" style="background:rgba(29,211,176,0.15);">💪</div>
+        <div class="cat-content">
+          <div class="cat-name">Push</div>
+          <div class="cat-count">4 templates</div>
+        </div>
+        <span class="cat-arrow"><i class="fas fa-chevron-right"></i></span>
+      </div>
+
+      <div class="category-card">
+        <div class="cat-icon" style="background:rgba(167,139,250,0.15);">🤚</div>
+        <div class="cat-content">
+          <div class="cat-name">Pull</div>
+          <div class="cat-count">3 templates</div>
+        </div>
+        <span class="cat-arrow"><i class="fas fa-chevron-right"></i></span>
+      </div>
+
+      <div class="category-card">
+        <div class="cat-icon" style="background:rgba(245,158,11,0.15);">🦵</div>
+        <div class="cat-content">
+          <div class="cat-name">Legs</div>
+          <div class="cat-count">2 templates</div>
+        </div>
+        <span class="cat-arrow"><i class="fas fa-chevron-right"></i></span>
+      </div>
+
+      <div class="category-card">
+        <div class="cat-icon" style="background:rgba(249,115,22,0.15);">🔥</div>
+        <div class="cat-content">
+          <div class="cat-name">Core</div>
+          <div class="cat-count">1 template</div>
+        </div>
+        <span class="cat-arrow"><i class="fas fa-chevron-right"></i></span>
+      </div>
+
+      <div class="category-card">
+        <div class="cat-icon" style="background:rgba(100,116,139,0.15);">🏋️</div>
+        <div class="cat-content">
+          <div class="cat-name">Other</div>
+          <div class="cat-count">2 templates</div>
+        </div>
+        <span class="cat-arrow"><i class="fas fa-chevron-right"></i></span>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item"><i class="fas fa-home"></i>Dashboard</div>
+      <div class="nav-item active"><i class="fas fa-dumbbell"></i>Workout</div>
+      <div class="nav-item"><i class="fas fa-history"></i>History</div>
+      <div class="nav-item"><i class="fas fa-chart-line"></i>Stats</div>
+      <div class="nav-item"><i class="fas fa-ellipsis-h"></i>More</div>
+    </div>
+  </div>
+</div>
+
+<!-- REDESIGN -->
+<div>
+  <div class="version-label">REDESIGN — <span>Tap row = edit, play btn = start</span></div>
+  <div class="phone-frame redesign">
+    <div class="phone-content">
+      <div class="page-header">
+        <h1>Start Workout</h1>
+        <button class="add-btn"><i class="fas fa-plus"></i> New</button>
+      </div>
+
+      <div class="pill-row">
+        <button class="pill active">All</button>
+        <button class="pill">Push</button>
+        <button class="pill">Pull</button>
+        <button class="pill">Legs</button>
+        <button class="pill">Core</button>
+        <button class="pill">Cardio</button>
+      </div>
+
+      <div class="template-row">
+        <div class="t-indicator" style="background:var(--cat-push);"></div>
+        <div class="t-content">
+          <div class="t-name">Hard Monday</div>
+          <div class="t-sub">7 exercises · Push</div>
+          <div class="t-ghost">155×8, 140×10, 120×12</div>
+        </div>
+        <button class="t-edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-start"><i class="fas fa-play"></i></button>
+      </div>
+
+      <div class="template-row">
+        <div class="t-indicator" style="background:var(--cat-push);"></div>
+        <div class="t-content">
+          <div class="t-name">Monday – Upper Body</div>
+          <div class="t-sub">5 exercises · Push</div>
+          <div class="t-ghost">135×10, 110×12</div>
+        </div>
+        <button class="t-edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-start"><i class="fas fa-play"></i></button>
+      </div>
+
+      <div class="template-row">
+        <div class="t-indicator" style="background:var(--cat-pull);"></div>
+        <div class="t-content">
+          <div class="t-name">Heavy Pull Day</div>
+          <div class="t-sub">6 exercises · Pull</div>
+          <div class="t-ghost">160×8, 145×10</div>
+        </div>
+        <button class="t-edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-start"><i class="fas fa-play"></i></button>
+      </div>
+
+      <div class="template-row">
+        <div class="t-indicator" style="background:var(--cat-pull);"></div>
+        <div class="t-content">
+          <div class="t-name">Light Chest & Arms</div>
+          <div class="t-sub">5 exercises · Pull</div>
+          <div class="t-ghost">110×12, 95×15</div>
+        </div>
+        <button class="t-edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-start"><i class="fas fa-play"></i></button>
+      </div>
+
+      <div class="template-row">
+        <div class="t-indicator" style="background:var(--cat-legs);"></div>
+        <div class="t-content">
+          <div class="t-name">Legs & Core</div>
+          <div class="t-sub">6 exercises · Legs</div>
+          <div class="t-ghost">225×8, 185×10</div>
+        </div>
+        <button class="t-edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-start"><i class="fas fa-play"></i></button>
+      </div>
+
+      <div class="template-row">
+        <div class="t-indicator" style="background:var(--cat-core);"></div>
+        <div class="t-content">
+          <div class="t-name">Core Blast</div>
+          <div class="t-sub">4 exercises · Core</div>
+          <div class="t-ghost">BW×20, 25×15</div>
+        </div>
+        <button class="t-edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-start"><i class="fas fa-play"></i></button>
+      </div>
+
+      <div class="template-row">
+        <div class="t-indicator" style="background:var(--cat-cardio);"></div>
+        <div class="t-content">
+          <div class="t-name">Saturday Cardio</div>
+          <div class="t-sub">3 exercises · Cardio</div>
+          <div class="t-ghost">3.2mi · 35min</div>
+        </div>
+        <button class="t-edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-start"><i class="fas fa-play"></i></button>
+      </div>
+
+      <div class="template-row">
+        <div class="t-indicator" style="background:var(--cat-push);"></div>
+        <div class="t-content">
+          <div class="t-name">Wednesday Push</div>
+          <div class="t-sub">5 exercises · Push</div>
+          <div class="t-ghost">135×10, 120×12</div>
+        </div>
+        <button class="t-edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-start"><i class="fas fa-play"></i></button>
+      </div>
+
+      <div class="template-row">
+        <div class="t-indicator" style="background:var(--cat-other);"></div>
+        <div class="t-content">
+          <div class="t-name">Recovery Day</div>
+          <div class="t-sub">3 exercises · Other</div>
+          <div class="t-ghost t-ghost--new">Ready to start</div>
+        </div>
+        <button class="t-edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-start"><i class="fas fa-play"></i></button>
+      </div>
+
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item"><i class="fas fa-home"></i>Dashboard</div>
+      <div class="nav-item active"><i class="fas fa-dumbbell"></i>Workout</div>
+      <div class="nav-item"><i class="fas fa-history"></i>History</div>
+      <div class="nav-item"><i class="fas fa-chart-line"></i>Stats</div>
+      <div class="nav-item"><i class="fas fa-ellipsis-h"></i>More</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

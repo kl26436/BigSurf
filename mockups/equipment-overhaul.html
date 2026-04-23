@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equipment Library — Overhaul Mockup</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app: #0a1a1f;
+    --bg-card: #0f2a32;
+    --bg-card-hover: rgba(255,255,255,0.04);
+    --border-light: rgba(255,255,255,0.08);
+    --border-subtle: rgba(255,255,255,0.05);
+    --text-strong: #f0f4f5;
+    --text-primary: #c8d6da;
+    --text-secondary: #8aa3ac;
+    --text-muted: #5a7a85;
+    --primary: #1dd3b0;
+    --primary-dim: rgba(29,211,176,0.12);
+    --primary-border: rgba(29,211,176,0.25);
+    --success: #1dd3b0;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --cat-push: #1dd3b0;
+    --cat-pull: #a78bfa;
+    --cat-legs: #f59e0b;
+    --cat-core: #f97316;
+    --cat-cardio: #ef4444;
+    --cat-arms: #a78bfa;
+    --font-2xs: 0.65rem;
+    --font-xs: 0.7rem;
+    --font-sm: 0.8rem;
+    --font-base: 0.875rem;
+    --font-md: 0.95rem;
+    --font-lg: 1.15rem;
+    --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-10: 10px;
+    --space-12: 12px; --space-16: 16px; --space-20: 20px; --space-24: 24px;
+    --radius-xs: 4px; --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px; --radius-pill: 50px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    padding: 20px;
+    min-height: 100vh;
+    flex-wrap: wrap;
+  }
+  .phone-frame {
+    width: 390px; height: 844px;
+    background: var(--bg-app);
+    border-radius: 40px;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px #222, 0 0 40px rgba(0,0,0,0.5);
+  }
+  .phone-content { height:100%; overflow-y:auto; padding-bottom:80px; }
+  .phone-content::-webkit-scrollbar { display:none; }
+  .label {
+    text-align:center; color:var(--text-muted); font-size:13px;
+    margin-bottom:10px; font-weight:600; letter-spacing:0.05em;
+  }
+  .label span { color:var(--primary); }
+
+  /* === PAGE HEADER === */
+  .page-header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg-app);
+    padding: 54px 16px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .page-header__left { display: flex; align-items: center; gap: 10px; }
+  .page-header__back {
+    background: none; border: none; color: var(--text-secondary);
+    font-size: 16px; cursor: pointer; padding: 4px;
+  }
+  .page-header__title { font-size: var(--font-lg); font-weight: 700; color: var(--text-strong); }
+  .page-header__action {
+    background: none; border: 1px solid var(--primary-border);
+    color: var(--primary); padding: 6px 14px;
+    border-radius: var(--radius-pill); font-size: var(--font-xs);
+    font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  /* === VIEW TOGGLE === */
+  .view-toggle {
+    display: flex;
+    margin: 10px 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    border: 1px solid var(--border-light);
+  }
+  .view-toggle__btn {
+    flex: 1;
+    padding: 7px 0;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .view-toggle__btn.active {
+    background: var(--primary);
+    color: #0a1a1f;
+  }
+
+  /* === LOCATION PILLS === */
+  .filter-row {
+    display: flex; gap: 6px;
+    padding: 6px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-pill {
+    white-space: nowrap;
+    padding: 5px 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-xs);
+    font-weight: 500;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .filter-pill.active {
+    background: var(--primary-dim);
+    border-color: var(--primary-border);
+    color: var(--primary);
+  }
+
+  /* === SEARCH === */
+  .search-bar {
+    margin: 6px 16px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; gap: 8px;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+  }
+  .search-bar i { font-size: 12px; opacity: 0.5; }
+  .search-bar span { color: var(--text-muted); }
+
+  /* === BRAND VIEW — BRAND HEADERS === */
+  .brand-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 16px 6px;
+  }
+  .brand-header__name {
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .brand-header__count {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .brand-header__chevron {
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: transform 0.2s;
+  }
+
+  /* === LINE SUB-HEADER === */
+  .line-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 16px 4px 32px;
+  }
+  .line-header__name {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .line-header__count {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+  }
+
+  /* === EQUIPMENT ROW === */
+  .equip-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px 10px 48px;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+  }
+  .equip-row:active { background: var(--bg-card-hover); }
+  .equip-row__icon {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .equip-row__info { flex: 1; min-width: 0; }
+  .equip-row__name {
+    font-size: var(--font-sm);
+    font-weight: 500;
+    color: var(--text-strong);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .equip-row__meta {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 2px;
+  }
+  .equip-row__type-pill {
+    font-size: var(--font-2xs);
+    padding: 1px 7px;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+  }
+  .equip-row__chevron {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+
+  /* === BODY PART VIEW === */
+  .bp-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px 6px;
+  }
+  .bp-header__icon {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+  .bp-header__name {
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+    flex: 1;
+  }
+  .bp-header__count {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+  }
+  .bp-exercise-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 16px 9px 28px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .bp-exercise-row:active { background: var(--bg-card-hover); }
+  .bp-exercise-row__name {
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .bp-exercise-row__right {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .bp-exercise-row__count {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    background: var(--bg-card);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+  }
+  .bp-nested-equip {
+    padding: 6px 16px 6px 44px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+  }
+  .bp-nested-equip:active { background: var(--bg-card-hover); }
+  .bp-nested-equip__name {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    flex: 1;
+  }
+  .bp-nested-equip__brand {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+  }
+
+  /* === DETAIL VIEW === */
+  .detail-section { padding: 0 16px; }
+  .detail-hero {
+    text-align: center;
+    padding: 20px 16px 16px;
+  }
+  .detail-hero__icon {
+    width: 56px; height: 56px;
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 10px;
+    font-size: 22px;
+  }
+  .detail-hero__name {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--text-strong);
+  }
+  .detail-hero__line {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .detail-hero__type {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  /* Detail fields */
+  .detail-field-group {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    margin: 12px 16px;
+    overflow: hidden;
+  }
+  .detail-field {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .detail-field:last-child { border-bottom: none; }
+  .detail-field__label {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+  }
+  .detail-field__value {
+    font-size: var(--font-sm);
+    color: var(--text-strong);
+    font-weight: 500;
+    text-align: right;
+  }
+  .detail-field__value.editable {
+    color: var(--primary);
+  }
+
+  /* Detail sections */
+  .detail-sec-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 16px 6px;
+  }
+  .detail-sec-head__title {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-strong);
+  }
+  .detail-sec-head__action {
+    font-size: var(--font-xs);
+    color: var(--primary);
+    background: none; border: none;
+    font-weight: 600; cursor: pointer;
+  }
+
+  .detail-exercise-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .detail-exercise-row__icon {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-sm);
+    background: rgba(29,211,176,0.1);
+    color: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+  }
+  .detail-exercise-row__name {
+    flex: 1;
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+  }
+  .detail-exercise-row__action {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    background: none; border: none;
+    cursor: pointer;
+  }
+
+  .detail-location-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 4px 16px 8px;
+  }
+  .location-chip {
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--primary-dim);
+    border: 1px solid var(--primary-border);
+    color: var(--primary);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .location-chip__x {
+    opacity: 0.6; cursor: pointer; font-size: 9px;
+  }
+
+  .detail-notes {
+    margin: 4px 16px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    min-height: 60px;
+    font-style: italic;
+  }
+
+  .detail-danger {
+    text-align: center;
+    padding: 20px 16px;
+  }
+  .detail-danger button {
+    background: none; border: none;
+    color: var(--danger);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    margin: 0 auto;
+  }
+
+  /* === ADD FLOW === */
+  .add-step {
+    padding: 16px;
+  }
+  .add-step__label {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+    margin-bottom: 10px;
+  }
+  .add-step__hint {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .add-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .add-option {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 14px 12px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .add-option:active { background: var(--bg-card-hover); }
+  .add-option.selected {
+    border-color: var(--primary);
+    background: var(--primary-dim);
+  }
+  .add-option__name {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+    margin-top: 4px;
+  }
+  .add-option__count {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+  }
+  .add-option--new {
+    border-style: dashed;
+    border-color: var(--primary-border);
+  }
+  .add-option--new .add-option__name { color: var(--primary); }
+
+  .add-input-row {
+    margin-top: 12px;
+  }
+  .add-input-row label {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .add-input-row input {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    color: var(--text-strong);
+    font-size: var(--font-sm);
+  }
+  .add-input-row input::placeholder { color: var(--text-muted); }
+  .add-input-row input:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+
+  .add-type-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 12px;
+  }
+  .type-chip {
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-xs);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .type-chip.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #0a1a1f;
+  }
+
+  .add-preview {
+    margin: 16px 0;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    text-align: center;
+  }
+  .add-preview__label {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .add-preview__name {
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+  }
+
+  .add-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .add-btn--primary {
+    background: var(--primary);
+    color: #0a1a1f;
+  }
+  .add-btn--secondary {
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    margin-top: 8px;
+  }
+
+  /* Progress indicator for stepper */
+  .add-progress {
+    display: flex; gap: 4px;
+    padding: 0 16px;
+    margin-bottom: 8px;
+  }
+  .add-progress__step {
+    flex: 1; height: 3px;
+    border-radius: 2px;
+    background: var(--border-light);
+  }
+  .add-progress__step.done { background: var(--primary); }
+  .add-progress__step.active { background: var(--primary); opacity: 0.5; }
+
+  /* === PICKER (DURING WORKOUT) === */
+  .picker-sheet {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--bg-app);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 75%;
+    overflow-y: auto;
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.5);
+    border-top: 1px solid var(--border-light);
+  }
+  .picker-sheet::-webkit-scrollbar { display: none; }
+  .picker-handle {
+    width: 36px; height: 4px;
+    background: var(--text-muted);
+    border-radius: 2px;
+    margin: 10px auto 6px;
+    opacity: 0.4;
+  }
+  .picker-title {
+    padding: 4px 16px 10px;
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+    text-align: center;
+  }
+  .picker-subtitle {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .picker-search {
+    margin: 0 16px 8px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; gap: 8px;
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+  }
+  .picker-search i { font-size: 11px; opacity: 0.5; }
+
+  .picker-section-label {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px 16px 4px;
+  }
+
+  .picker-option {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+  }
+  .picker-option:active { background: var(--bg-card-hover); }
+  .picker-option.selected { background: rgba(29,211,176,0.06); }
+  .picker-radio {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border-light);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .picker-option.selected .picker-radio {
+    border-color: var(--primary);
+    background: var(--primary);
+  }
+  .picker-option.selected .picker-radio::after {
+    content: ''; width: 8px; height: 8px;
+    border-radius: 50%; background: white;
+  }
+  .picker-opt-info { flex: 1; min-width: 0; }
+  .picker-opt-name {
+    font-size: var(--font-sm);
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  .picker-opt-meta {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+  .picker-opt-badge {
+    font-size: var(--font-2xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .picker-add-inline {
+    padding: 10px 16px;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .picker-add-inline input {
+    flex: 1;
+    padding: 8px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: var(--font-xs);
+    min-width: 0;
+  }
+  .picker-add-inline input::placeholder { color: var(--text-muted); }
+
+  .picker-footer {
+    position: sticky; bottom: 0;
+    background: var(--bg-app);
+    padding: 10px 16px 24px;
+    display: flex; gap: 8px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .picker-footer .btn-confirm {
+    flex: 2;
+    padding: 11px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--primary);
+    color: #0a1a1f;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .picker-footer .btn-none {
+    flex: 1;
+    padding: 11px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* === SCAN BANNER === */
+  .scan-banner {
+    margin: 10px 16px;
+    padding: 10px 14px;
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .scan-banner i { color: var(--warning); font-size: 16px; }
+  .scan-banner__text { flex: 1; }
+  .scan-banner__title {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--text-strong);
+  }
+  .scan-banner__sub {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+  }
+  .scan-banner__btn {
+    background: none; border: 1px solid rgba(245,158,11,0.3);
+    color: var(--warning);
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- PHONE 1: Brand → Line → Machine View                        -->
+<!-- ============================================================ -->
+<div>
+  <div class="label">1 — <span>Brand View</span></div>
+  <div class="phone-frame">
+    <div class="phone-content">
+      <div class="page-header">
+        <div class="page-header__left">
+          <button class="page-header__back"><i class="fas fa-chevron-left"></i></button>
+          <div class="page-header__title">Equipment</div>
+        </div>
+        <button class="page-header__action"><i class="fas fa-plus"></i> Add</button>
+      </div>
+
+      <!-- View Toggle -->
+      <div class="view-toggle">
+        <button class="view-toggle__btn active"><i class="fas fa-industry"></i> By Brand</button>
+        <button class="view-toggle__btn"><i class="fas fa-child"></i> By Body Part</button>
+      </div>
+
+      <!-- Location Filter -->
+      <div class="filter-row">
+        <button class="filter-pill active">All Gyms</button>
+        <button class="filter-pill">Fit4Less Oshawa</button>
+        <button class="filter-pill">GoodLife Ajax</button>
+        <button class="filter-pill">Home Gym</button>
+      </div>
+
+      <!-- Search -->
+      <div class="search-bar">
+        <i class="fas fa-search"></i>
+        <span>Search equipment...</span>
+      </div>
+
+      <!-- Scan Banner -->
+      <div class="scan-banner">
+        <i class="fas fa-history"></i>
+        <div class="scan-banner__text">
+          <div class="scan-banner__title">5 machines found in history</div>
+          <div class="scan-banner__sub">Not yet in your library</div>
+        </div>
+        <button class="scan-banner__btn">Review</button>
+      </div>
+
+      <!-- === PANATTA === -->
+      <div class="brand-header">
+        <div class="brand-header__name">
+          Panatta
+          <span class="brand-header__count">7 machines</span>
+        </div>
+        <i class="fas fa-chevron-down brand-header__chevron"></i>
+      </div>
+
+      <!-- EvoFit Line -->
+      <div class="line-header">
+        <div class="line-header__name">
+          <i class="fas fa-layer-group" style="font-size:10px; opacity:0.5"></i>
+          EvoFit
+        </div>
+        <div class="line-header__count">4 machines</div>
+      </div>
+      <div class="equip-row">
+        <div class="equip-row__icon" style="background:rgba(74,144,217,0.12); color:#4A90D9">
+          <i class="fas fa-cog"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Leg Extension</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(74,144,217,0.12); color:#4A90D9">Machine</span>
+            <span>Fit4Less Oshawa</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+      <div class="equip-row">
+        <div class="equip-row__icon" style="background:rgba(74,144,217,0.12); color:#4A90D9">
+          <i class="fas fa-cog"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Seated Chest Press</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(74,144,217,0.12); color:#4A90D9">Machine</span>
+            <span>Fit4Less Oshawa</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+      <div class="equip-row">
+        <div class="equip-row__icon" style="background:rgba(74,144,217,0.12); color:#4A90D9">
+          <i class="fas fa-cog"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Lat Pulldown</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(74,144,217,0.12); color:#4A90D9">Machine</span>
+            <span>Fit4Less Oshawa</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+      <div class="equip-row">
+        <div class="equip-row__icon" style="background:rgba(74,144,217,0.12); color:#4A90D9">
+          <i class="fas fa-cog"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Seated Leg Curl</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(74,144,217,0.12); color:#4A90D9">Machine</span>
+            <span>Fit4Less Oshawa</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+
+      <!-- Freeweight Line -->
+      <div class="line-header">
+        <div class="line-header__name">
+          <i class="fas fa-layer-group" style="font-size:10px; opacity:0.5"></i>
+          Freeweight
+        </div>
+        <div class="line-header__count">3 machines</div>
+      </div>
+      <div class="equip-row">
+        <div class="equip-row__icon" style="background:rgba(217,106,74,0.12); color:#D96A4A">
+          <i class="fas fa-dumbbell"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Olympic Flat Bench</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(217,106,74,0.12); color:#D96A4A">Barbell</span>
+            <span>45 lb base</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+      <div class="equip-row">
+        <div class="equip-row__icon" style="background:rgba(217,106,74,0.12); color:#D96A4A">
+          <i class="fas fa-dumbbell"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Squat Rack</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(217,167,74,0.12); color:#D9A74A">Rack</span>
+            <span>45 lb base</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+      <div class="equip-row">
+        <div class="equip-row__icon" style="background:rgba(217,106,74,0.12); color:#D96A4A">
+          <i class="fas fa-dumbbell"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Incline Bench</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(217,167,74,0.12); color:#D9A74A">Bench</span>
+            <span>Fit4Less Oshawa</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+
+      <!-- === HAMMER STRENGTH === -->
+      <div class="brand-header">
+        <div class="brand-header__name">
+          Hammer Strength
+          <span class="brand-header__count">3 machines</span>
+        </div>
+        <i class="fas fa-chevron-down brand-header__chevron"></i>
+      </div>
+
+      <div class="line-header">
+        <div class="line-header__name">
+          <i class="fas fa-layer-group" style="font-size:10px; opacity:0.5"></i>
+          Plate-Loaded
+        </div>
+        <div class="line-header__count">2 machines</div>
+      </div>
+      <div class="equip-row">
+        <div class="equip-row__icon" style="background:rgba(74,144,217,0.12); color:#4A90D9">
+          <i class="fas fa-cog"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Incline Press</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(74,144,217,0.12); color:#4A90D9">Machine</span>
+            <span>GoodLife Ajax</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+      <div class="equip-row">
+        <div class="equip-row__icon" style="background:rgba(74,144,217,0.12); color:#4A90D9">
+          <i class="fas fa-cog"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Seated Row</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(74,144,217,0.12); color:#4A90D9">Machine</span>
+            <span>GoodLife Ajax</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+
+      <div class="line-header">
+        <div class="line-header__name">
+          <i class="fas fa-layer-group" style="font-size:10px; opacity:0.5"></i>
+          Select
+        </div>
+        <div class="line-header__count">1 machine</div>
+      </div>
+      <div class="equip-row">
+        <div class="equip-row__icon" style="background:rgba(74,144,217,0.12); color:#4A90D9">
+          <i class="fas fa-cog"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Leg Curl</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(74,144,217,0.12); color:#4A90D9">Machine</span>
+            <span>GoodLife Ajax</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+
+      <!-- === ROGUE === -->
+      <div class="brand-header">
+        <div class="brand-header__name">
+          Rogue
+          <span class="brand-header__count">2 items</span>
+        </div>
+        <i class="fas fa-chevron-down brand-header__chevron"></i>
+      </div>
+      <div class="equip-row" style="padding-left:32px">
+        <div class="equip-row__icon" style="background:rgba(217,106,74,0.12); color:#D96A4A">
+          <i class="fas fa-dumbbell"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Ohio Power Bar</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(217,106,74,0.12); color:#D96A4A">Barbell</span>
+            <span>45 lb base · Home Gym</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+      <div class="equip-row" style="padding-left:32px">
+        <div class="equip-row__icon" style="background:rgba(217,167,74,0.12); color:#D9A74A">
+          <i class="fas fa-dumbbell"></i>
+        </div>
+        <div class="equip-row__info">
+          <div class="equip-row__name">Adjustable Dumbbells</div>
+          <div class="equip-row__meta">
+            <span class="equip-row__type-pill" style="background:rgba(217,167,74,0.12); color:#D9A74A">Dumbbell</span>
+            <span>Home Gym</span>
+          </div>
+        </div>
+        <i class="fas fa-chevron-right equip-row__chevron"></i>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PHONE 2: Body Part View                                      -->
+<!-- ============================================================ -->
+<div>
+  <div class="label">2 — <span>Body Part View</span></div>
+  <div class="phone-frame">
+    <div class="phone-content">
+      <div class="page-header">
+        <div class="page-header__left">
+          <button class="page-header__back"><i class="fas fa-chevron-left"></i></button>
+          <div class="page-header__title">Equipment</div>
+        </div>
+        <button class="page-header__action"><i class="fas fa-plus"></i> Add</button>
+      </div>
+
+      <!-- View Toggle (Body Part active) -->
+      <div class="view-toggle">
+        <button class="view-toggle__btn"><i class="fas fa-industry"></i> By Brand</button>
+        <button class="view-toggle__btn active"><i class="fas fa-child"></i> By Body Part</button>
+      </div>
+
+      <!-- Location Filter -->
+      <div class="filter-row">
+        <button class="filter-pill active">All Gyms</button>
+        <button class="filter-pill">Fit4Less Oshawa</button>
+        <button class="filter-pill">GoodLife Ajax</button>
+      </div>
+
+      <!-- CHEST -->
+      <div class="bp-header">
+        <div class="bp-header__icon" style="background:rgba(29,211,176,0.12); color:var(--cat-push)">
+          <i class="fas fa-compress-arrows-alt"></i>
+        </div>
+        <div class="bp-header__name">Chest</div>
+        <div class="bp-header__count">4 machines</div>
+      </div>
+      <div class="bp-exercise-row">
+        <div class="bp-exercise-row__name">Bench Press</div>
+        <div class="bp-exercise-row__right">
+          <span class="bp-exercise-row__count">2</span>
+          <i class="fas fa-chevron-down" style="font-size:10px; color:var(--text-muted)"></i>
+        </div>
+      </div>
+      <!-- expanded -->
+      <div class="bp-nested-equip">
+        <div class="bp-nested-equip__name">Panatta Freeweight Olympic Flat Bench</div>
+        <div class="bp-nested-equip__brand">45 lb</div>
+        <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+      </div>
+      <div class="bp-nested-equip">
+        <div class="bp-nested-equip__name">Rogue Ohio Power Bar</div>
+        <div class="bp-nested-equip__brand">45 lb</div>
+        <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+      </div>
+
+      <div class="bp-exercise-row">
+        <div class="bp-exercise-row__name">Seated Chest Press</div>
+        <div class="bp-exercise-row__right">
+          <span class="bp-exercise-row__count">1</span>
+          <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+        </div>
+      </div>
+      <div class="bp-exercise-row">
+        <div class="bp-exercise-row__name">Incline Press</div>
+        <div class="bp-exercise-row__right">
+          <span class="bp-exercise-row__count">2</span>
+          <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+        </div>
+      </div>
+
+      <!-- BACK -->
+      <div class="bp-header">
+        <div class="bp-header__icon" style="background:rgba(167,139,250,0.12); color:var(--cat-pull)">
+          <i class="fas fa-arrows-alt-v"></i>
+        </div>
+        <div class="bp-header__name">Back</div>
+        <div class="bp-header__count">3 machines</div>
+      </div>
+      <div class="bp-exercise-row">
+        <div class="bp-exercise-row__name">Lat Pulldown</div>
+        <div class="bp-exercise-row__right">
+          <span class="bp-exercise-row__count">1</span>
+          <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+        </div>
+      </div>
+      <div class="bp-exercise-row">
+        <div class="bp-exercise-row__name">Seated Row</div>
+        <div class="bp-exercise-row__right">
+          <span class="bp-exercise-row__count">1</span>
+          <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+        </div>
+      </div>
+      <div class="bp-exercise-row">
+        <div class="bp-exercise-row__name">Deadlift</div>
+        <div class="bp-exercise-row__right">
+          <span class="bp-exercise-row__count">1</span>
+          <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+        </div>
+      </div>
+
+      <!-- LEGS -->
+      <div class="bp-header">
+        <div class="bp-header__icon" style="background:rgba(245,158,11,0.12); color:var(--cat-legs)">
+          <i class="fas fa-shoe-prints"></i>
+        </div>
+        <div class="bp-header__name">Legs</div>
+        <div class="bp-header__count">3 machines</div>
+      </div>
+      <div class="bp-exercise-row">
+        <div class="bp-exercise-row__name">Leg Extension</div>
+        <div class="bp-exercise-row__right">
+          <span class="bp-exercise-row__count">1</span>
+          <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+        </div>
+      </div>
+      <div class="bp-exercise-row">
+        <div class="bp-exercise-row__name">Seated Leg Curl</div>
+        <div class="bp-exercise-row__right">
+          <span class="bp-exercise-row__count">2</span>
+          <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+        </div>
+      </div>
+      <div class="bp-exercise-row">
+        <div class="bp-exercise-row__name">Squat</div>
+        <div class="bp-exercise-row__right">
+          <span class="bp-exercise-row__count">1</span>
+          <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+        </div>
+      </div>
+
+      <!-- ARMS -->
+      <div class="bp-header">
+        <div class="bp-header__icon" style="background:rgba(167,139,250,0.12); color:var(--cat-arms)">
+          <i class="fas fa-hand-rock"></i>
+        </div>
+        <div class="bp-header__name">Arms</div>
+        <div class="bp-header__count">1 machine</div>
+      </div>
+      <div class="bp-exercise-row">
+        <div class="bp-exercise-row__name">Cable Tricep Pushdown</div>
+        <div class="bp-exercise-row__right">
+          <span class="bp-exercise-row__count">1</span>
+          <i class="fas fa-chevron-right" style="font-size:10px; color:var(--text-muted)"></i>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PHONE 3: Equipment Detail                                    -->
+<!-- ============================================================ -->
+<div>
+  <div class="label">3 — <span>Equipment Detail</span></div>
+  <div class="phone-frame">
+    <div class="phone-content">
+      <div class="page-header">
+        <div class="page-header__left">
+          <button class="page-header__back"><i class="fas fa-chevron-left"></i></button>
+          <div class="page-header__title">Equipment</div>
+        </div>
+        <button class="page-header__action" style="border:none; color:var(--text-secondary); font-size:var(--font-sm)">Done</button>
+      </div>
+
+      <!-- Hero -->
+      <div class="detail-hero">
+        <div class="detail-hero__icon" style="background:rgba(74,144,217,0.12); color:#4A90D9">
+          <i class="fas fa-cog"></i>
+        </div>
+        <div class="detail-hero__name">Leg Extension</div>
+        <div class="detail-hero__line">Panatta · EvoFit</div>
+        <span class="detail-hero__type" style="background:rgba(74,144,217,0.12); color:#4A90D9">Machine</span>
+      </div>
+
+      <!-- Fields -->
+      <div class="detail-field-group">
+        <div class="detail-field">
+          <span class="detail-field__label">Brand</span>
+          <span class="detail-field__value editable">Panatta</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Model / Line</span>
+          <span class="detail-field__value editable">EvoFit</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Type</span>
+          <span class="detail-field__value">Machine</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Base Weight</span>
+          <span class="detail-field__value editable">— <span style="font-size:var(--font-2xs); color:var(--text-muted)">tap to set</span></span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Last Used</span>
+          <span class="detail-field__value" style="color:var(--text-secondary)">2 days ago</span>
+        </div>
+      </div>
+
+      <!-- Locations -->
+      <div class="detail-sec-head">
+        <div class="detail-sec-head__title">Locations</div>
+        <button class="detail-sec-head__action">+ Add</button>
+      </div>
+      <div class="detail-location-chips">
+        <div class="location-chip">
+          <i class="fas fa-map-marker-alt" style="font-size:9px"></i>
+          Fit4Less Oshawa
+          <span class="location-chip__x"><i class="fas fa-times"></i></span>
+        </div>
+      </div>
+
+      <!-- Used for -->
+      <div class="detail-sec-head">
+        <div class="detail-sec-head__title">Used for</div>
+        <button class="detail-sec-head__action">+ Assign</button>
+      </div>
+      <div class="detail-exercise-row">
+        <div class="detail-exercise-row__icon"><i class="fas fa-dumbbell"></i></div>
+        <div class="detail-exercise-row__name">Leg Extension</div>
+        <button class="detail-exercise-row__action">Remove</button>
+      </div>
+      <div class="detail-exercise-row">
+        <div class="detail-exercise-row__icon"><i class="fas fa-dumbbell"></i></div>
+        <div class="detail-exercise-row__name">Seated Leg Curl</div>
+        <button class="detail-exercise-row__action">Remove</button>
+      </div>
+
+      <!-- Notes -->
+      <div class="detail-sec-head">
+        <div class="detail-sec-head__title">Notes</div>
+      </div>
+      <div class="detail-notes">
+        Seat setting: 4. Back pad: 2 clicks up.
+      </div>
+
+      <!-- Delete -->
+      <div class="detail-danger">
+        <button><i class="fas fa-trash"></i> Delete equipment</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PHONE 4: Add Equipment Flow                                  -->
+<!-- ============================================================ -->
+<div>
+  <div class="label">4 — <span>Add Equipment</span></div>
+  <div class="phone-frame">
+    <div class="phone-content">
+      <div class="page-header">
+        <div class="page-header__left">
+          <button class="page-header__back"><i class="fas fa-chevron-left"></i></button>
+          <div class="page-header__title">Add Equipment</div>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="add-progress">
+        <div class="add-progress__step done"></div>
+        <div class="add-progress__step done"></div>
+        <div class="add-progress__step active"></div>
+      </div>
+
+      <div class="add-step">
+        <!-- Step 1 done: Brand = Panatta (shown as breadcrumb) -->
+        <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
+          <span style="padding:4px 10px; border-radius:var(--radius-pill); background:var(--primary-dim); border:1px solid var(--primary-border); color:var(--primary); font-size:var(--font-xs); font-weight:600; display:flex; align-items:center; gap:4px;">
+            Panatta <i class="fas fa-check" style="font-size:8px"></i>
+          </span>
+          <span style="padding:4px 10px; border-radius:var(--radius-pill); background:var(--primary-dim); border:1px solid var(--primary-border); color:var(--primary); font-size:var(--font-xs); font-weight:600; display:flex; align-items:center; gap:4px;">
+            EvoFit <i class="fas fa-check" style="font-size:8px"></i>
+          </span>
+        </div>
+
+        <!-- Step 3: Name the machine -->
+        <div class="add-step__label">What is this machine?</div>
+        <div class="add-step__hint">Enter the function — like "Leg Press" or "Seated Row"</div>
+
+        <div class="add-input-row">
+          <label>Machine Function</label>
+          <input type="text" placeholder="e.g., Leg Press, Chest Fly" value="Seated Calf Raise">
+        </div>
+
+        <!-- Type selection -->
+        <div class="add-step__label" style="margin-top:16px">Type</div>
+        <div class="add-type-chips">
+          <button class="type-chip active">Machine</button>
+          <button class="type-chip">Barbell</button>
+          <button class="type-chip">Cable</button>
+          <button class="type-chip">Bench</button>
+          <button class="type-chip">Rack</button>
+          <button class="type-chip">Other</button>
+        </div>
+
+        <!-- Preview -->
+        <div class="add-preview">
+          <div class="add-preview__label">Equipment Name</div>
+          <div class="add-preview__name">Panatta EvoFit — Seated Calf Raise</div>
+        </div>
+
+        <button class="add-btn add-btn--primary">
+          <i class="fas fa-plus"></i> Add Equipment
+        </button>
+        <button class="add-btn add-btn--secondary">
+          Add Another to EvoFit Line
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PHONE 5: Equipment Picker (during workout)                   -->
+<!-- ============================================================ -->
+<div>
+  <div class="label">5 — <span>Picker (Active Workout)</span></div>
+  <div class="phone-frame">
+    <div class="phone-content" style="background:rgba(0,0,0,0.4)">
+      <!-- Dimmed workout behind -->
+      <div style="padding:60px 16px 16px; opacity:0.3">
+        <div style="font-size:var(--font-lg); font-weight:700; color:var(--text-strong)">Bench Press</div>
+        <div style="font-size:var(--font-xs); color:var(--text-muted); margin-top:4px">⚙ Tap to select equipment</div>
+        <div style="margin-top:20px; height:40px; background:var(--bg-card); border-radius:var(--radius-md)"></div>
+        <div style="margin-top:8px; height:40px; background:var(--bg-card); border-radius:var(--radius-md)"></div>
+      </div>
+
+      <!-- Bottom sheet picker -->
+      <div class="picker-sheet">
+        <div class="picker-handle"></div>
+        <div class="picker-title">
+          Select Equipment
+          <div class="picker-subtitle">for Bench Press</div>
+        </div>
+
+        <div class="picker-search">
+          <i class="fas fa-search"></i>
+          <span>Search equipment...</span>
+        </div>
+
+        <!-- Used before -->
+        <div class="picker-section-label">Used before</div>
+        <div class="picker-option selected">
+          <div class="picker-radio"></div>
+          <div class="picker-opt-info">
+            <div class="picker-opt-name">Panatta Freeweight Olympic Flat Bench</div>
+            <div class="picker-opt-meta">45 lb base · Fit4Less Oshawa</div>
+          </div>
+          <span class="picker-opt-badge" style="background:rgba(29,211,176,0.12); color:var(--primary)">Last used</span>
+        </div>
+        <div class="picker-option">
+          <div class="picker-radio"></div>
+          <div class="picker-opt-info">
+            <div class="picker-opt-name">Rogue Ohio Power Bar</div>
+            <div class="picker-opt-meta">45 lb base · Home Gym</div>
+          </div>
+        </div>
+
+        <!-- At this gym -->
+        <div class="picker-section-label">At Fit4Less Oshawa</div>
+        <div class="picker-option">
+          <div class="picker-radio"></div>
+          <div class="picker-opt-info">
+            <div class="picker-opt-name">Hammer Strength Incline Press</div>
+            <div class="picker-opt-meta">Machine · Plate-Loaded</div>
+          </div>
+          <span class="picker-opt-badge" style="background:rgba(74,144,217,0.12); color:#4A90D9">Machine</span>
+        </div>
+        <div class="picker-option">
+          <div class="picker-radio"></div>
+          <div class="picker-opt-info">
+            <div class="picker-opt-name">Panatta Freeweight Incline Bench</div>
+            <div class="picker-opt-meta">Barbell · 45 lb base</div>
+          </div>
+        </div>
+
+        <!-- Add new inline -->
+        <div class="picker-section-label">Or add new</div>
+        <div class="picker-add-inline">
+          <input type="text" placeholder="Equipment name...">
+          <button style="background:var(--primary); border:none; color:#0a1a1f; padding:8px 12px; border-radius:var(--radius-sm); font-size:var(--font-xs); font-weight:600; white-space:nowrap; cursor:pointer">
+            <i class="fas fa-plus"></i> Add
+          </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="picker-footer">
+          <button class="btn-confirm">Confirm</button>
+          <button class="btn-none">None</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PHONE 6: Add Equipment — Step 1 (Brand Selection)            -->
+<!-- ============================================================ -->
+<div>
+  <div class="label">6 — <span>Add Flow: Pick Brand</span></div>
+  <div class="phone-frame">
+    <div class="phone-content">
+      <div class="page-header">
+        <div class="page-header__left">
+          <button class="page-header__back"><i class="fas fa-chevron-left"></i></button>
+          <div class="page-header__title">Add Equipment</div>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="add-progress">
+        <div class="add-progress__step active"></div>
+        <div class="add-progress__step"></div>
+        <div class="add-progress__step"></div>
+      </div>
+
+      <div class="add-step">
+        <div class="add-step__label">Select Brand</div>
+        <div class="add-step__hint">Pick a brand you already have, or add a new one</div>
+
+        <div class="add-grid">
+          <div class="add-option">
+            <div style="font-size:18px; color:var(--text-secondary)"><i class="fas fa-industry"></i></div>
+            <div class="add-option__name">Panatta</div>
+            <div class="add-option__count">7 machines</div>
+          </div>
+          <div class="add-option selected">
+            <div style="font-size:18px; color:var(--primary)"><i class="fas fa-industry"></i></div>
+            <div class="add-option__name">Hammer Strength</div>
+            <div class="add-option__count">3 machines</div>
+          </div>
+          <div class="add-option">
+            <div style="font-size:18px; color:var(--text-secondary)"><i class="fas fa-industry"></i></div>
+            <div class="add-option__name">Rogue</div>
+            <div class="add-option__count">2 items</div>
+          </div>
+          <div class="add-option add-option--new">
+            <div style="font-size:18px; color:var(--primary)"><i class="fas fa-plus-circle"></i></div>
+            <div class="add-option__name">New Brand</div>
+            <div class="add-option__count">&nbsp;</div>
+          </div>
+        </div>
+
+        <!-- Shows when "New Brand" is tapped -->
+        <!--
+        <div class="add-input-row">
+          <label>Brand Name</label>
+          <input type="text" placeholder="e.g., Life Fitness, Cybex">
+        </div>
+        -->
+
+        <button class="add-btn add-btn--primary" style="margin-top:20px">
+          Next: Pick Line →
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PHONE 7: Add Equipment — Step 2 (Line Selection)             -->
+<!-- ============================================================ -->
+<div>
+  <div class="label">7 — <span>Add Flow: Pick Line</span></div>
+  <div class="phone-frame">
+    <div class="phone-content">
+      <div class="page-header">
+        <div class="page-header__left">
+          <button class="page-header__back"><i class="fas fa-chevron-left"></i></button>
+          <div class="page-header__title">Add Equipment</div>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="add-progress">
+        <div class="add-progress__step done"></div>
+        <div class="add-progress__step active"></div>
+        <div class="add-progress__step"></div>
+      </div>
+
+      <div class="add-step">
+        <!-- Breadcrumb -->
+        <div style="display:flex; gap:6px; margin-bottom:14px;">
+          <span style="padding:4px 10px; border-radius:var(--radius-pill); background:var(--primary-dim); border:1px solid var(--primary-border); color:var(--primary); font-size:var(--font-xs); font-weight:600; display:flex; align-items:center; gap:4px;">
+            Hammer Strength <i class="fas fa-check" style="font-size:8px"></i>
+          </span>
+        </div>
+
+        <div class="add-step__label">Select Product Line</div>
+        <div class="add-step__hint">Group machines by their line — or skip if there's just one</div>
+
+        <div class="add-grid">
+          <div class="add-option selected">
+            <div style="font-size:18px; color:var(--primary)"><i class="fas fa-layer-group"></i></div>
+            <div class="add-option__name">Plate-Loaded</div>
+            <div class="add-option__count">2 machines</div>
+          </div>
+          <div class="add-option">
+            <div style="font-size:18px; color:var(--text-secondary)"><i class="fas fa-layer-group"></i></div>
+            <div class="add-option__name">Select</div>
+            <div class="add-option__count">1 machine</div>
+          </div>
+          <div class="add-option add-option--new">
+            <div style="font-size:18px; color:var(--primary)"><i class="fas fa-plus-circle"></i></div>
+            <div class="add-option__name">New Line</div>
+            <div class="add-option__count">&nbsp;</div>
+          </div>
+        </div>
+
+        <button class="add-btn add-btn--primary" style="margin-top:20px">
+          Next: Name Machine →
+        </button>
+        <button class="add-btn add-btn--secondary">
+          Skip — no product line
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

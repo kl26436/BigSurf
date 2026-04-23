@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workout Page Flow — Option 1 Detail</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app: #05070b;
+    --bg-surface: #0d1218;
+    --bg-card: #111820;
+    --bg-card-hi: #172030;
+    --border-subtle: rgba(255,255,255,0.04);
+    --border-light: rgba(255,255,255,0.08);
+    --text-strong: #f6f9ff;
+    --text-main: #c4cad4;
+    --text-secondary: #9aa3ad;
+    --text-muted: #6b7785;
+    --primary: #1dd3b0;
+    --primary-bg: rgba(29,211,176,0.12);
+    --primary-border: rgba(29,211,176,0.3);
+    --success: #36c46b;
+    --warning: #f0c24b;
+    --danger: #e35d6a;
+    --highlight-warm: #f7a865;
+    --cat-push: #4A90D9;
+    --cat-pull: #D94A7A;
+    --cat-legs: #7B4AD9;
+    --cat-core: #4AD9A7;
+    --cat-cardio: #D9A74A;
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 20px;
+    --radius-pill: 999px;
+    --shadow-md: 0 8px 14px rgba(0,0,0,0.55);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+    background: #000;
+    padding: 24px;
+    min-height: 100vh;
+    color: var(--text-main);
+  }
+  h1.section-title {
+    color: var(--text-strong);
+    font-size: 1.4rem;
+    margin: 0 0 8px;
+    font-weight: 700;
+    text-align: center;
+  }
+  p.section-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+    max-width: 900px;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .row {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .option-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .step-label {
+    background: var(--primary);
+    color: #04201a;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .option-label {
+    color: var(--text-strong);
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  .option-sub {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-align: center;
+    max-width: 300px;
+  }
+  .phone {
+    width: 340px;
+    height: 720px;
+    background: var(--bg-app);
+    border-radius: 36px;
+    border: 8px solid #1a1f26;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .status-bar {
+    height: 28px;
+    background: var(--bg-app);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    font-size: 0.7rem;
+    color: var(--text-main);
+    flex-shrink: 0;
+  }
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px 80px;
+  }
+  .content::-webkit-scrollbar { display: none; }
+  .header-block {
+    margin-bottom: 12px;
+  }
+  .header-block h2 {
+    color: var(--text-strong);
+    font-size: 1.35rem;
+    font-weight: 700;
+  }
+  .header-block span {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+  }
+  .search-bar {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+  .pill-row {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    margin-bottom: 14px;
+    padding-bottom: 4px;
+  }
+  .pill-row::-webkit-scrollbar { display:none; }
+  .pill {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pill.active {
+    background: var(--primary-bg);
+    border-color: var(--primary-border);
+    color: var(--primary);
+  }
+
+  /* Template card collapsed */
+  .tpl-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: all 200ms ease;
+  }
+  .tpl-card.expanded {
+    border-color: var(--primary-border);
+    box-shadow: var(--shadow-md);
+  }
+  .tpl-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+  }
+  .tpl-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .ic-push { background: rgba(74,144,217,0.15); color: var(--cat-push); }
+  .ic-pull { background: rgba(217,74,122,0.15); color: var(--cat-pull); }
+  .ic-legs { background: rgba(123,74,217,0.15); color: var(--cat-legs); }
+  .ic-core { background: rgba(74,217,167,0.15); color: var(--cat-core); }
+  .ic-cardio { background: rgba(217,167,74,0.15); color: var(--cat-cardio); }
+  .tpl-info { flex: 1; min-width: 0; }
+  .tpl-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-strong);
+    margin-bottom: 2px;
+  }
+  .tpl-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+  .tpl-chevron {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    transition: transform 200ms;
+    margin-right: 6px;
+  }
+  .tpl-card.expanded .tpl-chevron {
+    transform: rotate(180deg);
+    color: var(--primary);
+  }
+  .tpl-play {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #04201a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+  /* Expanded editor */
+  .tpl-editor {
+    border-top: 1px solid var(--border-subtle);
+    background: rgba(0,0,0,0.15);
+    padding: 10px 12px 12px;
+  }
+  .tpl-editor-sec {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 4px 0 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .tpl-editor-sec .count {
+    color: var(--text-secondary);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+  }
+  .ex-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--bg-card-hi);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    font-size: 0.82rem;
+    color: var(--text-main);
+  }
+  .ex-drag {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: grab;
+  }
+  .ex-name { flex: 1; color: var(--text-strong); }
+  .ex-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+  .ex-remove {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    padding: 4px 6px;
+  }
+  .add-ex-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    color: var(--primary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .actions-row {
+    display: flex;
+    gap: 8px;
+  }
+  .act-btn {
+    flex: 1;
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 9px;
+    font-size: 0.78rem;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-weight: 500;
+  }
+  .act-btn.danger { color: var(--danger); border-color: rgba(227,93,106,0.25); }
+  .tpl-start-big {
+    width: 100%;
+    background: var(--primary);
+    color: #04201a;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .nav-bar {
+    height: 60px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  .nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    color: var(--text-muted);
+    font-size: 0.65rem;
+  }
+  .nav-btn.active { color: var(--primary); }
+  .nav-btn.primary-nav {
+    background: var(--primary);
+    color: #04201a;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    justify-content: center;
+    transform: translateY(-10px);
+    box-shadow: var(--shadow-md);
+    font-size: 1.1rem;
+    gap: 0;
+  }
+  .nav-btn i { font-size: 1rem; }
+  .nav-btn.primary-nav i { font-size: 1.2rem; }
+  .new-empty-row {
+    background: transparent;
+    border: 1px dashed var(--border-light);
+  }
+  .arrow-annotation {
+    position: absolute;
+    background: var(--bg-card-hi);
+    border: 1px solid var(--primary-border);
+    color: var(--primary);
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<h1 class="section-title">Workout Page — Tap to Expand & Edit</h1>
+<p class="section-desc">Three states of the same page. Tap any row to expand inline — see exercises, reorder, add/remove, edit metadata, then either Start or collapse. No separate template-management screen.</p>
+
+<div class="row">
+
+  <!-- STATE 1: Collapsed list -->
+  <div class="option-wrapper">
+    <div class="step-label">Step 1 — Default</div>
+    <div class="option-label">Tap (+) → Workout tab</div>
+    <div class="option-sub">All templates shown. Tap play to start instantly, or tap anywhere else on the row to expand/edit.</div>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="content">
+        <div class="header-block">
+          <h2>Workouts</h2>
+          <span>Tap a row to edit, play to start</span>
+        </div>
+        <div class="search-bar"><i class="fas fa-search"></i>Search templates &amp; exercises</div>
+        <div class="pill-row">
+          <div class="pill active">All</div>
+          <div class="pill">Push</div>
+          <div class="pill">Pull</div>
+          <div class="pill">Legs</div>
+          <div class="pill">Core</div>
+          <div class="pill">Cardio</div>
+        </div>
+
+        <div class="tpl-card">
+          <div class="tpl-row">
+            <div class="tpl-icon ic-push"><i class="fas fa-dumbbell"></i></div>
+            <div class="tpl-info">
+              <div class="tpl-name">Chest &amp; Triceps</div>
+              <div class="tpl-meta">6 exercises · Last yesterday · 58 min</div>
+            </div>
+            <div class="tpl-chevron"><i class="fas fa-chevron-down"></i></div>
+            <div class="tpl-play"><i class="fas fa-play"></i></div>
+          </div>
+        </div>
+
+        <div class="tpl-card">
+          <div class="tpl-row">
+            <div class="tpl-icon ic-pull"><i class="fas fa-dumbbell"></i></div>
+            <div class="tpl-info">
+              <div class="tpl-name">Back &amp; Biceps</div>
+              <div class="tpl-meta">7 exercises · Last Sunday · 62 min</div>
+            </div>
+            <div class="tpl-chevron"><i class="fas fa-chevron-down"></i></div>
+            <div class="tpl-play"><i class="fas fa-play"></i></div>
+          </div>
+        </div>
+
+        <div class="tpl-card">
+          <div class="tpl-row">
+            <div class="tpl-icon ic-legs"><i class="fas fa-dumbbell"></i></div>
+            <div class="tpl-info">
+              <div class="tpl-name">Leg Day</div>
+              <div class="tpl-meta">5 exercises · Last Friday · 71 min</div>
+            </div>
+            <div class="tpl-chevron"><i class="fas fa-chevron-down"></i></div>
+            <div class="tpl-play"><i class="fas fa-play"></i></div>
+          </div>
+        </div>
+
+        <div class="tpl-card">
+          <div class="tpl-row">
+            <div class="tpl-icon ic-core"><i class="fas fa-dumbbell"></i></div>
+            <div class="tpl-info">
+              <div class="tpl-name">Core &amp; Conditioning</div>
+              <div class="tpl-meta">4 exercises · 2 weeks ago · 42 min</div>
+            </div>
+            <div class="tpl-chevron"><i class="fas fa-chevron-down"></i></div>
+            <div class="tpl-play"><i class="fas fa-play"></i></div>
+          </div>
+        </div>
+
+        <div class="tpl-card">
+          <div class="tpl-row">
+            <div class="tpl-icon ic-cardio"><i class="fas fa-running"></i></div>
+            <div class="tpl-info">
+              <div class="tpl-name">Cardio Conditioning</div>
+              <div class="tpl-meta">3 exercises · 3 weeks ago · 38 min</div>
+            </div>
+            <div class="tpl-chevron"><i class="fas fa-chevron-down"></i></div>
+            <div class="tpl-play"><i class="fas fa-play"></i></div>
+          </div>
+        </div>
+
+        <div class="tpl-card new-empty-row">
+          <div class="tpl-row">
+            <div class="tpl-icon" style="background:var(--primary-bg); color:var(--primary);"><i class="fas fa-plus"></i></div>
+            <div class="tpl-info">
+              <div class="tpl-name" style="color:var(--primary);">New Empty Workout</div>
+              <div class="tpl-meta">Start from scratch</div>
+            </div>
+            <div class="tpl-chevron" style="visibility:hidden;"></div>
+            <div class="tpl-play" style="background:transparent; border:1px solid var(--border-light); color:var(--text-secondary);"><i class="fas fa-arrow-right"></i></div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <div class="nav-btn"><i class="fas fa-home"></i><span>Home</span></div>
+        <div class="nav-btn"><i class="fas fa-chart-line"></i><span>Stats</span></div>
+        <div class="nav-btn primary-nav active"><i class="fas fa-plus"></i></div>
+        <div class="nav-btn"><i class="fas fa-calendar"></i><span>History</span></div>
+        <div class="nav-btn"><i class="fas fa-ellipsis-h"></i><span>More</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 2: Expanded - editing -->
+  <div class="option-wrapper">
+    <div class="step-label">Step 2 — Expanded</div>
+    <div class="option-label">Tap "Chest &amp; Triceps" row</div>
+    <div class="option-sub">Inline editor drops down. See all exercises, reorder by dragging, remove with ✕, add new, plus Rename / Duplicate / Delete in action row.</div>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="content">
+        <div class="header-block">
+          <h2>Workouts</h2>
+          <span>Tap a row to edit, play to start</span>
+        </div>
+        <div class="search-bar"><i class="fas fa-search"></i>Search templates &amp; exercises</div>
+        <div class="pill-row">
+          <div class="pill active">All</div>
+          <div class="pill">Push</div>
+          <div class="pill">Pull</div>
+          <div class="pill">Legs</div>
+          <div class="pill">Core</div>
+          <div class="pill">Cardio</div>
+        </div>
+
+        <!-- Expanded card -->
+        <div class="tpl-card expanded">
+          <div class="tpl-row">
+            <div class="tpl-icon ic-push"><i class="fas fa-dumbbell"></i></div>
+            <div class="tpl-info">
+              <div class="tpl-name">Chest &amp; Triceps</div>
+              <div class="tpl-meta">6 exercises · Last yesterday · 58 min</div>
+            </div>
+            <div class="tpl-chevron"><i class="fas fa-chevron-down"></i></div>
+            <div class="tpl-play"><i class="fas fa-play"></i></div>
+          </div>
+
+          <div class="tpl-editor">
+            <div class="tpl-editor-sec">Exercises <span class="count">6 total</span></div>
+
+            <div class="ex-item">
+              <i class="fas fa-grip-vertical ex-drag"></i>
+              <div class="ex-name">Bench Press</div>
+              <div class="ex-meta">4 × 8</div>
+              <div class="ex-remove"><i class="fas fa-times"></i></div>
+            </div>
+            <div class="ex-item">
+              <i class="fas fa-grip-vertical ex-drag"></i>
+              <div class="ex-name">Incline DB Press</div>
+              <div class="ex-meta">3 × 10</div>
+              <div class="ex-remove"><i class="fas fa-times"></i></div>
+            </div>
+            <div class="ex-item">
+              <i class="fas fa-grip-vertical ex-drag"></i>
+              <div class="ex-name">Cable Fly</div>
+              <div class="ex-meta">3 × 12</div>
+              <div class="ex-remove"><i class="fas fa-times"></i></div>
+            </div>
+            <div class="ex-item">
+              <i class="fas fa-grip-vertical ex-drag"></i>
+              <div class="ex-name">Tricep Pushdown</div>
+              <div class="ex-meta">3 × 10</div>
+              <div class="ex-remove"><i class="fas fa-times"></i></div>
+            </div>
+            <div class="ex-item">
+              <i class="fas fa-grip-vertical ex-drag"></i>
+              <div class="ex-name">Overhead Extension</div>
+              <div class="ex-meta">3 × 12</div>
+              <div class="ex-remove"><i class="fas fa-times"></i></div>
+            </div>
+            <div class="ex-item">
+              <i class="fas fa-grip-vertical ex-drag"></i>
+              <div class="ex-name">Dips</div>
+              <div class="ex-meta">3 × AMRAP</div>
+              <div class="ex-remove"><i class="fas fa-times"></i></div>
+            </div>
+
+            <button class="add-ex-btn"><i class="fas fa-plus"></i> Add Exercise</button>
+
+            <div class="tpl-editor-sec">Template actions</div>
+            <div class="actions-row">
+              <button class="act-btn"><i class="fas fa-pen"></i> Rename</button>
+              <button class="act-btn"><i class="fas fa-copy"></i> Duplicate</button>
+              <button class="act-btn danger"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+
+            <button class="tpl-start-big"><i class="fas fa-play"></i> Start Workout</button>
+          </div>
+        </div>
+
+        <!-- Collapsed peers -->
+        <div class="tpl-card">
+          <div class="tpl-row">
+            <div class="tpl-icon ic-pull"><i class="fas fa-dumbbell"></i></div>
+            <div class="tpl-info">
+              <div class="tpl-name">Back &amp; Biceps</div>
+              <div class="tpl-meta">7 exercises · Last Sunday</div>
+            </div>
+            <div class="tpl-chevron"><i class="fas fa-chevron-down"></i></div>
+            <div class="tpl-play"><i class="fas fa-play"></i></div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <div class="nav-btn"><i class="fas fa-home"></i><span>Home</span></div>
+        <div class="nav-btn"><i class="fas fa-chart-line"></i><span>Stats</span></div>
+        <div class="nav-btn primary-nav active"><i class="fas fa-plus"></i></div>
+        <div class="nav-btn"><i class="fas fa-calendar"></i><span>History</span></div>
+        <div class="nav-btn"><i class="fas fa-ellipsis-h"></i><span>More</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 3: Interaction hints -->
+  <div class="option-wrapper">
+    <div class="step-label">Step 3 — Annotated</div>
+    <div class="option-label">Interaction key</div>
+    <div class="option-sub">Same expanded screen with annotations showing each tap target and what it does.</div>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-full"></i></span></div>
+      <div class="content">
+        <div class="header-block">
+          <h2>Workouts</h2>
+          <span>Tap a row to edit, play to start</span>
+        </div>
+
+        <div class="tpl-card expanded" style="margin-top:10px;">
+          <div class="tpl-row" style="position:relative;">
+            <div class="tpl-icon ic-push"><i class="fas fa-dumbbell"></i></div>
+            <div class="tpl-info">
+              <div class="tpl-name">Chest &amp; Triceps</div>
+              <div class="tpl-meta">6 exercises · Last yesterday</div>
+            </div>
+            <div class="tpl-chevron"><i class="fas fa-chevron-down"></i></div>
+            <div class="tpl-play"><i class="fas fa-play"></i></div>
+          </div>
+
+          <div style="padding: 0 12px 8px; font-size:0.68rem; color:var(--text-muted); line-height:1.5;">
+            <div><span style="color:var(--primary); font-weight:700;">Tap row</span> → expand/collapse editor</div>
+            <div><span style="color:var(--primary); font-weight:700;">Tap ▶</span> → start workout immediately</div>
+          </div>
+
+          <div class="tpl-editor">
+            <div class="tpl-editor-sec">Exercises <span class="count">6 total</span></div>
+
+            <div class="ex-item" style="border:1px solid var(--primary-border);">
+              <i class="fas fa-grip-vertical ex-drag" style="color:var(--primary);"></i>
+              <div class="ex-name">Bench Press</div>
+              <div class="ex-meta">4 × 8</div>
+              <div class="ex-remove" style="color:var(--danger);"><i class="fas fa-times"></i></div>
+            </div>
+            <div style="font-size:0.68rem; color:var(--text-muted); line-height:1.5; padding:0 4px 8px;">
+              <div><span style="color:var(--primary); font-weight:700;">⋮⋮ drag</span> → reorder</div>
+              <div><span style="color:var(--danger); font-weight:700;">✕</span> → remove from template</div>
+              <div><span style="color:var(--primary); font-weight:700;">Tap name</span> → change sets/reps, swap exercise</div>
+            </div>
+
+            <div class="ex-item">
+              <i class="fas fa-grip-vertical ex-drag"></i>
+              <div class="ex-name">Incline DB Press</div>
+              <div class="ex-meta">3 × 10</div>
+              <div class="ex-remove"><i class="fas fa-times"></i></div>
+            </div>
+            <div class="ex-item">
+              <i class="fas fa-grip-vertical ex-drag"></i>
+              <div class="ex-name">Cable Fly</div>
+              <div class="ex-meta">3 × 12</div>
+              <div class="ex-remove"><i class="fas fa-times"></i></div>
+            </div>
+
+            <button class="add-ex-btn" style="border-color:var(--primary-border); background:var(--primary-bg);"><i class="fas fa-plus"></i> Add Exercise</button>
+            <div style="font-size:0.68rem; color:var(--text-muted); line-height:1.5; padding:0 4px 8px;">
+              <span style="color:var(--primary); font-weight:700;">Add Exercise</span> → opens exercise library modal
+            </div>
+
+            <div class="tpl-editor-sec">Template actions</div>
+            <div class="actions-row">
+              <button class="act-btn"><i class="fas fa-pen"></i> Rename</button>
+              <button class="act-btn"><i class="fas fa-copy"></i> Duplicate</button>
+              <button class="act-btn danger"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+
+            <button class="tpl-start-big"><i class="fas fa-play"></i> Start Workout</button>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <div class="nav-btn"><i class="fas fa-home"></i><span>Home</span></div>
+        <div class="nav-btn"><i class="fas fa-chart-line"></i><span>Stats</span></div>
+        <div class="nav-btn primary-nav active"><i class="fas fa-plus"></i></div>
+        <div class="nav-btn"><i class="fas fa-calendar"></i><span>History</span></div>
+        <div class="nav-btn"><i class="fas fa-ellipsis-h"></i><span>More</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
