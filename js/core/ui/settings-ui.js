@@ -7,6 +7,7 @@ import { showNotification, escapeHtml, escapeAttr, formatHeight, parseHeightToCm
 import { navigateTo } from './navigation.js';
 import { db, doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from '../data/firebase-config.js';
 import { exportWorkoutData } from '../data/data-manager.js';
+import { isFCMAvailable, getPushSubscription, initializeFCM, scheduleRestNotification } from '../utils/push-notification-manager.js';
 
 // Default settings — merged with user overrides on load
 const DEFAULT_SETTINGS = {
@@ -272,6 +273,12 @@ export function renderSettings() {
                     </div>
                     ${toggleBtn('autoDetectLocation', s.autoDetectLocation !== false)}
                 </div>
+            </div>
+
+            <!-- Notifications (diagnostics) -->
+            <div class="group-label">Notifications</div>
+            <div class="group" id="notif-diag-group">
+                ${renderNotificationDiagnostics()}
             </div>
 
             <!-- Connections -->
@@ -916,6 +923,148 @@ async function deleteAllUserData() {
     AppState.workoutPlans = [];
 
     return { deletedDocs };
+}
+
+// ===================================================================
+// NOTIFICATION DIAGNOSTICS
+// ===================================================================
+
+function getNotificationDiagnostics() {
+    const isStandalone =
+        (typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches)
+        || navigator.standalone === true;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const swSupported = 'serviceWorker' in navigator;
+    const pushSupported = 'PushManager' in window;
+    const permission = (typeof Notification !== 'undefined') ? Notification.permission : 'unsupported';
+    const subscribed = isFCMAvailable();
+    const sub = getPushSubscription();
+
+    return {
+        installed: isStandalone,
+        isIOS,
+        swSupported,
+        pushSupported,
+        permission,
+        subscribed,
+        endpoint: sub?.endpoint || null,
+    };
+}
+
+function statusRow(iconClass, iconTint, name, desc, statusText, statusTone) {
+    const toneClass = statusTone === 'ok' ? 'notif-status--ok'
+        : statusTone === 'warn' ? 'notif-status--warn'
+        : statusTone === 'err' ? 'notif-status--err'
+        : '';
+    return `
+        <div class="srow">
+            <div class="srow-icon ${iconTint}"><i class="fas ${iconClass}"></i></div>
+            <div class="srow-info">
+                <div class="srow-name">${escapeHtml(name)}</div>
+                <div class="srow-desc">${escapeHtml(desc)}</div>
+            </div>
+            <div class="srow-right">
+                <span class="srow-value notif-status ${toneClass}">${escapeHtml(statusText)}</span>
+            </div>
+        </div>
+    `;
+}
+
+function renderNotificationDiagnostics() {
+    const d = getNotificationDiagnostics();
+
+    const rows = [];
+
+    rows.push(statusRow(
+        'fa-mobile-alt', 'ic-blue',
+        'PWA installation',
+        d.installed ? 'Running as installed app' : 'Open in Safari — Add to Home Screen for lock-screen push',
+        d.installed ? 'Installed' : 'Browser tab',
+        d.installed ? 'ok' : 'warn',
+    ));
+
+    rows.push(statusRow(
+        'fa-shield-alt', 'ic-primary',
+        'Notification permission',
+        d.permission === 'granted' ? 'You granted permission to notify'
+            : d.permission === 'denied' ? 'Blocked — re-enable in browser settings'
+            : 'Not asked yet',
+        d.permission === 'granted' ? 'Granted'
+            : d.permission === 'denied' ? 'Blocked'
+            : 'Not asked',
+        d.permission === 'granted' ? 'ok' : d.permission === 'denied' ? 'err' : 'warn',
+    ));
+
+    rows.push(statusRow(
+        'fa-cog', 'ic-muted',
+        'Service worker',
+        d.swSupported ? 'Required to receive background push' : 'Not supported in this browser',
+        d.swSupported ? 'Supported' : 'Unsupported',
+        d.swSupported ? 'ok' : 'err',
+    ));
+
+    rows.push(statusRow(
+        'fa-bell', 'ic-warm',
+        'Push subscription',
+        d.subscribed ? 'Ready to receive scheduled notifications' : 'No subscription — sign-in + permission needed',
+        d.subscribed ? 'Ready' : 'Missing',
+        d.subscribed ? 'ok' : 'err',
+    ));
+
+    let actionRow = '';
+    if (d.permission !== 'granted') {
+        actionRow = `
+            <div class="srow srow--clickable" onclick="notifDiagEnable()">
+                <div class="srow-icon ic-primary"><i class="fas fa-bell"></i></div>
+                <div class="srow-info">
+                    <div class="srow-name">Enable notifications</div>
+                    <div class="srow-desc">Request permission and set up push subscription</div>
+                </div>
+                <i class="fas fa-chevron-right srow-chev"></i>
+            </div>
+        `;
+    } else if (d.subscribed) {
+        actionRow = `
+            <div class="srow srow--clickable" onclick="notifDiagTest()">
+                <div class="srow-icon ic-primary"><i class="fas fa-paper-plane"></i></div>
+                <div class="srow-info">
+                    <div class="srow-name">Send test (10s delay)</div>
+                    <div class="srow-desc">Lock your phone now to test lock-screen delivery</div>
+                </div>
+                <i class="fas fa-chevron-right srow-chev"></i>
+            </div>
+        `;
+    }
+
+    const iosHint = d.isIOS && !d.installed ? `
+        <div class="notif-ios-hint">
+            <i class="fas fa-info-circle"></i>
+            On iOS, lock-screen push requires iOS 16.4+ and the app added to Home Screen. Safari tabs can't receive web push.
+        </div>
+    ` : '';
+
+    return rows.join('') + actionRow + iosHint;
+}
+
+export async function notifDiagEnable() {
+    const ok = await initializeFCM();
+    if (ok) {
+        showNotification('Notifications enabled', 'success');
+    } else {
+        showNotification('Could not enable — check browser permission', 'error');
+    }
+    // Re-render so diagnostics reflect new state
+    const group = document.getElementById('notif-diag-group');
+    if (group) group.innerHTML = renderNotificationDiagnostics();
+}
+
+export async function notifDiagTest() {
+    const id = await scheduleRestNotification(10, 'Test notification');
+    if (id) {
+        showNotification('Test scheduled for 10s — lock your phone now', 'success');
+    } else {
+        showNotification('Test failed — check push subscription', 'error');
+    }
 }
 
 async function deleteDocsInBatches(docs) {

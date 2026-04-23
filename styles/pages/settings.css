@@ -278,3 +278,32 @@
 /* Shared spacer used in section-header-row to keep title centered
    (36px matches .btn-icon-sm width) */
 .header-spacer { width: 36px; flex-shrink: 0; }
+
+/* Notification diagnostics — status pills on the srow-right side */
+.notif-status {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.notif-status--ok { color: var(--success); border-color: var(--success); }
+.notif-status--warn { color: var(--warn); border-color: var(--warn); }
+.notif-status--err { color: var(--danger); border-color: var(--danger); }
+
+.notif-ios-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 14px;
+    margin: 8px 0 0;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card-hi);
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    line-height: 1.4;
+}
+.notif-ios-hint i { color: var(--primary); margin-top: 2px; flex-shrink: 0; }
