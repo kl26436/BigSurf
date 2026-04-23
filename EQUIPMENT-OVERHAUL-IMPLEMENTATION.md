@@ -31,7 +31,7 @@ users/{userId}/equipment/{equipmentId}
   brand: string | null            // e.g., "Hammer Strength"
   model: string | null            // e.g., "Plate-Loaded" (inconsistently used)
   function: string | null         // e.g., "Incline Press" (inconsistently used)
-  equipmentType: string           // Plate-Loaded | Selectorized | Barbell | Dumbbell | Cable | Bench | Rack | Bodyweight | Other
+  equipmentType: string           // Plate-Loaded | Selectorized | Cable | Barbell | Dumbbell | Bench | Rack | Cardio | Bodyweight | Other
   baseWeight: number              // Bar/carriage weight (especially relevant for Plate-Loaded)
   baseWeightUnit: "lbs" | "kg"
   location: string | null         // LEGACY single location
@@ -57,7 +57,7 @@ users/{userId}/equipment/{equipmentId}
   brand: string                   // REQUIRED. e.g., "Panatta"
   line: string | null             // Product line. e.g., "EvoFit", "Plate-Loaded"
   function: string                // REQUIRED. What it does. e.g., "Leg Extension"
-  equipmentType: string           // Plate-Loaded | Selectorized | Barbell | Dumbbell | Cable | Bench | Rack | Bodyweight | Other
+  equipmentType: string           // Plate-Loaded | Selectorized | Cable | Barbell | Dumbbell | Bench | Rack | Cardio | Bodyweight | Other
   baseWeight: number              // Bar/carriage weight — especially relevant for Plate-Loaded (0 if N/A)
   baseWeightUnit: "lbs" | "kg"
   locations: string[]             // Array of gym location names
@@ -373,7 +373,9 @@ export async function runEquipmentMigrationV2(userId, { dryRun = false } = {}) {
             eq.brand = catalogMatch.brand;
             eq.line = catalogMatch.line || eq.line || eq.model || null;
             eq.function = catalogMatch.function || eq.function || null;
-            if (catalogMatch.equipmentType && (!eq.equipmentType || eq.equipmentType === 'Other')) {
+            if (catalogMatch.equipmentType) {
+                // Always trust catalog type — fixes misclassified records
+                // (e.g., selectorized machines tagged as "Cable" or "Machine")
                 eq.equipmentType = catalogMatch.equipmentType;
             }
             eq._catalogMatch = catalogMatch.matchTier;
