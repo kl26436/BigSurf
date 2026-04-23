@@ -7,7 +7,7 @@ import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
-import { getDateString, getDayName } from '../utils/date-helpers.js';
+import { getDateString, getDayName, formatRelativeDate } from '../utils/date-helpers.js';
 import { Config, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { loadAllWorkouts } from '../data/data-manager.js';
@@ -622,7 +622,7 @@ function renderRecentPRs(recentPRs) {
                 <div class="pr-badge"><i class="fas fa-trophy"></i></div>
                 <div class="pr-info">
                     <div class="pr-name">${escapeHtml(pr.exercise)}</div>
-                    <div class="pr-meta">${formatRelativeDateDash(pr.date)} · ${pr.reps} reps</div>
+                    <div class="pr-meta">${formatRelativeDate(pr.date, { daysAgo: true })} · ${pr.reps} reps</div>
                 </div>
                 <div class="pr-val">${convertWeight(pr.weight, pr.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}</div>
             </div>
@@ -710,24 +710,3 @@ export async function startWorkoutFromHistory(workoutId) {
 // HELPERS
 // ===================================================================
 
-function formatRelativeDateDash(dateStr) {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length < 3) return dateStr;
-    const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const dateOnly = getDateString(date);
-    const todayOnly = getDateString(today);
-    const yesterdayOnly = getDateString(yesterday);
-
-    if (dateOnly === todayOnly) return 'Today';
-    if (dateOnly === yesterdayOnly) return 'Yesterday';
-
-    const diffDays = Math.floor((today - date) / (1000 * 60 * 60 * 24));
-    if (diffDays < 7) return `${diffDays} days ago`;
-
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}

@@ -4,6 +4,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, convertWeight } from '../ui/ui-helpers.js';
+import { formatRelativeDate } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { TrainingInsights } from './training-insights.js';
 import { Config, debugLog, getCategoryIcon } from '../utils/config.js';
@@ -487,7 +488,7 @@ async function loadCoachHistory() {
             ${sessions.map(s => `
                 <div class="coach-history-item" onclick="showPastCoachSession('${escapeHtml(s.id)}')">
                     <div class="coach-history-question">${escapeHtml(truncate(s.question, 60))}</div>
-                    <div class="coach-history-date">${formatCoachDate(s.timestamp)}</div>
+                    <div class="coach-history-date">${formatRelativeDate(s.timestamp, { daysAgo: true })}</div>
                 </div>
             `).join('')}
         `;
@@ -520,7 +521,7 @@ export function showPastCoachSession(sessionId) {
         // Prepend a timestamp label
         const label = document.createElement('div');
         label.className = 'coach-past-label';
-        label.innerHTML = `<i class="fas fa-history"></i> From ${formatCoachDate(session.timestamp)}`;
+        label.innerHTML = `<i class="fas fa-history"></i> From ${formatRelativeDate(session.timestamp, { daysAgo: true })}`;
         botBubble.insertBefore(label, botBubble.firstChild);
     }
 }
@@ -835,14 +836,3 @@ function truncate(str, len) {
     return str.length > len ? str.slice(0, len) + '...' : str;
 }
 
-function formatCoachDate(timestamp) {
-    if (!timestamp) return '';
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}

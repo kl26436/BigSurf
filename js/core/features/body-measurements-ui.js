@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification, openModal, closeModal, displayWeight, formatHeight, parseHeightToCm } from '../ui/ui-helpers.js';
+import { formatRelativeDate } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import {
     saveBodyWeight,
@@ -718,19 +719,3 @@ export function destroyBodyWeightChart() {
     }
 }
 
-// ===================================================================
-// HELPERS
-// ===================================================================
-
-function formatRelativeDate(dateStr) {
-    const today = AppState.getTodayDateString();
-    if (dateStr === today) return 'Today';
-
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    if (dateStr === yesterdayStr) return 'Yesterday';
-
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}

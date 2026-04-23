@@ -4,6 +4,7 @@ import { AppState } from '../utils/app-state.js';
 import { escapeHtml } from './ui-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive, navigateTo } from './navigation.js';
 import { setHeaderMode } from './ui-helpers.js';
+import { formatRelativeDate as formatRelativeDateShared } from '../utils/date-helpers.js';
 
 import { renderRangeFilter, getRangeBounds, getPreviousRangeBounds, rangeLabel } from '../features/metrics/range-filter.js';
 import {
@@ -521,16 +522,5 @@ async function renderBodyCompositionDetail(container, range) {
 // ===================================================================
 
 function formatRelativeDate(dateStr) {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length < 3) return dateStr;
-    const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-    const today = new Date();
-    const diff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
-
-    if (diff === 0) return 'Today';
-    if (diff === 1) return 'Yesterday';
-    if (diff < 7) return `${diff} days ago`;
-    if (diff < 30) return `${Math.floor(diff / 7)} weeks ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return formatRelativeDateShared(dateStr, { daysAgo: true, weeksAgo: true });
 }

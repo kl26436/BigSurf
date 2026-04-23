@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification, openModal, closeModal } from '../ui/ui-helpers.js';
+import { formatRelativeDate } from '../utils/date-helpers.js';
 import {
     uploadDexaPdf,
     extractDexaFromPdf,
@@ -965,22 +966,3 @@ function tryParseJson(str) {
     try { return JSON.parse(str); } catch { return null; }
 }
 
-function formatRelativeDate(dateStr) {
-    if (!dateStr) return '';
-    const today = AppState.getTodayDateString();
-    if (dateStr === today) return 'Today';
-
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    if (dateStr === yesterdayStr) return 'Yesterday';
-
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function formatDateFull(dateStr) {
-    if (!dateStr) return '';
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
-}
