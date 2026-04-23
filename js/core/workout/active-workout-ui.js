@@ -11,6 +11,7 @@ import { getNextInGroup, getExerciseGroups, isLastInGroupRound, groupExercises, 
 import { haptic } from '../utils/haptics.js';
 import { navigateTo } from '../ui/navigation.js';
 import { ensureFreshBodyWeight } from '../features/bodyweight-prompt.js';
+import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from '../utils/push-notification-manager.js';
 
 // ===================================================================
 // STATE
@@ -266,6 +267,15 @@ function startRestTimer(duration) {
     restTimerRemaining = restTimerDuration;
     restTimerActive = true;
 
+    // Schedule server-side push so the user gets a lock-screen notification
+    // when rest ends. The local JS timer only runs while the app is open;
+    // push is what wakes them if the phone is locked.
+    if (isFCMAvailable()) {
+        const exercise = AppState.currentWorkout?.exercises?.[currentExerciseIdx];
+        const name = exercise ? (getExerciseName(exercise) || 'your next set') : 'your next set';
+        scheduleRestNotification(restTimerDuration, name).catch(() => {});
+    }
+
     // Show banner
     const banner = document.getElementById('aw-rest-banner');
     if (banner) banner.classList.remove('hidden');
@@ -318,6 +328,15 @@ export function awRestAdd30() {
     restTimerDuration += 30;
     restTimerRemaining = Math.max(0, Math.ceil((restTimerEndsAt - Date.now()) / 1000));
     updateRestTimerDisplay();
+
+    // Reschedule the push so it fires at the new end time. scheduleRestNotification
+    // cancels any existing notification for this user before creating the new one.
+    if (isFCMAvailable()) {
+        const exercise = AppState.currentWorkout?.exercises?.[currentExerciseIdx];
+        const name = exercise ? (getExerciseName(exercise) || 'your next set') : 'your next set';
+        const remaining = Math.max(1, Math.ceil((restTimerEndsAt - Date.now()) / 1000));
+        scheduleRestNotification(remaining, name).catch(() => {});
+    }
 }
 
 export function awRestSkip() {
@@ -327,6 +346,9 @@ export function awRestSkip() {
     restTimerEndsAt = 0;
     const banner = document.getElementById('aw-rest-banner');
     if (banner) banner.classList.add('hidden');
+    // Cancel the server-side push so it doesn't fire after the user has
+    // already moved on.
+    cancelRestNotification().catch(() => {});
 }
 
 export function awEditRestDuration() {
