@@ -365,8 +365,9 @@ All items from the docs below are now captured in this backlog. Archive once con
 - [x] `CODE-AUDIT.md` → archived to `docs/archive/` (audit 2026-04-19: 9/9 issues resolved; nothing new to capture)
 - [x] `DASHBOARD-V2-IMPLEMENTATION.md` → archived to `docs/archive/` (audit 2026-04-19: 28/30 shipped as spec'd; 2 deliberate polish deviations — "Most used" threshold count>=1 vs spec's >=3, stale opacity 0.85 vs spec's 0.55; 2 🧪 items remain in Phase H for device verification)
 - [x] `ACTIVE-WORKOUT-V2-IMPLEMENTATION.md` → archived to `docs/archive/` (audit 2026-04-19: 23/25 shipped as spec'd; 2 deliberate polish deviations — `.aw-pill.done` check-outline vs spec's green fill, `.aw-set-row.current` single-border vs spec's border+box-shadow; 2 🧪 items remain in Phase H for device verification)
-- [ ] `PAGES-REDESIGN-IMPLEMENTATION.md` → keep until Phase F is complete; then archive
-- [ ] Move archived docs to `docs/archive/` instead of deleting — preserves history
+- [x] `PAGES-REDESIGN-IMPLEMENTATION.md` → archived to `docs/archive/` (Phase F confirmed fully implemented 2026-04-19)
+- [x] `UX-MASTER-IMPLEMENTATION-GUIDE.md` → archived to `docs/archive/` (obsolete — referenced deleted `workout.css` / `dashboard.css` / `stats.css`; superseded by PAGES-REDESIGN + this backlog)
+- [x] Move archived docs to `docs/archive/` instead of deleting — preserves history (8 source docs now in `docs/archive/`)
 
 ---
 
