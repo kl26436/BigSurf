@@ -6,6 +6,26 @@ import { AppState } from '../utils/app-state.js';
 import { Config, debugLog } from '../utils/config.js';
 import { formatBodyPart } from '../utils/workout-helpers.js';
 
+/**
+ * Normalize a set's weight to the user's display unit so comparisons across
+ * sessions are apples-to-apples even when some sets were logged in a
+ * different unit. Returns 0 for missing/invalid weights.
+ */
+function normalizedWeight(set, displayUnit) {
+    const w = Number(set?.weight);
+    if (!w || isNaN(w)) return 0;
+    const from = set?.originalUnit || 'lbs';
+    const to = displayUnit || 'lbs';
+    if (from === to) return w;
+    if (from === 'lbs' && to === 'kg') return w * 0.453592;
+    if (from === 'kg' && to === 'lbs') return w * 2.20462;
+    return w;
+}
+
+function currentDisplayUnit() {
+    return AppState?.globalUnit || 'lbs';
+}
+
 // ===================================================================
 // BODY PART MAPPING
 // ===================================================================
@@ -99,6 +119,7 @@ export function analyzeWeeklyVolume(workouts, exerciseDatabase) {
 export function detectPlateaus(workouts, minSessions = Config.PLATEAU_MIN_SESSIONS) {
     // Build per-exercise session history (most recent first)
     const exerciseHistory = {};
+    const unit = currentDisplayUnit();
 
     for (const workout of workouts) {
         if (!workout.exercises || !workout.date) continue;
@@ -112,10 +133,16 @@ export function detectPlateaus(workouts, minSessions = Config.PLATEAU_MIN_SESSIO
             );
             if (workingSets.length === 0) continue;
 
+            // Normalize to user unit + round to 1 decimal so "flat" comparisons
+            // survive floating-point from the unit conversion.
+            const normalizedMax = Math.round(
+                Math.max(...workingSets.map(s => normalizedWeight(s, unit))) * 10
+            ) / 10;
+
             if (!exerciseHistory[name]) exerciseHistory[name] = [];
             exerciseHistory[name].push({
                 date: workout.date,
-                maxWeight: Math.max(...workingSets.map(s => s.weight)),
+                maxWeight: normalizedMax,
                 maxReps: Math.max(...workingSets.map(s => s.reps || 0)),
                 equipment: exercise.equipment,
             });
@@ -277,6 +304,7 @@ export function analyzeFrequency(workouts, exerciseDatabase, weeks = 4) {
  */
 export function detectPositiveTrends(workouts) {
     const exerciseHistory = {};
+    const unit = currentDisplayUnit();
 
     for (const workout of workouts) {
         if (!workout.exercises || !workout.date) continue;
@@ -290,10 +318,14 @@ export function detectPositiveTrends(workouts) {
             );
             if (workingSets.length === 0) continue;
 
+            const normalizedMax = Math.round(
+                Math.max(...workingSets.map(s => normalizedWeight(s, unit))) * 10
+            ) / 10;
+
             if (!exerciseHistory[name]) exerciseHistory[name] = [];
             exerciseHistory[name].push({
                 date: workout.date,
-                maxWeight: Math.max(...workingSets.map(s => s.weight)),
+                maxWeight: normalizedMax,
             });
         }
     }
@@ -390,7 +422,7 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
             type: 'plateau',
             severity: 'info',
             icon: 'fa-equals',
-            message: `${top.exercise} has been flat at ${top.weight} lbs for ${top.sessions} sessions. ${top.suggestion}`,
+            message: `${top.exercise} has been flat at ${top.weight} ${currentDisplayUnit()} for ${top.sessions} sessions. ${top.suggestion}`,
             exerciseName: top.exercise,
         });
     }

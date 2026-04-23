@@ -3,7 +3,7 @@
 // Handles modal, prompt cards, freeform input, and coach history display
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, convertWeight } from '../ui/ui-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { TrainingInsights } from './training-insights.js';
 import { Config, debugLog, getCategoryIcon } from '../utils/config.js';
@@ -32,7 +32,7 @@ function getContextualPrompts() {
                 prompts.push({
                     icon: 'fa-chart-line',
                     iconClass: '',
-                    text: `My ${name} has stalled at ${p.weight} lbs across ${p.sessions} sessions. Analyze my recent data and suggest strategies to break through.`,
+                    text: `My ${name} has stalled at ${p.weight} ${AppState.globalUnit || 'lbs'} across ${p.sessions} sessions. Analyze my recent data and suggest strategies to break through.`,
                     html: `Why has my <strong>${escapeHtml(name.toLowerCase())}</strong> stalled? Suggest a deload.`,
                 });
             }
@@ -353,13 +353,19 @@ function buildTrainingContext(workouts) {
         });
     }
 
-    // Key lift trends (max weight per exercise, last 5 sessions)
+    // Key lift trends (max weight per exercise, last 5 sessions).
+    // Normalize every set to the user's display unit so a mixed-unit log
+    // doesn't read as "225 -> 100 -> 225" when the 100 is actually kg.
+    const unit = AppState.globalUnit || 'lbs';
     const liftTrends = {};
     for (const workout of workouts) {
         if (!workout.exercises) continue;
         for (const ex of Object.values(workout.exercises)) {
             if (!ex.name || !ex.sets) continue;
-            const maxW = Math.max(...ex.sets.filter(s => s.weight).map(s => s.weight), 0);
+            const normalized = ex.sets
+                .filter(s => s.weight)
+                .map(s => convertWeight(s.weight, s.originalUnit || 'lbs', unit));
+            const maxW = Math.max(...normalized, 0);
             if (maxW === 0) continue;
             if (!liftTrends[ex.name]) liftTrends[ex.name] = [];
             liftTrends[ex.name].push(maxW);
@@ -372,10 +378,10 @@ function buildTrainingContext(workouts) {
         .slice(0, 8);
 
     if (topLifts.length > 0) {
-        summary += '\nKey lift trends (max weight, recent sessions):\n';
+        summary += `\nKey lift trends (max weight in ${unit}, recent sessions):\n`;
         topLifts.forEach(([name, weights]) => {
             const recent = weights.slice(0, 5);
-            summary += `${name}: ${recent.join(' -> ')}\n`;
+            summary += `${name}: ${recent.join(' -> ')} ${unit}\n`;
         });
     }
 
@@ -385,7 +391,6 @@ function buildTrainingContext(workouts) {
     summary += `Total workouts analyzed: ${workouts.length} over ${weeks} weeks\n`;
 
     // User preferences
-    const unit = AppState.globalUnit || 'lbs';
     const goal = AppState.settings?.weeklyGoal || 5;
     summary += `\nUnit: ${unit} | Weekly goal: ${goal} days\n`;
 
