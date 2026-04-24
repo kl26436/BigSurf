@@ -261,6 +261,46 @@ function getArg(name) {
         console.log(`${'='.repeat(80)}\n`);
 
         const showAll = args.includes('--by-exercise');
+        const summary = args.includes('--summary');
+
+        if (summary) {
+            for (const report of allReports) {
+                const tag = `${report.user.email} (${report.user.uid})`;
+                console.log(`\n--- ${tag} ---`);
+                console.log(`  ${report.totalWorkouts} workouts scanned\n`);
+
+                const kgOnly = [];
+                const lbOnly = [];
+                const mixed = [];
+                for (const [name, entries] of report.perExercise) {
+                    const units = new Set(entries.map(e => e.unit));
+                    const kgCount = entries.filter(e => e.unit === 'kg').length;
+                    const lbCount = entries.filter(e => e.unit === 'lbs').length;
+                    const kgDates = entries.filter(e => e.unit === 'kg').map(e => e.date);
+                    const firstKg = kgDates.sort()[0];
+                    const lastKg = kgDates.sort().slice(-1)[0];
+                    const info = { name, kgCount, lbCount, firstKg, lastKg };
+                    if (units.has('kg') && units.has('lbs')) mixed.push(info);
+                    else if (units.has('kg')) kgOnly.push(info);
+                    else lbOnly.push(info);
+                }
+
+                console.log(`  MIXED (kg and lb tags) — most likely corrupted:\n`);
+                mixed.sort((a, b) => b.kgCount - a.kgCount).forEach(e => {
+                    console.log(`    ${e.name.padEnd(40)}  ${String(e.kgCount).padStart(3)} kg / ${String(e.lbCount).padStart(3)} lb  (kg span: ${e.firstKg} → ${e.lastKg})`);
+                });
+
+                console.log(`\n  KG-ONLY — confirm these are real kg lifts:\n`);
+                kgOnly.sort((a, b) => b.kgCount - a.kgCount).forEach(e => {
+                    console.log(`    ${e.name.padEnd(40)}  ${String(e.kgCount).padStart(3)} kg  (${e.firstKg} → ${e.lastKg})`);
+                });
+
+                console.log(`\n  LB-ONLY — likely fine (${lbOnly.length} exercises, not listed)`);
+            }
+            console.log();
+            return;
+        }
+
         for (const report of allReports) {
             const tag = `${report.user.email} (${report.user.uid})`;
             console.log(`\n--- ${tag} ---`);
