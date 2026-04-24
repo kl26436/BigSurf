@@ -789,12 +789,15 @@ export function awToggleSet(exerciseIdx, setIdx) {
             const nextIdx = getNextInGroup(exerciseIdx, AppState.savedData.exercises);
             const isLastInRound = isLastInGroupRound(exerciseIdx, setIdx, AppState.currentWorkout.exercises, AppState.savedData);
 
-            if (isLastInRound) {
-                startRestTimer(Config.DEFAULT_REST_TIMER_SECONDS);
-            }
-
+            // Advance currentExerciseIdx BEFORE starting rest timer so the push
+            // notification names the next exercise the user will do — not the
+            // one they just finished.
             if (nextIdx !== null && nextIdx !== exerciseIdx) {
                 currentExerciseIdx = nextIdx;
+            }
+
+            if (isLastInRound) {
+                startRestTimer(Config.DEFAULT_REST_TIMER_SECONDS);
             }
         } else {
             startRestTimer(Config.DEFAULT_REST_TIMER_SECONDS);

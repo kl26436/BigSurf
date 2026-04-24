@@ -87,6 +87,7 @@ import {
     updateBodyweightSet,
     // Active Workout V2
     renderActiveWorkout,
+    renderAll as awRenderAll,
     loadAutofillForAllExercises,
     awJumpTo,
     awNextExercise,
@@ -539,6 +540,7 @@ window.ungroupExerciseFromWorkout = ungroupExerciseFromWorkout;
 
 // Active Workout V2 — wizard UI
 window.renderActiveWorkout = renderActiveWorkout;
+window.renderAll = awRenderAll;
 window.loadAutofillForAllExercises = loadAutofillForAllExercises;
 window.awJumpTo = awJumpTo;
 window.awNextExercise = awNextExercise;
