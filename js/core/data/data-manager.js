@@ -209,8 +209,12 @@ export async function getLastSessionDefaults(exerciseName, equipment = null) {
     if (!state.currentUser) return null;
 
     try {
+        // Order by the actual workout date (not completedAt) — editing a
+        // historical workout rewrites completedAt to "now", which pushes
+        // stale edits to the top of this query and can starve out the
+        // actually-most-recent session within the limit.
         const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
-        const q = query(workoutsRef, orderBy('completedAt', 'desc'), limit(20));
+        const q = query(workoutsRef, orderBy('date', 'desc'), limit(30));
         const snapshot = await withTimeout(getDocs(q));
 
         const today = state.getTodayDateString();
@@ -218,7 +222,7 @@ export async function getLastSessionDefaults(exerciseName, equipment = null) {
         for (const docSnap of snapshot.docs) {
             const data = docSnap.data();
             if (data.date === today) continue;
-            if (!data.completedAt) continue;
+            if (!data.completedAt || data.cancelledAt) continue;
             if (!data.exercises) continue;
 
             // Search all exercises in the workout for a match

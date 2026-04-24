@@ -153,6 +153,25 @@ async function saveSubscriptionToServer(subscription) {
  * @returns {string|null} - Notification ID for cancellation, or null if failed
  */
 export async function scheduleRestNotification(delaySeconds, exerciseName) {
+    // Lazy-recover: if the in-memory pushSubscription went missing (PWA reload
+    // before initializeFCM completed, SW update, etc.) try to pull it from the
+    // SW registration before giving up. This closes a class of "no lock-screen
+    // notification" bugs where the app-side state is stale but the underlying
+    // browser subscription is still valid.
+    if (!pushSubscription && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        try {
+            const reg = swRegistration || await navigator.serviceWorker.ready;
+            swRegistration = reg;
+            const existing = await reg.pushManager.getSubscription();
+            if (existing) {
+                pushSubscription = existing;
+                debugLog('🔄 Recovered push subscription from SW');
+            }
+        } catch (_) {
+            // Fall through to the normal guard below.
+        }
+    }
+
     if (!pushSubscription || !auth.currentUser) {
         console.warn('⚠️ Cannot schedule notification: Push not initialized or user not signed in');
         console.warn('  pushSubscription:', pushSubscription ? 'present' : 'missing');

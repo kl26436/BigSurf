@@ -499,7 +499,17 @@ export function aggregateBodyPartStats(workouts, bodyPart, range = 'W') {
     const volumeDeltaPct = prevVolume ? ((volume - prevVolume) / prevVolume * 100) : null;
 
     const heroLift = getHeroLiftForBodyPart(bodyPart, workouts);
-    const heaviest = heroLift ? aggregateHeaviestSet(workouts, heroLift, bounds) : null;
+    // The "<hero> Max" card reads as an all-time PR (trophy icon). Compute
+    // within the current bounds first so a new PR this week shows, but fall
+    // back to all-time so the card isn't blank just because the user didn't
+    // train this body part this week.
+    let heaviest = heroLift ? aggregateHeaviestSet(workouts, heroLift, bounds) : null;
+    if (!heaviest && heroLift) {
+        heaviest = aggregateHeaviestSet(workouts, heroLift, {
+            start: new Date(0),
+            end: new Date(8640000000000000),
+        });
+    }
 
     const sessions = countSessions(workouts, bodyPart, bounds);
     const lastTrained = getLastTrainedDate(workouts, bodyPart);

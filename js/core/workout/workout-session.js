@@ -1060,6 +1060,22 @@ export async function editHistoricalWorkout(docIdOrDate) {
         return;
     }
 
+    // Guard: editing history overwrites AppState.currentWorkout / savedData /
+    // exerciseUnits, which pollutes any in-progress active workout. The
+    // inProgressWorkout doc on window + Firestore stays intact so the user
+    // can resume from dashboard — but they should understand that's required.
+    const hasActive = !window.editingHistoricalWorkout
+        && (AppState.currentWorkout || window.inProgressWorkout);
+    if (hasActive) {
+        const ok = confirm(
+            'You have an active workout in progress.\n\n' +
+            'Editing this historical workout will set aside your active session. ' +
+            'You can resume it from the Dashboard afterward.\n\n' +
+            'Continue?'
+        );
+        if (!ok) return;
+    }
+
     // Load the workout data from Firebase by document ID
     const { loadWorkoutById } = await import('../data/data-manager.js');
     const workoutData = await loadWorkoutById(AppState, docIdOrDate);
