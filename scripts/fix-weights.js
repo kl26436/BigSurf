@@ -12,6 +12,11 @@
  *   node scripts/fix-weights.js --apply         # actually write to Firestore
  *   node scripts/fix-weights.js --user <uid>    # single user
  *   node scripts/fix-weights.js --also <name>   # add an exercise to the fix list
+ *   node scripts/fix-weights.js --revert <file> # undo changes from a changelog
+ *
+ * Every --apply writes a changelog JSON to scripts/changelogs/<timestamp>.json
+ * that captures before/after state for each flipped set. Pass that file to
+ * --revert to undo.
  *
  * Auth: Firebase CLI stored credentials.
  */
@@ -141,7 +146,7 @@ function toFS(v) {
     return { stringValue: String(v) };
 }
 
-function planFixes(workouts, targetExercises) {
+function planFixes(workouts, targetExercises, { fromUnit = 'kg', toUnit = 'lbs' } = {}) {
     const plan = [];
     for (const w of workouts) {
         if (!w.exercises || typeof w.exercises !== 'object') continue;
@@ -157,11 +162,19 @@ function planFixes(workouts, targetExercises) {
 
             let exChanged = false;
             const newSets = ex.sets.map((set, setIdx) => {
-                if (!set || set.originalUnit !== 'kg' || set.isBodyweight) return set;
+                if (!set || set.originalUnit !== fromUnit || set.isBodyweight) return set;
                 exChanged = true;
                 docChanged = true;
-                changesInDoc.push({ exercise: exName, setIdx, weight: set.weight, reps: set.reps });
-                return { ...set, originalUnit: 'lbs' };
+                changesInDoc.push({
+                    exerciseKey: exKey,
+                    exercise: exName,
+                    setIdx,
+                    weight: set.weight,
+                    reps: set.reps,
+                    fromUnit,
+                    toUnit,
+                });
+                return { ...set, originalUnit: toUnit };
             });
             if (exChanged) {
                 updatedExercises[exKey] = { ...ex, sets: newSets };
@@ -180,6 +193,58 @@ function planFixes(workouts, targetExercises) {
         }
     }
     return plan;
+}
+
+async function revertFromChangelog(token, changelogPath) {
+    const raw = fs.readFileSync(changelogPath, 'utf8');
+    const log = JSON.parse(raw);
+    console.log(`\nReverting ${log.totalSets} sets across ${log.docs.length} docs (from ${log.timestamp}):\n`);
+
+    for (const docLog of log.docs) {
+        // Pull current doc, build updatedExercises by flipping back the changed sets
+        const resp = await fetch(`https://firestore.googleapis.com/v1/${docLog.docPath}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const doc = await resp.json();
+        if (doc.error) { console.warn(`  skip ${docLog.date}: ${doc.error.message}`); continue; }
+        const parsed = parseDoc(doc);
+        if (!parsed.exercises) continue;
+
+        const updatedExercises = { ...parsed.exercises };
+        for (const c of docLog.changes) {
+            const ex = updatedExercises[c.exerciseKey];
+            if (!ex || !Array.isArray(ex.sets) || !ex.sets[c.setIdx]) continue;
+            const set = ex.sets[c.setIdx];
+            if (set.originalUnit === c.toUnit) {
+                ex.sets = ex.sets.map((s, i) => i === c.setIdx ? { ...s, originalUnit: c.fromUnit } : s);
+                updatedExercises[c.exerciseKey] = ex;
+            }
+        }
+        await applyUpdate(token, docLog.docPath, updatedExercises);
+        console.log(`  ✓ reverted [${docLog.date}] ${docLog.workoutType} (${docLog.changes.length} sets)`);
+    }
+    console.log('\nRevert complete.');
+}
+
+function writeChangelog(user, plan) {
+    const dir = path.join(__dirname, 'changelogs');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = path.join(dir, `weight-fix-${ts}.json`);
+    const log = {
+        timestamp: new Date().toISOString(),
+        user,
+        totalDocs: plan.length,
+        totalSets: plan.reduce((s, p) => s + p.changes.length, 0),
+        docs: plan.map(p => ({
+            docPath: p.docPath,
+            date: p.date,
+            workoutType: p.workoutType,
+            changes: p.changes,
+        })),
+    };
+    fs.writeFileSync(filename, JSON.stringify(log, null, 2));
+    return filename;
 }
 
 async function applyUpdate(token, docPath, updatedExercises) {
@@ -212,6 +277,13 @@ function getArg(name) {
         const apply = args.includes('--apply');
         const uidArg = getArg('--user');
         const alsoArg = getArg('--also');
+        const revertFile = getArg('--revert');
+
+        if (revertFile) {
+            const token = await getAccessToken();
+            await revertFromChangelog(token, revertFile);
+            return;
+        }
 
         const targetExercises = new Set(AUTO_FIX_EXERCISES);
         if (alsoArg) targetExercises.add(alsoArg);
@@ -249,6 +321,9 @@ function getArg(name) {
                     process.stdout.write('.');
                 }
                 console.log(' done.');
+                const changelogPath = writeChangelog(u, plan);
+                console.log(`  Changelog: ${changelogPath}`);
+                console.log(`  Revert:    node scripts/fix-weights.js --revert "${changelogPath}"`);
             }
         }
         console.log();
