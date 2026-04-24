@@ -365,7 +365,16 @@ export async function completeWorkout() {
     if (!isEditingHistorical) {
         haptic('complete');
         window._lastCompletedWorkout = completedWorkoutData;
-        showWorkoutSummary(completedWorkoutData, newPRs, templateChanges);
+        try {
+            showWorkoutSummary(completedWorkoutData, newPRs, templateChanges);
+        } catch (err) {
+            // Never leave the user hanging on a blank screen. If rendering the
+            // summary modal throws for any reason, log + surface + fall back
+            // to the dashboard so they at least see something.
+            console.error('Workout summary modal failed:', err);
+            showNotification('Finished — summary failed to render', 'error');
+            navigateTo('dashboard');
+        }
     } else {
         navigateTo('dashboard');
     }
@@ -378,7 +387,10 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
     const modal = document.getElementById('workout-completion-modal');
     const content = document.getElementById('workout-completion-content');
     if (!modal || !content) {
-        // Fallback to dashboard if modal not found
+        // Fallback to dashboard if modal not found — surface this so we know
+        // when it happens instead of silently skipping the recap.
+        console.error('Workout summary modal element missing', { modal: !!modal, content: !!content });
+        showNotification('Workout saved — summary UI not available', 'warning');
         navigateTo('dashboard');
         return;
     }

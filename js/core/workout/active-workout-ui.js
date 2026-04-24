@@ -549,9 +549,21 @@ function buildSetRows(exercise, idx, savedEx, unit) {
         if (set.completed) classes.push('done');
         if (isCurrent) classes.push('current');
 
-        const weightVal = set._userEdited || set.completed ? (set.weight ?? '') : '';
+        // Placeholder shows the autofill / last-session weight for an un-edited
+        // set, but it must be converted to the current display unit — otherwise
+        // a 154 lbs autofill looks like "154" in a kg-mode field, which (a)
+        // misleads the user and (b) gets captured as 154 kg if they hit check
+        // without typing.
+        const displayWeight = (raw) => {
+            if (raw == null) return raw;
+            const from = set.originalUnit || unitLabel;
+            if (from === unitLabel) return Math.round(raw * 10) / 10;
+            return convertWeight(raw, from, unitLabel);
+        };
+        const weightShown = displayWeight(set.weight);
+        const weightVal = set._userEdited || set.completed ? (weightShown ?? '') : '';
         const repsVal = set._userEdited || set.completed ? (set.reps ?? '') : '';
-        const weightPlaceholder = !set._userEdited && !set.completed && set.weight != null ? set.weight : unitLabel;
+        const weightPlaceholder = !set._userEdited && !set.completed && weightShown != null ? weightShown : unitLabel;
         const repsPlaceholder = !set._userEdited && !set.completed && set.reps != null ? set.reps : 'reps';
 
         return `
@@ -563,6 +575,7 @@ function buildSetRows(exercise, idx, savedEx, unit) {
                        value="${repsVal}"
                        placeholder="${repsPlaceholder}"
                        ${set.completed ? 'readonly' : ''}
+                       onfocus="this.select()"
                        onchange="awUpdateSet(${idx}, ${si}, 'reps', this.value)">
                 <input class="aw-set-row__input ${isAutofill ? 'autofill' : ''} ${set.completed ? 'done-val' : ''}"
                        type="number" inputmode="decimal" step="0.5"
@@ -570,6 +583,7 @@ function buildSetRows(exercise, idx, savedEx, unit) {
                        value="${weightVal}"
                        placeholder="${weightPlaceholder}"
                        ${set.completed ? 'readonly' : ''}
+                       onfocus="this.select()"
                        onchange="awUpdateSet(${idx}, ${si}, 'weight', this.value)">
                 <button class="aw-set-row__check ${set.completed ? 'done' : ''}"
                         onclick="awToggleSet(${idx}, ${si})">
@@ -745,14 +759,34 @@ export function awToggleSet(exerciseIdx, setIdx) {
         // Read current input values from DOM — always Reps (0), Weight (1)
         const allRows = document.querySelectorAll('.aw-sets .aw-set-row');
         const row = allRows[setIdx];
+        const currentUnit = AppState.exerciseUnits?.[exerciseIdx] || AppState.globalUnit || 'lbs';
+        let userTypedWeight = false;
         if (row) {
             const inputs = row.querySelectorAll('input');
             if (inputs[0]) set.reps = parseInt(inputs[0].value, 10) || set.reps || 0;
-            if (inputs[1]) set.weight = parseFloat(inputs[1].value) || set.weight || 0;
+            if (inputs[1]) {
+                const typed = parseFloat(inputs[1].value);
+                if (!isNaN(typed) && typed > 0) {
+                    // User typed a fresh weight in the current display unit
+                    set.weight = typed;
+                    userTypedWeight = true;
+                } else {
+                    // Empty input → keep whatever set.weight already held (autofill)
+                    set.weight = set.weight || 0;
+                }
+            }
         }
         set.completed = true;
         set._userEdited = true;
-        set.originalUnit = AppState.exerciseUnits?.[exerciseIdx] || AppState.globalUnit || 'lbs';
+        // Only stamp originalUnit = currentUnit when the user actually typed a
+        // value in the current display unit. When falling back to an autofilled
+        // value, preserve the autofill's own originalUnit so history conversion
+        // stays correct — otherwise a 154 lbs autofill gets re-tagged as 154 kg.
+        if (userTypedWeight) {
+            set.originalUnit = currentUnit;
+        } else if (!set.originalUnit) {
+            set.originalUnit = currentUnit;
+        }
 
         // Store the user-entered value before computing total
         const enteredWeight = set.weight || 0;
@@ -1594,13 +1628,17 @@ export function awToggleUnit(exerciseIdx) {
     if (!AppState.exerciseUnits) AppState.exerciseUnits = {};
     AppState.exerciseUnits[exerciseIdx] = newUnit;
 
-    // Convert existing set values
+    // Convert existing set values. Use each set's OWN originalUnit as the
+    // source — an autofilled set may be in a different unit than the current
+    // exerciseUnits value. Using `current` blindly caused 70 lbs autofill to
+    // be mis-converted as if it were 70 kg when the user toggled.
     const key = `exercise_${exerciseIdx}`;
     const savedEx = AppState.savedData.exercises[key];
     if (savedEx?.sets) {
         savedEx.sets.forEach(set => {
             if (set.weight != null && set.weight > 0) {
-                set.weight = convertWeight(set.weight, current, newUnit);
+                const from = set.originalUnit || current;
+                set.weight = convertWeight(set.weight, from, newUnit);
             }
             set.originalUnit = newUnit;
         });

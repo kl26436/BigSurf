@@ -122,9 +122,14 @@ export async function saveWorkoutData(state) {
 
             if (exerciseData.sets) {
                 exerciseData.sets = exerciseData.sets.map((set) => {
+                    // Preserve each set's own originalUnit (that's the unit the
+                    // value was typed in). Only default it when missing — if we
+                    // overwrite, a user who switches the exercise unit mid-
+                    // workout would have previously-completed sets silently
+                    // re-tagged, causing history to double-convert later.
                     return {
                         ...set,
-                        originalUnit: currentUnit || 'lbs',
+                        originalUnit: set.originalUnit || currentUnit || 'lbs',
                     };
                 });
             }
