@@ -87,7 +87,7 @@ import {
     updateBodyweightSet,
     // Active Workout V2
     renderActiveWorkout,
-    renderAll as awRenderAll,
+    renderActiveWorkoutAll as awRenderAll,
     loadAutofillForAllExercises,
     awJumpTo,
     awNextExercise,
