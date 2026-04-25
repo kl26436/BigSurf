@@ -550,7 +550,8 @@
     left: 0; right: 0; bottom: 0;
     background: var(--bg-surface);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    max-height: 85vh;
+    max-height: 85vh; /* fallback */
+    max-height: 85dvh;
     display: flex;
     flex-direction: column;
     z-index: var(--z-modal);

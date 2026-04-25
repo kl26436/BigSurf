@@ -381,7 +381,8 @@ dialog.modal:not([open]) {
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     width: 100%;
     max-width: 500px; /* modal width constraint */
-    max-height: 90vh;
+    max-height: 90vh; /* fallback */
+    max-height: 90dvh;
     overflow-y: auto;
     border: 1px solid var(--border-subtle);
     border-bottom: none;
@@ -482,7 +483,8 @@ dialog.modal:not([open]) {
 
 /* Equipment Reassignment Modal */
 .reassign-modal {
-    max-height: 85vh;
+    max-height: 85vh; /* fallback */
+    max-height: 85dvh;
 }
 .reassign-header-info {
     margin-bottom: var(--space-8);
@@ -494,7 +496,8 @@ dialog.modal:not([open]) {
 .reassign-exercise-list {
     padding: var(--space-8) var(--space-16) var(--space-16);
     overflow-y: auto;
-    max-height: 50vh;
+    max-height: 50vh; /* fallback */
+    max-height: 50dvh;
 }
 .reassign-actions {
     padding: 0 var(--space-16) var(--space-16);

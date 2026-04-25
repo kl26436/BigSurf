@@ -114,6 +114,27 @@ export function hideLoadingScreen() {
 }
 
 // ===================================================================
+// KEYBOARD-AWARE FOCUS HANDLER
+// ===================================================================
+
+let _keyboardFocusHandlerInstalled = false;
+function installKeyboardAwareFocusHandler() {
+    if (_keyboardFocusHandlerInstalled) return;
+    _keyboardFocusHandlerInstalled = true;
+    document.addEventListener('focusin', (e) => {
+        const t = e.target;
+        if (!(t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement)) return;
+        // Wait for the keyboard animation, then center the input in the
+        // visible area. Browsers without `interactive-widget=resizes-content`
+        // still benefit from this because scrollIntoView respects the
+        // visualViewport on most modern engines.
+        setTimeout(() => {
+            try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { /* noop */ }
+        }, 300);
+    });
+}
+
+// ===================================================================
 // MAIN APP INITIALIZATION
 // ===================================================================
 
@@ -126,6 +147,12 @@ export function initializeWorkoutApp() {
 
     // Lock body scroll when modals are open (iOS fix)
     initModalScrollLock();
+
+    // Keep focused inputs visible above the soft keyboard (Phase 0).
+    // Combined with `interactive-widget=resizes-content` on the viewport meta
+    // and dvh-based sheet heights, this prevents bottom-anchored search
+    // results from rendering under the on-screen keyboard.
+    installKeyboardAwareFocusHandler();
 
     try {
         updateLoadingMessage('Loading exercise library...');

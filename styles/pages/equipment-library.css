@@ -598,8 +598,10 @@
 .function-picker {
     display: flex;
     flex-direction: column;
-    max-height: 80vh;
-    min-height: 50vh;
+    max-height: 80vh; /* fallback */
+    max-height: 80dvh;
+    min-height: 50vh; /* fallback */
+    min-height: 50dvh;
 }
 .function-picker__header {
     position: relative;
