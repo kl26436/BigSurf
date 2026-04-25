@@ -6,7 +6,6 @@
 
 // Core modules
 import { AppState } from './core/utils/app-state.js';
-import { getCategoryIcon } from './core/utils/config.js';
 import { startApplication } from './core/app-initialization.js';
 import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal, completeOnboarding, restartOnboarding, rebuildPRsFromSettings, confirmDeleteAllData, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, selectProfileExperience, closeProfileExperiencePicker, closeProfile, editBodyWeightGoal, notifDiagEnable, notifDiagTest } from './core/ui/settings-ui.js';
 import { exportWorkoutData } from './core/data/data-manager.js';
@@ -316,10 +315,8 @@ import {
 import {
     connectWithings,
     syncWithingsWeight,
-    getWithingsStatus,
     disconnectWithings,
     handleWithingsCallback,
-    processPendingWithingsCallback,
 } from './core/features/withings-integration.js';
 
 // AI Coach (Phase 17)
@@ -376,7 +373,7 @@ import {
 import { captureError, captureWarning, getErrorLog, loadPersistedErrors } from './core/utils/error-handler.js';
 
 // UI helpers
-import { setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './core/ui/ui-helpers.js';
+import { setHeaderMode, openModal, closeModal } from './core/ui/ui-helpers.js';
 
 // Navigation functionality
 import {

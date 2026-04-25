@@ -2,7 +2,7 @@
 // Tracks workout streaks and frequency stats
 
 import { AppState } from '../utils/app-state.js';
-import { db, doc, setDoc, getDoc, collection, getDocs, query, where } from '../data/firebase-config.js';
+import { db, collection, getDocs } from '../data/firebase-config.js';
 import { getDateString } from '../utils/date-helpers.js';
 
 // ===================================================================

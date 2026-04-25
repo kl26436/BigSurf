@@ -11,7 +11,7 @@ import {
     openModal,
 } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
-import { getExerciseGroups, groupExercises, ungroupExercise } from '../features/superset-manager.js';
+import { groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import { saveWorkoutData, debouncedSaveWorkoutData, loadExerciseHistory, getLastSessionDefaults } from '../data/data-manager.js';
 import {
     getSessionLocation,
@@ -26,10 +26,10 @@ import {
     restoreModalRestTimer,
     autoStartRestTimer,
 } from './rest-timer.js';
-import { Config, CATEGORY_COLORS } from '../utils/config.js';
+import { CATEGORY_COLORS } from '../utils/config.js';
 import { haptic } from '../utils/haptics.js';
 import { getWorkoutCategory } from '../ui/template-selection.js';
-import { getSetTotalWeight, getSetVolume } from '../utils/weight-calculations.js';
+import { getSetTotalWeight } from '../utils/weight-calculations.js';
 
 // ===================================================================
 // BODYWEIGHT EXERCISE DETECTION
