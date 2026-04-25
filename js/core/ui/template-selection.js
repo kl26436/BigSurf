@@ -251,6 +251,33 @@ let expandedExerciseInTemplate = null;
  *  Independent of which template-row itself is expanded. */
 let detailsOpenForTemplate = null;
 
+/** Phase 7 — session-level cache for last-session lookups so re-renders of the
+ *  selector don't re-hit Firestore. Key = `${exerciseName}__${equipment}`.
+ *  Cleared by clearSelectorCache (called on workout complete). */
+const _lastSessionCache = new Map();
+
+async function getLastSessionForExercise(exerciseName, equipment = null) {
+    if (!exerciseName) return null;
+    const key = `${exerciseName}__${equipment || ''}`;
+    if (_lastSessionCache.has(key)) return _lastSessionCache.get(key);
+    try {
+        const { getLastSessionDefaults } = await import('../data/data-manager.js');
+        const result = await getLastSessionDefaults(exerciseName, equipment || null);
+        if (result && result.date) {
+            const parts = result.date.split('-');
+            if (parts.length === 3) {
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                result.daysAgo = Math.floor((Date.now() - d.getTime()) / (24 * 60 * 60 * 1000));
+            }
+        }
+        _lastSessionCache.set(key, result);
+        return result;
+    } catch (_) {
+        _lastSessionCache.set(key, null);
+        return null;
+    }
+}
+
 /** All loaded templates (cached for inline editor access) */
 let loadedTemplates = [];
 
@@ -308,6 +335,41 @@ async function renderWorkoutSelectorUI() {
 
     // Set up delegation for clicks
     setupSelectorDelegation(listContainer);
+
+    // Phase 7: kick off async last-session hydration for any rendered exercise
+    // rows. Fire-and-forget — hydrateLastSession only fills in `data-pending`
+    // placeholders it finds in the DOM.
+    hydrateLastSession();
+}
+
+/**
+ * Walk all `.te-row__last[data-pending]` placeholders rendered in the current
+ * selector view and fill each with the exercise's most recent session summary.
+ * Removes the placeholder if there is no history.
+ */
+function hydrateLastSession() {
+    document.querySelectorAll('.te-row__last[data-pending]').forEach(async (el) => {
+        el.removeAttribute('data-pending');
+        const name = el.dataset.exercise;
+        const equip = el.dataset.equipment || null;
+        const last = await getLastSessionForExercise(name, equip);
+        if (!last || !last.sets || last.sets.length === 0) {
+            el.remove();
+            return;
+        }
+        const setStr = last.sets.slice(0, 3).map(s => {
+            const w = s.weight || 0;
+            const r = s.reps || 0;
+            return `${w}×${r}`;
+        }).join(' · ');
+        let daysAgoStr = '';
+        if (last.daysAgo != null) {
+            daysAgoStr = last.daysAgo === 0 ? 'today'
+                : last.daysAgo === 1 ? '1d ago'
+                : `${last.daysAgo}d ago`;
+        }
+        el.textContent = `Last: ${setStr}${daysAgoStr ? ` · ${daysAgoStr}` : ''}`;
+    });
 }
 
 function renderCategoryPills(container, categories) {
@@ -703,6 +765,7 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
                 <div class="te-row__info">
                     <div class="te-row__name">${escapeHtml(exName)}</div>
                     <div class="te-row__meta">${summary}</div>
+                    <div class="te-row__last" data-pending data-exercise="${escapeAttr(exName)}" data-equipment="${escapeAttr(equipment || '')}"></div>
                 </div>
                 <button class="te-row__remove" data-stop-propagation
                         data-action="removeTemplateExercise"
@@ -1049,6 +1112,7 @@ export function searchWorkoutTemplates(query) {
 /** Clear cached workout history (call on workout complete/start) */
 export function clearSelectorCache() {
     cachedWorkoutHistory = null;
+    _lastSessionCache.clear();
 }
 
 // ===================================================================

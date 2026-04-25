@@ -787,6 +787,22 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* Phase 7 — async-hydrated last-session line under .te-row__meta. The element
+   is rendered with [data-pending]; hydrateLastSession() fills it (or removes
+   it if there's no history). */
+.te-row__last {
+    font-size: var(--font-2xs);
+    color: var(--text-secondary);
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.te-row__last[data-pending] {
+    /* Hide the placeholder until it's hydrated to avoid empty whitespace */
+    display: none;
+}
 .te-row__remove {
     width: 28px;
     height: 28px;
