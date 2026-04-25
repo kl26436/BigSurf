@@ -1792,6 +1792,168 @@ export function awInsertExercise(exerciseName) {
 }
 
 // ===================================================================
+// SHARED ADD-EXERCISE SHEET (Phase 4)
+// Parallel path that mirrors awAddExercise's UI but is driven by a
+// caller-supplied callback. Active-workout flow (awAddExercise +
+// awInsertExercise) is untouched — code duplication is a deliberate
+// safety tradeoff so live sessions can't regress.
+// ===================================================================
+
+let _sharedAddExerciseContext = null;
+// Shape: { targetWorkoutLabel: string, alreadyAdded: Set<string>, onSelect: (exerciseRecord) => void|Promise, onCreateRequested?: (query: string) => void }
+let _sharedAddSearch = '';
+let _sharedAddFilter = 'All';
+
+export function openSharedAddExerciseSheet({ targetWorkoutLabel, alreadyAdded, onSelect, onCreateRequested }) {
+    if (typeof onSelect !== 'function') {
+        console.error('openSharedAddExerciseSheet: onSelect is required');
+        return;
+    }
+    awCloseMenus();
+    _sharedAddSearch = '';
+    _sharedAddFilter = 'All';
+    const addedSet = new Set((alreadyAdded || []).map(n => (n || '').toLowerCase()).filter(Boolean));
+    _sharedAddExerciseContext = {
+        targetWorkoutLabel: targetWorkoutLabel || '',
+        alreadyAdded: addedSet,
+        onSelect,
+        onCreateRequested: typeof onCreateRequested === 'function' ? onCreateRequested : null,
+    };
+    renderSharedAddExerciseSheet();
+}
+
+function renderSharedAddExerciseSheet() {
+    const ctx = _sharedAddExerciseContext;
+    if (!ctx) return;
+
+    const categories = ['All', 'Push', 'Pull', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'];
+    const chips = categories.map(c =>
+        `<button class="aw-sheet__chip ${c === _sharedAddFilter ? 'active' : ''}" onclick="awSharedAddSetFilter('${c}')">${c}</button>`
+    ).join('');
+
+    const body = `
+        <div class="field-search field-search--sticky">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search exercises…" value="${escapeAttr(_sharedAddSearch)}" oninput="awSharedAddSetSearch(this.value)">
+        </div>
+        <div class="aw-sheet__chips">${chips}</div>
+        <div id="aw-shared-add-list">
+            ${renderSharedAddListBody()}
+        </div>
+    `;
+
+    openSheet({
+        title: 'Add exercise',
+        subtitle: ctx.targetWorkoutLabel,
+        body,
+        actions: [
+            { label: 'Cancel', onClick: 'awSharedAddCancel()' },
+        ],
+    });
+}
+
+function getFilteredSharedAddExercises() {
+    const library = AppState.exerciseDatabase || [];
+    let filtered = library;
+    if (_sharedAddFilter !== 'All') {
+        filtered = filtered.filter(ex => (ex.category || '').toLowerCase() === _sharedAddFilter.toLowerCase());
+    }
+    if (_sharedAddSearch) {
+        const q = _sharedAddSearch.toLowerCase();
+        filtered = filtered.filter(ex => (ex.name || ex.machine || '').toLowerCase().includes(q));
+    }
+    return filtered;
+}
+
+function renderSharedAddListBody() {
+    const ctx = _sharedAddExerciseContext;
+    if (!ctx) return '';
+
+    const filtered = getFilteredSharedAddExercises();
+    const slice = filtered.slice(0, 50);
+
+    const renderRow = (ex) => {
+        const name = ex.name || ex.machine || 'Unknown';
+        const cat = ex.category || '';
+        const isAdded = ctx.alreadyAdded.has(name.toLowerCase());
+        if (isAdded) {
+            return `<div class="aw-add-ex-row aw-add-ex-row--added">
+                <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
+                <span class="aw-add-ex-row__cat">Added</span>
+            </div>`;
+        }
+        return `<div class="aw-add-ex-row" onclick="awSharedAddInsert('${escapeAttr(name)}')">
+            <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
+            <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
+        </div>`;
+    };
+
+    const rowsHtml = slice.map(renderRow).join('');
+    const truncated = filtered.length > 50
+        ? `<div class="aw-add-ex-truncated">Showing 50 of ${filtered.length} — refine your search</div>`
+        : '';
+
+    // "Create [query]" row when the search returned nothing AND a query is set.
+    let createRow = '';
+    if (filtered.length === 0 && _sharedAddSearch && ctx.onCreateRequested) {
+        createRow = `<div class="aw-add-ex-row aw-add-ex-row--create" onclick="awSharedAddCreate('${escapeAttr(_sharedAddSearch)}')">
+            <span class="aw-add-ex-row__name"><i class="fas fa-plus"></i> Create &quot;${escapeHtml(_sharedAddSearch)}&quot;</span>
+        </div>`;
+    }
+
+    const empty = (filtered.length === 0 && !createRow)
+        ? '<div class="aw-add-ex-empty">No exercises found</div>'
+        : '';
+
+    return rowsHtml + truncated + empty + createRow;
+}
+
+function updateSharedAddListInPlace() {
+    const listEl = document.getElementById('aw-shared-add-list');
+    if (!listEl) return;
+    listEl.innerHTML = renderSharedAddListBody();
+}
+
+export function awSharedAddSetFilter(cat) {
+    _sharedAddFilter = cat;
+    document.querySelectorAll('#aw-sheet .aw-sheet__chips .aw-sheet__chip').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === cat);
+    });
+    updateSharedAddListInPlace();
+}
+
+export function awSharedAddSetSearch(query) {
+    _sharedAddSearch = query;
+    updateSharedAddListInPlace();
+}
+
+export async function awSharedAddInsert(exerciseName) {
+    const ctx = _sharedAddExerciseContext;
+    if (!ctx) { awCloseSheet(); return; }
+    const library = AppState.exerciseDatabase || [];
+    const exerciseRecord = library.find(ex => (ex.name || ex.machine) === exerciseName)
+        || { name: exerciseName, machine: exerciseName };
+    const cb = ctx.onSelect;
+    _sharedAddExerciseContext = null;
+    awCloseSheet();
+    try { await cb(exerciseRecord); } catch (e) { console.error('Shared add-exercise onSelect threw:', e); }
+}
+
+export function awSharedAddCreate(query) {
+    const ctx = _sharedAddExerciseContext;
+    if (!ctx || !ctx.onCreateRequested) { awCloseSheet(); return; }
+    const cb = ctx.onCreateRequested;
+    _sharedAddExerciseContext = null;
+    awCloseSheet();
+    try { cb(query); } catch (e) { console.error('Shared add-exercise onCreateRequested threw:', e); }
+}
+
+export function awSharedAddCancel() {
+    _sharedAddExerciseContext = null;
+    awCloseSheet();
+}
+
+// ===================================================================
 // UNIT TOGGLE
 // ===================================================================
 

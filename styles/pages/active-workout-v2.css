@@ -992,6 +992,27 @@
     text-align: center;
     color: var(--text-muted);
 }
+/* Phase 4 — already-added rows are visually muted and not tappable. */
+.aw-add-ex-row--added {
+    opacity: 0.45;
+    cursor: default;
+}
+.aw-add-ex-row--added:active { background: transparent; }
+.aw-add-ex-row--added .aw-add-ex-row__cat {
+    color: var(--primary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+/* "Create [name]" row appears when search has no matches and the caller
+   provided onCreateRequested. */
+.aw-add-ex-row--create {
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: none;
+}
+.aw-add-ex-row--create .aw-add-ex-row__name {
+    color: var(--primary);
+}
 
 /* === NEW EQUIPMENT FORM (quick-add sheet) === */
 .aw-new-equip__base-row {

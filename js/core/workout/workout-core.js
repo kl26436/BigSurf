@@ -130,4 +130,9 @@ export {
     awSharedEquipSearch,
     awSharedSelectEquipment,
     awSharedCancelEquipment,
+    awSharedAddSetFilter,
+    awSharedAddSetSearch,
+    awSharedAddInsert,
+    awSharedAddCreate,
+    awSharedAddCancel,
 } from './active-workout-ui.js';

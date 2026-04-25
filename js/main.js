@@ -131,6 +131,11 @@ import {
     awSharedEquipSearch,
     awSharedSelectEquipment,
     awSharedCancelEquipment,
+    awSharedAddSetFilter,
+    awSharedAddSetSearch,
+    awSharedAddInsert,
+    awSharedAddCreate,
+    awSharedAddCancel,
 } from './core/workout/workout-core.js';
 
 // Template selection functionality
@@ -587,6 +592,11 @@ window.awSaveNewEquipment = awSaveNewEquipment;
 window.awSharedEquipSearch = awSharedEquipSearch;
 window.awSharedSelectEquipment = awSharedSelectEquipment;
 window.awSharedCancelEquipment = awSharedCancelEquipment;
+window.awSharedAddSetFilter = awSharedAddSetFilter;
+window.awSharedAddSetSearch = awSharedAddSetSearch;
+window.awSharedAddInsert = awSharedAddInsert;
+window.awSharedAddCreate = awSharedAddCreate;
+window.awSharedAddCancel = awSharedAddCancel;
 
 // Plate Calculator (lazy-loaded)
 window.openPlateCalcPopover = async function (exerciseIndex) {

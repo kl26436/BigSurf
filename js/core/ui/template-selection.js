@@ -602,6 +602,49 @@ async function updateExerciseField(templateId, index, field, value) {
 }
 
 /**
+ * Open the shared add-exercise sheet for the template editor's "+ Add"
+ * flow. Inserts the picked exercise at the end of the template list and
+ * saves to Firestore.
+ */
+async function openAddExerciseSheetForTemplate(templateId) {
+    const template = loadedTemplates.find(t => t._id === templateId);
+    if (!template) return;
+    const exercises = normalizeExercisesToArray(template.exercises);
+    const alreadyAdded = exercises.map(e => (e.name || e.machine || '').toLowerCase()).filter(Boolean);
+
+    const { openSharedAddExerciseSheet } = await import('../workout/active-workout-ui.js');
+    openSharedAddExerciseSheet({
+        targetWorkoutLabel: template._name,
+        alreadyAdded,
+        onSelect: async (exerciseRecord) => {
+            const newExercise = {
+                name: exerciseRecord.name || exerciseRecord.machine,
+                machine: exerciseRecord.machine || exerciseRecord.name,
+                bodyPart: exerciseRecord.bodyPart || '',
+                category: exerciseRecord.category || '',
+                equipmentType: exerciseRecord.equipmentType || '',
+                equipment: exerciseRecord.equipment || '',
+                sets: exerciseRecord.sets || 3,
+                reps: exerciseRecord.reps || 10,
+                weight: exerciseRecord.weight || 0,
+            };
+            exercises.push(newExercise);
+            template.exercises = exercises;
+            await saveTemplateInline(template, exercises);
+            renderWorkoutSelectorUI();
+        },
+        onCreateRequested: (initialName) => {
+            // Phase 5 will accept { initialName, onCreated } to round-trip
+            // back into this sheet. For now, hand off to the existing
+            // create-exercise modal.
+            if (typeof window.showCreateExerciseForm === 'function') {
+                window.showCreateExerciseForm({ initialName });
+            }
+        },
+    });
+}
+
+/**
  * Open the active-workout equipment sheet pre-loaded with the template
  * exercise's current equipment, then write the selection back.
  */
@@ -731,7 +774,7 @@ function setupSelectorDelegation(container) {
             } else if (action === 'removeTemplateExercise') {
                 removeTemplateExerciseInline(templateId, index);
             } else if (action === 'addTemplateExercise') {
-                window.editTemplate(templateId, isDefault);
+                openAddExerciseSheetForTemplate(templateId);
             } else if (action === 'duplicateTemplate') {
                 window.copyTemplateToCustom(templateId);
             } else if (action === 'deleteTemplateInline') {
