@@ -1,14 +1,10 @@
 // Workout Management UI Functions
 import { AppState } from '../utils/app-state.js';
-import { getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal, convertWeight } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
 import { saveWorkoutData } from '../data/data-manager.js';
-import { formatCategory } from '../utils/workout-helpers.js';
-import { reorderTemplateExercise, normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
+import { normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
 import { getSessionLocation, detectLocation } from '../features/location-service.js';
-import { setBottomNavVisible } from '../ui/navigation.js';
-import { groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import {
     getEquipmentAtLocation,
     getExercisesAtLocation,
@@ -16,14 +12,8 @@ import {
 } from '../features/equipment-planner.js';
 
 let workoutManager;
-const currentEditingTemplate = null;
 let exerciseLibrary = [];
 let filteredExercises = [];
-const allWorkoutTemplates = [];
-const currentWorkoutCategory = '';
-
-// Track which containers already have delegation listeners
-const delegatedContainers = new WeakSet();
 
 export function initializeWorkoutManagement(appState) {
     workoutManager = new FirebaseWorkoutManager(appState);
@@ -48,22 +38,8 @@ export function initializeWorkoutManagement(appState) {
  * Handles both array format: [{...}, {...}]
  * and object format: {exercise_0: {...}, exercise_1: {...}}
  */
-function normalizeExercisesToArray(exercises) {
-    if (!exercises) return [];
-
-    // If already an array, return as-is
-    if (Array.isArray(exercises)) {
-        return exercises;
-    }
-
-    // If it's an object (e.g., {exercise_0: {...}, exercise_1: {...}}), convert to array
-    if (typeof exercises === 'object') {
-        const keys = Object.keys(exercises).sort(); // Sort to maintain order
-        return keys.map((key) => exercises[key]).filter((ex) => ex); // Filter out null/undefined
-    }
-
-    return [];
-}
+// Phase 9 cleanup: normalizeExercisesToArray was deleted; the live copy
+// is now in template-helpers.js (used by template-selection.js).
 
 /**
  * Phase 9: convert a completed workout to a saved template, then drop the
@@ -246,7 +222,9 @@ let recentExercises = [];
 let gymSuggestedExercises = [];
 let gymLocationName = null;
 
-export async function openExerciseLibrary(mode = 'template') {
+// `mode` (kept for API back-compat with active-workout callers) is unused
+// — the function always opens the same #exercise-library-section now.
+export async function openExerciseLibrary(_mode = 'template') {
     const modal = document.getElementById('exercise-library-section');
     if (!modal) return;
 
@@ -454,28 +432,13 @@ function renderExerciseLibrary() {
     });
 }
 
-function createLibraryExerciseCard(exercise) {
-    const card = document.createElement('div');
-    card.className = 'library-exercise-card';
-
-    const exerciseName = exercise.name || exercise.machine;
-
-    card.innerHTML = `
-        <span class="library-exercise-name">${escapeHtml(exerciseName)}</span>
-        <span class="library-exercise-body-part">${escapeHtml(exercise.bodyPart || 'General')}</span>
-    `;
-
-    card.addEventListener('click', () => selectExerciseFromLibrary(exercise));
-
-    return card;
-}
+// Phase 9 cleanup: createLibraryExerciseCard was unused — renderExerciseLibrary
+// builds rows inline.
 
 // Pending exercise for equipment selection
 let pendingExerciseForEquipment = null;
 
 function selectExerciseFromLibrary(exercise) {
-    const exerciseName = exercise.name || exercise.machine;
-
     // Swap mode: one-tap commit. The "Swap Exercise" action sets
     // replacingExerciseIndex — in that case, tapping an exercise should
     // replace immediately. Previously this fell through to the equipment
@@ -499,22 +462,10 @@ function selectExerciseFromLibrary(exercise) {
         return;
     }
 
-    // Add to current template (editing mode)
-    if (currentEditingTemplate) {
-        // Check for duplicate exercise names
-        const isDuplicate = currentEditingTemplate.exercises.some(
-            (ex) => ex.name === exerciseName || ex.machine === exerciseName
-        );
-
-        if (isDuplicate) {
-            showNotification(`"${exerciseName}" is already in this workout`, 'warning');
-            return;
-        }
-
-        // Show equipment picker before adding
-        pendingExerciseForEquipment = exercise;
-        showEquipmentPicker(exercise, false);
-    }
+    // Phase 9 cleanup: the "add to template" branch used to live here, but
+    // template editing now happens in the workout-selector via Phases 1-7.
+    // selectExerciseFromLibrary is only reached during an active-workout
+    // add/replace flow.
 }
 
 // Show equipment picker modal
@@ -745,32 +696,10 @@ async function finalizeExerciseAddition(equipmentName, equipmentLocation, equipm
         return;
     }
 
-    // Handle template editing
-    if (currentEditingTemplate) {
-        const templateExercise = {
-            name: exerciseName,
-            machine: exercise.machine || exercise.name,
-            bodyPart: exercise.bodyPart,
-            equipmentType: exercise.equipmentType,
-            equipment: equipmentName,
-            equipmentLocation: equipmentLocation,
-            sets: exercise.sets || 3,
-            reps: exercise.reps || 10,
-            weight: exercise.weight || 50,
-            video: exercise.video || '',
-        };
-
-        currentEditingTemplate.exercises.push(templateExercise);
-        // Phase 9: the legacy template-editor's renderTemplateExercises is gone.
-        // The workout-selector renders templates via template-selection.js;
-        // re-rendering it here keeps the in-memory state in sync if the user
-        // is on the selector page.
-        if (typeof window.renderWorkoutSelectorUI === 'function') {
-            window.renderWorkoutSelectorUI();
-        }
-        closeExerciseLibrary();
-        closeEquipmentPicker();
-    }
+    // Phase 9 cleanup: the "add to current template" branch used to live
+    // here (mutated currentEditingTemplate). Templates are now edited
+    // inline in the selector — finalizeExerciseAddition is reached only
+    // from active-workout flows, which are handled above.
 }
 
 // Create Exercise functions - uses the add-exercise-modal
@@ -1133,68 +1062,6 @@ async function navigateToWorkoutSelector(fromNavigation, appState) {
     // In-progress workout check removed - dashboard banner handles this now
 }
 
-async function checkForInProgressWorkout(appState) {
-    // Skip if already showing prompt
-    if (window.showingProgressPrompt) return;
-
-    try {
-        const { loadTodaysWorkout } = await import('../data/data-manager.js');
-        const todaysData = await loadTodaysWorkout(appState);
-
-        // Check if there's an incomplete workout from today
-        if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
-            // Validate workout plan exists
-            const workoutPlan = appState.workoutPlans.find(
-                (plan) =>
-                    plan.day === todaysData.workoutType ||
-                    plan.name === todaysData.workoutType ||
-                    plan.id === todaysData.workoutType
-            );
-
-            if (!workoutPlan) {
-                console.warn('⚠️ Workout plan not found for:', todaysData.workoutType);
-                return;
-            }
-
-            // Store in-progress workout globally
-            // Use todaysData.originalWorkout if it exists (contains modified exercise list)
-            window.inProgressWorkout = {
-                ...todaysData,
-                originalWorkout: todaysData.originalWorkout || workoutPlan,
-            };
-
-            // Show the prompt (uses your existing continueInProgressWorkout function)
-            showInProgressWorkoutPrompt(todaysData);
-        } else {
-        }
-    } catch (error) {
-        console.error('❌ Error checking for in-progress workout:', error);
-    }
-}
-
-/**
- * Prompt user to continue or discard in-progress workout
- * Uses your existing continueInProgressWorkout() and discardInProgressWorkout() functions
- */
-function showInProgressWorkoutPrompt(workoutData) {
-    if (window.showingProgressPrompt) return;
-    window.showingProgressPrompt = true;
-
-    const workoutDate = new Date(workoutData.date).toLocaleDateString();
-    const message = `You have an in-progress "${workoutData.workoutType}" workout from ${workoutDate}.\n\nWould you like to continue where you left off?`;
-
-    setTimeout(() => {
-        if (confirm(message)) {
-            // Use your existing continue function
-            import('./workout-core.js').then((module) => {
-                module.continueInProgressWorkout();
-            });
-        } else {
-            // Use your existing discard function
-            import('./workout-core.js').then((module) => {
-                module.discardInProgressWorkout();
-            });
-        }
-        window.showingProgressPrompt = false;
-    }, 500);
-}
+// Phase 9 cleanup: checkForInProgressWorkout and showInProgressWorkoutPrompt
+// were never called — the dashboard's resume-workout banner replaced this
+// flow (see comment at navigateToWorkoutSelector).

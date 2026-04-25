@@ -2,12 +2,11 @@
 // Main controller: header, pills, hero, equipment, last session, set rows, footer
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification, convertWeight, openModal, closeModal } from '../ui/ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, convertWeight } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { getCategoryIcon, Config, debugLog } from '../utils/config.js';
-import { getSetTotalWeight, getSetVolume } from '../utils/weight-calculations.js';
-import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults, clearLastSessionCache } from '../data/data-manager.js';
-import { getNextInGroup, getExerciseGroups, isLastInGroupRound, groupExercises, ungroupExercise } from '../features/superset-manager.js';
+import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults } from '../data/data-manager.js';
+import { getNextInGroup, isLastInGroupRound, groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import { haptic } from '../utils/haptics.js';
 import { navigateTo } from '../ui/navigation.js';
 import { ensureFreshBodyWeight } from '../features/bodyweight-prompt.js';
@@ -923,7 +922,7 @@ export function awAutoGrowNotes(el) {
 // MENU ACTIONS
 // ===================================================================
 
-export function awToggleExerciseMenu(idx) {
+export function awToggleExerciseMenu(_idx) {
     exerciseMenuOpen = !exerciseMenuOpen;
     workoutMenuOpen = false;
     renderAll();
@@ -951,7 +950,6 @@ export function awDeleteExercise(idx) {
     // Rebuild savedData exercises
     const newExercises = {};
     exercises.forEach((ex, i) => {
-        const oldKey = `exercise_${i >= idx ? i + 1 : i}`;
         const newKey = `exercise_${i}`;
         if (i >= idx) {
             newExercises[newKey] = AppState.savedData.exercises[`exercise_${i + 1}`] || { sets: [] };
@@ -1460,10 +1458,7 @@ export function awEquipSearch(exerciseIdx, query) {
     if (!listEl) return;
 
     const exercise = AppState.currentWorkout.exercises[exerciseIdx];
-    const exName = getExerciseName(exercise);
     const currentEquip = AppState.savedData?.exercises?.[`exercise_${exerciseIdx}`]?.equipment || exercise.equipment;
-    const sessionLoc = AppState.savedData?.location;
-    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
     const allEquipment = AppState._cachedEquipment || [];
     const q = query.toLowerCase();
 
@@ -2147,8 +2142,6 @@ export function awEndReorder() {
 // BOTTOM SHEET UTILITY
 // ===================================================================
 
-let sheetOpen = false;
-
 function openSheet({ title, titleColor, subtitle, body, actions }) {
     closeSheetImmediate();
 
@@ -2186,8 +2179,6 @@ function openSheet({ title, titleColor, subtitle, body, actions }) {
         backdrop.classList.add('visible');
         sheet.classList.add('visible');
     });
-
-    sheetOpen = true;
 }
 
 function closeSheetImmediate() {
@@ -2195,7 +2186,6 @@ function closeSheetImmediate() {
     const sheet = document.getElementById('aw-sheet');
     if (backdrop) backdrop.remove();
     if (sheet) sheet.remove();
-    sheetOpen = false;
 }
 
 export function awCloseSheet() {
@@ -2211,7 +2201,6 @@ export function awCloseSheet() {
             sheet?.remove();
         }, 300);
     }
-    sheetOpen = false;
 }
 
 // ===================================================================
@@ -2363,15 +2352,8 @@ function cleanup() {
     closeSheetImmediate();
 }
 
-function getLocationImports() {
-    // These are already loaded by workout-session.js, just access them
-    return {
-        lockLocation: () => {},
-        isLocationLocked: () => false,
-        getSessionLocation: () => null,
-        updateLocationIndicator: () => {},
-    };
-}
+// Cleanup: getLocationImports was a stub helper that nothing called.
+// Real location helpers are in features/location-service.js.
 
 // Export current index for external use
 export function getCurrentExerciseIdx() { return currentExerciseIdx; }
