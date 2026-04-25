@@ -954,19 +954,14 @@ function setupSelectorDelegation(container) {
                     saveTemplateInline(t, normalizeExercisesToArray(t.exercises))
                         .then(() => renderWorkoutSelectorUI());
                 }
+            } else if (action === 'toggleExerciseExpand') {
+                // .te-row sits inside .template-editor's data-stop-propagation
+                // zone, so this action lands here (not the unreachable check
+                // below the if-block).
+                const rowKey = actionEl.dataset.rowKey;
+                expandedExerciseInTemplate = (expandedExerciseInTemplate === rowKey) ? null : rowKey;
+                renderWorkoutSelectorUI();
             }
-            return;
-        }
-
-        // Tap an exercise row body to expand its inline editor (steppers,
-        // equipment pill, notes). Stop here so it doesn't bubble up to the
-        // template-row toggle.
-        const exRowToggle = e.target.closest('[data-action="toggleExerciseExpand"]');
-        if (exRowToggle && !e.target.closest('[data-stop-propagation]')) {
-            e.stopPropagation();
-            const rowKey = exRowToggle.dataset.rowKey;
-            expandedExerciseInTemplate = (expandedExerciseInTemplate === rowKey) ? null : rowKey;
-            renderWorkoutSelectorUI();
             return;
         }
 
