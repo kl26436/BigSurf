@@ -883,6 +883,29 @@ async function openEquipmentSheetForTemplate(templateId, index) {
 /**
  * Toggle inline template editor expansion.
  */
+/**
+ * Phase 9 — entry point for "open this template for editing". Used by:
+ *   - createNewTemplate (after a new blank template is saved to Firestore)
+ *   - editTemplate (the legacy "edit this template" entry)
+ *   - saveWorkoutAsTemplate (after a workout is converted + saved)
+ *   - ai-coach-ui's "open this template" deep-link
+ *
+ * Navigates to the workout-selector and pre-expands the template's row so
+ * the user lands on the inline editor for that specific template.
+ */
+export function expandTemplateInSelector(templateId) {
+    if (!templateId) return;
+    expandedTemplateId = templateId;
+    expandedExerciseInTemplate = null;
+    detailsOpenForTemplate = null;
+    if (typeof window.navigateTo === 'function') {
+        window.navigateTo('workout-selector');
+    }
+    // navigateTo above will trigger renderWorkoutSelectorUI via showWorkoutSelector.
+    // Render again defensively in case navigation was a no-op (already on the page).
+    renderWorkoutSelectorUI();
+}
+
 export function toggleTemplateEdit(templateId) {
     expandedTemplateId = (expandedTemplateId === templateId) ? null : templateId;
     // Collapsing the parent template should also reset which exercise is open

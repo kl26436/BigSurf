@@ -341,87 +341,99 @@ function normalizeExercisesToArray(exercises) {
     return [];
 }
 
-export function saveWorkoutAsTemplate(workoutData) {
+/**
+ * Phase 9: convert a completed workout to a saved template, then drop the
+ * user on the workout-selector with the new template's row pre-expanded so
+ * they can rename it inline. Replaces the legacy showTemplateEditor flow.
+ */
+export async function saveWorkoutAsTemplate(workoutData) {
     const template = normalizeWorkoutToTemplate(workoutData);
     if (!template) {
         showNotification('Could not convert workout to template', 'error');
         return;
     }
 
-    currentEditingTemplate = {
-        name: '',
-        category: template.category,
-        exercises: template.exercises,
+    const defaultName = workoutData.workoutType || '';
+    const name = (typeof prompt === 'function')
+        ? prompt('Save as workout — name:', defaultName)
+        : defaultName;
+    if (!name || !name.trim()) return;
+
+    const toSave = {
+        name: name.trim(),
+        category: template.category || 'other',
+        exercises: template.exercises || [],
+        suggestedDays: [],
+        isCustom: true,
     };
 
-    // Show the template editor (it will be pre-populated)
-    showTemplateEditor();
-
-    // Pre-fill name suggestion from workout type
-    setTimeout(() => {
-        const nameInput = document.getElementById('template-name');
-        if (nameInput && workoutData.workoutType) {
-            nameInput.value = workoutData.workoutType;
-            nameInput.select();
-        }
-    }, 50);
-}
-
-export function createNewTemplate() {
-    currentEditingTemplate = {
-        name: '',
-        category: 'Other',
-        exercises: [],
-    };
-
-    showTemplateEditor();
-}
-
-export async function editTemplate(templateId, isDefault = false) {
     try {
-        // Load all templates including raw defaults
-        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-        const manager = new FirebaseWorkoutManager(AppState);
+        const wm = new FirebaseWorkoutManager(AppState);
+        const docRef = await wm.saveWorkoutTemplate(toSave);
+        AppState.workoutPlans = await wm.getUserWorkoutTemplates();
+        showNotification('Saved as workout', 'success');
 
-        let template;
-
-        if (isDefault) {
-            // Load the default template directly
-            const allDefaults = await manager.getGlobalDefaultTemplates();
-            template = allDefaults.find((t) => (t.id || t.day) === templateId);
-
-            if (!template) {
-                console.error('❌ Default template not found:', templateId);
-                alert('Default template not found');
-                return;
-            }
-        } else {
-            // Load from user templates
-            const templates = await manager.getUserWorkoutTemplates();
-            template = templates.find((t) => t.id === templateId);
-
-            if (!template) {
-                console.error('❌ Template not found:', templateId);
-                alert('Template not found');
-                return;
-            }
-        }
-
-        // Set as current editing template (deep clone to avoid mutations)
-        currentEditingTemplate = {
-            id: template.id || template.day,
-            name: template.name || template.day,
-            category: template.category || template.type || 'other',
-            exercises: JSON.parse(JSON.stringify(template.exercises || [])),
-            suggestedDays: template.suggestedDays || [],
-            overridesDefault: isDefault ? template.id || template.day : template.overridesDefault,
-            isEditingDefault: isDefault,
-        };
-        showTemplateEditor();
-    } catch (error) {
-        console.error('❌ Error loading template for editing:', error);
-        alert('Error loading template for editing');
+        const newId = docRef?.id || toSave.id;
+        const { expandTemplateInSelector } = await import('../ui/template-selection.js');
+        if (newId) expandTemplateInSelector(newId);
+    } catch (err) {
+        console.error('❌ Error saving as template:', err);
+        showNotification('Could not save workout', 'error');
     }
+}
+
+/**
+ * Phase 9: create a new blank template and open it in the selector for
+ * inline editing (rename + add exercises). Replaces the legacy
+ * showTemplateEditor flow.
+ */
+export async function createNewTemplate() {
+    const name = (typeof prompt === 'function') ? prompt('New workout name:', '') : '';
+    if (!name || !name.trim()) return;
+
+    const toSave = {
+        name: name.trim(),
+        category: 'other',
+        exercises: [],
+        suggestedDays: [],
+        isCustom: true,
+    };
+
+    try {
+        const wm = new FirebaseWorkoutManager(AppState);
+        const docRef = await wm.saveWorkoutTemplate(toSave);
+        AppState.workoutPlans = await wm.getUserWorkoutTemplates();
+
+        const newId = docRef?.id || toSave.id;
+        const { expandTemplateInSelector } = await import('../ui/template-selection.js');
+        if (newId) expandTemplateInSelector(newId);
+    } catch (err) {
+        console.error('❌ Error creating template:', err);
+        showNotification('Could not create workout', 'error');
+    }
+}
+
+/**
+ * Phase 9: editTemplate now just navigates to the workout-selector and
+ * pre-expands the row. The inline editor (Phases 1-7) replaces the legacy
+ * full-page editor entirely.
+ *
+ * Default templates expand the same way; saves go through saveTemplateInline
+ * which handles the override flow.
+ */
+export async function editTemplate(templateId, isDefault = false) {
+    if (!templateId) return;
+    try {
+        const { expandTemplateInSelector } = await import('../ui/template-selection.js');
+        expandTemplateInSelector(templateId);
+    } catch (err) {
+        console.error('❌ Error opening template:', err);
+        showNotification('Could not open workout', 'error');
+    }
+    // isDefault retained in the signature for callsite compatibility (ai-coach,
+    // workout-history) — the selector's renderSingleTemplateRow handles default
+    // vs custom rendering on its own based on AppState.workoutPlans.
+    void isDefault;
 }
 
 export async function deleteTemplate(templateId, isDefault = false) {
