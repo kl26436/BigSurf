@@ -170,7 +170,7 @@ function renderWorkoutHeader() {
                 <div class="aw-title__elapsed">${elapsed}</div>
                 <div class="aw-title__meta">Exercise ${currentExerciseIdx + 1}/${exerciseCount}</div>
             </div>
-            <button class="aw-menu" onclick="awToggleWorkoutMenu()">
+            <button class="aw-menu" onclick="awToggleWorkoutMenu()" aria-label="Workout options">
                 <i class="fas fa-ellipsis-v"></i>
             </button>
         </div>
@@ -182,21 +182,21 @@ function renderWorkoutMenu() {
     return `
         <div class="aw-workout-menu">
             <button class="aw-ex-menu__item" onclick="awAddExercise()">
-                <i class="fas fa-plus"></i> Add Exercise
+                <i class="fas fa-plus"></i> Add exercise
             </button>
             <button class="aw-ex-menu__item" onclick="saveActiveWorkoutAsTemplate(); awCloseMenus();">
-                <i class="fas fa-bookmark"></i> Save as Template
+                <i class="fas fa-bookmark"></i> Save as template
             </button>
             <div class="aw-ex-menu__divider"></div>
             <button class="aw-ex-menu__item" onclick="showMidWorkoutSummary(); awCloseMenus();">
-                <i class="fas fa-chart-bar"></i> Session Summary
+                <i class="fas fa-chart-bar"></i> Session summary
             </button>
             <button class="aw-ex-menu__item" onclick="exportWorkoutDataAsCSV(); awCloseMenus();">
-                <i class="fas fa-file-export"></i> Export Session
+                <i class="fas fa-file-export"></i> Export session
             </button>
             <div class="aw-ex-menu__divider"></div>
             <button class="aw-ex-menu__item danger" onclick="awCancelWorkout()">
-                <i class="fas fa-times"></i> Cancel Workout
+                <i class="fas fa-times"></i> Cancel workout
             </button>
         </div>
     `;
@@ -585,8 +585,9 @@ function buildSetRows(exercise, idx, savedEx, unit) {
                        onfocus="this.select()"
                        onchange="awUpdateSet(${idx}, ${si}, 'weight', this.value)">
                 <button class="aw-set-row__check ${set.completed ? 'done' : ''}"
-                        onclick="awToggleSet(${idx}, ${si})">
-                    <i class="${set.completed ? 'fas fa-check' : 'far fa-circle'}"></i>
+                        onclick="awToggleSet(${idx}, ${si})"
+                        aria-label="${set.completed ? 'Unmark set' : 'Mark set complete'}">
+                    <i class="${set.completed ? 'fas fa-check' : 'far fa-circle'}" aria-hidden="true"></i>
                 </button>
             </div>
         `;
@@ -610,10 +611,10 @@ function renderExerciseMenu(idx) {
     return `
         <div class="aw-ex-menu">
             <button class="aw-ex-menu__item" onclick="awReplaceExercise(${idx})">
-                <i class="fas fa-exchange-alt"></i> Swap Exercise
+                <i class="fas fa-exchange-alt"></i> Swap exercise
             </button>
             <button class="aw-ex-menu__item" onclick="awOpenEquipmentSheet(${idx})">
-                <i class="fas fa-cog"></i> Change Equipment
+                <i class="fas fa-cog"></i> Change equipment
             </button>
             <div class="aw-ex-menu__divider"></div>
             ${group
@@ -621,7 +622,7 @@ function renderExerciseMenu(idx) {
                 : ''
             }
             <button class="aw-ex-menu__item danger" onclick="awDeleteExercise(${idx})">
-                <i class="fas fa-trash"></i> Remove Exercise
+                <i class="fas fa-trash"></i> Remove exercise
             </button>
         </div>
     `;
@@ -990,7 +991,7 @@ export function awConfirmExit() {
 }
 
 export function awCancelWorkout() {
-    if (!confirm('Cancel this workout? All progress will be lost.')) return;
+    if (!confirm('Cancel workout? Logged sets will be saved as a cancelled session.')) return;
     // Delegate to the canonical cancelWorkout() so AppState.reset() runs and
     // the dashboard doesn't still think a workout is active. Skip its inner
     // confirm since we just showed one.
@@ -1658,7 +1659,7 @@ export async function awSaveNewEquipment(exerciseIdx) {
         showNotification(`${name} created`, 'success');
     } catch (err) {
         console.error('Error creating equipment:', err);
-        showNotification('Failed to create equipment', 'error');
+        showNotification("Couldn't create equipment", 'error');
     }
 }
 

@@ -49,7 +49,7 @@ export function initializeWorkoutManagement(appState) {
 export async function saveWorkoutAsTemplate(workoutData) {
     const template = normalizeWorkoutToTemplate(workoutData);
     if (!template) {
-        showNotification('Could not convert workout to template', 'error');
+        showNotification("Couldn't save as a workout", 'error');
         return;
     }
 
@@ -139,7 +139,7 @@ export async function editTemplate(templateId, isDefault = false) {
 export async function deleteTemplate(templateId, isDefault = false) {
     if (!workoutManager) {
         console.error('❌ Workout manager not initialized');
-        alert('Cannot perform action: System not ready');
+        alert("Can't perform action — system not ready");
         return;
     }
 
@@ -155,7 +155,7 @@ export async function deleteTemplate(templateId, isDefault = false) {
         }
     }
 
-    const message = 'Delete this template? This cannot be undone.';
+    const message = "Delete this workout? This can't be undone.";
 
     if (confirm(message)) {
         try {
@@ -178,7 +178,7 @@ export async function deleteTemplate(templateId, isDefault = false) {
             AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
         } catch (error) {
             console.error(`❌ Error deleting template:`, error);
-            alert(`Error deleting template. Please try again.`);
+            alert(`Couldn't delete workout — try again`);
         }
     }
 }
@@ -186,11 +186,11 @@ export async function deleteTemplate(templateId, isDefault = false) {
 export async function resetToDefault(defaultTemplateId) {
     if (!workoutManager) {
         console.error('❌ Workout manager not initialized');
-        alert('Cannot reset: System not ready');
+        alert("Can't reset — system not ready");
         return;
     }
 
-    if (confirm('Reset this template to default? Your changes will be lost.')) {
+    if (confirm('Reset this workout to default? Your changes will be lost.')) {
         try {
             // Find and delete the override/hidden marker
             const templates = await workoutManager.getUserWorkoutTemplates();
@@ -204,7 +204,7 @@ export async function resetToDefault(defaultTemplateId) {
             }
         } catch (error) {
             console.error('❌ Error resetting template:', error);
-            alert('Error resetting template. Please try again.');
+            alert("Couldn't reset workout — try again");
         }
     }
 }
@@ -507,7 +507,7 @@ export async function addEquipmentFromPicker() {
     const videoUrl = videoInput?.value.trim();
 
     if (!equipmentName) {
-        showNotification('Enter an equipment name', 'warning');
+        showNotification('Add an equipment name', 'warning');
         nameInput?.focus();
         return;
     }
@@ -590,7 +590,7 @@ export async function addEquipmentFromPicker() {
         // Silent success - equipment appears in list immediately
     } catch (error) {
         console.error('Error adding equipment:', error);
-        showNotification('Error adding equipment', 'error');
+        showNotification("Couldn't add equipment", 'error');
     }
 }
 
@@ -828,7 +828,7 @@ export function showCreateExerciseForm() {
             <div id="create-ex-more-details" class="hidden">
                 <div class="field">
                     <div class="field-label">Notes</div>
-                    <textarea class="field-input" id="new-exercise-notes" rows="2" placeholder="Form cues, tips..."></textarea>
+                    <textarea class="field-input" id="new-exercise-notes" rows="2" placeholder="Form cues, tips…"></textarea>
                 </div>
                 <div class="field">
                     <div class="field-label">Form video URL (optional)</div>
@@ -938,11 +938,11 @@ export async function createNewExercise(event) {
     const notes = document.getElementById('new-exercise-notes')?.value?.trim() || '';
 
     if (!name) {
-        showNotification('Please enter an exercise name', 'warning');
+        showNotification('Add an exercise name', 'warning');
         return;
     }
     if (!category) {
-        showNotification('Please select a category', 'warning');
+        showNotification('Pick a category', 'warning');
         return;
     }
 

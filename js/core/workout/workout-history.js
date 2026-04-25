@@ -595,10 +595,10 @@ export function getWorkoutHistory(appState) {
                             ${exerciseNames ? `<div class="recent-workout-exercises">${escapeHtml(exerciseNames)}${extraCount > 0 ? ' +' + extraCount : ''}</div>` : ''}
                             <div class="recent-workout-meta">${displayDate}${durationMin > 0 ? ' · ' + durationMin + 'm' : ''}${setCount > 0 ? ' · ' + setCount + ' sets' : ''}</div>
                         </div>
-                        <div class="history-workout-status history-workout-status--${status}">
-                            ${status === 'completed' ? '<i class="fas fa-check"></i>' :
-                              status === 'cancelled' ? '<i class="fas fa-times"></i>' :
-                              '<i class="fas fa-circle-half-stroke"></i>'}
+                        <div class="history-workout-status history-workout-status--${status}" aria-label="${status === 'completed' ? 'Completed' : status === 'cancelled' ? 'Cancelled' : 'Incomplete'}">
+                            ${status === 'completed' ? '<i class="fas fa-check" aria-hidden="true"></i>' :
+                              status === 'cancelled' ? '<i class="fas fa-times" aria-hidden="true"></i>' :
+                              '<i class="fas fa-circle-half-stroke" aria-hidden="true"></i>'}
                         </div>
                     </div>
                 `;
@@ -607,7 +607,7 @@ export function getWorkoutHistory(appState) {
             html += '</div>';
 
             if (hasMore) {
-                html += `<button class="btn btn-secondary btn-block recent-workouts-load-more" onclick="window.workoutHistory.loadMoreRecentWorkouts()">Load More</button>`;
+                html += `<button class="btn btn-secondary btn-block recent-workouts-load-more" onclick="window.workoutHistory.loadMoreRecentWorkouts()">Load more</button>`;
             }
 
             container.innerHTML = html;
@@ -1404,7 +1404,7 @@ export function getWorkoutHistory(appState) {
             if (!workout) return;
 
             const confirmDelete = confirm(
-                `Delete workout "${resolveWorkoutDisplayName(workout)}" from ${new Date(workout.date).toLocaleDateString()}?\n\nThis cannot be undone.`
+                `Delete workout "${resolveWorkoutDisplayName(workout)}" from ${new Date(workout.date).toLocaleDateString()}?\n\nThis can't be undone.`
             );
             if (!confirmDelete) return;
 
@@ -1425,10 +1425,10 @@ export function getWorkoutHistory(appState) {
                 await this.loadCalendarWorkouts();
                 this.generateCalendarGrid();
 
-                showNotification('Workout deleted successfully', 'success');
+                showNotification('Workout deleted', 'success');
             } catch (error) {
                 console.error('Error deleting workout:', error);
-                showNotification('Failed to delete workout. Please try again.', 'error');
+                showNotification("Couldn't delete workout — try again", 'error');
             }
         },
 
@@ -1445,7 +1445,7 @@ export function getWorkoutHistory(appState) {
                 window.startWorkout(workoutName);
             } else {
                 console.error('❌ startWorkout function not available');
-                alert('Cannot start workout. Please refresh the page.');
+                alert("Couldn't start workout — refresh the page");
             }
         },
 
@@ -1533,7 +1533,7 @@ window.deleteWorkoutById = async function (docId) {
 
     const displayDate = workout?.date ? new Date(workout.date + 'T12:00:00').toLocaleDateString() : 'this date';
 
-    if (confirm(`Delete workout from ${displayDate}? This cannot be undone.`)) {
+    if (confirm(`Delete workout from ${displayDate}? This can't be undone.`)) {
         try {
             debugLog(`🗑️ Deleting workout: ${docId}`);
             const { deleteDoc, doc, db } = await import('../data/firebase-config.js');
@@ -1560,7 +1560,7 @@ window.deleteWorkoutById = async function (docId) {
 
             if (!snapshot.empty) {
                 console.error('❌ Document still exists after delete! Found', snapshot.size, 'docs');
-                showNotification('Delete may not have synced - please refresh', 'warning');
+                showNotification('Delete may not have saved — refresh to check', 'warning');
             } else {
                 debugLog('✅ Verified: Document no longer exists on server');
             }
@@ -1586,10 +1586,10 @@ window.deleteWorkoutById = async function (docId) {
             window.workoutHistory.generateCalendarGrid();
             debugLog('✅ Calendar refreshed');
 
-            showNotification('Workout deleted successfully', 'success');
+            showNotification('Workout deleted', 'success');
         } catch (error) {
             console.error('❌ Error deleting workout:', error);
-            showNotification('Failed to delete workout: ' + error.message, 'error');
+            showNotification("Couldn't delete workout — try again", 'error');
         }
     }
 };

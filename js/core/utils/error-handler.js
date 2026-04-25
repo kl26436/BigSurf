@@ -331,7 +331,7 @@ export function initializeErrorHandler() {
 
     window.addEventListener('online', () => {
         captureWarning('Device came back online', 'network');
-        showNotification('Back online! Syncing data...', 'success');
+        showNotification('Back online — syncing data…', 'success');
 
         if (window.AppState?.currentUser) {
             // Could trigger data sync here
@@ -383,7 +383,7 @@ function handleError(error, userMessage, source) {
     let severity = 'error';
 
     if (error?.code === 'permission-denied') {
-        message = 'Please sign in again to continue.';
+        message = 'Sign in again to continue.';
     } else if (error?.code === 'unavailable' || error?.message?.includes('timeout') || error?.message?.includes('timed out')) {
         message = 'Slow connection — saving will retry automatically.';
         severity = 'warn';

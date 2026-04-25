@@ -304,7 +304,7 @@ export function showLocationOnMapById(locationId) {
     if (location.latitude && location.longitude) {
         showLocationOnMap(location.latitude, location.longitude, location.name);
     } else {
-        showNotification('This location has no GPS saved', 'info');
+        showNotification('No GPS saved for this location', 'info');
     }
 }
 
@@ -355,10 +355,10 @@ export async function updateLocationGPS(locationId) {
     if (!location) return;
 
     if (!window.currentGPSCoords) {
-        showNotification('Getting GPS...', 'info');
+        showNotification('Getting GPS…', 'info');
         const coords = await getCurrentPosition();
         if (!coords) {
-            showNotification('Could not get GPS location', 'error');
+            showNotification("Couldn't get GPS location", 'error');
             return;
         }
         window.currentGPSCoords = coords;
@@ -412,7 +412,7 @@ export async function addNewLocationFromManagement() {
     const locationName = input.value.trim();
 
     if (!locationName) {
-        showNotification('Please enter a location name', 'warning');
+        showNotification('Add a location name', 'warning');
         return;
     }
 
@@ -548,7 +548,7 @@ export async function searchLocationAddress() {
     const query = input?.value?.trim();
 
     if (!query) {
-        showNotification('Please enter an address to search', 'warning');
+        showNotification('Enter an address to search', 'warning');
         return;
     }
 
@@ -588,7 +588,7 @@ export async function searchLocationAddress() {
     } catch (error) {
         console.error('Address search error:', error);
         resultsContainer.innerHTML = `<div class="loc-search-error">
-            <p>Search failed. Please try again.</p>
+            <p>Search failed — try again.</p>
             <p class="loc-search-error__hint">Tip: Try a more specific address or city name</p>
         </div>`;
     }
@@ -737,7 +737,7 @@ export async function saveNewLocationFromModal() {
     const locationName = input?.value?.trim();
 
     if (!locationName) {
-        showNotification('Please enter a location name', 'warning');
+        showNotification('Add a location name', 'warning');
         return;
     }
 
@@ -993,7 +993,7 @@ export async function deleteLocation(locationId) {
     if (!location) return;
 
     if (location.name === currentLocationName) {
-        showNotification('Cannot delete current location. Select another first.', 'warning');
+        showNotification('Pick another location first, then delete this one', 'warning');
         return;
     }
 

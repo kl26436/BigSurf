@@ -437,7 +437,7 @@ export function setupErrorLogging() {
 
         // Show user-friendly message for critical errors
         if (event.message.includes('Firebase') || event.message.includes('auth')) {
-            showNotification('Connection issue detected. Please refresh the page.', 'error');
+            showNotification('Connection issue — refresh the page', 'error');
         }
     });
 
@@ -447,7 +447,7 @@ export function setupErrorLogging() {
 
         // Show user-friendly message
         if (event.reason?.message?.includes('Firebase')) {
-            showNotification('Database connection issue. Please try again.', 'error');
+            showNotification('Database connection issue — try again', 'error');
         }
     });
 

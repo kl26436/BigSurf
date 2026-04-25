@@ -13,7 +13,7 @@ const TIPS = {
     },
     'more-menu': {
         target: '[data-tab="more"]',
-        text: 'Equipment Library, Plate Calculator, and more are here',
+        text: 'Equipment library, Plate calculator, and more are here',
         position: 'above',
     },
     'exercise-sets': {

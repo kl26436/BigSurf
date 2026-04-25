@@ -12,7 +12,7 @@ import { formatStatus } from '../utils/workout-helpers.js';
 
 export async function showWorkoutHistory() {
     if (!AppState.currentUser) {
-        showNotification('Please sign in to view workout history', 'warning');
+        showNotification('Sign in to view workout history', 'warning');
         return;
     }
 
@@ -120,12 +120,12 @@ export function resumeWorkout(workoutId) {
 
     // Check if workout can be resumed
     if (workout.status === 'completed') {
-        showNotification('Cannot resume a completed workout', 'warning');
+        showNotification("Can't resume a completed workout", 'warning');
         return;
     }
 
     if (workout.status === 'cancelled') {
-        showNotification('Cannot resume a cancelled workout', 'warning');
+        showNotification("Can't resume a cancelled workout", 'warning');
         return;
     }
 
@@ -144,7 +144,7 @@ export function resumeWorkout(workoutId) {
                 window.continueInProgressWorkout();
             } else {
                 console.error('❌ continueInProgressWorkout function not available');
-                alert('Cannot resume workout. Please refresh the page.');
+                alert("Couldn't resume workout — refresh the page");
             }
         } else {
             // For older workouts, load the workout data and continue it
@@ -155,10 +155,10 @@ export function resumeWorkout(workoutId) {
                     window.continueInProgressWorkout();
                 } else {
                     console.error('❌ continueInProgressWorkout function not available');
-                    alert('Cannot resume workout. Please refresh the page.');
+                    alert("Couldn't resume workout — refresh the page");
                 }
             } else {
-                showNotification('Cannot load workout data', 'error');
+                showNotification("Couldn't load workout data", 'error');
             }
         }
     }
@@ -188,7 +188,7 @@ export function repeatWorkout(workoutId) {
             window.startWorkout(workoutName);
         } else {
             console.error('❌ startWorkout function not available');
-            alert('Cannot start workout. Please refresh the page.');
+            alert("Couldn't start workout — refresh the page");
         }
     }
 }
@@ -208,7 +208,7 @@ export function deleteWorkout(workoutId) {
         window.deleteWorkoutFromCalendar(workoutId);
     } else {
         console.error('❌ Delete workout function not available');
-        alert('Cannot delete workout. Please refresh the page.');
+        alert("Couldn't delete workout — refresh the page");
     }
 }
 
@@ -234,7 +234,7 @@ export function retryWorkout(workoutId) {
         window.startWorkout(workoutName);
     } else {
         console.error('❌ startWorkout function not available');
-        alert('Cannot retry workout. Please refresh the page.');
+        alert("Couldn't retry workout — refresh the page");
     }
 }
 

@@ -88,7 +88,7 @@ export async function runMigration(userId, onProgress = null) {
         }
 
         if (onProgress) {
-            onProgress(`Migrating ${oldSchemaDocs.length} workouts...`);
+            onProgress(`Migrating ${oldSchemaDocs.length} workouts…`);
         }
 
         // Migrate each document
@@ -120,7 +120,7 @@ export async function runMigration(userId, onProgress = null) {
                 results.migrated++;
 
                 if (onProgress) {
-                    onProgress(`Migrated ${results.migrated}/${oldSchemaDocs.length} workouts...`);
+                    onProgress(`Migrated ${results.migrated}/${oldSchemaDocs.length} workouts…`);
                 }
             } catch (docError) {
                 console.error(`❌ Error migrating document ${oldDoc.id}:`, docError);

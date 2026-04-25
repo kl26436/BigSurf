@@ -697,7 +697,7 @@ export async function startWorkoutFromHistory(workoutId) {
             if (typeof startWorkoutFromExercises === 'function') {
                 await startWorkoutFromExercises(workoutType, workout.exercises);
             } else {
-                showNotification(`Template "${workoutType}" not found — pick from your list`, 'info');
+                showNotification(`Workout "${workoutType}" not found — pick from your list`, 'info');
                 const { bottomNavTo } = await import('./navigation.js');
                 bottomNavTo('workout');
             }

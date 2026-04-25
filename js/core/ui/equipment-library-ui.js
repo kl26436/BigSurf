@@ -333,7 +333,7 @@ export async function addUnlinkedEquipment(name) {
         }
     } catch (err) {
         console.error('❌ Failed to add unlinked equipment:', err);
-        showNotification('Failed to add equipment', 'error');
+        showNotification("Couldn't add equipment", 'error');
     }
 }
 
@@ -1021,7 +1021,7 @@ export function assignExerciseToEquipment(equipmentId) {
             </div>
             <div class="equip-lib-search equip-assign-search">
                 <i class="fas fa-search"></i>
-                <input type="text" placeholder="Search exercises..." oninput="filterAssignList(this.value)">
+                <input type="text" placeholder="Search exercises…" oninput="filterAssignList(this.value)">
             </div>
             <div id="assign-exercise-list">
                 ${exercises.length === 0 ? '<div class="empty-state-compact"><p>All exercises already assigned</p></div>' : listHTML}
@@ -1061,7 +1061,7 @@ export async function confirmAssignExercise(exerciseName) {
         openEquipmentDetail(equipmentId);
     } catch (error) {
         console.error('Error assigning exercise:', error);
-        showNotification('Failed to assign exercise', 'error');
+        showNotification("Couldn't assign exercise", 'error');
     }
 }
 
@@ -1091,7 +1091,7 @@ export async function unassignExercise(equipmentId, exerciseName) {
         openEquipmentDetail(equipmentId);
     } catch (error) {
         console.error('Error unassigning exercise:', error);
-        showNotification('Failed to remove exercise', 'error');
+        showNotification("Couldn't remove exercise", 'error');
     }
 }
 
@@ -1114,13 +1114,13 @@ export async function saveEquipmentExerciseVideoFromLib(equipmentId, exerciseNam
         }
     } catch (error) {
         console.error('Error saving video:', error);
-        showNotification('Failed to save video', 'error');
+        showNotification("Couldn't save video", 'error');
     }
 }
 
 export async function deleteEquipmentFromLibrary(equipmentId) {
     const equipment = allEquipment.find(e => e.id === equipmentId);
-    if (!confirm(`Delete "${equipment?.name || 'this equipment'}"? This cannot be undone.`)) return;
+    if (!confirm(`Delete "${equipment?.name || 'this equipment'}"? This can't be undone.`)) return;
 
     try {
         await getManager().deleteEquipment(equipmentId);
@@ -1129,7 +1129,7 @@ export async function deleteEquipmentFromLibrary(equipmentId) {
         backToEquipmentList();
     } catch (error) {
         console.error('Error deleting equipment:', error);
-        showNotification('Failed to delete equipment', 'error');
+        showNotification("Couldn't delete equipment", 'error');
     }
 }
 
@@ -1515,7 +1515,7 @@ export async function selectFieldValue(equipmentId, field, value) {
         openEquipmentDetail(equipmentId);
     } catch (err) {
         console.error(`Error saving ${field}:`, err);
-        showNotification(`Failed to save ${field}`, 'error');
+        showNotification(`Couldn't save ${field}`, 'error');
     }
 }
 
@@ -1661,7 +1661,7 @@ export async function confirmAddEquipment(addAnother = false) {
             baseWeightUnit: 'lbs',
         });
         if (!result) {
-            showNotification('Failed to add equipment', 'error');
+            showNotification("Couldn't add equipment", 'error');
             return;
         }
         allEquipment = await getManager().getUserEquipment();
@@ -1681,7 +1681,7 @@ export async function confirmAddEquipment(addAnother = false) {
         }
     } catch (error) {
         console.error('Error adding equipment:', error);
-        showNotification('Failed to add equipment', 'error');
+        showNotification("Couldn't add equipment", 'error');
     }
 }
 
@@ -1739,7 +1739,7 @@ export async function saveEquipmentBaseWeight(equipmentId, value) {
             if (eq) eq.baseWeight = baseWeight;
         } catch (error) {
             console.error('Error saving base weight:', error);
-            showNotification('Failed to save base weight', 'error');
+            showNotification("Couldn't save base weight", 'error');
         }
     }, 600);
 }

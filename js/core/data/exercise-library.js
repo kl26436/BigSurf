@@ -53,7 +53,7 @@ export function getExerciseLibrary(appState) {
 
         async openForManualWorkout() {
             if (!appState.currentUser) {
-                showNotification('Please sign in to add exercises', 'warning');
+                showNotification('Sign in to add exercises', 'warning');
                 return;
             }
 

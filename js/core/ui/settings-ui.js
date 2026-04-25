@@ -441,7 +441,7 @@ function renderOnboardingStep() {
                     <div class="onb-desc">Track your lifts, hit PRs, see trends. Let's set up your profile in under a minute.</div>
                 </div>
             `,
-            footer: `<button class="btn-redesign onb-btn-full" onclick="onboardingNext()">Get Started <i class="fas fa-arrow-right"></i></button>`,
+            footer: `<button class="btn-redesign onb-btn-full" onclick="onboardingNext()">Get started <i class="fas fa-arrow-right"></i></button>`,
         },
 
         // Step 1: Weekly Goal
@@ -476,7 +476,7 @@ function renderOnboardingStep() {
         {
             body: `
                 <div class="onb-icon-hero ic-shoulders"><i class="fas fa-weight"></i></div>
-                <div class="onb-title">Body-weight goal</div>
+                <div class="onb-title">Weight goal</div>
                 <div class="onb-desc">Pick one so we can color your weight trend correctly. Skip to stay neutral — you can set it later.</div>
                 <div class="onb-chips">${chipHTML(weightGoalOptions, 'weightGoal', s.weightGoal, false)}</div>
             `,
@@ -491,7 +491,7 @@ function renderOnboardingStep() {
         {
             body: `
                 <div class="onb-icon-hero ic-blue"><i class="fas fa-sliders-h"></i></div>
-                <div class="onb-title">Your units</div>
+                <div class="onb-title">Units</div>
                 <div class="onb-desc">Set defaults. Changeable later in Settings.</div>
 
                 <div class="onb-unit-group">
@@ -827,11 +827,11 @@ export async function rebuildPRsFromSettings() {
         if (result.success) {
             showNotification(`PRs rebuilt from ${result.workoutsProcessed} workouts`, 'success', 2000);
         } else {
-            showNotification('Failed to rebuild PRs', 'error');
+            showNotification("Couldn't rebuild PRs", 'error');
         }
     } catch (error) {
         console.error('PR rebuild failed:', error);
-        showNotification('Failed to rebuild PRs', 'error');
+        showNotification("Couldn't rebuild PRs", 'error');
     }
 }
 
@@ -865,7 +865,7 @@ export async function confirmDeleteAllData() {
         'Delete ALL your data?\n\n' +
         'This permanently removes every workout, template, equipment entry, ' +
         'location, measurement, DEXA scan, coach conversation, and preference. ' +
-        'This cannot be undone.\n\nContinue?'
+        "This can't be undone.\n\nContinue?"
     );
     if (!first) return;
 

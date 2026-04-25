@@ -169,7 +169,7 @@ export async function saveWorkoutData(state) {
         return true;
     } catch (error) {
         console.error('Error saving workout data:', error);
-        showNotification('Failed to save workout data', 'error');
+        showNotification("Couldn't save workout", 'error');
         return false;
     }
 }
@@ -424,7 +424,7 @@ export async function loadWorkoutPlans(state) {
             }
         } catch (fallbackError) {
             console.error('Fallback also failed:', fallbackError);
-            showNotification('Error loading workout data. Please check your connection.', 'error');
+            showNotification("Couldn't load workout data — check your connection", 'error');
             state.workoutPlans = getDefaultWorkouts();
             state.exerciseDatabase = getDefaultExercises();
         }
@@ -1227,7 +1227,7 @@ export async function exportWorkoutData(state) {
     }
 
     try {
-        showNotification('Preparing export...', 'info', 2000);
+        showNotification('Preparing export…', 'info', 2000);
 
         const userId = state.currentUser.uid;
 

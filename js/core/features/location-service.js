@@ -211,7 +211,7 @@ export function showLocationPrompt(onSave, onSkip) {
     const handleSave = () => {
         const name = input?.value.trim();
         if (!name) {
-            showNotification('Please enter a location name', 'warning');
+            showNotification('Add a location name', 'warning');
             return;
         }
         closeModal(modal);

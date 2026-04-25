@@ -1002,7 +1002,7 @@ export function clearSelectedEquipment() {
 
 // Delete equipment item
 async function deleteEquipmentItem(equipmentId) {
-    if (!confirm('Delete this equipment? It will be removed from your saved equipment list.')) {
+    if (!confirm('Delete this equipment? You can re-add it later.')) {
         return;
     }
 
@@ -1156,7 +1156,7 @@ export async function saveExercise(event) {
     };
 
     if (!formData.name) {
-        alert('Please enter an exercise name');
+        alert('Add an exercise name');
         return;
     }
 
@@ -1221,7 +1221,7 @@ export async function deleteExercise(exerciseId) {
     } else if (exercise.isOverride) {
         confirmMessage = `Revert "${exercise.name}" to default version? (This will remove your custom changes)`;
     } else if (exercise.isCustom) {
-        confirmMessage = `Permanently delete "${exercise.name}"? This cannot be undone.`;
+        confirmMessage = `Permanently delete "${exercise.name}"? This can't be undone.`;
     }
 
     if (confirm(confirmMessage)) {
@@ -1236,10 +1236,10 @@ export async function deleteExercise(exerciseId) {
 
             showNotification(
                 exercise.isCustom
-                    ? 'Exercise deleted!'
+                    ? 'Exercise deleted'
                     : exercise.isOverride
-                      ? 'Reverted to default!'
-                      : 'Exercise hidden!',
+                      ? 'Reverted to default'
+                      : 'Exercise hidden',
                 'success'
             );
 
@@ -1267,7 +1267,7 @@ export async function deleteExerciseFromSection() {
     } else if (exercise.isOverride) {
         confirmMessage = `Revert "${exercise.name}" to default version? (This will remove your custom changes)`;
     } else if (exercise.isCustom) {
-        confirmMessage = `Permanently delete "${exercise.name}"? This cannot be undone.`;
+        confirmMessage = `Permanently delete "${exercise.name}"? This can't be undone.`;
     } else {
         confirmMessage = `Delete "${exercise.name}"?`;
     }
@@ -1284,10 +1284,10 @@ export async function deleteExerciseFromSection() {
 
             showNotification(
                 exercise.isCustom
-                    ? 'Exercise deleted!'
+                    ? 'Exercise deleted'
                     : exercise.isOverride
-                      ? 'Reverted to default!'
-                      : 'Exercise hidden!',
+                      ? 'Reverted to default'
+                      : 'Exercise hidden',
                 'success'
             );
 
@@ -1339,7 +1339,7 @@ export async function saveExerciseFromSection() {
     };
 
     if (!formData.name) {
-        showNotification('Please enter an exercise name', 'warning');
+        showNotification('Add an exercise name', 'warning');
         document.getElementById('edit-exercise-name')?.focus();
         return;
     }
@@ -1439,7 +1439,7 @@ export async function saveExerciseFromSection() {
 export async function openEquipmentEditor(equipment) {
     if (!equipment || !equipment.id) {
         console.error('❌ openEquipmentEditor: Invalid equipment data', equipment);
-        showNotification('Cannot edit this equipment', 'error');
+        showNotification("Can't edit this equipment", 'error');
         return;
     }
 
@@ -1696,7 +1696,7 @@ export async function deleteEquipmentFromEditor() {
     const equipmentId = editingEquipmentData.id;
     const equipmentName = editingEquipmentData.name;
 
-    const confirmed = confirm(`Delete "${equipmentName}"? This cannot be undone.`);
+    const confirmed = confirm(`Delete "${equipmentName}"? This can't be undone.`);
     if (!confirmed) return;
 
     try {
@@ -1943,8 +1943,8 @@ export async function confirmReassignmentTarget() {
         <div class="reassign-impact">
             <p>
                 <i class="fas fa-database"></i>
-                This will update <strong>${impact.workouts}</strong> workout${impact.workouts !== 1 ? 's' : ''}
-                and <strong>${impact.templates}</strong> template${impact.templates !== 1 ? 's' : ''}.
+                This will update <strong>${impact.workouts}</strong> session${impact.workouts !== 1 ? 's' : ''}
+                and <strong>${impact.templates}</strong> workout${impact.templates !== 1 ? 's' : ''}.
             </p>
             <p class="text-muted reassign-impact__hint">
                 The equipment record "${escapeHtml(reassignmentState.equipmentName)}" will be moved to "${escapeHtml(reassignmentState.newExerciseName)}".
@@ -1952,7 +1952,7 @@ export async function confirmReassignmentTarget() {
         </div>
         <div id="reassign-progress" class="reassign-progress hidden">
             <div class="reassign-progress-bar"></div>
-            <span class="reassign-progress-text">Updating...</span>
+            <span class="reassign-progress-text">Updating…</span>
         </div>
         <div class="reassign-confirm-actions">
             <button class="btn btn-secondary" onclick="closeReassignModal()">Cancel</button>
@@ -1988,14 +1988,23 @@ export async function commitReassignment() {
             (done, total) => {
                 const pct = total > 0 ? Math.round((done / total) * 100) : 0;
                 if (progressBar) progressBar.style.setProperty('--progress', `${pct}%`);
-                if (progressText) progressText.textContent = `Updating ${done} of ${total} workouts...`;
+                if (progressText) progressText.textContent = `Updating ${done} of ${total} sessions…`;
             }
         );
 
+        const extras = [];
+        if (result.prsMigrated) {
+            extras.push(result.prMergeConflicts
+                ? `PRs migrated (${result.prMergeConflicts} merged)`
+                : 'PRs migrated');
+        }
+        if (result.videoMigrated) extras.push('form video moved');
+        const tail = extras.length ? ` · ${extras.join(' · ')}` : '';
+
         showNotification(
-            `Reassigned to ${newExerciseName} (${result.workouts} workouts, ${result.templates} templates)`,
+            `Reassigned to ${newExerciseName} (${result.workouts} session${result.workouts !== 1 ? 's' : ''}, ${result.templates} workout${result.templates !== 1 ? 's' : ''})${tail}`,
             'success',
-            3000
+            3500
         );
 
         closeReassignModal();

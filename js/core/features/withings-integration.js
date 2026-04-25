@@ -19,7 +19,7 @@ const WITHINGS_CLIENT_ID = '332086edb8febf30285cb268783ae86686a2253dd2c2883f6859
  */
 export async function connectWithings() {
     if (!AppState.currentUser) {
-        showNotification('Sign in first', 'warning');
+        showNotification('Sign in to continue', 'warning');
         return;
     }
 
@@ -86,7 +86,7 @@ async function exchangeWithingsCode(code, callbackUrl) {
     try {
         const cbUrl = callbackUrl || window.location.origin;
         console.log('🔗 Exchanging Withings code, callback:', cbUrl);
-        showNotification('Completing Withings setup...', 'info', 3000);
+        showNotification('Completing Withings setup…', 'info', 3000);
 
         const exchangeToken = httpsCallable(functions, 'withingsExchangeToken');
         const result = await exchangeToken({
@@ -95,17 +95,17 @@ async function exchangeWithingsCode(code, callbackUrl) {
         });
 
         if (result.data?.success) {
-            showNotification('Withings connected! Syncing weight data...', 'success', 2000);
+            showNotification('Withings connected · syncing weight data…', 'success', 2000);
             // Auto-sync after connecting
             await syncWithingsWeight();
             return true;
         } else {
-            showNotification('Failed to complete Withings connection', 'error');
+            showNotification("Couldn't finish Withings setup", 'error');
             return false;
         }
     } catch (error) {
         console.error('❌ Withings token exchange error:', error);
-        showNotification('Withings connection failed', 'error');
+        showNotification("Couldn't connect Withings", 'error');
         return false;
     }
 }
@@ -125,7 +125,7 @@ export async function syncWithingsWeight(days = 30, options = {}) {
     const silent = options.silent || false;
 
     try {
-        if (!silent) showNotification('Syncing from Withings...', 'info', 2000);
+        if (!silent) showNotification('Syncing from Withings…', 'info', 2000);
 
         const sync = httpsCallable(functions, 'withingsSyncWeight');
         const result = await sync({ days });
@@ -194,7 +194,7 @@ export async function disconnectWithings() {
         showNotification('Withings disconnected', 'success', 1500);
     } catch (error) {
         console.error('❌ Withings disconnect error:', error);
-        showNotification('Failed to disconnect', 'error');
+        showNotification("Couldn't disconnect", 'error');
     }
 }
 

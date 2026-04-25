@@ -163,7 +163,7 @@ export function closeTemplateSelection() {
 
 export async function selectTemplate(templateId, isDefault = false) {
     if (!AppState.currentUser) {
-        alert('Please sign in to start workouts');
+        alert('Sign in to start workouts');
         return;
     }
 
@@ -199,7 +199,7 @@ export async function selectTemplate(templateId, isDefault = false) {
         await startWorkout(selectedTemplate.day || selectedTemplate.name || templateId);
     } catch (error) {
         console.error('Error selecting template:', error);
-        alert('Error starting workout from template');
+        alert("Couldn't start workout");
     }
 }
 
@@ -443,16 +443,16 @@ function renderTemplateRows(container, templates, isFiltered) {
             container.innerHTML = `
                 <div class="template-empty-state">
                     <div class="template-empty-state__icon"><i class="fas fa-filter"></i></div>
-                    <div class="template-empty-state__text">No templates in this category</div>
+                    <div class="template-empty-state__text">No workouts in this category</div>
                 </div>
             `;
         } else {
             container.innerHTML = `
                 <div class="template-empty-state">
                     <div class="template-empty-state__icon"><i class="fas fa-dumbbell"></i></div>
-                    <div class="template-empty-state__text">Create your first workout template to get started</div>
+                    <div class="template-empty-state__text">Create your first workout to get started</div>
                     <button class="template-empty-state__cta" onclick="createNewTemplate()">
-                        <i class="fas fa-plus"></i> Create Template
+                        <i class="fas fa-plus"></i> Create workout
                     </button>
                 </div>
             `;
@@ -490,7 +490,7 @@ function renderSingleTemplateRow(template) {
             <div class="template-editor" data-stop-propagation>
                 ${renderTemplateDetailsAccordion(template)}
                 <div class="template-editor__section-header">
-                    <span class="template-editor__section-label">EXERCISES</span>
+                    <span class="template-editor__section-label">Exercises</span>
                     <button class="template-editor__section-add"
                             data-action="addTemplateExercise"
                             data-template-id="${escapeAttr(templateId)}"
@@ -503,7 +503,7 @@ function renderSingleTemplateRow(template) {
                     ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet — tap + above to add one</div>'}
                 </div>
                 <button class="template-editor__add-btn" data-action="addTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
-                    <i class="fas fa-plus"></i> Add Exercise
+                    <i class="fas fa-plus"></i> Add exercise
                 </button>
                 <div class="template-editor__actions">
                     <button class="template-editor__action" data-action="duplicateTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
@@ -514,7 +514,7 @@ function renderSingleTemplateRow(template) {
                     </button>
                 </div>
                 <button class="template-editor__start-btn" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}">
-                    <i class="fas fa-play"></i> Start Workout
+                    <i class="fas fa-play"></i> Start workout
                 </button>
             </div>
         `;
@@ -947,7 +947,7 @@ async function saveTemplateInline(template, exercises) {
         AppState.workoutPlans = await wm.getUserWorkoutTemplates();
     } catch (err) {
         console.error('Error saving template:', err);
-        showNotification('Failed to save changes', 'error');
+        showNotification("Couldn't save changes", 'error');
     }
 }
 
@@ -979,7 +979,7 @@ export async function removeTemplateExerciseInline(templateId, index) {
 
     const exercises = normalizeExercisesToArray(template.exercises);
     const name = getExerciseName(exercises[index]);
-    if (!confirm(`Remove "${name}" from this template?`)) return;
+    if (!confirm(`Remove "${name}" from this workout?`)) return;
 
     exercises.splice(index, 1);
     template.exercises = exercises;
@@ -1184,7 +1184,7 @@ export async function loadTemplatesByCategory() {
     if (!container) return;
 
     setupTemplateDelegation(container);
-    container.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading templates...</span></div>';
+    container.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading workouts…</span></div>';
 
     try {
         let templates = [];
@@ -1219,8 +1219,8 @@ export async function loadTemplatesByCategory() {
         container.innerHTML = `
             <div class="error-state">
                 <i class="fas fa-exclamation-triangle"></i>
-                <h3>Error Loading Templates</h3>
-                <p>Please try again later.</p>
+                <h3>Couldn't load workouts</h3>
+                <p>Try again later.</p>
             </div>
         `;
     }
@@ -1246,13 +1246,13 @@ export async function useTemplateFromManagement(templateId, isDefault) {
         await selectTemplate(templateId, isDefault);
     } catch (error) {
         console.error('Error in useTemplateFromManagement:', error);
-        alert('Error starting template');
+        alert("Couldn't start workout");
     }
 }
 
 export async function copyTemplateToCustom(templateId) {
     if (!AppState.currentUser) {
-        alert('Please sign in to copy templates');
+        alert('Sign in to copy workouts');
         return;
     }
 
@@ -1289,17 +1289,17 @@ export async function copyTemplateToCustom(templateId) {
         switchTemplateCategory('custom');
     } catch (error) {
         console.error('Error copying template:', error);
-        alert('Error copying template');
+        alert("Couldn't copy workout");
     }
 }
 
 export async function deleteCustomTemplate(templateId) {
     if (!AppState.currentUser) {
-        alert('Please sign in to delete templates');
+        alert('Sign in to delete workouts');
         return;
     }
 
-    if (!confirm('Are you sure you want to delete this custom template? This cannot be undone.')) {
+    if (!confirm("Delete this workout? This can't be undone.")) {
         return;
     }
 
@@ -1312,7 +1312,7 @@ export async function deleteCustomTemplate(templateId) {
         loadTemplatesByCategory();
     } catch (error) {
         console.error('Error deleting template:', error);
-        alert('Error deleting template');
+        alert("Couldn't delete workout");
     }
 }
 
@@ -1330,13 +1330,13 @@ export function renderTemplateCards(templates, targetContainer = null, available
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-clipboard-list"></i>
-                <h3>No Templates Found</h3>
+                <h3>No workouts found</h3>
                 <p>${
                     equipmentFilterActive
-                        ? 'No templates match the equipment at this gym.'
+                        ? 'No workouts match the equipment at this gym.'
                         : currentTemplateCategory === 'custom'
-                            ? 'Create your first custom template in Workout Management.'
-                            : 'No templates available in this category.'
+                            ? 'Create your first custom workout to get started.'
+                            : 'No workouts available in this category.'
                 }</p>
             </div>
         `;
@@ -1386,7 +1386,7 @@ export function createTemplateCard(template, isDefault = false, availableExercis
     // Secondary actions: reset (if overrides default) and delete/hide
     let secondaryActions = '';
     if (template.overridesDefault) {
-        secondaryActions += `<button class="template-overflow-item" data-action="resetToDefault" data-template-id="${escapeAttr(template.overridesDefault)}"><i class="fas fa-undo"></i> Reset to Default</button>`;
+        secondaryActions += `<button class="template-overflow-item" data-action="resetToDefault" data-template-id="${escapeAttr(template.overridesDefault)}"><i class="fas fa-undo"></i> Reset to default</button>`;
     }
     secondaryActions += `<button class="template-overflow-item template-overflow-item--danger" data-action="deleteTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${isDefault}"><i class="fas fa-${isDefault ? 'eye-slash' : 'trash'}"></i> ${isDefault ? 'Hide' : 'Delete'}</button>`;
 
@@ -1678,7 +1678,7 @@ function createWorkoutCard(workout) {
             .slice(0, 3)
             .map((ex) => getExerciseName(ex))
             .join(', ') || 'No exercises listed';
-    const moreText = exerciseCount > 3 ? ` and ${exerciseCount - 3} more...` : '';
+    const moreText = exerciseCount > 3 ? ` and ${exerciseCount - 3} more…` : '';
 
     card.innerHTML = `
         <div class="workout-header">
@@ -1691,7 +1691,7 @@ function createWorkoutCard(workout) {
         </div>
         <div class="workout-actions">
             <button class="btn btn-primary" data-action="startWorkout" data-workout="${escapeAttr(workoutName)}">
-                <i class="fas fa-play"></i> Start Workout
+                <i class="fas fa-play"></i> Start workout
             </button>
             <button class="btn btn-secondary" data-action="previewWorkout" data-workout="${escapeAttr(workoutName)}">
                 <i class="fas fa-eye"></i> Preview
@@ -1708,7 +1708,7 @@ function createWorkoutCard(workout) {
 
 export async function editTemplate(templateId) {
     if (!AppState.currentUser) {
-        alert('Please sign in to edit templates');
+        alert('Sign in to edit workouts');
         return;
     }
 
@@ -1818,7 +1818,7 @@ function createBasicTemplateEditorModal() {
                                 <!-- Exercises will be populated here -->
                             </div>
                             <button type="button" class="btn btn-secondary" onclick="addExerciseToBasicTemplate()">
-                                <i class="fas fa-plus"></i> Add Exercise
+                                <i class="fas fa-plus"></i> Add exercise
                             </button>
                         </div>
                     </div>
@@ -1875,7 +1875,7 @@ export async function saveBasicTemplate() {
     const categorySelect = document.getElementById('basic-template-category');
 
     if (!nameInput?.value.trim()) {
-        alert('Please enter a template name');
+        alert('Add a workout name');
         return;
     }
 
@@ -2037,7 +2037,7 @@ window.removeBasicExercise = function (index) {
     const modal = document.getElementById('basic-template-editor-modal');
     if (!modal || !modal.templateData) return;
 
-    if (confirm('Remove this exercise from the template?')) {
+    if (confirm('Remove this exercise from this workout?')) {
         modal.templateData.exercises.splice(index, 1);
         showBasicTemplateEditor(modal.templateData);
     }

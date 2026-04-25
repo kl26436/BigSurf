@@ -342,6 +342,123 @@ These rules are canonical for all new CSS and JS that renders markup. When in do
    - **Single-word utility classes** (`.text-primary`, `.btn-block`, `.hidden`) are fine — BEM applies to components, not utilities.
 10. **No duplicate class declarations across files.** A class is defined in **exactly one** file. If you find the same selector in two files, consolidate before adding new code. Ongoing offenders are tracked in DESIGN-BACKLOG.md Phase D.
 
+## User-Facing Copy Rules
+
+These rules govern every string that ships to the user — page titles, button labels, placeholders, empty states, notifications, confirmation dialogs, error messages, and tooltips. Source-code identifiers (function names, class names, Firestore field names) follow code conventions and are exempt.
+
+### 1. Sentence case, always
+
+All user-facing strings use sentence case. This is the single rule that resolves ~80% of drift in the codebase.
+
+**Sentence case:** `Add exercise`, `Save as template`, `Workout details`, `Continue workout`, `Choose equipment`.
+
+**Exceptions** (only these):
+- **Brand names:** `Withings`, `DEXA`, `Big Surf`, `Google`, `Firebase`.
+- **Acronyms:** `PR`, `GPS`, `BW`, `AI`, `URL`.
+- **Proper-noun categories** when treated as named labels rather than verbs: `Push`, `Pull`, `Legs`, `Core`, `Cardio`, `Arms`, `Shoulders`. (When the same word is a verb in a sentence, lowercase: `Add to your push day`.)
+- **User-entered content:** never re-case what the user typed.
+
+**Anti-pattern lint:** `git grep -nE '[A-Z][a-z]+ [A-Z][a-z]+'` in `js/` and `index.html` surfaces almost all violations.
+
+### 2. Talk like a person
+
+- Use contractions: `can't` not `cannot`, `couldn't` not `could not`, `don't` not `do not`, `it's` not `it is`.
+- Drop "please" from instructions. `Pick a date` not `Please pick a date`. Politeness ≠ tone.
+- Drop "successfully" from success messages. `Workout deleted` not `Workout deleted successfully` — past tense IS the success.
+- Drop "Are you sure" from confirms. `Delete this workout?` is enough. Put consequences on a second line.
+
+### 3. Action-first labels
+
+CTAs and confirm dialogs name the action, not the question.
+
+- ✓ `Delete 3 files?` ✗ `Are you sure?`
+- ✓ `Delete workout` (button) ✗ `OK`
+- ✓ `Keep workout` (button) ✗ `Cancel`
+- ✓ `Save changes` ✗ `Submit`
+- ✓ `Add exercise` ✗ `+`
+
+### 4. Punctuation
+
+- **Ellipsis:** Always `…` (single character), never `...` (three dots). Loading states, placeholders, and truncation all use the proper character.
+- **Em dash:** Always `—` for separating clauses, never `-` or `--`. Hyphens stay for compound words.
+- **Exclamation marks:** Use sparingly, only for genuinely exciting moments (PR celebration, streak milestone). Success toasts do not get exclamations. `Workout saved` not `Workout saved!`.
+
+### 5. Notifications (`showNotification`)
+
+- **Success:** Past-tense statement, no exclamation. `Workout deleted`, `Withings connected`, `${name} created`.
+- **Error:** Lead with what failed in plain language, then how to recover if known. `Couldn't save — try again`. Don't surface raw error messages.
+- **Warning:** State the constraint, not the rejection. `Add at least one exercise` not `Cannot save: no exercises`.
+- **No "please".** Verb-first instruction. `Pick a date`, not `Please select a date`.
+- **No "successfully".** Past tense IS the success.
+- **One canonical phrasing per concept.** Field-required = `Add a [thing]`. Pick = `Pick a [thing]`.
+
+### 6. Confirmation dialogs
+
+- **Question names the action and target.** `Delete workout from April 12?` not `Are you sure?`
+- **Consequence on a second line, conversational.** `This can't be undone.` not `This action cannot be undone.`
+- **Buttons name the actions.** `Delete workout` / `Keep workout`, not `OK` / `Cancel`. (Until in-app modals replace native `confirm()`, write the question so the OK action is obvious.)
+- **Tell the truth about consequences.** Don't say `All progress will be lost` if the data is preserved.
+
+### 7. Empty states
+
+Three parts, in order:
+1. **What this is.** `No workouts this month`.
+2. **Why it's empty.** (Often implicit; skip if obvious.)
+3. **How to start.** `Complete a workout and it will show up here.`
+
+Never just say "Nothing here" or show an icon alone.
+
+### 8. Time and relative dates
+
+- **Verb form for workouts:** `Last done 3 days ago`.
+- **Noun form for named events:** `Last DEXA: 3 weeks ago`.
+- **Dense data rows:** `Last: 10×135 · 3d ago` — colon form, abbreviated.
+- **Spell out units in display copy** when ambiguous: `42 min · 18 sets`, not `42m · 18 sets`. Abbreviations OK in dense data rows where context is clear.
+- **Use `Intl.RelativeTimeFormat`** when generating relative dates in code, so localization gets correct plurals.
+
+### 9. Terminology
+
+The user thinks "workouts." Keep "template" as a code-side concept; never expose it.
+
+| Code term | User-facing term |
+|---|---|
+| `template`, `workoutTemplate` | `workout` |
+| `Workout Library` | `your workouts` |
+| `superset group A/B/C` | `Superset A` |
+| `defaultReps`, `defaultSets` | `Default reps`, `Default sets` |
+
+### 10. Aria and accessibility copy
+
+- **Every icon-only button needs `aria-label`.** Sentence case. `aria-label="Move up"`, not `aria-label="up"`.
+- **Status pills** need `aria-label="Completed"` / `"Cancelled"` / `"Incomplete"`.
+- **Live-region announcements** for autosave / reorder / delete with undo: `aria-live="polite"`, message form `${item} ${action}.`. Example: `Cable Fly removed.`
+
+### 11. Lint pass before merging UI changes
+
+Quick searches that catch most regressions:
+
+```bash
+# Title-case violations in source strings
+grep -nE '[A-Z][a-z]+ [A-Z][a-z]+' index.html js/ | grep -v 'class=\|id=\|//\|test\|spec'
+
+# "Please" in user-facing strings
+grep -rn "Please " js/ index.html
+
+# Three-dot ellipsis
+grep -rn '\.\.\.' js/ index.html | grep -v '//\|spread'
+
+# "Are you sure" anti-pattern
+grep -rn 'Are you sure' js/
+
+# "successfully" filler
+grep -rn 'successfully' js/
+
+# "cannot" instead of "can't"
+grep -rn 'cannot' js/ | grep -v '//'
+```
+
+Address violations in the PR that introduces them; don't let them accumulate.
+
 ## Important Notes
 
 - **No bundler/transpiler**: All code must be ES6 module compatible

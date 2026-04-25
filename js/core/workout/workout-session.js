@@ -68,7 +68,7 @@ window.addEventListener('exerciseRenamed', (event) => {
 
 export async function startWorkout(workoutType) {
     if (!AppState.currentUser) {
-        alert('Please sign in to start a workout');
+        alert('Sign in to start a workout');
         return;
     }
 
@@ -84,7 +84,7 @@ export async function startWorkout(workoutType) {
                 `\u26A0\uFE0F You already completed a workout today: "${workoutName}"\n\n` +
                     `Starting a new workout will REPLACE your completed workout data.\n\n` +
                     `Your previous workout progress, PRs from that session, and stats will be overwritten.\n\n` +
-                    `Are you sure you want to start a new workout?`
+                    `Start a new workout?`
             );
 
             if (!confirmed) {
@@ -375,7 +375,7 @@ export async function completeWorkout() {
             // summary modal throws for any reason, log + surface + fall back
             // to the dashboard so they at least see something.
             console.error('Workout summary modal failed:', err);
-            showNotification('Finished — summary failed to render', 'error');
+            showNotification("Workout saved — couldn't show summary", 'error');
             navigateTo('dashboard');
         }
     } else {
@@ -393,7 +393,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
         // Fallback to dashboard if modal not found — surface this so we know
         // when it happens instead of silently skipping the recap.
         console.error('Workout summary modal element missing', { modal: !!modal, content: !!content });
-        showNotification('Workout saved — summary UI not available', 'warning');
+        showNotification("Workout saved — couldn't show summary", 'warning');
         navigateTo('dashboard');
         return;
     }
@@ -474,16 +474,16 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
             <div class="completion-template-changes" id="template-changes-banner">
                 <div class="template-changes-text">
                     <i class="fas fa-sync-alt"></i>
-                    <span>Template modified (${templateChanges.details.join(', ')})</span>
+                    <span>Workout modified (${templateChanges.details.join(', ')})</span>
                 </div>
-                <button class="btn btn-primary btn-small" id="save-template-changes-btn">Update Template</button>
+                <button class="btn btn-primary btn-small" id="save-template-changes-btn">Update workout</button>
                 <button class="btn-text" id="dismiss-template-changes-btn"><i class="fas fa-times"></i></button>
             </div>
             ` : ''}
 
             <div class="completion-notes-section">
                 <label for="workout-notes">How did it feel?</label>
-                <textarea id="workout-notes" placeholder="Great session, felt strong..." rows="2"></textarea>
+                <textarea id="workout-notes" placeholder="Great session, felt strong…" rows="2"></textarea>
             </div>
 
             <div class="completion-actions">
@@ -541,11 +541,11 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
             });
 
             const banner = document.getElementById('template-changes-banner');
-            if (banner) banner.innerHTML = '<i class="fas fa-check completion-template-saved"></i> Template updated!';
-            showNotification('Template updated', 'success');
+            if (banner) banner.innerHTML = '<i class="fas fa-check completion-template-saved"></i> Workout updated';
+            showNotification('Workout updated', 'success');
         } catch (err) {
             console.error('Error updating template:', err);
-            showNotification('Failed to update template', 'error');
+            showNotification("Couldn't update workout", 'error');
         }
     });
 
@@ -561,14 +561,14 @@ function showSaveAsTemplatePrompt(workoutData) {
     const banner = document.createElement('div');
     banner.className = 'save-template-banner';
     banner.innerHTML = `
-        <span>${canUpdate ? `Update "${workoutName}" template?` : `Save "${workoutName}" as a template?`}</span>
+        <span>${canUpdate ? `Update workout "${workoutName}"?` : `Save "${workoutName}" as a workout?`}</span>
         <div class="save-template-actions">
             ${canUpdate ? `
                 <button class="btn btn-primary btn-small" id="update-template-btn">
                     <i class="fas fa-sync-alt"></i> Update
                 </button>
                 <button class="btn btn-secondary btn-small" id="save-as-template-btn">
-                    <i class="fas fa-plus"></i> Save New
+                    <i class="fas fa-plus"></i> Save new
                 </button>
             ` : `
                 <button class="btn btn-primary btn-small" id="save-as-template-btn">
@@ -655,10 +655,10 @@ async function updateExistingTemplate(workoutData) {
         // Refresh cached plans
         AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
 
-        showNotification('Template updated', 'success');
+        showNotification('Workout updated', 'success');
     } catch (error) {
         console.error('Error updating template:', error);
-        showNotification('Failed to update template', 'error');
+        showNotification("Couldn't update workout", 'error');
     }
 }
 
@@ -925,8 +925,8 @@ export async function cancelWorkout(skipConfirmation = false) {
             .filter(s => s.completed).length;
 
         const message = completedSets > 0
-            ? `You've completed ${completedSets} set${completedSets !== 1 ? 's' : ''}. Are you sure you want to cancel this workout? This cannot be undone.`
-            : 'Are you sure you want to cancel this workout?';
+            ? `Cancel workout? You've completed ${completedSets} set${completedSets !== 1 ? 's' : ''} — they'll be saved as a cancelled session.`
+            : 'Cancel this workout?';
 
         if (!confirm(message)) {
             return; // User chose not to cancel
@@ -1059,7 +1059,7 @@ export function continueInProgressWorkout() {
  */
 export async function editHistoricalWorkout(docIdOrDate) {
     if (!AppState.currentUser) {
-        alert('Please sign in to edit workouts');
+        alert('Sign in to edit workouts');
         return;
     }
 
@@ -1084,7 +1084,7 @@ export async function editHistoricalWorkout(docIdOrDate) {
     const workoutData = await loadWorkoutById(AppState, docIdOrDate);
 
     if (!workoutData) {
-        showNotification('Could not load workout data', 'error');
+        showNotification("Couldn't load workout data", 'error');
         return;
     }
 
@@ -1295,8 +1295,8 @@ export async function discardInProgressWorkout() {
     }
 
     const confirmDiscard = confirm(
-        `Are you sure you want to discard your in-progress "${window.inProgressWorkout.workoutType}" workout? ` +
-            `This will permanently delete your progress and cannot be undone.`
+        `Discard in-progress "${window.inProgressWorkout.workoutType}" workout? ` +
+            `This permanently deletes your progress and can't be undone.`
     );
 
     if (!confirmDiscard) {
@@ -1329,7 +1329,7 @@ export async function discardInProgressWorkout() {
         navigateTo('dashboard');
     } catch (error) {
         console.error('Error during discard process:', error);
-        alert('Error discarding workout. Please try again.');
+        alert("Couldn't discard workout — try again");
     }
 }
 

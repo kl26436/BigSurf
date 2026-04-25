@@ -68,7 +68,7 @@
             <div class="loading-content">
                 <img src="BigSurfNoBG.png" alt="Big Surf Logo" class="loading-logo loading-logo-large" />
                 <div class="loading-spinner"></div>
-                <p id="loading-message" class="loading-message">Initializing...</p>
+                <p id="loading-message" class="loading-message">Initializing…</p>
 
                 <!-- Sign-in prompt (shown if not authenticated) -->
                 <div id="loading-signin-prompt" class="loading-signin-prompt hidden">
@@ -119,7 +119,7 @@
                         <div class="resume-banner">
                             <div class="resume-banner-header">
                                 <span class="resume-pulse-dot"></span>
-                                <h3>Workout In Progress</h3>
+                                <h3>Workout in progress</h3>
                                 <span id="resume-time-ago" class="resume-time-label">just now</span>
                             </div>
                             <div class="resume-banner-body">
@@ -140,7 +140,7 @@
                             </div>
                             <div class="resume-banner-actions">
                                 <button class="btn btn-primary btn-full" onclick="continueInProgressWorkout()">
-                                    Continue Workout
+                                    Continue workout
                                 </button>
                                 <button class="btn-text-small" onclick="event.stopPropagation(); discardInProgressWorkout();">
                                     Discard
@@ -228,7 +228,7 @@
                     <div class="template-search-bar">
                         <i class="fas fa-search"></i>
                         <input type="text" id="template-search-input"
-                            placeholder="Search templates & exercises"
+                            placeholder="Search workouts & exercises"
                             oninput="searchWorkoutTemplates(this.value)">
                     </div>
 
@@ -275,14 +275,14 @@
                         <div class="field-search">
                             <i class="fas fa-search"></i>
                             <input type="text" id="history-search-input"
-                                placeholder="Search exercises or workouts..."
+                                placeholder="Search exercises or workouts…"
                                 oninput="filterWorkoutHistory(this.value)">
                             <button class="history-search-clear hidden" id="history-search-clear" onclick="clearHistorySearch()" aria-label="Clear search">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
                         <select id="history-category-filter" onchange="filterHistoryByCategory(this.value)">
-                            <option value="">All Types</option>
+                            <option value="">All types</option>
                         </select>
                     </div>
 
@@ -328,7 +328,7 @@
                 <dialog id="template-selection-modal" class="modal">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h3 id="template-modal-title">Choose Workout</h3>
+                            <h3 id="template-modal-title">Choose workout</h3>
                             <button class="close-btn" aria-label="Close" onclick="closeTemplateSelection()">
                                 <i class="fas fa-times"></i>
                             </button>
@@ -348,7 +348,7 @@
                             <button class="page-header__back" onclick="closeExerciseLibrary()" aria-label="Back">
                                 <i class="fas fa-chevron-left"></i>
                             </button>
-                            <div class="page-header__title">Add Exercise</div>
+                            <div class="page-header__title">Add exercise</div>
                         </div>
                         <button class="page-header__save" onclick="showCreateExerciseForm()">
                             <i class="fas fa-plus"></i> New
@@ -362,13 +362,13 @@
                                     type="text"
                                     id="exercise-library-search"
                                     class="form-input"
-                                    placeholder="Search exercises..."
+                                    placeholder="Search exercises…"
                                 />
                             </div>
 
                             <div class="filter-row">
                                 <select id="body-part-filter" class="form-input">
-                                    <option value="">All Body Parts</option>
+                                    <option value="">All body parts</option>
                                     <option value="chest">Chest</option>
                                     <option value="back">Back</option>
                                     <option value="shoulders">Shoulders</option>
@@ -378,7 +378,7 @@
                                 </select>
 
                                 <select id="equipment-filter" class="form-input">
-                                    <option value="">All Equipment</option>
+                                    <option value="">All equipment</option>
                                     <option value="machine">Machine</option>
                                     <option value="dumbbell">Dumbbell</option>
                                     <option value="barbell">Barbell</option>
@@ -409,7 +409,7 @@
                             <button class="page-header__back" onclick="closeWorkoutDetailModal()" aria-label="Back">
                                 <i class="fas fa-chevron-left"></i>
                             </button>
-                            <div class="page-header__title" id="workout-detail-title">Workout Details</div>
+                            <div class="page-header__title" id="workout-detail-title">Workout details</div>
                         </div>
                     </div>
                     <div class="full-page-body" id="workout-detail-content">
@@ -421,7 +421,7 @@
                 <dialog id="add-location-modal" class="modal">
                     <div class="modal-content modal-medium">
                         <div class="modal-header">
-                            <h3>Add New Location</h3>
+                            <h3>Add new location</h3>
                             <button class="close-btn" aria-label="Close" onclick="closeAddLocationModal()">
                                 <i class="fas fa-times"></i>
                             </button>
@@ -429,7 +429,7 @@
                         <div class="modal-body">
                             <!-- Location Name -->
                             <div class="form-group">
-                                <label>Location Name</label>
+                                <label>Location name</label>
                                 <input
                                     type="text"
                                     id="add-location-name-input"
@@ -464,20 +464,20 @@
                             <div id="location-method-gps" class="location-method-content">
                                 <div class="gps-status-box" id="add-location-gps-status">
                                     <i class="fas fa-spinner fa-spin"></i>
-                                    <span>Detecting your location...</span>
+                                    <span>Detecting your location…</span>
                                 </div>
                             </div>
 
                             <!-- Address Search Method -->
                             <div id="location-method-address" class="location-method-content hidden">
                                 <div class="form-group">
-                                    <label>Search Address</label>
+                                    <label>Search address</label>
                                     <div class="search-input-wrapper">
                                         <input
                                             type="text"
                                             id="location-address-search"
                                             class="form-input"
-                                            placeholder="Enter address, city, or place name..."
+                                            placeholder="Enter address, city, or place name…"
                                             autocomplete="off"
                                             onkeydown="
                                                 if (event.key === 'Enter') {
@@ -576,11 +576,11 @@
                     <div class="workout-source-option" id="source-library-option">
                         <div class="source-header" onclick="toggleManualWorkoutSource('library')">
                             <i class="fas fa-list"></i>
-                            <span>Select from Workout Library</span>
+                            <span>Select from your workouts</span>
                             <i class="fas fa-chevron-down toggle-icon"></i>
                         </div>
                         <div id="manual-library-list" class="source-content hidden">
-                            <div class="library-loading">Loading workouts...</div>
+                            <div class="library-loading">Loading workouts…</div>
                         </div>
                     </div>
 
@@ -588,7 +588,7 @@
                     <div class="workout-source-option" id="source-custom-option">
                         <div class="source-header" onclick="toggleManualWorkoutSource('custom')">
                             <i class="fas fa-plus-circle"></i>
-                            <span>Create Custom Workout</span>
+                            <span>Create custom workout</span>
                             <i class="fas fa-chevron-down toggle-icon"></i>
                         </div>
                         <div id="manual-custom-form" class="source-content hidden">
@@ -599,7 +599,7 @@
                             <div class="field">
                                 <div class="field-label">Category</div>
                                 <select id="manual-workout-category" class="field-input">
-                                    <option value="">Select category...</option>
+                                    <option value="">Select category…</option>
                                     <option value="Push">Push</option>
                                     <option value="Pull">Pull</option>
                                     <option value="Legs">Legs</option>
@@ -621,8 +621,8 @@
                     <div class="page-header__left">
                         <button class="page-header__back" onclick="backToManualStep1()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
                         <div class="page-header__title-group">
-                            <div class="page-header__eyebrow">Past Workout</div>
-                            <div class="page-header__title" id="manual-workout-title-display">Your Workout</div>
+                            <div class="page-header__eyebrow">Past workout</div>
+                            <div class="page-header__title" id="manual-workout-title-display">Your workout</div>
                         </div>
                     </div>
                     <button class="page-header__save" onclick="saveManualWorkout()">Save</button>
@@ -649,7 +649,7 @@
                     <div class="field">
                         <div class="field-label"><i class="fas fa-map-marker-alt"></i> Location</div>
                         <select id="manual-workout-location" class="field-input">
-                            <option value="">Select gym location...</option>
+                            <option value="">Select gym location…</option>
                             <!-- Populated dynamically -->
                         </select>
                     </div>
@@ -678,7 +678,7 @@
                     <div class="field">
                         <div class="field-label">Notes <span class="field-label__hint">(optional)</span></div>
                         <textarea id="manual-workout-notes" class="field-input" rows="2"
-                                  placeholder="Any notes about this workout..."></textarea>
+                                  placeholder="Any notes about this workout…"></textarea>
                     </div>
 
                     <!-- Hidden duration input kept for save-handler compatibility;
@@ -785,7 +785,7 @@
                     <input
                         type="text"
                         id="exercise-list-search-input"
-                        placeholder="Search exercises..."
+                        placeholder="Search exercises…"
                         oninput="filterExerciseLibrary()"
                     />
                 </div>
@@ -828,7 +828,7 @@
         <dialog id="equipment-picker-modal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3 id="equipment-picker-title">Select Equipment</h3>
+                    <h3 id="equipment-picker-title">Select equipment</h3>
                     <button class="close-btn" aria-label="Close" onclick="closeEquipmentPicker()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -972,14 +972,14 @@
                 <button class="page-header__back" aria-label="Go back" onclick="closeEquipmentEditor()">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h2 id="equipment-editor-title">Edit Equipment</h2>
+                <h2 id="equipment-editor-title">Edit equipment</h2>
                 <button class="page-header__save" onclick="saveEquipmentFromEditor()"><i class="fas fa-check"></i> Save</button>
             </div>
 
             <form id="equipment-editor-form" class="edit-exercise-form">
                 <!-- Section 1: Equipment Name -->
                 <div class="edit-section">
-                    <h3 class="edit-section-title">Equipment Name</h3>
+                    <h3 class="edit-section-title">Equipment name</h3>
                     <div class="input-with-icon">
                         <i class="fas fa-dumbbell"></i>
                         <input
@@ -993,13 +993,13 @@
 
                 <!-- Section 2: Form Videos -->
                 <div class="edit-section">
-                    <h3 class="edit-section-title">Form Videos <span class="optional-tag">(Optional)</span></h3>
+                    <h3 class="edit-section-title">Form videos <span class="optional-tag">(optional)</span></h3>
                     <p class="edit-section-hint">Per-exercise YouTube links for this equipment</p>
                     <div id="equipment-exercise-videos" class="equipment-exercise-videos-list">
                         <!-- Populated dynamically -->
                     </div>
                     <div style="margin-top: 12px;">
-                        <label class="edit-section-hint" style="margin-bottom: 4px; display: block;">Default Equipment Video</label>
+                        <label class="edit-section-hint" style="margin-bottom: 4px; display: block;">Default equipment video</label>
                         <div class="input-with-icon">
                             <i class="fas fa-video"></i>
                             <input
@@ -1060,14 +1060,14 @@
         <dialog id="reassign-equipment-modal" class="modal">
             <div class="modal-content reassign-modal">
                 <div class="modal-header">
-                    <h3>Reassign Equipment</h3>
+                    <h3>Reassign equipment</h3>
                     <button class="close-btn" aria-label="Close" data-action="closeReassignModal" onclick="closeReassignModal()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="reassign-header-info"></div>
                 <div class="reassign-search">
-                    <input type="text" id="reassign-exercise-search" class="form-input" placeholder="Search exercises...">
+                    <input type="text" id="reassign-exercise-search" class="form-input" placeholder="Search exercises…">
                 </div>
                 <div class="reassign-exercise-list"></div>
                 <div class="reassign-actions">
@@ -1135,7 +1135,7 @@
                     <button class="page-header__back" onclick="closeWeightHistory()" aria-label="Back">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <div class="page-header__title">Weight History</div>
+                    <div class="page-header__title">Weight history</div>
                 </div>
             </div>
             <div class="full-page-body" id="weight-history-content">
@@ -1151,7 +1151,7 @@
                     <button class="page-header__back" onclick="closeDexaUploadModal()" aria-label="Back">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <div class="page-header__title">New DEXA Scan</div>
+                    <div class="page-header__title">New DEXA scan</div>
                 </div>
                 <button id="dexa-save-btn" class="page-header__save" disabled onclick="confirmDexaSave()">Save</button>
             </div>
@@ -1182,7 +1182,7 @@
                     <button class="page-header__back" onclick="closeDexaDetail()" aria-label="Back">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <div class="page-header__title" id="dexa-detail-title">DEXA Scan</div>
+                    <div class="page-header__title" id="dexa-detail-title">DEXA scan</div>
                 </div>
                 <button class="page-header__icon-btn" id="dexa-detail-overflow" aria-label="More options">
                     <i class="fas fa-ellipsis-v"></i>
@@ -1223,7 +1223,7 @@
                     <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <div class="page-header__title">Plate Calculator</div>
+                    <div class="page-header__title">Plate calculator</div>
                 </div>
             </div>
             <div id="plate-calc-content" class="plate-calc-container"></div>
@@ -1258,14 +1258,14 @@
         <dialog id="error-log-modal" class="modal">
             <div class="modal-content modal-content--full">
                 <div class="modal-header">
-                    <h3 class="modal-title">Error Log</h3>
+                    <h3 class="modal-title">Error log</h3>
                     <button class="btn-icon modal-close" onclick="closeErrorLog()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="error-log-toolbar">
                     <div class="error-log-tabs">
-                        <button id="error-log-session-btn" class="error-log-tab active" onclick="toggleErrorLogSource()">This Session</button>
+                        <button id="error-log-session-btn" class="error-log-tab active" onclick="toggleErrorLogSource()">This session</button>
                         <button id="error-log-saved-btn" class="error-log-tab" onclick="toggleErrorLogSource()">Saved</button>
                     </div>
                     <div class="error-log-actions">
@@ -1295,18 +1295,18 @@
             <div class="bottom-sheet-handle" id="more-menu-handle"></div>
             <div class="more-menu-content">
                 <!-- Training Tools -->
-                <div class="more-menu-section-title">Training Tools</div>
+                <div class="more-menu-section-title">Training tools</div>
                 <button class="more-menu-item" onclick="navigateTo('exercises'); closeMoreMenu();">
                     <i class="fas fa-list"></i>
-                    <span>Exercise Library</span>
+                    <span>Exercise library</span>
                 </button>
                 <button class="more-menu-item" onclick="navigateTo('templates'); closeMoreMenu();">
                     <i class="fas fa-dumbbell"></i>
-                    <span>Workout Library</span>
+                    <span>Your workouts</span>
                 </button>
                 <button class="more-menu-item" onclick="navigateTo('equipment'); closeMoreMenu();">
                     <i class="fas fa-wrench"></i>
-                    <span>Equipment Library</span>
+                    <span>Equipment library</span>
                 </button>
 
                 <div class="more-menu-divider"></div>
@@ -1315,7 +1315,7 @@
                 <div class="more-menu-section-title">Utilities</div>
                 <button class="more-menu-item" onclick="navigateTo('plate-calculator'); closeMoreMenu();">
                     <i class="fas fa-calculator"></i>
-                    <span>Plate Calculator</span>
+                    <span>Plate calculator</span>
                 </button>
                 <button class="more-menu-item" onclick="navigateTo('ai-coach'); closeMoreMenu();">
                     <i class="fas fa-brain"></i>
@@ -1328,7 +1328,7 @@
                 <div class="more-menu-section-title">Tracking</div>
                 <button class="more-menu-item" onclick="openMetricDetail('body-weight'); closeMoreMenu();">
                     <i class="fas fa-weight-scale"></i>
-                    <span>Body Measurements</span>
+                    <span>Body measurements</span>
                 </button>
 
                 <div class="more-menu-divider"></div>
@@ -1337,7 +1337,7 @@
                 <div class="more-menu-section-title">Manage</div>
                 <button id="more-menu-locations" class="more-menu-item" onclick="navigateTo('location'); closeMoreMenu();">
                     <i class="fas fa-map-marker-alt"></i>
-                    <span>Manage Locations</span>
+                    <span>Manage locations</span>
                 </button>
                 <button class="more-menu-item" onclick="navigateTo('settings'); closeMoreMenu();">
                     <i class="fas fa-cog"></i>
@@ -1345,7 +1345,7 @@
                 </button>
                 <button class="more-menu-item" onclick="showErrorLog(); closeMoreMenu();">
                     <i class="fas fa-bug"></i>
-                    <span>Error Log</span>
+                    <span>Error log</span>
                     <span id="error-log-badge" class="error-badge hidden">0</span>
                 </button>
 
@@ -1358,7 +1358,7 @@
                 </div>
                 <button class="more-menu-item more-menu-signout" onclick="signOutUser(); closeMoreMenu();">
                     <i class="fas fa-sign-out-alt"></i>
-                    <span>Sign Out</span>
+                    <span>Sign out</span>
                 </button>
             </div>
         </div>

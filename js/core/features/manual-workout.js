@@ -234,7 +234,7 @@ async function loadWorkoutLibraryForManual() {
 export function selectWorkoutForManual(templateIndex) {
     const date = document.getElementById('manual-workout-date')?.value;
     if (!date) {
-        showNotification('Please select a date first', 'warning');
+        showNotification('Pick a date', 'warning');
         return;
     }
 
@@ -314,15 +314,15 @@ export function startCustomManualWorkout() {
     const category = document.getElementById('manual-workout-category')?.value;
 
     if (!date) {
-        showNotification('Please select a date', 'warning');
+        showNotification('Pick a date', 'warning');
         return;
     }
     if (!name) {
-        showNotification('Please enter a workout name', 'warning');
+        showNotification('Add a workout name', 'warning');
         return;
     }
     if (!category) {
-        showNotification('Please select a category', 'warning');
+        showNotification('Pick a category', 'warning');
         return;
     }
 
@@ -499,7 +499,7 @@ export function addManualSet(exIndex) {
 export function removeManualSet(exIndex, setIndex) {
     const exercise = manualWorkoutState.exercises[exIndex];
     if (!exercise || exercise.sets.length <= 1) {
-        showNotification('Must have at least one set', 'warning');
+        showNotification('Add at least one set', 'warning');
         return;
     }
 
@@ -683,23 +683,23 @@ export function editManualDuration() {
 
 export async function saveManualWorkout() {
     if (!AppState.currentUser) {
-        showNotification('Please sign in to save workouts', 'warning');
+        showNotification('Sign in to save workouts', 'warning');
         return;
     }
 
     // Validate
     if (!manualWorkoutState.date) {
-        showNotification('Please select a date', 'warning');
+        showNotification('Pick a date', 'warning');
         return;
     }
 
     if (!manualWorkoutState.workoutType) {
-        showNotification('Please select or create a workout', 'warning');
+        showNotification('Pick or create a workout', 'warning');
         return;
     }
 
     if (manualWorkoutState.exercises.length === 0) {
-        showNotification('Please add at least one exercise', 'warning');
+        showNotification('Add at least one exercise', 'warning');
         return;
     }
 
@@ -783,11 +783,11 @@ export async function saveManualWorkout() {
         const docRef = doc(db, 'users', AppState.currentUser.uid, 'workouts', workoutId);
         await setDoc(docRef, validated);
 
-        showNotification('Workout saved!', 'success');
+        showNotification('Workout saved', 'success');
 
         // If custom workout, offer to save as template
         if (manualWorkoutState.isCustom && manualWorkoutState.exercises.length > 0) {
-            if (confirm('Save this as a new workout template for future use?')) {
+            if (confirm('Save this as a workout for future use?')) {
                 await saveAsNewTemplate();
             }
         }
@@ -806,7 +806,7 @@ export async function saveManualWorkout() {
         // Surface the actual error message so a user reporting the bug can
         // share something diagnosable instead of the generic fallback.
         const msg = error?.message || error?.code || String(error);
-        showNotification(`Save failed: ${msg}`, 'error', 5000);
+        showNotification(`Couldn't save — ${msg}`, 'error', 5000);
     }
 }
 
@@ -834,14 +834,14 @@ async function saveAsNewTemplate() {
         };
 
         await workoutManager.saveWorkoutTemplate(templateData);
-        showNotification('Template saved to Workout Library!', 'success');
+        showNotification('Saved to your workouts', 'success');
 
         // Refresh workout plans in AppState
         const templates = await workoutManager.getUserWorkoutTemplates();
         AppState.workoutPlans = templates;
     } catch (error) {
         console.error('Error saving template:', error);
-        showNotification('Error saving template', 'error');
+        showNotification("Couldn't save workout", 'error');
     }
 }
 
@@ -906,7 +906,7 @@ export async function openEquipmentPickerForManual(exerciseIndex) {
         openModal(modal);
     } catch (error) {
         console.error('❌ Error loading equipment:', error);
-        showNotification('Error loading equipment', 'error');
+        showNotification("Couldn't load equipment", 'error');
     }
 }
 
@@ -951,10 +951,10 @@ export function proceedToExerciseSelection() {
     // Old function - redirect to new flow
     const date = document.getElementById('manual-workout-date')?.value;
     if (!date) {
-        showNotification('Please select a date', 'warning');
+        showNotification('Pick a date', 'warning');
         return;
     }
-    showNotification('Please select a workout from the library or create a custom one', 'info');
+    showNotification('Pick a workout from your library, or create a new one', 'info');
 }
 
 export function backToBasicInfo() {

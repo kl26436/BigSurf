@@ -1099,7 +1099,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
             </button>
         </div>
 
-        <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes..."
+        <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes…"
                   onchange="saveExerciseNotes(${exerciseIndex})">${escapeHtml(savedNotes)}</textarea>
 
         <div class="exercise-complete-section">
@@ -1293,7 +1293,7 @@ async function generateBodyweightExerciseTable(exercise, exerciseIndex, unit) {
             </button>
         </div>
 
-        <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes..."
+        <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes…"
                   onchange="saveExerciseNotes(${exerciseIndex})">${escapeHtml(savedNotes)}</textarea>
 
         <div class="exercise-complete-section">
@@ -1480,7 +1480,7 @@ function generateCardioTable(exercise, exerciseIndex) {
                 : ''}
         </div>` : ''}
 
-        <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes..."
+        <textarea id="exercise-notes-${exerciseIndex}" class="notes-area" placeholder="Exercise notes…"
                   onchange="saveExerciseNotes(${exerciseIndex})">${escapeHtml(savedNotes)}</textarea>
 
         <div class="exercise-complete-section">
@@ -2156,7 +2156,7 @@ export function addExerciseToActiveWorkout() {
     }
 
     if (!AppState.currentUser) {
-        alert('Please sign in to add exercises');
+        alert('Sign in to add exercises');
         return;
     }
 

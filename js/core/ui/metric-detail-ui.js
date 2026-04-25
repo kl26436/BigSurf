@@ -81,7 +81,7 @@ export function setDetailRange(range) {
  */
 export async function deleteBodyWeightEntry(entryId) {
     if (!entryId) return;
-    if (!window.confirm('Delete this weight entry? This cannot be undone.')) return;
+    if (!window.confirm("Delete this weight entry? This can't be undone.")) return;
 
     try {
         const { deleteBodyWeight } = await import('../features/body-measurements.js');

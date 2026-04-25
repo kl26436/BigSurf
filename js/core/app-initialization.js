@@ -28,7 +28,7 @@ import { initializeErrorHandler, startConnectionMonitoring } from './utils/error
 // LOADING SCREEN MANAGEMENT
 // ===================================================================
 
-export function showLoadingScreen(message = 'Initializing...') {
+export function showLoadingScreen(message = 'Initializing…') {
     const loadingScreen = document.getElementById('loading-screen');
     const loadingMessage = document.getElementById('loading-message');
 
@@ -140,7 +140,7 @@ function installKeyboardAwareFocusHandler() {
 
 export function initializeWorkoutApp() {
     // Show loading screen immediately
-    showLoadingScreen('Initializing...');
+    showLoadingScreen('Initializing…');
 
     // Initialize global error handling FIRST
     initializeErrorHandler();
@@ -155,14 +155,14 @@ export function initializeWorkoutApp() {
     installKeyboardAwareFocusHandler();
 
     try {
-        updateLoadingMessage('Loading exercise library...');
+        updateLoadingMessage('Loading exercise library…');
 
         // Initialize exercise library BEFORE auth (so it's always available)
         const exerciseLibrary = getExerciseLibrary(AppState);
         exerciseLibrary.initialize();
         window.exerciseLibrary = exerciseLibrary;
 
-        updateLoadingMessage('Initializing workout history...');
+        updateLoadingMessage('Initializing workout history…');
 
         // Initialize workout history
         const workoutHistory = getWorkoutHistory(AppState);
@@ -221,7 +221,7 @@ export async function signIn() {
             loadingScreen.style.opacity = '1';
         }
         if (loadingMessage) {
-            loadingMessage.textContent = 'Initializing...';
+            loadingMessage.textContent = 'Initializing…';
             loadingMessage.style.display = 'block';
         }
 
@@ -239,9 +239,9 @@ export async function signIn() {
         if (error.code === 'auth/popup-closed-by-user') {
             showNotification('Sign-in cancelled', 'info');
         } else if (error.code === 'auth/popup-blocked') {
-            showNotification('Popup blocked - please allow popups and try again', 'warning');
+            showNotification('Popup blocked — allow popups and try again', 'warning');
         } else if (error.code !== 'auth/cancelled-popup-request') {
-            showNotification('Sign-in failed. Please try again.', 'error');
+            showNotification('Sign-in failed — try again', 'error');
         }
     } finally {
         signingIn = false;
@@ -344,7 +344,7 @@ export function setupAuthenticationListener() {
                 error.code !== 'auth/cancelled-popup-request'
             ) {
                 console.error('Redirect sign-in error:', error);
-                showNotification('Sign-in failed. Please try again.', 'error');
+                showNotification('Sign-in failed — try again', 'error');
             }
         });
 
@@ -356,7 +356,7 @@ export function setupAuthenticationListener() {
             showUserInfo(user);
 
             // Update loading message
-            updateLoadingMessage('Loading your workouts...');
+            updateLoadingMessage('Loading your workouts…');
 
             // Check and run schema migration if needed (v3.0 - multiple workouts per day)
             try {

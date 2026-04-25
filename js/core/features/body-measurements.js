@@ -161,7 +161,7 @@ export async function saveBodyWeight(weight, unit, options = {}) {
         return { id: docId, ...data };
     } catch (error) {
         console.error('❌ Failed to save body weight:', error);
-        showNotification('Failed to save weight', 'error');
+        showNotification("Couldn't save weight", 'error');
         return null;
     }
 }
@@ -226,7 +226,7 @@ export async function deleteBodyWeight(docId) {
         showNotification('Entry deleted', 'success', 1500);
     } catch (error) {
         console.error('❌ Failed to delete body weight entry:', error);
-        showNotification('Failed to delete entry', 'error');
+        showNotification("Couldn't delete entry", 'error');
     }
 }
 

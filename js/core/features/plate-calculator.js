@@ -248,7 +248,7 @@ function runCalculation() {
                 ${totalPerSide ? ` (${totalPerSide} ${unit})` : ''}
             </div>
             <div class="plate-calc-bar-label">Bar: ${barWeight} ${unit}</div>
-            ${result.remainder > 0 ? `<div class="plate-calc-remainder"><i class="fas fa-info-circle"></i> ${result.remainder} ${unit} cannot be loaded with available plates</div>` : ''}
+            ${result.remainder > 0 ? `<div class="plate-calc-remainder"><i class="fas fa-info-circle"></i> ${result.remainder} ${unit} can't be loaded with available plates</div>` : ''}
         </div>
     `;
 }
@@ -355,7 +355,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
 
     popover.innerHTML = `
         <div class="plate-calc-popover-header">
-            <h3>Plate Calculator</h3>
+            <h3>Plate calculator</h3>
             <button class="btn-text" onclick="closePlateCalcPopover()"><i class="fas fa-times"></i></button>
         </div>
         <div class="plate-calc-popover-body">

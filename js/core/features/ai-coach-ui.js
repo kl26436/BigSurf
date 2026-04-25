@@ -249,7 +249,7 @@ function addChatBubble(role, html) {
  */
 export async function askCoach(question) {
     if (!question || !question.trim()) {
-        showNotification('Please enter a question', 'warning');
+        showNotification('Type a question', 'warning');
         return;
     }
 
@@ -260,7 +260,7 @@ export async function askCoach(question) {
     const loadingBubble = addChatBubble('bot', `
         <div class="coach-loading">
             <i class="fas fa-spinner fa-spin"></i>
-            <span>Analyzing your training data...</span>
+            <span>Analyzing your training data…</span>
         </div>
     `);
 
@@ -578,7 +578,7 @@ export function showWorkoutBuilder() {
                 </button>
             </div>
             <div class="builder-custom-wrap">
-                <input type="text" id="builder-custom-focus" class="coach-textarea" placeholder="Or type a custom focus... (e.g. Arms, Chest & Tris)">
+                <input type="text" id="builder-custom-focus" class="coach-textarea" placeholder="Or type a custom focus… (e.g. Arms, Chest & Tris)">
                 <button class="btn btn-primary btn-small" onclick="generateWorkoutTemplate(document.getElementById('builder-custom-focus').value)">
                     <i class="fas fa-magic"></i> Generate
                 </button>
@@ -630,7 +630,7 @@ export async function generateWorkoutTemplate(focus) {
     } catch (error) {
         console.error('Template generation error:', error);
         if (loadingBubble) {
-            loadingBubble.innerHTML = `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Failed to generate workout. ${escapeHtml(error.message || 'Try again.')}`;
+            loadingBubble.innerHTML = `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Couldn't generate workout. ${escapeHtml(error.message || 'Try again.')}`;
         }
     }
 }
@@ -788,7 +788,7 @@ export async function saveGeneratedTemplate() {
 
     } catch (error) {
         console.error('Error saving generated template:', error);
-        showNotification('Failed to save template', 'error');
+        showNotification("Couldn't save workout", 'error');
     }
 }
 
@@ -833,6 +833,6 @@ export function openCoachTemplate(templateId) {
 
 function truncate(str, len) {
     if (!str) return '';
-    return str.length > len ? str.slice(0, len) + '...' : str;
+    return str.length > len ? str.slice(0, len) + '…' : str;
 }
 

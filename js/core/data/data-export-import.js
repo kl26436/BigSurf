@@ -87,7 +87,7 @@ export async function exportWorkoutDataAsCSV() {
     }
 
     try {
-        showNotification('Preparing CSV export...', 'info', 2000);
+        showNotification('Preparing CSV export…', 'info', 2000);
 
         const userId = AppState.currentUser.uid;
         const workoutsRef = collection(db, 'users', userId, 'workouts');
@@ -270,7 +270,7 @@ export async function confirmImport() {
     const btn = document.getElementById('import-confirm-btn');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing…';
     }
 
     try {

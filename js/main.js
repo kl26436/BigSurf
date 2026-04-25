@@ -898,7 +898,7 @@ let _withingsConnected = false;
 window.handleWithingsSettingsAction = async function () {
     if (_withingsConnected) {
         // Already connected — offer sync or disconnect
-        const action = confirm('Withings is connected.\n\nOK = Sync now\nCancel = Disconnect');
+        const action = confirm('Sync Withings now? Cancel to disconnect.');
         if (action) {
             await syncWithingsWeight();
         } else {

@@ -194,7 +194,7 @@ export async function saveDexaScan(scanId, data) {
         return { id: scanId, ...document };
     } catch (error) {
         console.error('❌ Failed to save DEXA scan:', error);
-        showNotification('Failed to save scan', 'error');
+        showNotification("Couldn't save scan", 'error');
         return null;
     }
 }
@@ -274,6 +274,6 @@ export async function deleteDexaScan(scanId) {
         showNotification('Scan deleted', 'success', 1500);
     } catch (error) {
         console.error('❌ Failed to delete DEXA scan:', error);
-        showNotification('Failed to delete scan', 'error');
+        showNotification("Couldn't delete scan", 'error');
     }
 }

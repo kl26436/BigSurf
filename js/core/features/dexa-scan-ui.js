@@ -243,7 +243,7 @@ export function handleDexaFileSelect() {
     const validExts = ['.pdf', '.csv', '.xlsx'];
     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
-        showNotification('Please select a PDF, CSV, or Excel file', 'warning');
+        showNotification('Pick a PDF, CSV, or Excel file', 'warning');
         input.value = '';
         return;
     }
@@ -319,7 +319,7 @@ export async function handleDexaUpload() {
 
         // Step 2: Extract with AI
         const statusEl = document.getElementById('dexa-status');
-        if (statusEl) statusEl.textContent = 'Extracting data with AI...';
+        if (statusEl) statusEl.textContent = 'Extracting data with AI…';
 
         const { extractedData } = await extractDexaFromPdf(base64, _selectedFile.name);
 

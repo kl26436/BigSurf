@@ -531,7 +531,7 @@ export class FirebaseWorkoutManager {
             await deleteDoc(docRef);
         } catch (error) {
             console.error('❌ Error deleting custom exercise:', error);
-            showNotification('Failed to delete exercise', 'error');
+            showNotification("Couldn't delete exercise", 'error');
             throw error;
         }
     }
@@ -825,7 +825,7 @@ export class FirebaseWorkoutManager {
             return templateId;
         } catch (error) {
             console.error('❌ Error saving workout template:', error);
-            showNotification('Failed to save workout template', 'error');
+            showNotification("Couldn't save workout", 'error');
             throw error;
         }
     }
@@ -851,7 +851,7 @@ export class FirebaseWorkoutManager {
             return true;
         } catch (error) {
             console.error('❌ Error updating workout template:', error);
-            showNotification('Failed to update workout template', 'error');
+            showNotification("Couldn't update workout", 'error');
             throw error;
         }
     }
@@ -868,7 +868,7 @@ export class FirebaseWorkoutManager {
             return true;
         } catch (error) {
             console.error('❌ Error deleting workout template:', error);
-            showNotification('Failed to delete workout template', 'error');
+            showNotification("Couldn't delete workout", 'error');
             throw error;
         }
     }
@@ -887,7 +887,7 @@ export class FirebaseWorkoutManager {
             return true;
         } catch (error) {
             console.error('❌ Error saving workout:', error);
-            showNotification('Failed to save workout. Please try again.', 'error');
+            showNotification("Couldn't save workout — try again", 'error');
             throw error;
         }
     }
