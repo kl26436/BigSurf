@@ -112,7 +112,7 @@ function renderRangePills(activeRange) {
 function renderSessionRow(session) {
     const dateStr = formatSessionDate(session.date);
     const chips = session.sets.map(s => {
-        return `<span class="set-chip">${s.weight}×${s.reps}</span>`;
+        return `<span class="set-chip">${s.reps}×${s.weight}</span>`;
     }).join(' ');
 
     return `

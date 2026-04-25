@@ -475,7 +475,7 @@ function renderBodyPartCard(s) {
             <div class="bp-card__grid">
                 <div class="bp-cell">
                     <div class="bp-cell__label"><i class="fas fa-trophy bp-cell__icon--gold"></i> ${heroShort} Max</div>
-                    <div class="bp-cell__val">${hv ? `${hv.weight}<span class="bp-cell__unit">×${hv.reps}</span>` : '—'}</div>
+                    <div class="bp-cell__val">${hv ? `${hv.reps}<span class="bp-cell__unit">×${hv.weight}</span>` : '—'}</div>
                 </div>
                 <div class="bp-cell">
                     <div class="bp-cell__label">Volume · wk</div>

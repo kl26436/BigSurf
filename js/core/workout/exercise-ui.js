@@ -521,7 +521,7 @@ export function createExerciseCard(exercise, index) {
             .map(s => {
                 let w = s.weight;
                 if (unit === 'kg') w = convertWeight(w, 'lbs', 'kg');
-                return `${w}×${s.reps}`;
+                return `${s.reps}×${w}`;
             })
             .join(', ');
     }
@@ -628,7 +628,7 @@ export function createExerciseCard(exercise, index) {
                 .map(s => {
                     let w = s.weight;
                     if (unit === 'kg') w = convertWeight(w, 'lbs', 'kg');
-                    return `${w}×${s.reps}`;
+                    return `${s.reps}×${w}`;
                 })
                 .join(', ');
             if (preview) {

@@ -104,7 +104,7 @@ function renderExerciseRow(ex, bodyPart) {
             <div class="d-ex-spark">${chartSparkline({ points: ex.trend, color, width: 54, height: 24 })}</div>
             <div class="d-ex-info">
                 <div class="d-ex-name">${escapeHtml(ex.name)}</div>
-                <div class="d-ex-meta">${ex.sessions} sessions · ${ex.sets} sets · best ${ex.heaviest ? `${ex.heaviest.weight}×${ex.heaviest.reps}` : '—'}</div>
+                <div class="d-ex-meta">${ex.sessions} sessions · ${ex.sets} sets · best ${ex.heaviest ? `${ex.heaviest.reps}×${ex.heaviest.weight}` : '—'}</div>
             </div>
             <div class="d-ex-right">
                 <div class="d-ex-val">${formatVolume(ex.volume)} lb</div>

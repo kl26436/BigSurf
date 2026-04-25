@@ -360,7 +360,7 @@ function hydrateLastSession() {
         const setStr = last.sets.slice(0, 3).map(s => {
             const w = s.weight || 0;
             const r = s.reps || 0;
-            return `${w}×${r}`;
+            return `${r}×${w}`;
         }).join(' · ');
         let daysAgoStr = '';
         if (last.daysAgo != null) {

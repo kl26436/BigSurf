@@ -498,7 +498,7 @@ function renderLastSessionCard(exerciseName, idx) {
     const summary = lastDefaults.map(s => {
         const w = s.weight || 0;
         const r = s.reps || 0;
-        return `${w}×${r}`;
+        return `${r}×${w}`;
     }).join(' · ');
 
     return `
