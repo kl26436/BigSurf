@@ -1906,9 +1906,37 @@ export function showCreateExerciseForm() {
     window._createExUpdateSave = updateCreateExerciseSaveState;
     window._createExAdjustStepper = adjustStepper;
     window._createExToggleMore = toggleCreateExMoreDetails;
-    window._createExChooseEquipment = () => {
-        // Placeholder for future equipment picker integration
-        showNotification('Equipment picker coming soon', 'info');
+    window._createExChooseEquipment = async () => {
+        const { openSharedEquipmentSheet } = await import('./active-workout-ui.js');
+        const exName = document.getElementById('new-exercise-name')?.value?.trim() || 'this exercise';
+
+        // Native <dialog>.showModal() puts the create-exercise modal in the
+        // top layer, which would render OVER any sheet appended to body.
+        // Close the dialog before opening the sheet (form content stays in
+        // the DOM, so user input is preserved), then reopen on close.
+        const createModal = document.getElementById('add-exercise-modal');
+        const reopenCreateModal = () => {
+            if (createModal && createModal.tagName === 'DIALOG' && !createModal.open) {
+                createModal.showModal();
+            }
+        };
+        if (createModal && createModal.tagName === 'DIALOG' && createModal.open) {
+            createModal.close();
+        }
+
+        openSharedEquipmentSheet({
+            exerciseName: exName,
+            currentEquipment: _createExSelectedEquipment || '',
+            onSelect: (equipName) => {
+                _createExSelectedEquipment = equipName || '';
+                reopenCreateModal();
+                renderCreateExEquipmentArea();
+                updateCreateExerciseSaveState();
+            },
+            onCancel: () => {
+                reopenCreateModal();
+            },
+        });
     };
 
     if (modal) {
@@ -1917,6 +1945,36 @@ export function showCreateExerciseForm() {
 
     // Focus name field after modal opens
     setTimeout(() => document.getElementById('new-exercise-name')?.focus(), 100);
+}
+
+/**
+ * Phase 5: render the "Equipment" area inside the Create Exercise form.
+ * Two states:
+ *   - selected: a pill-style row with a Change action
+ *   - empty:    the original "Pick equipment" empty-state card
+ * Called after the user picks something in the shared equipment sheet.
+ */
+function renderCreateExEquipmentArea() {
+    const area = document.getElementById('create-ex-equipment-area');
+    if (!area) return;
+    if (_createExSelectedEquipment) {
+        area.innerHTML = `
+            <div class="te-row__equip" onclick="window._createExChooseEquipment()">
+                <i class="fas fa-cog"></i>
+                <span class="te-row__equip-name">${escapeHtml(_createExSelectedEquipment)}</span>
+                <span class="te-row__equip-action">Change</span>
+            </div>
+        `;
+    } else {
+        area.innerHTML = `
+            <div class="empty-state-card create-ex-equip-empty">
+                <div class="create-ex-equip-empty__icon"><i class="fas fa-cog"></i></div>
+                <div class="create-ex-equip-empty__title">Pick equipment</div>
+                <div class="create-ex-equip-empty__desc">Bodyweight, barbell, or pick a specific machine</div>
+                <button class="btn-redesign create-ex-equip-empty__btn" onclick="window._createExChooseEquipment()"><i class="fas fa-dumbbell"></i> Choose equipment</button>
+            </div>
+        `;
+    }
 }
 
 export function closeCreateExerciseModal() {

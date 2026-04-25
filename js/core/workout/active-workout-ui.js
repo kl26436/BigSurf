@@ -1281,9 +1281,9 @@ function renderEquipmentSheet(exerciseIdx) {
 // ===================================================================
 
 let _sharedEquipmentContext = null;
-// Shape: { exerciseName: string, currentEquipment: string|null, onSelect: (equipName: string) => void|Promise }
+// Shape: { exerciseName, currentEquipment, onSelect, onCancel? }
 
-export async function openSharedEquipmentSheet({ exerciseName, currentEquipment, onSelect }) {
+export async function openSharedEquipmentSheet({ exerciseName, currentEquipment, onSelect, onCancel }) {
     if (typeof onSelect !== 'function') {
         console.error('openSharedEquipmentSheet: onSelect is required');
         return;
@@ -1303,7 +1303,12 @@ export async function openSharedEquipmentSheet({ exerciseName, currentEquipment,
         }
     }
 
-    _sharedEquipmentContext = { exerciseName, currentEquipment: currentEquipment || null, onSelect };
+    _sharedEquipmentContext = {
+        exerciseName,
+        currentEquipment: currentEquipment || null,
+        onSelect,
+        onCancel: typeof onCancel === 'function' ? onCancel : null,
+    };
     renderSharedEquipmentSheet();
 }
 
@@ -1440,8 +1445,12 @@ export async function awSharedSelectEquipment(equipName) {
 }
 
 export function awSharedCancelEquipment() {
+    const ctx = _sharedEquipmentContext;
     _sharedEquipmentContext = null;
     awCloseSheet();
+    if (ctx?.onCancel) {
+        try { ctx.onCancel(); } catch (e) { console.error('Shared equipment onCancel threw:', e); }
+    }
 }
 
 export function awEquipSearch(exerciseIdx, query) {
