@@ -578,6 +578,23 @@
     color: var(--text-muted);
     margin-top: 2px;
 }
+/* Inline rename input — replaces the static title when the row is expanded */
+.template-row__title-input {
+    width: 100%;
+    background: transparent;
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: var(--font-md);
+    font-weight: 600;
+    padding: 6px 10px;
+    outline: none;
+    font-family: inherit;
+    line-height: 1.3;
+}
+.template-row__title-input:focus {
+    border-color: var(--primary);
+}
 .template-row__detail {
     font-size: var(--font-xs);
     color: var(--text-secondary);

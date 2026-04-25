@@ -444,9 +444,6 @@ function renderSingleTemplateRow(template) {
                     <i class="fas fa-plus"></i> Add Exercise
                 </button>
                 <div class="template-editor__actions">
-                    <button class="template-editor__action" data-action="editTemplateFull" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
-                        <i class="fas fa-pen"></i> Rename
-                    </button>
                     <button class="template-editor__action" data-action="duplicateTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
                         <i class="fas fa-copy"></i> Duplicate
                     </button>
@@ -465,7 +462,15 @@ function renderSingleTemplateRow(template) {
         <div class="row-card template-row ${isExpanded ? 'expanded' : ''}" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}" data-action="toggleTemplateRow">
             <div class="template-row__dot" style="--dot-color: ${color};"></div>
             <div class="row-card__content">
-                <div class="row-card__title">${escapeHtml(templateName)}</div>
+                ${isExpanded
+                    ? `<input class="template-row__title-input"
+                              data-stop-propagation
+                              data-template-id="${escapeAttr(templateId)}"
+                              data-action="renameTemplate"
+                              value="${escapeAttr(templateName)}"
+                              aria-label="Workout name" />`
+                    : `<div class="row-card__title">${escapeHtml(templateName)}</div>`
+                }
                 <div class="row-card__subtitle">${exerciseCount} exercises${timeInfo}</div>
             </div>
             <i class="fas fa-chevron-down template-row__chevron"></i>
@@ -579,8 +584,6 @@ function setupSelectorDelegation(container) {
                 removeTemplateExerciseInline(templateId, index);
             } else if (action === 'addTemplateExercise') {
                 window.editTemplate(templateId, isDefault);
-            } else if (action === 'editTemplateFull') {
-                window.editTemplate(templateId, isDefault);
             } else if (action === 'duplicateTemplate') {
                 window.copyTemplateToCustom(templateId);
             } else if (action === 'deleteTemplateInline') {
@@ -604,6 +607,31 @@ function setupSelectorDelegation(container) {
             const templateId = row.dataset.templateId;
             if (templateId) toggleTemplateEdit(templateId);
         }
+    });
+
+    // Inline rename: fires on blur or Enter on the title input.
+    container.addEventListener('change', async (e) => {
+        const input = e.target.closest('input[data-action="renameTemplate"]');
+        if (!input) return;
+
+        const templateId = input.dataset.templateId;
+        const newName = input.value.trim();
+        const template = loadedTemplates.find(t => t._id === templateId);
+        if (!template) return;
+
+        // Reject empty names — snap back to the previous value.
+        if (!newName) {
+            input.value = template._name || '';
+            return;
+        }
+
+        // No-op if unchanged
+        if (newName === template._name) return;
+
+        template._name = newName;
+        template.name = newName;
+        await saveTemplateInline(template, normalizeExercisesToArray(template.exercises));
+        renderWorkoutSelectorUI();
     });
 }
 
