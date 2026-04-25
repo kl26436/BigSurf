@@ -775,6 +775,12 @@ async function openAddExerciseSheetForTemplate(templateId) {
             template.exercises = exercises;
             await saveTemplateInline(template, exercises);
             renderWorkoutSelectorUI();
+
+            // Chain straight into the equipment picker so the user can finish
+            // binding the exercise to a piece of equipment without expanding
+            // the row. They can Cancel the picker if they'll set it later.
+            const newIndex = exercises.length - 1;
+            openEquipmentSheetForTemplate(templateId, newIndex);
         },
         onCreateRequested: (initialName) => {
             // Phase 5 will accept { initialName, onCreated } to round-trip
