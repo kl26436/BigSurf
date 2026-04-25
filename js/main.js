@@ -168,21 +168,13 @@ import {
     clearAllHistoryFilters,
 } from './core/ui/workout-history-ui.js';
 
-// Workout management UI
+// Workout management UI (slimmed in Phase 9 — most legacy editor functions
+// have been deleted. The remaining surface is: create/edit/delete templates
+// (now selector-routed), the equipment picker for the active-workout add
+// flow, and the create-exercise modal.)
 import {
-    showWorkoutManagement,
-    closeWorkoutManagement,
     createNewTemplate,
     saveWorkoutAsTemplate,
-    closeTemplateEditor,
-    saveCurrentTemplate,
-    addExerciseToTemplate,
-    editTemplateExercise,
-    removeTemplateExercise,
-    moveTemplateExercise,
-    groupSelectedTemplateExercises,
-    ungroupTemplateExercise,
-    updateSupersetSelectionBar,
     openExerciseLibrary,
     closeExerciseLibrary,
     showCreateExerciseForm,
@@ -195,17 +187,6 @@ import {
     skipEquipmentSelection,
     confirmEquipmentSelection,
     addEquipmentFromPicker,
-    closeTemplateExerciseEdit,
-    saveTemplateExerciseEdit,
-    saveInlineEdit,
-    confirmInlineAdd,
-    cancelInlineAdd,
-    selectWorkoutCategory,
-    showWorkoutCategoryView,
-    handleWorkoutSearch,
-    toggleTemplateExerciseMenu,
-    selectTemplateCategory,
-    toggleTemplateDay,
 } from './core/workout/workout-management-ui.js';
 
 // Manual workout functionality
@@ -804,43 +785,21 @@ window.closeWorkoutDetailModal = function () {
     }
 };
 
-// Workout Management Functions
-window.showWorkoutManagement = showWorkoutManagement;
-window.closeWorkoutManagement = closeWorkoutManagement;
+// Workout Management Functions (slimmed in Phase 9 — see import block above)
 window.createNewTemplate = createNewTemplate;
 window.saveWorkoutAsTemplate = saveWorkoutAsTemplate;
-window.closeTemplateEditor = closeTemplateEditor;
-window.saveCurrentTemplate = saveCurrentTemplate;
-window.addExerciseToTemplate = addExerciseToTemplate;
-window.editTemplateExercise = editTemplateExercise;
-window.removeTemplateExercise = removeTemplateExercise;
-window.moveTemplateExercise = moveTemplateExercise;
-window.groupSelectedTemplateExercises = groupSelectedTemplateExercises;
-window.ungroupTemplateExercise = ungroupTemplateExercise;
-window.updateSupersetSelectionBar = updateSupersetSelectionBar;
 window.openExerciseLibrary = openExerciseLibrary;
 window.closeExerciseLibrary = closeExerciseLibrary;
 window.showCreateExerciseForm = showCreateExerciseForm;
 window.closeCreateExerciseModal = closeCreateExerciseModal;
 window.createNewExercise = createNewExercise;
 window.editTemplate = editTemplate;
-window.selectTemplateCategory = selectTemplateCategory;
-window.toggleTemplateDay = toggleTemplateDay;
 window.deleteTemplate = deleteTemplate;
 window.resetToDefault = resetToDefault;
 window.closeEquipmentPicker = closeEquipmentPicker;
 window.skipEquipmentSelection = skipEquipmentSelection;
 window.confirmEquipmentSelection = confirmEquipmentSelection;
 window.addEquipmentFromPicker = addEquipmentFromPicker;
-window.closeTemplateExerciseEdit = closeTemplateExerciseEdit;
-window.saveTemplateExerciseEdit = saveTemplateExerciseEdit;
-window.saveInlineEdit = saveInlineEdit;
-window.confirmInlineAdd = confirmInlineAdd;
-window.cancelInlineAdd = cancelInlineAdd;
-window.selectWorkoutCategory = selectWorkoutCategory;
-window.showWorkoutCategoryView = showWorkoutCategoryView;
-window.handleWorkoutSearch = handleWorkoutSearch;
-window.toggleTemplateExerciseMenu = toggleTemplateExerciseMenu;
 
 // Authentication Functions
 window.signIn = signIn;
