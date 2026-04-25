@@ -197,7 +197,7 @@ p.subtitle { color: var(--text-dim); font-size: .85rem; margin-bottom: 16px; }
 // Firebase
 // =========================================================================
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, query, getDocs, doc, updateDoc, setDoc, deleteDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, query, where, getDocs, doc, updateDoc, setDoc, deleteDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 const firebaseConfig = {
@@ -307,14 +307,16 @@ async function loadData() {
         // Load equipment docs
         const equipSnap = await getDocs(query(collection(db, 'users', userId, 'equipment')));
         equipmentDocs = [];
-        equipSnap.forEach(d => equipmentDocs.push({ id: d.id, ...d.data() }));
+        // Spread data FIRST, then set id — legacy docs may have stored the doc id as a `id` field,
+        // which would otherwise clobber the real Firestore document id.
+        equipSnap.forEach(d => equipmentDocs.push({ ...d.data(), id: d.id }));
         equipmentByName = {};
         for (const eq of equipmentDocs) { equipmentByName[eq.name] = eq; }
 
         // Load workouts
         const workoutSnap = await getDocs(query(collection(db, 'users', userId, 'workouts')));
         workouts = [];
-        workoutSnap.forEach(d => workouts.push({ id: d.id, ...d.data() }));
+        workoutSnap.forEach(d => workouts.push({ ...d.data(), id: d.id }));
 
         // Build gym -> exercise -> machine map
         buildGymMap();
@@ -340,7 +342,18 @@ function buildGymMap() {
             ? exercises.map((ex, i) => [i, ex])
             : Object.entries(exercises);
         if (entries.length === 0) continue;
-        if (!entries.some(([, ex]) => ex && ex.name)) continue;
+        // Resolve effective name from any of: ex.name, ex.machine, exerciseNames map, originalWorkout array.
+        // Older saves stored the name only in exerciseNames or originalWorkout, leaving exercises[key] without name/machine.
+        const resolveExerciseName = (ex, key) => {
+            if (ex?.name) return ex.name;
+            if (ex?.machine) return ex.machine;
+            const fromMap = w.exerciseNames?.[key];
+            if (fromMap) return fromMap;
+            const idx = typeof key === 'string' ? parseInt(key.split('_')[1]) : key;
+            const fromOrig = w.originalWorkout?.exercises?.[idx];
+            return fromOrig?.machine || fromOrig?.name || null;
+        };
+        if (!entries.some(([k, ex]) => resolveExerciseName(ex, k))) continue;
         const gym = w.location
             ? (typeof w.location === 'object' ? w.location.name : w.location)
             : null;
@@ -352,7 +365,7 @@ function buildGymMap() {
 
         for (const [key, ex] of entries) {
             if (!ex) continue;
-            const exName = ex.name || ex.machine || `exercise_${key}`;
+            const exName = resolveExerciseName(ex, key) || `exercise_${key}`;
             const equipName = ex.equipment || null;
 
             if (!gymExercises.has(exName)) gymExercises.set(exName, new Map());
@@ -402,7 +415,7 @@ function renderSummary() {
         if (w.cancelledAt) return false;
         const ex = w.exercises || {};
         const entries = Array.isArray(ex) ? ex : Object.values(ex);
-        return entries.some(e => e && e.name);
+        return entries.some(e => e && (e.name || e.machine));
     });
 
     for (const [gymKey, exercises] of gymMap) {
@@ -1061,28 +1074,115 @@ window.applyMigration = async function() {
                     ? exObj.map((ex, i) => [String(i), ex])
                     : Object.entries(exObj);
 
-                if (!entries.some(([, e]) => e && e.name)) continue;
+                // Mirror buildGymMap's effective-name resolution so step 2 doesn't silently skip exercises
+                // whose name lives only in exerciseNames or originalWorkout (older saves).
+                const resolveName = (ex, key) => {
+                    if (ex?.name) return ex.name;
+                    if (ex?.machine) return ex.machine;
+                    const fromMap = w.exerciseNames?.[key];
+                    if (fromMap) return fromMap;
+                    const idx = typeof key === 'string' ? parseInt(key.split('_')[1]) : key;
+                    const fromOrig = w.originalWorkout?.exercises?.[idx];
+                    return fromOrig?.machine || fromOrig?.name || null;
+                };
+
+                if (!entries.some(([k, e]) => resolveName(e, k))) continue;
 
                 let modified = false;
                 const updatedFields = {};
+                const isArrayExercises = Array.isArray(w.exercises);
+                let pendingArrayExercises = isArrayExercises ? w.exercises.map(e => ({ ...e })) : null;
+                let pendingRewriteCount = 0;
 
                 for (const [key, ex] of entries) {
-                    if (!ex || !ex.equipment || !ex.name) continue;
-                    const exMap = exerciseMapping.get(ex.name);
+                    if (!ex || !ex.equipment) continue;
+                    const effectiveName = resolveName(ex, key);
+                    if (!effectiveName) continue;
+                    const exMap = exerciseMapping.get(effectiveName);
                     if (exMap && exMap.has(ex.equipment)) {
-                        updatedFields['exercises.' + key + '.equipment'] = exMap.get(ex.equipment);
+                        const newEquip = exMap.get(ex.equipment);
+                        if (isArrayExercises) {
+                            // Firestore can't update array entries via dotted path — rewrite the whole array.
+                            const idx = typeof key === 'string' ? parseInt(key) : key;
+                            pendingArrayExercises[idx] = { ...pendingArrayExercises[idx], equipment: newEquip };
+                        } else {
+                            updatedFields['exercises.' + key + '.equipment'] = newEquip;
+                        }
                         modified = true;
-                        exercisesRewritten++;
+                        pendingRewriteCount++;
                     }
                 }
 
                 if (modified) {
+                    if (isArrayExercises) updatedFields['exercises'] = pendingArrayExercises;
+                    let writeOk = false;
+                    let lastError = null;
                     try {
                         const ref = doc(db, 'users', userId, 'workouts', w.id);
                         await updateDoc(ref, updatedFields);
-                        workoutsModified++;
+                        writeOk = true;
                     } catch (e) {
+                        lastError = e;
+                    }
+
+                    // Fallback: old-schema doc IDs (YYYY-MM-DD) get deleted on schema migration.
+                    // Look for the migrated replacement and update that instead.
+                    if (!writeOk && lastError?.code === 'not-found' && /^\d{4}-\d{2}-\d{2}$/.test(w.id)) {
+                        console.log('[fallback] entering for stale doc', w.id);
+                        let migrated = workouts.find(o =>
+                            o.id !== w.id && (o.originalId === w.id || o.migratedFrom === w.id || o.date === w.id)
+                        );
+                        console.log('[fallback] local cache hit?', !!migrated, migrated?.id);
+
+                        if (!migrated) {
+                            try {
+                                const wRef = collection(db, 'users', userId, 'workouts');
+                                let snap = await getDocs(query(wRef, where('originalId', '==', w.id)));
+                                console.log('[fallback] server query originalId:', snap.size);
+                                if (snap.empty) {
+                                    snap = await getDocs(query(wRef, where('migratedFrom', '==', w.id)));
+                                    console.log('[fallback] server query migratedFrom:', snap.size);
+                                }
+                                if (snap.empty) {
+                                    snap = await getDocs(query(wRef, where('date', '==', w.id)));
+                                    console.log('[fallback] server query date:', snap.size);
+                                }
+                                if (!snap.empty) {
+                                    const d = snap.docs[0];
+                                    migrated = { ...d.data(), id: d.id };
+                                }
+                            } catch (qErr) {
+                                console.error('[fallback] Migrated-doc lookup failed:', qErr);
+                            }
+                        }
+
+                        if (migrated) {
+                            console.log('[fallback] attempting update on', migrated.id, 'with fields', updatedFields);
+                            try {
+                                const migRef = doc(db, 'users', userId, 'workouts', migrated.id);
+                                await updateDoc(migRef, updatedFields);
+                                writeOk = true;
+                                log(`  ↪ Redirected ${w.id} → migrated doc ${migrated.id}`);
+                                console.log('[fallback] success on', migrated.id);
+                            } catch (e2) {
+                                lastError = e2;
+                                console.error('[fallback] update on migrated doc failed:', migrated.id, e2);
+                            }
+                        } else {
+                            log(`  ⚠️  No migrated replacement found for stale doc ${w.id}.`);
+                            console.warn('[fallback] no migrated replacement found for', w.id);
+                        }
+                    } else if (!writeOk) {
+                        console.log('[fallback] skipped — code:', lastError?.code, 'id:', w.id);
+                    }
+
+                    if (writeOk) {
+                        workoutsModified++;
+                        exercisesRewritten += pendingRewriteCount;
+                    } else {
                         skipped++;
+                        log(`  ⚠️  Skipped workout ${w.id} (${w.date || '?'}): ${lastError?.code || ''} ${lastError?.message}`);
+                        console.error('Workout rewrite failed:', w.id, lastError, 'fields:', updatedFields);
                     }
                 }
             }
