@@ -60,6 +60,17 @@ function getCurrentView() {
 }
 
 export function navigateTo(view) {
+    // Tear down any orphan overlays attached to <body> before navigating away.
+    // The active-workout v2 wizard appends its bottom-sheet (#aw-sheet) and
+    // backdrop (#aw-sheet-backdrop) directly to document.body, not inside the
+    // active-workout section. Hiding the section doesn't remove them, and the
+    // backdrop is position: fixed full-screen — so it silently swallows every
+    // click on whatever view we navigate to next.
+    const orphanBackdrop = document.getElementById('aw-sheet-backdrop');
+    const orphanSheet = document.getElementById('aw-sheet');
+    if (orphanBackdrop) orphanBackdrop.remove();
+    if (orphanSheet) orphanSheet.remove();
+
     // Push current view onto stack for back navigation
     if (!skipStackPush) {
         const current = getCurrentView();
