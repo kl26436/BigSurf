@@ -33,6 +33,10 @@ const CLIENT_SECRET = 'j9iVZfS8kkCEFUPaAeJV0sAi';
 // Exercises where every kg-tagged set is known-bad (kg tag was the bug, value
 // is actually lb). Based on the audit: each of these has a large lb-tagged
 // progression and only a handful of kg-tagged sets clustered in Aug–Sep 2025.
+//
+// Already-applied set (these were flipped in the first run + Cable Bicep Curl).
+// Listed here as documentation; running --apply again is a no-op since none of
+// these still have kg-tagged sets in the user's data.
 const AUTO_FIX_EXERCISES = new Set([
     'Reverse Pec Deck',
     'Seated Chest Press',
@@ -43,6 +47,7 @@ const AUTO_FIX_EXERCISES = new Set([
     'Hip Abduction Machine',
     'Calf Raise Machine',
     'Seated Leg Curl Machine',
+    'Cable Bicep Curl',
 ]);
 
 async function getAccessToken() {
@@ -146,7 +151,7 @@ function toFS(v) {
     return { stringValue: String(v) };
 }
 
-function planFixes(workouts, targetExercises, { fromUnit = 'kg', toUnit = 'lbs' } = {}) {
+function planFixes(workouts, targetExercises, { fromUnit = 'kg', toUnit = 'lbs', minWeight = 0, perExerciseMin = null } = {}) {
     const plan = [];
     for (const w of workouts) {
         if (!w.exercises || typeof w.exercises !== 'object') continue;
@@ -160,9 +165,13 @@ function planFixes(workouts, targetExercises, { fromUnit = 'kg', toUnit = 'lbs' 
             const exName = w.exerciseNames?.[exKey] || ex.machine || ex.name || exKey;
             if (!targetExercises.has(exName)) continue;
 
+            // Per-exercise threshold takes precedence over the global min.
+            const threshold = perExerciseMin?.[exName] ?? minWeight;
+
             let exChanged = false;
             const newSets = ex.sets.map((set, setIdx) => {
                 if (!set || set.originalUnit !== fromUnit || set.isBodyweight) return set;
+                if (typeof set.weight === 'number' && set.weight < threshold) return set;
                 exChanged = true;
                 docChanged = true;
                 changesInDoc.push({
@@ -286,7 +295,12 @@ function getArg(name) {
         }
 
         const targetExercises = new Set(AUTO_FIX_EXERCISES);
-        if (alsoArg) targetExercises.add(alsoArg);
+        // --also accepts a single name OR a comma-separated list.
+        if (alsoArg) {
+            for (const name of alsoArg.split(',').map(s => s.trim()).filter(Boolean)) {
+                targetExercises.add(name);
+            }
+        }
 
         const token = await getAccessToken();
         const users = uidArg ? [{ uid: uidArg, email: '(specified)' }] : await listUserIds(token);
