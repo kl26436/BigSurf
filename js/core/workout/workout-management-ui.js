@@ -16,11 +16,11 @@ import {
 } from '../features/equipment-planner.js';
 
 let workoutManager;
-let currentEditingTemplate = null;
+const currentEditingTemplate = null;
 let exerciseLibrary = [];
 let filteredExercises = [];
-let allWorkoutTemplates = [];
-let currentWorkoutCategory = '';
+const allWorkoutTemplates = [];
+const currentWorkoutCategory = '';
 
 // Track which containers already have delegation listeners
 const delegatedContainers = new WeakSet();

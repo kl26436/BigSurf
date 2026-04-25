@@ -1760,28 +1760,8 @@ export async function setEquipmentBaseWeightUnit(equipmentId, unit, btn) {
     }
 }
 
-// ===================================================================
-// AUTO-PARSE EQUIPMENT NAME
-// ===================================================================
-
-export function autoParseEquipmentName(name) {
-    let brand = null, model = null, func = name;
-
-    for (const b of KNOWN_BRANDS) {
-        if (name.toLowerCase().startsWith(b.toLowerCase())) {
-            brand = b;
-            func = name.slice(b.length).trim();
-            if (func.includes('—')) {
-                [model, func] = func.split('—').map(s => s.trim());
-            } else if (func.includes('-')) {
-                const parts = func.split('-').map(s => s.trim());
-                if (parts.length === 2) {
-                    [model, func] = parts;
-                }
-            }
-            break;
-        }
-    }
-
-    return { brand, model, function: func };
-}
+// Cleanup: autoParseEquipmentName was deleted — it referenced a
+// KNOWN_BRANDS constant that was never defined and the function had
+// no callers, so calling it would have crashed with ReferenceError.
+// Re-add with a real KNOWN_BRANDS table if equipment-name parsing
+// becomes a feature.

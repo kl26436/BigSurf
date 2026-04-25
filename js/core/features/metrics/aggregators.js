@@ -111,7 +111,7 @@ export function aggregateVolumeByBodyPart(workouts, { start, end }) {
         if (w.cancelledAt) continue;
         for (const ex of withResolvedNames(w)) {
             const part = classifyBodyPart(ex.name);
-            if (!out.hasOwnProperty(part)) out[part] = 0;
+            if (!Object.hasOwn(out, part)) out[part] = 0;
             for (const set of ex.sets || []) {
                 if (set.reps && set.weight) {
                     out[part] = (out[part] || 0) + set.reps * set.weight;
@@ -245,7 +245,7 @@ export function getTopLiftsTrendPoints(workouts, { start, end }) {
 
     // Simpler approach: running sum of best 1RMs per workout
     const points = [];
-    let runningBest = {};
+    const runningBest = {};
     const sorted = [...dateMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
     for (const [date] of sorted) {
         // Recalculate from workouts on this date

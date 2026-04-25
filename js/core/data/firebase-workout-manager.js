@@ -1006,7 +1006,7 @@ export class FirebaseWorkoutManager {
             const line = equipmentData.line ?? equipmentData.model ?? null;
 
             // Accept legacy singular `location` + fold into `locations[]`.
-            let locations = Array.isArray(equipmentData.locations) ? [...equipmentData.locations] : [];
+            const locations = Array.isArray(equipmentData.locations) ? [...equipmentData.locations] : [];
             if (equipmentData.location && !locations.includes(equipmentData.location)) {
                 locations.push(equipmentData.location);
             }

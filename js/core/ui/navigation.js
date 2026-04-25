@@ -311,7 +311,7 @@ async function showEquipmentLibrary() {
     if (section) section.classList.remove('hidden');
     setBottomNavVisible(true);
     updateBottomNavActive('more');
-    setHeaderMode('equipment');
+    if (window.setHeaderMode) window.setHeaderMode('equipment');
     const { openEquipmentLibrary } = await import('./equipment-library-ui.js');
     openEquipmentLibrary();
 }
@@ -321,7 +321,7 @@ async function showPlateCalculator() {
     if (section) section.classList.remove('hidden');
     setBottomNavVisible(true);
     updateBottomNavActive('more');
-    setHeaderMode('plate-calculator');
+    if (window.setHeaderMode) window.setHeaderMode('plate-calculator');
     const { initPlateCalculatorPage } = await import('../features/plate-calculator.js');
     initPlateCalculatorPage();
 }
@@ -331,7 +331,7 @@ async function showSettings() {
     if (section) section.classList.remove('hidden');
     setBottomNavVisible(true);
     updateBottomNavActive('more');
-    setHeaderMode('settings');
+    if (window.setHeaderMode) window.setHeaderMode('settings');
     const { renderSettings } = await import('./settings-ui.js');
     renderSettings();
 }

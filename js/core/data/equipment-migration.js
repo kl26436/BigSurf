@@ -47,7 +47,7 @@ function normalizeName(name) {
         .toLowerCase()
         .trim()
         .replace(/\s+/g, ' ')
-        .replace(/[—–\-]+/g, '-');
+        .replace(/[—–-]+/g, '-');
 }
 
 function generateEquipmentName(brand, line, func) {
@@ -108,7 +108,7 @@ function isBrandishFunction(fn) {
     if (f === '') return true;
     if (BRANDISH_TERMS.has(f)) return true;
     // Multi-word: "M-Torture Plated", "Atlantis Plated", "Arsenal Cable" etc.
-    const words = f.split(/[\s\-]+/);
+    const words = f.split(/[\s-]+/);
     return words.every(w => BRANDISH_TERMS.has(w));
 }
 
@@ -252,7 +252,7 @@ function matchAgainstCatalog(eq, catalogIndex) {
 
         // --- Tier 2: Fuzzy match within the brand (function words overlap ≥50%) ---
         const stopWords = new Set(['the', 'and', 'for', 'machine', 'strength', 'fitness']);
-        const fnWords = cleanFn.toLowerCase().split(/[\s\-]+/).filter(w => w.length > 2 && !stopWords.has(w));
+        const fnWords = cleanFn.toLowerCase().split(/[\s-]+/).filter(w => w.length > 2 && !stopWords.has(w));
 
         if (fnWords.length > 0) {
             const brandMachinesForFuzzy = machines.filter(m => m.brand.toLowerCase() === detectedBrand.toLowerCase());
@@ -261,7 +261,7 @@ function matchAgainstCatalog(eq, catalogIndex) {
 
             for (const cm of brandMachinesForFuzzy) {
                 const catalogWords = `${cm.lineName} ${cm.machineName}`.toLowerCase()
-                    .split(/[\s\-]+/).filter(w => w.length > 2 && !stopWords.has(w));
+                    .split(/[\s-]+/).filter(w => w.length > 2 && !stopWords.has(w));
                 let overlapCount = 0;
                 for (const fw of fnWords) {
                     for (const cw of catalogWords) {

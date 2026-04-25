@@ -501,7 +501,7 @@ export function createExerciseCard(exercise, index) {
     const exerciseName = getExerciseName(exercise);
 
     // Build equipment + summary line
-    let metaParts = [];
+    const metaParts = [];
     if (exercise.equipment) {
         metaParts.push(exercise.equipment);
     }
@@ -778,7 +778,7 @@ function collapseExercise(index) {
     // Animate collapse: set max-height to current height first, then to 0
     body.style.maxHeight = body.scrollHeight + 'px';
     // Force reflow
-    body.offsetHeight; // eslint-disable-line no-unused-expressions
+    body.offsetHeight;  
     body.style.maxHeight = '0';
 
     card.classList.remove('expanded');

@@ -1105,7 +1105,7 @@ export async function reassignEquipment(equipmentId, equipmentName, oldExerciseN
 
     for (const docSnap of allTemplates.docs) {
         const data = docSnap.data();
-        let exercises = data.exercises;
+        const exercises = data.exercises;
         if (!exercises) continue;
 
         const isArray = Array.isArray(exercises);

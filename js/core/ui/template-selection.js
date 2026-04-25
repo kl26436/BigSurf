@@ -291,7 +291,7 @@ async function renderWorkoutSelectorUI() {
     if (!pillsContainer || !listContainer) return;
 
     // Use AppState.workoutPlans as the single source of truth (already deduped)
-    let allTemplates = (AppState.workoutPlans || []).map(t => ({
+    const allTemplates = (AppState.workoutPlans || []).map(t => ({
         ...t,
         _id: t.id || t.day,
         _name: t.name || t.day,

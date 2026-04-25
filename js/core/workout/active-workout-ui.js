@@ -104,7 +104,7 @@ export function renderAll() {
 
     // Check if in superset mode
     const inSuperset = !!groupId;
-    let pairedExercises = [];
+    const pairedExercises = [];
     if (inSuperset) {
         exercises.forEach((ex, i) => {
             const sEx = AppState.savedData?.exercises?.[`exercise_${i}`] || {};
@@ -1065,7 +1065,7 @@ export function awOpenJumpSheet() {
 // SUPERSET LINK SHEET
 // ===================================================================
 
-let selectedForSuperset = new Set();
+const selectedForSuperset = new Set();
 
 export function awOpenSupersetSheet() {
     selectedForSuperset.clear();

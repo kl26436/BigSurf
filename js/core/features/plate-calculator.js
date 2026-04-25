@@ -341,7 +341,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
     }
 
     // Build popover content
-    let existing = document.getElementById('plate-calc-popover');
+    const existing = document.getElementById('plate-calc-popover');
     if (existing) existing.remove();
 
     const popover = document.createElement('div');
