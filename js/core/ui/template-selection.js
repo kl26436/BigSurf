@@ -427,9 +427,18 @@ function renderSingleTemplateRow(template) {
         editorHtml = `
             <div class="template-editor" data-stop-propagation>
                 ${renderTemplateDetailsAccordion(template)}
-                <div class="template-editor__section-label">EXERCISES</div>
+                <div class="template-editor__section-header">
+                    <span class="template-editor__section-label">EXERCISES</span>
+                    <button class="template-editor__section-add"
+                            data-action="addTemplateExercise"
+                            data-template-id="${escapeAttr(templateId)}"
+                            data-is-default="${template._isDefault}"
+                            aria-label="Add exercise">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
                 <div class="template-editor__exercise-list">
-                    ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet</div>'}
+                    ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet — tap + above to add one</div>'}
                 </div>
                 <button class="template-editor__add-btn" data-action="addTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
                     <i class="fas fa-plus"></i> Add Exercise

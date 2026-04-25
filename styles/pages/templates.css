@@ -968,6 +968,37 @@
     color: var(--primary);
     font-size: var(--font-sm);
     cursor: pointer;
+    width: 100%;
+}
+
+/* Header row above the exercise list with an inline "+" button so the
+   add affordance is visible above the fold even with long lists. */
+.template-editor__section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    margin-bottom: var(--space-8);
+}
+.template-editor__section-header .template-editor__section-label {
+    margin-bottom: 0;
+}
+.template-editor__section-add {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--primary-bg);
+    color: var(--primary);
+    border: 1px solid var(--primary-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+}
+.template-editor__section-add:active {
+    transform: scale(0.94);
 }
 .template-editor__add-btn:active {
     background: var(--primary-bg);
