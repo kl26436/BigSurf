@@ -101,6 +101,75 @@ export async function savePRData() {
     }
 }
 
+/**
+ * Migrate PR records when an equipment is reassigned from one exercise to another.
+ * Moves prData.exercisePRs[oldExerciseName][equipmentName] → exercisePRs[newExerciseName][equipmentName],
+ * merging with any existing records on the destination by keeping the better metric
+ * (max weight, max reps, max volume).
+ *
+ * Returns { migrated, mergedConflicts } where migrated is 1 if any records were moved,
+ * and mergedConflicts is the number of metrics where both source and destination had a record.
+ */
+export async function renamePREquipmentExercise(equipmentName, oldExerciseName, newExerciseName) {
+    if (!AppState.currentUser) return { migrated: 0, mergedConflicts: 0 };
+    if (!equipmentName || !oldExerciseName || !newExerciseName) return { migrated: 0, mergedConflicts: 0 };
+    if (oldExerciseName === newExerciseName) return { migrated: 0, mergedConflicts: 0 };
+
+    const prDocRef = doc(db, 'users', AppState.currentUser.uid, 'stats', 'personalRecords');
+    const prDoc = await getDoc(prDocRef);
+    if (!prDoc.exists()) return { migrated: 0, mergedConflicts: 0 };
+
+    const data = prDoc.data();
+    const oldExEntry = data.exercisePRs?.[oldExerciseName];
+    const oldEquipPRs = oldExEntry?.[equipmentName];
+    if (!oldEquipPRs) return { migrated: 0, mergedConflicts: 0 };
+
+    if (!data.exercisePRs[newExerciseName]) {
+        data.exercisePRs[newExerciseName] = {};
+        if (oldExEntry.bodyPart) data.exercisePRs[newExerciseName].bodyPart = oldExEntry.bodyPart;
+    } else if (!data.exercisePRs[newExerciseName].bodyPart && oldExEntry.bodyPart) {
+        data.exercisePRs[newExerciseName].bodyPart = oldExEntry.bodyPart;
+    }
+
+    const destEquipPRs = data.exercisePRs[newExerciseName][equipmentName] || {};
+    const merged = { ...destEquipPRs };
+    let mergedConflicts = 0;
+
+    const compareAndKeep = (metric, valueKey) => {
+        const oldRec = oldEquipPRs[metric];
+        if (!oldRec) return;
+        const destRec = merged[metric];
+        if (!destRec) {
+            merged[metric] = oldRec;
+        } else {
+            mergedConflicts++;
+            if ((oldRec[valueKey] ?? 0) > (destRec[valueKey] ?? 0)) {
+                merged[metric] = oldRec;
+            }
+        }
+    };
+
+    compareAndKeep('maxWeight', 'weight');
+    compareAndKeep('maxReps', 'reps');
+    compareAndKeep('maxVolume', 'volume');
+
+    data.exercisePRs[newExerciseName][equipmentName] = merged;
+
+    delete data.exercisePRs[oldExerciseName][equipmentName];
+    const remainingEquip = Object.keys(data.exercisePRs[oldExerciseName]).filter(k => k !== 'bodyPart');
+    if (remainingEquip.length === 0) {
+        delete data.exercisePRs[oldExerciseName];
+    }
+
+    await setDoc(prDocRef, { ...data, lastUpdated: new Date().toISOString() });
+
+    if (prData && prData.exercisePRs) {
+        prData = data;
+    }
+
+    return { migrated: 1, mergedConflicts };
+}
+
 // ===================================================================
 // LOCATION MANAGEMENT
 // ===================================================================
