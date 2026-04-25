@@ -247,6 +247,10 @@ let expandedTemplateId = null;
  *  Phase 3 — only one exercise expanded at a time across the whole list. */
 let expandedExerciseInTemplate = null;
 
+/** Phase 6 — which template's "Details" accordion (category + schedule) is open.
+ *  Independent of which template-row itself is expanded. */
+let detailsOpenForTemplate = null;
+
 /** All loaded templates (cached for inline editor access) */
 let loadedTemplates = [];
 
@@ -422,6 +426,7 @@ function renderSingleTemplateRow(template) {
 
         editorHtml = `
             <div class="template-editor" data-stop-propagation>
+                ${renderTemplateDetailsAccordion(template)}
                 <div class="template-editor__section-label">EXERCISES</div>
                 <div class="template-editor__exercise-list">
                     ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet</div>'}
@@ -472,6 +477,135 @@ function renderSingleTemplateRow(template) {
  * Tap the head to expand → reveals sets/reps/weight steppers, equipment pill,
  * and notes. ↑/↓ arrows reorder; × removes.
  */
+// ===================================================================
+// PHASE 6 — Details accordion (category + schedule summary at top of editor)
+// ===================================================================
+
+const DAY_VALUES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAY_SHORT_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const DAY_DISPLAY = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
+
+const TEMPLATE_CATEGORIES = [
+    { value: 'push',   label: 'Push' },
+    { value: 'pull',   label: 'Pull' },
+    { value: 'legs',   label: 'Legs' },
+    { value: 'core',   label: 'Core' },
+    { value: 'cardio', label: 'Cardio' },
+    { value: 'other',  label: 'Mixed' },
+];
+
+/**
+ * Days the user has *actually* logged this template on, sorted by recency.
+ * Returns up to 2 day-of-week labels with count >= 2 (so a one-off Tuesday
+ * doesn't get promoted to "Usually Tuesday").
+ */
+function deriveUsuallyDays(templateName) {
+    if (!templateName || !cachedWorkoutHistory) return [];
+    const dayCounts = Array(7).fill(0); // index 0 = Sunday (JS getDay convention)
+    for (const w of cachedWorkoutHistory) {
+        if (w.workoutType !== templateName || !w.completedAt) continue;
+        const parts = (w.date || '').split('-');
+        if (parts.length !== 3) continue;
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        const dow = d.getDay();
+        if (dow >= 0 && dow < 7) dayCounts[dow]++;
+    }
+    // Mon-first labels for display
+    const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return dayCounts
+        .map((count, jsDow) => ({ count, label: labels[jsDow] }))
+        .filter(d => d.count >= 2)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 2)
+        .map(d => d.label);
+}
+
+function estimateDurationMinutes(template) {
+    const exercises = normalizeExercisesToArray(template.exercises);
+    if (exercises.length === 0) return 0;
+    const totalSets = exercises.reduce((sum, ex) => sum + (parseInt(ex.sets) || 3), 0);
+    return Math.round(totalSets * 2.5); // ~2.5 min/set including rest
+}
+
+function getCategoryLabel(value) {
+    const cat = TEMPLATE_CATEGORIES.find(c => c.value === value);
+    return cat ? cat.label : 'Mixed';
+}
+
+function renderTemplateSummary(template) {
+    const cat = (template.category || 'other').toLowerCase();
+    const catLabel = getCategoryLabel(cat);
+
+    const usuallyArr = deriveUsuallyDays(template._name);
+    let scheduleText = null;
+    if (usuallyArr.length > 0) {
+        scheduleText = `Usually ${usuallyArr.join(', ')}`;
+    } else if (Array.isArray(template.suggestedDays) && template.suggestedDays.length > 0) {
+        const labels = template.suggestedDays.map(d => DAY_DISPLAY[d] || d).join(', ');
+        scheduleText = `Schedule: ${labels}`;
+    }
+
+    const exCount = normalizeExercisesToArray(template.exercises).length;
+    const estMin = estimateDurationMinutes(template);
+
+    const parts = [
+        `<span class="te-cat te-cat--${escapeAttr(cat)}">${escapeHtml(catLabel)}</span>`,
+        scheduleText ? escapeHtml(scheduleText) : null,
+        `${exCount} exercise${exCount === 1 ? '' : 's'}`,
+        estMin ? `~${estMin} min` : null,
+    ].filter(Boolean);
+    return parts.join(' · ');
+}
+
+function renderTemplateDetailsBody(template) {
+    const cat = (template.category || 'other').toLowerCase();
+    const days = Array.isArray(template.suggestedDays) ? template.suggestedDays : [];
+    const templateId = template._id;
+
+    const catChips = TEMPLATE_CATEGORIES.map(c => `
+        <span class="chip cat-${c.value} ${cat === c.value ? 'active' : ''}"
+              data-action="setTemplateCategory"
+              data-template-id="${escapeAttr(templateId)}"
+              data-cat="${c.value}">${c.label}</span>
+    `).join('');
+
+    const dayChipsHtml = DAY_SHORT_LABELS.map((short, i) => `
+        <span class="day-chip ${days.includes(DAY_VALUES[i]) ? 'active' : ''}"
+              data-action="toggleTemplateDay"
+              data-template-id="${escapeAttr(templateId)}"
+              data-day="${DAY_VALUES[i]}">${short}</span>
+    `).join('');
+
+    return `
+        <div class="te-details__body">
+            <div class="te-details__row">
+                <div class="te-details__label">Category</div>
+                <div class="te-details__chips">${catChips}</div>
+            </div>
+            <div class="te-details__row">
+                <div class="te-details__label">Schedule</div>
+                <div class="te-details__day-chips">${dayChipsHtml}</div>
+                <div class="te-details__hint">Override the auto-detected schedule.</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderTemplateDetailsAccordion(template) {
+    const isOpen = detailsOpenForTemplate === template._id;
+    return `
+        <div class="te-details">
+            <div class="te-details__summary"
+                 data-action="toggleDetails"
+                 data-template-id="${escapeAttr(template._id)}">
+                <div class="te-details__summary-text">${renderTemplateSummary(template)}</div>
+                <i class="fas fa-chevron-${isOpen ? 'up' : 'down'} te-details__chev"></i>
+            </div>
+            ${isOpen ? renderTemplateDetailsBody(template) : ''}
+        </div>
+    `;
+}
+
 function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
     const exName = getExerciseName(ex);
     const category = (ex.category || ex.bodyPart || 'other').toLowerCase();
@@ -690,7 +824,11 @@ async function saveTemplateInline(template, exercises) {
         const saveData = {
             name: template._name,
             exercises,
-            category: getWorkoutCategory(template._name),
+            // Phase 6: prefer explicit template.category (set via the details
+            // accordion) over the name-derived fallback. Persist suggestedDays
+            // so manual schedule overrides round-trip through Firestore.
+            category: template.category || getWorkoutCategory(template._name),
+            suggestedDays: Array.isArray(template.suggestedDays) ? template.suggestedDays : [],
         };
 
         // If editing a default template, mark it as an override so the
@@ -781,6 +919,26 @@ function setupSelectorDelegation(container) {
                 window.deleteTemplate(templateId, isDefault);
             } else if (action === 'openEquipmentForExercise') {
                 openEquipmentSheetForTemplate(templateId, index);
+            } else if (action === 'toggleDetails') {
+                detailsOpenForTemplate = (detailsOpenForTemplate === templateId) ? null : templateId;
+                renderWorkoutSelectorUI();
+            } else if (action === 'setTemplateCategory') {
+                const cat = actionEl.dataset.cat;
+                const t = loadedTemplates.find(x => x._id === templateId);
+                if (t) {
+                    t.category = cat;
+                    saveTemplateInline(t, normalizeExercisesToArray(t.exercises))
+                        .then(() => renderWorkoutSelectorUI());
+                }
+            } else if (action === 'toggleTemplateDay') {
+                const day = actionEl.dataset.day;
+                const t = loadedTemplates.find(x => x._id === templateId);
+                if (t) {
+                    const cur = Array.isArray(t.suggestedDays) ? t.suggestedDays : [];
+                    t.suggestedDays = cur.includes(day) ? cur.filter(d => d !== day) : [...cur, day];
+                    saveTemplateInline(t, normalizeExercisesToArray(t.exercises))
+                        .then(() => renderWorkoutSelectorUI());
+                }
             }
             return;
         }

@@ -632,6 +632,73 @@
     margin-bottom: var(--space-8);
     box-shadow: var(--shadow-md);
 }
+
+/* Phase 6 — Details accordion (category + schedule summary at top of editor) */
+.te-details {
+    margin: 0 0 var(--space-10);
+    background: var(--bg-card-hi);
+    border-radius: var(--radius-sm);
+}
+.te-details__summary {
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.te-details__summary-text {
+    flex: 1;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.te-details__chev {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+}
+.te-cat {
+    font-weight: 600;
+}
+.te-cat--push   { color: var(--cat-push); }
+.te-cat--pull   { color: var(--cat-pull); }
+.te-cat--legs   { color: var(--cat-legs); }
+.te-cat--core   { color: var(--primary); }
+.te-cat--cardio { color: var(--cat-cardio); }
+.te-cat--other  { color: var(--text-muted); }
+.te-details__body {
+    padding: 0 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+}
+.te-details__row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+.te-details__label {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.te-details__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+}
+.te-details__day-chips {
+    display: flex;
+    gap: var(--space-6);
+}
+.te-details__hint {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
 .template-editor__section-label {
     font-size: var(--font-2xs, 10px);
     font-weight: 600;
