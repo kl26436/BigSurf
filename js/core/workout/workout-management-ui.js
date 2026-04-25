@@ -964,7 +964,6 @@ function createTemplateExerciseItem(exercise, index) {
 
     item.innerHTML = `
         <div class="ex-row" onclick="editTemplateExercise(${index})">
-            <i class="fas fa-grip-vertical ex-drag"></i>
             <div class="ex-info">
                 <div class="ex-name">${groupBadge}${escapeHtml(exercise.name || exercise.machine || 'Exercise')}</div>
                 <div class="ex-meta">

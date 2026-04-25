@@ -630,6 +630,183 @@
     letter-spacing: 0.08em;
     margin-bottom: var(--space-8);
 }
+/* ──────────────────────────────────────────────────────────
+   Phase 3 — rich exercise rows (.te-row)
+   Replace the legacy .template-editor__exercise pattern with
+   a tap-to-expand row that shows steppers + equipment + notes.
+   ────────────────────────────────────────────────────────── */
+.te-row {
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-6);
+    overflow: hidden;
+    transition: border-color var(--anim-fast);
+    border: 0.5px solid var(--border-subtle);
+}
+.te-row--expanded {
+    border-color: var(--primary-border);
+}
+.te-row__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-10);
+    cursor: pointer;
+}
+.te-row__reorder {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.te-row__arrow {
+    width: 24px;
+    height: 20px;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    border: 0.5px solid var(--border-light);
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: var(--font-2xs);
+}
+.te-row__arrow:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+.te-row__arrow:not(:disabled):active {
+    background: var(--bg-card-hi);
+}
+.te-row__icon {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.te-row__icon.tint-push   { background: var(--cat-push-bg);   color: var(--cat-push); }
+.te-row__icon.tint-pull   { background: var(--cat-pull-bg);   color: var(--cat-pull); }
+.te-row__icon.tint-legs   { background: var(--cat-legs-bg);   color: var(--cat-legs); }
+.te-row__icon.tint-core   { background: var(--primary-bg);    color: var(--primary); }
+.te-row__icon.tint-cardio { background: var(--cat-cardio-bg); color: var(--cat-cardio); }
+.te-row__icon.tint-other  { background: var(--bg-card-hi);    color: var(--text-muted); }
+.te-row__info {
+    flex: 1;
+    min-width: 0;
+}
+.te-row__name {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.te-row__meta {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.te-row__remove {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.te-row__remove:active {
+    color: var(--danger);
+}
+.te-row__edit {
+    padding: 0 var(--space-10) var(--space-10);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+.te-row__steppers {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-6);
+}
+.te-stepper__label {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 3px;
+}
+.te-stepper input {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg-app);
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-xs);
+    padding: 6px 8px;
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+    -moz-appearance: textfield;
+}
+.te-stepper input::-webkit-inner-spin-button,
+.te-stepper input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.te-stepper input:focus {
+    border-color: var(--primary);
+}
+.te-row__equip {
+    background: var(--bg-app);
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-xs);
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.te-row__equip i {
+    color: var(--text-muted);
+}
+.te-row__equip-name {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-xs);
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.te-row__equip-action {
+    color: var(--primary);
+    font-size: var(--font-xs);
+    font-weight: 600;
+}
+.te-row__notes-field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg-app);
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-xs);
+    padding: 8px 10px;
+    color: var(--text-main);
+    font-size: var(--font-xs);
+    font-family: inherit;
+    resize: none;
+    outline: none;
+}
+.te-row__notes-field textarea:focus {
+    border-color: var(--primary);
+}
+
 .template-editor__exercise-list {
     display: flex;
     flex-direction: column;
@@ -1031,12 +1208,6 @@
 /* .ex-row base style defined above (line ~1003). The rule below adds the
    cursor hint that was previously inlined. */
 .ex-row { cursor: pointer; }
-.ex-drag {
-    color: var(--text-muted);
-    font-size: var(--font-base);
-    padding: var(--space-4);
-    margin-left: calc(var(--space-4) * -1);
-}
 .ex-info { flex: 1; min-width: 0; }
 .ex-name {
     font-size: var(--font-base);

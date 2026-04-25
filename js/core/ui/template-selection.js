@@ -243,6 +243,10 @@ let cachedWorkoutHistory = null;
 /** Currently expanded template ID for inline editing (null = all collapsed) */
 let expandedTemplateId = null;
 
+/** Currently expanded exercise within a template (key = `${templateId}_${idx}`).
+ *  Phase 3 — only one exercise expanded at a time across the whole list. */
+let expandedExerciseInTemplate = null;
+
 /** All loaded templates (cached for inline editor access) */
 let loadedTemplates = [];
 
@@ -412,27 +416,9 @@ function renderSingleTemplateRow(template) {
     // Inline editor HTML (shown when expanded)
     let editorHtml = '';
     if (isExpanded) {
-        const exerciseListHtml = exercisesArray.map((ex, i) => {
-            const exName = getExerciseName(ex);
-            const isFirst = i === 0;
-            const isLast = i === exercisesArray.length - 1;
-            return `
-                <div class="template-editor__exercise">
-                    <div class="template-editor__reorder">
-                        <button class="template-editor__reorder-btn" data-action="moveExerciseUp" data-template-id="${escapeAttr(templateId)}" data-index="${i}" ${isFirst ? 'disabled' : ''}>
-                            <i class="fas fa-chevron-up"></i>
-                        </button>
-                        <button class="template-editor__reorder-btn" data-action="moveExerciseDown" data-template-id="${escapeAttr(templateId)}" data-index="${i}" ${isLast ? 'disabled' : ''}>
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </div>
-                    <span class="template-editor__exercise-name">${escapeHtml(exName)}</span>
-                    <button class="template-editor__remove-btn" data-action="removeTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-index="${i}">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-        }).join('');
+        const exerciseListHtml = exercisesArray.map((ex, i) =>
+            renderTemplateExerciseRow(ex, i, exercisesArray.length, templateId, expandedExerciseInTemplate === `${templateId}_${i}`)
+        ).join('');
 
         editorHtml = `
             <div class="template-editor" data-stop-propagation>
@@ -480,10 +466,170 @@ function renderSingleTemplateRow(template) {
 }
 
 /**
+ * Render a single exercise row inside an expanded template.
+ * Tap the head to expand → reveals sets/reps/weight steppers, equipment pill,
+ * and notes. ↑/↓ arrows reorder; × removes.
+ */
+function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
+    const exName = getExerciseName(ex);
+    const category = (ex.category || ex.bodyPart || 'other').toLowerCase();
+    const tintCat = ['push', 'pull', 'legs', 'core', 'cardio'].includes(category) ? category : 'other';
+    const sets = ex.sets || 3;
+    const reps = ex.reps || 10;
+    const weight = ex.weight || 0;
+    const unit = AppState.globalUnit || 'lbs';
+    const equipment = ex.equipment || '';
+    const notes = ex.notes || '';
+    const isFirst = idx === 0;
+    const isLast = idx === total - 1;
+    const rowKey = `${templateId}_${idx}`;
+
+    const summary = equipment
+        ? `${sets} × ${reps} · ${escapeHtml(equipment)}`
+        : `${sets} × ${reps}${weight ? ` · ${weight} ${unit}` : ''}`;
+
+    const expandedBody = isExpanded ? `
+        <div class="te-row__edit" data-stop-propagation>
+            <div class="te-row__steppers">
+                <div class="te-stepper">
+                    <div class="te-stepper__label">Sets</div>
+                    <input type="number" inputmode="numeric" min="1" max="20"
+                           value="${sets}"
+                           data-action="updateExerciseField"
+                           data-template-id="${escapeAttr(templateId)}"
+                           data-index="${idx}" data-field="sets">
+                </div>
+                <div class="te-stepper">
+                    <div class="te-stepper__label">Reps</div>
+                    <input type="number" inputmode="numeric" min="1" max="100"
+                           value="${reps}"
+                           data-action="updateExerciseField"
+                           data-template-id="${escapeAttr(templateId)}"
+                           data-index="${idx}" data-field="reps">
+                </div>
+                <div class="te-stepper">
+                    <div class="te-stepper__label">Weight</div>
+                    <input type="number" inputmode="decimal" step="0.5"
+                           value="${weight}"
+                           data-action="updateExerciseField"
+                           data-template-id="${escapeAttr(templateId)}"
+                           data-index="${idx}" data-field="weight">
+                </div>
+            </div>
+            <div class="te-row__equip" data-action="openEquipmentForExercise"
+                 data-template-id="${escapeAttr(templateId)}" data-index="${idx}">
+                <i class="fas fa-cog"></i>
+                <span class="te-row__equip-name">${equipment ? escapeHtml(equipment) : 'Choose equipment'}</span>
+                <span class="te-row__equip-action">${equipment ? 'Change' : 'Pick'}</span>
+            </div>
+            <div class="te-row__notes-field">
+                <textarea rows="1" placeholder="Notes (optional)"
+                          data-action="updateExerciseField"
+                          data-template-id="${escapeAttr(templateId)}"
+                          data-index="${idx}" data-field="notes">${escapeHtml(notes)}</textarea>
+            </div>
+        </div>
+    ` : '';
+
+    return `
+        <div class="te-row ${isExpanded ? 'te-row--expanded' : ''}"
+             data-action="toggleExerciseExpand"
+             data-template-id="${escapeAttr(templateId)}"
+             data-index="${idx}"
+             data-row-key="${rowKey}">
+            <div class="te-row__head">
+                <div class="te-row__reorder" data-stop-propagation>
+                    <button class="te-row__arrow" ${isFirst ? 'disabled' : ''}
+                            data-action="moveExerciseUp"
+                            data-template-id="${escapeAttr(templateId)}"
+                            data-index="${idx}" aria-label="Move up">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                    <button class="te-row__arrow" ${isLast ? 'disabled' : ''}
+                            data-action="moveExerciseDown"
+                            data-template-id="${escapeAttr(templateId)}"
+                            data-index="${idx}" aria-label="Move down">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="te-row__icon tint-${tintCat}">
+                    <i class="fas fa-dumbbell"></i>
+                </div>
+                <div class="te-row__info">
+                    <div class="te-row__name">${escapeHtml(exName)}</div>
+                    <div class="te-row__meta">${summary}</div>
+                </div>
+                <button class="te-row__remove" data-stop-propagation
+                        data-action="removeTemplateExercise"
+                        data-template-id="${escapeAttr(templateId)}"
+                        data-index="${idx}"
+                        aria-label="Remove">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            ${expandedBody}
+        </div>
+    `;
+}
+
+/**
+ * Persist a single field change on a template exercise.
+ * Called from the inline change listener; the spec accepts a re-render
+ * that may steal focus, since change events fire only after blur.
+ */
+async function updateExerciseField(templateId, index, field, value) {
+    const template = loadedTemplates.find(t => t._id === templateId);
+    if (!template) return;
+    const exercises = normalizeExercisesToArray(template.exercises);
+    if (index < 0 || index >= exercises.length) return;
+    const ex = exercises[index];
+
+    if (field === 'sets' || field === 'reps') {
+        const n = parseInt(value, 10);
+        if (Number.isFinite(n) && n > 0) ex[field] = n;
+    } else if (field === 'weight') {
+        const n = parseFloat(value);
+        ex[field] = Number.isFinite(n) ? n : 0;
+    } else if (field === 'notes') {
+        ex.notes = (value || '').trim();
+    }
+
+    template.exercises = exercises;
+    await saveTemplateInline(template, exercises);
+    renderWorkoutSelectorUI();
+}
+
+/**
+ * Open the active-workout equipment sheet pre-loaded with the template
+ * exercise's current equipment, then write the selection back.
+ */
+async function openEquipmentSheetForTemplate(templateId, index) {
+    const template = loadedTemplates.find(t => t._id === templateId);
+    if (!template) return;
+    const exercises = normalizeExercisesToArray(template.exercises);
+    const exercise = exercises[index];
+    if (!exercise) return;
+
+    const { openSharedEquipmentSheet } = await import('../workout/active-workout-ui.js');
+    openSharedEquipmentSheet({
+        exerciseName: getExerciseName(exercise),
+        currentEquipment: exercise.equipment || '',
+        onSelect: async (equipName) => {
+            exercise.equipment = equipName || '';
+            template.exercises = exercises;
+            await saveTemplateInline(template, exercises);
+            renderWorkoutSelectorUI();
+        },
+    });
+}
+
+/**
  * Toggle inline template editor expansion.
  */
 export function toggleTemplateEdit(templateId) {
     expandedTemplateId = (expandedTemplateId === templateId) ? null : templateId;
+    // Collapsing the parent template should also reset which exercise is open
+    if (expandedTemplateId === null) expandedExerciseInTemplate = null;
     renderWorkoutSelectorUI();
 }
 
@@ -588,7 +734,21 @@ function setupSelectorDelegation(container) {
                 window.copyTemplateToCustom(templateId);
             } else if (action === 'deleteTemplateInline') {
                 window.deleteTemplate(templateId, isDefault);
+            } else if (action === 'openEquipmentForExercise') {
+                openEquipmentSheetForTemplate(templateId, index);
             }
+            return;
+        }
+
+        // Tap an exercise row body to expand its inline editor (steppers,
+        // equipment pill, notes). Stop here so it doesn't bubble up to the
+        // template-row toggle.
+        const exRowToggle = e.target.closest('[data-action="toggleExerciseExpand"]');
+        if (exRowToggle && !e.target.closest('[data-stop-propagation]')) {
+            e.stopPropagation();
+            const rowKey = exRowToggle.dataset.rowKey;
+            expandedExerciseInTemplate = (expandedExerciseInTemplate === rowKey) ? null : rowKey;
+            renderWorkoutSelectorUI();
             return;
         }
 
@@ -609,29 +769,39 @@ function setupSelectorDelegation(container) {
         }
     });
 
-    // Inline rename: fires on blur or Enter on the title input.
+    // Change listener: handles inline rename, exercise field edits.
+    // Fires on blur or Enter for inputs / textareas.
     container.addEventListener('change', async (e) => {
-        const input = e.target.closest('input[data-action="renameTemplate"]');
-        if (!input) return;
+        // 1) Rename template title
+        const renameInput = e.target.closest('input[data-action="renameTemplate"]');
+        if (renameInput) {
+            const templateId = renameInput.dataset.templateId;
+            const newName = renameInput.value.trim();
+            const template = loadedTemplates.find(t => t._id === templateId);
+            if (!template) return;
 
-        const templateId = input.dataset.templateId;
-        const newName = input.value.trim();
-        const template = loadedTemplates.find(t => t._id === templateId);
-        if (!template) return;
+            if (!newName) {
+                renameInput.value = template._name || '';
+                return;
+            }
+            if (newName === template._name) return;
 
-        // Reject empty names — snap back to the previous value.
-        if (!newName) {
-            input.value = template._name || '';
+            template._name = newName;
+            template.name = newName;
+            await saveTemplateInline(template, normalizeExercisesToArray(template.exercises));
+            renderWorkoutSelectorUI();
             return;
         }
 
-        // No-op if unchanged
-        if (newName === template._name) return;
-
-        template._name = newName;
-        template.name = newName;
-        await saveTemplateInline(template, normalizeExercisesToArray(template.exercises));
-        renderWorkoutSelectorUI();
+        // 2) Sets / reps / weight / notes on an expanded exercise row
+        const fieldEl = e.target.closest('[data-action="updateExerciseField"]');
+        if (fieldEl) {
+            const templateId = fieldEl.dataset.templateId;
+            const index = parseInt(fieldEl.dataset.index, 10);
+            const field = fieldEl.dataset.field;
+            await updateExerciseField(templateId, index, field, fieldEl.value);
+            return;
+        }
     });
 }
 

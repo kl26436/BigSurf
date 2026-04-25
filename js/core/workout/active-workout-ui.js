@@ -1271,6 +1271,179 @@ function renderEquipmentSheet(exerciseIdx) {
     });
 }
 
+// ===================================================================
+// SHARED EQUIPMENT SHEET (Phase 3.4)
+// Same UI as awOpenEquipmentSheet, but driven by a caller-supplied
+// callback instead of writing to AppState. The active-workout flow
+// (awOpenEquipmentSheet / awSelectEquipment / awEquipSearch) is left
+// completely untouched — this is a parallel path so template-editor
+// and other surfaces can reuse the picker without risk to live workouts.
+// ===================================================================
+
+let _sharedEquipmentContext = null;
+// Shape: { exerciseName: string, currentEquipment: string|null, onSelect: (equipName: string) => void|Promise }
+
+export async function openSharedEquipmentSheet({ exerciseName, currentEquipment, onSelect }) {
+    if (typeof onSelect !== 'function') {
+        console.error('openSharedEquipmentSheet: onSelect is required');
+        return;
+    }
+    awCloseMenus();
+    equipSearchQuery = '';
+
+    // Lazy-load equipment cache (same pattern as awOpenEquipmentSheet)
+    if (!AppState._cachedEquipment || AppState._cachedEquipment.length === 0) {
+        try {
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            const mgr = new FirebaseWorkoutManager(AppState);
+            AppState._cachedEquipment = await mgr.getUserEquipment();
+        } catch (e) {
+            debugLog('Failed to load equipment for shared sheet:', e);
+            AppState._cachedEquipment = [];
+        }
+    }
+
+    _sharedEquipmentContext = { exerciseName, currentEquipment: currentEquipment || null, onSelect };
+    renderSharedEquipmentSheet();
+}
+
+function renderSharedEquipmentSheet() {
+    const ctx = _sharedEquipmentContext;
+    if (!ctx) return;
+
+    const exName = ctx.exerciseName;
+    const currentEquip = ctx.currentEquipment;
+    // Use session location if there happens to be one (e.g., user is editing a
+    // template while detected at a gym), otherwise omit the "At {gym}" section.
+    const sessionLoc = AppState.savedData?.location;
+    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+
+    const allEquipment = AppState._cachedEquipment || [];
+
+    const forThisExercise = [];
+    const atThisGym = [];
+    const otherEquipment = [];
+
+    allEquipment.forEach(eq => {
+        const isAssigned = (eq.exerciseTypes || []).some(n => n.toLowerCase() === exName.toLowerCase());
+        const isAtLocation = locName && (eq.locations || []).some(l => l.toLowerCase() === locName.toLowerCase());
+        if (isAssigned) forThisExercise.push(eq);
+        else if (isAtLocation) atThisGym.push(eq);
+        else otherEquipment.push(eq);
+    });
+
+    const applySearch = (list) => {
+        if (!equipSearchQuery) return list;
+        const q = equipSearchQuery.toLowerCase();
+        return list.filter(eq => eq.name?.toLowerCase().includes(q) || (eq.equipmentType || '').toLowerCase().includes(q));
+    };
+
+    const renderRow = (eq) => {
+        const isCurrent = eq.name === currentEquip;
+        const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
+        const locs = (eq.locations || []);
+        const locStr = locs.length > 0 ? locs.join(', ') : '';
+        return `
+            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSharedSelectEquipment('${escapeAttr(eq.name)}')">
+                <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
+                <div class="js-row__info">
+                    <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
+                    <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__loc-icon"></i> ${escapeHtml(locStr)}` : ''}</div>
+                </div>
+            </div>
+        `;
+    };
+
+    const renderSection = (title, list, emptyMsg) => {
+        const filtered = applySearch(list);
+        if (filtered.length === 0 && equipSearchQuery) return '';
+        return `
+            <div class="aw-equip-section">
+                <div class="aw-equip-section__title">${title}</div>
+                ${filtered.length > 0 ? filtered.map(renderRow).join('') : `<div class="aw-equip-section__empty">${emptyMsg}</div>`}
+            </div>
+        `;
+    };
+
+    const noneRow = `
+        <div class="js-row js-row--none ${!currentEquip ? 'current' : ''}" onclick="awSharedSelectEquipment('')">
+            <div class="js-row__icon js-row__icon--equip"><i class="fas fa-times"></i></div>
+            <div class="js-row__info">
+                <div class="js-row__name">None${!currentEquip ? ' ✓' : ''}</div>
+                <div class="js-row__meta">No equipment for this exercise</div>
+            </div>
+        </div>
+    `;
+
+    const body = `
+        <div class="field-search field-search--sticky">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search equipment…" value="${escapeAttr(equipSearchQuery)}" oninput="awSharedEquipSearch(this.value)">
+        </div>
+        <div id="aw-equip-list">
+            ${renderSection(`For ${escapeHtml(exName)}`, forThisExercise, 'No equipment assigned to this exercise yet')}
+            ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, `No equipment saved at ${escapeHtml(locName)} yet`) : ''}
+            ${renderSection('Other equipment', otherEquipment, 'No other equipment saved')}
+            ${noneRow}
+        </div>
+    `;
+
+    openSheet({
+        title: 'Choose equipment',
+        subtitle: exName,
+        body,
+        actions: [
+            { label: 'Cancel', onClick: 'awSharedCancelEquipment()' },
+            { label: 'Done', onClick: 'awCloseSheet()', primary: true },
+        ],
+    });
+}
+
+export function awSharedEquipSearch(query) {
+    equipSearchQuery = query;
+    const listEl = document.getElementById('aw-equip-list');
+    if (!listEl || !_sharedEquipmentContext) return;
+
+    const ctx = _sharedEquipmentContext;
+    const allEquipment = AppState._cachedEquipment || [];
+    const q = query.toLowerCase();
+    const matches = allEquipment.filter(eq =>
+        eq.name?.toLowerCase().includes(q) || (eq.equipmentType || '').toLowerCase().includes(q)
+    );
+    const renderRow = (eq) => {
+        const isCurrent = eq.name === ctx.currentEquipment;
+        const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
+        const locs = (eq.locations || []);
+        const locStr = locs.length > 0 ? locs.join(', ') : '';
+        return `
+            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSharedSelectEquipment('${escapeAttr(eq.name)}')">
+                <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
+                <div class="js-row__info">
+                    <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
+                    <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__meta-pin"></i> ${escapeHtml(locStr)}` : ''}</div>
+                </div>
+            </div>
+        `;
+    };
+    listEl.innerHTML = matches.length > 0
+        ? matches.map(renderRow).join('')
+        : '<div class="aw-sheet__empty">No matches</div>';
+}
+
+export async function awSharedSelectEquipment(equipName) {
+    const ctx = _sharedEquipmentContext;
+    if (!ctx) { awCloseSheet(); return; }
+    const cb = ctx.onSelect;
+    _sharedEquipmentContext = null;
+    awCloseSheet();
+    try { await cb(equipName); } catch (e) { console.error('Shared equipment onSelect threw:', e); }
+}
+
+export function awSharedCancelEquipment() {
+    _sharedEquipmentContext = null;
+    awCloseSheet();
+}
+
 export function awEquipSearch(exerciseIdx, query) {
     equipSearchQuery = query;
     // Re-render just the list content, preserving the search input focus
