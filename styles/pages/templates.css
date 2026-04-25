@@ -548,18 +548,28 @@
     background: var(--dot-color, var(--text-muted));
 }
 
-/* Expand/collapse chevron */
-.template-row__chevron {
-    color: var(--text-muted);
-    font-size: var(--font-xs);
+/* Row-level start button — one-tap start for the primary intent of this
+   page. Replaces the Phase 1 chevron+play collision: no chevron, just the
+   play button on the right edge. The expanded `.template-row.expanded`
+   border + the editor panel are the affordances that signal "expanded". */
+.btn-start-small {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-pill);
+    background: var(--primary);
+    color: var(--bg-app);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
-    transition: transform 0.2s ease;
-    opacity: 0.5;
+    cursor: pointer;
+    font-size: var(--font-sm);
+    transition: transform 0.15s, opacity 0.15s;
 }
-.template-row.expanded .template-row__chevron {
-    transform: rotate(180deg);
-    opacity: 1;
-    color: var(--primary);
+.btn-start-small:active {
+    transform: scale(0.97);
+    transition: transform 0.1s;
 }
 
 /* Row content layout */
