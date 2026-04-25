@@ -320,85 +320,6 @@
                     </div><!-- /.content-section-body -->
                 </section>
 
-                <!-- Workout Management Section (Full Page, not a modal) -->
-                <section id="workout-management-section" class="content-section pinned-header hidden">
-                    <!-- Section Header -->
-                    <div class="page-header">
-                        <div class="page-header__left">
-                            <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <div class="page-header__title">Workouts</div>
-                        </div>
-                        <button class="page-header__save" onclick="createNewTemplate()">
-                            <i class="fas fa-plus"></i> New
-                        </button>
-                    </div>
-
-                    <div class="content-section-body">
-                    <!-- View 1: Category Grid (Entry Page) -->
-                    <div id="workout-category-view" class="workout-library-view">
-                        <!-- Search -->
-                        <div class="exercise-library-header">
-                            <div class="exercise-search-row">
-                                <div class="field-search">
-                                    <i class="fas fa-search"></i>
-                                    <input
-                                        type="text"
-                                        id="workout-search-input"
-                                        placeholder="Search workouts"
-                                        oninput="handleWorkoutSearch()"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Category Grid - uses icons from Start Workout page -->
-                        <div class="category-grid">
-                            <div class="category-card" onclick="selectWorkoutCategory('push')">
-                                <i class="fas fa-hand-paper category-icon"></i>
-                                <span class="category-name">Push</span>
-                            </div>
-                            <div class="category-card" onclick="selectWorkoutCategory('pull')">
-                                <i class="fas fa-fist-raised category-icon"></i>
-                                <span class="category-name">Pull</span>
-                            </div>
-                            <div class="category-card" onclick="selectWorkoutCategory('legs')">
-                                <i class="fas fa-running category-icon"></i>
-                                <span class="category-name">Legs</span>
-                            </div>
-                            <div class="category-card" onclick="selectWorkoutCategory('cardio')">
-                                <i class="fas fa-heartbeat category-icon"></i>
-                                <span class="category-name">Cardio</span>
-                            </div>
-                            <div class="category-card" onclick="selectWorkoutCategory('other')">
-                                <i class="fas fa-dumbbell category-icon"></i>
-                                <span class="category-name">Other</span>
-                            </div>
-                            <div class="category-card" onclick="selectWorkoutCategory('')">
-                                <i class="fas fa-th category-icon"></i>
-                                <span class="category-name">All</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- View 2: Workout List (After selecting category) -->
-                    <div id="workout-list-view" class="workout-library-view hidden">
-                        <!-- Header with back and title -->
-                        <div class="exercise-list-header">
-                            <button class="btn-back-category" aria-label="Go back" onclick="showWorkoutCategoryView()">
-                                <i class="fas fa-arrow-left"></i>
-                            </button>
-                            <h2 id="workout-list-title" class="exercise-list-title">Workouts</h2>
-                        </div>
-
-                        <!-- Workout List -->
-                        <div id="all-templates" class="workout-list-container">
-                            <!-- Populated by JavaScript -->
-                        </div>
-                    </div>
-                    </div><!-- /content-section-body -->
-                </section>
             </main>
 
             <!-- Modal Containers -->
@@ -605,21 +526,6 @@
                     </div>
                 </dialog>
 
-                <!-- Manual Workout Modal -->
-                <!-- Workout Editor (Full-Page Section) -->
-                <section id="template-editor-section" class="full-page-section hidden">
-                    <div class="page-header">
-                        <div class="page-header__left">
-                            <button class="page-header__back" onclick="closeTemplateEditor()" aria-label="Back">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <div class="page-header__title" id="template-editor-title">Create Workout</div>
-                        </div>
-                    </div>
-                    <div class="full-page-body" id="template-editor-content">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </section>
             </div>
 
             <!-- Notifications -->
