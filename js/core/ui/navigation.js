@@ -159,7 +159,10 @@ function routeToView(view) {
 
         case 'templates':
         case 'workout-management':
-            showWorkoutManagement();
+            // Phase 1: route to the unified workout-selector. The legacy
+            // workout-management-section is retired in Phase 9; for now it
+            // stays in the DOM but is unreachable from any nav entry point.
+            showWorkoutSelector();
             break;
 
         case 'equipment':

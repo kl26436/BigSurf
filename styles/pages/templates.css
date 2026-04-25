@@ -589,27 +589,6 @@
     font-weight: 500;
 }
 
-/* Start button */
-.btn-start-small {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-pill);
-    background: var(--primary);
-    color: var(--bg-app);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    cursor: pointer;
-    font-size: var(--font-sm);
-    transition: transform 0.15s, opacity 0.15s;
-}
-.btn-start-small:active {
-    transform: scale(0.97);
-    transition: transform 0.1s;
-}
-
 /* ── Inline template editor (expanded state) ── */
 .template-row.expanded {
     border-color: var(--primary-border);

@@ -469,9 +469,6 @@ function renderSingleTemplateRow(template) {
                 <div class="row-card__subtitle">${exerciseCount} exercises${timeInfo}</div>
             </div>
             <i class="fas fa-chevron-down template-row__chevron"></i>
-            <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
-                <i class="fas fa-play"></i>
-            </button>
         </div>
         ${editorHtml}
     `;
