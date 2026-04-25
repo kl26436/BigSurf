@@ -767,12 +767,31 @@ export async function loadWorkoutHistory(state, limitCount = 50) {
 
 /**
  * Load ALL completed workouts (no limit) for dashboard aggregations.
- * Results are cached on AppState.workouts for drill-down pages.
+ * Results are cached on a module-private TTL cache to avoid repeating the
+ * full-collection scan on every dashboard render. Invalidate explicitly via
+ * `clearAllWorkoutsCache()` after any write (workout complete / edit / delete).
  */
+let _allWorkoutsCache = null;
+// Shape: { uid: string, fetchedAt: number, data: Workout[] }
+const ALL_WORKOUTS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes — re-fetch if user lingers across that boundary
+
+export function clearAllWorkoutsCache() {
+    _allWorkoutsCache = null;
+}
+
 export async function loadAllWorkouts(state) {
     if (!state.currentUser) return [];
+    const uid = state.currentUser.uid;
+    const now = Date.now();
+    if (
+        _allWorkoutsCache
+        && _allWorkoutsCache.uid === uid
+        && (now - _allWorkoutsCache.fetchedAt) < ALL_WORKOUTS_CACHE_TTL_MS
+    ) {
+        return _allWorkoutsCache.data;
+    }
     try {
-        const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
+        const workoutsRef = collection(db, 'users', uid, 'workouts');
         const q = query(workoutsRef, orderBy('date', 'desc'));
         const snapshot = await getDocs(q);
         const workouts = [];
@@ -780,6 +799,7 @@ export async function loadAllWorkouts(state) {
             const data = { id: docSnap.id, ...docSnap.data() };
             if (data.completedAt && !data.cancelledAt) workouts.push(data);
         });
+        _allWorkoutsCache = { uid, fetchedAt: now, data: workouts };
         return workouts;
     } catch (error) {
         console.error('❌ Error loading all workouts:', error);

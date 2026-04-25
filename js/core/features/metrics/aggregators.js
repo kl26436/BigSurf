@@ -488,8 +488,26 @@ export function aggregateVolumeTrend(workouts, bodyPart, { start, end }) {
 
 /**
  * Single entry point for rendering a body-part card or detail page.
+ *
+ * Memoized per `(workouts identity, bodyPart, range)` because the dashboard
+ * calls this 6 times in a row with the same workouts array but different
+ * body parts (one card per group). With ~1000 workouts in cache, that
+ * collapses 6 full-array scans into 1 per body part per data refresh.
+ *
+ * The WeakMap is keyed by the workouts array reference, so the cache
+ * automatically clears when loadAllWorkouts returns a fresh array (cache TTL
+ * expired or invalidation hook fired).
  */
+const _bodyPartStatsCache = new WeakMap();
 export function aggregateBodyPartStats(workouts, bodyPart, range = 'W') {
+    let perWorkoutsCache = _bodyPartStatsCache.get(workouts);
+    if (!perWorkoutsCache) {
+        perWorkoutsCache = new Map();
+        _bodyPartStatsCache.set(workouts, perWorkoutsCache);
+    }
+    const cacheKey = `${bodyPart}|${range}`;
+    if (perWorkoutsCache.has(cacheKey)) return perWorkoutsCache.get(cacheKey);
+
     const { getRangeBounds, getPreviousRangeBounds } = _rangeFns;
     const bounds = getRangeBounds(range);
     const prevBounds = getPreviousRangeBounds(range);
@@ -517,7 +535,9 @@ export function aggregateBodyPartStats(workouts, bodyPart, range = 'W') {
 
     const volumeTrend = aggregateVolumeTrend(workouts, bodyPart, bounds);
 
-    return { bodyPart, heroLift, heaviest, volume, volumeDeltaPct, sessions, lastTrained, isStale, volumeTrend };
+    const result = { bodyPart, heroLift, heaviest, volume, volumeDeltaPct, sessions, lastTrained, isStale, volumeTrend };
+    perWorkoutsCache.set(cacheKey, result);
+    return result;
 }
 
 /**

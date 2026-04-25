@@ -1416,6 +1416,11 @@ export function getWorkoutHistory(appState) {
                 this.currentHistory = this.currentHistory.filter((w) => w.id !== workoutId);
                 this.filteredHistory = this.filteredHistory.filter((w) => w.id !== workoutId);
 
+                // Invalidate the dashboard's full-history cache (data-manager.js)
+                // so streaks / body-part stats reflect the deletion next render.
+                const { clearAllWorkoutsCache } = await import('../data/data-manager.js');
+                clearAllWorkoutsCache();
+
                 // Refresh calendar if currently shown
                 await this.loadCalendarWorkouts();
                 this.generateCalendarGrid();
