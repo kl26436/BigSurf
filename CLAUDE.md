@@ -66,13 +66,16 @@ js/
     │   ├── superset-manager.js     # Exercise grouping for supersets/circuits
     │   └── training-insights.js    # Rules engine for dashboard insights (no API)
     ├── ui/                     # UI components
-    │   ├── dashboard-ui.js         # Dashboard rendering
+    │   ├── dashboard-ui.js         # Dashboard rendering — body-part cards, recent PRs, insights
     │   ├── equipment-library-ui.js # Equipment library page
     │   ├── exercise-manager-ui.js  # Exercise library modal
     │   ├── navigation.js           # Bottom nav, routing
     │   ├── settings-ui.js          # Settings page, onboarding flow
     │   ├── stats-ui.js             # Stats page
-    │   ├── template-selection.js   # Workout picker
+    │   ├── sheet.js                # Bottom-sheet primitive (openSheet / awCloseSheet / closeSheetImmediate)
+    │   ├── add-exercise-sheet.js   # Shared add-exercise sheet (used by active workout AND template editor — Phase 4)
+    │   ├── equipment-picker.js     # Equipment picker render helper (categorized: For exercise / At gym / Other)
+    │   ├── template-selection.js   # Workouts page — unified library + inline editor (Phases 1-7)
     │   ├── ui-helpers.js           # Notifications, conversions, modal helpers
     │   └── workout-history-ui.js   # History modal
     ├── utils/                  # Utilities
@@ -82,11 +85,12 @@ js/
     │   ├── error-handler.js        # Error handling with severity levels
     │   └── notification-helper.js  # UI notifications
     └── workout/                # Workout logic
-        ├── exercise-ui.js          # Exercise cards, modal, set logging
+        ├── exercise-ui.js          # Legacy v1 exercise cards (still used by some flows)
+        ├── active-workout-ui.js    # V2 wizard-style active workout + bottom sheets (awAddExercise, awOpenEquipmentSheet, openSharedAddExerciseSheet, openSharedEquipmentSheet)
         ├── rest-timer.js           # Rest timer (modal + header)
-        ├── workout-core.js         # Session execution
+        ├── workout-core.js         # Top-level lifecycle re-exports
         ├── workout-history.js      # Calendar, history data
-        ├── workout-management-ui.js # Template editor
+        ├── workout-management-ui.js # Equipment picker + create-exercise modal (template editor was retired in Phase 9; editTemplate / createNewTemplate now route to the workout-selector)
         └── workout-session.js      # Workout completion, summary modal
 ```
 
@@ -275,25 +279,61 @@ On app load, checks for incomplete workouts:
 
 ## Common Development Tasks
 
-### Adding a New Exercise Field
+### Adding a new exercise field
 
 1. Update exercise objects in `AppState.exerciseDatabase`
-2. Modify save logic in [data-manager.js](js/core/data/data-manager.js)
-3. Update UI in [workout-core.js](js/core/workout/workout-core.js)
-4. Update manual workout form in [manual-workout.js](js/core/features/manual-workout.js)
+2. Modify save logic in [data-manager.js](js/core/data/data-manager.js) (look at `saveWorkoutData`'s normalizedData mapping)
+3. Update UI in [active-workout-ui.js](js/core/workout/active-workout-ui.js) (V2 wizard) and/or [exercise-ui.js](js/core/workout/exercise-ui.js) (legacy cards)
+4. Update template-editor row in [template-selection.js](js/core/ui/template-selection.js) (`renderTemplateExerciseRow`)
+5. Update manual workout form in [manual-workout.js](js/core/features/manual-workout.js)
 
-### Adding a New Workout Section
+### Adding a new top-level page / section
 
-1. Add HTML section to [index.html](index.html)
-2. Create show/hide functions in appropriate module
-3. Export and assign to `window` in [main.js](js/main.js)
-4. Add navigation button handlers
+1. Add HTML section to [index.html](index.html) with a unique `id` ending in `-section`
+2. Add the id to the `SECTION_IDS` array in [navigation.js](js/core/ui/navigation.js) (controls hide/show on `navigateTo`)
+3. Add a `case` to `routeToView()` in navigation.js that un-hides the section + sets bottom-nav state
+4. If using inline `onclick`, export functions from your module → import in [main.js](js/main.js) → assign to `window`
 
-### Modifying Firebase Schema
+### Editing a template / creating a new workout
+
+There is no longer a standalone template editor. Both flows route through the workout-selector:
+- `editTemplate(templateId)` → calls `expandTemplateInSelector(templateId)` from template-selection.js → navigates to `workout-selector` and pre-expands the row
+- `createNewTemplate()` → prompts for name → saves blank template to Firestore → expands the new row in the selector
+- `saveWorkoutAsTemplate(workoutData)` → prompts for name → converts workout to template via `normalizeWorkoutToTemplate` → saves → expands
+
+The inline editor (in `template-selection.js`) handles rename, sets/reps/weight steppers, equipment picker, notes, reorder arrows, details accordion, last-session meta. Don't reintroduce a separate editor section.
+
+### Modifying Firebase schema
 
 1. Update save functions in [data-manager.js](js/core/data/data-manager.js)
 2. Increment `version` field in workout documents
 3. Add migration logic in [schema-migration.js](js/core/data/schema-migration.js)
+4. If adding a new collection or invalidation surface, also update `clearAllWorkoutsCache()` callers (workout complete, delete, etc.)
+
+### Adding a bottom sheet
+
+Use the shared primitive — don't reinvent.
+
+```js
+import { openSheet, awCloseSheet } from '../ui/sheet.js';
+openSheet({
+  title: 'Title',
+  subtitle: 'optional',
+  body: '<div>...</div>',
+  actions: [
+    { label: 'Cancel', onClick: 'awCloseSheet()' },
+    { label: 'Confirm', onClick: 'myConfirmHandler()', primary: true },
+  ],
+});
+```
+
+For add-exercise / equipment / similar shared flows, prefer the parameterized helpers (`openSharedAddExerciseSheet`, `openSharedEquipmentSheet` in [active-workout-ui.js](js/core/workout/active-workout-ui.js)) — they take an `onSelect` callback so the same sheet works from any context.
+
+### Touching active-workout code
+
+Active workout is the most user-critical surface. Two safety patterns:
+- When changing the equipment picker or add-exercise sheet, prefer adding a parallel `openShared*` API rather than refactoring `awOpenEquipmentSheet` / `awAddExercise` directly. Yes, this means some duplication — it's a deliberate tradeoff.
+- After any change, verify: change-equipment, replace-exercise, add-exercise from menu, and complete-workout flows. The auto-save path is `debouncedSaveWorkoutData` — confirm it still fires.
 
 ## Debugging
 
@@ -484,7 +524,33 @@ Address violations in the PR that introduces them; don't let them accumulate.
 
 ## Roadmap & Implementation Status
 
-See [roadmap.md](roadmap.md) for the full overhaul plan. Current status:
+See [ROADMAP.md](ROADMAP.md) for the historical overhaul plan. Status:
 - **Sprints 1-7 (Phases 0-13, 15-18)**: Complete
 - **Phase 14 (Social features)**: Intentionally on hold
 - **Phase 19 (Community gym DB)**: Intentionally on hold
+
+### Library/editor consolidation overhaul (2026-04, see [docs/implementation-plan.md](docs/implementation-plan.md))
+
+All shipped:
+- **Phase 0** — keyboard fix: `interactive-widget=resizes-content` viewport meta + global focusin handler + vh→dvh sweep on sheets/modals
+- **Phase 1** — workout-management-section retired; navigation routes 'templates'/'workout-management' to `workout-selector`
+- **Phase 2** — inline rename in expanded selector row (title becomes editable input)
+- **Phase 3** — `.te-row` rich exercise rows: ↑/↓ reorder arrows, category-tinted icon, inline sets/reps/weight steppers, equipment pill, notes textarea, × remove
+- **Phase 4** — shared add-exercise sheet via `openSharedAddExerciseSheet({onSelect, onCreateRequested, alreadyAdded})` in active-workout-ui.js
+- **Phase 5** — `showCreateExerciseForm`'s "Choose equipment" wired to `openSharedEquipmentSheet`; closes parent dialog before opening sheet (top-layer issue)
+- **Phase 6** — Details accordion at top of expanded row: category chips + day chips with auto-derived "Usually Tue, Fri" from cachedWorkoutHistory
+- **Phase 7** — last-session meta (`Last: 10×135 · 8×135 · 3d ago`) async-hydrated under each `.te-row__meta`
+- **Phase 9** — deleted `#workout-management-section` + `#template-editor-section` HTML; trimmed workout-management-ui.js from ~2200 → ~1070 lines
+
+### Performance work (2026-04)
+
+- `loadAllWorkouts` has a 5-min TTL cache (module-private) keyed by uid. Invalidate via `clearAllWorkoutsCache()` from data-manager.js — wired into `completeWorkout` (workout-session.js) and `deleteWorkout` (workout-history.js).
+- `aggregateBodyPartStats` is memoized via WeakMap keyed by the workouts array reference. Dashboard's training section calls it 6× with the same workouts arg → 5/6 calls are cache hits.
+- The cache identity-stable contract: as long as `loadAllWorkouts` returns the same array reference, downstream memoization survives. When the cache TTL expires or invalidation fires, fresh array → WeakMap loses key → memos auto-clear.
+
+### Ongoing tech-debt notes
+
+- ESLint config has browser globals enabled now (Phase 9 cleanup); `npm run lint` reports 0 errors, ~127 warnings (mostly `no-unused-vars` on minor locals — non-blocking).
+- workout-history.js's calendar uses in-memory month iteration over currentHistory (~1ms for 1000 workouts; not a real bottleneck).
+- Recent workouts list in history is paginated but not virtual-scrolled. Becomes DOM-stress past ~500 visible items.
+- `firebase-workout-manager.js#getUserWorkouts` uses `getDocsFromServer` deliberately (delete consistency); has its own un-shared cost.
