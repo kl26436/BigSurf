@@ -497,12 +497,23 @@ function renderBodyPartCard(s) {
 
 async function renderCompositionCard(bwData) {
     let scan = null;
+    let prevScan = null;
     try {
-        const { getLatestDexaScan } = await import('../features/dexa-scan.js');
+        const { getLatestDexaScan, loadDexaHistory } = await import('../features/dexa-scan.js');
         scan = await getLatestDexaScan();
+        // Pull previous scan too for the muscle-delta line. loadDexaHistory
+        // returns descending by date; index 1 is the second-most-recent.
+        if (scan) {
+            const history = await loadDexaHistory();
+            if (history && history.length > 1) prevScan = history[1];
+        }
     } catch { /* no dexa */ }
 
-    const hasDexa = scan && (scan.totalBodyFat != null || scan.muscleMass != null);
+    // Field on the scan doc is `totalLeanMass`, not `muscleMass`. Reading
+    // `scan.muscleMass` always came back undefined, so muscle% was 0 and
+    // water% absorbed the gap — the donut + legend never matched the actual
+    // scan. Use totalLeanMass throughout.
+    const hasDexa = scan && (scan.totalBodyFat != null || scan.totalLeanMass != null);
     const hasBw = bwData != null;
     if (!hasDexa && !hasBw) return renderConnectPrompt();
 
@@ -545,14 +556,16 @@ async function renderCompositionCard(bwData) {
     // --- Card 2: Body Composition (DEXA donut) ---
     if (hasDexa) {
         const fatPct = Math.round(scan.totalBodyFat || 0);
-        const musclePct = scan.muscleMass && scan.totalWeight
-            ? Math.round(scan.muscleMass / scan.totalWeight * 100)
+        const leanPct = scan.totalLeanMass && scan.totalWeight
+            ? Math.round(scan.totalLeanMass / scan.totalWeight * 100)
             : 0;
-        const waterPct = Math.max(0, 100 - fatPct - musclePct);
+        // Anything left over (bone, water, etc.) — labeled "Other" so users
+        // don't see "Water" inflated past reality.
+        const otherPct = Math.max(0, 100 - fatPct - leanPct);
         const segments = [
-            { label: `Muscle ${musclePct}%`, value: musclePct, color: 'var(--cat-legs)' },
+            { label: `Lean ${leanPct}%`, value: leanPct, color: 'var(--cat-legs)' },
             { label: `Fat ${fatPct}%`, value: fatPct, color: 'var(--cat-pull)' },
-            { label: `Water ${waterPct}%`, value: waterPct, color: 'var(--primary)' },
+            { label: `Other ${otherPct}%`, value: otherPct, color: 'var(--primary)' },
         ];
 
         // Days since DEXA
@@ -564,11 +577,13 @@ async function renderCompositionCard(bwData) {
             else dexaAgo = `${Math.round(daysAgo / 7)} weeks ago`;
         }
 
-        // Muscle change from previous scan
+        // Lean-mass change from previous scan
         let muscleDelta = '';
-        if (scan._prevMuscleMass != null && scan.muscleMass != null) {
-            const d = scan.muscleMass - scan._prevMuscleMass;
-            muscleDelta = ` · Muscle ${d >= 0 ? '↑' : '↓'} ${Math.abs(d).toFixed(1)} lb`;
+        const prevLean = prevScan?.totalLeanMass;
+        if (prevLean != null && scan.totalLeanMass != null) {
+            const d = scan.totalLeanMass - prevLean;
+            const unit = scan.massUnit || 'lb';
+            muscleDelta = ` · Lean ${d >= 0 ? '↑' : '↓'} ${Math.abs(d).toFixed(1)} ${unit}`;
         }
 
         html += `
