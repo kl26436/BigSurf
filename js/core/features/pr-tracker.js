@@ -321,7 +321,8 @@ export async function recordPR(
     equipment = null,
     location = null,
     date = null,
-    bodyPart = null
+    bodyPart = null,
+    unit = null
 ) {
     if (!equipment) {
         equipment = getExerciseEquipment(exerciseName);
@@ -364,19 +365,20 @@ export async function recordPR(
 
     const equipmentPRs = prData.exercisePRs[exerciseName][equipment];
 
-    // Update max weight PR
+    // Update max weight PR. Capture `unit` so dashboard / history can render
+    // the value in the unit it was actually typed in, instead of guessing.
     if (!equipmentPRs.maxWeight || weight > equipmentPRs.maxWeight.weight) {
-        equipmentPRs.maxWeight = { weight, reps, date, location };
+        equipmentPRs.maxWeight = { weight, reps, date, location, unit: unit || 'lbs' };
     }
 
     // Update max reps PR
     if (!equipmentPRs.maxReps || reps > equipmentPRs.maxReps.reps) {
-        equipmentPRs.maxReps = { weight, reps, date, location };
+        equipmentPRs.maxReps = { weight, reps, date, location, unit: unit || 'lbs' };
     }
 
     // Update max volume PR
     if (!equipmentPRs.maxVolume || volume > equipmentPRs.maxVolume.volume) {
-        equipmentPRs.maxVolume = { weight, reps, volume, date, location };
+        equipmentPRs.maxVolume = { weight, reps, volume, date, location, unit: unit || 'lbs' };
     }
 
     // Skip per-set saves during bulk rebuild (save once at the end)
@@ -429,7 +431,7 @@ export async function processWorkoutForPRs(workoutData) {
 
             if (prCheck.isNewPR) {
                 // Use the workout's location, not the current location
-                await recordPR(exerciseName, set.reps, set.weight, equipment, workoutLocation, workoutDate, bodyPart);
+                await recordPR(exerciseName, set.reps, set.weight, equipment, workoutLocation, workoutDate, bodyPart, set.originalUnit || 'lbs');
                 newPRCount++;
                 newPRs.push({
                     exercise: exerciseName,
@@ -562,6 +564,7 @@ export function getRecentPRs(count = 5) {
                     reps: prs.maxWeight.reps,
                     date: prs.maxWeight.date,
                     location: prs.maxWeight.location,
+                    unit: prs.maxWeight.unit || 'lbs',
                 });
             }
         }
@@ -658,7 +661,7 @@ export async function rebuildPRsFromHistory() {
                         if (!totalWeight && !set.isBodyweight) continue;
                         if (set.type === 'warmup') continue;
 
-                        // Record PR with correct date and location
+                        // Record PR with correct date, location, and unit
                         await recordPR(
                             exerciseName,
                             set.reps,
@@ -666,7 +669,8 @@ export async function rebuildPRsFromHistory() {
                             equipment,
                             workoutLocation,
                             workoutDate,
-                            bodyPart
+                            bodyPart,
+                            set.originalUnit || 'lbs'
                         );
                         prCount++;
                     }

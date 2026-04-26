@@ -582,7 +582,10 @@ async function renderCompositionCard(bwData) {
         const prevLean = prevScan?.totalLeanMass;
         if (prevLean != null && scan.totalLeanMass != null) {
             const d = scan.totalLeanMass - prevLean;
-            const unit = scan.massUnit || 'lb';
+            // Prefer the scan's own unit; fall back to user's display unit
+            // rather than hardcoding 'lb' so kg-mode users don't see "Lean
+            // ↑ 1.5 lb" when their scan was in kg.
+            const unit = scan.massUnit || AppState.globalUnit || 'lb';
             muscleDelta = ` · Lean ${d >= 0 ? '↑' : '↓'} ${Math.abs(d).toFixed(1)} ${unit}`;
         }
 
