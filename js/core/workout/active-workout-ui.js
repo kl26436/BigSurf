@@ -53,6 +53,26 @@ if (typeof document !== 'undefined') {
             if (restTimerRemaining <= 0) onRestTimerComplete();
         }
     });
+
+    // Outside-click closes the workout / exercise overflow menus. The menus
+    // are rendered inline in the active-workout DOM and have no inherent
+    // dismiss behavior — without this listener, only tapping the toggle
+    // button or a menu item closes them, which doesn't match the user's
+    // expectation that tapping "off" the menu should dismiss it.
+    document.addEventListener('click', (e) => {
+        if (!exerciseMenuOpen && !workoutMenuOpen) return;
+        const t = e.target;
+        // Click came from inside the menu OR the toggle button — let the
+        // existing click handlers do their thing.
+        if (t.closest?.('.aw-ex-menu, .aw-workout-menu, .aw-menu, .aw-exercise-menu-toggle, [onclick*="awToggleExerciseMenu"], [onclick*="awToggleWorkoutMenu"]')) {
+            return;
+        }
+        // Click was somewhere else — close.
+        exerciseMenuOpen = false;
+        workoutMenuOpen = false;
+        // Re-render so the menu DOM disappears.
+        if (typeof renderAll === 'function') renderAll();
+    });
 }
 
 // Track if exercises were reordered for template save prompt

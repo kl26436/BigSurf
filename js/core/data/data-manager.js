@@ -219,17 +219,24 @@ export async function getLastSessionDefaults(exerciseName, equipment = null) {
 
         const today = state.getTodayDateString();
 
+        // Two-pass match. The strict pass requires exercise + equipment match
+        // (so users on multiple gyms get the right machine's last numbers).
+        // The lenient pass falls back to exercise-only match — needed because
+        // equipment renames / migrations / catalog updates change the equipment
+        // string on historical workouts, so a strict-only search returns null
+        // even when the user has done this exercise plenty of times before.
+        let strictMatch = null;
+        let nameOnlyMatch = null;
+
         for (const docSnap of snapshot.docs) {
             const data = docSnap.data();
             if (data.date === today) continue;
             if (!data.completedAt || data.cancelledAt) continue;
             if (!data.exercises) continue;
 
-            // Search all exercises in the workout for a match
             for (const [key, exData] of Object.entries(data.exercises)) {
                 if (!exData || !exData.sets || exData.sets.length === 0) continue;
 
-                // Get exercise name from exerciseNames map or originalWorkout
                 const idx = key.replace('exercise_', '');
                 const exName = data.exerciseNames?.[key]
                     || data.originalWorkout?.exercises?.[idx]?.machine
@@ -237,22 +244,28 @@ export async function getLastSessionDefaults(exerciseName, equipment = null) {
 
                 if (exName !== exerciseName) continue;
 
-                // If equipment specified, prefer equipment match
                 const exEquipment = exData.equipment || data.originalWorkout?.exercises?.[idx]?.equipment || null;
-                if (equipment && exEquipment && equipment !== exEquipment) continue;
+                const equipmentMatches = !equipment || !exEquipment || equipment === exEquipment;
 
-                // Found a match — return sets and date
                 const result = {
                     sets: exData.sets.filter(s => s && (s.reps || s.weight)),
                     date: data.date,
                 };
-                _lastSessionCache[cacheKey] = result;
-                return result;
+
+                if (equipmentMatches && !strictMatch) {
+                    strictMatch = result;
+                    // We've got the most recent strict match — done.
+                    _lastSessionCache[cacheKey] = strictMatch;
+                    return strictMatch;
+                }
+                // Capture the most recent name-only match in case strict never finds one.
+                if (!nameOnlyMatch) nameOnlyMatch = result;
             }
         }
 
-        _lastSessionCache[cacheKey] = null;
-        return null;
+        const finalResult = strictMatch || nameOnlyMatch || null;
+        _lastSessionCache[cacheKey] = finalResult;
+        return finalResult;
     } catch (error) {
         console.error('Error loading last session defaults:', error);
         return null;

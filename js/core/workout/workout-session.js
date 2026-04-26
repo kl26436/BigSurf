@@ -152,6 +152,11 @@ export async function startWorkout(workoutType) {
         return;
     }
 
+    // Clear last-session cache so autofill freshly queries Firestore for this
+    // workout's exercises. Without this, a previous workout's null hits stay
+    // cached and the new workout gets blank placeholders.
+    clearLastSessionCache();
+
     // Set up workout state - DEEP CLONE to avoid modifying the template
     AppState.currentWorkout = JSON.parse(JSON.stringify(workout));
     AppState.workoutStartTime = new Date();

@@ -262,6 +262,14 @@ function showActiveWorkout() {
     setBottomNavVisible(true);
     const { setHeaderMode } = window;
     if (setHeaderMode) setHeaderMode(false);
+
+    // Re-render the wizard so any mutations made elsewhere (equipment library
+    // edits, exercise renames, body-weight toggle on a machine, etc.) are
+    // reflected. Without this, isBodyweightExercise() and friends still see
+    // the cached pre-edit equipment state.
+    if (typeof window.renderAll === 'function' && window.AppState?.currentWorkout) {
+        window.renderAll();
+    }
 }
 
 function showWorkoutSelector() {
