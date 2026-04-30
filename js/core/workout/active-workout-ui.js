@@ -706,17 +706,25 @@ function renderSupersetMode(pairedExercises, groupId) {
 
 function renderFooter() {
     const exercises = AppState.currentWorkout.exercises;
-    const isLast = currentExerciseIdx === exercises.length - 1;
-    const savedEx = AppState.savedData?.exercises?.[`exercise_${currentExerciseIdx}`] || {};
-    const allDone = isLast && (savedEx.sets || []).every(s => s.completed) && (savedEx.sets || []).length > 0;
+
+    // Show "Finish" the moment EVERY exercise has all its sets completed,
+    // not just when the user is on the last exercise. Previously, if the
+    // user completed exercises out of order they'd have to tap "Next" all
+    // the way to the end before the button switched — confusing because the
+    // workout was already done.
+    const allExercisesDone = exercises.length > 0 && exercises.every((_, i) => {
+        const ex = AppState.savedData?.exercises?.[`exercise_${i}`];
+        const sets = ex?.sets;
+        return sets && sets.length > 0 && sets.every(s => s.completed);
+    });
 
     return `
         <div class="aw-footer">
             <button class="aw-footer__list-btn" onclick="awOpenJumpSheet()">
                 <i class="fas fa-list"></i> All
             </button>
-            <button class="aw-footer__next ${allDone ? 'finish' : ''}" onclick="${allDone ? 'awFinishWorkout()' : 'awNextExercise()'}">
-                ${allDone
+            <button class="aw-footer__next ${allExercisesDone ? 'finish' : ''}" onclick="${allExercisesDone ? 'awFinishWorkout()' : 'awNextExercise()'}">
+                ${allExercisesDone
                     ? '<i class="fas fa-flag-checkered"></i> Finish workout'
                     : 'Next exercise <i class="fas fa-arrow-right"></i>'
                 }
@@ -1730,10 +1738,16 @@ function renderAddExerciseSheet() {
         `<button class="aw-sheet__chip ${c === addExerciseFilter ? 'active' : ''}" onclick="awSetAddFilter('${c}')">${c}</button>`
     ).join('');
 
+    // onfocus scrolls the search field to the top of the sheet body so the
+    // keyboard doesn't cover the results list below it. Without this, when
+    // iOS pops the keyboard the visible list collapses to whatever happens
+    // to be above the input.
     const body = `
         <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
-            <input type="text" placeholder="Search exercises…" value="${escapeAttr(addExerciseSearch)}" oninput="awSetAddSearch(this.value)">
+            <input type="text" placeholder="Search exercises…" value="${escapeAttr(addExerciseSearch)}"
+                   oninput="awSetAddSearch(this.value)"
+                   onfocus="setTimeout(() => this.scrollIntoView({ block: 'start' }), 200)">
         </div>
         <div class="aw-sheet__chips">${chips}</div>
         <div id="aw-add-exercise-list">

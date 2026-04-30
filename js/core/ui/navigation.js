@@ -9,6 +9,7 @@ const SECTION_IDS = [
     'workout-selector',
     'active-workout',
     'workout-history-section',
+    'workout-detail-section',
     'workout-management-section',
     'dashboard',
     'metric-detail-section',
