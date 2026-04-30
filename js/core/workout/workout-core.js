@@ -88,6 +88,7 @@ export {
     renderActiveWorkout,
     renderAll as renderActiveWorkoutAll,
     loadAutofillForAllExercises,
+    loadAutofillForExercise,
     awJumpTo,
     awNextExercise,
     awToggleSet,

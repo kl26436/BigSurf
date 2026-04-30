@@ -514,10 +514,15 @@ function renderLastSessionCard(exerciseName, idx) {
     const daysAgo = exercise._lastSessionDaysAgo || '?';
     const daysLabel = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`;
 
+    // Convert each set's weight to the user's display unit so a kg-logged
+    // session shows correctly when the user is now in lb mode (and vice versa).
+    const displayUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
     const summary = lastDefaults.map(s => {
         const w = s.weight || 0;
         const r = s.reps || 0;
-        return `${r}×${w}`;
+        const from = s.originalUnit || 'lbs';
+        const dw = w > 0 ? convertWeight(w, from, displayUnit) : 0;
+        return `${r}×${dw}`;
     }).join(' · ');
 
     return `
@@ -525,7 +530,7 @@ function renderLastSessionCard(exerciseName, idx) {
             <i class="fas fa-history"></i>
             <div class="aw-last__info">
                 <div class="aw-last__label">Last session · ${daysLabel}</div>
-                <div class="aw-last__val">${summary}</div>
+                <div class="aw-last__val">${summary} ${displayUnit}</div>
             </div>
         </div>
     `;
@@ -1560,6 +1565,12 @@ export async function awSelectEquipment(exerciseIdx, equipName) {
     debouncedSaveWorkoutData(AppState);
     awCloseSheet();
     renderAll();
+
+    // Refetch autofill so the last-session card + placeholders update to
+    // the new equipment's history (the cache key is equipment-specific, so
+    // this triggers a fresh fetch). renderAll inside loadAutofillForExercise
+    // handles the second redraw once data lands.
+    loadAutofillForExercise(exerciseIdx);
 }
 
 export function awQuickAddEquipment(exerciseIdx) {
@@ -2235,11 +2246,18 @@ export async function loadAutofillForAllExercises() {
     }
 }
 
-async function loadAutofillForExercise(idx) {
+export async function loadAutofillForExercise(idx) {
     const exercise = AppState.currentWorkout.exercises[idx];
     if (!exercise) return;
     const exName = getExerciseName(exercise);
     const equipName = exercise.equipment || null;
+
+    // Equipment-change call sites pass a stale `_lastSessionSets` from the
+    // previous equipment. Clear it so the card doesn't flash old data while
+    // the new query is in flight, and so a null result on the new equipment
+    // genuinely hides the card instead of leaving stale data on screen.
+    delete exercise._lastSessionSets;
+    delete exercise._lastSessionDaysAgo;
 
     try {
         const lastSession = await getLastSessionDefaults(exName, equipName);
@@ -2293,6 +2311,14 @@ async function loadAutofillForExercise(idx) {
         }
     } catch (err) {
         debugLog('Autofill failed for', exName, err);
+    }
+
+    // Re-render so the exercise that's currently in view picks up the freshly
+    // loaded last-session card / placeholders. Fire-and-forget callers don't
+    // have to remember to do this themselves — and the only cost on a no-op
+    // path is one extra renderAll, which is cheap.
+    if (idx === currentExerciseIdx) {
+        renderAll();
     }
 }
 

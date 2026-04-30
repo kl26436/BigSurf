@@ -2303,6 +2303,14 @@ export function confirmExerciseReplace(exerciseData) {
     saveWorkoutData(AppState);
     renderExercises();
 
+    // Trigger autofill on the swapped-in exercise so its last-session card +
+    // placeholders show without requiring the user to log a set first. Fire-
+    // and-forget — loadAutofillForExercise calls renderAll() itself once the
+    // data lands so v2 picks it up too.
+    if (typeof window.loadAutofillForExercise === 'function') {
+        window.loadAutofillForExercise(replaceIndex);
+    }
+
     // Clean up
     window.replacingExerciseIndex = undefined;
 

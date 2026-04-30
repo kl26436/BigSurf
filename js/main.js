@@ -88,6 +88,7 @@ import {
     renderActiveWorkout,
     renderActiveWorkoutAll as awRenderAll,
     loadAutofillForAllExercises,
+    loadAutofillForExercise,
     awJumpTo,
     awNextExercise,
     awToggleSet,
@@ -187,6 +188,29 @@ import {
     confirmEquipmentSelection,
     addEquipmentFromPicker,
 } from './core/workout/workout-management-ui.js';
+
+// Inline historical edit (in-place edit on workout-detail-section, replacing
+// the active-workout takeover for the user-visible "Edit workout" button).
+import {
+    enterHistoricalEditMode,
+    saveHistoricalEdits,
+    discardHistoricalEdits,
+    requestExitEditMode,
+    isInEditMode,
+    wehTapSetField,
+    wehUpdateSetDraft,
+    wehCommitSet,
+    wehCancelSetEdit,
+    wehCycleSetType,
+    wehRemoveSet,
+    wehUndoRemoveSet,
+    wehAddSet,
+    wehRemoveExercise,
+    wehAddExercise,
+    wehChangeEquipment,
+    wehToggleUnit,
+    wehSaveNotes,
+} from './core/workout/edit-history-inline.js';
 
 // Manual workout functionality
 import {
@@ -452,6 +476,25 @@ window.continueInProgressWorkout = continueInProgressWorkout;
 window.discardInProgressWorkout = discardInProgressWorkout;
 window.discardEditedWorkout = discardEditedWorkout;
 window.editHistoricalWorkout = editHistoricalWorkout;
+
+window.enterHistoricalEditMode = enterHistoricalEditMode;
+window.saveHistoricalEdits = saveHistoricalEdits;
+window.discardHistoricalEdits = discardHistoricalEdits;
+window.__wehRequestExit = requestExitEditMode;
+window.__wehInEditMode = isInEditMode;
+window.wehTapSetField = wehTapSetField;
+window.wehUpdateSetDraft = wehUpdateSetDraft;
+window.wehCommitSet = wehCommitSet;
+window.wehCancelSetEdit = wehCancelSetEdit;
+window.wehCycleSetType = wehCycleSetType;
+window.wehRemoveSet = wehRemoveSet;
+window.wehUndoRemoveSet = wehUndoRemoveSet;
+window.wehAddSet = wehAddSet;
+window.wehRemoveExercise = wehRemoveExercise;
+window.wehAddExercise = wehAddExercise;
+window.wehChangeEquipment = wehChangeEquipment;
+window.wehToggleUnit = wehToggleUnit;
+window.wehSaveNotes = wehSaveNotes;
 window.saveActiveWorkoutAsTemplate = saveActiveWorkoutAsTemplate;
 window.toggleWorkoutOverflowMenu = toggleWorkoutOverflowMenu;
 window.closeWorkoutOverflowMenu = closeWorkoutOverflowMenu;
@@ -528,6 +571,7 @@ window.ungroupExerciseFromWorkout = ungroupExerciseFromWorkout;
 window.renderActiveWorkout = renderActiveWorkout;
 window.renderAll = awRenderAll;
 window.loadAutofillForAllExercises = loadAutofillForAllExercises;
+window.loadAutofillForExercise = loadAutofillForExercise;
 window.awJumpTo = awJumpTo;
 window.awNextExercise = awNextExercise;
 window.awToggleSet = awToggleSet;
@@ -776,6 +820,11 @@ window.toggleHistorySearch = function () {
     if (window.workoutHistory) window.workoutHistory.toggleHistorySearch();
 };
 window.closeWorkoutDetailModal = function () {
+    // Guard against silent loss of unsaved inline edits — prompts when dirty.
+    if (window.__wehInEditMode?.() && window.__wehRequestExit) {
+        const ok = window.__wehRequestExit();
+        if (!ok) return;
+    }
     const modal = document.getElementById('workout-detail-section');
     if (modal) {
         closeModal(modal);
