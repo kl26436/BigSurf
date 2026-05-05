@@ -321,6 +321,23 @@
     font-weight: 700;
     margin-left: 2px;
 }
+/* When the autofill came from a different equipment than the one currently
+   selected (name-only fallback in getLastSessionDefaults), we want the user
+   to clearly see that this isn't from the current machine — soften the card
+   with a warning tint and dim the values. */
+.aw-last--cross-equip {
+    background: var(--bg-card);
+    border: 1px dashed var(--border);
+}
+.aw-last--cross-equip .aw-last__val {
+    color: var(--text-muted);
+}
+.aw-last__source {
+    color: var(--warn, var(--highlight-warm));
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+}
 
 /* === AUTOFILL HINT === */
 .aw-autofill-hint {

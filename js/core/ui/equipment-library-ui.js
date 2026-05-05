@@ -430,14 +430,17 @@ function renderEquipmentLibrary() {
         </div>
     ` : '';
 
-    // Search bar (hidden by default)
+    // Search bar (hidden by default).
+    // onfocus: scroll input to top of viewport after a beat so the keyboard
+    // doesn't sit on top of the results list.
     const searchHTML = `
-        <div class="equip-search-bar hidden" id="equip-search-bar">
+        <div class="equip-search-bar ${currentSearchTerm ? '' : 'hidden'}" id="equip-search-bar">
             <div class="equip-lib-search">
                 <i class="fas fa-search"></i>
                 <input type="text" placeholder="Search equipment, brand, line, exercises…"
                        value="${escapeAttr(currentSearchTerm)}"
-                       oninput="filterEquipmentBySearch(this.value)">
+                       oninput="filterEquipmentBySearch(this.value)"
+                       onfocus="setTimeout(() => this.scrollIntoView({ block: 'start' }), 200)">
             </div>
         </div>
     `;
@@ -462,7 +465,61 @@ function renderEquipmentLibrary() {
         viewToggleHTML +
         filterHTML +
         searchHTML +
-        `<div class="equip-lib-list">${listHTML}</div>`;
+        // Wrap the results list in its own container so filterEquipmentBySearch
+        // can update only this slot without re-rendering the search input.
+        // Re-rendering the input on every keystroke was destroying focus and
+        // causing the iOS keyboard to dismiss between characters.
+        `<div class="equip-lib-list" id="equip-lib-list-wrap">${listHTML}</div>`;
+}
+
+/**
+ * Re-render JUST the results list (not the search bar) using the current
+ * filters. Used by search/location filtering to avoid blowing away the
+ * focused input.
+ */
+function renderEquipmentLibraryList() {
+    const wrap = document.getElementById('equip-lib-list-wrap');
+    if (!wrap) {
+        // Fallback to full render if the slot doesn't exist yet
+        renderEquipmentLibrary();
+        return;
+    }
+
+    let filtered = allEquipment;
+    if (currentSearchTerm) {
+        const term = currentSearchTerm.toLowerCase();
+        filtered = filtered.filter(eq =>
+            eq.name?.toLowerCase().includes(term) ||
+            eq.brand?.toLowerCase().includes(term) ||
+            eq.line?.toLowerCase().includes(term) ||
+            eq.function?.toLowerCase().includes(term) ||
+            eq.equipmentType?.toLowerCase().includes(term) ||
+            (eq.exerciseTypes || []).some(t => t.toLowerCase().includes(term))
+        );
+    }
+    if (currentLocationFilter) {
+        filtered = filtered.filter(eq =>
+            (eq.locations || []).includes(currentLocationFilter) ||
+            eq.location === currentLocationFilter
+        );
+    }
+
+    let html;
+    if (filtered.length === 0) {
+        html = `
+            <div class="empty-state-compact">
+                <i class="fas fa-wrench"></i>
+                <p>${currentSearchTerm ? 'No matches found' : 'No equipment found'}</p>
+                <p class="empty-state-hint">Equipment is auto-saved when you use it in a workout</p>
+            </div>
+        `;
+    } else if (currentView === 'brand') {
+        html = renderBrandView(filtered);
+    } else {
+        html = renderBodyPartView(filtered);
+    }
+
+    wrap.innerHTML = html;
 }
 
 /**
@@ -712,32 +769,27 @@ export function toggleEquipmentExercise(equipId) {
 
 export function filterEquipmentByLocation(location) {
     currentLocationFilter = location;
-    renderEquipmentLibrary();
+    // Re-render only the results list — the location pills row is static
+    // and doesn't need to be rebuilt for a filter change.
+    renderEquipmentLibraryList();
+    // Update the active state on the pill row in place.
+    document.querySelectorAll('.equip-location-pills .filter-pill').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const target = location
+        ? document.querySelector(`.equip-location-pills [onclick*="'${location.replace(/'/g, "\\'")}"]`)
+        : document.querySelector('.equip-location-pills .filter-pill:first-child');
+    if (target) target.classList.add('active');
 }
 
 export function filterEquipmentBySearch(term) {
     currentSearchTerm = term;
-
-    // Save search bar state, re-render list only, then restore search bar
-    const searchBar = document.getElementById('equip-search-bar');
-    const wasVisible = searchBar && !searchBar.classList.contains('hidden');
-
-    renderEquipmentLibrary();
-
-    // Restore search bar visibility and re-focus input
-    if (wasVisible) {
-        const newBar = document.getElementById('equip-search-bar');
-        if (newBar) {
-            newBar.classList.remove('hidden');
-            const input = newBar.querySelector('input');
-            if (input) {
-                input.value = term;
-                input.focus();
-                // Move cursor to end
-                input.setSelectionRange(term.length, term.length);
-            }
-        }
-    }
+    // CRITICAL: only re-render the results list, NOT the search input.
+    // Previously this called renderEquipmentLibrary() which rebuilt the
+    // entire DOM including the input, blowing away focus on every keystroke.
+    // On iOS that closed the keyboard between characters, making the search
+    // unusable.
+    renderEquipmentLibraryList();
 }
 
 // ===================================================================

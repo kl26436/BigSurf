@@ -113,6 +113,7 @@ import {
     awConfirmSupersetLink,
     awOpenEquipmentSheet,
     awSelectEquipment,
+    awGoToEquipmentLibrary,
     awAddExercise,
     awSetAddFilter,
     awSetAddSearch,
@@ -596,6 +597,7 @@ window.awToggleSupersetSelect = awToggleSupersetSelect;
 window.awConfirmSupersetLink = awConfirmSupersetLink;
 window.awOpenEquipmentSheet = awOpenEquipmentSheet;
 window.awSelectEquipment = awSelectEquipment;
+window.awGoToEquipmentLibrary = awGoToEquipmentLibrary;
 window.awAddExercise = awAddExercise;
 window.awSetAddFilter = awSetAddFilter;
 window.awSetAddSearch = awSetAddSearch;

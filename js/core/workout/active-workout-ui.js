@@ -525,11 +525,21 @@ function renderLastSessionCard(exerciseName, idx) {
         return `${r}×${dw}`;
     }).join(' · ');
 
+    // If the autofill came from a DIFFERENT equipment than the one currently
+    // selected (the name-only fallback in getLastSessionDefaults), label the
+    // source so the user doesn't think this data is for the current machine.
+    const currentEquip = exercise.equipment || null;
+    const sourceEquip = exercise._lastSessionEquipment || null;
+    const equipMismatch = currentEquip && sourceEquip && currentEquip !== sourceEquip;
+    const sourceLabel = equipMismatch
+        ? ` · <span class="aw-last__source">from ${escapeHtml(sourceEquip)}</span>`
+        : '';
+
     return `
-        <div class="aw-last">
+        <div class="aw-last${equipMismatch ? ' aw-last--cross-equip' : ''}">
             <i class="fas fa-history"></i>
             <div class="aw-last__info">
-                <div class="aw-last__label">Last session · ${daysLabel}</div>
+                <div class="aw-last__label">Last session · ${daysLabel}${sourceLabel}</div>
                 <div class="aw-last__val">${summary} ${displayUnit}</div>
             </div>
         </div>
@@ -1297,10 +1307,35 @@ function renderEquipmentSheet(exerciseIdx) {
         subtitle: exName,
         body,
         actions: [
-            { label: '<i class="fas fa-plus"></i> New', onClick: `awQuickAddEquipment(${exerciseIdx})` },
+            // Route to the equipment library's full add flow (cascading
+            // Brand → Line → Function picker driven by the catalog) instead
+            // of the bare-bones manual form. Users wanted catalog browsing
+            // when adding equipment, not just a name field.
+            { label: '<i class="fas fa-plus"></i> Add from catalog', onClick: `awGoToEquipmentLibrary()` },
             { label: 'Done', onClick: 'awCloseSheet()', primary: true },
         ],
     });
+}
+
+/**
+ * Bridge: close the active-workout equipment sheet and navigate to the
+ * equipment library's add flow. The user adds via the catalog (cascading
+ * Brand → Line → Function), then returns to active workout via the dumbbell
+ * nav button — the workout is preserved in AppState so they pick up where
+ * they left off.
+ */
+export function awGoToEquipmentLibrary() {
+    awCloseSheet();
+    // Navigate to equipment library and immediately open the add flow.
+    if (typeof window.navigateTo === 'function') {
+        window.navigateTo('equipment-library');
+    }
+    // Opening the add flow needs to happen AFTER the section is visible.
+    setTimeout(() => {
+        if (typeof window.showAddEquipmentFlow === 'function') {
+            window.showAddEquipmentFlow();
+        }
+    }, 200);
 }
 
 // ===================================================================
@@ -2272,11 +2307,15 @@ export async function loadAutofillForExercise(idx) {
     // genuinely hides the card instead of leaving stale data on screen.
     delete exercise._lastSessionSets;
     delete exercise._lastSessionDaysAgo;
+    delete exercise._lastSessionEquipment;
 
     try {
         const lastSession = await getLastSessionDefaults(exName, equipName);
         if (lastSession && lastSession.sets) {
             exercise._lastSessionSets = lastSession.sets;
+            // Capture the source equipment so the card can show "from <other
+            // machine>" when the strict-match-failed fallback fired.
+            exercise._lastSessionEquipment = lastSession.equipment || null;
             // Calculate days ago from the date string (YYYY-MM-DD)
             if (lastSession.date) {
                 const sessionDate = new Date(lastSession.date + 'T12:00:00');

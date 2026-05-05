@@ -53,6 +53,22 @@
     top: 0;
     z-index: var(--z-sticky);
 }
+/* The .content-section-body wrapping this list has padding-top, which sits
+   ABOVE the sticky brand-header when it pins. Without something solid
+   filling that gap, equipment rows visibly scroll through the gap before
+   being clipped at the page-header. The ::before sticks 1 row higher than
+   the header itself with the matching app background — covering the gap
+   and any 1px sliver between header bottom-border and brand-header top. */
+.brand-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: var(--pad-page, 16px);
+    background: var(--bg-app);
+    pointer-events: none;
+}
 .brand-header__name {
     display: flex;
     align-items: center;

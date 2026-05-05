@@ -15,6 +15,7 @@ import {
     where,
     deleteDoc,
     writeBatch,
+    updateDoc,
 } from './firebase-config.js';
 import { showNotification, convertWeight, escapeHtml } from '../ui/ui-helpers.js';
 import { validateWorkoutData } from '../utils/validation.js';
@@ -250,6 +251,10 @@ export async function getLastSessionDefaults(exerciseName, equipment = null) {
                 const result = {
                     sets: exData.sets.filter(s => s && (s.reps || s.weight)),
                     date: data.date,
+                    // Surface the source equipment so the active-workout card
+                    // can show "from <equipment>" when this is a fallback
+                    // (different equipment than the user's current selection).
+                    equipment: exEquipment,
                 };
 
                 if (equipmentMatches && !strictMatch) {
@@ -379,6 +384,24 @@ export async function loadWorkoutById(state, workoutId) {
         }
         return null;
     }
+}
+
+/**
+ * Patch fields on a historical workout document.
+ * Used by the inline-edit flow — single seam so callers don't reach into
+ * Firestore directly. Wraps updateDoc with retry and invalidates the
+ * all-workouts cache so dashboard aggregations re-read fresh data.
+ * @param {Object} state - AppState
+ * @param {string} workoutId - Document ID
+ * @param {Object} patch - Fields to merge
+ */
+export async function updateHistoricalWorkout(state, workoutId, patch) {
+    if (!state.currentUser || !workoutId) {
+        throw new Error('updateHistoricalWorkout: missing user or workoutId');
+    }
+    const docRef = doc(db, 'users', state.currentUser.uid, 'workouts', workoutId);
+    await withRetry(() => withTimeout(updateDoc(docRef, patch)));
+    clearAllWorkoutsCache();
 }
 
 /**

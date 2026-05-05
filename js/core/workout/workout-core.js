@@ -113,6 +113,7 @@ export {
     awConfirmSupersetLink,
     awOpenEquipmentSheet,
     awSelectEquipment,
+    awGoToEquipmentLibrary,
     awAddExercise,
     awSetAddFilter,
     awSetAddSearch,
