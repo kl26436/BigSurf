@@ -104,7 +104,15 @@ export function getWorkoutHistory(appState) {
                         window.showExerciseVideo(el.dataset.video, el.dataset.exercise);
                         break;
                     case 'editWorkout':
-                        window.editHistoricalWorkout(docId);
+                        // Inline edit lives in edit-history-inline.js; the old
+                        // editHistoricalWorkout (active-workout takeover) is
+                        // kept on window as a fallback for any caller we
+                        // haven't migrated.
+                        if (typeof window.enterHistoricalEditMode === 'function') {
+                            window.enterHistoricalEditMode(docId);
+                        } else {
+                            window.editHistoricalWorkout(docId);
+                        }
                         break;
                     case 'deleteWorkout':
                         window.deleteWorkoutById(docId);

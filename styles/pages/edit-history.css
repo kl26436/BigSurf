@@ -1,0 +1,488 @@
+/* ===========================================
+   EDIT HISTORICAL WORKOUT (in-place edit mode)
+   ===========================================
+   Renders inside #workout-detail-section when the user taps "Edit workout"
+   on a historical workout. Block prefix: weh- (workout edit history).
+   Spec: docs/edit-history-redesign.md
+*/
+
+.weh {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    padding-bottom: var(--space-80);
+}
+
+/* ----- Meta strip ----- */
+
+.weh-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    padding: var(--space-12) var(--space-16);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+}
+
+.weh-meta__pill {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    padding: var(--space-4) var(--space-10);
+    background: var(--warning-bg);
+    color: var(--warning);
+    border: 1px solid var(--warning-border);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    text-transform: lowercase;
+}
+
+.weh-meta__pill i {
+    font-size: var(--font-2xs);
+}
+
+.weh-meta__title {
+    color: var(--text-strong);
+    font-size: var(--font-md);
+    font-weight: 600;
+}
+
+.weh-meta__counts {
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+}
+
+.weh-meta__dirty {
+    color: var(--warning);
+    font-weight: 600;
+}
+
+/* ----- Exercise list ----- */
+
+.weh-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+
+.weh-ex {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-12) var(--space-16);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+}
+
+.weh-ex__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+}
+
+.weh-ex__icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: var(--muted-bg);
+    color: var(--text-strong);
+    flex-shrink: 0;
+    font-size: var(--font-sm);
+}
+
+.weh-ex__icon--push    { background: var(--cat-push-legacy-bg); color: var(--cat-push-legacy); }
+.weh-ex__icon--pull    { background: var(--cat-pull-legacy-bg); color: var(--cat-pull-legacy); }
+.weh-ex__icon--legs    { background: var(--cat-legs-legacy-bg); color: var(--cat-legs-legacy); }
+.weh-ex__icon--leg     { background: var(--cat-legs-legacy-bg); color: var(--cat-legs-legacy); }
+.weh-ex__icon--cardio  { background: var(--cat-cardio-legacy-bg); color: var(--cat-cardio-legacy); }
+.weh-ex__icon--core    { background: var(--success-bg); color: var(--success); }
+.weh-ex__icon--arms    { background: var(--danger-bg); color: var(--cat-arms); }
+.weh-ex__icon--shoulders { background: var(--cat-shoulders-bg-gradient-start); color: var(--cat-shoulders); }
+.weh-ex__icon--chest   { background: var(--cat-push-legacy-bg); color: var(--cat-push-legacy); }
+.weh-ex__icon--back    { background: var(--cat-pull-legacy-bg); color: var(--cat-pull-legacy); }
+.weh-ex__icon--other   { background: var(--muted-bg); color: var(--text-muted); }
+
+.weh-ex__name {
+    flex: 1;
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.weh-ex__trash {
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color var(--anim-fast), background var(--anim-fast);
+}
+
+.weh-ex__trash:hover {
+    color: var(--danger);
+    background: var(--danger-bg);
+}
+
+/* ----- Sub-row: equipment chip + unit toggle ----- */
+
+.weh-ex__sub {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    flex-wrap: wrap;
+}
+
+.weh-equip-chip {
+    flex: 1;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    padding: var(--space-6) var(--space-10);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.weh-equip-chip:hover {
+    background: var(--bg-card-hi);
+    border-color: var(--border-light);
+}
+
+.weh-equip-chip i {
+    color: var(--text-secondary);
+}
+
+.weh-unit {
+    display: inline-flex;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 2px;
+    flex-shrink: 0;
+}
+
+.weh-unit__opt {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: var(--space-4) var(--space-12);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.weh-unit__opt--on {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+
+/* ----- Set list ----- */
+
+.weh-set-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+.weh-set-empty {
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    padding: var(--space-8) var(--space-10);
+    text-align: center;
+    font-style: italic;
+}
+
+.weh-set {
+    display: grid;
+    grid-template-columns: 32px auto 1fr 1fr 32px;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-10);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+.weh-set--editing {
+    grid-template-columns: 32px auto 1fr 1fr 32px 32px;
+    background: var(--bg-card-hi);
+    border-color: var(--border-light);
+}
+
+.weh-set__num {
+    color: var(--text-secondary);
+    font-size: var(--font-xs);
+    font-weight: 600;
+}
+
+.weh-set__type {
+    background: var(--muted-bg);
+    border: none;
+    color: var(--text-secondary);
+    padding: var(--space-2) var(--space-8);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+}
+
+.weh-set__type--working { background: var(--primary-bg); color: var(--primary); }
+.weh-set__type--warmup  { background: var(--warning-bg); color: var(--warning); }
+.weh-set__type--dropset { background: var(--danger-bg); color: var(--danger); }
+.weh-set__type--failure { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+
+.weh-set__val {
+    background: transparent;
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: var(--space-4) var(--space-8);
+    color: var(--text-strong);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 36px;
+    justify-content: center;
+}
+
+.weh-set__val:hover {
+    background: var(--primary-bg-subtle);
+    border-color: var(--primary-border);
+}
+
+.weh-set__val-num {
+    font-size: var(--font-base);
+    font-weight: 600;
+}
+
+.weh-set__val-unit {
+    color: var(--text-secondary);
+    font-size: var(--font-2xs);
+    text-transform: lowercase;
+}
+
+.weh-set__input {
+    width: 100%;
+    padding: var(--space-6) var(--space-8);
+    background: var(--bg-input);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    font-weight: 600;
+    text-align: center;
+    -moz-appearance: textfield;
+}
+
+.weh-set__input::-webkit-outer-spin-button,
+.weh-set__input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.weh-set__input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: var(--bg-card);
+}
+
+.weh-set__commit,
+.weh-set__cancel,
+.weh-set__remove {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-xs);
+}
+
+.weh-set__commit {
+    color: var(--success);
+    border-color: var(--success-border);
+    background: var(--success-bg-subtle);
+}
+
+.weh-set__commit:hover {
+    background: var(--success-bg);
+}
+
+.weh-set__remove:hover {
+    color: var(--danger);
+    background: var(--danger-bg);
+    border-color: var(--danger-border);
+}
+
+/* ----- Add buttons ----- */
+
+.weh-add-set,
+.weh-add-ex {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-6);
+    padding: var(--space-10) var(--space-12);
+    background: transparent;
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+}
+
+.weh-add-set:hover,
+.weh-add-ex:hover {
+    background: var(--primary-bg-subtle);
+    border-color: var(--primary-border);
+    color: var(--primary);
+}
+
+.weh-add-ex {
+    margin-top: var(--space-4);
+    padding: var(--space-12);
+}
+
+/* ----- Notes ----- */
+
+.weh-notes {
+    border-top: 1px solid var(--border-subtle);
+    padding-top: var(--space-10);
+}
+
+.weh-notes__summary {
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    cursor: pointer;
+    list-style: none;
+    padding: var(--space-4) 0;
+}
+
+.weh-notes__summary::-webkit-details-marker {
+    display: none;
+}
+
+.weh-notes__summary::before {
+    content: '+ ';
+    color: var(--text-muted);
+}
+
+.weh-notes[open] .weh-notes__summary::before {
+    content: '− ';
+}
+
+.weh-notes__input {
+    width: 100%;
+    margin-top: var(--space-6);
+    padding: var(--space-8) var(--space-10);
+    background: var(--bg-input);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    resize: vertical;
+    min-height: 64px;
+    font-family: inherit;
+}
+
+.weh-notes__input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* ----- Sticky footer ----- */
+
+.weh-foot {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    gap: var(--space-10);
+    padding: var(--space-12) 0 calc(var(--space-12) + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, var(--bg-app) 60%, transparent);
+    z-index: var(--z-sticky);
+}
+
+.weh-foot .btn {
+    flex: 1;
+}
+
+/* ----- Undo toast ----- */
+
+.weh-undo-toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--space-24) + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%) translateY(20px);
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-10) var(--space-16);
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
+    color: var(--text-strong);
+    font-size: var(--font-sm);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: opacity var(--anim-normal), transform var(--anim-normal) var(--ease-out-expo);
+    z-index: var(--z-toast);
+    pointer-events: none;
+}
+
+.weh-undo-toast--show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+}
+
+.weh-undo-toast__msg {
+    color: var(--text-main);
+}
+
+.weh-undo-toast__btn {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-size: var(--font-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    padding: var(--space-4) var(--space-8);
+}
+
+.weh-undo-toast__btn:hover {
+    color: var(--primary-dark);
+}
