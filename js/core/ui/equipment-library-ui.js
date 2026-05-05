@@ -1487,7 +1487,7 @@ function renderFieldPicker() {
                        value="${escapeAttr(searchTerm)}"
                        oninput="filterFieldPicker(this.value)">
             </div>
-            <div class="function-picker__list">${rowsHTML}</div>
+            <div class="function-picker__list" id="function-picker-list">${rowsHTML}</div>
             ${customHTML}
         </div>
     `;
@@ -1501,16 +1501,41 @@ function renderFieldPicker() {
     }
 }
 
+/**
+ * Re-render JUST the result rows of the function picker — leaves the
+ * search input untouched. Previously this re-rendered the whole modal
+ * content, blowing away the input on every keystroke and dismissing the
+ * iOS keyboard.
+ */
+function renderFieldPickerList() {
+    const list = document.getElementById('function-picker-list');
+    if (!list) {
+        renderFieldPicker();
+        return;
+    }
+    const { equipmentId, field, searchTerm } = fieldPickerState;
+    const { options, currentValue } = computeFieldPickerScope();
+    const term = (searchTerm || '').trim().toLowerCase();
+    const filtered = term
+        ? options.filter(o => o.name.toLowerCase().includes(term))
+        : options;
+    list.innerHTML = filtered.length > 0
+        ? filtered.map(opt => `
+            <button class="function-picker__row ${opt.name === currentValue ? 'is-current' : ''}"
+                    onclick="selectFieldValue('${escapeAttr(equipmentId)}', '${escapeAttr(field)}', '${escapeAttr(opt.name)}')">
+                <span class="function-picker__row-name">${escapeHtml(opt.name)}</span>
+                ${opt.source === 'user' ? '<span class="function-picker__row-source">your equipment</span>' : ''}
+                ${opt.name === currentValue ? '<i class="fas fa-check function-picker__row-check"></i>' : ''}
+            </button>
+        `).join('')
+        : `<div class="function-picker__empty">No matches — use Custom below to enter a new one.</div>`;
+}
+
 export function filterFieldPicker(term) {
     fieldPickerState.searchTerm = term || '';
-    renderFieldPicker();
-    setTimeout(() => {
-        const search = document.querySelector('.function-picker__search input');
-        if (search) {
-            search.focus();
-            search.setSelectionRange(search.value.length, search.value.length);
-        }
-    }, 0);
+    // Only update the result rows — leaves the search input intact so iOS
+    // keeps the keyboard open and focus stays in the field.
+    renderFieldPickerList();
 }
 
 export function showFieldPickerCustom() {

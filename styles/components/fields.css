@@ -249,6 +249,20 @@ textarea.field-input {
     padding-top: 2px;
     margin-bottom: var(--space-8);
 }
+/* Cover the parent's padding-top strip so rows scrolling up don't flash
+   through the gap above this sticky search field. Same fix as
+   .brand-header — relevant in any scrollable panel where the parent has
+   padding-top and this field is at the top of the scroll content. */
+.field-search--sticky::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: var(--pad-page, 16px);
+    background: inherit;
+    pointer-events: none;
+}
 
 .field-search > i {
     position: absolute;
