@@ -260,6 +260,8 @@ import {
     deleteExercise,
     clearSelectedEquipment,
     addEquipmentToList,
+    addEquipmentForExerciseFromCatalog,
+    editEquipmentInLibrary,
     openEditExerciseSection,
     closeEditExerciseSection,
     saveExerciseFromSection,
@@ -683,6 +685,8 @@ window.saveExercise = saveExercise;
 window.deleteExercise = deleteExercise;
 window.clearSelectedEquipment = clearSelectedEquipment;
 window.addEquipmentToList = addEquipmentToList;
+window.addEquipmentForExerciseFromCatalog = addEquipmentForExerciseFromCatalog;
+window.editEquipmentInLibrary = editEquipmentInLibrary;
 window.openEditExerciseSection = openEditExerciseSection;
 window.closeEditExerciseSection = closeEditExerciseSection;
 window.saveExerciseFromSection = saveExerciseFromSection;

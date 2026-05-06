@@ -986,6 +986,25 @@ export async function openEquipmentDetail(equipmentId) {
 
 export function backToEquipmentList() {
     currentDetailId = null;
+    // Always restore the canonical header + list view so a future standalone
+    // open of the library shows a clean state, even if we're about to hand
+    // control back to a caller via returnTo.
+    restoreEquipmentLibraryListView();
+
+    // If we got into the library via a returnTo context (e.g., the exercise
+    // editor's "Add equipment" button), hand control back instead of landing
+    // on the library list. The caller's returnTo is responsible for restoring
+    // its own UI.
+    if (_libraryReturnContext?.returnTo) {
+        const ctx = _libraryReturnContext;
+        _libraryReturnContext = null;
+        ctx.returnTo(null);
+        return;
+    }
+    return;
+}
+
+function restoreEquipmentLibraryListView() {
 
     // Restore the canonical .page-header for the list view (matches the
     // markup in index.html so the DOM snaps back to its original shape).
@@ -1672,11 +1691,49 @@ function addFlowGeneratedName() {
     return brand || '';
 }
 
-export function showAddEquipmentFlow() {
+// Optional return context — when set, confirmAddEquipment / backToEquipmentList
+// hand control back to the caller (exercise editor, active workout) instead of
+// landing on the library list. Cleared by clearLibraryReturnContext() when the
+// trip completes so the next standalone open of the library works normally.
+let _libraryReturnContext = null;
+
+export function clearLibraryReturnContext() {
+    _libraryReturnContext = null;
+}
+
+/**
+ * Set a return context BEFORE opening any library entry point
+ * (openEquipmentDetail, showAddEquipmentFlow). The library will route back to
+ * `returnTo(equipmentOrNull)` instead of the library list when the user is
+ * done. Use this when calling into the library from another page so you can
+ * restore that page's UI on return.
+ */
+export function setLibraryReturnContext({ assignToExercise = null, returnTo = null } = {}) {
+    _libraryReturnContext = {
+        assignToExercise,
+        returnTo: typeof returnTo === 'function' ? returnTo : null,
+    };
+}
+
+/**
+ * Open the catalog-aware Add Equipment flow.
+ *
+ * When called with `{ assignToExercise, returnTo }`, the new equipment is
+ * auto-associated with that exercise on save and `returnTo(equipment)` is
+ * invoked instead of opening the equipment detail view. Used by the exercise
+ * editor to add new equipment without leaving the page.
+ */
+export function showAddEquipmentFlow(opts = {}) {
     addFlowState.brand = null;
     addFlowState.line = null;
     addFlowState.func = '';
     addFlowState.type = 'Machine';
+    if (opts.assignToExercise || opts.returnTo) {
+        _libraryReturnContext = {
+            assignToExercise: opts.assignToExercise || null,
+            returnTo: typeof opts.returnTo === 'function' ? opts.returnTo : null,
+        };
+    }
     renderAddFlow();
 }
 
@@ -1791,15 +1848,23 @@ export async function confirmAddEquipment(addAnother = false) {
     const name = addFlowGeneratedName();
     const defaultBW = BASE_WEIGHT_SUGGESTIONS[type] || 0;
 
+    // When opened with `assignToExercise`, the new equipment's exerciseTypes
+    // gets pre-populated so the caller's exercise picks it up immediately.
+    const assignTo = _libraryReturnContext?.assignToExercise || null;
+
     try {
-        const result = await getManager().getOrCreateEquipment(name, {
-            brand: brand || null,
-            line: line || null,
-            function: cleanFunc,
-            equipmentType: type,
-            baseWeight: defaultBW,
-            baseWeightUnit: 'lbs',
-        });
+        const result = await getManager().getOrCreateEquipment(
+            name,
+            {
+                brand: brand || null,
+                line: line || null,
+                function: cleanFunc,
+                equipmentType: type,
+                baseWeight: defaultBW,
+                baseWeightUnit: 'lbs',
+            },
+            assignTo,
+        );
         if (!result) {
             showNotification("Couldn't add equipment", 'error');
             return;
@@ -1817,7 +1882,16 @@ export async function confirmAddEquipment(addAnother = false) {
             }, 30);
         } else {
             showNotification('Equipment added', 'success', 1500);
-            openEquipmentDetail(result.id);
+            const ctx = _libraryReturnContext;
+            if (ctx?.returnTo) {
+                _libraryReturnContext = null;
+                // Reset the library to its canonical list view so a future
+                // standalone open isn't stuck on the Add Equipment screen.
+                restoreEquipmentLibraryListView();
+                ctx.returnTo(result);
+            } else {
+                openEquipmentDetail(result.id);
+            }
         }
     } catch (error) {
         console.error('Error adding equipment:', error);

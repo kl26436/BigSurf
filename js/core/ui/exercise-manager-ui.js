@@ -680,26 +680,9 @@ function renderEditExerciseMarkup(title, v, showDelete) {
                 <div class="edit-equipment-empty">No equipment saved for this exercise</div>
             </div>
 
-            <h4 class="edit-subsection-title">Add new equipment</h4>
-            <div class="edit-equipment-form">
-                <div class="field">
-                    <input id="edit-equipment-name" class="field-input" type="text"
-                           placeholder="Equipment name (e.g., Life Fitness Chest Press)">
-                </div>
-                <div class="field">
-                    <input id="edit-equipment-location" class="field-input" type="text"
-                           placeholder="Location/Gym (e.g., LA Fitness Downtown)"
-                           list="edit-equipment-location-list">
-                    <datalist id="edit-equipment-location-list"></datalist>
-                </div>
-                <div class="field">
-                    <input id="edit-equipment-video" class="field-input" type="url"
-                           placeholder="Video URL (optional)">
-                </div>
-                <button type="button" class="btn-add-equipment" onclick="addEquipmentToList()">
-                    <i class="fas fa-plus"></i> Add Equipment
-                </button>
-            </div>
+            <button type="button" class="btn-add-equipment" onclick="addEquipmentForExerciseFromCatalog()">
+                <i class="fas fa-plus"></i> Add equipment
+            </button>
 
             <div id="delete-exercise-container" class="danger-action-row ${showDelete ? '' : 'hidden'}">
                 <button type="button" class="danger-action-btn" onclick="deleteExerciseFromSection()">
@@ -925,7 +908,15 @@ async function populateEquipmentListForSection(
                 const equipmentJson = item.dataset.equipmentJson;
                 try {
                     const equipment = JSON.parse(equipmentJson.replace(/&#39;/g, "'"));
-                    openEquipmentEditor(equipment);
+                    // Route to the equipment library detail view so the user
+                    // edits brand/line/function/equipmentType/baseWeight in
+                    // one place. Falls back to the legacy editor if the library
+                    // can't load (e.g., equipment without an id).
+                    if (equipment?.id) {
+                        editEquipmentInLibrary(equipment.id);
+                    } else {
+                        openEquipmentEditor(equipment);
+                    }
                 } catch (err) {
                     console.error('Error parsing equipment data:', err);
                 }
@@ -1030,6 +1021,78 @@ async function deleteEquipmentItem(equipmentId) {
         console.error('❌ Error deleting equipment:', error);
         showNotification('Error deleting equipment', 'error');
     }
+}
+
+/**
+ * Open the catalog-aware Add Equipment flow from the exercise editor.
+ * Routes to the equipment library section so the user picks brand → line →
+ * function (with auto-fill from the catalog), then comes back to the exercise
+ * editor with the new equipment auto-assigned to this exercise.
+ */
+export async function addEquipmentForExerciseFromCatalog() {
+    const exerciseName =
+        currentEditingExercise?.name ||
+        currentEditingExercise?.machine ||
+        document.getElementById('edit-exercise-name')?.value.trim() ||
+        null;
+
+    if (!exerciseName) {
+        showNotification('Enter exercise name first', 'warning');
+        document.getElementById('edit-exercise-name')?.focus();
+        return;
+    }
+
+    const editSection = document.getElementById('edit-exercise-section');
+    const libSection = document.getElementById('equipment-library-section');
+    if (!libSection) return;
+
+    const { setLibraryReturnContext, showAddEquipmentFlow } = await import('./equipment-library-ui.js');
+
+    setLibraryReturnContext({
+        assignToExercise: exerciseName,
+        returnTo: async () => {
+            libSection.classList.add('hidden');
+            if (editSection) editSection.classList.remove('hidden');
+            // Refresh so the freshly added equipment shows up assigned to this exercise.
+            await populateEquipmentListForSection(exerciseName);
+        },
+    });
+
+    if (editSection) editSection.classList.add('hidden');
+    libSection.classList.remove('hidden');
+    showAddEquipmentFlow();
+}
+
+/**
+ * Open the equipment library's detail/edit view for an existing piece of
+ * equipment, with returnTo wired so the back/Done button comes back here.
+ * Replaces the legacy openEquipmentEditor (which only edited name + locations
+ * + videos and was missing brand/line/function/equipmentType/baseWeight).
+ */
+export async function editEquipmentInLibrary(equipmentId) {
+    if (!equipmentId) return;
+    const exerciseName =
+        currentEditingExercise?.name ||
+        currentEditingExercise?.machine ||
+        null;
+
+    const editSection = document.getElementById('edit-exercise-section');
+    const libSection = document.getElementById('equipment-library-section');
+    if (!libSection) return;
+
+    const { setLibraryReturnContext, openEquipmentDetail } = await import('./equipment-library-ui.js');
+
+    setLibraryReturnContext({
+        returnTo: async () => {
+            libSection.classList.add('hidden');
+            if (editSection) editSection.classList.remove('hidden');
+            if (exerciseName) await populateEquipmentListForSection(exerciseName);
+        },
+    });
+
+    if (editSection) editSection.classList.add('hidden');
+    libSection.classList.remove('hidden');
+    await openEquipmentDetail(equipmentId);
 }
 
 // Add equipment to list instantly (from the Add Equipment button in full-screen section)
