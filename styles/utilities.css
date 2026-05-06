@@ -211,13 +211,16 @@ dialog[open] > .modal-content {
 }
 
 /* Pinned-header variant: header stays fixed, content scrolls below.
-   Add class="content-section pinned-header" to use this layout. */
+   Add class="content-section pinned-header" to use this layout.
+   --kb-inset is set by installKeyboardInsetTracker() in app-initialization.js
+   so the section shrinks above the on-screen keyboard on engines where the
+   layout viewport doesn't resize (older iOS Safari, in-app browsers). */
 .content-section.pinned-header {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: var(--kb-inset, 0px);
     display: flex;
     flex-direction: column;
     background: var(--bg-app);

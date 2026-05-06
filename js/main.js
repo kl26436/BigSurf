@@ -114,6 +114,7 @@ import {
     awOpenEquipmentSheet,
     awSelectEquipment,
     awGoToEquipmentLibrary,
+    awShowLastSessionSource,
     awAddExercise,
     awSetAddFilter,
     awSetAddSearch,
@@ -598,6 +599,7 @@ window.awConfirmSupersetLink = awConfirmSupersetLink;
 window.awOpenEquipmentSheet = awOpenEquipmentSheet;
 window.awSelectEquipment = awSelectEquipment;
 window.awGoToEquipmentLibrary = awGoToEquipmentLibrary;
+window.awShowLastSessionSource = awShowLastSessionSource;
 window.awAddExercise = awAddExercise;
 window.awSetAddFilter = awSetAddFilter;
 window.awSetAddSearch = awSetAddSearch;

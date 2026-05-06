@@ -1283,6 +1283,49 @@ function getDetailLineSuggestions(brand) {
  *   - Neither matches → user's own custom functions for this combo (no catalog
  *     noise). The picker UI also shows a hint when this happens.
  */
+/**
+ * Look up the catalog parent brand/line/type for a given machine (function) name,
+ * scoped by whatever brand/line context the user has already chosen. Used by the
+ * function picker to auto-fill the upstream pickers when the catalog can prove
+ * the relationship — picking "Iso-Lateral Bench Press" from the picker should
+ * fill in "Hammer Strength · Plate-Loaded" without the user having to back-track.
+ *
+ * Resolution rules:
+ *   - If currentBrand + currentLine match a catalog entry that owns this
+ *     machine, no auto-fill is needed (the scope already matches).
+ *   - If only currentBrand is set, we look for exactly one line under that
+ *     brand that owns the machine. Multiple matches → ambiguous, return null.
+ *   - If neither is set, we look across the whole catalog. If exactly one
+ *     {brand, line} pair owns the name, return it. Otherwise ambiguous.
+ *
+ * Returns null when no match is found, when the match is ambiguous, or when
+ * the user picked a name that came from their own equipment (not the catalog).
+ */
+function findCatalogParentsForMachine(machineName, currentBrand, currentLine) {
+    const nameLC = (machineName || '').toLowerCase();
+    if (!nameLC) return null;
+    const brandLC = (currentBrand || '').toLowerCase();
+    const lineLC = (currentLine || '').toLowerCase();
+
+    const matches = [];
+    for (const brandEntry of EQUIPMENT_CATALOG) {
+        if (brandLC && brandLC !== 'unknown' && brandEntry.brand.toLowerCase() !== brandLC) continue;
+        for (const lineEntry of brandEntry.lines) {
+            if (lineLC && lineEntry.name.toLowerCase() !== lineLC) continue;
+            const machine = lineEntry.machines.find(m => m.name.toLowerCase() === nameLC);
+            if (machine) {
+                matches.push({
+                    brand: brandEntry.brand,
+                    line: lineEntry.name,
+                    type: machine.type || lineEntry.type,
+                });
+            }
+        }
+    }
+
+    return matches.length === 1 ? matches[0] : null;
+}
+
 function getDetailFunctionSuggestions(brand, line) {
     const brandLC = (brand || '').toLowerCase();
     const lineLC = (line || '').toLowerCase();
@@ -1569,6 +1612,15 @@ export async function selectFieldValue(equipmentId, field, value) {
             addFlowState.func = '';
         } else {
             addFlowState.func = v;
+            // Catalog auto-fill: if the chosen machine name uniquely maps to a
+            // brand/line in the catalog, populate the upstream pickers so the
+            // user doesn't have to back out and refill them.
+            const parents = findCatalogParentsForMachine(v, addFlowState.brand, addFlowState.line);
+            if (parents) {
+                if (!addFlowState.brand || addFlowState.brand === 'Unknown') addFlowState.brand = parents.brand;
+                if (!addFlowState.line) addFlowState.line = parents.line;
+                if (parents.type) addFlowState.type = parents.type;
+            }
         }
         closeModal('function-picker-modal');
         renderAddFlow();
@@ -1580,6 +1632,17 @@ export async function selectFieldValue(equipmentId, field, value) {
     const update = { [field]: v };
     if (field === 'brand') { update.line = null; update.function = null; }
     if (field === 'line')  { update.function = null; }
+    if (field === 'function') {
+        // Catalog auto-fill — same logic as add mode but reads the existing doc
+        // so we only fill fields the user hasn't already set.
+        const eq = allEquipment.find(e => e.id === equipmentId) || {};
+        const parents = findCatalogParentsForMachine(v, eq.brand, eq.line);
+        if (parents) {
+            if (!eq.brand || eq.brand === 'Unknown') update.brand = parents.brand;
+            if (!eq.line) update.line = parents.line;
+            if (parents.type && !eq.equipmentType) update.equipmentType = parents.type;
+        }
+    }
 
     try {
         const userId = AppState.currentUser.uid;

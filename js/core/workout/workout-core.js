@@ -114,6 +114,7 @@ export {
     awOpenEquipmentSheet,
     awSelectEquipment,
     awGoToEquipmentLibrary,
+    awShowLastSessionSource,
     awAddExercise,
     awSetAddFilter,
     awSetAddSearch,

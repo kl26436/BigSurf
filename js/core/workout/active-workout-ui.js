@@ -526,24 +526,43 @@ function renderLastSessionCard(exerciseName, idx) {
     }).join(' · ');
 
     // If the autofill came from a DIFFERENT equipment than the one currently
-    // selected (the name-only fallback in getLastSessionDefaults), label the
-    // source so the user doesn't think this data is for the current machine.
+    // selected (the name-only fallback in getLastSessionDefaults), surface
+    // a tappable info glyph next to the history icon. Equipment names can be
+    // long ("Hammer Strength MTS — Iso-Lateral Bench Press") so we don't
+    // inline them — the user taps to see the source name in a toast.
     const currentEquip = exercise.equipment || null;
     const sourceEquip = exercise._lastSessionEquipment || null;
     const equipMismatch = currentEquip && sourceEquip && currentEquip !== sourceEquip;
-    const sourceLabel = equipMismatch
-        ? ` · <span class="aw-last__source">from ${escapeHtml(sourceEquip)}</span>`
+    const sourceGlyph = equipMismatch
+        ? `<button class="aw-last__src-btn" onclick="awShowLastSessionSource(${idx})" aria-label="Show source equipment">
+               <i class="fas fa-info-circle"></i>
+           </button>`
         : '';
 
     return `
         <div class="aw-last${equipMismatch ? ' aw-last--cross-equip' : ''}">
-            <i class="fas fa-history"></i>
+            <div class="aw-last__icons">
+                <i class="fas fa-history"></i>
+                ${sourceGlyph}
+            </div>
             <div class="aw-last__info">
-                <div class="aw-last__label">Last session · ${daysLabel}${sourceLabel}</div>
+                <div class="aw-last__label">Last session · ${daysLabel}</div>
                 <div class="aw-last__val">${summary} ${displayUnit}</div>
             </div>
         </div>
     `;
+}
+
+/**
+ * Tapping the info glyph on a cross-equipment last-session card surfaces
+ * the source equipment as a toast so users can see the full machine name
+ * without it wrapping inline on the card.
+ */
+export function awShowLastSessionSource(idx) {
+    const exercise = AppState.currentWorkout?.exercises?.[idx];
+    const sourceEquip = exercise?._lastSessionEquipment;
+    if (!sourceEquip) return;
+    showNotification(`Last session: ${sourceEquip}`, 'info', 4000);
 }
 
 // ===================================================================

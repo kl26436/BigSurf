@@ -321,22 +321,50 @@
     font-weight: 700;
     margin-left: 2px;
 }
+
+/* Icon column. Stacks the history icon + (optional) info button so the
+   info glyph stays adjacent to the existing history icon without pushing
+   the label/value text around. */
+.aw-last__icons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.aw-last__icons > i {
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+}
+
+/* Tappable info glyph appears only when the last-session data came from a
+   different machine than the one currently selected. Tap → toast with the
+   full source equipment name. Sized to match other inline icon buttons. */
+.aw-last__src-btn {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    padding: 4px;
+    margin: 0;
+    color: var(--warn, var(--highlight-warm));
+    font-size: var(--font-sm);
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 50%;
+}
+.aw-last__src-btn:active {
+    background: var(--bg-card-hi);
+}
+
 /* When the autofill came from a different equipment than the one currently
-   selected (name-only fallback in getLastSessionDefaults), we want the user
-   to clearly see that this isn't from the current machine — soften the card
-   with a warning tint and dim the values. */
+   selected (name-only fallback in getLastSessionDefaults), soften the card
+   with a dashed border and dim the value text — visual cue that this isn't
+   from the current machine. The tappable info glyph reveals the source. */
 .aw-last--cross-equip {
     background: var(--bg-card);
     border: 1px dashed var(--border);
 }
 .aw-last--cross-equip .aw-last__val {
     color: var(--text-muted);
-}
-.aw-last__source {
-    color: var(--warn, var(--highlight-warm));
-    text-transform: none;
-    letter-spacing: 0;
-    font-weight: 600;
 }
 
 /* === AUTOFILL HINT === */

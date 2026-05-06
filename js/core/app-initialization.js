@@ -134,6 +134,26 @@ function installKeyboardAwareFocusHandler() {
     });
 }
 
+// Track keyboard inset via visualViewport so fixed pinned sections can shrink
+// instead of being hidden behind the on-screen keyboard. iOS Safari before 17
+// (and other engines that ignore interactive-widget=resizes-content) leaves the
+// layout viewport at full height — without this, scroll containers extend
+// behind the keyboard and the focused input's nearby results are hidden.
+let _keyboardInsetTrackerInstalled = false;
+function installKeyboardInsetTracker() {
+    if (_keyboardInsetTrackerInstalled) return;
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    _keyboardInsetTrackerInstalled = true;
+    const vv = window.visualViewport;
+    const update = () => {
+        const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        document.documentElement.style.setProperty('--kb-inset', `${Math.round(inset)}px`);
+    };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    update();
+}
+
 // ===================================================================
 // MAIN APP INITIALIZATION
 // ===================================================================
@@ -153,6 +173,7 @@ export function initializeWorkoutApp() {
     // and dvh-based sheet heights, this prevents bottom-anchored search
     // results from rendering under the on-screen keyboard.
     installKeyboardAwareFocusHandler();
+    installKeyboardInsetTracker();
 
     try {
         updateLoadingMessage('Loading exercise library…');
