@@ -61,6 +61,15 @@ function getCurrentView() {
 }
 
 export function navigateTo(view) {
+    // Flush any pending inline template edit BEFORE we tear down or hide the
+    // current view. Without this, a user who typed a new sets/reps/weight on
+    // the workout-selector and tapped a nav button without blurring first
+    // would lose the change — the debounce timer wouldn't get a chance to
+    // fire. Fire-and-forget; the save is local-first via AppState.
+    import('./template-selection.js')
+        .then(m => m.flushPendingTemplateEdits?.())
+        .catch(() => { /* template-selection not loaded yet — no edits to flush */ });
+
     // Tear down any orphan overlays attached to <body> before navigating away.
     // The active-workout v2 wizard appends its bottom-sheet (#aw-sheet) and
     // backdrop (#aw-sheet-backdrop) directly to document.body, not inside the

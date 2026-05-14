@@ -781,11 +781,13 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
 }
 
 /**
- * Persist a single field change on a template exercise.
- * Called from the inline change listener; the spec accepts a re-render
- * that may steal focus, since change events fire only after blur.
+ * Persist a single field change on a template exercise. `reRender` controls
+ * whether we re-render the selector after save — for input-while-typing we
+ * skip the re-render because it would steal focus, blow away the user's
+ * cursor position, and feel awful. Blur/Enter still re-renders so any
+ * derived UI (last-session hint, badges) stays in sync.
  */
-async function updateExerciseField(templateId, index, field, value) {
+async function updateExerciseField(templateId, index, field, value, reRender = true) {
     const template = loadedTemplates.find(t => t._id === templateId);
     if (!template) return;
     const exercises = normalizeExercisesToArray(template.exercises);
@@ -804,7 +806,52 @@ async function updateExerciseField(templateId, index, field, value) {
 
     template.exercises = exercises;
     await saveTemplateInline(template, exercises);
-    renderWorkoutSelectorUI();
+    if (reRender) renderWorkoutSelectorUI();
+}
+
+// Pending inline edit — used by the input-event debounce path so we keep
+// autosaving while the user types (instead of relying on a blur that may
+// never fire if they tap a nav button on iOS). Always holds at most one
+// entry; flushed on blur, on navigation, or when the debounce timer fires.
+let _pendingTemplateEdit = null;
+const PENDING_EDIT_DEBOUNCE_MS = 500;
+
+function schedulePendingTemplateEdit(edit) {
+    if (_pendingTemplateEdit?.timeoutId) {
+        clearTimeout(_pendingTemplateEdit.timeoutId);
+    }
+    edit.timeoutId = setTimeout(() => runPendingTemplateEdit(), PENDING_EDIT_DEBOUNCE_MS);
+    _pendingTemplateEdit = edit;
+}
+
+async function runPendingTemplateEdit() {
+    const p = _pendingTemplateEdit;
+    if (!p) return;
+    if (p.timeoutId) clearTimeout(p.timeoutId);
+    _pendingTemplateEdit = null;
+
+    if (p.kind === 'field') {
+        // Don't re-render while typing — preserves focus + caret on mobile.
+        await updateExerciseField(p.templateId, p.index, p.field, p.value, false);
+    } else if (p.kind === 'rename') {
+        const template = loadedTemplates.find(t => t._id === p.templateId);
+        if (!template) return;
+        const newName = (p.value || '').trim();
+        if (!newName || newName === template._name) return;
+        template._name = newName;
+        template.name = newName;
+        await saveTemplateInline(template, normalizeExercisesToArray(template.exercises));
+    }
+}
+
+/**
+ * Flush any pending inline template edit immediately. Call before navigation
+ * or any other context-switch so a user who typed a value then tapped away
+ * doesn't lose it to the debounce.
+ */
+export async function flushPendingTemplateEdits() {
+    if (!_pendingTemplateEdit) return;
+    await runPendingTemplateEdit();
 }
 
 /**
@@ -943,8 +990,23 @@ async function saveTemplateInline(template, exercises) {
 
         await wm.saveWorkoutTemplate(saveData);
 
-        // Refresh workoutPlans so the updated template shows immediately
-        AppState.workoutPlans = await wm.getUserWorkoutTemplates();
+        // Optimistic in-place update of AppState.workoutPlans. A full refetch
+        // here cost a Firestore round-trip per keystroke, which was the main
+        // source of inline-edit delay; we already hold the authoritative data
+        // locally so just patch it in.
+        const plans = AppState.workoutPlans || [];
+        const idx = plans.findIndex(p => (p.id || p.day) === template._id);
+        const patched = {
+            ...(idx >= 0 ? plans[idx] : {}),
+            ...saveData,
+            isCustom: true,
+            isDefault: false,
+            source: 'user-firebase',
+            lastUpdated: new Date().toISOString(),
+        };
+        if (idx >= 0) plans[idx] = patched;
+        else plans.push(patched);
+        AppState.workoutPlans = [...plans];
     } catch (err) {
         console.error('Error saving template:', err);
         showNotification("Couldn't save changes", 'error');
@@ -1068,8 +1130,35 @@ function setupSelectorDelegation(container) {
         }
     });
 
-    // Change listener: handles inline rename, exercise field edits.
-    // Fires on blur or Enter for inputs / textareas.
+    // Input listener (fires on every keystroke / stepper change) — debounces
+    // a save so the user doesn't have to blur the field for changes to stick.
+    // This is the safety net for mobile, where tapping a nav button doesn't
+    // reliably fire `change` on the focused input.
+    container.addEventListener('input', (e) => {
+        const renameInput = e.target.closest('input[data-action="renameTemplate"]');
+        if (renameInput) {
+            schedulePendingTemplateEdit({
+                kind: 'rename',
+                templateId: renameInput.dataset.templateId,
+                value: renameInput.value,
+            });
+            return;
+        }
+        const fieldEl = e.target.closest('[data-action="updateExerciseField"]');
+        if (fieldEl) {
+            schedulePendingTemplateEdit({
+                kind: 'field',
+                templateId: fieldEl.dataset.templateId,
+                index: parseInt(fieldEl.dataset.index, 10),
+                field: fieldEl.dataset.field,
+                value: fieldEl.value,
+            });
+            return;
+        }
+    });
+
+    // Change listener: explicit commit on blur / Enter. Flushes the debounce
+    // so we don't double-write, then re-renders to refresh any derived UI.
     container.addEventListener('change', async (e) => {
         // 1) Rename template title
         const renameInput = e.target.closest('input[data-action="renameTemplate"]');
@@ -1078,6 +1167,12 @@ function setupSelectorDelegation(container) {
             const newName = renameInput.value.trim();
             const template = loadedTemplates.find(t => t._id === templateId);
             if (!template) return;
+
+            // Cancel any pending debounce — we're committing now.
+            if (_pendingTemplateEdit?.timeoutId) {
+                clearTimeout(_pendingTemplateEdit.timeoutId);
+                _pendingTemplateEdit = null;
+            }
 
             if (!newName) {
                 renameInput.value = template._name || '';
@@ -1095,6 +1190,10 @@ function setupSelectorDelegation(container) {
         // 2) Sets / reps / weight / notes on an expanded exercise row
         const fieldEl = e.target.closest('[data-action="updateExerciseField"]');
         if (fieldEl) {
+            if (_pendingTemplateEdit?.timeoutId) {
+                clearTimeout(_pendingTemplateEdit.timeoutId);
+                _pendingTemplateEdit = null;
+            }
             const templateId = fieldEl.dataset.templateId;
             const index = parseInt(fieldEl.dataset.index, 10);
             const field = fieldEl.dataset.field;
@@ -1257,36 +1356,46 @@ export async function copyTemplateToCustom(templateId) {
     }
 
     try {
-        // Find the default template
-        const defaultTemplate = AppState.workoutPlans.find(
+        const source = AppState.workoutPlans.find(
             (plan) => plan.day === templateId || plan.name === templateId || plan.id === templateId
         );
-
-        if (!defaultTemplate) {
-            console.error('❌ Template not found');
+        if (!source) {
+            console.error('Template not found');
             return;
         }
 
-        // Create custom version with DEEP CLONE of exercises
+        const newName = `${source.day || source.name} (Custom)`;
         const customTemplate = {
-            name: `${defaultTemplate.day || defaultTemplate.name} (Custom)`,
-            category: getWorkoutCategory(defaultTemplate.day || defaultTemplate.name),
-            exercises: JSON.parse(JSON.stringify(defaultTemplate.exercises || [])), // Deep clone to make exercises editable
+            name: newName,
+            category: getWorkoutCategory(source.day || source.name),
+            exercises: JSON.parse(JSON.stringify(source.exercises || [])),
             isCustom: true,
             isDefault: false,
             createdFrom: templateId,
         };
 
-        // Save to Firebase
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(AppState);
-        await workoutManager.saveWorkoutTemplate(customTemplate);
+        const newId = await workoutManager.saveWorkoutTemplate(customTemplate);
 
-        // CRITICAL: Reload AppState.workoutPlans so new template is available
-        AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
+        // Optimistic local add — no Firestore refetch. Keeps the click → "ready
+        // to edit" latency tight; the refetch path was the main source of
+        // post-duplicate delay.
+        const newTemplate = {
+            id: newId,
+            ...customTemplate,
+            lastUpdated: new Date().toISOString(),
+            createdBy: AppState.currentUser.uid,
+            source: 'user-firebase',
+        };
+        AppState.workoutPlans = [...(AppState.workoutPlans || []), newTemplate];
 
-        // Switch to custom tab to show the newly copied template
+        // Drop into the selector with the new row expanded so the user can
+        // immediately rename / tweak the copy — the duplicate is otherwise
+        // invisible at the bottom of the list with the same name as the source.
         switchTemplateCategory('custom');
+        expandTemplateInSelector(newId);
+        showNotification(`Duplicated as "${newName}"`, 'success', 1500);
     } catch (error) {
         console.error('Error copying template:', error);
         alert("Couldn't copy workout");
@@ -1303,16 +1412,31 @@ export async function deleteCustomTemplate(templateId) {
         return;
     }
 
+    // Optimistic remove — pull the row out of the list immediately, then
+    // hit Firestore. If the write fails, roll back so the user sees the row
+    // come back instead of a phantom-deleted entry.
+    const plans = AppState.workoutPlans || [];
+    const idx = plans.findIndex(p => (p.id || p.day) === templateId);
+    const removed = idx >= 0 ? plans[idx] : null;
+    if (idx >= 0) {
+        plans.splice(idx, 1);
+        AppState.workoutPlans = [...plans];
+        if (expandedTemplateId === templateId) expandedTemplateId = null;
+        renderWorkoutSelectorUI();
+    }
+
     try {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(AppState);
         await workoutManager.deleteWorkoutTemplate(templateId);
-
-        // Refresh templates
-        loadTemplatesByCategory();
+        showNotification('Workout deleted', 'success', 1500);
     } catch (error) {
         console.error('Error deleting template:', error);
-        alert("Couldn't delete workout");
+        if (removed && idx >= 0) {
+            AppState.workoutPlans = [...AppState.workoutPlans.slice(0, idx), removed, ...AppState.workoutPlans.slice(idx)];
+            renderWorkoutSelectorUI();
+        }
+        showNotification("Couldn't delete workout", 'error');
     }
 }
 

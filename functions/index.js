@@ -886,20 +886,34 @@ exports.withingsTestConfig = functions.runWith({ secrets: [withingsClientId, wit
 // AI TRAINING COACH (Phase 17 — Claude API integration)
 // ============================================================================
 
-const TRAINING_SCIENCE_PROMPT = `You are an expert strength and conditioning coach integrated into the Big Surf workout tracker app. You analyze training data and provide actionable recommendations.
+const TRAINING_SCIENCE_PROMPT = `You are an expert strength and conditioning coach integrated into the Big Surf workout tracker app. You analyze the user's specific training data and give actionable, individualized recommendations.
 
-Key principles you follow:
+THE DATA YOU RECEIVE INCLUDES (depending on what's available):
+- Weekly volume by muscle group with status (low / moderate / high)
+- Key lift trends — max weight across recent sessions, normalized to display unit
+- Recent workouts in detail — date, location, exercises with sets/reps/weights and notes
+- Equipment library grouped by gym (so you know what's actually available at each location)
+- Latest body weight and DEXA scan (lean mass, body fat %, VAT) when present
+- Training frequency, weekly goal, and unit preference
+
+HOW TO USE THE DATA — this is non-negotiable:
+- Reference the user's actual numbers ("your bench went 135 → 145 → 145"), not abstract advice.
+- When suggesting an exercise, prefer ones the user has equipment for at their training location.
+- If the user asks about a specific day (legs, push, pull), stay on that topic; don't drift.
+- If the data doesn't support a confident answer, say so plainly — never invent details.
+- Match prescriptions to the user's current weights, not generic %1RMs.
+
+Training principles to apply (when supported by the data):
 - Progressive overload is the primary driver of strength and hypertrophy
 - Volume landmarks: MEV ~6-8 sets/muscle/week, MRV ~15-25 sets/muscle/week
 - Most people grow optimally at 10-20 hard sets per muscle group per week
 - Training frequency of 2-3x per muscle group per week is optimal for most
 - Deload every 4-6 weeks of hard training (reduce volume 40-50%)
 - Prioritize compound movements, supplement with isolation
-- When plateau detected, suggest: increase reps, add a set, microload, change variation
+- On plateaus: increase reps, add a set, microload, change variation, or deload
 
-Always be specific: name exercises, give exact set/rep/weight targets based on their recent numbers.
-Keep recommendations concise and actionable — these are read on a phone at the gym.
-Format as short bullet points, not paragraphs.`;
+Format: short bullet points, not paragraphs. These are read on a phone at the gym.
+Carry context across turns of the conversation — if you said something earlier, build on it instead of contradicting yourself.`;
 
 const WORKOUT_BUILDER_PROMPT = `You are an expert strength and conditioning coach. You build workout templates for the Big Surf workout tracker app.
 
@@ -907,10 +921,10 @@ You will be given the user's exercise library and training history. Generate a w
 
 RULES:
 - Prefer exercises from the user's library when they match the focus. Use the exact name from their library.
-- You may suggest exercises NOT in the library if they fill a gap. For any exercise not in the user's library, add an "alternatives" array with 2 substitutions the user could do instead.
+- Ground weight suggestions in the user's recent numbers from the training context. If history shows their last bench press at 145 lbs × 8, prescribe 145 — not a generic 135. If no history exists for that lift, use 0.
+- You may suggest exercises NOT in the library if they fill a gap. For any exercise not in the user's library, add an "alternatives" array with 2 substitutions the user could do instead (prefer ones from their library).
 - Exercises from the user's library should NOT have an "alternatives" field.
 - Each exercise needs: name, bodyPart, equipmentType, sets (number), reps (number), weight (number in user's unit or 0 if unknown).
-- Use the user's recent weights as a baseline for weight suggestions. If no history exists, use 0.
 - Order exercises: compound movements first, isolation last.
 - Total exercises: 5-8 per workout.
 - Include a mix of compound and isolation work appropriate for the focus.
@@ -960,10 +974,15 @@ exports.getTrainingRecommendation = functions.runWith({
     }
 
     const userId = context.auth.uid;
-    const { question, context: trainingContext } = data;
+    const { question, context: trainingContext, messages: clientMessages } = data;
 
-    if (!question) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing question');
+    // Accept either:
+    //   - clientMessages: [{role:'user'|'assistant', content:string}, …] (new path)
+    //   - question + trainingContext (legacy single-turn path)
+    // We use whichever is provided; messages wins when both exist.
+    const hasThread = Array.isArray(clientMessages) && clientMessages.length > 0;
+    if (!hasThread && !question) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing question or messages');
     }
 
     // Rate limiting: disabled for testing (was 1 call per 24 hours)
@@ -988,18 +1007,30 @@ exports.getTrainingRecommendation = functions.runWith({
         }
 
         // Call Claude API via HTTPS (no SDK dependency needed).
-        // Opus 4.7 + adaptive thinking: coaching benefits from deeper reasoning
-        // when interpreting plateaus, volume patterns, and tradeoffs. max_tokens
-        // raised to accommodate thinking tokens + full recommendation.
+        // Opus 4.7 + extended thinking: coaching benefits from deeper reasoning
+        // when interpreting plateaus, volume patterns, and tradeoffs. The
+        // explicit budget_tokens form is the canonical Anthropic schema —
+        // earlier code used `type: 'adaptive'`, which the API silently
+        // ignored, producing thin "doesn't read my data" responses.
+        // Build the message thread. When the client sends a multi-turn
+        // conversation we forward it verbatim — Claude needs the prior
+        // turns so it doesn't switch topics between sends. Otherwise we
+        // fall back to the legacy single-turn shape.
+        const apiMessages = hasThread
+            ? clientMessages
+                .filter(m => m && m.role && m.content)
+                .map(m => ({ role: m.role, content: String(m.content) }))
+            : [{
+                role: 'user',
+                content: `Here is my training data:\n\n${trainingContext || 'No data provided.'}\n\nUser question: ${question}\n\nGround your answer in the specific numbers and exercises above. If the data doesn't support a recommendation, say so.`,
+            }];
+
         const requestBody = JSON.stringify({
             model: 'claude-opus-4-7',
-            max_tokens: 8000,
-            thinking: { type: 'adaptive' },
+            max_tokens: 12000,
+            thinking: { type: 'enabled', budget_tokens: 6000 },
             system: TRAINING_SCIENCE_PROMPT,
-            messages: [{
-                role: 'user',
-                content: `Here is my training data:\n\n${trainingContext || 'No data provided.'}\n\n${question}`,
-            }],
+            messages: apiMessages,
         });
 
         const response = await new Promise((resolve, reject) => {
@@ -1116,7 +1147,11 @@ Build the workout now. Return ONLY the JSON object.`;
 
         const requestBody = JSON.stringify({
             model: 'claude-opus-4-7',
-            max_tokens: 4000,
+            // Bumped from 4k: 4k was occasionally truncating mid-JSON when
+            // the template had alternatives + weights, producing parse
+            // errors that surfaced as "didn't build me a template".
+            max_tokens: 12000,
+            thinking: { type: 'enabled', budget_tokens: 6000 },
             system: WORKOUT_BUILDER_PROMPT,
             messages: [{
                 role: 'user',
@@ -1157,13 +1192,31 @@ Build the workout now. Return ONLY the JSON object.`;
             req.end();
         });
 
-        const rawText = response.content?.[0]?.text || '';
+        // With extended thinking enabled, content[0] is a thinking block —
+        // we want the visible text. Pull whichever block holds the JSON.
+        const rawText = (response.content || [])
+            .filter(b => b.type === 'text')
+            .map(b => b.text || '')
+            .join('\n')
+            .trim();
 
-        // Parse the JSON response — strip any markdown fences if present
+        // Robust JSON extraction: prefer a clean markdown-fence strip, but
+        // fall back to "first { … last }" so a stray preamble/postamble
+        // doesn't kill the whole template.
         let template;
         try {
-            const cleaned = rawText.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
-            template = JSON.parse(cleaned);
+            const fenced = rawText.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+            try {
+                template = JSON.parse(fenced);
+            } catch (_) {
+                const start = fenced.indexOf('{');
+                const end = fenced.lastIndexOf('}');
+                if (start >= 0 && end > start) {
+                    template = JSON.parse(fenced.slice(start, end + 1));
+                } else {
+                    throw new Error('No JSON object found in response');
+                }
+            }
         } catch (e) {
             console.error('❌ Failed to parse template JSON:', rawText);
             throw new functions.https.HttpsError('internal', 'AI returned invalid template format');

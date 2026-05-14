@@ -10,6 +10,12 @@ import { TrainingInsights } from './training-insights.js';
 import { Config, debugLog, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 
+// Conversation history for the current chat session. Each entry is
+// { role: 'user' | 'assistant', content: string }. The Cloud Function
+// sends the full thread to Claude so the model can carry context across
+// turns instead of forgetting the topic between sends.
+let _coachConversation = [];
+
 // ===================================================================
 // AI COACH MODAL
 // ===================================================================
@@ -174,6 +180,32 @@ export function showAICoach(prefillContext) {
     renderAICoachSection();
     navigateTo('ai-coach-section');
 
+    // Warm the equipment cache so buildTrainingContext can include the user's
+    // actual gym inventory in the prompt. Fire-and-forget — if it lands
+    // before the first askCoach call, great; if not, the next call picks it up.
+    if (!AppState._cachedEquipment || AppState._cachedEquipment.length === 0) {
+        (async () => {
+            try {
+                const wm = new FirebaseWorkoutManager(AppState);
+                AppState._cachedEquipment = await wm.getUserEquipment();
+            } catch (_) { /* non-fatal — coach still works without equipment */ }
+        })();
+    }
+
+    // Warm latest body weight + DEXA so the coach can reference them.
+    (async () => {
+        try {
+            const { getLatestBodyWeight } = await import('./body-measurements.js');
+            const w = await getLatestBodyWeight();
+            if (w) AppState._cachedLatestBodyWeight = w;
+        } catch (_) { /* non-fatal */ }
+        try {
+            const dexaMod = await import('./dexa-scan.js');
+            const latestDexa = await dexaMod.getLatestDexaScan?.();
+            if (latestDexa) AppState._cachedLatestDexa = latestDexa;
+        } catch (_) { /* non-fatal */ }
+    })();
+
     // If prefill context, auto-ask about a plateau
     if (prefillContext) {
         setTimeout(() => {
@@ -269,17 +301,32 @@ export async function askCoach(question) {
         const { recentWorkouts, allWorkouts } = await TrainingInsights.loadInsightsData();
         const context = buildTrainingContext(allWorkouts);
 
+        // Append the user's turn to the running conversation. The first user
+        // turn gets the training context prepended so Claude grounds its
+        // answers in real numbers; subsequent turns just carry the question.
+        const userTurn = _coachConversation.length === 0
+            ? `Here is my recent training data:\n\n${context}\n\nQuestion: ${question.trim()}`
+            : question.trim();
+        _coachConversation.push({ role: 'user', content: userTurn });
+
         // Call Cloud Function
         const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js');
         const functions = getFunctions();
         const getRecommendation = httpsCallable(functions, 'getTrainingRecommendation');
 
         const result = await getRecommendation({
+            // Modern path: send the full thread so the model has memory of
+            // earlier turns. `question` + `context` are kept for backwards
+            // compatibility with the legacy server signature.
+            messages: _coachConversation,
             question: question.trim(),
             context,
         });
 
         const recommendation = result.data.recommendation;
+
+        // Track the assistant's reply so the next user message includes it.
+        _coachConversation.push({ role: 'assistant', content: recommendation });
 
         // Replace loading bubble with actual response
         if (loadingBubble) {
@@ -318,6 +365,8 @@ export function resetCoachUI() {
 
     if (emptyState) emptyState.classList.remove('hidden');
     if (chatMessages) chatMessages.innerHTML = '';
+    // New chat → drop the in-memory conversation thread.
+    _coachConversation = [];
 }
 
 // ===================================================================
@@ -394,6 +443,73 @@ function buildTrainingContext(workouts) {
     // User preferences
     const goal = AppState.settings?.weeklyGoal || 5;
     summary += `\nUnit: ${unit} | Weekly goal: ${goal} days\n`;
+
+    // Recent workout details (last 6) — gives the coach actual sets/reps to
+    // ground recommendations in, not just aggregates. Notes are included
+    // because that's where struggles, pain, and form cues live.
+    const recent = [...workouts]
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+        .slice(0, 6);
+    if (recent.length > 0) {
+        summary += `\nRecent workouts (most recent first):\n`;
+        for (const w of recent) {
+            const wName = w.workoutType || 'Workout';
+            const loc = w.location || '';
+            summary += `\n${w.date} · ${wName}${loc ? ` @ ${loc}` : ''}\n`;
+            const exercises = Object.values(w.exercises || {});
+            for (const ex of exercises) {
+                if (!ex.name) continue;
+                const equip = ex.equipment ? ` [${ex.equipment}]` : '';
+                const sets = (ex.sets || [])
+                    .filter(s => s.completed !== false && (s.reps || s.weight))
+                    .map(s => {
+                        const wt = s.weight ? convertWeight(s.weight, s.originalUnit || unit, unit) : 0;
+                        return `${s.reps || '?'}×${wt || 'BW'}`;
+                    })
+                    .join(', ');
+                const notes = ex.notes ? ` — note: "${ex.notes}"` : '';
+                summary += `  • ${ex.name}${equip}: ${sets || '(no sets)'}${notes}\n`;
+            }
+        }
+    }
+
+    // Equipment library — the coach can't recommend "use the Hammer Strength
+    // chest press" if it doesn't know which machines exist at the user's gym.
+    const equipment = AppState._cachedEquipment || [];
+    if (equipment.length > 0) {
+        summary += `\nAvailable equipment (${equipment.length} pieces):\n`;
+        // Group by gym so the coach can suggest gym-specific routines.
+        const byLocation = {};
+        for (const eq of equipment) {
+            const locs = (eq.locations && eq.locations.length > 0) ? eq.locations : ['Unspecified'];
+            for (const loc of locs) {
+                if (!byLocation[loc]) byLocation[loc] = [];
+                byLocation[loc].push(`${eq.name}${eq.equipmentType ? ` (${eq.equipmentType})` : ''}`);
+            }
+        }
+        for (const [loc, items] of Object.entries(byLocation)) {
+            summary += `  @ ${loc}: ${items.slice(0, 40).join(', ')}${items.length > 40 ? `, …+${items.length - 40} more` : ''}\n`;
+        }
+    }
+
+    // Body measurements — latest body weight + DEXA snapshot let the coach
+    // ground macro / recovery / volume tolerance recommendations in real
+    // numbers instead of guessing.
+    const bw = AppState._cachedLatestBodyWeight;
+    if (bw?.weight) {
+        const wt = convertWeight(bw.weight, bw.unit || 'lbs', unit);
+        summary += `\nLatest body weight (${bw.date || 'recent'}): ${wt} ${unit}\n`;
+    }
+    const dexa = AppState._cachedLatestDexa;
+    if (dexa) {
+        const parts = [];
+        if (dexa.totalBodyFat) parts.push(`${dexa.totalBodyFat}% body fat`);
+        if (dexa.totalLeanMass) parts.push(`${dexa.totalLeanMass} ${dexa.massUnit || 'lbs'} lean`);
+        if (dexa.vat) parts.push(`VAT ${dexa.vat}`);
+        if (parts.length > 0) {
+            summary += `Latest DEXA (${dexa.date || 'recent'}): ${parts.join(' · ')}\n`;
+        }
+    }
 
     return summary;
 }
