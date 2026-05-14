@@ -297,8 +297,12 @@ export async function askCoach(question) {
     `);
 
     try {
-        // Build training context locally
-        const { recentWorkouts, allWorkouts } = await TrainingInsights.loadInsightsData();
+        // Build training context locally. We pull the FULL workout history
+        // (cached for 5 min via data-manager) so the coach can spot trends
+        // over months instead of just the last 8 weeks. loadInsightsData's
+        // 8-week window is too narrow once a user has any meaningful history.
+        const { loadAllWorkouts } = await import('../data/data-manager.js');
+        const allWorkouts = await loadAllWorkouts(AppState);
         const context = buildTrainingContext(allWorkouts);
 
         // Append the user's turn to the running conversation. The first user
@@ -422,15 +426,17 @@ function buildTrainingContext(workouts) {
         }
     }
 
-    // Show top 8 most-trained exercises
+    // Show top 12 most-trained exercises with up to 8 recent max-weight points
+    // each. Enough resolution for the coach to spot a plateau or steady climb
+    // without overwhelming the prompt with every PR in history.
     const topLifts = Object.entries(liftTrends)
         .sort((a, b) => b[1].length - a[1].length)
-        .slice(0, 8);
+        .slice(0, 12);
 
     if (topLifts.length > 0) {
-        summary += `\nKey lift trends (max weight in ${unit}, recent sessions):\n`;
+        summary += `\nKey lift trends (max weight in ${unit}, recent sessions, newest first):\n`;
         topLifts.forEach(([name, weights]) => {
-            const recent = weights.slice(0, 5);
+            const recent = weights.slice(0, 8);
             summary += `${name}: ${recent.join(' -> ')} ${unit}\n`;
         });
     }
@@ -444,12 +450,15 @@ function buildTrainingContext(workouts) {
     const goal = AppState.settings?.weeklyGoal || 5;
     summary += `\nUnit: ${unit} | Weekly goal: ${goal} days\n`;
 
-    // Recent workout details (last 6) — gives the coach actual sets/reps to
-    // ground recommendations in, not just aggregates. Notes are included
-    // because that's where struggles, pain, and form cues live.
+    // Recent workout details — gives the coach actual sets/reps to ground
+    // recommendations in, not just aggregates. Notes are included because
+    // that's where struggles, pain, and form cues live. 30 workouts covers
+    // ~6-8 weeks at typical training frequency, enough to spot real trends
+    // without burning unbounded tokens on multi-year histories.
+    const RECENT_DETAIL_CAP = 30;
     const recent = [...workouts]
         .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
-        .slice(0, 6);
+        .slice(0, RECENT_DETAIL_CAP);
     if (recent.length > 0) {
         summary += `\nRecent workouts (most recent first):\n`;
         for (const w of recent) {
@@ -724,7 +733,10 @@ export async function generateWorkoutTemplate(focus) {
     try {
         // Build exercise library context
         const exerciseLibrary = buildExerciseLibraryContext();
-        const { allWorkouts } = await TrainingInsights.loadInsightsData();
+        // Pull full history so the generator can set weights from real
+        // numbers, not stale 8-week-old ones.
+        const { loadAllWorkouts } = await import('../data/data-manager.js');
+        const allWorkouts = await loadAllWorkouts(AppState);
         const trainingContext = buildTrainingContext(allWorkouts);
         const unit = AppState.globalUnit || 'lbs';
 
