@@ -1028,7 +1028,11 @@ exports.getTrainingRecommendation = functions.runWith({
         const requestBody = JSON.stringify({
             model: 'claude-opus-4-7',
             max_tokens: 12000,
-            thinking: { type: 'enabled', budget_tokens: 6000 },
+            // Opus 4.7 uses adaptive thinking + output_config.effort for the
+            // depth knob (not budget_tokens). 'high' gives the deeper
+            // reasoning we want for coaching across plateaus / volume / etc.
+            thinking: { type: 'adaptive' },
+            output_config: { effort: 'high' },
             system: TRAINING_SCIENCE_PROMPT,
             messages: apiMessages,
         });
@@ -1151,7 +1155,8 @@ Build the workout now. Return ONLY the JSON object.`;
             // the template had alternatives + weights, producing parse
             // errors that surfaced as "didn't build me a template".
             max_tokens: 12000,
-            thinking: { type: 'enabled', budget_tokens: 6000 },
+            thinking: { type: 'adaptive' },
+            output_config: { effort: 'high' },
             system: WORKOUT_BUILDER_PROMPT,
             messages: [{
                 role: 'user',
