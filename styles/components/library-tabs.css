@@ -1,0 +1,100 @@
+/* ==========================================================================
+   Library tabs — shared components for the Equipment + Exercise libraries.
+
+   Two patterns live here:
+     .lib-toggle    — pill segmented control "Exercises | Equipment".
+                      Generalized replacement for the older .equip-view-toggle.
+     .compact-tabs  — underlined-tab strip with count chips (My gyms / Library /
+                      Catalog for Equipment; can extend to Exercise lib later).
+
+   Both live in one file because they appear together at the top of every
+   library screen.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Library toggle (Exercises | Equipment)
+   -------------------------------------------------------------------------- */
+.lib-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    margin: var(--space-8) var(--pad-page);
+}
+.lib-toggle__btn {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    padding: var(--space-8) var(--space-12);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: background var(--anim-normal), color var(--anim-normal);
+    /* Ensure 44px minimum tap target (Apple HIG) */
+    min-height: var(--tap);
+}
+.lib-toggle__btn.is-active {
+    background: var(--primary-bg-strong);
+    color: var(--primary);
+}
+.lib-toggle__btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Compact tabs (My gyms / Library / Catalog)
+   -------------------------------------------------------------------------- */
+.compact-tabs {
+    display: flex;
+    gap: var(--space-16);
+    padding: var(--space-4) var(--space-16) 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.compact-tabs__tab {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: var(--space-8) 0 var(--space-6);
+    color: var(--text-very-muted);
+    font-family: inherit;
+    font-size: var(--font-xs);
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    /* Ensure 44px minimum tap target by extending the click area without
+       inflating visual height — pseudo-element fills the gap. */
+    position: relative;
+    min-height: var(--tap);
+    transition: color var(--anim-fast), border-color var(--anim-fast);
+}
+.compact-tabs__tab.is-active {
+    color: var(--text-strong);
+    border-bottom-color: var(--primary);
+}
+.compact-tabs__tab:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+.compact-tabs__count {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    padding: 1px var(--space-6);
+    border-radius: var(--radius-pill);
+    background: var(--muted-bg);
+    color: var(--text-very-muted);
+}
+.compact-tabs__tab.is-active .compact-tabs__count {
+    background: var(--primary-bg);
+    color: var(--primary);
+}

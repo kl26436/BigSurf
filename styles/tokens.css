@@ -26,6 +26,7 @@
     --text-primary: #c4cad4;
     --text-muted: #b0b8c1;
     --text-secondary: #9aa3ad;
+    --text-very-muted: #6b7785;
 
     /* Dark text on accent backgrounds */
     --text-on-accent: #04201a;
@@ -39,7 +40,10 @@
     /* Border Radius scale */
     --radius-2xs: 2px;
     --radius-xs: 4px;
+    --radius-8: 8px;
+    --radius-10: 10px;
     --radius-sm: 12px;
+    --radius-14: 14px;
     --radius-md: 16px;
     --radius-lg: 20px;
     --radius-xl: 24px;
@@ -220,6 +224,7 @@
 
     /* Layout spacing */
     --pad-page: 18px;
+    --pad-page-compact: 14px;
     --pad-card-y: 14px;
     --pad-card-x: 16px;
     --gap-section: 24px;

@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v8.10-toast-extraction';
+const CACHE_NAME = 'big-surf-v8.13-catalog-search-geocode';
 // Precache list — mirrors styles/index.css @import order. Add new CSS files here when
 // they're added to index.css, otherwise the first-paint on install misses them (cache-first
 // fetch will still pick them up on first navigation, but precaching avoids the blip).
@@ -30,6 +30,9 @@ const STATIC_ASSETS = [
   '/styles/components/fields.css',
   '/styles/components/completion-summary.css',
   '/styles/components/toast.css',
+  '/styles/components/library-tabs.css',
+  '/styles/components/gym-card.css',
+  '/styles/components/quick-add-sheet.css',
   '/styles/pages/app-shell.css',
   '/styles/pages/active-workout-v2.css',
   '/styles/pages/dashboard-v2.css',

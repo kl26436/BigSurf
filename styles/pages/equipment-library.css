@@ -199,6 +199,53 @@
 .equip-row__icon--bodyweight   { color: var(--equip-bodyweight);   background: var(--equip-bodyweight-bg); }
 .equip-row__icon--other        { color: var(--equip-other);        background: var(--equip-other-bg); }
 
+/* --------------------------------------------------------------------------
+   Compact equipment row — denser variant used by the Pocket Inventory
+   redesign (gym detail, quick-add sheet results, exercise library rows).
+   Grid: icon | info | type-pill | last-used.
+   -------------------------------------------------------------------------- */
+.equip-row--compact {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: var(--space-10);
+    padding: var(--space-8) var(--pad-page-compact);
+    /* Floor the row at 44px tap target even though the visual is 28+16=44px */
+    min-height: var(--tap);
+}
+.equip-row--compact .equip-row__icon {
+    width: var(--icon-sm);   /* 28px */
+    height: var(--icon-sm);
+    border-radius: var(--radius-8);
+    font-size: var(--font-sm);
+}
+.equip-row--compact .equip-row__info {
+    min-width: 0;
+}
+.equip-row--compact .equip-row__name {
+    font-size: var(--font-sm);
+    font-weight: 600;
+}
+.equip-row--compact .equip-row__meta {
+    margin-top: 0;
+    font-size: var(--font-2xs);
+    color: var(--text-very-muted);
+}
+.equip-row--compact .equip-row__last {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--text-very-muted);
+    font-variant-numeric: tabular-nums;
+    min-width: 28px;
+    text-align: right;
+}
+.equip-row--compact .equip-row__chevron {
+    /* Compact rows trade the chevron for the last-used timestamp; hide if both
+       are present so the grid stays balanced. The markup will typically omit
+       the chevron, but defending here lets either pattern compose cleanly. */
+    display: none;
+}
+
 /* Detail-view hero — shown at the top of the equipment detail page */
 .equip-detail-hero {
     display: flex;
@@ -565,6 +612,34 @@
     flex-direction: column;
     gap: var(--space-4);
     flex-shrink: 0;
+}
+
+/* Suggestion preview row — appears under the orphan name when a fuzzy match
+   is found. Tapping the preview commits the link via primary action. */
+.scan-review-row__suggest {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    margin-top: var(--space-6);
+    padding: var(--space-4) var(--space-8);
+    background: var(--primary-bg-subtle);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-8);
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+}
+.scan-review-row__suggest i {
+    color: var(--primary);
+    font-size: var(--font-xs);
+}
+.scan-review-row__suggest-name {
+    color: var(--text-strong);
+    font-weight: 600;
+}
+.scan-review-row__suggest-score {
+    color: var(--text-very-muted);
+    font-variant-numeric: tabular-nums;
+    margin-left: auto;
 }
 
 /* --------------------------------------------------------------------------

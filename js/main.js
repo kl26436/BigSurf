@@ -19,9 +19,16 @@ import {
     saveEquipmentNotes, showAddEquipmentFlow, confirmAddEquipment,
     saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField, removeEquipmentLocation,
     setEquipmentView, toggleBrandSection,
+    setEquipmentTab, openGymDetail, openBrandCatalog,
+    closeGymDetail, setGymBpFilter, openCatalogMachine, openQuickAddSheet,
+    toggleQuickAddRow, setQuickAddSearch, setQuickAddBp, commitQuickAdd, closeQuickAddSheet,
     addFlowSetType,
     openAddFlowBrandPicker, openAddFlowLinePicker, openAddFlowFunctionPicker,
     reviewDiscoveredEquipment, exitScanReview, addUnlinkedEquipment, dismissUnlinkedEquipment,
+    linkOrphanToSuggestion, autoLinkAllOrphans,
+    openManualLinkPicker, setManualLinkSearch, selectManualLinkTarget, closeManualLinkPicker,
+    closeBrandCatalog, openCatalogMachineAddToGym,
+    setCatalogSearch, openGymPickerSheet, commitGymPick, closeGymPickerSheet,
     openBrandPicker, openLinePicker, openFunctionPicker,
     selectFieldValue, filterFieldPicker, showFieldPickerCustom, closeFieldPicker,
 } from './core/ui/equipment-library-ui.js';
@@ -1009,6 +1016,20 @@ window.removeEquipmentLocation = removeEquipmentLocation;
 window.setEquipmentView = setEquipmentView;
 window.toggleBrandSection = toggleBrandSection;
 
+// Equipment library — Pocket Inventory 3-tab IA (My gyms / Library / Catalog)
+window.setEquipmentTab = setEquipmentTab;
+window.openGymDetail = openGymDetail;
+window.openBrandCatalog = openBrandCatalog;
+window.closeGymDetail = closeGymDetail;
+window.setGymBpFilter = setGymBpFilter;
+window.openCatalogMachine = openCatalogMachine;
+window.openQuickAddSheet = openQuickAddSheet;
+window.toggleQuickAddRow = toggleQuickAddRow;
+window.setQuickAddSearch = setQuickAddSearch;
+window.setQuickAddBp = setQuickAddBp;
+window.commitQuickAdd = commitQuickAdd;
+window.closeQuickAddSheet = closeQuickAddSheet;
+
 // Equipment "Add" stepped flow (Phase 3)
 window.addFlowSetType = addFlowSetType;
 window.openAddFlowBrandPicker = openAddFlowBrandPicker;
@@ -1020,6 +1041,18 @@ window.reviewDiscoveredEquipment = reviewDiscoveredEquipment;
 window.exitScanReview = exitScanReview;
 window.addUnlinkedEquipment = addUnlinkedEquipment;
 window.dismissUnlinkedEquipment = dismissUnlinkedEquipment;
+window.linkOrphanToSuggestion = linkOrphanToSuggestion;
+window.autoLinkAllOrphans = autoLinkAllOrphans;
+window.openManualLinkPicker = openManualLinkPicker;
+window.setManualLinkSearch = setManualLinkSearch;
+window.selectManualLinkTarget = selectManualLinkTarget;
+window.closeManualLinkPicker = closeManualLinkPicker;
+window.closeBrandCatalog = closeBrandCatalog;
+window.openCatalogMachineAddToGym = openCatalogMachineAddToGym;
+window.setCatalogSearch = setCatalogSearch;
+window.openGymPickerSheet = openGymPickerSheet;
+window.commitGymPick = commitGymPick;
+window.closeGymPickerSheet = closeGymPickerSheet;
 
 // Equipment detail cascading Brand → Line → Function picker
 window.openBrandPicker = openBrandPicker;

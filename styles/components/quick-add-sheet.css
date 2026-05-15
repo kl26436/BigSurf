@@ -1,0 +1,189 @@
+/* ==========================================================================
+   Quick-add sheet — bulk-tag catalog machines to a gym while walking the floor.
+
+   Reuses the .aw-sheet visual shell (handle, animation, max-height) and adds
+   the unique pieces: search field at top, body-part chip strip, multi-select
+   check rows, and a sticky action bar with a live counter pill.
+   ========================================================================== */
+
+.qa-sheet__search {
+    position: sticky;
+    top: 0;
+    background: var(--bg-surface);
+    padding: var(--space-8) 0 var(--space-6);
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    z-index: 2;
+}
+.qa-sheet__search-input {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-10);
+    padding: var(--space-10) var(--space-12);
+    color: var(--text-strong);
+    font-family: inherit;
+    font-size: var(--font-sm);
+    outline: none;
+    transition: border-color var(--anim-fast);
+}
+.qa-sheet__search-input::placeholder {
+    color: var(--text-very-muted);
+}
+.qa-sheet__search-input:focus {
+    border-color: var(--primary);
+}
+.qa-sheet__result-count {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    color: var(--text-very-muted);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+    padding: 0 var(--space-6);
+}
+
+.qa-sheet__bp-chips {
+    position: sticky;
+    top: 56px; /* aligns under the search input */
+    background: var(--bg-surface);
+    padding: var(--space-6) 0;
+    z-index: 1;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: var(--space-8);
+}
+
+.qa-sheet__group-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-8) 0 var(--space-4);
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-very-muted);
+}
+.qa-sheet__group-name {
+    flex: 1;
+}
+.qa-sheet__group-count {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---- Check rows (multi-select machine list) ---- */
+.qa-row {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    gap: var(--space-10);
+    padding: var(--space-8) 0;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: background var(--anim-fast);
+    min-height: var(--tap);
+}
+.qa-row:active {
+    background: var(--bg-card-hover);
+}
+.qa-row.is-checked {
+    background: var(--primary-bg-subtle);
+}
+.qa-row.is-disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.qa-row__check {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-xs);
+    border: 1.5px solid var(--border-light);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background var(--anim-fast), border-color var(--anim-fast);
+}
+.qa-row.is-checked .qa-row__check {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-on-accent);
+}
+.qa-row.is-checked .qa-row__check::before {
+    content: '✓';
+    font-size: var(--font-xs);
+    font-weight: 800;
+}
+
+.qa-row__icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    border-radius: var(--radius-8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm);
+    flex-shrink: 0;
+}
+.qa-row__info {
+    min-width: 0;
+}
+.qa-row__name {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.qa-row__meta {
+    margin-top: var(--space-2);
+    font-size: var(--font-2xs);
+    color: var(--text-very-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.qa-row.is-disabled .qa-row__meta {
+    color: var(--text-very-muted);
+}
+.qa-row__pill {
+    flex-shrink: 0;
+}
+
+.qa-sheet__empty {
+    padding: var(--space-32) var(--space-16);
+    text-align: center;
+    color: var(--text-very-muted);
+    font-size: var(--font-sm);
+}
+
+/* ---- Manual link picker — score badge on the right of each row ---- */
+.mlp-row__score {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--primary-bg);
+    padding: 1px var(--space-6);
+    border-radius: var(--radius-pill);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+/* ---- Sticky action bar: live counter pill + Add button ---- */
+.qa-sheet__action-counter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    padding: 1px var(--space-6);
+    border-radius: var(--radius-pill);
+    background: var(--bg-app);
+    color: var(--primary);
+    font-size: var(--font-2xs);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    margin-right: var(--space-6);
+}

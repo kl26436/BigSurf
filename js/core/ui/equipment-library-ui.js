@@ -3,20 +3,52 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
-import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, getDoc } from '../data/firebase-config.js';
+import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, getDoc, writeBatch } from '../data/firebase-config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
+import {
+    loadEquipmentCatalog,
+    resolveCatalogRef,
+    augmentStaticCatalog,
+} from '../data/equipment-catalog-firestore.js';
+import { getSessionLocation } from '../features/location-service.js';
+import { reverseGeocode } from '../features/geocoding.js';
+import { getExercisePRs } from '../features/pr-tracker.js';
+import { findBestMatch } from '../data/fuzzy-match.js';
 
 let workoutManager = null;
 let allEquipment = [];
+let allLocations = [];        // user's saved gym locations (cached on open)
 let currentLocationFilter = null;
 let currentSearchTerm = '';
 let currentDetailId = null;
 
-// Phase 2: list can be grouped "By Brand" (default after migration) or "By Body Part"
-// (the legacy view). expandedBrands tracks per-brand collapse state so toggling
-// filters doesn't re-collapse everything.
-let currentView = 'brand'; // 'brand' | 'bodypart'
+// Pocket Inventory redesign — three-tab IA on the Equipment Library landing.
+// 'gyms'    : My gyms — gym cards + stat strip + orphan banner (default)
+// 'library' : Library — body-part grouped compact rows (the existing personal list)
+// 'catalog' : Catalog — global brand tile grid + popular-at-current-gym
+let currentTab = 'gyms';
+
+// Gym detail state — when non-null, renderEquipmentLibrary renders the gym
+// detail view (body-part chips + grouped compact rows) instead of the tabs.
+// `currentGymDetail` is { name, id } where id may be null for derived gyms
+// (a gym name that only appears on equipment.locations[] with no doc).
+let currentGymDetail = null;
+let currentBpFilter = 'All';
+
+// Brand catalog drill-down — { slug, name } when active, null otherwise.
+// Renders inside the Catalog tab when set; back returns to the tab.
+let currentBrandCatalog = null;
+
+// Catalog tab search term (filters across all brands + machines). Persists
+// across renders so toggling tabs doesn't drop the user's query.
+let catalogSearchTerm = '';
+
+// Library sub-view (within the 'library' tab). Per the redesign brief the
+// Library tab is body-part grouped by default — `currentView` is retained for
+// the legacy "By Brand" toggle which is no longer surfaced in the UI but kept
+// in case we want to reintroduce it.
+let currentView = 'bodypart'; // 'brand' | 'bodypart'
 const expandedBrands = new Set();
 
 // Phase 6: scan-history state. unlinkedEquipment is populated lazily on the
@@ -158,9 +190,30 @@ export async function openEquipmentLibrary() {
 
     section.classList.remove('hidden');
     scanReviewActive = false; // always land on the normal list, not the review view
-    allEquipment = await getManager().getUserEquipment();
+
+    // Parallel-load equipment + locations + catalog so the My gyms tab has
+    // everything it needs on first paint. Catalog has its own internal cache,
+    // so the second call (if any) is a no-op.
+    const [equipment, locations] = await Promise.all([
+        getManager().getUserEquipment(),
+        getManager().getUserLocations(),
+    ]);
+    allEquipment = equipment;
+    allLocations = locations;
     // Cache for cross-module access (plate calculator, weight calculations)
     AppState._cachedEquipment = allEquipment;
+
+    // Catalog: prefer AppState (populated by app-init) but kick off a load if
+    // it isn't there yet. Render immediately with augmented-static fallback.
+    if (!AppState.equipmentCatalog) {
+        loadEquipmentCatalog()
+            .then((cat) => {
+                AppState.equipmentCatalog = cat;
+                renderEquipmentLibrary();
+            })
+            .catch((err) => console.error('Catalog load failed:', err));
+    }
+
     renderEquipmentLibrary();
 
     // Background scan for workout-history equipment names that don't appear in
@@ -171,6 +224,15 @@ export async function openEquipmentLibrary() {
     }).catch((err) => {
         console.error('❌ Equipment scan failed:', err);
     });
+}
+
+/**
+ * Synchronous getter for the equipment catalog. Returns the Firestore-loaded
+ * catalog if available; otherwise an in-memory augmentation of the static
+ * fallback so My gyms / Catalog rendering never has to wait.
+ */
+function getCatalogSync() {
+    return AppState.equipmentCatalog || augmentStaticCatalog(EQUIPMENT_CATALOG);
 }
 
 /**
@@ -226,26 +288,44 @@ export function reviewDiscoveredEquipment() {
     renderEquipmentLibrary();
 }
 
-/** Render the review list — one row per unlinked name with Add / Dismiss. */
+/** Render the review list — one row per unlinked name with Add / Link / Skip. */
 function renderScanReview() {
     const container = document.getElementById('equipment-library-content');
     if (!container) return;
 
-    // Rewrite the page header for the review view (back goes to the list).
+    const items = getUnlinkedActive();
+    // Compute fuzzy-match suggestions once per render. Threshold 0.6 to surface
+    // a suggestion; 0.85 is the auto-link confidence floor (matches handoff).
+    const itemsWithSuggestions = items.map((item) => ({
+        ...item,
+        suggestion: findBestSuggestion(item.name, allEquipment, 0.6),
+    }));
+    const autoLinkable = itemsWithSuggestions.filter((it) => it.suggestion && it.suggestion.score >= 0.85);
+
+    // Rewrite the page header for the review view (back + title + Auto-link).
     const section = document.getElementById('equipment-library-section');
     const staticHeader = section?.querySelector('.page-header');
     if (staticHeader) {
+        const subtitle = `${items.length} orphan name${items.length !== 1 ? 's' : ''} · ${items.reduce((s, i) => s + i.count, 0)} sessions affected`;
         staticHeader.innerHTML = `
             <div class="page-header__left">
                 <button class="page-header__back" onclick="exitScanReview()" aria-label="Back">
                     <i class="fas fa-chevron-left"></i>
                 </button>
-                <div class="page-header__title">Review history</div>
+                <div class="page-header__title-block">
+                    <div class="page-header__title">Reconcile history</div>
+                    <div class="page-header__subtitle">${escapeHtml(subtitle)}</div>
+                </div>
             </div>
+            ${autoLinkable.length > 0 ? `
+                <button class="page-header__save" onclick="autoLinkAllOrphans()">
+                    Auto-link ${autoLinkable.length}
+                </button>
+            ` : ''}
         `;
+        staticHeader.dataset.mutated = '1';
     }
 
-    const items = getUnlinkedActive();
     if (items.length === 0) {
         container.innerHTML = `
             <div class="empty-state-compact">
@@ -257,7 +337,7 @@ function renderScanReview() {
         return;
     }
 
-    const rowsHTML = items.map((item) => {
+    const rowsHTML = itemsWithSuggestions.map((item) => {
         const exerciseList = [...item.exercises].slice(0, 3).join(', ');
         const exerciseSuffix = item.exercises.size > 3 ? `, +${item.exercises.size - 3}` : '';
         const locationStr = [...item.locations].join(', ');
@@ -267,19 +347,43 @@ function renderScanReview() {
             locationStr,
         ].filter(Boolean).join(' · ');
 
+        // Primary action: Link-to-suggestion when present; otherwise plain Link
+        // which opens the manual picker. Add and Skip are always available.
+        const hasSuggestion = !!item.suggestion;
+        const primaryAction = hasSuggestion
+            ? `<button class="btn btn-primary btn-small" onclick="linkOrphanToSuggestion('${escapeAttr(item.name)}', '${escapeAttr(item.suggestion.id)}')">
+                   <i class="fas fa-link"></i> Link
+               </button>`
+            : `<button class="btn btn-primary btn-small" onclick="openManualLinkPicker('${escapeAttr(item.name)}')">
+                   <i class="fas fa-link"></i> Link…
+               </button>`;
+
+        // Secondary "Other…" only meaningful when a suggestion exists (lets
+        // user override the auto-match with a manually-picked target).
+        const otherAction = hasSuggestion ? `
+            <button class="btn btn-text btn-small" onclick="openManualLinkPicker('${escapeAttr(item.name)}')">Other…</button>
+        ` : '';
+
+        const suggestionPreview = hasSuggestion ? `
+            <div class="scan-review-row__suggest">
+                <i class="fas fa-wand-magic-sparkles"></i>
+                <span class="scan-review-row__suggest-name">→ ${escapeHtml(item.suggestion.name)}</span>
+                <span class="scan-review-row__suggest-score">${Math.round(item.suggestion.score * 100)}%</span>
+            </div>
+        ` : '';
+
         return `
             <div class="scan-review-row">
                 <div class="scan-review-row__info">
-                    <div class="scan-review-row__name">${escapeHtml(item.name)}</div>
+                    <div class="scan-review-row__name">"${escapeHtml(item.name)}"</div>
                     <div class="scan-review-row__meta">${escapeHtml(metaParts)}</div>
+                    ${suggestionPreview}
                 </div>
                 <div class="scan-review-row__actions">
-                    <button class="btn btn-primary btn-small" onclick="addUnlinkedEquipment('${escapeAttr(item.name)}')">
-                        <i class="fas fa-plus"></i> Add
-                    </button>
-                    <button class="btn btn-text btn-small" onclick="dismissUnlinkedEquipment('${escapeAttr(item.name)}')">
-                        Dismiss
-                    </button>
+                    ${primaryAction}
+                    ${otherAction}
+                    <button class="btn btn-text btn-small" onclick="addUnlinkedEquipment('${escapeAttr(item.name)}')">Add new</button>
+                    <button class="btn btn-text btn-small" onclick="dismissUnlinkedEquipment('${escapeAttr(item.name)}')">Skip</button>
                 </div>
             </div>
         `;
@@ -289,12 +393,273 @@ function renderScanReview() {
         <div class="scan-review">
             <div class="scan-review__hint">
                 These equipment names appear in your workout history but aren't in your library.
-                Add them to merge their history with a real machine, or dismiss to ignore.
+                <strong>Link</strong> maps an orphan name to an existing machine and rewrites past sessions. <strong>Add</strong> creates a new entry. <strong>Skip</strong> ignores it for this session.
             </div>
             <div class="scan-review__list">${rowsHTML}</div>
         </div>
     `;
 }
+
+/**
+ * Find the best library-match suggestion for an orphan name. Wraps the generic
+ * `findBestMatch` from fuzzy-match.js with the equipment-record shape.
+ */
+function findBestSuggestion(orphanName, equipment, threshold) {
+    if (!Array.isArray(equipment)) return null;
+    const candidates = equipment.map((eq) => ({ ...eq, name: eq.function || eq.name }));
+    const best = findBestMatch(orphanName, candidates, threshold);
+    if (!best) return null;
+    return { id: best.candidate.id, name: best.candidate.name, score: best.score };
+}
+
+/**
+ * Link an orphan name to an existing equipment record. Adds the orphan as an
+ * alias on the equipment doc AND rewrites workout history (exercise.equipment
+ * string) so historical sessions correctly reference the canonical name.
+ *
+ * Batched: Firestore batch can hold 500 writes — chunks accordingly.
+ */
+export async function linkOrphanToSuggestion(orphanName, equipmentId) {
+    try {
+        const equipment = allEquipment.find((e) => e.id === equipmentId);
+        if (!equipment) throw new Error(`Equipment ${equipmentId} not found`);
+
+        const userId = AppState.currentUser.uid;
+        const canonicalName = equipment.function || equipment.name;
+
+        // 1. Add the orphan as an alias on the equipment doc
+        const aliases = Array.isArray(equipment.aliases) ? [...equipment.aliases] : [];
+        if (!aliases.includes(orphanName)) aliases.push(orphanName);
+        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { aliases });
+
+        // 2. Rewrite workout history — for every workout that references the
+        // orphan name in exercise.equipment, swap to canonicalName. Batched.
+        const workouts = await getManager().getUserWorkouts();
+        const affected = workouts.filter((w) => {
+            const exs = w.exercises || {};
+            return Object.keys(exs).some((k) => exs[k]?.equipment === orphanName);
+        });
+
+        // Firestore batch limit is 500; chunk safely
+        const CHUNK = 400;
+        for (let i = 0; i < affected.length; i += CHUNK) {
+            const batch = writeBatch(db);
+            for (const w of affected.slice(i, i + CHUNK)) {
+                const exs = { ...(w.exercises || {}) };
+                let touched = false;
+                for (const k of Object.keys(exs)) {
+                    if (exs[k]?.equipment === orphanName) {
+                        exs[k] = { ...exs[k], equipment: canonicalName };
+                        touched = true;
+                    }
+                }
+                if (touched) {
+                    batch.set(doc(db, 'users', userId, 'workouts', w.id), { ...w, exercises: exs, lastUpdated: new Date().toISOString() });
+                }
+            }
+            await batch.commit();
+        }
+
+        // 3. Refresh state
+        allEquipment = await getManager().getUserEquipment();
+        AppState._cachedEquipment = allEquipment;
+        if (unlinkedEquipment) unlinkedEquipment.delete(orphanName);
+        showNotification(`Linked "${orphanName}" to ${canonicalName} · ${affected.length} session${affected.length !== 1 ? 's' : ''} updated`, 'success');
+        renderEquipmentLibrary();
+    } catch (err) {
+        console.error('❌ Link failed:', err);
+        showNotification(`Couldn't link — try again`, 'error');
+    }
+}
+
+// ===================================================================
+// MANUAL LINK PICKER — pick a library equipment to link an orphan to
+// ===================================================================
+let manualLinkState = null; // { orphanName, search }
+
+/**
+ * Open the manual link picker for an orphan. Lists all of the user's library
+ * equipment (search-filterable). Tapping one commits the link.
+ */
+export function openManualLinkPicker(orphanName) {
+    if (!orphanName) return;
+    manualLinkState = { orphanName, search: '' };
+    renderManualLinkSheet();
+}
+
+function renderManualLinkSheet() {
+    closeManualLinkSheetImmediate();
+    if (!manualLinkState) return;
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'mlp-sheet-backdrop';
+    backdrop.onclick = () => closeManualLinkPicker();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'mlp-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">Link to existing</div>
+            <div class="aw-sheet__subtitle">Map "${escapeHtml(manualLinkState.orphanName)}" to a machine in your library</div>
+        </div>
+        <div class="aw-sheet__body" id="mlp-sheet-body">${renderManualLinkBody()}</div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action" onclick="closeManualLinkPicker()">Cancel</button>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => {
+        backdrop.classList.add('visible');
+        sheet.classList.add('visible');
+        const input = document.getElementById('mlp-search-input');
+        if (input) input.focus();
+    });
+}
+
+function renderManualLinkBody() {
+    if (!manualLinkState) return '';
+    const term = manualLinkState.search.trim().toLowerCase();
+
+    let filtered = allEquipment;
+    if (term) {
+        filtered = filtered.filter((eq) =>
+            (eq.name || '').toLowerCase().includes(term) ||
+            (eq.function || '').toLowerCase().includes(term) ||
+            (eq.brand || '').toLowerCase().includes(term) ||
+            (eq.line || '').toLowerCase().includes(term)
+        );
+    }
+
+    // Sort by best-similarity to orphan name (most likely match first)
+    const orphan = manualLinkState.orphanName;
+    filtered = [...filtered].sort((a, b) => {
+        const sa = findBestMatch(orphan, [{ name: a.function || a.name }], 0)?.score || 0;
+        const sb = findBestMatch(orphan, [{ name: b.function || b.name }], 0)?.score || 0;
+        return sb - sa;
+    });
+
+    const searchHTML = `
+        <div class="qa-sheet__search">
+            <input type="text" id="mlp-search-input"
+                   class="qa-sheet__search-input"
+                   placeholder="Search your library…"
+                   value="${escapeAttr(manualLinkState.search)}"
+                   oninput="setManualLinkSearch(this.value)">
+            <span class="qa-sheet__result-count">${filtered.length} result${filtered.length !== 1 ? 's' : ''}</span>
+        </div>
+    `;
+
+    if (filtered.length === 0) {
+        return searchHTML + `<div class="qa-sheet__empty">No matches in your library.</div>`;
+    }
+
+    const rowsHTML = filtered.map((eq) => {
+        const type = eq.equipmentType || 'Other';
+        const typeInfo = EQUIPMENT_TYPE_ICONS[type] || EQUIPMENT_TYPE_ICONS.Other;
+        const typeColorClass = `equip-row__icon--${slugType(type)}`;
+        const displayName = eq.function || eq.name;
+        const subtitleParts = [eq.brand, eq.line].filter(Boolean).join(' · ');
+        const score = findBestMatch(orphan, [{ name: displayName }], 0)?.score || 0;
+        const scoreBadge = score >= 0.5 ? `<span class="mlp-row__score">${Math.round(score * 100)}%</span>` : '';
+        return `
+            <div class="qa-row" onclick="selectManualLinkTarget('${escapeAttr(eq.id)}')"
+                 role="button">
+                <span></span>
+                <span class="qa-row__icon ${typeColorClass}"><i class="fas ${typeInfo.icon}"></i></span>
+                <div class="qa-row__info">
+                    <div class="qa-row__name">${escapeHtml(displayName)}</div>
+                    <div class="qa-row__meta">${escapeHtml(subtitleParts || type)}</div>
+                </div>
+                ${scoreBadge}
+            </div>
+        `;
+    }).join('');
+
+    return searchHTML + rowsHTML;
+}
+
+export function setManualLinkSearch(term) {
+    if (!manualLinkState) return;
+    manualLinkState.search = term;
+    const body = document.getElementById('mlp-sheet-body');
+    if (!body) return;
+    const focused = document.activeElement;
+    const isSearchFocused = focused?.id === 'mlp-search-input';
+    const caret = isSearchFocused ? focused.selectionStart : null;
+    body.innerHTML = renderManualLinkBody();
+    if (isSearchFocused) {
+        const input = document.getElementById('mlp-search-input');
+        if (input) {
+            input.focus();
+            if (caret !== null) {
+                try { input.setSelectionRange(caret, caret); } catch { /* ignore */ }
+            }
+        }
+    }
+}
+
+/**
+ * Commit a manually-picked link. Same backend operation as the suggested
+ * link path — adds the alias + rewrites workout history.
+ */
+export async function selectManualLinkTarget(equipmentId) {
+    if (!manualLinkState) return;
+    const orphan = manualLinkState.orphanName;
+    closeManualLinkPicker();
+    // Reuse the same link routine
+    await linkOrphanToSuggestion(orphan, equipmentId);
+}
+
+export function closeManualLinkPicker() {
+    const backdrop = document.getElementById('mlp-sheet-backdrop');
+    const sheet = document.getElementById('mlp-sheet');
+    if (backdrop) backdrop.classList.remove('visible');
+    if (sheet) sheet.classList.remove('visible');
+    setTimeout(() => closeManualLinkSheetImmediate(), 300);
+    manualLinkState = null;
+}
+
+function closeManualLinkSheetImmediate() {
+    const backdrop = document.getElementById('mlp-sheet-backdrop');
+    const sheet = document.getElementById('mlp-sheet');
+    if (backdrop) backdrop.remove();
+    if (sheet) sheet.remove();
+}
+
+/**
+ * Auto-link every orphan whose suggestion score is ≥ 0.85. Sequential so we
+ * surface partial progress + can abort cleanly on error.
+ */
+export async function autoLinkAllOrphans() {
+    const items = getUnlinkedActive().map((it) => ({
+        ...it,
+        suggestion: findBestSuggestion(it.name, allEquipment, 0.6),
+    }));
+    const targets = items.filter((it) => it.suggestion && it.suggestion.score >= 0.85);
+
+    if (targets.length === 0) {
+        showNotification('No high-confidence matches to auto-link', 'info');
+        return;
+    }
+
+    if (!window.confirm(`Auto-link ${targets.length} orphan${targets.length !== 1 ? 's' : ''} with ≥85% confidence?`)) return;
+
+    for (const t of targets) {
+        await linkOrphanToSuggestion(t.name, t.suggestion.id);
+    }
+}
+
+// Expose findBestSuggestion (the equipment-shape wrapper) for tests in the
+// rare case they need the UI-layer adapter; the underlying pure scorer
+// (`diceSimilarity`) is tested directly via `data/fuzzy-match.js`.
+export const __scanInternals = { findBestSuggestion };
 
 /** Exit the review view and return to the normal library list. */
 export function exitScanReview() {
@@ -358,10 +723,1201 @@ function renderEquipmentLibrary() {
         return;
     }
 
-    // Collect all locations for filter pills
+    // Gym detail view (Phase 1 step 6) — drilled-down view of one gym.
+    if (currentGymDetail) {
+        renderGymDetail(container);
+        return;
+    }
+
+    // Brand catalog drill-down — invoked from the Catalog tab.
+    if (currentBrandCatalog) {
+        renderBrandCatalog(container);
+        return;
+    }
+
+    // Ensure the static page-header is restored if we just exited a sub-view.
+    restoreLibraryHeader();
+
+    // Pocket Inventory IA: compact tabs across the top, content per tab.
+    const tabsHTML = renderCompactTabs();
+    let tabBody;
+    if (currentTab === 'gyms') {
+        tabBody = renderMyGymsTab();
+    } else if (currentTab === 'catalog') {
+        tabBody = renderCatalogTab();
+    } else {
+        tabBody = renderLibraryTab();
+    }
+
+    container.innerHTML = tabsHTML + tabBody;
+
+    // Post-render: walk mix segments to set their flexGrow from the data
+    // attribute, avoiding inline `style=` (design audit constraint).
+    applyGymMixBarFlex(container);
+}
+
+/**
+ * Restore the static page-header to its index.html state. Used when exiting
+ * the gym detail view back to the tabs.
+ */
+function restoreLibraryHeader() {
+    const section = document.getElementById('equipment-library-section');
+    const header = section?.querySelector('.page-header');
+    if (!header || header.dataset.mutated !== '1') return;
+    header.innerHTML = `
+        <div class="page-header__left">
+            <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="page-header__title">Equipment</div>
+        </div>
+        <button class="page-header__save" onclick="showAddEquipmentFlow()">
+            <i class="fas fa-plus"></i> Add
+        </button>
+    `;
+    delete header.dataset.mutated;
+}
+
+/**
+ * Render the gym detail screen: page header (back + gym name + "+ Add"),
+ * body-part chip strip, grouped compact rows of equipment at this gym.
+ */
+function renderGymDetail(container) {
+    const { name, id } = currentGymDetail;
+    const items = gatherGymEquipment(name, id);
+
+    // Page header mutation: back button returns to My gyms tab; Add button
+    // will open the Quick-add sheet (Phase 2 step 7). Until then it's a stub.
+    const section = document.getElementById('equipment-library-section');
+    const header = section?.querySelector('.page-header');
+    if (header) {
+        const machineCount = items.length;
+        const brandSet = new Set();
+        items.forEach((it) => { if (it.brand) brandSet.add(it.brand); });
+        const lastVisit = currentGymDetail.lastVisit
+            ? `· ${relativeTime(currentGymDetail.lastVisit)}`
+            : '';
+        const subtitle = `${machineCount} machine${machineCount !== 1 ? 's' : ''} · ${brandSet.size} brand${brandSet.size !== 1 ? 's' : ''} ${lastVisit}`.trim();
+        header.innerHTML = `
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="closeGymDetail()" aria-label="Back to My gyms">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-header__title-block">
+                    <div class="page-header__title">${escapeHtml(name)}</div>
+                    <div class="page-header__subtitle">${escapeHtml(subtitle)}</div>
+                </div>
+            </div>
+            <button class="page-header__save" onclick="openQuickAddSheet('${escapeAttr(name)}')" aria-label="Add equipment">
+                <i class="fas fa-plus"></i> Add
+            </button>
+        `;
+        header.dataset.mutated = '1';
+    }
+
+    // Body-part chip strip — counts per body part across this gym's items.
+    const bpCounts = countByBodyPart(items);
+    const bpChips = ['All', ...BODY_PART_ORDER].filter((bp) => bp === 'All' || bpCounts[bp]);
+    const chipStripHTML = `
+        <div class="chips gym-detail__chips">
+            ${bpChips.map((bp) => {
+                const isActive = currentBpFilter === bp;
+                const count = bp === 'All' ? items.length : (bpCounts[bp] || 0);
+                return `
+                    <button class="chip${isActive ? ' active' : ''}"
+                            onclick="setGymBpFilter('${escapeAttr(bp)}')"
+                            aria-pressed="${isActive}">
+                        ${escapeHtml(bp)}
+                        <span class="chip__count">${count}</span>
+                    </button>
+                `;
+            }).join('')}
+        </div>
+    `;
+
+    // Apply body-part filter
+    const filtered = currentBpFilter === 'All'
+        ? items
+        : items.filter((it) => (it.bodyPart || 'Multi-Use') === currentBpFilter);
+
+    // Empty state when filter yields nothing
+    if (filtered.length === 0) {
+        container.innerHTML = chipStripHTML + `
+            <div class="empty-state-compact">
+                <i class="fas fa-wrench"></i>
+                <p>${currentBpFilter === 'All' ? 'No equipment at this gym yet' : `Nothing for ${currentBpFilter} yet`}</p>
+                <p class="empty-state-hint">${currentBpFilter === 'All' ? 'Tap Add to inventory this gym' : 'Try another body part or add more equipment'}</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Group by body part for rendering
+    const grouped = new Map();
+    for (const it of filtered) {
+        const bp = it.bodyPart || 'Multi-Use';
+        if (!grouped.has(bp)) grouped.set(bp, []);
+        grouped.get(bp).push(it);
+    }
+    const orderedBPs = BODY_PART_ORDER.filter((bp) => grouped.has(bp));
+
+    const groupsHTML = orderedBPs.map((bp) => {
+        const config = BODY_PART_CONFIG[bp] || BODY_PART_CONFIG['Multi-Use'];
+        const rows = grouped.get(bp).map(renderGymDetailRow).join('');
+        return `
+            <div class="gym-detail__group-header">
+                <i class="${config.icon}"></i>
+                <span class="gym-detail__group-name">${escapeHtml(bp)}</span>
+                <span class="gym-detail__group-count">${grouped.get(bp).length}</span>
+            </div>
+            ${rows}
+        `;
+    }).join('');
+
+    container.innerHTML = chipStripHTML + `<div class="equip-lib-list">${groupsHTML}</div>`;
+}
+
+/**
+ * Render a single compact row for the gym detail page. Uses the 4-column grid
+ * (icon | info | type-pill | last-used) from .equip-row--compact.
+ */
+function renderGymDetailRow(item) {
+    const typeInfo = EQUIPMENT_TYPE_ICONS[item.type] || EQUIPMENT_TYPE_ICONS.Other;
+    const typeColorClass = `equip-row__icon--${slugType(item.type)}`;
+    const metaParts = [item.brand, item.line].filter(Boolean).join(' · ');
+    const onclickRef = item.source === 'legacy'
+        ? `openEquipmentDetail('${escapeAttr(item.id)}')`
+        : `openCatalogMachine('${escapeAttr(item.id)}')`;
+    return `
+        <div class="equip-row equip-row--compact" onclick="${onclickRef}">
+            <div class="equip-row__icon ${typeColorClass}">
+                <i class="fas ${typeInfo.icon}"></i>
+            </div>
+            <div class="equip-row__info">
+                <div class="equip-row__name">${escapeHtml(item.name)}</div>
+                ${metaParts ? `<div class="equip-row__meta">${escapeHtml(metaParts)}</div>` : ''}
+            </div>
+            <span class="equip-row__type-pill ${typeColorClass}">${escapeHtml(item.type || 'Other')}</span>
+            <span class="equip-row__last">${item.lastUsed ? relativeTime(item.lastUsed) : ''}</span>
+        </div>
+    `;
+}
+
+/**
+ * Build the unified item list for a gym (legacy equipment.locations[] + new
+ * location.equipment[] catalog refs). Normalized to a single shape so the
+ * renderer doesn't care about the source.
+ */
+function gatherGymEquipment(gymName, locationId) {
+    const catalog = getCatalogSync();
+    const items = [];
+
+    // Legacy: equipment records tagged with this gym in `locations[]`
+    for (const eq of allEquipment) {
+        if (!(eq.locations || []).includes(gymName)) continue;
+        items.push({
+            id: eq.id,
+            name: eq.function || eq.name || '—',
+            brand: eq.brand && eq.brand !== 'Unknown' ? eq.brand : null,
+            line: eq.line || null,
+            type: eq.equipmentType || 'Other',
+            bodyPart: inferBodyPartFromEquipment(eq),
+            lastUsed: eq.lastUsed || null,
+            source: 'legacy',
+        });
+    }
+
+    // New: catalog refs on the location doc
+    const loc = locationId ? allLocations.find((l) => l.id === locationId) : null;
+    const catalogRefs = (loc && Array.isArray(loc.equipment)) ? loc.equipment : [];
+    for (const ref of catalogRefs) {
+        const resolved = resolveCatalogRef(ref.catalogRef, catalog);
+        if (!resolved) continue;
+        const { brand, line, machine } = resolved;
+        items.push({
+            id: ref.catalogRef,
+            name: ref.nickname || machine.name,
+            brand: brand.name,
+            line: line.name,
+            type: machine.type || line.type || 'Other',
+            bodyPart: machine.bodyPart || 'Multi-Use',
+            lastUsed: null, // catalog refs don't track use directly yet
+            source: 'catalog',
+        });
+    }
+
+    // Sort within each body part: brand → name
+    items.sort((a, b) => {
+        const bpCmp = (a.bodyPart || '').localeCompare(b.bodyPart || '');
+        if (bpCmp !== 0) return bpCmp;
+        const brCmp = (a.brand || '').localeCompare(b.brand || '');
+        if (brCmp !== 0) return brCmp;
+        return a.name.localeCompare(b.name);
+    });
+
+    return items;
+}
+
+/**
+ * Determine an equipment record's primary body part. Uses the first exercise
+ * type as a hint (via classifyExerciseBodyPart) and falls back to Multi-Use.
+ */
+function inferBodyPartFromEquipment(eq) {
+    if (Array.isArray(eq.exerciseTypes) && eq.exerciseTypes.length > 0) {
+        return classifyExerciseBodyPart(eq.exerciseTypes[0]);
+    }
+    return 'Multi-Use';
+}
+
+/**
+ * Count items per body part. Returns a plain object keyed by body part name.
+ */
+function countByBodyPart(items) {
+    const counts = {};
+    for (const it of items) {
+        const bp = it.bodyPart || 'Multi-Use';
+        counts[bp] = (counts[bp] || 0) + 1;
+    }
+    return counts;
+}
+
+/**
+ * After a render that includes gym cards, walk all `.gym-card__mix-seg`
+ * elements and set their flex-grow from `data-mix-flex`. Truly-dynamic styling
+ * is allowed via element.style.* per CLAUDE.md design rule #8.
+ */
+function applyGymMixBarFlex(root) {
+    const segs = root.querySelectorAll('.gym-card__mix-seg[data-mix-flex]');
+    segs.forEach((seg) => {
+        const flex = parseFloat(seg.dataset.mixFlex) || 1;
+        seg.style.flexGrow = String(flex);
+    });
+}
+
+/**
+ * Switch the active library tab. No-op if the tab is already active.
+ */
+export function setEquipmentTab(tab) {
+    if (tab === currentTab) return;
+    if (!['gyms', 'library', 'catalog'].includes(tab)) return;
+    currentTab = tab;
+    renderEquipmentLibrary();
+}
+
+/**
+ * Open the gym detail screen for a specific gym. `locationIdOrNull` is the
+ * users/{uid}/locations/{id} doc id; if no doc exists (gym name only appears
+ * on equipment records), pass null + fallbackName.
+ */
+export function openGymDetail(locationIdOrNull, fallbackName) {
+    const loc = locationIdOrNull
+        ? allLocations.find((l) => l.id === locationIdOrNull)
+        : null;
+    const gymName = loc?.name || fallbackName;
+    if (!gymName) return;
+    currentGymDetail = {
+        name: gymName,
+        id: loc?.id || null,
+        lastVisit: loc?.lastVisit || null,
+    };
+    currentBpFilter = 'All';
+    renderEquipmentLibrary();
+}
+
+/**
+ * Exit the gym detail screen and return to the My gyms tab.
+ */
+export function closeGymDetail() {
+    currentGymDetail = null;
+    currentBpFilter = 'All';
+    currentTab = 'gyms';
+    renderEquipmentLibrary();
+}
+
+/**
+ * Switch the body-part filter on the gym detail page.
+ */
+export function setGymBpFilter(bp) {
+    if (bp === currentBpFilter) return;
+    currentBpFilter = bp;
+    renderEquipmentLibrary();
+}
+
+/**
+ * Stub for the catalog machine detail page (Phase 3 follow-up). Phase 2 only
+ * needs this to silently succeed so the row click handler doesn't error out.
+ */
+export function openCatalogMachine(catalogRef) {
+    showNotification(`Catalog machine detail coming soon: ${catalogRef}`, 'info');
+}
+
+// ===================================================================
+// QUICK-ADD SHEET — bulk-tag catalog machines to a gym (Phase 2 step 7)
+// ===================================================================
+//
+// Module-local state for the active quick-add session. The sheet is global
+// (one open at a time) so state lives outside any per-render scope.
+let quickAddState = null;
+// Shape: { gymName, gymId, selected: Set<catalogRef>, search, bpFilter,
+//          alreadyTagged: Set<catalogRef>, allMachines: Array<flatMachine> }
+
+/**
+ * Open the Quick-add sheet for `gymName`. If a location doc exists for the
+ * gym, prefill alreadyTagged from its `equipment[]` array.
+ */
+export async function openQuickAddSheet(gymName) {
+    if (!gymName) return;
+
+    const loc = allLocations.find((l) => l.name === gymName);
+    const alreadyTagged = new Set(
+        (loc?.equipment || []).map((e) => e.catalogRef).filter(Boolean)
+    );
+
+    quickAddState = {
+        gymName,
+        gymId: loc?.id || null,
+        selected: new Set(),
+        search: '',
+        bpFilter: 'All',
+        alreadyTagged,
+        allMachines: flattenCatalogMachines(),
+    };
+
+    renderQuickAddSheet();
+}
+
+/**
+ * Build a flat list of all catalog machines for filtering. Each entry carries
+ * its full context (brand, line) so search + grouping is efficient.
+ */
+function flattenCatalogMachines() {
+    const catalog = getCatalogSync();
+    const flat = [];
+    for (const brand of catalog) {
+        for (const line of brand.lines || []) {
+            for (const machine of line.machines || []) {
+                flat.push({
+                    catalogRef: machine.id,
+                    name: machine.name,
+                    brandName: brand.name,
+                    lineName: line.name,
+                    type: machine.type || line.type || 'Other',
+                    bodyPart: machine.bodyPart || 'Multi-Use',
+                });
+            }
+        }
+    }
+    return flat;
+}
+
+/**
+ * Filter and group the catalog by the active search + body-part filter.
+ * Returns Map<bodyPart, machine[]> ordered by BODY_PART_ORDER.
+ */
+function filterQuickAddCatalog() {
+    if (!quickAddState) return new Map();
+    const { allMachines, search, bpFilter } = quickAddState;
+    const term = search.trim().toLowerCase();
+
+    const filtered = allMachines.filter((m) => {
+        if (bpFilter !== 'All' && m.bodyPart !== bpFilter) return false;
+        if (!term) return true;
+        return (
+            m.name.toLowerCase().includes(term) ||
+            m.brandName.toLowerCase().includes(term) ||
+            m.lineName.toLowerCase().includes(term) ||
+            m.type.toLowerCase().includes(term)
+        );
+    });
+
+    const grouped = new Map();
+    for (const m of filtered) {
+        const bp = m.bodyPart;
+        if (!grouped.has(bp)) grouped.set(bp, []);
+        grouped.get(bp).push(m);
+    }
+    for (const list of grouped.values()) {
+        list.sort((a, b) => {
+            const brCmp = a.brandName.localeCompare(b.brandName);
+            if (brCmp !== 0) return brCmp;
+            return a.name.localeCompare(b.name);
+        });
+    }
+    return new Map(
+        BODY_PART_ORDER.filter((bp) => grouped.has(bp)).map((bp) => [bp, grouped.get(bp)])
+    );
+}
+
+/**
+ * Build and mount the Quick-add sheet DOM. Reuses the `.aw-sheet` CSS shell
+ * for visual consistency with the active workout sheets.
+ */
+function renderQuickAddSheet() {
+    // Cleanup any previous instance
+    closeQuickAddSheetImmediate();
+    if (!quickAddState) return;
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'qa-sheet-backdrop';
+    backdrop.onclick = () => closeQuickAddSheet();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'qa-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-labelledby', 'qa-sheet-title');
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title" id="qa-sheet-title">Add equipment</div>
+            <div class="aw-sheet__subtitle">at ${escapeHtml(quickAddState.gymName)}</div>
+        </div>
+        <div class="aw-sheet__body" id="qa-sheet-body">${renderQuickAddBody()}</div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action" onclick="closeQuickAddSheet()">Cancel</button>
+            <button class="aw-sheet__action primary" id="qa-add-btn" onclick="commitQuickAdd()" disabled>
+                <span class="qa-sheet__action-counter" id="qa-counter">0</span>
+                <span id="qa-add-label">Add to gym</span>
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+
+    requestAnimationFrame(() => {
+        backdrop.classList.add('visible');
+        sheet.classList.add('visible');
+        // Auto-focus the search so the keyboard rises immediately
+        const input = document.getElementById('qa-search-input');
+        if (input) input.focus();
+    });
+}
+
+/**
+ * Render just the scrollable body — called on search/chip/check changes to
+ * avoid recreating the whole sheet (preserves animation + scroll position).
+ */
+function renderQuickAddBody() {
+    const { search, bpFilter, selected, alreadyTagged } = quickAddState;
+    const grouped = filterQuickAddCatalog();
+    const totalResults = [...grouped.values()].reduce((s, list) => s + list.length, 0);
+
+    const bpChips = ['All', ...BODY_PART_ORDER];
+    const chipsHTML = `
+        <div class="chips qa-sheet__bp-chips" id="qa-bp-chips">
+            ${bpChips.map((bp) => `
+                <button class="chip${bpFilter === bp ? ' active' : ''}"
+                        onclick="setQuickAddBp('${escapeAttr(bp)}')"
+                        aria-pressed="${bpFilter === bp}">
+                    ${escapeHtml(bp)}
+                </button>
+            `).join('')}
+        </div>
+    `;
+
+    const searchHTML = `
+        <div class="qa-sheet__search">
+            <input type="text" id="qa-search-input"
+                   class="qa-sheet__search-input"
+                   placeholder="Search catalog…"
+                   value="${escapeAttr(search)}"
+                   oninput="setQuickAddSearch(this.value)">
+            <span class="qa-sheet__result-count">${totalResults} result${totalResults !== 1 ? 's' : ''}</span>
+        </div>
+    `;
+
+    let resultsHTML;
+    if (totalResults === 0) {
+        resultsHTML = `<div class="qa-sheet__empty">No matches in the catalog.</div>`;
+    } else {
+        resultsHTML = [...grouped.entries()].map(([bp, machines]) => `
+            <div class="qa-sheet__group-header">
+                <span class="qa-sheet__group-name">${escapeHtml(bp)}</span>
+                <span class="qa-sheet__group-count">${machines.length}</span>
+            </div>
+            ${machines.map((m) => renderQuickAddRow(m, selected.has(m.catalogRef), alreadyTagged.has(m.catalogRef))).join('')}
+        `).join('');
+    }
+
+    return searchHTML + chipsHTML + resultsHTML;
+}
+
+/**
+ * Render a single check-row for a catalog machine.
+ */
+function renderQuickAddRow(machine, isChecked, isDisabled) {
+    const typeInfo = EQUIPMENT_TYPE_ICONS[machine.type] || EQUIPMENT_TYPE_ICONS.Other;
+    const typeColorClass = `equip-row__icon--${slugType(machine.type)}`;
+    const classes = ['qa-row'];
+    if (isChecked && !isDisabled) classes.push('is-checked');
+    if (isDisabled) classes.push('is-disabled');
+
+    const clickHandler = isDisabled
+        ? ''
+        : `onclick="toggleQuickAddRow('${escapeAttr(machine.catalogRef)}')"`;
+
+    const meta = isDisabled
+        ? 'Already at this gym'
+        : `${escapeHtml(machine.brandName)} · ${escapeHtml(machine.lineName)}`;
+
+    return `
+        <div class="${classes.join(' ')}" ${clickHandler}
+             role="checkbox" aria-checked="${isChecked}" aria-disabled="${isDisabled}">
+            <span class="qa-row__check"></span>
+            <span class="qa-row__icon ${typeColorClass}"><i class="fas ${typeInfo.icon}"></i></span>
+            <div class="qa-row__info">
+                <div class="qa-row__name">${escapeHtml(machine.name)}</div>
+                <div class="qa-row__meta">${meta}</div>
+            </div>
+            <span class="equip-row__type-pill ${typeColorClass} qa-row__pill">${escapeHtml(machine.type)}</span>
+        </div>
+    `;
+}
+
+/**
+ * Toggle a row's checked state. Re-renders the body so the row visually
+ * flips, and updates the counter + Add-button enabled state.
+ */
+export function toggleQuickAddRow(catalogRef) {
+    if (!quickAddState) return;
+    if (quickAddState.alreadyTagged.has(catalogRef)) return;
+    if (quickAddState.selected.has(catalogRef)) {
+        quickAddState.selected.delete(catalogRef);
+    } else {
+        quickAddState.selected.add(catalogRef);
+    }
+    rerenderQuickAddBody();
+    updateQuickAddActionBar();
+}
+
+/**
+ * Update the search filter on the Quick-add sheet.
+ */
+export function setQuickAddSearch(term) {
+    if (!quickAddState) return;
+    quickAddState.search = term;
+    rerenderQuickAddBody();
+}
+
+/**
+ * Update the body-part filter on the Quick-add sheet.
+ */
+export function setQuickAddBp(bp) {
+    if (!quickAddState || bp === quickAddState.bpFilter) return;
+    quickAddState.bpFilter = bp;
+    rerenderQuickAddBody();
+}
+
+function rerenderQuickAddBody() {
+    const body = document.getElementById('qa-sheet-body');
+    if (!body) return;
+    // Preserve focus + cursor on the search input across re-renders
+    const focused = document.activeElement;
+    const isSearchFocused = focused?.id === 'qa-search-input';
+    const caret = isSearchFocused ? focused.selectionStart : null;
+
+    body.innerHTML = renderQuickAddBody();
+
+    if (isSearchFocused) {
+        const input = document.getElementById('qa-search-input');
+        if (input) {
+            input.focus();
+            if (caret !== null) {
+                try { input.setSelectionRange(caret, caret); } catch { /* ignore */ }
+            }
+        }
+    }
+}
+
+function updateQuickAddActionBar() {
+    const counter = document.getElementById('qa-counter');
+    const btn = document.getElementById('qa-add-btn');
+    const label = document.getElementById('qa-add-label');
+    if (!counter || !btn || !label) return;
+    const count = quickAddState?.selected.size || 0;
+    counter.textContent = String(count);
+    btn.disabled = count === 0;
+    label.textContent = count === 0 ? 'Add to gym' : `Add to ${escapeHtml(quickAddState.gymName)}`;
+}
+
+/**
+ * Commit the selected machines to the gym's `location.equipment[]`. Creates
+ * the location doc if needed (for derived gyms with no location record yet).
+ */
+export async function commitQuickAdd() {
+    if (!quickAddState) return;
+    const selected = [...quickAddState.selected];
+    if (selected.length === 0) return;
+
+    const btn = document.getElementById('qa-add-btn');
+    if (btn) btn.disabled = true;
+
+    try {
+        let { gymId } = quickAddState;
+        // If no doc exists yet, create one so we have a stable id.
+        if (!gymId) {
+            const newLoc = await getManager().saveLocation({ name: quickAddState.gymName });
+            gymId = newLoc.id;
+            // Reflect the new location in the cached array so My gyms refresh works
+            allLocations.push(newLoc);
+        }
+
+        const items = selected.map((catalogRef) => ({ catalogRef }));
+        const added = await getManager().addLocationEquipment(gymId, items);
+
+        // Refresh local locations cache so the gym detail / My gyms reflect the change
+        const refreshed = await getManager().getUserLocations();
+        allLocations = refreshed;
+
+        closeQuickAddSheet();
+        showNotification(`Added ${added.length} machine${added.length !== 1 ? 's' : ''} to ${quickAddState?.gymName || 'gym'}`, 'success');
+        renderEquipmentLibrary();
+    } catch (err) {
+        console.error('❌ Quick-add commit failed:', err);
+        showNotification(`Couldn't save — try again`, 'error');
+        if (btn) btn.disabled = false;
+    }
+}
+
+/**
+ * Dismiss the Quick-add sheet without saving.
+ */
+export function closeQuickAddSheet() {
+    const backdrop = document.getElementById('qa-sheet-backdrop');
+    const sheet = document.getElementById('qa-sheet');
+    if (backdrop) backdrop.classList.remove('visible');
+    if (sheet) sheet.classList.remove('visible');
+    setTimeout(() => closeQuickAddSheetImmediate(), 300);
+    quickAddState = null;
+}
+
+function closeQuickAddSheetImmediate() {
+    const backdrop = document.getElementById('qa-sheet-backdrop');
+    const sheet = document.getElementById('qa-sheet');
+    if (backdrop) backdrop.remove();
+    if (sheet) sheet.remove();
+}
+
+/**
+ * Drill into a brand from the Catalog tab. Sets state and re-renders into the
+ * brand-detail view (lines + machines, with an Add-to-gym affordance per row).
+ */
+export function openBrandCatalog(brandSlug) {
+    const catalog = getCatalogSync();
+    const brand = catalog.find((b) => b.slug === brandSlug);
+    if (!brand) {
+        showNotification('Brand not found in catalog', 'error');
+        return;
+    }
+    currentBrandCatalog = { slug: brand.slug, name: brand.name };
+    renderEquipmentLibrary();
+}
+
+/**
+ * Exit the brand catalog drill-down back to the Catalog tab.
+ */
+export function closeBrandCatalog() {
+    currentBrandCatalog = null;
+    currentTab = 'catalog';
+    renderEquipmentLibrary();
+}
+
+/**
+ * Render the brand-detail view: header (back + brand name + machine count),
+ * then lines + machines as compact rows. Tapping a machine offers to add it
+ * to the current GPS gym (or prompts for a gym pick when no GPS).
+ */
+function renderBrandCatalog(container) {
+    const catalog = getCatalogSync();
+    const brand = catalog.find((b) => b.slug === currentBrandCatalog.slug);
+    if (!brand) {
+        closeBrandCatalog();
+        return;
+    }
+
+    const machineCount = (brand.lines || []).reduce((s, l) => s + (l.machines?.length || 0), 0);
+    const lineCount = brand.lines?.length || 0;
+
+    // Mutate the page-header for the brand-detail view (back returns to Catalog).
+    const section = document.getElementById('equipment-library-section');
+    const header = section?.querySelector('.page-header');
+    if (header) {
+        header.innerHTML = `
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="closeBrandCatalog()" aria-label="Back to Catalog">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-header__title-block">
+                    <div class="page-header__title">${escapeHtml(brand.name)}</div>
+                    <div class="page-header__subtitle">${lineCount} line${lineCount !== 1 ? 's' : ''} · ${machineCount} machine${machineCount !== 1 ? 's' : ''}</div>
+                </div>
+            </div>
+        `;
+        header.dataset.mutated = '1';
+    }
+
+    // Lines + machines as compact rows
+    const linesHTML = (brand.lines || []).map((line) => {
+        const machinesHTML = (line.machines || []).map((m) => {
+            const type = m.type || line.type || 'Other';
+            const typeInfo = EQUIPMENT_TYPE_ICONS[type] || EQUIPMENT_TYPE_ICONS.Other;
+            const typeColorClass = `equip-row__icon--${slugType(type)}`;
+            return `
+                <div class="equip-row equip-row--compact" onclick="openCatalogMachineAddToGym('${escapeAttr(m.id)}')">
+                    <div class="equip-row__icon ${typeColorClass}">
+                        <i class="fas ${typeInfo.icon}"></i>
+                    </div>
+                    <div class="equip-row__info">
+                        <div class="equip-row__name">${escapeHtml(m.name)}</div>
+                        <div class="equip-row__meta">${escapeHtml(m.bodyPart || 'Multi-Use')}</div>
+                    </div>
+                    <span class="equip-row__type-pill ${typeColorClass}">${escapeHtml(type)}</span>
+                    <i class="fas fa-plus equip-row__last" aria-hidden="true"></i>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="line-header">
+                <div class="line-header__name">
+                    <i class="fas fa-layer-group"></i>
+                    ${escapeHtml(line.name)}
+                </div>
+                <div class="line-header__count">${line.machines?.length || 0} machine${line.machines?.length !== 1 ? 's' : ''}</div>
+            </div>
+            ${machinesHTML}
+        `;
+    }).join('');
+
+    container.innerHTML = `<div class="equip-lib-list">${linesHTML}</div>`;
+}
+
+/**
+ * From the brand-detail drill-down or catalog search, tapping a machine offers
+ * to add it to a gym. Routing:
+ *   - 0 gyms saved        → toast asking to save one first
+ *   - 1 gym saved          → auto-add
+ *   - 2+ gyms, GPS matches → auto-add to GPS gym
+ *   - 2+ gyms, no GPS match → open the gym picker sheet (no typing)
+ */
+export async function openCatalogMachineAddToGym(catalogRef) {
+    const catalog = getCatalogSync();
+    const resolved = resolveCatalogRef(catalogRef, catalog);
+    if (!resolved) {
+        showNotification('Catalog machine not found', 'error');
+        return;
+    }
+
+    const machineName = resolved.machine.name;
+    const sessionGym = getSessionLocation();
+    const gymNames = new Set();
+    allLocations.forEach((l) => gymNames.add(l.name));
+    allEquipment.forEach((eq) => (eq.locations || []).forEach((l) => l && gymNames.add(l)));
+    const gymList = [...gymNames].sort();
+
+    if (gymList.length === 0) {
+        showNotification('Save a gym first (start a workout to stamp a location)', 'info');
+        return;
+    }
+
+    let targetGym = sessionGym && gymList.includes(sessionGym) ? sessionGym : null;
+    if (!targetGym && gymList.length === 1) {
+        targetGym = gymList[0];
+    }
+    if (!targetGym) {
+        // Multiple gyms, GPS unknown — let the user tap to choose. The picker
+        // pre-highlights the GPS gym when one is detected (even if not saved).
+        openGymPickerSheet({
+            title: `Add ${machineName}`,
+            subtitle: 'Pick the gym to add it to',
+            gyms: gymList,
+            currentGym: sessionGym,
+            onSelect: (gymName) => commitCatalogAdd(catalogRef, machineName, gymName),
+        });
+        return;
+    }
+
+    await commitCatalogAdd(catalogRef, machineName, targetGym);
+}
+
+/**
+ * Inner write step for openCatalogMachineAddToGym — handles location-doc
+ * creation when needed and the actual `addLocationEquipment` batch.
+ */
+async function commitCatalogAdd(catalogRef, machineName, gymName) {
+    try {
+        let loc = allLocations.find((l) => l.name === gymName);
+        if (!loc) {
+            const newLoc = await getManager().saveLocation({ name: gymName });
+            allLocations.push(newLoc);
+            loc = newLoc;
+        }
+        const added = await getManager().addLocationEquipment(loc.id, [{ catalogRef }]);
+        if (added.length === 0) {
+            showNotification(`${machineName} is already at ${gymName}`, 'info');
+            return;
+        }
+        const refreshed = await getManager().getUserLocations();
+        allLocations = refreshed;
+        showNotification(`Added ${machineName} to ${gymName}`, 'success');
+    } catch (err) {
+        console.error('❌ Add to gym failed:', err);
+        showNotification(`Couldn't save — try again`, 'error');
+    }
+}
+
+// ===================================================================
+// GYM PICKER SHEET — tap-to-select gym list (no text input, no typos)
+// ===================================================================
+let gymPickerOnSelect = null;
+
+/**
+ * Open the gym picker bottom sheet. Single-select, GPS-detected gym is
+ * highlighted at the top with a "Here" badge when present.
+ *
+ * Args: { title, subtitle, gyms: string[], currentGym: string|null,
+ *         onSelect: (gymName) => void }
+ */
+export function openGymPickerSheet({ title, subtitle, gyms, currentGym, onSelect }) {
+    gymPickerOnSelect = onSelect;
+    closeGymPickerSheetImmediate();
+
+    // Sort: current gym first if known, then alphabetical
+    const sorted = [...gyms].sort((a, b) => {
+        if (a === currentGym) return -1;
+        if (b === currentGym) return 1;
+        return a.localeCompare(b);
+    });
+
+    const rowsHTML = sorted.map((g) => {
+        const isHere = g === currentGym;
+        return `
+            <div class="qa-row${isHere ? ' is-checked' : ''}" onclick="commitGymPick('${escapeAttr(g)}')" role="button">
+                <span></span>
+                <span class="qa-row__icon equip-row__icon--machine"><i class="fas fa-map-marker-alt"></i></span>
+                <div class="qa-row__info">
+                    <div class="qa-row__name">${escapeHtml(g)}${isHere ? '<span class="gym-card__here-pill">Here</span>' : ''}</div>
+                </div>
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </div>
+        `;
+    }).join('');
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'gp-sheet-backdrop';
+    backdrop.onclick = () => closeGymPickerSheet();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'gp-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">${escapeHtml(title || 'Pick a gym')}</div>
+            ${subtitle ? `<div class="aw-sheet__subtitle">${escapeHtml(subtitle)}</div>` : ''}
+        </div>
+        <div class="aw-sheet__body">${rowsHTML}</div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action" onclick="closeGymPickerSheet()">Cancel</button>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => {
+        backdrop.classList.add('visible');
+        sheet.classList.add('visible');
+    });
+}
+
+export function commitGymPick(gymName) {
+    const cb = gymPickerOnSelect;
+    closeGymPickerSheet();
+    if (cb) cb(gymName);
+}
+
+export function closeGymPickerSheet() {
+    const backdrop = document.getElementById('gp-sheet-backdrop');
+    const sheet = document.getElementById('gp-sheet');
+    if (backdrop) backdrop.classList.remove('visible');
+    if (sheet) sheet.classList.remove('visible');
+    setTimeout(() => closeGymPickerSheetImmediate(), 300);
+    gymPickerOnSelect = null;
+}
+
+function closeGymPickerSheetImmediate() {
+    const backdrop = document.getElementById('gp-sheet-backdrop');
+    const sheet = document.getElementById('gp-sheet');
+    if (backdrop) backdrop.remove();
+    if (sheet) sheet.remove();
+}
+
+/**
+ * Render the three-tab strip (My gyms / Library / Catalog) with live counts.
+ */
+function renderCompactTabs() {
+    const catalog = getCatalogSync();
+    const totalCatalog = catalog.reduce((sum, b) => sum + (b.lines || []).reduce((s, l) => s + (l.machines?.length || 0), 0), 0);
+
+    const tabs = [
+        { id: 'gyms',    label: 'My gyms', count: allLocations.length },
+        { id: 'library', label: 'Library', count: allEquipment.length },
+        { id: 'catalog', label: 'Catalog', count: formatCount(totalCatalog) },
+    ];
+    return `
+        <div class="compact-tabs" role="tablist" aria-label="Equipment library tabs">
+            ${tabs.map((t) => `
+                <button class="compact-tabs__tab${currentTab === t.id ? ' is-active' : ''}"
+                        role="tab" aria-selected="${currentTab === t.id}"
+                        onclick="setEquipmentTab('${t.id}')">
+                    ${escapeHtml(t.label)}
+                    <span class="compact-tabs__count">${escapeHtml(String(t.count))}</span>
+                </button>
+            `).join('')}
+        </div>
+    `;
+}
+
+/**
+ * Format a large count like 1364 as "1.3k" for the tab pill.
+ */
+function formatCount(n) {
+    if (n < 1000) return String(n);
+    return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+}
+
+/**
+ * Render the My gyms tab — stat strip + orphan banner + gym cards.
+ */
+function renderMyGymsTab() {
+    const stats = computeGymStats();
+    const unlinked = getUnlinkedActive();
+
+    // Stat strip: gyms / machines / brands / orphans
+    const brandSet = new Set();
+    allEquipment.forEach((e) => { if (e.brand && e.brand !== 'Unknown') brandSet.add(e.brand); });
+    const stripCards = [
+        { value: stats.length, label: 'Gyms' },
+        { value: allEquipment.length, label: 'Machines' },
+        { value: brandSet.size, label: 'Brands' },
+        { value: unlinked.length, label: 'Orphans', warning: unlinked.length > 0 },
+    ];
+    const stripHTML = `
+        <div class="stat-strip">
+            ${stripCards.map((c) => `
+                <div class="stat-strip__card${c.warning ? ' stat-strip__card--warning' : ''}">
+                    <div class="stat-strip__value">${c.value}</div>
+                    <div class="stat-strip__label">${escapeHtml(c.label)}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    const scanBannerHTML = unlinked.length > 0 ? `
+        <div class="scan-banner" onclick="reviewDiscoveredEquipment()" role="button" tabindex="0">
+            <div class="scan-banner__icon"><i class="fas fa-history"></i></div>
+            <div class="scan-banner__text">
+                <div class="scan-banner__title">${unlinked.length} machine${unlinked.length !== 1 ? 's' : ''} found in history</div>
+                <div class="scan-banner__sub">Not yet in your library</div>
+            </div>
+            <button class="scan-banner__btn" onclick="event.stopPropagation(); reviewDiscoveredEquipment()">Review</button>
+        </div>
+    ` : '';
+
+    if (stats.length === 0) {
+        return stripHTML + scanBannerHTML + `
+            <div class="empty-state-compact">
+                <i class="fas fa-map-marker-alt"></i>
+                <p>No gyms saved yet</p>
+                <p class="empty-state-hint">Locations get added when you stamp a workout with your gym.</p>
+            </div>
+        `;
+    }
+
+    // Kick off background reverse-geocoding for any gym with lat/long but no
+    // saved address. Non-blocking — the cards render now with coordinates
+    // (or no subtitle) and refresh when the address resolves.
+    backfillGymAddresses(stats);
+
+    const cardsHTML = stats.map(renderGymCard).join('');
+    return stripHTML + scanBannerHTML + `
+        <div class="gym-card-list">${cardsHTML}</div>
+    `;
+}
+
+/**
+ * For any gym lacking an `address` but carrying lat/long, fetch a city/state
+ * via Nominatim and persist back to the location doc. Throttled internally by
+ * the geocoding module (1 req/sec, single in-flight queue, in-memory cached).
+ */
+function backfillGymAddresses(stats) {
+    for (const gym of stats) {
+        if (!gym.id) continue;
+        const loc = allLocations.find((l) => l.id === gym.id);
+        if (!loc) continue;
+        if (loc.address) continue;
+        if (loc._geocodeAttempted) continue;
+        if (loc.latitude == null || loc.longitude == null) continue;
+
+        loc._geocodeAttempted = true;
+        reverseGeocode(loc.latitude, loc.longitude)
+            .then(async (res) => {
+                if (!res || !res.displayString) return;
+                try {
+                    await getManager().updateLocation(loc.id, { address: res.displayString });
+                    loc.address = res.displayString;
+                    // Re-render if we're still on My gyms so the new address shows up
+                    if (currentTab === 'gyms' && !currentGymDetail && !currentBrandCatalog) {
+                        renderEquipmentLibrary();
+                    }
+                } catch (err) {
+                    console.warn('Failed to persist geocoded address:', err);
+                }
+            })
+            .catch((err) => console.warn('Geocode failed:', err));
+    }
+}
+
+/**
+ * Compute per-gym summary stats: machine count, type mix, lastVisit, isCurrent.
+ * Combines legacy `equipment.locations[]` (each equipment doc carries gym names)
+ * with the new `location.equipment[]` catalog refs introduced by Phase 0.
+ */
+function computeGymStats() {
+    const currentGym = getSessionLocation();
+    const catalog = getCatalogSync();
+
+    // Union of all gym names: saved location docs + any gym name referenced
+    // by an equipment record's `locations[]` (covers gyms that have equipment
+    // but no canonical location doc yet — common before locations were added
+    // as first-class).
+    const gymNames = new Set();
+    allLocations.forEach((loc) => gymNames.add(loc.name));
+    allEquipment.forEach((eq) => (eq.locations || []).forEach((l) => l && gymNames.add(l)));
+
+    const locByName = new Map(allLocations.map((l) => [l.name, l]));
+
+    const stats = [];
+    for (const name of gymNames) {
+        const loc = locByName.get(name);
+
+        // Legacy: equipment docs tagged with this gym name
+        const legacyAtGym = allEquipment.filter((e) => (e.locations || []).includes(name));
+
+        // New: catalog refs on the location doc itself
+        const catalogRefs = (loc && Array.isArray(loc.equipment)) ? loc.equipment : [];
+
+        const typeCounts = new Map();
+        const bump = (type) => {
+            const t = type || 'Other';
+            typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+        };
+        legacyAtGym.forEach((e) => bump(e.equipmentType));
+        catalogRefs.forEach((item) => {
+            const resolved = resolveCatalogRef(item.catalogRef, catalog);
+            bump(resolved?.machine?.type || resolved?.line?.type);
+        });
+
+        const typeMix = [...typeCounts.entries()]
+            .map(([type, count]) => ({ type, count }))
+            .sort((a, b) => b.count - a.count);
+
+        // Build a human-readable location subtitle. Prefer the persisted
+        // `address` (set by the reverse-geocoder backfill), then fall back to
+        // shortened coordinates. Missing → null so the meta line just skips it.
+        let locationStr = loc?.address || null;
+        if (!locationStr && loc?.latitude != null && loc?.longitude != null) {
+            const lat = Number(loc.latitude).toFixed(3);
+            const lng = Number(loc.longitude).toFixed(3);
+            locationStr = `${lat}, ${lng}`;
+        }
+
+        stats.push({
+            name,
+            locationStr,
+            lastVisit: loc?.lastVisit || null,
+            count: legacyAtGym.length + catalogRefs.length,
+            typeMix,
+            isCurrent: !!currentGym && currentGym === name,
+            id: loc?.id || null,
+        });
+    }
+
+    // Sort: current gym first, then by count desc, then alphabetical
+    stats.sort((a, b) => {
+        if (a.isCurrent !== b.isCurrent) return a.isCurrent ? -1 : 1;
+        if (b.count !== a.count) return b.count - a.count;
+        return a.name.localeCompare(b.name);
+    });
+
+    return stats;
+}
+
+/**
+ * Render a single gym card with the type-mix bar + legend.
+ */
+function renderGymCard(gym) {
+    const typeSlug = (t) => slugType(t);
+    // Mix segments carry their proportion as a data attribute. Inline `style=`
+    // would blow the design-audit budget; instead applyGymMixBarFlex() walks
+    // the rendered DOM and sets `element.style.flexGrow` (allowed per the
+    // truly-dynamic-values exception in CLAUDE.md design rule #8).
+    const mixBar = gym.typeMix.length > 0
+        ? gym.typeMix.map((m) =>
+            `<div class="gym-card__mix-seg gym-card__mix-seg--${typeSlug(m.type)}" data-mix-flex="${m.count}"></div>`
+        ).join('')
+        : `<div class="gym-card__mix-seg gym-card__mix-seg--other" data-mix-flex="1"></div>`;
+
+    const legend = gym.typeMix.slice(0, 4).map((m) => `
+        <span class="gym-card__legend-item">
+            <span class="gym-card__legend-dot gym-card__legend-dot--${typeSlug(m.type)}"></span>
+            <span class="gym-card__legend-label">${escapeHtml(typeShortLabel(m.type))}</span>
+            <span class="gym-card__legend-count">${m.count}</span>
+        </span>
+    `).join('');
+
+    // Only include parts we actually have — never fall back to a "no address"
+    // placeholder when the data isn't there.
+    const metaParts = [
+        gym.locationStr,
+        gym.lastVisit ? `Last visit ${relativeTime(gym.lastVisit)}` : null,
+    ].filter(Boolean).join(' · ');
+
+    const onclickArg = gym.id ? `'${escapeAttr(gym.id)}'` : `null, '${escapeAttr(gym.name)}'`;
+
+    return `
+        <button class="gym-card${gym.isCurrent ? ' is-here' : ''}"
+                onclick="openGymDetail(${onclickArg})"
+                aria-label="${escapeAttr(gym.name)}, ${gym.count} machines${gym.isCurrent ? ', you are here' : ''}">
+            <div class="gym-card__head">
+                <div class="gym-card__info">
+                    <span class="gym-card__name">${escapeHtml(gym.name)}${gym.isCurrent ? '<span class="gym-card__here-pill">Here</span>' : ''}</span>
+                    ${metaParts ? `<span class="gym-card__meta">${escapeHtml(metaParts)}</span>` : ''}
+                </div>
+                <span class="gym-card__count">${gym.count}</span>
+                <i class="fas fa-chevron-right gym-card__chev"></i>
+            </div>
+            <div class="gym-card__mix" aria-hidden="true">${mixBar}</div>
+            <div class="gym-card__legend">${legend}</div>
+        </button>
+    `;
+}
+
+/**
+ * Render the Library tab — search + (existing) location filter + body-part-grouped
+ * compact rows.
+ */
+function renderLibraryTab() {
+    // Collect all locations for filter pills (legacy filter — kept for now)
     const locationSet = new Set();
-    allEquipment.forEach(eq => {
-        (eq.locations || []).forEach(l => locationSet.add(l));
+    allEquipment.forEach((eq) => {
+        (eq.locations || []).forEach((l) => locationSet.add(l));
         if (eq.location) locationSet.add(eq.location);
     });
     const locations = Array.from(locationSet).sort();
@@ -370,50 +1926,22 @@ function renderEquipmentLibrary() {
     let filtered = allEquipment;
     if (currentSearchTerm) {
         const term = currentSearchTerm.toLowerCase();
-        filtered = filtered.filter(eq =>
+        filtered = filtered.filter((eq) =>
             eq.name?.toLowerCase().includes(term) ||
             eq.brand?.toLowerCase().includes(term) ||
             eq.line?.toLowerCase().includes(term) ||
             eq.function?.toLowerCase().includes(term) ||
             eq.equipmentType?.toLowerCase().includes(term) ||
-            (eq.exerciseTypes || []).some(t => t.toLowerCase().includes(term))
+            (eq.exerciseTypes || []).some((t) => t.toLowerCase().includes(term))
         );
     }
-
-    // Apply location filter
     if (currentLocationFilter) {
-        filtered = filtered.filter(eq =>
+        filtered = filtered.filter((eq) =>
             (eq.locations || []).includes(currentLocationFilter) ||
             eq.location === currentLocationFilter
         );
     }
 
-    // Phase 6 banner — only shown when the scan found names that aren't dismissed.
-    const unlinked = getUnlinkedActive();
-    const scanBannerHTML = unlinked.length > 0 ? `
-        <div class="scan-banner">
-            <div class="scan-banner__icon"><i class="fas fa-history"></i></div>
-            <div class="scan-banner__text">
-                <div class="scan-banner__title">${unlinked.length} machine${unlinked.length !== 1 ? 's' : ''} found in history</div>
-                <div class="scan-banner__sub">Not yet in your library</div>
-            </div>
-            <button class="scan-banner__btn" onclick="reviewDiscoveredEquipment()">Review</button>
-        </div>
-    ` : '';
-
-    // View toggle (Phase 2) — always present so users can switch while empty
-    const viewToggleHTML = `
-        <div class="equip-view-toggle" role="tablist" aria-label="Library view">
-            <button class="equip-view-toggle__btn ${currentView === 'brand' ? 'is-active' : ''}"
-                    role="tab" aria-selected="${currentView === 'brand'}"
-                    onclick="setEquipmentView('brand')">By Brand</button>
-            <button class="equip-view-toggle__btn ${currentView === 'bodypart' ? 'is-active' : ''}"
-                    role="tab" aria-selected="${currentView === 'bodypart'}"
-                    onclick="setEquipmentView('bodypart')">By Body Part</button>
-        </div>
-    `;
-
-    // Location filter pills + search toggle
     const filterHTML = locations.length > 0 ? `
         <div class="equip-filter-row">
             <button class="btn-icon-sm" onclick="toggleEquipmentSearch()" aria-label="Search">
@@ -421,8 +1949,8 @@ function renderEquipmentLibrary() {
             </button>
             <div class="equip-location-pills">
                 <button class="filter-pill ${!currentLocationFilter ? 'active' : ''}"
-                        onclick="filterEquipmentByLocation(null)">All Gyms</button>
-                ${locations.map(loc => `
+                        onclick="filterEquipmentByLocation(null)">All gyms</button>
+                ${locations.map((loc) => `
                     <button class="filter-pill ${currentLocationFilter === loc ? 'active' : ''}"
                             onclick="filterEquipmentByLocation('${escapeAttr(loc)}')">${escapeHtml(loc)}</button>
                 `).join('')}
@@ -430,9 +1958,6 @@ function renderEquipmentLibrary() {
         </div>
     ` : '';
 
-    // Search bar (hidden by default).
-    // onfocus: scroll input to top of viewport after a beat so the keyboard
-    // doesn't sit on top of the results list.
     const searchHTML = `
         <div class="equip-search-bar ${currentSearchTerm ? '' : 'hidden'}" id="equip-search-bar">
             <div class="equip-lib-search">
@@ -460,16 +1985,266 @@ function renderEquipmentLibrary() {
         listHTML = renderBodyPartView(filtered);
     }
 
-    container.innerHTML =
-        scanBannerHTML +
-        viewToggleHTML +
-        filterHTML +
-        searchHTML +
-        // Wrap the results list in its own container so filterEquipmentBySearch
-        // can update only this slot without re-rendering the search input.
-        // Re-rendering the input on every keystroke was destroying focus and
-        // causing the iOS keyboard to dismiss between characters.
-        `<div class="equip-lib-list" id="equip-lib-list-wrap">${listHTML}</div>`;
+    return filterHTML + searchHTML +
+        `<div class="equip-lib-list equip-lib-list--compact" id="equip-lib-list-wrap">${listHTML}</div>`;
+}
+
+/**
+ * Render the Catalog tab — sticky search at the top, then either the brand
+ * tile grid + "Popular at <gym>" (default) or flat search results when the
+ * user is typing.
+ */
+function renderCatalogTab() {
+    const term = catalogSearchTerm.trim();
+    const catalog = getCatalogSync();
+
+    const searchHTML = `
+        <div class="qa-sheet__search catalog-search">
+            <input type="text" id="catalog-search-input"
+                   class="qa-sheet__search-input"
+                   placeholder="Search 1.3k catalog machines…"
+                   value="${escapeAttr(catalogSearchTerm)}"
+                   oninput="setCatalogSearch(this.value)">
+            ${term ? `<button class="qa-sheet__result-count catalog-search__clear" onclick="setCatalogSearch('')" aria-label="Clear search">✕</button>` : ''}
+        </div>
+    `;
+
+    // Search mode — flat machine results across all brands
+    if (term) {
+        return searchHTML + renderCatalogSearchResults(catalog, term);
+    }
+
+    // Browse mode — brand tile grid + popular-at-current-gym
+    const tilesHTML = catalog.map((brand) => {
+        const lineCount = brand.lines?.length || 0;
+        const machineCount = (brand.lines || []).reduce((s, l) => s + (l.machines?.length || 0), 0);
+        return `
+            <button class="brand-tile" onclick="openBrandCatalog('${escapeAttr(brand.slug)}')">
+                <div class="brand-tile__name">${escapeHtml(brand.name)}</div>
+                <div class="brand-tile__meta">${lineCount} line${lineCount !== 1 ? 's' : ''} · ${machineCount}</div>
+            </button>
+        `;
+    }).join('');
+
+    const currentGym = getSessionLocation();
+    const popularHTML = currentGym ? renderPopularAtGym(currentGym) : '';
+
+    return searchHTML + `
+        <div class="brand-tile-grid">${tilesHTML}</div>
+        ${popularHTML}
+    `;
+}
+
+/**
+ * Render flat catalog search results — machines that match `term` across
+ * name, brand, line, body-part, or type. Grouped by body part to keep dense
+ * lists scannable.
+ */
+function renderCatalogSearchResults(catalog, term) {
+    const t = term.toLowerCase();
+    const matches = [];
+    for (const brand of catalog) {
+        for (const line of brand.lines || []) {
+            for (const machine of line.machines || []) {
+                const hay = `${machine.name} ${brand.name} ${line.name} ${machine.bodyPart || ''} ${machine.type || line.type || ''}`.toLowerCase();
+                if (hay.includes(t)) {
+                    matches.push({
+                        brand,
+                        line,
+                        machine,
+                        type: machine.type || line.type || 'Other',
+                    });
+                }
+            }
+        }
+    }
+
+    if (matches.length === 0) {
+        return `<div class="empty-state-compact catalog-search__empty">
+            <i class="fas fa-search"></i>
+            <p>No matches for "${escapeHtml(term)}"</p>
+            <p class="empty-state-hint">Try a brand name, machine type, or body part.</p>
+        </div>`;
+    }
+
+    // Group by body part for scannability
+    const grouped = new Map();
+    for (const m of matches) {
+        const bp = m.machine.bodyPart || 'Multi-Use';
+        if (!grouped.has(bp)) grouped.set(bp, []);
+        grouped.get(bp).push(m);
+    }
+
+    const groupsHTML = BODY_PART_ORDER
+        .filter((bp) => grouped.has(bp))
+        .map((bp) => {
+            const items = grouped.get(bp);
+            const config = BODY_PART_CONFIG[bp] || BODY_PART_CONFIG['Multi-Use'];
+            const rowsHTML = items.map((m) => {
+                const typeInfo = EQUIPMENT_TYPE_ICONS[m.type] || EQUIPMENT_TYPE_ICONS.Other;
+                const typeColorClass = `equip-row__icon--${slugType(m.type)}`;
+                return `
+                    <div class="equip-row equip-row--compact" onclick="openCatalogMachineAddToGym('${escapeAttr(m.machine.id)}')">
+                        <div class="equip-row__icon ${typeColorClass}">
+                            <i class="fas ${typeInfo.icon}"></i>
+                        </div>
+                        <div class="equip-row__info">
+                            <div class="equip-row__name">${escapeHtml(m.machine.name)}</div>
+                            <div class="equip-row__meta">${escapeHtml(m.brand.name)} · ${escapeHtml(m.line.name)}</div>
+                        </div>
+                        <span class="equip-row__type-pill ${typeColorClass}">${escapeHtml(m.type)}</span>
+                        <i class="fas fa-plus equip-row__last" aria-hidden="true"></i>
+                    </div>
+                `;
+            }).join('');
+            return `
+                <div class="gym-detail__group-header">
+                    <i class="${config.icon}"></i>
+                    <span class="gym-detail__group-name">${escapeHtml(bp)}</span>
+                    <span class="gym-detail__group-count">${items.length}</span>
+                </div>
+                ${rowsHTML}
+            `;
+        }).join('');
+
+    return `
+        <div class="catalog-search__summary">${matches.length} match${matches.length !== 1 ? 'es' : ''} across ${grouped.size} body part${grouped.size !== 1 ? 's' : ''}</div>
+        <div class="equip-lib-list">${groupsHTML}</div>
+    `;
+}
+
+/**
+ * Update the Catalog tab search term. Preserves keyboard focus + caret on the
+ * search input across re-renders so typing isn't interrupted.
+ */
+export function setCatalogSearch(term) {
+    catalogSearchTerm = term;
+    renderEquipmentLibrary();
+    // Restore focus + caret on the search input after re-render
+    const input = document.getElementById('catalog-search-input');
+    if (input && document.activeElement !== input) {
+        input.focus();
+        const len = input.value.length;
+        try { input.setSelectionRange(len, len); } catch { /* ignore */ }
+    }
+}
+
+/**
+ * Render the "Popular at <gym>" section — top equipment at the current gym
+ * sorted by descending use count across workout history.
+ */
+function renderPopularAtGym(gymName) {
+    const equipAtGym = allEquipment.filter((e) => (e.locations || []).includes(gymName));
+    if (equipAtGym.length === 0) return '';
+
+    // Sort by lastUsed desc (proxy for popular until we count workouts)
+    const top = [...equipAtGym]
+        .sort((a, b) => String(b.lastUsed || '').localeCompare(String(a.lastUsed || '')))
+        .slice(0, 8);
+
+    const rowsHTML = top.map((eq) => {
+        const typeInfo = EQUIPMENT_TYPE_ICONS[eq.equipmentType] || EQUIPMENT_TYPE_ICONS.Other;
+        const typeColorClass = `equip-row__icon--${(eq.equipmentType || 'Other').toLowerCase()}`;
+        const displayName = eq.function || eq.name || '—';
+        return `
+            <div class="equip-row equip-row--compact" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">
+                <div class="equip-row__icon ${typeColorClass}">
+                    <i class="fas ${typeInfo.icon}"></i>
+                </div>
+                <div class="equip-row__info">
+                    <div class="equip-row__name">${escapeHtml(displayName)}</div>
+                    <div class="equip-row__meta">${escapeHtml(eq.brand || 'Unknown')}${eq.line ? ' · ' + escapeHtml(eq.line) : ''}</div>
+                </div>
+                <span class="equip-row__last">${eq.lastUsed ? relativeTime(eq.lastUsed) : ''}</span>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="popular-at-gym">
+            <div class="popular-at-gym__head">
+                <i class="fas fa-map-marker-alt"></i>
+                Popular at ${escapeHtml(gymName)}
+            </div>
+            ${rowsHTML}
+        </div>
+    `;
+}
+
+/**
+ * Convert an equipment type name to a CSS class slug ("Plate-Loaded" → "plate-loaded").
+ */
+function slugType(type) {
+    return String(type || 'Other').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+}
+
+/**
+ * Short legend label for an equipment type. Keeps the legend compact.
+ */
+function typeShortLabel(type) {
+    const map = {
+        'Plate-Loaded': 'Plate',
+        Selectorized: 'Stack',
+        Machine: 'Machine',
+        Cable: 'Cable',
+        Rack: 'Rack',
+        Bench: 'Bench',
+        Cardio: 'Cardio',
+        Barbell: 'Barbell',
+        Dumbbell: 'Dumbbell',
+        Bodyweight: 'Body',
+        Other: 'Other',
+    };
+    return map[type] || 'Other';
+}
+
+/**
+ * Format an ISO timestamp as a relative time like "3d" / "2 wk" / "1 mo".
+ */
+/**
+ * Compute Pocket Inventory machine-detail stat-grid values: total sessions,
+ * heaviest PR across all exercises this equipment supports, and the relative
+ * lastUsed timestamp.
+ */
+function computeEquipmentDetailStats(equipment) {
+    const workouts = Array.isArray(AppState.workouts) ? AppState.workouts : [];
+    const eqName = equipment.name;
+    let sessions = 0;
+    for (const w of workouts) {
+        const exs = w.exercises || {};
+        const hit = Object.keys(exs).some((k) => exs[k]?.equipment === eqName);
+        if (hit) sessions += 1;
+    }
+
+    let pr = null;
+    const exTypes = Array.isArray(equipment.exerciseTypes) ? equipment.exerciseTypes : [];
+    for (const exName of exTypes) {
+        const prs = getExercisePRs(exName, eqName);
+        if (!prs || !prs.maxWeight) continue;
+        if (!pr || prs.maxWeight.weight > pr.weight) {
+            pr = { weight: prs.maxWeight.weight, reps: prs.maxWeight.reps, exercise: exName };
+        }
+    }
+
+    return {
+        sessions,
+        pr,
+        lastRel: equipment.lastUsed ? relativeTime(equipment.lastUsed) : '',
+    };
+}
+
+function relativeTime(iso) {
+    if (!iso) return '';
+    const then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    const diffMs = Date.now() - then;
+    const day = 1000 * 60 * 60 * 24;
+    const days = Math.floor(diffMs / day);
+    if (days < 1) return 'today';
+    if (days < 7) return `${days}d`;
+    if (days < 30) return `${Math.floor(days / 7)} wk`;
+    if (days < 365) return `${Math.floor(days / 30)} mo`;
+    return `${Math.floor(days / 365)} yr`;
 }
 
 /**
@@ -844,9 +2619,43 @@ export async function openEquipmentDetail(equipmentId) {
     const heroSubtitle = heroSubtitleParts.join(' · ');
     const heroTypeClass = `equip-row__icon--${currentType.toLowerCase()}`;
 
+    // Compute Pocket Inventory stat grid values (Sessions / PR / Last).
+    const detailStats = computeEquipmentDetailStats(equipment);
+    const sessionGym = getSessionLocation();
+    const inferredBp = inferBodyPartFromEquipment(equipment);
+    const bpConfig = BODY_PART_CONFIG[inferredBp] || BODY_PART_CONFIG['Multi-Use'];
+
     container.innerHTML = `
         <div class="equipment-detail">
             <div class="equip-detail-body">
+                <!-- Stat grid — Sessions / PR / Last (Pocket Inventory redesign) -->
+                <div class="detail-stat-grid">
+                    <div class="detail-stat-grid__card">
+                        <div class="detail-stat-grid__label">Sessions</div>
+                        <div class="detail-stat-grid__value">${detailStats.sessions}</div>
+                    </div>
+                    <div class="detail-stat-grid__card">
+                        <div class="detail-stat-grid__label">PR</div>
+                        <div class="detail-stat-grid__value">${detailStats.pr ? `${detailStats.pr.weight}` : '—'}</div>
+                        ${detailStats.pr ? `<div class="detail-stat-grid__sub">${detailStats.pr.reps} reps</div>` : ''}
+                    </div>
+                    <div class="detail-stat-grid__card">
+                        <div class="detail-stat-grid__label">Last</div>
+                        <div class="detail-stat-grid__value">${detailStats.lastRel || '—'}</div>
+                    </div>
+                </div>
+
+                <!-- Tag row — TypePill + bodypart chip + locations count chip -->
+                <div class="detail-tag-row">
+                    <span class="equip-row__type-pill ${heroTypeClass}">${escapeHtml(currentType)}</span>
+                    <span class="chip chip--sm">
+                        <i class="${bpConfig.icon}"></i> ${escapeHtml(inferredBp)}
+                    </span>
+                    <span class="chip chip--sm">
+                        <i class="fas fa-map-marker-alt"></i> ${locations.length} ${locations.length === 1 ? 'gym' : 'gyms'}
+                    </span>
+                </div>
+
                 <!-- Hero — icon + function + Brand · Line subtitle + type badge -->
                 <div class="equip-detail-hero">
                     <div class="equip-detail-hero__icon ${heroTypeClass}">
@@ -941,9 +2750,10 @@ export async function openEquipmentDetail(equipmentId) {
                     <button class="sec-head__action" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Add</button>
                 </div>
                 <div class="chips equip-locations-chips">
-                    ${locations.map(loc => `
-                        <div class="chip active eq-location-chip">
+                    ${locations.map((loc) => `
+                        <div class="chip active eq-location-chip${sessionGym === loc ? ' eq-location-chip--here' : ''}">
                             <i class="fas fa-map-marker-alt"></i> ${escapeHtml(loc)}
+                            ${sessionGym === loc ? '<span class="gym-card__here-pill">Here</span>' : ''}
                             <button class="chip-remove"
                                     onclick="event.stopPropagation(); removeEquipmentLocation('${escapeAttr(equipmentId)}', '${escapeAttr(loc)}')">
                                 <i class="fas fa-times"></i>

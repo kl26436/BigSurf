@@ -28,6 +28,9 @@
 @import url('components/fields.css');
 @import url('components/completion-summary.css');
 @import url('components/toast.css');
+@import url('components/library-tabs.css');
+@import url('components/gym-card.css');
+@import url('components/quick-add-sheet.css');
 
 /* 4. Page-specific layouts */
 @import url('pages/app-shell.css');

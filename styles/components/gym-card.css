@@ -1,0 +1,350 @@
+/* ==========================================================================
+   Gym card — used on the Equipment Library "My gyms" tab.
+
+   Each card shows: name + meta (city / last visit), total machine count,
+   a 6px type-mix bar with one segment per equipment type, and a labeled
+   legend below the bar so the bar's color coding is accessible without
+   color-vision.
+
+   The current GPS-detected gym gets a primary left-border accent + "HERE"
+   badge so users can identify it at a glance.
+   ========================================================================== */
+.gym-card-list {
+    padding: 0 var(--pad-page-compact);
+}
+
+.gym-card {
+    appearance: none;
+    width: 100%;
+    padding: var(--space-10) var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-8);
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
+    transition: background var(--anim-fast);
+}
+.gym-card.is-here { border-left-color: var(--primary); }
+.gym-card:active { background: var(--bg-card-hover); }
+.gym-card:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.gym-card__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+}
+.gym-card__info {
+    flex: 1;
+    min-width: 0;
+}
+.gym-card__name {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.gym-card__here-pill {
+    display: inline-block;
+    margin-left: var(--space-6);
+    padding: 1px var(--space-4);
+    border-radius: var(--radius-xs);
+    background: var(--primary);
+    color: var(--text-on-accent);
+    font-size: var(--font-2xs);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: 2px;
+}
+.gym-card__meta {
+    display: block;
+    font-size: var(--font-2xs);
+    color: var(--text-very-muted);
+    margin-top: var(--space-2);
+}
+.gym-card__count {
+    font-size: var(--font-lg);
+    font-weight: 800;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+.gym-card__chev {
+    font-size: var(--font-2xs);
+    color: var(--text-very-muted);
+    margin-left: var(--space-4);
+}
+
+/* Type-mix bar: each segment uses flex-grow proportional to its count. */
+.gym-card__mix {
+    display: flex;
+    height: 6px;
+    border-radius: var(--radius-xs);
+    overflow: hidden;
+    margin-top: var(--space-8);
+}
+.gym-card__mix-seg { opacity: 0.85; }
+.gym-card__mix-seg--plate-loaded  { background: var(--equip-plate-loaded); }
+.gym-card__mix-seg--selectorized  { background: var(--equip-selectorized); }
+.gym-card__mix-seg--machine       { background: var(--equip-machine); }
+.gym-card__mix-seg--cable         { background: var(--equip-cable); }
+.gym-card__mix-seg--rack          { background: var(--equip-rack); }
+.gym-card__mix-seg--bench         { background: var(--equip-bench); }
+.gym-card__mix-seg--cardio        { background: var(--equip-cardio); }
+.gym-card__mix-seg--barbell       { background: var(--equip-barbell); }
+.gym-card__mix-seg--dumbbell      { background: var(--equip-dumbbell); }
+.gym-card__mix-seg--bodyweight    { background: var(--equip-bodyweight); }
+.gym-card__mix-seg--other         { background: var(--equip-other); }
+
+.gym-card__legend {
+    display: flex;
+    gap: var(--space-10);
+    margin-top: var(--space-6);
+    flex-wrap: wrap;
+}
+.gym-card__legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+}
+.gym-card__legend-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-2xs);
+}
+.gym-card__legend-dot--plate-loaded { background: var(--equip-plate-loaded); }
+.gym-card__legend-dot--selectorized { background: var(--equip-selectorized); }
+.gym-card__legend-dot--machine      { background: var(--equip-machine); }
+.gym-card__legend-dot--cable        { background: var(--equip-cable); }
+.gym-card__legend-dot--rack         { background: var(--equip-rack); }
+.gym-card__legend-dot--bench        { background: var(--equip-bench); }
+.gym-card__legend-dot--cardio       { background: var(--equip-cardio); }
+.gym-card__legend-dot--barbell      { background: var(--equip-barbell); }
+.gym-card__legend-dot--dumbbell     { background: var(--equip-dumbbell); }
+.gym-card__legend-dot--bodyweight   { background: var(--equip-bodyweight); }
+.gym-card__legend-dot--other        { background: var(--equip-other); }
+.gym-card__legend-label { color: var(--text-muted); }
+.gym-card__legend-count {
+    color: var(--text-very-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Stat strip — 4-up summary above the gym list (Gyms / Machines / Brands /
+   Orphans). The Orphans card uses warning colors when its count is > 0.
+   ========================================================================== */
+.stat-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-8);
+    padding: var(--space-8) var(--pad-page);
+}
+.stat-strip__card {
+    padding: var(--space-8) var(--space-6);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-10);
+    text-align: center;
+}
+.stat-strip__card--warning {
+    background: var(--warning-bg);
+    border-color: var(--warning-border);
+}
+.stat-strip__value {
+    font-size: var(--font-base);
+    font-weight: 800;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+}
+.stat-strip__card--warning .stat-strip__value { color: var(--warning); }
+.stat-strip__label {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    color: var(--text-very-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-top: var(--space-2);
+}
+
+/* ==========================================================================
+   Brand tile grid — used on the Catalog tab. 3 columns; each tile drills
+   into the existing brand-section view.
+   ========================================================================== */
+.brand-tile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-8);
+    padding: var(--space-12) var(--pad-page);
+}
+.brand-tile {
+    appearance: none;
+    padding: var(--space-10);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-10);
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
+    min-height: var(--tap);
+}
+.brand-tile:active { background: var(--bg-card-hover); }
+.brand-tile:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+.brand-tile__name {
+    font-size: var(--font-xs);
+    font-weight: 800;
+    color: var(--text-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.brand-tile__meta {
+    margin-top: var(--space-2);
+    font-size: var(--font-2xs);
+    color: var(--text-very-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Catalog tab — search input sits in the qa-sheet__search pattern, with a
+   summary line below the search and an empty-state for no matches. */
+.catalog-search {
+    padding: var(--space-12) var(--pad-page) var(--space-6);
+}
+.catalog-search__clear {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--text-very-muted);
+    cursor: pointer;
+    padding: var(--space-4) var(--space-8);
+}
+.catalog-search__summary {
+    padding: var(--space-6) var(--pad-page) 0;
+    font-size: var(--font-2xs);
+    color: var(--text-very-muted);
+    font-weight: 600;
+}
+.catalog-search__empty {
+    padding: var(--space-32) var(--pad-page);
+}
+
+/* ==========================================================================
+   Gym detail screen — body-part chip strip + grouped compact rows.
+   ========================================================================== */
+.gym-detail__chips {
+    padding: var(--space-8) var(--pad-page-compact);
+    position: sticky;
+    top: 0;
+    background: var(--bg-surface);
+    z-index: var(--z-sticky);
+    border-bottom: 1px solid var(--border-subtle);
+}
+.gym-detail__chips .chip__count {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    color: var(--text-very-muted);
+    margin-left: var(--space-4);
+    font-variant-numeric: tabular-nums;
+}
+.gym-detail__chips .chip.active .chip__count {
+    color: var(--primary);
+}
+
+.gym-detail__group-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--pad-page-compact);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.gym-detail__group-header i {
+    font-size: var(--font-2xs);
+    color: var(--text-very-muted);
+}
+.gym-detail__group-name {
+    flex: 1;
+}
+.gym-detail__group-count {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--text-very-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Machine-detail stat grid + tag row (Pocket Inventory restyle).
+   ========================================================================== */
+.detail-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-8);
+    padding: var(--space-12) var(--pad-page);
+}
+.detail-stat-grid__card {
+    padding: var(--space-12) var(--space-10);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-10);
+}
+.detail-stat-grid__label {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-very-muted);
+}
+.detail-stat-grid__value {
+    margin-top: var(--space-4);
+    font-size: var(--font-lg);
+    font-weight: 800;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+}
+.detail-stat-grid__sub {
+    margin-top: var(--space-2);
+    font-size: var(--font-2xs);
+    color: var(--text-very-muted);
+}
+
+.detail-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+    padding: 0 var(--pad-page) var(--space-12);
+}
+
+/* Page-header subtitle (used in gym detail header) — slot below the title. */
+.page-header__title-block {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.page-header__subtitle {
+    font-size: var(--font-2xs);
+    color: var(--text-very-muted);
+    margin-top: var(--space-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
