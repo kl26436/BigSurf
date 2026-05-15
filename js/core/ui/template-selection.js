@@ -237,6 +237,17 @@ export function showWorkoutSelector() {
 /** Active category filter for the workout selector (null = "All") */
 let activeSelectorCategory = null;
 
+/**
+ * Effective category for a template: the explicit `category` field wins over
+ * the name-derived fallback. Without this, changing a workout's category in
+ * the details accordion saves to Firestore but the pill filter keeps using
+ * getWorkoutCategory(name) — so the row never moves between pills.
+ */
+function effectiveTemplateCategory(t) {
+    if (!t) return 'Other';
+    return t.category || getWorkoutCategory(t._name || t.name || t.day);
+}
+
 /** Cached recent workout history for template recency sorting */
 let cachedWorkoutHistory = null;
 
@@ -313,7 +324,7 @@ async function renderWorkoutSelectorUI() {
     }
 
     // Collect unique categories
-    const categories = [...new Set(allTemplates.map(t => getWorkoutCategory(t._name)))];
+    const categories = [...new Set(allTemplates.map(effectiveTemplateCategory))];
 
     // Render filter pills
     renderCategoryPills(pillsContainer, categories);
@@ -321,7 +332,7 @@ async function renderWorkoutSelectorUI() {
     // Filter by active category
     let filtered = allTemplates;
     if (activeSelectorCategory) {
-        filtered = allTemplates.filter(t => getWorkoutCategory(t._name) === activeSelectorCategory);
+        filtered = allTemplates.filter(t => effectiveTemplateCategory(t) === activeSelectorCategory);
     }
 
     // Sort: most recently used first, then alphabetical
@@ -464,7 +475,7 @@ function renderTemplateRows(container, templates, isFiltered) {
 }
 
 function renderSingleTemplateRow(template) {
-    const category = getWorkoutCategory(template._name);
+    const category = effectiveTemplateCategory(template);
     const color = CATEGORY_COLORS[category] || CATEGORY_COLORS.Other;
     const exercisesArray = normalizeExercisesToArray(template.exercises);
     const exerciseCount = exercisesArray.length;
@@ -1212,7 +1223,7 @@ export function searchWorkoutTemplates(query) {
         // Re-render full list
         let filtered = loadedTemplates;
         if (activeSelectorCategory) {
-            filtered = loadedTemplates.filter(t => getWorkoutCategory(t._name) === activeSelectorCategory);
+            filtered = loadedTemplates.filter(t => effectiveTemplateCategory(t) === activeSelectorCategory);
         }
         filtered = sortTemplatesByRecency(filtered);
         renderTemplateRows(listContainer, filtered, false);
