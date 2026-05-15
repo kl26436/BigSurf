@@ -2,7 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Per-user data: workouts, templates, exercises, equipment, locations, preferences
+    // Admin UID — Kevin (sole writer of global catalogs)
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == 'YpB4kgun28TD3eSBAR8QYfkK4a13';
+    }
+
+    // Per-user data: workouts, templates, exercises, equipment, locations (incl. locations.equipment[]), preferences
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
@@ -15,6 +20,13 @@ service cloud.firestore {
     // Global default workout templates (read-only for authenticated users)
     match /workouts/{docId} {
       allow read: if request.auth != null;
+    }
+
+    // Global equipment catalog — brand-keyed docs containing lines + machines.
+    // All authenticated users read; only admin writes.
+    match /equipmentCatalog/{brandId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     // Error logs: any authenticated user can create; read/delete for debugging

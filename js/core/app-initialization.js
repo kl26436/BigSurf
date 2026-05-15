@@ -410,6 +410,17 @@ export function setupAuthenticationListener() {
             const { PRTracker } = await import('./features/pr-tracker.js');
             await PRTracker.loadPRData();
 
+            // Kick off equipment catalog load (Firestore → falls back to static).
+            // Non-blocking: UI can render before this resolves; consumers await
+            // loadEquipmentCatalog() at their point of use.
+            import('./data/equipment-catalog-firestore.js')
+                .then(({ loadEquipmentCatalog }) => loadEquipmentCatalog())
+                .then((catalog) => {
+                    AppState.equipmentCatalog = catalog;
+                    debugLog(`📦 Equipment catalog ready: ${catalog.length} brands`);
+                })
+                .catch((err) => console.error('❌ Catalog load failed (non-fatal):', err));
+
             // Initialize background notifications
             const { initializeNotifications } = await import('./utils/notification-helper.js');
             await initializeNotifications();

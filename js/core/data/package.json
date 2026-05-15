@@ -1,0 +1,4 @@
+{
+    "//": "Scoped override so Node treats .js files in this directory as ES modules. The codebase is browser-served via <script type='module'>, but Node tooling (e.g. scripts/seed-equipment-catalog.mjs) needs an explicit signal. Ignored by browsers and Firebase Hosting.",
+    "type": "module"
+}

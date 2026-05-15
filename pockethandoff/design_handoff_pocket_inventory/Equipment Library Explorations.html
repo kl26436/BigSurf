@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equipment Library Explorations · Big Surf</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  html, body { margin:0; padding:0; background:#04060a; color:#f6f9ff; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; min-height:100vh; }
+  body { overflow-x: hidden; }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="equipment/shared.jsx"></script>
+<script type="text/babel" src="equipment/data.jsx"></script>
+<script type="text/babel" src="equipment/dir1-tag-and-go.jsx"></script>
+<script type="text/babel" src="equipment/dir2-pocket-inventory.jsx"></script>
+<script type="text/babel" src="equipment/dir3-color-atlas.jsx"></script>
+<script type="text/babel" src="equipment/dir4-body-map.jsx"></script>
+<script type="text/babel" src="equipment/dir5-floorwalker.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "density": "regular",
+  "showMeta": true,
+  "directions": ["d1", "d2", "d3", "d4", "d5"],
+  "screens": ["landing", "gymDetail", "quickAdd", "machineDetail", "history", "browse"]
+}/*EDITMODE-END*/;
+
+const SCREEN_LABELS = {
+  landing:       'Landing · My gyms',
+  gymDetail:     'Gym detail',
+  quickAdd:      'Quick-add sheet',
+  machineDetail: 'Machine detail',
+  history:       'History reconcile',
+  browse:        'Browse catalog',
+};
+
+const DIRECTIONS = [
+  { id: 'd1', label: '01 · Tag & Go',         sub: 'By the book · reuses .equip-row & brand sections',  comp: window.D1 },
+  { id: 'd2', label: '02 · Pocket Inventory', sub: 'Dense / power-user · more info per row',           comp: window.D2 },
+  { id: 'd3', label: '03 · Color Atlas',      sub: 'Equipment-type color forward · browse by type',     comp: window.D3 },
+  { id: 'd4', label: '04 · Body Map',         sub: 'Coverage by body region · novel gym-first viz',     comp: window.D4 },
+  { id: 'd5', label: '05 · Floorwalker',      sub: 'One-handed · bottom-anchored controls · big checkboxes', comp: window.D5 },
+];
+
+const SCREEN_KEYS = {
+  landing: 'Landing',
+  gymDetail: 'GymDetail',
+  quickAdd: 'QuickAdd',
+  machineDetail: 'MachineDetail',
+  history: 'History',
+  browse: 'Browse',
+};
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const enabledDirs = DIRECTIONS.filter(d => t.directions.includes(d.id));
+  const enabledScreens = (t.screens || []).filter(s => SCREEN_KEYS[s]);
+
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection
+          id="overview"
+          title="Equipment Library · 5 directions × 6 screens"
+          subtitle="Strict palette match to BigSurf-B/styles/tokens.css · iPhone 14 · use Tweaks to filter">
+          {enabledDirs.map(dir => (
+            <DCArtboard key={`${dir.id}-strip`} id={`${dir.id}-strip`}
+                        label={`${dir.label} — ${dir.sub}`}
+                        width={(375 + 24) * enabledScreens.length} height={812}>
+              <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+                {enabledScreens.map(s => {
+                  const Comp = dir.comp?.[SCREEN_KEYS[s]];
+                  return (
+                    <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        fontSize: 11, fontWeight: 700, color: '#9aa3ad',
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                      }}>{SCREEN_LABELS[s]}</div>
+                      {Comp ? <Comp density={t.density} showMeta={t.showMeta} /> : <Missing label={SCREEN_LABELS[s]} />}
+                    </div>
+                  );
+                })}
+              </div>
+            </DCArtboard>
+          ))}
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Visible directions" />
+        {DIRECTIONS.map(d => (
+          <TweakToggle key={d.id} label={d.label}
+            value={t.directions.includes(d.id)}
+            onChange={(v) => {
+              const next = v ? [...new Set([...t.directions, d.id])]
+                             : t.directions.filter(x => x !== d.id);
+              setTweak('directions', next);
+            }} />
+        ))}
+
+        <TweakSection title="Visible screens" />
+        {Object.entries(SCREEN_LABELS).map(([id, label]) => (
+          <TweakToggle key={id} label={label}
+            value={(t.screens || []).includes(id)}
+            onChange={(v) => {
+              const next = v ? [...new Set([...(t.screens || []), id])]
+                             : (t.screens || []).filter(x => x !== id);
+              setTweak('screens', next);
+            }} />
+        ))}
+
+        <TweakSection title="Density & metadata" />
+        <TweakRadio label="Density" value={t.density}
+          options={['compact', 'regular', 'spacious']}
+          onChange={(v) => setTweak('density', v)} />
+        <TweakToggle label="Show brand · line · type metadata"
+          value={t.showMeta}
+          onChange={(v) => setTweak('showMeta', v)} />
+      </TweaksPanel>
+    </>
+  );
+}
+
+function Missing({ label }) {
+  return (
+    <div style={{
+      width: 375, height: 812, borderRadius: 44,
+      border: '8px dashed rgba(255,255,255,0.12)',
+      background: '#0a0d12',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#6b7785', fontSize: 13,
+    }}>{label} — not yet</div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

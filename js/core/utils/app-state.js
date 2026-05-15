@@ -14,6 +14,10 @@ export const AppState = {
     workouts: [],
     templates: [],
 
+    // Equipment catalog (Firestore-loaded, augmented-static fallback). Populated
+    // by equipment-catalog-firestore.js once auth completes.
+    equipmentCatalog: null,
+
     // UI State
     globalUnit: 'lbs',
     exerciseUnits: {},

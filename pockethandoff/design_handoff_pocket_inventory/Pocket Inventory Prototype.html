@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pocket Inventory · Big Surf Prototype</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  html, body { margin:0; padding:0; background:#04060a; color:#f6f9ff; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; min-height:100vh; overflow-x: hidden; }
+  #root { min-height: 100vh; }
+  .stage {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr;
+    place-items: center;
+    padding: 40px 24px;
+    gap: 24px;
+  }
+  .stage-title {
+    text-align: center;
+    color: #9aa3ad;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    max-width: 700px;
+  }
+  .stage-title h1 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 800;
+    color: #f6f9ff;
+    letter-spacing: -0.02em;
+  }
+  .stage-jumper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    max-width: 700px;
+  }
+  .jump-btn {
+    appearance: none;
+    background: #111820;
+    border: 1px solid rgba(255,255,255,0.06);
+    color: #c4cad4;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .jump-btn.is-active {
+    background: rgba(29,211,176,0.20);
+    color: #1dd3b0;
+    border-color: rgba(29,211,176,0.30);
+  }
+  .footnote {
+    color: #6b7785;
+    font-size: 11px;
+    max-width: 540px;
+    text-align: center;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="equipment/shared.jsx"></script>
+<script type="text/babel" src="equipment/data.jsx"></script>
+<script type="text/babel" src="equipment/dir2-pocket-inventory.jsx"></script>
+<script type="text/babel" src="equipment/exercise-lib.jsx"></script>
+<script type="text/babel" src="equipment/prototype.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "density": "regular",
+  "showMeta": true,
+  "startScreen": "exDetail"
+}/*EDITMODE-END*/;
+
+// Jumper buttons let the user teleport to any screen without walking the flow.
+const JUMPS = [
+  { id: 'equipLanding',  label: 'Equip · Landing' },
+  { id: 'equipAll',      label: 'Equip · Gym detail' },
+  { id: 'equipCatalog',  label: 'Equip · Browse' },
+  { id: 'machineDetail', label: 'Machine detail' },
+  { id: 'history',       label: 'History · Reconcile' },
+  { id: 'exLibrary',     label: 'Exercises · Library' },
+  { id: 'exDetail',      label: 'Exercises · Detail' },
+];
+
+function ProtoApp() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  // We re-mount the prototype when start screen changes so the stack resets.
+  const [key, setKey] = React.useState(0);
+  React.useEffect(() => { setKey(k => k + 1); }, [t.startScreen]);
+
+  return (
+    <>
+      <div className="stage">
+        <div className="stage-title">
+          <h1>Pocket Inventory · Equipment + Exercise Library</h1>
+          <div>Clickable prototype · tap rows, cards, tabs, and buttons to navigate · all wired up</div>
+        </div>
+        <div className="stage-jumper">
+          {JUMPS.map(j => (
+            <button key={j.id}
+              className={'jump-btn ' + (t.startScreen === j.id ? 'is-active' : '')}
+              onClick={() => setTweak('startScreen', j.id)}>
+              {j.label}
+            </button>
+          ))}
+        </div>
+        <PocketShell key={key} density={t.density} showMeta={t.showMeta} startScreen={t.startScreen} />
+        <div className="footnote">
+          Strict-match palette &amp; tokens from <code>styles/tokens.css</code>.
+          Top toggle on each library screen flips Equipment ↔ Exercises.
+          The amber banner on the landing page taps into the history reconciliation flow.
+          “+ Add” on a gym opens the quick-add sheet.
+        </div>
+      </div>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Layout" />
+        <TweakRadio label="Density" value={t.density}
+          options={['compact', 'regular', 'spacious']}
+          onChange={(v) => setTweak('density', v)} />
+        <TweakToggle label="Show brand · line metadata"
+          value={t.showMeta} onChange={(v) => setTweak('showMeta', v)} />
+
+        <TweakSection title="Start screen" />
+        <TweakSelect label="Land on"
+          value={t.startScreen}
+          options={JUMPS.map(j => j.id)}
+          onChange={(v) => setTweak('startScreen', v)} />
+      </TweaksPanel>
+    </>
+  );
+}
+
+// Wrapper that lets us re-mount the prototype with a different starting screen.
+function PocketShell({ density, showMeta, startScreen }) {
+  // Build initial stack: machineDetail and exDetail need a parent on the stack
+  // so the back button works.
+  let initialStack;
+  switch (startScreen) {
+    case 'machineDetail': initialStack = ['equipAll', 'machineDetail']; break;
+    case 'exDetail':      initialStack = ['exLibrary', 'exDetail']; break;
+    case 'history':       initialStack = ['equipLanding', 'history']; break;
+    default:              initialStack = [startScreen];
+  }
+  return <PocketPrototypeStack density={density} showMeta={showMeta} initialStack={initialStack} />;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<ProtoApp />);
+</script>
+</body>
+</html>
