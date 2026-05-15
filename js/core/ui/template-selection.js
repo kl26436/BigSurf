@@ -238,6 +238,26 @@ export function showWorkoutSelector() {
 let activeSelectorCategory = null;
 
 /**
+ * Canonical Title-Case form for a category string. The details-accordion
+ * chips save lowercase tokens (push/pull/legs/core/cardio/other), while
+ * getWorkoutCategory returns Title-Case ("Push", "Pull", …). Without
+ * normalizing, the pill list renders BOTH "push" and "Push" for the same
+ * logical bucket.
+ */
+function normalizeCategoryLabel(raw) {
+    const k = (raw || '').toLowerCase().trim();
+    if (k === 'push') return 'Push';
+    if (k === 'pull') return 'Pull';
+    if (k === 'legs' || k === 'leg') return 'Legs';
+    if (k === 'core') return 'Core';
+    if (k === 'cardio') return 'Cardio';
+    if (k === 'other' || k === 'mixed' || k === '') return 'Other';
+    // Unknown custom value — preserve the user's casing if it looks
+    // intentional, otherwise Title-Case the first letter.
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+/**
  * Effective category for a template: the explicit `category` field wins over
  * the name-derived fallback. Without this, changing a workout's category in
  * the details accordion saves to Firestore but the pill filter keeps using
@@ -245,7 +265,7 @@ let activeSelectorCategory = null;
  */
 function effectiveTemplateCategory(t) {
     if (!t) return 'Other';
-    return t.category || getWorkoutCategory(t._name || t.name || t.day);
+    return normalizeCategoryLabel(t.category || getWorkoutCategory(t._name || t.name || t.day));
 }
 
 /** Cached recent workout history for template recency sorting */

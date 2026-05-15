@@ -108,7 +108,8 @@ BigSurf/
 ├── manifest.json                    # PWA manifest
 ├── CLAUDE.md                        # Project guidance for Claude Code (architecture, conventions)
 ├── README.md                        # This file
-├── ROADMAP.md, DESIGN-BACKLOG.md    # Long-running roadmap + cleanup tracker
+├── ROADMAP.md                       # Forward-looking roadmap (what's next)
+├── DESIGN-BACKLOG.md                # Design debt tracker
 ├── firebase.json, firestore.rules   # Firebase deploy config
 ├── styles/
 │   ├── index.css                    # @imports all modules in load order
@@ -120,8 +121,10 @@ BigSurf/
 ├── docs/
 │   ├── DEPLOYMENT.md                # Firebase deployment guide
 │   ├── MOBILE_TESTING.md            # Mobile & PWA testing guide
-│   ├── implementation-plan.md       # The plan that drove the most recent overhaul
-│   └── archive/                     # Shipped implementation guides + old design critiques
+│   └── edit-history-redesign.md     # Spec for inline history editing
+├── specs/                           # Active design specs + briefs
+│   ├── equipment-system-v2.md       # Equipment system architecture (data model, migration)
+│   └── equipment-library-redesign-brief.md  # UX design brief for mockups
 ├── functions/                       # Firebase Cloud Functions (push notifications, geocoding, Withings)
 ├── mockups/                         # Reference HTML mockups still in use
 ├── scripts/                         # Tooling (design-audit, copy-lint, pre-commit hook, archive of one-offs)

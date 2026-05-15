@@ -499,6 +499,38 @@ grep -rn 'cannot' js/ | grep -v '//'
 
 Address violations in the PR that introduces them; don't let them accumulate.
 
+## Deployment
+
+The app has two Firebase Hosting targets:
+
+- `dev` → `bigsurf-dev` — no-cache headers, used for verification before prod
+- `prod` → `workout-tracker-b94b6` — 1-year `max-age` on JS/CSS, only `index.html` is no-cache
+
+**Always deploy to `dev` first, never directly to `prod`.** Prod is the safety net for users; if a bad build ships there, the 1-year cache pins it on their devices until they hard-refresh.
+
+```bash
+# Verify a change
+firebase deploy --only hosting:dev
+
+# Promote to prod ONLY after verifying on dev
+firebase deploy --only hosting:prod
+```
+
+Bare `firebase deploy` or `firebase deploy --only hosting` deploys BOTH targets — don't use those forms.
+
+## Quality Checks Before Declaring Work Done
+
+After meaningful changes, run the relevant subset before saying a task is complete:
+
+| Change type | Run |
+|-------------|-----|
+| JS render-function / feature / data-layer | `npm test` + `npm run lint` + `npm run audit:design` |
+| Pure data file (catalog seed, fixtures) | Verify data loads; skip Vitest/lint |
+| CSS-only (tokens, components, restyle) | `npm run audit:design` (catches raw colors, untokenized font sizes, duplicate classes) |
+| HTML structure | `npm run audit:design` + manual smoke test |
+
+`npm run audit:design --strict` is the must-pass variant. Existing baseline: ~127 lint warnings (mostly `no-unused-vars`), 0 lint errors. New work shouldn't make either worse. Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
+
 ## Important Notes
 
 - **No bundler/transpiler**: All code must be ES6 module compatible
