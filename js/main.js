@@ -24,7 +24,7 @@ import {
     toggleQuickAddRow, setQuickAddSearch, setQuickAddBp, commitQuickAdd, closeQuickAddSheet,
     addFlowSetType,
     openAddFlowBrandPicker, openAddFlowLinePicker, openAddFlowFunctionPicker,
-    reviewDiscoveredEquipment, exitScanReview, addUnlinkedEquipment, dismissUnlinkedEquipment,
+    reviewDiscoveredEquipment, exitScanReview, addUnlinkedEquipment, dismissUnlinkedEquipment, deleteOrphanFromHistory,
     linkOrphanToSuggestion, autoLinkAllOrphans,
     openManualLinkPicker, setManualLinkSearch, selectManualLinkTarget, closeManualLinkPicker,
     closeBrandCatalog, openCatalogMachineAddToGym,
@@ -1042,6 +1042,7 @@ window.reviewDiscoveredEquipment = reviewDiscoveredEquipment;
 window.exitScanReview = exitScanReview;
 window.addUnlinkedEquipment = addUnlinkedEquipment;
 window.dismissUnlinkedEquipment = dismissUnlinkedEquipment;
+window.deleteOrphanFromHistory = deleteOrphanFromHistory;
 window.linkOrphanToSuggestion = linkOrphanToSuggestion;
 window.autoLinkAllOrphans = autoLinkAllOrphans;
 window.openManualLinkPicker = openManualLinkPicker;

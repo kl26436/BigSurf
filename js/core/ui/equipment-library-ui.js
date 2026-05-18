@@ -260,14 +260,36 @@ async function scanForUnlinkedEquipment() {
 
             if (!found.has(equipName)) {
                 found.set(equipName, {
-                    exercises: new Set(),
+                    // Map of exerciseName → usage count so we can show the
+                    // user where each orphan was actually used (most-used
+                    // first). Multiple exercise names can share an orphan
+                    // when the user renamed across sessions.
+                    exerciseCounts: new Map(),
                     locations: new Set(),
+                    lastDate: null,
+                    lastWorkoutId: null,   // for the "View last session" link
+                    lastSets: null,        // sample sets from the most recent session
                     count: 0,
                 });
             }
             const entry = found.get(equipName);
-            if (ex.name) entry.exercises.add(ex.name);
+            const exName = ex.name || ex.machine;
+            if (exName) {
+                entry.exerciseCounts.set(exName, (entry.exerciseCounts.get(exName) || 0) + 1);
+            }
             if (w.location) entry.locations.add(w.location);
+            if (w.date && (!entry.lastDate || w.date > entry.lastDate)) {
+                entry.lastDate = w.date;
+                entry.lastWorkoutId = w.id;
+                // Snapshot up to 3 sets from this exercise on the most
+                // recent session — concrete numbers help the user recall
+                // what machine they were actually using.
+                const sets = (ex.sets || [])
+                    .filter(s => s && (s.reps || s.weight))
+                    .slice(0, 3)
+                    .map(s => `${s.reps || '?'}×${s.weight || 'BW'}${s.weight && s.originalUnit ? ` ${s.originalUnit}` : ''}`);
+                entry.lastSets = sets.length > 0 ? sets.join(' · ') : null;
+            }
             entry.count++;
         }
     }
@@ -338,14 +360,45 @@ function renderScanReview() {
     }
 
     const rowsHTML = itemsWithSuggestions.map((item) => {
-        const exerciseList = [...item.exercises].slice(0, 3).join(', ');
-        const exerciseSuffix = item.exercises.size > 3 ? `, +${item.exercises.size - 3}` : '';
+        // exerciseCounts is a Map<name, count> from scanForUnlinkedEquipment;
+        // sort most-used first so the user sees the dominant exercise.
+        const exerciseEntries = item.exerciseCounts
+            ? [...item.exerciseCounts.entries()].sort((a, b) => b[1] - a[1])
+            : [];
         const locationStr = [...item.locations].join(', ');
         const metaParts = [
             `${item.count} session${item.count !== 1 ? 's' : ''}`,
-            exerciseList ? `${exerciseList}${exerciseSuffix}` : null,
+            item.lastDate ? `last ${relativeTime(item.lastDate)}` : null,
             locationStr,
         ].filter(Boolean).join(' · ');
+
+        // Most-used exercise gets the "primary" treatment with its session
+        // count — secondary exercises follow as small chips. This is what
+        // the user actually needs to identify the orphan: "oh right, that's
+        // the cable I used for 4 face pull sessions".
+        const exercisesHTML = exerciseEntries.length > 0
+            ? `<div class="scan-review-row__exercises">
+                    <i class="fas fa-dumbbell"></i>
+                    <span class="scan-review-row__exercise-primary">${escapeHtml(exerciseEntries[0][0])}</span>
+                    <span class="scan-review-row__exercise-count">×${exerciseEntries[0][1]}</span>
+                    ${exerciseEntries.slice(1).map(([n, c]) => `
+                        <span class="scan-review-row__exercise-chip">${escapeHtml(n)} ×${c}</span>
+                    `).join('')}
+                </div>`
+            : `<div class="scan-review-row__exercises scan-review-row__exercises--empty">
+                    <i class="fas fa-question-circle"></i>
+                    <span>No exercise name recorded for this equipment in any session</span>
+                </div>`;
+
+        // Sample sets from the most recent session help concretize the
+        // identity — concrete numbers like "10×135 lbs" make it easy to
+        // remember which machine.
+        const lastSetsHTML = item.lastSets
+            ? `<div class="scan-review-row__sets">
+                    <i class="fas fa-history"></i>
+                    <span>${escapeHtml(item.lastSets)}</span>
+                </div>`
+            : '';
 
         // Primary action: Link-to-suggestion when present; otherwise plain Link
         // which opens the manual picker. Add and Skip are always available.
@@ -376,6 +429,8 @@ function renderScanReview() {
             <div class="scan-review-row">
                 <div class="scan-review-row__info">
                     <div class="scan-review-row__name">"${escapeHtml(item.name)}"</div>
+                    ${exercisesHTML}
+                    ${lastSetsHTML}
                     <div class="scan-review-row__meta">${escapeHtml(metaParts)}</div>
                     ${suggestionPreview}
                 </div>
@@ -384,6 +439,7 @@ function renderScanReview() {
                     ${otherAction}
                     <button class="btn btn-text btn-small" onclick="addUnlinkedEquipment('${escapeAttr(item.name)}')">Add new</button>
                     <button class="btn btn-text btn-small" onclick="dismissUnlinkedEquipment('${escapeAttr(item.name)}')">Skip</button>
+                    <button class="btn btn-text btn-small scan-review-row__delete" onclick="deleteOrphanFromHistory('${escapeAttr(item.name)}')" aria-label="Delete from history"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
@@ -710,6 +766,62 @@ export function dismissUnlinkedEquipment(name) {
         exitScanReview();
     } else {
         renderEquipmentLibrary();
+    }
+}
+
+/**
+ * Permanently strip an orphan equipment name from workout history. Useful when
+ * the user has typo / duplicate / test-data names they never want to map.
+ * Walks every workout that referenced the orphan and clears the `equipment`
+ * field on those exercises; the workout itself stays so set/rep data isn't lost.
+ */
+export async function deleteOrphanFromHistory(orphanName) {
+    if (!orphanName) return;
+    const sessionCount = unlinkedEquipment?.get(orphanName)?.count || 0;
+    if (!confirm(`Delete "${orphanName}" from ${sessionCount} workout session${sessionCount !== 1 ? 's' : ''}?\n\nThis clears the equipment label only — your sets and reps stay intact.`)) {
+        return;
+    }
+    try {
+        const userId = AppState.currentUser.uid;
+        const workouts = await getManager().getUserWorkouts();
+        const affected = workouts.filter((w) => {
+            const exs = w.exercises || {};
+            return Object.keys(exs).some((k) => exs[k]?.equipment === orphanName);
+        });
+
+        const CHUNK = 400;
+        for (let i = 0; i < affected.length; i += CHUNK) {
+            const batch = writeBatch(db);
+            for (const w of affected.slice(i, i + CHUNK)) {
+                const exs = { ...(w.exercises || {}) };
+                let touched = false;
+                for (const k of Object.keys(exs)) {
+                    if (exs[k]?.equipment === orphanName) {
+                        const { equipment, ...rest } = exs[k];
+                        exs[k] = rest;
+                        touched = true;
+                    }
+                }
+                if (touched) {
+                    batch.set(
+                        doc(db, 'users', userId, 'workouts', w.id),
+                        { ...w, exercises: exs, lastUpdated: new Date().toISOString() }
+                    );
+                }
+            }
+            await batch.commit();
+        }
+
+        if (unlinkedEquipment) unlinkedEquipment.delete(orphanName);
+        showNotification(`Removed "${orphanName}" from ${affected.length} workout${affected.length !== 1 ? 's' : ''}`, 'success', 2000);
+        if (getUnlinkedActive().length === 0) {
+            exitScanReview();
+        } else {
+            renderEquipmentLibrary();
+        }
+    } catch (err) {
+        console.error('❌ Failed to delete orphan from history:', err);
+        showNotification("Couldn't delete orphan — try again", 'error');
     }
 }
 
@@ -1165,17 +1277,36 @@ function renderCatalogMachineDetail() {
     `;
 }
 
+// Tracks in-flight toggles by `${locationId}|${catalogRef}` so a double-tap
+// during the Firestore round-trip doesn't queue a duplicate add.
+const _inFlightCatalogToggles = new Set();
+
 /**
  * Toggle a catalog machine on/off for one of the user's gyms — used from
- * the gym list on the catalog machine detail page.
+ * the gym list on the catalog machine detail page. Optimistic: updates the
+ * in-memory location and re-renders immediately so the user gets instant
+ * feedback, then reconciles with the server response.
  */
 export async function toggleCatalogMachineAtGym(locationId) {
     if (!_catalogDetailRef || !locationId) return;
+    const key = `${locationId}|${_catalogDetailRef}`;
+    if (_inFlightCatalogToggles.has(key)) return;     // ignore double-tap
+    _inFlightCatalogToggles.add(key);
+
     const loc = allLocations.find((l) => l.id === locationId);
-    if (!loc) return;
+    if (!loc) { _inFlightCatalogToggles.delete(key); return; }
 
     const items = Array.isArray(loc.equipment) ? loc.equipment : [];
     const hasIt = items.some((e) => e.catalogRef === _catalogDetailRef);
+
+    // Optimistic local update — paint the new state immediately so the
+    // user sees the checkmark / status flip on tap, not after the round-trip.
+    if (hasIt) {
+        loc.equipment = items.filter((e) => e.catalogRef !== _catalogDetailRef);
+    } else {
+        loc.equipment = [...items, { catalogRef: _catalogDetailRef, nickname: '', notes: '', addedAt: new Date().toISOString() }];
+    }
+    renderCatalogMachineDetail();
 
     try {
         if (hasIt) {
@@ -1185,12 +1316,18 @@ export async function toggleCatalogMachineAtGym(locationId) {
             await getManager().addLocationEquipment(locationId, [{ catalogRef: _catalogDetailRef }]);
             showNotification(`Added to ${loc.name}`, 'success', 1200);
         }
+        // Reconcile with the server in case anything else changed.
         const refreshed = await getManager().getUserLocations();
         allLocations = refreshed;
         renderCatalogMachineDetail();
     } catch (err) {
         console.error('Toggle catalog machine at gym failed:', err);
+        // Roll back the optimistic update.
+        loc.equipment = items;
+        renderCatalogMachineDetail();
         showNotification("Couldn't save — try again", 'error');
+    } finally {
+        _inFlightCatalogToggles.delete(key);
     }
 }
 
@@ -2511,6 +2648,12 @@ function renderBrandView(filtered) {
                                 ${metaParts ? `<span class="equip-row__meta-text">${escapeHtml(metaParts)}</span>` : ''}
                             </div>
                         </div>
+                        <button class="equip-row__more"
+                                onclick="event.stopPropagation(); deleteEquipmentFromLibrary('${escapeAttr(equip.id)}')"
+                                aria-label="Delete ${escapeAttr(displayName)}"
+                                title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
                         <i class="fas fa-chevron-right equip-row__chevron"></i>
                     </div>
                 `;

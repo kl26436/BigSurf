@@ -18,6 +18,7 @@ import {
     arrayUnion,
     arrayRemove,
     deleteField,
+    runTransaction,
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import {
     getAuth,
@@ -85,6 +86,7 @@ export {
     arrayUnion,
     arrayRemove,
     deleteField,
+    runTransaction,
     onAuthStateChanged,
     signInWithPopup,
     signInWithRedirect,

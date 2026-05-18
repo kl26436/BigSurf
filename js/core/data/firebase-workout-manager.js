@@ -19,6 +19,7 @@ import {
     writeBatch,
     arrayUnion,
     arrayRemove,
+    runTransaction,
 } from './firebase-config.js';
 import { showNotification } from '../ui/ui-helpers.js';
 import {
@@ -1472,28 +1473,36 @@ export class FirebaseWorkoutManager {
         if (!locationId || !Array.isArray(items) || items.length === 0) return [];
 
         const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'locations', locationId);
-        const snap = await getDoc(docRef);
-        if (!snap.exists()) {
-            throw new Error(`Location ${locationId} not found`);
-        }
 
-        const existing = Array.isArray(snap.data().equipment) ? snap.data().equipment : [];
-        const existingRefs = new Set(existing.map((e) => e.catalogRef));
+        // Wrap read-modify-write in a transaction so two near-simultaneous
+        // add calls (e.g. user double-tapping during the network round-trip)
+        // can't both pass the existence check and both write. Without this
+        // the same catalogRef ended up in equipment[] twice with different
+        // addedAt timestamps — arrayUnion couldn't dedup since the objects
+        // weren't identical.
+        return await runTransaction(this.db, async (tx) => {
+            const snap = await tx.get(docRef);
+            if (!snap.exists()) {
+                throw new Error(`Location ${locationId} not found`);
+            }
 
-        const now = new Date().toISOString();
-        const fresh = items
-            .filter((it) => typeof it.catalogRef === 'string' && it.catalogRef.includes('/') && !existingRefs.has(it.catalogRef))
-            .map((it) => ({
-                catalogRef: it.catalogRef,
-                nickname: it.nickname || '',
-                notes: it.notes || '',
-                addedAt: it.addedAt || now,
-            }));
+            const existing = Array.isArray(snap.data().equipment) ? snap.data().equipment : [];
+            const existingRefs = new Set(existing.map((e) => e.catalogRef));
 
-        if (fresh.length === 0) return [];
+            const now = new Date().toISOString();
+            const fresh = items
+                .filter((it) => typeof it.catalogRef === 'string' && it.catalogRef.includes('/') && !existingRefs.has(it.catalogRef))
+                .map((it) => ({
+                    catalogRef: it.catalogRef,
+                    nickname: it.nickname || '',
+                    notes: it.notes || '',
+                    addedAt: it.addedAt || now,
+                }));
 
-        await updateDoc(docRef, { equipment: arrayUnion(...fresh) });
-        return fresh;
+            if (fresh.length === 0) return [];
+            tx.update(docRef, { equipment: [...existing, ...fresh] });
+            return fresh;
+        });
     }
 
     /**
