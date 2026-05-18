@@ -20,7 +20,7 @@ import {
     saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField, removeEquipmentLocation,
     setEquipmentView, toggleBrandSection,
     setEquipmentTab, openGymDetail, openBrandCatalog,
-    closeGymDetail, setGymBpFilter, openCatalogMachine, openQuickAddSheet,
+    closeGymDetail, setGymBpFilter, openCatalogMachine, toggleCatalogMachineAtGym, openQuickAddSheet,
     toggleQuickAddRow, setQuickAddSearch, setQuickAddBp, commitQuickAdd, closeQuickAddSheet,
     addFlowSetType,
     openAddFlowBrandPicker, openAddFlowLinePicker, openAddFlowFunctionPicker,
@@ -1023,6 +1023,7 @@ window.openBrandCatalog = openBrandCatalog;
 window.closeGymDetail = closeGymDetail;
 window.setGymBpFilter = setGymBpFilter;
 window.openCatalogMachine = openCatalogMachine;
+window.toggleCatalogMachineAtGym = toggleCatalogMachineAtGym;
 window.openQuickAddSheet = openQuickAddSheet;
 window.toggleQuickAddRow = toggleQuickAddRow;
 window.setQuickAddSearch = setQuickAddSearch;

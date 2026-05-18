@@ -1043,12 +1043,155 @@ export function setGymBpFilter(bp) {
     renderEquipmentLibrary();
 }
 
+// Module state for the catalog machine detail view — used so the toggle
+// handler can re-render the page after each gym change without losing context.
+let _catalogDetailRef = null;
+
 /**
- * Stub for the catalog machine detail page (Phase 3 follow-up). Phase 2 only
- * needs this to silently succeed so the row click handler doesn't error out.
+ * Catalog machine detail page. Shows the machine's brand/line/type/bodyPart
+ * and lets the user toggle which of their gyms have this machine in their
+ * inventory (per equipment-system-v2 spec). Replaces the prior "coming soon"
+ * stub that just showed a toast.
  */
-export function openCatalogMachine(catalogRef) {
-    showNotification(`Catalog machine detail coming soon: ${catalogRef}`, 'info');
+export async function openCatalogMachine(catalogRef) {
+    const catalog = getCatalogSync();
+    const resolved = resolveCatalogRef(catalogRef, catalog);
+    if (!resolved) {
+        showNotification('Catalog machine not found', 'error');
+        return;
+    }
+
+    // Make sure we have the latest locations so the toggle state is correct.
+    try {
+        const locs = await getManager().getUserLocations();
+        if (Array.isArray(locs)) allLocations = locs;
+    } catch (_) { /* fall back to whatever's already cached */ }
+
+    _catalogDetailRef = catalogRef;
+    renderCatalogMachineDetail();
+}
+
+function renderCatalogMachineDetail() {
+    if (!_catalogDetailRef) return;
+    const catalog = getCatalogSync();
+    const resolved = resolveCatalogRef(_catalogDetailRef, catalog);
+    if (!resolved) return;
+
+    const { brand, line, machine } = resolved;
+    const container = document.getElementById('equipment-library-content');
+    if (!container) return;
+
+    // Swap the static page header for the detail variant — title is the
+    // machine name; back routes through backToEquipmentList so any
+    // returnTo context still works.
+    const section = document.getElementById('equipment-library-section');
+    const staticHeader = section?.querySelector('.page-header');
+    if (staticHeader) {
+        staticHeader.innerHTML = `
+            <div class="page-header__left">
+                <button class="page-header__back" onclick="backToEquipmentList()" aria-label="Back">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-header__title">${escapeHtml(machine.name)}</div>
+            </div>
+        `;
+    }
+
+    const type = machine.type || line.type || 'Other';
+    const typeInfo = EQUIPMENT_TYPE_ICONS[type] || EQUIPMENT_TYPE_ICONS.Other;
+    const bodyPart = machine.bodyPart || 'Multi-Use';
+
+    // Determine which of the user's gyms already have this machine. We match
+    // BOTH the canonical catalog ref AND legacy name-only entries so older
+    // tags (set before catalogRef was stored) still count.
+    const machineNameLC = machine.name.toLowerCase();
+    const gymStates = allLocations.map((loc) => {
+        const items = Array.isArray(loc.equipment) ? loc.equipment : [];
+        const hasIt = items.some((e) =>
+            e.catalogRef === _catalogDetailRef
+            || (e.name && e.name.toLowerCase() === machineNameLC)
+        );
+        return { id: loc.id, name: loc.name, hasIt };
+    });
+
+    const metaParts = [brand.name, line.name, type, bodyPart].filter(Boolean);
+    const gymRowsHTML = gymStates.length === 0
+        ? `<div class="empty-state-compact">
+                <i class="fas fa-map-marker-alt"></i>
+                <p>No gyms saved yet</p>
+                <p class="empty-state-hint">Start a workout to stamp a gym, then come back here to tag equipment.</p>
+            </div>`
+        : gymStates.map((g) => `
+            <button class="cm-gym-row${g.hasIt ? ' cm-gym-row--on' : ''}"
+                    onclick="toggleCatalogMachineAtGym('${escapeAttr(g.id)}')">
+                <i class="fas ${g.hasIt ? 'fa-check-circle' : 'fa-circle'} cm-gym-row__check"></i>
+                <span class="cm-gym-row__name">${escapeHtml(g.name)}</span>
+                <span class="cm-gym-row__status">${g.hasIt ? 'At this gym' : 'Tap to add'}</span>
+            </button>
+        `).join('');
+
+    // Exercises linked to this machine. Spec keeps this empty for now (Kevin
+    // populates the mapping over time) — show a hint instead of nothing.
+    const exerciseList = Array.isArray(machine.exercises) ? machine.exercises
+        : (machine.exercises?.primary || []);
+    const exercisesHTML = exerciseList.length > 0
+        ? `<ul class="cm-exercise-list">
+                ${exerciseList.map((e) => `<li>${escapeHtml(typeof e === 'string' ? e : (e.name || ''))}</li>`).join('')}
+            </ul>`
+        : `<p class="cm-hint">No exercises mapped to this machine yet.</p>`;
+
+    container.innerHTML = `
+        <div class="cm-detail">
+            <div class="cm-header">
+                <div class="cm-header__icon equip-row__icon--${slugType(type)}">
+                    <i class="fas ${typeInfo.icon}"></i>
+                </div>
+                <div class="cm-header__info">
+                    <div class="cm-header__name">${escapeHtml(machine.name)}</div>
+                    <div class="cm-header__meta">${escapeHtml(metaParts.join(' · '))}</div>
+                </div>
+            </div>
+
+            <div class="cm-section">
+                <div class="cm-section__title">At your gyms</div>
+                <div class="cm-gym-list">${gymRowsHTML}</div>
+            </div>
+
+            <div class="cm-section">
+                <div class="cm-section__title">Exercises</div>
+                ${exercisesHTML}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Toggle a catalog machine on/off for one of the user's gyms — used from
+ * the gym list on the catalog machine detail page.
+ */
+export async function toggleCatalogMachineAtGym(locationId) {
+    if (!_catalogDetailRef || !locationId) return;
+    const loc = allLocations.find((l) => l.id === locationId);
+    if (!loc) return;
+
+    const items = Array.isArray(loc.equipment) ? loc.equipment : [];
+    const hasIt = items.some((e) => e.catalogRef === _catalogDetailRef);
+
+    try {
+        if (hasIt) {
+            await getManager().removeLocationEquipment(locationId, _catalogDetailRef);
+            showNotification(`Removed from ${loc.name}`, 'success', 1200);
+        } else {
+            await getManager().addLocationEquipment(locationId, [{ catalogRef: _catalogDetailRef }]);
+            showNotification(`Added to ${loc.name}`, 'success', 1200);
+        }
+        const refreshed = await getManager().getUserLocations();
+        allLocations = refreshed;
+        renderCatalogMachineDetail();
+    } catch (err) {
+        console.error('Toggle catalog machine at gym failed:', err);
+        showNotification("Couldn't save — try again", 'error');
+    }
 }
 
 // ===================================================================
@@ -2796,6 +2939,7 @@ export async function openEquipmentDetail(equipmentId) {
 
 export function backToEquipmentList() {
     currentDetailId = null;
+    _catalogDetailRef = null;
     // Always restore the canonical header + list view so a future standalone
     // open of the library shows a clean state, even if we're about to hand
     // control back to a caller via returnTo.

@@ -475,14 +475,17 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
 
             ${prsHtml}
 
-            ${templateChanges?.hasChanges && workoutData.templateId && !workoutData.templateIsDefault ? `
+            ${templateChanges?.hasChanges && workoutData.templateId ? `
             <div class="completion-template-changes" id="template-changes-banner">
                 <div class="template-changes-text">
                     <i class="fas fa-sync-alt"></i>
                     <span>Workout modified (${templateChanges.details.join(', ')})</span>
                 </div>
-                <button class="btn btn-primary btn-small" id="save-template-changes-btn">Update workout</button>
-                <button class="btn-text" id="dismiss-template-changes-btn"><i class="fas fa-times"></i></button>
+                <div class="template-changes-actions">
+                    <button class="btn btn-primary btn-small" id="save-template-changes-btn">${workoutData.templateIsDefault ? 'Save changes' : 'Update workout'}</button>
+                    <button class="btn btn-secondary btn-small" id="save-as-new-template-btn">Save as new</button>
+                    <button class="btn-text" id="dismiss-template-changes-btn" aria-label="Dismiss"><i class="fas fa-times"></i></button>
+                </div>
             </div>
             ` : ''}
 
@@ -517,7 +520,11 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
         navigateTo('dashboard');
     });
 
-    // Template changes: save or dismiss
+    // Template changes: save or dismiss. For default templates we save the
+    // user-modified version as a custom override (overridesDefault: defaultId)
+    // so the original default stays intact for other users; for custom
+    // templates we update in place. Either path uses saveWorkoutTemplate
+    // since updateWorkoutTemplate doesn't set overridesDefault.
     document.getElementById('save-template-changes-btn')?.addEventListener('click', async () => {
         try {
             const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
@@ -541,9 +548,21 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                     };
                 });
 
-            await workoutManager.updateWorkoutTemplate(workoutData.templateId, {
-                exercises: updatedExercises,
-            });
+            if (workoutData.templateIsDefault) {
+                // Defaults are shared seed data — we can't mutate them. Save
+                // the modifications as a custom override; the dedup in
+                // getUserWorkoutTemplates will show this version going forward.
+                await workoutManager.saveWorkoutTemplate({
+                    id: workoutData.templateId,
+                    name: workoutData.workoutType,
+                    exercises: updatedExercises,
+                    overridesDefault: workoutData.templateId,
+                });
+            } else {
+                await workoutManager.updateWorkoutTemplate(workoutData.templateId, {
+                    exercises: updatedExercises,
+                });
+            }
 
             const banner = document.getElementById('template-changes-banner');
             if (banner) banner.innerHTML = '<i class="fas fa-check completion-template-saved"></i> Workout updated';
@@ -551,6 +570,51 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
         } catch (err) {
             console.error('Error updating template:', err);
             showNotification("Couldn't update workout", 'error');
+        }
+    });
+
+    // Save the modified workout under a brand new name instead of overwriting
+    // the source template. Keeps the original intact and adds a new template
+    // to the user's library.
+    document.getElementById('save-as-new-template-btn')?.addEventListener('click', async () => {
+        const suggested = `${workoutData.workoutType || 'Workout'} (modified)`;
+        const newName = prompt('Name this new workout:', suggested);
+        if (!newName || !newName.trim()) return;
+
+        try {
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            const workoutManager = new FirebaseWorkoutManager(AppState);
+
+            const updatedExercises = Object.keys(workoutData.exercises || {})
+                .sort()
+                .map(key => {
+                    const idx = key.replace('exercise_', '');
+                    const orig = workoutData.originalWorkout?.exercises?.[idx] || {};
+                    const savedEx = workoutData.exercises[key];
+                    return {
+                        ...orig,
+                        machine: workoutData.exerciseNames?.[key] || orig.machine || orig.name,
+                        name: workoutData.exerciseNames?.[key] || orig.name || orig.machine,
+                        equipment: savedEx.equipment || orig.equipment,
+                        sets: orig.sets || 3,
+                        reps: orig.reps || 10,
+                        weight: orig.weight || 0,
+                    };
+                });
+
+            // Omit id so saveWorkoutTemplate generates a fresh one from the
+            // new name — keeps the source template untouched.
+            await workoutManager.saveWorkoutTemplate({
+                name: newName.trim(),
+                exercises: updatedExercises,
+            });
+
+            const banner = document.getElementById('template-changes-banner');
+            if (banner) banner.innerHTML = `<i class="fas fa-check completion-template-saved"></i> Saved as "${escapeHtml(newName.trim())}"`;
+            showNotification(`Saved as "${newName.trim()}"`, 'success');
+        } catch (err) {
+            console.error('Error saving as new template:', err);
+            showNotification("Couldn't save new workout", 'error');
         }
     });
 

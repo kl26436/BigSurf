@@ -6,8 +6,9 @@
  *   node scripts/error-logs.js              # List recent errors
  *   node scripts/error-logs.js --all        # List all errors
  *   node scripts/error-logs.js --bugs       # Show only user bug reports
- *   node scripts/error-logs.js --clear      # Delete all error logs
- *   node scripts/error-logs.js --clear-old  # Delete errors older than 7 days
+ *   node scripts/error-logs.js --clear           # Delete all error logs
+ *   node scripts/error-logs.js --clear-old       # Delete errors older than 7 days
+ *   node scripts/error-logs.js --clear-before=YYYY-MM-DD  # Delete errors strictly before the given local date
  *
  * Auth: uses Firebase CLI stored credentials automatically (npx firebase login)
  */
@@ -156,13 +157,16 @@ async function listErrors(token, { all = false, bugsOnly = false } = {}) {
     }
 }
 
-async function clearErrors(token, { olderThanDays = null } = {}) {
+async function clearErrors(token, { olderThanDays = null, beforeDate = null } = {}) {
     const docs = await runQuery(token, { all: true });
 
     let toDelete = docs;
     if (olderThanDays) {
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - olderThanDays);
+        toDelete = docs.filter(e => new Date(e.timestamp) < cutoff);
+    } else if (beforeDate) {
+        const cutoff = new Date(beforeDate);
         toDelete = docs.filter(e => new Date(e.timestamp) < cutoff);
     }
 
@@ -180,6 +184,8 @@ async function clearErrors(token, { olderThanDays = null } = {}) {
 // Parse CLI args and run
 const args = process.argv.slice(2);
 const flags = new Set(args);
+const clearBeforeArg = args.find(a => a.startsWith('--clear-before='));
+const clearBeforeDate = clearBeforeArg ? clearBeforeArg.split('=')[1] : null;
 
 (async () => {
     try {
@@ -187,6 +193,8 @@ const flags = new Set(args);
 
         if (flags.has('--clear')) {
             await clearErrors(token);
+        } else if (clearBeforeDate) {
+            await clearErrors(token, { beforeDate: clearBeforeDate });
         } else if (flags.has('--clear-old')) {
             await clearErrors(token, { olderThanDays: 7 });
         } else {
