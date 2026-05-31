@@ -17,7 +17,7 @@ import {
     assignExerciseToEquipment, filterAssignList, confirmAssignExercise, unassignExercise,
     saveEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
     saveEquipmentNotes, showAddEquipmentFlow, confirmAddEquipment,
-    saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField, removeEquipmentLocation,
+    saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField, removeEquipmentLocation, addEquipmentLocation,
     setEquipmentView, toggleBrandSection,
     setEquipmentTab, openGymDetail, openBrandCatalog,
     closeGymDetail, setGymBpFilter, openCatalogMachine, toggleCatalogMachineAtGym, openQuickAddSheet,
@@ -1015,6 +1015,7 @@ window.saveEquipmentNotes = saveEquipmentNotes;
 window.showAddEquipmentFlow = showAddEquipmentFlow;
 window.confirmAddEquipment = confirmAddEquipment;
 window.removeEquipmentLocation = removeEquipmentLocation;
+window.addEquipmentLocation = addEquipmentLocation;
 window.setEquipmentView = setEquipmentView;
 window.toggleBrandSection = toggleBrandSection;
 

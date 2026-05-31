@@ -3033,7 +3033,7 @@ export async function openEquipmentDetail(equipmentId) {
                 <!-- Locations -->
                 <div class="sec-head">
                     <h4>Locations <span class="count">${locations.length}</span></h4>
-                    <button class="sec-head__action" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Add</button>
+                    <button class="sec-head__action" onclick="addEquipmentLocation('${escapeAttr(equipmentId)}')">+ Add</button>
                 </div>
                 <div class="chips equip-locations-chips">
                     ${locations.map((loc) => `
@@ -4014,6 +4014,61 @@ export async function removeEquipmentLocation(equipmentId, locationName) {
         openEquipmentDetail(equipmentId);
     } catch (error) {
         console.error('Error removing location:', error);
+    }
+}
+
+/**
+ * Add a gym to this equipment's locations[]. Reuses the tap-to-select gym
+ * picker (no typos), excluding gyms the equipment is already in. Mirrors
+ * removeEquipmentLocation — writes the locations array, mutates the cache,
+ * and re-renders the detail page.
+ */
+export function addEquipmentLocation(equipmentId) {
+    const eq = allEquipment.find(e => e.id === equipmentId);
+    if (!eq) return;
+
+    // Gather every known gym (saved locations + any name already on equipment),
+    // then drop the ones this equipment is already tagged to.
+    const current = new Set(eq.locations || []);
+    const gymNames = new Set();
+    allLocations.forEach((l) => l?.name && gymNames.add(l.name));
+    allEquipment.forEach((e) => (e.locations || []).forEach((l) => l && gymNames.add(l)));
+    const available = [...gymNames].filter((g) => !current.has(g)).sort();
+
+    if (available.length === 0) {
+        const msg = gymNames.size === 0
+            ? 'Save a gym first (start a workout to stamp a location)'
+            : `Already at every gym`;
+        showNotification(msg, 'info');
+        return;
+    }
+
+    openGymPickerSheet({
+        title: `Add ${eq.name || 'equipment'} to a gym`,
+        subtitle: 'Pick the gym to add it to',
+        gyms: available,
+        currentGym: getSessionLocation(),
+        onSelect: (gymName) => commitEquipmentLocation(equipmentId, gymName),
+    });
+}
+
+async function commitEquipmentLocation(equipmentId, gymName) {
+    try {
+        const eq = allEquipment.find(e => e.id === equipmentId);
+        if (!eq) return;
+        if ((eq.locations || []).includes(gymName)) {
+            showNotification(`Already at ${gymName}`, 'info');
+            return;
+        }
+        const locations = [...(eq.locations || []), gymName];
+        const userId = AppState.currentUser.uid;
+        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { locations });
+        eq.locations = locations;
+        showNotification(`Added to ${gymName}`, 'success', 1200);
+        openEquipmentDetail(equipmentId);
+    } catch (error) {
+        console.error('Error adding location:', error);
+        showNotification("Couldn't save — try again", 'error');
     }
 }
 
