@@ -883,8 +883,8 @@ function restoreLibraryHeader() {
             </button>
             <div class="page-header__title">Equipment</div>
         </div>
-        <button class="page-header__save" onclick="showAddEquipmentFlow()">
-            <i class="fas fa-plus"></i> Add
+        <button class="page-header__save" onclick="showAddEquipmentFlow()" aria-label="Add equipment">
+            <i class="fas fa-plus"></i> Add equipment
         </button>
     `;
     delete header.dataset.mutated;
@@ -920,8 +920,8 @@ function renderGymDetail(container) {
                     <div class="page-header__subtitle">${escapeHtml(subtitle)}</div>
                 </div>
             </div>
-            <button class="page-header__save" onclick="openQuickAddSheet('${escapeAttr(name)}')" aria-label="Add equipment">
-                <i class="fas fa-plus"></i> Add
+            <button class="page-header__save" onclick="openQuickAddSheet('${escapeAttr(name)}')" aria-label="Add equipment from catalog">
+                <i class="fas fa-plus"></i> Add from catalog
             </button>
         `;
         header.dataset.mutated = '1';
