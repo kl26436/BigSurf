@@ -2011,11 +2011,11 @@ function renderMyGymsTab() {
     ` : '';
 
     if (stats.length === 0) {
-        return stripHTML + scanBannerHTML + `
+        return scanBannerHTML + `
             <div class="empty-state-compact">
                 <i class="fas fa-map-marker-alt"></i>
                 <p>No gyms saved yet</p>
-                <p class="empty-state-hint">Locations get added when you stamp a workout with your gym.</p>
+                <p class="empty-state-hint">Start a workout and your gym gets saved automatically.</p>
             </div>
         `;
     }
@@ -2240,23 +2240,30 @@ function renderLibraryTab() {
 
     const searchHTML = `
         <div class="equip-search-bar ${currentSearchTerm ? '' : 'hidden'}" id="equip-search-bar">
-            <div class="equip-lib-search">
+            <div class="equip-lib-search ${currentSearchTerm ? 'equip-lib-search--with-clear' : ''}">
                 <i class="fas fa-search"></i>
                 <input type="text" placeholder="Search equipment, brand, line, exercises…"
                        value="${escapeAttr(currentSearchTerm)}"
                        oninput="filterEquipmentBySearch(this.value)"
                        onfocus="setTimeout(() => this.scrollIntoView({ block: 'start' }), 200)">
+                ${currentSearchTerm ? `<button class="equip-lib-search__clear" onclick="filterEquipmentBySearch('')" aria-label="Clear search">✕</button>` : ''}
             </div>
         </div>
     `;
 
     let listHTML;
     if (filtered.length === 0) {
-        listHTML = `
+        listHTML = currentSearchTerm ? `
             <div class="empty-state-compact">
                 <i class="fas fa-wrench"></i>
-                <p>${currentSearchTerm ? 'No matches found' : 'No equipment found'}</p>
-                <p class="empty-state-hint">Equipment is auto-saved when you use it in a workout</p>
+                <p>No matches found</p>
+                <p class="empty-state-hint">Try a different brand, line, or exercise name.</p>
+            </div>
+        ` : `
+            <div class="empty-state-compact">
+                <i class="fas fa-wrench"></i>
+                <p>No equipment yet</p>
+                <p class="empty-state-hint">Equipment gets saved as you use it in workouts — or add it from the Catalog tab.</p>
             </div>
         `;
     } else if (currentView === 'brand') {
@@ -3139,6 +3146,7 @@ export async function saveEquipmentNotes(equipmentId, notes) {
             // Update cache
             const eq = allEquipment.find(e => e.id === equipmentId);
             if (eq) eq.notes = notes;
+            showNotification('Saved', 'success', 900);
         } catch (error) {
             console.error('Error saving notes:', error);
         }
@@ -4103,6 +4111,7 @@ export async function saveEquipmentField(equipmentId, field, value) {
         try {
             const userId = AppState.currentUser.uid;
             await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { [field]: value });
+            showNotification('Saved', 'success', 900);
         } catch (error) {
             console.error(`Error saving equipment ${field}:`, error);
         }
@@ -4122,6 +4131,7 @@ export async function saveEquipmentBaseWeight(equipmentId, value) {
             await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { baseWeight });
             const eq = allEquipment.find(e => e.id === equipmentId);
             if (eq) eq.baseWeight = baseWeight;
+            showNotification('Saved', 'success', 900);
         } catch (error) {
             console.error('Error saving base weight:', error);
             showNotification("Couldn't save base weight", 'error');
@@ -4140,6 +4150,7 @@ export async function setEquipmentBaseWeightUnit(equipmentId, unit, btn) {
         const parent = btn.parentElement;
         parent.querySelectorAll('.unit-chip').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        showNotification('Saved', 'success', 900);
     } catch (error) {
         console.error('Error saving base weight unit:', error);
     }

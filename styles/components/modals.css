@@ -734,6 +734,22 @@ dialog.modal:not([open]) {
     outline: none;
     border-color: var(--primary);
 }
+.equip-lib-search--with-clear input {
+    padding-right: 36px;
+}
+.equip-lib-search__clear {
+    position: absolute;
+    right: var(--space-8);
+    top: 50%;
+    transform: translateY(-50%);
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--text-very-muted);
+    cursor: pointer;
+    padding: var(--space-4) var(--space-8);
+    font-size: var(--font-sm);
+}
 .equip-lib-filter {
     background: var(--bg-card);
     color: var(--text-primary);
