@@ -119,6 +119,7 @@ export {
     awSetAddFilter,
     awSetAddSearch,
     awInsertExercise,
+    awCreateAndInsertExercise,
     awCloseSheet,
     awRestAdd30,
     awRestSkip,

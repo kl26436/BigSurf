@@ -126,6 +126,7 @@ import {
     awSetAddFilter,
     awSetAddSearch,
     awInsertExercise,
+    awCreateAndInsertExercise,
     awCloseSheet,
     awRestAdd30,
     awRestSkip,
@@ -613,6 +614,7 @@ window.awAddExercise = awAddExercise;
 window.awSetAddFilter = awSetAddFilter;
 window.awSetAddSearch = awSetAddSearch;
 window.awInsertExercise = awInsertExercise;
+window.awCreateAndInsertExercise = awCreateAndInsertExercise;
 window.awCloseSheet = awCloseSheet;
 window.awRestAdd30 = awRestAdd30;
 window.awRestSkip = awRestSkip;

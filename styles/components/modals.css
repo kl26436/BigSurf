@@ -347,6 +347,15 @@
     align-items: flex-end;
     justify-content: center;
     animation: modalFadeIn 0.2s ease;
+    /* --kb-inset (set by installKeyboardInsetTracker in app-initialization.js)
+       pushes the modal-content up above the on-screen keyboard. align-items:
+       flex-end + padding-bottom is the only way to get the sheet to honor the
+       keyboard height without changing the modal's positioning model. iOS
+       Safari leaves the layout viewport at full height, so without this the
+       bottom of the sheet — search inputs, results, confirm buttons — sits
+       behind the keyboard. */
+    padding-bottom: var(--kb-inset, 0px);
+    box-sizing: border-box;
 }
 .modal.hidden {
     display: none !important;

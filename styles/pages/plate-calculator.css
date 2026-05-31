@@ -235,7 +235,7 @@
    ============================================ */
 .plate-calc-popover {
     position: fixed;
-    bottom: 0;
+    bottom: var(--kb-inset, 0px);
     left: 0;
     right: 0;
     background: var(--bg-surface);

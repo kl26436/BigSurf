@@ -775,6 +775,24 @@ export function awJumpTo(idx) {
 
 export function awNextExercise() {
     const exercises = AppState.currentWorkout.exercises;
+    const isComplete = (i) => {
+        const ex = AppState.savedData?.exercises?.[`exercise_${i}`];
+        const sets = ex?.sets;
+        return sets && sets.length > 0 && sets.every(s => s.completed);
+    };
+
+    // Prefer the next sequential incomplete exercise. Falls through to wrap
+    // around when the user did the last exercise first — without this, they'd
+    // be stuck on the last index forever because idx+1 is out of bounds.
+    for (let i = currentExerciseIdx + 1; i < exercises.length; i++) {
+        if (!isComplete(i)) { awJumpTo(i); return; }
+    }
+    for (let i = 0; i < currentExerciseIdx; i++) {
+        if (!isComplete(i)) { awJumpTo(i); return; }
+    }
+
+    // Everything's complete — the footer should have flipped to "Finish
+    // workout" but defend against stale state by jumping forward if we can.
     if (currentExerciseIdx < exercises.length - 1) {
         awJumpTo(currentExerciseIdx + 1);
     }
@@ -1792,10 +1810,24 @@ function renderAddExerciseSheet() {
         `<button class="aw-sheet__chip ${c === addExerciseFilter ? 'active' : ''}" onclick="awSetAddFilter('${c}')">${c}</button>`
     ).join('');
 
-    // onfocus scrolls the search field to the top of the sheet body so the
-    // keyboard doesn't cover the results list below it. Without this, when
-    // iOS pops the keyboard the visible list collapses to whatever happens
-    // to be above the input.
+    // Show an inline "+ Create" row when the search yields no exact match.
+    // Without this, a user trying to add a new exercise mid-workout had to
+    // close the sheet, navigate to the exercise library to create it, then
+    // come back and find it in the list. Now they can create + insert in one
+    // tap. We show it whenever the user has typed a search string and no
+    // exact-name match exists in the filtered results.
+    const trimmed = (addExerciseSearch || '').trim();
+    const exactMatch = trimmed && filtered.some(ex =>
+        (ex.name || ex.machine || '').toLowerCase() === trimmed.toLowerCase()
+    );
+    const createRowHTML = trimmed && !exactMatch
+        ? `<div class="aw-add-ex-row aw-add-ex-row--create" onclick="awCreateAndInsertExercise('${escapeAttr(trimmed)}')">
+                <i class="fas fa-plus-circle"></i>
+                <span class="aw-add-ex-row__name">Create "${escapeHtml(trimmed)}"</span>
+                <span class="aw-add-ex-row__cat">New</span>
+            </div>`
+        : '';
+
     const body = `
         <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
@@ -1805,6 +1837,7 @@ function renderAddExerciseSheet() {
         </div>
         <div class="aw-sheet__chips">${chips}</div>
         <div id="aw-add-exercise-list">
+            ${createRowHTML}
             ${filtered.slice(0, 50).map(ex => {
                 const name = ex.name || ex.machine || 'Unknown';
                 const cat = ex.category || '';
@@ -1814,7 +1847,7 @@ function renderAddExerciseSheet() {
                 </div>`;
             }).join('')}
             ${filtered.length > 50 ? `<div class="aw-add-ex-truncated">Showing 50 of ${filtered.length} — refine your search</div>` : ''}
-            ${filtered.length === 0 ? '<div class="aw-add-ex-empty">No exercises found</div>' : ''}
+            ${filtered.length === 0 && !createRowHTML ? '<div class="aw-add-ex-empty">No exercises found</div>' : ''}
         </div>
     `;
 
@@ -1854,14 +1887,28 @@ function updateAddExerciseList() {
         filtered = filtered.filter(ex => (ex.name || ex.machine || '').toLowerCase().includes(q));
     }
 
-    listEl.innerHTML = filtered.slice(0, 50).map(ex => {
+    const trimmed = (addExerciseSearch || '').trim();
+    const exactMatch = trimmed && filtered.some(ex =>
+        (ex.name || ex.machine || '').toLowerCase() === trimmed.toLowerCase()
+    );
+    const createRowHTML = trimmed && !exactMatch
+        ? `<div class="aw-add-ex-row aw-add-ex-row--create" onclick="awCreateAndInsertExercise('${escapeAttr(trimmed)}')">
+                <i class="fas fa-plus-circle"></i>
+                <span class="aw-add-ex-row__name">Create "${escapeHtml(trimmed)}"</span>
+                <span class="aw-add-ex-row__cat">New</span>
+            </div>`
+        : '';
+
+    const rowsHTML = filtered.slice(0, 50).map(ex => {
         const name = ex.name || ex.machine || 'Unknown';
         const cat = ex.category || '';
         return `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeAttr(name)}')">
             <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
             <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
         </div>`;
-    }).join('') || '<div class="aw-sheet__empty aw-sheet__empty--large">No exercises found</div>';
+    }).join('');
+
+    listEl.innerHTML = createRowHTML + (rowsHTML || (createRowHTML ? '' : '<div class="aw-sheet__empty aw-sheet__empty--large">No exercises found</div>'));
 }
 
 export function awSetAddSearch(query) {
@@ -1893,6 +1940,57 @@ export function awInsertExercise(exerciseName) {
     // Jump to new exercise
     awJumpTo(idx);
     showNotification(`${exerciseName} added`, 'success');
+}
+
+/**
+ * Persist a brand-new exercise to the user's library AND drop it straight
+ * into the active workout. Wires the "Create [search]" row in the
+ * Add-exercise sheet — previously the user had to bail out of the workout,
+ * navigate to the exercise library to create it, then come back. Defaults
+ * use the active category filter when one is selected so the new exercise
+ * lands in a sensible bucket.
+ */
+export async function awCreateAndInsertExercise(rawName) {
+    const name = (rawName || '').trim();
+    if (!name) return;
+    if (!AppState.currentUser) {
+        showNotification('Sign in to add custom exercises', 'warning');
+        return;
+    }
+
+    // Use the current category filter as the default — falls back to Push
+    // when "All" is selected so we have a non-empty body part.
+    const category = addExerciseFilter && addExerciseFilter !== 'All' ? addExerciseFilter : 'Push';
+
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        const result = await mgr.saveCustomExercise({
+            name,
+            machine: name,
+            bodyPart: category,
+            equipmentType: 'Machine',
+            sets: 3,
+            reps: 10,
+            weight: 0,
+            video: '',
+            category,
+        });
+
+        // Refresh the in-memory exercise database so future renders + the
+        // jump-to-existing path find this exercise without re-querying.
+        const refreshed = await mgr.getExerciseLibrary();
+        if (Array.isArray(refreshed)) AppState.exerciseDatabase = refreshed;
+
+        // awInsertExercise will hit AppState.exerciseDatabase first and
+        // hydrate from the saved template if found; otherwise it falls back
+        // to a name-only exercise. Either way the workout gets the new entry.
+        awInsertExercise(name);
+        showNotification(`Created "${name}"`, 'success');
+    } catch (err) {
+        console.error('awCreateAndInsertExercise failed:', err);
+        showNotification("Couldn't create exercise — try again", 'error');
+    }
 }
 
 // ===================================================================
