@@ -22,7 +22,7 @@ import {
     setEquipmentTab, openGymDetail, openBrandCatalog,
     closeGymDetail, setGymBpFilter, openCatalogMachine, toggleCatalogMachineAtGym, openQuickAddSheet,
     toggleQuickAddRow, setQuickAddSearch, setQuickAddBp, commitQuickAdd, closeQuickAddSheet,
-    addFlowSetType,
+    addFlowSetType, addFlowSetName,
     openAddFlowBrandPicker, openAddFlowLinePicker, openAddFlowFunctionPicker,
     reviewDiscoveredEquipment, exitScanReview, addUnlinkedEquipment, dismissUnlinkedEquipment, deleteOrphanFromHistory,
     linkOrphanToSuggestion, autoLinkAllOrphans,
@@ -1036,6 +1036,7 @@ window.closeQuickAddSheet = closeQuickAddSheet;
 
 // Equipment "Add" stepped flow (Phase 3)
 window.addFlowSetType = addFlowSetType;
+window.addFlowSetName = addFlowSetName;
 window.openAddFlowBrandPicker = openAddFlowBrandPicker;
 window.openAddFlowLinePicker = openAddFlowLinePicker;
 window.openAddFlowFunctionPicker = openAddFlowFunctionPicker;

@@ -3337,6 +3337,7 @@ const addFlowState = {
     line: null,     // selected line name (null = skipped)
     func: '',       // typed function name
     type: 'Machine',
+    name: null,     // user-edited override; null = use addFlowGeneratedName()
 };
 
 // Add-flow suggestion helpers removed — the cascading picker (fieldPickerState
@@ -3825,6 +3826,7 @@ export function showAddEquipmentFlow(opts = {}) {
     addFlowState.line = null;
     addFlowState.func = '';
     addFlowState.type = 'Machine';
+    addFlowState.name = null;
     if (opts.assignToExercise || opts.returnTo) {
         _libraryReturnContext = {
             assignToExercise: opts.assignToExercise || null,
@@ -3858,8 +3860,9 @@ function renderAddFlow() {
         `;
     }
 
-    const { brand, line, func, type } = addFlowState;
-    const previewName = addFlowGeneratedName() || '—';
+    const { brand, line, func, type, name } = addFlowState;
+    const displayedName = name ?? (addFlowGeneratedName() || '');
+    const hintHidden = name !== null;
 
     container.innerHTML = `
         <div class="add-flow">
@@ -3908,9 +3911,12 @@ function renderAddFlow() {
                 </div>
             </div>
 
-            <div class="add-preview">
-                <span class="add-preview__label">Will be named:</span>
-                <strong class="add-preview__val">${escapeHtml(previewName)}</strong>
+            <div class="add-field">
+                <div class="add-field__label">Name</div>
+                <input type="text" class="add-field__input" id="add-flow-name"
+                       value="${escapeAttr(displayedName)}"
+                       oninput="addFlowSetName(this.value)">
+                <div class="add-step__hint" id="add-flow-name-hint"${hintHidden ? ' hidden' : ''}>Auto-named from your picks — edit if needed</div>
             </div>
 
             <div class="add-step__actions">
@@ -3933,6 +3939,17 @@ export function addFlowSetType(type) {
     renderAddFlow();
 }
 
+// Update the user's name override as they type. Skip the re-render — the input
+// holds its own value during typing (full re-renders drop focus on iOS). The
+// hint visibility is toggled directly so the "auto-named" affordance vanishes
+// the moment the user starts customizing.
+export function addFlowSetName(value) {
+    const trimmed = (value || '').trim();
+    addFlowState.name = trimmed === '' ? null : trimmed;
+    const hint = document.getElementById('add-flow-name-hint');
+    if (hint) hint.hidden = addFlowState.name !== null;
+}
+
 export async function confirmAddEquipment(addAnother = false) {
     const { brand, line, func, type } = addFlowState;
     const cleanFunc = (func || '').trim();
@@ -3942,7 +3959,7 @@ export async function confirmAddEquipment(addAnother = false) {
         return;
     }
 
-    const name = addFlowGeneratedName();
+    const name = (addFlowState.name && addFlowState.name.trim()) || addFlowGeneratedName();
     const defaultBW = BASE_WEIGHT_SUGGESTIONS[type] || 0;
 
     // When opened with `assignToExercise`, the new equipment's exerciseTypes
@@ -3971,8 +3988,10 @@ export async function confirmAddEquipment(addAnother = false) {
 
         if (addAnother) {
             showNotification(`Added — ${name}`, 'success', 1200);
-            // Stay on step 3, keep brand+line+type, clear function for the next entry.
+            // Stay on step 3, keep brand+line+type, clear function and name override
+            // so the next entry generates a fresh name from the new function.
             addFlowState.func = '';
+            addFlowState.name = null;
             renderAddFlow();
             setTimeout(() => {
                 document.getElementById('add-flow-func')?.focus();
