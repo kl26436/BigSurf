@@ -28,6 +28,37 @@
 .app-toast--success { border-color: var(--success); }
 .app-toast--info { border-color: var(--primary); }
 
+/* Undo variant — wider, action button inline. Used for soft-deletes so an
+   accidental tap is one-tap recoverable instead of a Firestore round-trip
+   that already wrote. */
+.app-toast--undo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-8) var(--space-12) var(--space-8) var(--space-16);
+    pointer-events: auto;
+    border-color: var(--warning, var(--primary));
+}
+.app-toast--undo .app-toast__msg {
+    flex: 1;
+    text-align: left;
+}
+.app-toast--undo .app-toast__undo {
+    appearance: none;
+    background: var(--primary);
+    color: var(--bg-app);
+    border: 0;
+    border-radius: var(--radius-pill);
+    padding: var(--space-6) var(--space-14);
+    font-size: var(--font-sm);
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.app-toast--undo .app-toast__undo:active {
+    opacity: 0.8;
+}
+
 .app-startup-error {
     position: fixed;
     top: 20px;

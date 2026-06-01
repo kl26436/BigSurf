@@ -10,6 +10,7 @@ import {
     loadEquipmentCatalog,
     resolveCatalogRef,
     augmentStaticCatalog,
+    buildCatalogRef,
 } from '../data/equipment-catalog-firestore.js';
 import { getSessionLocation } from '../features/location-service.js';
 import { reverseGeocode } from '../features/geocoding.js';
@@ -1018,18 +1019,37 @@ function renderGymDetailRow(item) {
 /**
  * Build the unified item list for a gym (legacy equipment.locations[] + new
  * location.equipment[] catalog refs). Normalized to a single shape so the
- * renderer doesn't care about the source.
+ * renderer doesn't care about the source. Deduped across BOTH sources so a
+ * machine that exists both as a legacy record and as a catalog ref only
+ * appears once (legacy wins because it carries richer per-user data —
+ * baseWeight, notes, exerciseTypes). Stale duplicate catalog refs (from
+ * before the addLocationEquipment transaction landed) are also collapsed.
  */
 function gatherGymEquipment(gymName, locationId) {
     const catalog = getCatalogSync();
     const items = [];
+    // Tracks identity keys we've already emitted so we don't double-render.
+    // Identity = catalogRef when known, otherwise normalized name.
+    const seen = new Set();
+    const norm = (s) => (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
 
-    // Legacy: equipment records tagged with this gym in `locations[]`
+    // Legacy first — these carry per-user data (baseWeight, notes, etc.) so
+    // we want them to win when they overlap with a catalog ref.
     for (const eq of allEquipment) {
         if (!(eq.locations || []).includes(gymName)) continue;
+        const fnName = eq.function || eq.name || '—';
+        const key = `legacy:${norm(fnName)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        // If the legacy record resolves to a known catalog ref, also reserve
+        // that slot so the catalog half of the union doesn't re-emit it.
+        if (eq.brand && eq.line && fnName) {
+            const ref = buildCatalogRef(eq.brand, eq.line, fnName);
+            if (ref) seen.add(`catalog:${ref}`);
+        }
         items.push({
             id: eq.id,
-            name: eq.function || eq.name || '—',
+            name: fnName,
             brand: eq.brand && eq.brand !== 'Unknown' ? eq.brand : null,
             line: eq.line || null,
             type: eq.equipmentType || 'Other',
@@ -1039,13 +1059,21 @@ function gatherGymEquipment(gymName, locationId) {
         });
     }
 
-    // New: catalog refs on the location doc
+    // New: catalog refs on the location doc. Dedupe by catalogRef so stale
+    // pre-transaction-fix dupes collapse to a single row at render time.
     const loc = locationId ? allLocations.find((l) => l.id === locationId) : null;
     const catalogRefs = (loc && Array.isArray(loc.equipment)) ? loc.equipment : [];
     for (const ref of catalogRefs) {
+        if (!ref || !ref.catalogRef) continue;
+        const key = `catalog:${ref.catalogRef}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
         const resolved = resolveCatalogRef(ref.catalogRef, catalog);
         if (!resolved) continue;
         const { brand, line, machine } = resolved;
+        // Also reserve the legacy slot so a future legacy entry with the same
+        // name doesn't double-render alongside this one.
+        seen.add(`legacy:${norm(machine.name)}`);
         items.push({
             id: ref.catalogRef,
             name: ref.nickname || machine.name,
@@ -1058,6 +1086,23 @@ function gatherGymEquipment(gymName, locationId) {
         });
     }
 
+    // If the location doc had stale duplicate catalogRefs, schedule a one-shot
+    // self-healing write — collapse the array on disk so the data eventually
+    // matches what the UI shows. Fire-and-forget; the read path already
+    // dedupes so the user doesn't have to wait.
+    if (loc && catalogRefs.length > 0) {
+        const uniqueRefs = [];
+        const seenRefs = new Set();
+        for (const r of catalogRefs) {
+            if (!r?.catalogRef || seenRefs.has(r.catalogRef)) continue;
+            seenRefs.add(r.catalogRef);
+            uniqueRefs.push(r);
+        }
+        if (uniqueRefs.length < catalogRefs.length) {
+            healDuplicateLocationEquipment(loc.id, uniqueRefs);
+        }
+    }
+
     // Sort within each body part: brand → name
     items.sort((a, b) => {
         const bpCmp = (a.bodyPart || '').localeCompare(b.bodyPart || '');
@@ -1068,6 +1113,30 @@ function gatherGymEquipment(gymName, locationId) {
     });
 
     return items;
+}
+
+// Track healing writes in-flight so we don't fire multiple times for the
+// same location during a rapid re-render cascade.
+const _healingLocations = new Set();
+
+async function healDuplicateLocationEquipment(locationId, deduped) {
+    if (_healingLocations.has(locationId)) return;
+    _healingLocations.add(locationId);
+    try {
+        const userId = AppState.currentUser?.uid;
+        if (!userId) return;
+        await updateDoc(doc(db, 'users', userId, 'locations', locationId), {
+            equipment: deduped,
+        });
+        // Refresh the cached locations so the next render reads the cleaned
+        // value (preserves the UI dedup either way, but avoids re-firing).
+        const loc = allLocations.find((l) => l.id === locationId);
+        if (loc) loc.equipment = deduped;
+    } catch (err) {
+        console.error('healDuplicateLocationEquipment failed:', err);
+    } finally {
+        _healingLocations.delete(locationId);
+    }
 }
 
 /**

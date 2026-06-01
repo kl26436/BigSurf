@@ -239,16 +239,28 @@ function renderLocationManagementList() {
         })
         .join('');
 
-    // Event delegation for location actions
-    container.addEventListener('click', (e) => {
-        const target = e.target.closest('[data-action]');
-        if (!target) return;
-        const action = target.dataset.action;
-        const locationId = target.dataset.locationId;
-        if (action === 'showLocationOnMap' && window.showLocationOnMapById) window.showLocationOnMapById(locationId);
-        else if (action === 'editLocationName' && window.editLocationName) window.editLocationName(locationId);
-        else if (action === 'deleteLocation' && window.deleteLocation) window.deleteLocation(locationId);
-    });
+    // Event delegation for location actions — attach the click listener
+    // ONCE per container. renderLocationManagementList is called many times
+    // (init, GPS match, after every delete), and the previous code added a
+    // fresh listener on each render. After N renders, a single trash tap
+    // fired N confirm() popups stacked on top of each other; users mashed
+    // through them and one accidentally landed on the wrong location.
+    // Marker on the element so we don't re-bind across renders.
+    if (!container.dataset.delegationBound) {
+        container.dataset.delegationBound = '1';
+        container.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            // Stop the row's outer click (showLocationOnMap) from also firing
+            // when the user tapped a child action button (rename / delete).
+            e.stopPropagation();
+            const action = target.dataset.action;
+            const locationId = target.dataset.locationId;
+            if (action === 'showLocationOnMap' && window.showLocationOnMapById) window.showLocationOnMapById(locationId);
+            else if (action === 'editLocationName' && window.editLocationName) window.editLocationName(locationId);
+            else if (action === 'deleteLocation' && window.deleteLocation) window.deleteLocation(locationId);
+        });
+    }
 }
 
 /**
@@ -1001,19 +1013,79 @@ export async function deleteLocation(locationId) {
         return;
     }
 
-    try {
-        const manager = getWorkoutManager();
-        await manager.deleteLocation(locationId);
+    // Soft-delete: hide locally + show an undo toast for 6 seconds before
+    // hitting Firestore. Accidental deletes (the Bellagio incident) are
+    // recoverable with one tap. We re-render immediately so the row
+    // disappears from the list while the timer runs.
+    const removedSnapshot = { ...location };
+    const removedIndex = cachedLocations.findIndex((l) => l.id === locationId);
+    cachedLocations = cachedLocations.filter((l) => l.id !== locationId);
+    renderLocationManagementList();
+    showLocationUndoToast(removedSnapshot, removedIndex);
+}
 
-        showNotification(`Deleted ${location.name}`, 'success');
+// Track the pending delete so the undo button can intercept before the
+// Firestore write fires.
+let _pendingLocationDelete = null;
 
-        // Reload and re-render
-        await loadLocations();
-        renderLocationManagementList();
-    } catch (error) {
-        console.error('Error deleting location:', error);
-        showNotification('Error deleting location', 'error');
+function showLocationUndoToast(location, originalIndex) {
+    // Tear down any existing undo toast — if the user is rapid-firing
+    // deletes, only the most recent one gets the undo affordance.
+    const existing = document.getElementById('location-undo-toast');
+    if (existing) existing.remove();
+    if (_pendingLocationDelete?.timeoutId) {
+        clearTimeout(_pendingLocationDelete.timeoutId);
     }
+
+    const commit = async () => {
+        if (!_pendingLocationDelete || _pendingLocationDelete.id !== location.id) return;
+        _pendingLocationDelete = null;
+        try {
+            const manager = getWorkoutManager();
+            await manager.deleteLocation(location.id);
+        } catch (err) {
+            console.error('Error deleting location after undo window:', err);
+            // Restore on failure so the user doesn't lose data silently.
+            const restore = { ...location };
+            const insertAt = Math.min(originalIndex, cachedLocations.length);
+            cachedLocations.splice(insertAt, 0, restore);
+            renderLocationManagementList();
+            showNotification("Couldn't delete location — restored", 'error');
+        }
+    };
+
+    _pendingLocationDelete = {
+        id: location.id,
+        timeoutId: setTimeout(commit, 6000),
+    };
+
+    const toast = document.createElement('div');
+    toast.id = 'location-undo-toast';
+    toast.className = 'app-toast app-toast--undo';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <span class="app-toast__msg">Deleted ${escapeHtml(location.name)}</span>
+        <button type="button" class="app-toast__undo">Undo</button>
+    `;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('app-toast--show'));
+
+    toast.querySelector('.app-toast__undo')?.addEventListener('click', () => {
+        if (_pendingLocationDelete?.timeoutId) {
+            clearTimeout(_pendingLocationDelete.timeoutId);
+        }
+        _pendingLocationDelete = null;
+        const insertAt = Math.min(originalIndex, cachedLocations.length);
+        cachedLocations.splice(insertAt, 0, location);
+        renderLocationManagementList();
+        toast.classList.remove('app-toast--show');
+        setTimeout(() => toast.remove(), 200);
+    });
+
+    setTimeout(() => {
+        toast.classList.remove('app-toast--show');
+        setTimeout(() => toast.remove(), 200);
+    }, 6000);
 }
 
 /**
