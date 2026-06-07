@@ -1101,6 +1101,13 @@ function gatherGymEquipment(gymName, locationId) {
         if (uniqueRefs.length < catalogRefs.length) {
             healDuplicateLocationEquipment(loc.id, uniqueRefs);
         }
+
+        // Promote each catalog ref to a legacy equipment record so it shows
+        // up in the active-workout picker, search, and every other surface
+        // that reads from users/{uid}/equipment. Fire-and-forget — the gym
+        // view already shows them via the dedup, and once promoted the rest
+        // of the app picks them up on next read.
+        migrateLocationCatalogRefs(loc.id, gymName);
     }
 
     // Sort within each body part: brand → name
@@ -1139,6 +1146,52 @@ async function healDuplicateLocationEquipment(locationId, deduped) {
     }
 }
 
+// Track migrations in-flight per location so we don't re-fire while one is
+// already running. Cleared after each finishes.
+const _migratingLocations = new Set();
+
+/**
+ * Background pass: for every catalogRef on a location doc, promote it to a
+ * legacy equipment record (tagged with this gym). One-shot per gym view
+ * render — runs the first time we render a location whose catalog refs
+ * haven't been promoted. After this lands, the equipment shows up in the
+ * active-workout picker, search, and all other library views.
+ */
+async function migrateLocationCatalogRefs(locationId, gymName) {
+    if (_migratingLocations.has(locationId)) return;
+    const loc = allLocations.find((l) => l.id === locationId);
+    const refs = Array.isArray(loc?.equipment) ? loc.equipment : [];
+    if (refs.length === 0) return;
+
+    // Only run if at least one ref isn't already represented by a legacy
+    // record at this gym — saves a round-trip when everything's migrated.
+    const needsMigration = refs.some((r) => {
+        if (!r?.catalogRef) return false;
+        const resolved = resolveCatalogRef(r.catalogRef, getCatalogSync());
+        if (!resolved) return false;
+        const nameLC = resolved.machine.name.toLowerCase();
+        return !allEquipment.some((eq) =>
+            (eq.catalogRef === r.catalogRef
+                || (eq.function || '').toLowerCase() === nameLC
+                || (eq.name || '').toLowerCase() === nameLC)
+            && (eq.locations || []).includes(gymName)
+        );
+    });
+    if (!needsMigration) return;
+
+    _migratingLocations.add(locationId);
+    try {
+        for (const ref of refs) {
+            if (!ref?.catalogRef) continue;
+            await promoteCatalogToEquipment(ref.catalogRef, gymName);
+        }
+    } catch (err) {
+        console.error('migrateLocationCatalogRefs failed:', err);
+    } finally {
+        _migratingLocations.delete(locationId);
+    }
+}
+
 /**
  * Determine an equipment record's primary body part. Uses the first exercise
  * type as a hint (via classifyExerciseBodyPart) and falls back to Multi-Use.
@@ -1148,6 +1201,78 @@ function inferBodyPartFromEquipment(eq) {
         return classifyExerciseBodyPart(eq.exerciseTypes[0]);
     }
     return 'Multi-Use';
+}
+
+/**
+ * Build the canonical display name for a catalog machine. Same format the
+ * Add-equipment flow uses so promoted records and manually-added records
+ * collide on name in getOrCreateEquipment's fuzzy match.
+ */
+function catalogDisplayName(brand, line, machineName) {
+    if (brand && line && machineName) return `${brand} ${line} — ${machineName}`;
+    if (brand && machineName)         return `${brand} — ${machineName}`;
+    if (machineName)                  return machineName;
+    return brand || '';
+}
+
+/**
+ * Find-or-create a legacy equipment record (users/{uid}/equipment) that
+ * represents a catalog machine. This is the unification point: the rest of
+ * the app — active-workout equipment picker, exercise assignment, form
+ * videos, base weight — all read from `users/{uid}/equipment`, not from
+ * the catalog. Promoting on first touch means catalog-added equipment
+ * actually shows up when the user goes to assign it during a workout.
+ *
+ * When `gymName` is provided, the location is appended to the record's
+ * `locations[]` array so the gym view still includes it.
+ *
+ * Returns the equipment record (or null on failure).
+ */
+async function promoteCatalogToEquipment(catalogRef, gymName = null) {
+    const catalog = getCatalogSync();
+    const resolved = resolveCatalogRef(catalogRef, catalog);
+    if (!resolved) return null;
+
+    const { brand, line, machine } = resolved;
+    const name = catalogDisplayName(brand.name, line.name, machine.name);
+    const type = machine.type || line.type || 'Other';
+    const baseWeight = BASE_WEIGHT_SUGGESTIONS[type] || 0;
+
+    try {
+        const result = await getManager().getOrCreateEquipment(
+            name,
+            {
+                brand: brand.name,
+                line: line.name,
+                function: machine.name,
+                equipmentType: type,
+                baseWeight,
+                baseWeightUnit: 'lbs',
+                catalogRef,
+            },
+            null,
+        );
+        if (!result) return null;
+
+        // Tag the location AFTER the create so getOrCreateEquipment's exact-
+        // name short-circuit returns the existing record cleanly. Skip if the
+        // location is already present.
+        if (gymName && !(result.locations || []).includes(gymName)) {
+            await getManager().addLocationToEquipment(result.id, gymName);
+            result.locations = [...(result.locations || []), gymName];
+        }
+
+        // Refresh the module-level cache so the rest of the page sees the new
+        // record without forcing a full reload.
+        const allRefreshed = await getManager().getUserEquipment();
+        allEquipment = allRefreshed;
+        AppState._cachedEquipment = allRefreshed;
+
+        return allRefreshed.find((e) => e.id === result.id) || result;
+    } catch (err) {
+        console.error('promoteCatalogToEquipment failed:', err);
+        return null;
+    }
 }
 
 /**
@@ -1229,10 +1354,12 @@ export function setGymBpFilter(bp) {
 let _catalogDetailRef = null;
 
 /**
- * Catalog machine detail page. Shows the machine's brand/line/type/bodyPart
- * and lets the user toggle which of their gyms have this machine in their
- * inventory (per equipment-system-v2 spec). Replaces the prior "coming soon"
- * stub that just showed a toast.
+ * Catalog machine tap. Unified detail flow: promote the catalog ref to a
+ * legacy equipment record (find-or-create), then route to the rich
+ * openEquipmentDetail page so the user sees ONE consistent surface across
+ * the library, gym view, catalog, and active workout. The legacy record
+ * is what every other part of the app (active-workout picker, exercise
+ * assignment, form videos) reads from.
  */
 export async function openCatalogMachine(catalogRef) {
     const catalog = getCatalogSync();
@@ -1242,14 +1369,20 @@ export async function openCatalogMachine(catalogRef) {
         return;
     }
 
-    // Make sure we have the latest locations so the toggle state is correct.
+    // Make sure caches are warm before promotion (so we find existing records
+    // by name) and the rich detail page can render.
     try {
         const locs = await getManager().getUserLocations();
         if (Array.isArray(locs)) allLocations = locs;
     } catch (_) { /* fall back to whatever's already cached */ }
 
-    _catalogDetailRef = catalogRef;
-    renderCatalogMachineDetail();
+    const equipment = await promoteCatalogToEquipment(catalogRef);
+    if (!equipment) {
+        showNotification("Couldn't open equipment — try again", 'error');
+        return;
+    }
+    _catalogDetailRef = null;
+    await openEquipmentDetail(equipment.id);
 }
 
 function renderCatalogMachineDetail() {
@@ -1893,8 +2026,12 @@ export async function openCatalogMachineAddToGym(catalogRef) {
 }
 
 /**
- * Inner write step for openCatalogMachineAddToGym — handles location-doc
- * creation when needed and the actual `addLocationEquipment` batch.
+ * Inner write step for openCatalogMachineAddToGym. Unified semantics: a
+ * catalog "Add to gym" now creates (or finds) a legacy equipment record
+ * AND tags the gym on it. Previously this only wrote a catalogRef onto
+ * location.equipment[], which the active-workout picker and equipment
+ * library list don't read from — that's why catalog-added machines didn't
+ * show up when the user went to assign them during a workout.
  */
 async function commitCatalogAdd(catalogRef, machineName, gymName) {
     try {
@@ -1904,17 +2041,31 @@ async function commitCatalogAdd(catalogRef, machineName, gymName) {
             allLocations.push(newLoc);
             loc = newLoc;
         }
-        const added = await getManager().addLocationEquipment(loc.id, [{ catalogRef }]);
-        if (added.length === 0) {
+
+        // Promote: find-or-create the legacy equipment record for this catalog
+        // machine and tag the gym on it. promoteCatalogToEquipment is
+        // idempotent — re-clicking "Add" on the same machine just returns
+        // the existing record with the location already present.
+        const machineNameLC = (machineName || '').toLowerCase();
+        const existingForGym = allEquipment.find((eq) =>
+            (eq.catalogRef === catalogRef
+                || (eq.name || '').toLowerCase() === machineNameLC
+                || (eq.function || '').toLowerCase() === machineNameLC)
+            && (eq.locations || []).includes(gymName)
+        );
+        const equipment = await promoteCatalogToEquipment(catalogRef, gymName);
+        if (!equipment) {
+            showNotification("Couldn't save — try again", 'error');
+            return;
+        }
+        if (existingForGym) {
             showNotification(`${machineName} is already at ${gymName}`, 'info');
             return;
         }
-        const refreshed = await getManager().getUserLocations();
-        allLocations = refreshed;
         showNotification(`Added ${machineName} to ${gymName}`, 'success');
     } catch (err) {
-        console.error('❌ Add to gym failed:', err);
-        showNotification(`Couldn't save — try again`, 'error');
+        console.error('Add to gym failed:', err);
+        showNotification("Couldn't save — try again", 'error');
     }
 }
 

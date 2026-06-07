@@ -129,6 +129,7 @@ export {
     awMoveExercise,
     awEndReorder,
     awEquipSearch,
+    awEquipShowAll,
     awQuickAddEquipment,
     awSaveNewEquipment,
     awSharedEquipSearch,

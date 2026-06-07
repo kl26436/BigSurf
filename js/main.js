@@ -136,6 +136,7 @@ import {
     awMoveExercise,
     awEndReorder,
     awEquipSearch,
+    awEquipShowAll,
     awQuickAddEquipment,
     awSaveNewEquipment,
     awSharedEquipSearch,
@@ -624,6 +625,7 @@ window.awToggleReorder = awToggleReorder;
 window.awMoveExercise = awMoveExercise;
 window.awEndReorder = awEndReorder;
 window.awEquipSearch = awEquipSearch;
+window.awEquipShowAll = awEquipShowAll;
 window.awQuickAddEquipment = awQuickAddEquipment;
 window.awSaveNewEquipment = awSaveNewEquipment;
 window.awSharedEquipSearch = awSharedEquipSearch;

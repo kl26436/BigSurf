@@ -1233,20 +1233,28 @@ export function awConfirmSupersetLink() {
 
 let equipSearchQuery = '';
 
+// Toggle for the active-workout picker: when at a gym, the "Other equipment"
+// section is hidden by default so the user only sees what's actually at this
+// location. They can tap "Show all" to expand it (e.g. to find a machine that
+// hasn't been gym-tagged yet). State lives per-sheet open, reset on close.
+let equipSheetShowAll = false;
+
 export async function awOpenEquipmentSheet(exerciseIdx) {
     exerciseMenuOpen = false;
     equipSearchQuery = '';
+    equipSheetShowAll = false;
 
-    // Ensure equipment is loaded (lazy-load on first use)
-    if (!AppState._cachedEquipment || AppState._cachedEquipment.length === 0) {
-        try {
-            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-            const mgr = new FirebaseWorkoutManager(AppState);
-            AppState._cachedEquipment = await mgr.getUserEquipment();
-        } catch (e) {
-            debugLog('Failed to load equipment:', e);
-            AppState._cachedEquipment = [];
-        }
+    // Always refresh equipment from Firestore on open — the user may have
+    // promoted catalog equipment via the library mid-workout. Without this
+    // the picker keeps showing the stale cache and the just-added machine
+    // doesn't appear ("never showed up nor came up in search" was the bug).
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        AppState._cachedEquipment = await mgr.getUserEquipment();
+    } catch (e) {
+        debugLog('Failed to load equipment:', e);
+        if (!AppState._cachedEquipment) AppState._cachedEquipment = [];
     }
 
     renderEquipmentSheet(exerciseIdx);
@@ -1326,6 +1334,22 @@ function renderEquipmentSheet(exerciseIdx) {
         </div>
     `;
 
+    // When a gym is detected, hide the "Other equipment" pile by default —
+    // the user just wants to see what's at their current location. They can
+    // expand via a "Show all equipment" button or by searching. This was the
+    // 6/2 complaint "shows all equipment not just what's loaded for this
+    // location".
+    const showOther = !locName || equipSheetShowAll || !!equipSearchQuery;
+    const otherSectionHTML = showOther
+        ? renderSection('Other equipment', otherEquipment, 'No other equipment saved')
+        : (otherEquipment.length > 0
+            ? `<div class="aw-equip-section">
+                    <button class="aw-equip-show-all" onclick="awEquipShowAll(${exerciseIdx})">
+                        Show all equipment (${otherEquipment.length} more)
+                    </button>
+                </div>`
+            : '');
+
     const body = `
         <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
@@ -1334,7 +1358,7 @@ function renderEquipmentSheet(exerciseIdx) {
         <div id="aw-equip-list">
             ${renderSection(`For ${escapeHtml(exName)}`, forThisExercise, 'No equipment assigned to this exercise yet')}
             ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, `No equipment saved at ${escapeHtml(locName)} yet`) : ''}
-            ${renderSection('Other equipment', otherEquipment, 'No other equipment saved')}
+            ${otherSectionHTML}
             ${noneRow}
         </div>
     `;
@@ -1555,6 +1579,15 @@ export function awSharedCancelEquipment() {
     if (ctx?.onCancel) {
         try { ctx.onCancel(); } catch (e) { console.error('Shared equipment onCancel threw:', e); }
     }
+}
+
+/**
+ * Expand the "Other equipment" section of the active-workout equipment
+ * picker. Used by the "Show all equipment" button in the gym-filtered view.
+ */
+export function awEquipShowAll(exerciseIdx) {
+    equipSheetShowAll = true;
+    renderEquipmentSheet(exerciseIdx);
 }
 
 export function awEquipSearch(exerciseIdx, query) {

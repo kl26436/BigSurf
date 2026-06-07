@@ -727,6 +727,20 @@
     color: var(--text-muted);
     font-style: italic;
 }
+.aw-equip-show-all {
+    appearance: none;
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+.aw-equip-show-all:hover { color: var(--primary); border-color: var(--primary); }
 
 /* === JUMP SHEET ROWS === */
 .js-row {
