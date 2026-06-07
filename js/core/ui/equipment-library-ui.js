@@ -2927,10 +2927,10 @@ function renderBodyPartView(filtered) {
             const equipId = exName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
 
             html += `
-                <div class="equip-exercise-row" onclick="toggleEquipmentExercise('${equipId}')">
-                    <div class="equip-exercise-row__name">${escapeHtml(exName)}</div>
-                    <div class="equip-exercise-row__meta">
-                        <span class="equip-exercise-row__count">${equips.length}</span>
+                <div class="equip-detail-ex-row" onclick="toggleEquipmentExercise('${equipId}')">
+                    <div class="equip-detail-ex-row__name">${escapeHtml(exName)}</div>
+                    <div class="equip-detail-ex-row__meta">
+                        <span class="equip-detail-ex-row__count">${equips.length}</span>
                         <i class="fas fa-chevron-down equip-exercise-chevron" id="chevron-${equipId}"></i>
                     </div>
                 </div>
@@ -3282,10 +3282,21 @@ export async function openEquipmentDetail(equipmentId) {
                     <button class="sec-head__action" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Assign</button>
                 </div>
                 ${exercises.map(ex => `
-                    <div class="link-row">
-                        <div class="srow-icon ic-blue"><i class="fas fa-dumbbell"></i></div>
-                        <div class="link-row-info">${escapeHtml(ex.name)}</div>
-                        <button class="link-row-action" onclick="unassignExercise('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')">Remove</button>
+                    <div class="equip-detail-ex-row">
+                        <div class="equip-detail-ex-row__head">
+                            <div class="srow-icon ic-blue"><i class="fas fa-dumbbell"></i></div>
+                            <div class="link-row-info">${escapeHtml(ex.name)}</div>
+                            ${ex.videoUrl ? `<button class="equip-detail-ex-row__play" onclick="awShowFormVideo('${escapeAttr(ex.videoUrl)}', '${escapeAttr(ex.name)}')" aria-label="Play form video" title="Play form video"><i class="fas fa-play-circle"></i></button>` : ''}
+                            <button class="link-row-action" onclick="unassignExercise('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')">Remove</button>
+                        </div>
+                        <div class="equip-detail-ex-row__video">
+                            <i class="fas fa-video equip-detail-ex-row__video-icon"></i>
+                            <input type="url"
+                                   class="field-input equip-detail-ex-row__video-input"
+                                   placeholder="Form video URL (YouTube)"
+                                   value="${escapeAttr(ex.videoUrl || '')}"
+                                   onchange="saveEquipmentExerciseVideoFromLib('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}', this.value)">
+                        </div>
                     </div>
                 `).join('')}
 
@@ -3400,8 +3411,8 @@ export function assignExerciseToEquipment(equipmentId) {
     for (const [group, items] of groups) {
         listHTML += `<div class="equip-group-header"><div class="equip-group-header__left"><span>${escapeHtml(group)}</span></div><span class="equip-group-header__count">${items.length}</span></div>`;
         listHTML += items.map(ex => `
-            <div class="equip-exercise-row" onclick="confirmAssignExercise('${escapeAttr(ex.name)}')">
-                <div class="equip-exercise-row__name">${escapeHtml(ex.name)}</div>
+            <div class="equip-detail-ex-row" onclick="confirmAssignExercise('${escapeAttr(ex.name)}')">
+                <div class="equip-detail-ex-row__name">${escapeHtml(ex.name)}</div>
                 <div class="row-card__action"><i class="fas fa-plus"></i></div>
             </div>
         `).join('');

@@ -1037,3 +1037,52 @@
     border-radius: var(--radius-sm);
     margin: 0;
 }
+
+/* === Per-exercise rows on equipment detail (Used for) ===
+   Each assigned exercise gets a compact card with the exercise name + a
+   form-video URL field below it. Play button surfaces when a URL is set
+   so the user can preview without leaving the detail page. */
+.equip-detail-ex-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-10) var(--space-12);
+    margin-bottom: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+.equip-detail-ex-row__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+}
+.equip-detail-ex-row__play {
+    width: var(--tap);
+    height: var(--tap);
+    background: transparent;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
+    color: var(--primary);
+    font-size: var(--font-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.equip-detail-ex-row__play:active { opacity: 0.7; }
+.equip-detail-ex-row__video {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+.equip-detail-ex-row__video-icon {
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    flex-shrink: 0;
+}
+.equip-detail-ex-row__video-input {
+    flex: 1;
+    font-size: var(--font-sm);
+}
