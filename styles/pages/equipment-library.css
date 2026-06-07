@@ -1086,3 +1086,14 @@
     flex: 1;
     font-size: var(--font-sm);
 }
+.equip-detail-ex-row__inherits {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    color: var(--text-muted);
+    font-size: var(--font-2xs);
+    padding-left: var(--space-22);
+}
+.equip-detail-ex-row__inherits > i {
+    font-size: var(--font-2xs);
+}

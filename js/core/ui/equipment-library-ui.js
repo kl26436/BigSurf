@@ -3099,10 +3099,30 @@ export async function openEquipmentDetail(equipmentId) {
     }
 
     const typeInfo = EQUIPMENT_TYPE_ICONS[equipment.equipmentType] || EQUIPMENT_TYPE_ICONS.Other;
-    const exercises = (equipment.exerciseTypes || []).map(name => ({
-        name,
-        videoUrl: equipment.exerciseVideos?.[name] || null,
-    }));
+    // Pull exercise-default videos out of the in-memory exercise library so
+    // the "Used for" rows can surface them as inherited values. Without this,
+    // users with videos saved on the exercise (most of them — 7 custom +
+    // every default in data/exercises.json) saw an empty URL field on the
+    // equipment detail and assumed videos had been lost.
+    const exerciseDb = AppState.exerciseDatabase || [];
+    const findExerciseDefault = (name) => {
+        const lc = (name || '').toLowerCase();
+        const match = exerciseDb.find(ex => (ex.name || ex.machine || '').toLowerCase() === lc);
+        return match?.video || null;
+    };
+    const exercises = (equipment.exerciseTypes || []).map(name => {
+        const override = equipment.exerciseVideos?.[name] || null;
+        const inherited = override ? null : findExerciseDefault(name);
+        return {
+            name,
+            videoUrl: override,
+            inheritedUrl: inherited,
+            // Effective URL is whatever play button should fire — override
+            // takes precedence; inherited is the fallback. Mirrors the
+            // 3-tier resolveFormVideo priority used during active workout.
+            effectiveUrl: override || inherited || null,
+        };
+    });
     const locations = equipment.locations || (equipment.location ? [equipment.location] : []);
     const notes = equipment.notes || '';
 
@@ -3286,17 +3306,23 @@ export async function openEquipmentDetail(equipmentId) {
                         <div class="equip-detail-ex-row__head">
                             <div class="srow-icon ic-blue"><i class="fas fa-dumbbell"></i></div>
                             <div class="link-row-info">${escapeHtml(ex.name)}</div>
-                            ${ex.videoUrl ? `<button class="equip-detail-ex-row__play" onclick="awShowFormVideo('${escapeAttr(ex.videoUrl)}', '${escapeAttr(ex.name)}')" aria-label="Play form video" title="Play form video"><i class="fas fa-play-circle"></i></button>` : ''}
+                            ${ex.effectiveUrl ? `<button class="equip-detail-ex-row__play" onclick="awShowFormVideo('${escapeAttr(ex.effectiveUrl)}', '${escapeAttr(ex.name)}')" aria-label="Play form video" title="Play form video"><i class="fas fa-play-circle"></i></button>` : ''}
                             <button class="link-row-action" onclick="unassignExercise('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')">Remove</button>
                         </div>
                         <div class="equip-detail-ex-row__video">
                             <i class="fas fa-video equip-detail-ex-row__video-icon"></i>
                             <input type="url"
                                    class="field-input equip-detail-ex-row__video-input"
-                                   placeholder="Form video URL (YouTube)"
+                                   placeholder="${ex.inheritedUrl ? 'Override — leave blank to inherit' : 'Form video URL (YouTube)'}"
                                    value="${escapeAttr(ex.videoUrl || '')}"
                                    onchange="saveEquipmentExerciseVideoFromLib('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}', this.value)">
                         </div>
+                        ${ex.inheritedUrl ? `
+                        <div class="equip-detail-ex-row__inherits">
+                            <i class="fas fa-arrow-up-from-bracket"></i>
+                            <span>Inherits exercise default</span>
+                        </div>
+                        ` : ''}
                     </div>
                 `).join('')}
 
