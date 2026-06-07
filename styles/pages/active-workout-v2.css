@@ -251,6 +251,18 @@
     flex-shrink: 0;
     cursor: pointer;
 }
+.aw-hero__video {
+    width: 34px; height: 34px;
+    background: transparent;
+    border: 1px solid var(--border-light);
+    border-radius: 50%;
+    color: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--font-md);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.aw-hero__video:active { opacity: 0.7; }
 
 /* === COMPACT EQUIPMENT LINE === */
 .aw-equip-line {

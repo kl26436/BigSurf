@@ -200,10 +200,10 @@ export function clearLastSessionCache() {
  * Matches by exercise name AND equipment to get equipment-specific history.
  * Returns { sets, date } from the last session, or null if no history.
  */
-export async function getLastSessionDefaults(exerciseName, equipment = null) {
+export async function getLastSessionDefaults(exerciseName, equipment = null, location = null) {
     if (!exerciseName) return null;
 
-    const cacheKey = `${exerciseName}__${equipment || ''}`;
+    const cacheKey = `${exerciseName}__${equipment || ''}__${location || ''}`;
     if (_lastSessionCache[cacheKey] !== undefined) return _lastSessionCache[cacheKey];
 
     const state = (await import('../utils/app-state.js')).AppState;
@@ -219,21 +219,29 @@ export async function getLastSessionDefaults(exerciseName, equipment = null) {
         const snapshot = await withTimeout(getDocs(q));
 
         const today = state.getTodayDateString();
+        const locLC = (location || '').toLowerCase();
 
-        // Two-pass match. The strict pass requires exercise + equipment match
-        // (so users on multiple gyms get the right machine's last numbers).
-        // The lenient pass falls back to exercise-only match — needed because
-        // equipment renames / migrations / catalog updates change the equipment
-        // string on historical workouts, so a strict-only search returns null
-        // even when the user has done this exercise plenty of times before.
-        let strictMatch = null;
-        let nameOnlyMatch = null;
+        // Tiered match preference (most → least specific):
+        //   1. same exercise + same equipment + same location  → exact
+        //   2. same exercise + same equipment (any location)   → equipment-only
+        //   3. same exercise + same location (any equipment)   → location-only
+        //   4. same exercise (any equipment, any location)     → name-only
+        // Equipment-rename / catalog-migration tolerance lives in the
+        // name-only fallback so a strict-only search doesn't return null
+        // when the user has the history but the equipment string changed.
+        let bestExact = null;
+        let bestEquipOnly = null;
+        let bestLocationOnly = null;
+        let bestNameOnly = null;
 
         for (const docSnap of snapshot.docs) {
             const data = docSnap.data();
             if (data.date === today) continue;
             if (!data.completedAt || data.cancelledAt) continue;
             if (!data.exercises) continue;
+
+            const wLoc = (typeof data.location === 'object' ? data.location?.name : data.location) || '';
+            const locMatches = !!locLC && wLoc.toLowerCase() === locLC;
 
             for (const [key, exData] of Object.entries(data.exercises)) {
                 if (!exData || !exData.sets || exData.sets.length === 0) continue;
@@ -246,7 +254,7 @@ export async function getLastSessionDefaults(exerciseName, equipment = null) {
                 if (exName !== exerciseName) continue;
 
                 const exEquipment = exData.equipment || data.originalWorkout?.exercises?.[idx]?.equipment || null;
-                const equipmentMatches = !equipment || !exEquipment || equipment === exEquipment;
+                const equipMatches = !!equipment && !!exEquipment && equipment === exEquipment;
 
                 const result = {
                     sets: exData.sets.filter(s => s && (s.reps || s.weight)),
@@ -255,20 +263,22 @@ export async function getLastSessionDefaults(exerciseName, equipment = null) {
                     // can show "from <equipment>" when this is a fallback
                     // (different equipment than the user's current selection).
                     equipment: exEquipment,
+                    location: wLoc || null,
                 };
 
-                if (equipmentMatches && !strictMatch) {
-                    strictMatch = result;
-                    // We've got the most recent strict match — done.
-                    _lastSessionCache[cacheKey] = strictMatch;
-                    return strictMatch;
+                if (equipMatches && locMatches && !bestExact) {
+                    bestExact = result;
+                    // Best possible — short-circuit.
+                    _lastSessionCache[cacheKey] = bestExact;
+                    return bestExact;
                 }
-                // Capture the most recent name-only match in case strict never finds one.
-                if (!nameOnlyMatch) nameOnlyMatch = result;
+                if (equipMatches && !bestEquipOnly) bestEquipOnly = result;
+                if (locMatches && !bestLocationOnly) bestLocationOnly = result;
+                if (!bestNameOnly) bestNameOnly = result;
             }
         }
 
-        const finalResult = strictMatch || nameOnlyMatch || null;
+        const finalResult = bestExact || bestEquipOnly || bestLocationOnly || bestNameOnly || null;
         _lastSessionCache[cacheKey] = finalResult;
         return finalResult;
     } catch (error) {

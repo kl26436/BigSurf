@@ -395,10 +395,16 @@ function renderExerciseView(exercise, idx, savedEx) {
     const lastSessionHtml = renderLastSessionCard(exName, idx);
     const notes = savedEx.notes || '';
 
-    // Context banner: BW banner for bodyweight, equipment line for everything else
+    // Context banner: BW banner first for bodyweight exercises, then the
+    // equipment line if a piece of equipment is actually being used (e.g.,
+    // Pull-up at a Power Tower, Dip at a Dip Station). Showing both keeps
+    // the bodyweight tracking signal AND lets the user see / change what
+    // gym equipment they're on without overcrowding — equipment line is
+    // already compact and the BW banner stays the visual lead.
     let contextBanner;
     if (isBW) {
         contextBanner = renderBWBanner();
+        if (equipmentName) contextBanner += renderEquipLine(equipmentName, idx);
     } else {
         contextBanner = renderEquipLine(equipmentName, idx);
     }
@@ -417,6 +423,16 @@ function renderExerciseView(exercise, idx, savedEx) {
     if (isBW) weightLabel = `Added ${unit}`;
     else if (hasBaseWeight) weightLabel = `Plates ${unit}`;
 
+    // Form video — resolved during autofill into exercise._formVideoUrl, so
+    // surfacing it here is a sync read. Shows a small play icon in the hero
+    // top row when a video is available; tap fires the existing
+    // showExerciseVideo modal. Hidden when there's no video so it doesn't
+    // clutter exercises that don't have one configured.
+    const videoUrl = exercise._formVideoUrl || null;
+    const videoBtn = videoUrl
+        ? `<button class="aw-hero__video" onclick="showExerciseVideo('${escapeAttr(videoUrl)}', '${escapeAttr(exName)}', ${idx})" aria-label="Form video" title="Form video"><i class="fas fa-play-circle"></i></button>`
+        : '';
+
     return `
         <div class="aw-hero">
             <div class="aw-hero__top">
@@ -425,6 +441,7 @@ function renderExerciseView(exercise, idx, savedEx) {
                     <div class="aw-hero__title">${escapeHtml(exName)}</div>
                     <div class="aw-hero__sub">${completedSets > 0 ? `Set ${completedSets} done · ${remaining} left` : `${targetSets} sets · ${targetReps} reps target`}</div>
                 </div>
+                ${videoBtn}
                 <button class="aw-hero__more" onclick="awToggleExerciseMenu(${idx})" aria-label="Edit exercise" title="Edit exercise"><i class="fas fa-cog"></i></button>
             </div>
             ${contextBanner}
@@ -2273,6 +2290,19 @@ export function awMoveExercise(fromIdx, direction) {
     savedExercises[fromKey] = toData;
     savedExercises[toKey] = fromData;
 
+    // Swap exerciseUnits too — keyed by index, so without this the unit
+    // assignment desyncs after a reorder. Same root cause as the
+    // savedData swap above: index-keyed per-exercise state must move
+    // with its exercise.
+    if (AppState.exerciseUnits) {
+        const fromUnit = AppState.exerciseUnits[fromIdx];
+        const toUnit = AppState.exerciseUnits[toIdx];
+        if (toUnit !== undefined) AppState.exerciseUnits[fromIdx] = toUnit;
+        else delete AppState.exerciseUnits[fromIdx];
+        if (fromUnit !== undefined) AppState.exerciseUnits[toIdx] = fromUnit;
+        else delete AppState.exerciseUnits[toIdx];
+    }
+
     // Track reorder for template save prompt
     exercisesReordered = true;
 
@@ -2449,7 +2479,18 @@ export async function loadAutofillForExercise(idx) {
     const exercise = AppState.currentWorkout.exercises[idx];
     if (!exercise) return;
     const exName = getExerciseName(exercise);
-    const equipName = exercise.equipment || null;
+    const key = `exercise_${idx}`;
+    const savedEx = AppState.savedData?.exercises?.[key];
+    // Prefer the equipment the USER actually picked for this exercise (which
+    // lives on savedEx after awSelectEquipment) over the template's default.
+    // Without this, autofill ran with the template's stale equipment and
+    // overwrote whatever the user just chose — and on a reordered exercise it
+    // could point to a machine that wasn't even at the current gym.
+    const equipName = savedEx?.equipment || exercise.equipment || null;
+    // Location-aware autofill: prefer last-session matches at the current gym
+    // so users on multiple gyms get the right numbers for "this exercise here".
+    const sessionLoc = AppState.savedData?.location;
+    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
 
     // Equipment-change call sites pass a stale `_lastSessionSets` from the
     // previous equipment. Clear it so the card doesn't flash old data while
@@ -2458,9 +2499,23 @@ export async function loadAutofillForExercise(idx) {
     delete exercise._lastSessionSets;
     delete exercise._lastSessionDaysAgo;
     delete exercise._lastSessionEquipment;
+    delete exercise._formVideoUrl;
+
+    // Resolve the form video for this exercise+equipment combo so the hero
+    // can show a one-tap play button without an async render. 3-tier
+    // priority (equipment-specific → equipment default → exercise default)
+    // lives in resolveFormVideo. Failures are non-fatal — the button just
+    // doesn't show.
+    try {
+        const { resolveFormVideo } = await import('./exercise-ui.js');
+        const formVideo = await resolveFormVideo(exName, equipName);
+        exercise._formVideoUrl = formVideo?.url || null;
+    } catch (_) {
+        exercise._formVideoUrl = null;
+    }
 
     try {
-        const lastSession = await getLastSessionDefaults(exName, equipName);
+        const lastSession = await getLastSessionDefaults(exName, equipName, locName);
         if (lastSession && lastSession.sets) {
             exercise._lastSessionSets = lastSession.sets;
             // Capture the source equipment so the card can show "from <other
@@ -2475,18 +2530,27 @@ export async function loadAutofillForExercise(idx) {
             }
 
             // Pre-fill saved data sets if not already filled
-            const key = `exercise_${idx}`;
             if (!AppState.savedData.exercises[key]) {
                 AppState.savedData.exercises[key] = { sets: [] };
             }
-            const savedEx = AppState.savedData.exercises[key];
+            const sx = AppState.savedData.exercises[key];
 
-            // Copy equipment and group from template
-            if (exercise.equipment) savedEx.equipment = exercise.equipment;
-            if (exercise.group) savedEx.group = exercise.group;
+            // Copy equipment from template ONLY if the user hasn't already
+            // chosen something. Overwriting sx.equipment unconditionally was
+            // the source of the "machines linked to exercises that don't have
+            // them" report after a reorder — autofill clobbered the user's
+            // pick with the template's default.
+            if (!sx.equipment && exercise.equipment) sx.equipment = exercise.equipment;
+            // If the user hasn't picked equipment AND there's no template
+            // default, but the last session at this gym used something, adopt
+            // that. Makes "no equipment set" workflows pull through cleanly.
+            if (!sx.equipment && lastSession.equipment && lastSession.location === locName) {
+                sx.equipment = lastSession.equipment;
+            }
+            if (exercise.group) sx.group = exercise.group;
 
-            if (!savedEx.sets || savedEx.sets.length === 0) {
-                savedEx.sets = lastSession.sets.map(s => ({
+            if (!sx.sets || sx.sets.length === 0) {
+                sx.sets = lastSession.sets.map(s => ({
                     weight: (s.weight && s.weight > 0) ? s.weight : null,
                     reps: (s.reps && s.reps > 0) ? s.reps : null,
                     completed: false,
@@ -2495,17 +2559,17 @@ export async function loadAutofillForExercise(idx) {
             }
         } else {
             // No last session — initialize empty sets from template defaults
-            const key = `exercise_${idx}`;
             if (!AppState.savedData.exercises[key]) {
                 AppState.savedData.exercises[key] = { sets: [] };
             }
-            const savedEx = AppState.savedData.exercises[key];
-            if (exercise.equipment) savedEx.equipment = exercise.equipment;
-            if (exercise.group) savedEx.group = exercise.group;
+            const sx = AppState.savedData.exercises[key];
+            // Same as the lastSession branch: preserve user-picked equipment.
+            if (!sx.equipment && exercise.equipment) sx.equipment = exercise.equipment;
+            if (exercise.group) sx.group = exercise.group;
 
-            if (!savedEx.sets || savedEx.sets.length === 0) {
+            if (!sx.sets || sx.sets.length === 0) {
                 const targetSets = exercise.sets || 3;
-                savedEx.sets = Array.from({ length: targetSets }, () => ({
+                sx.sets = Array.from({ length: targetSets }, () => ({
                     weight: exercise.defaultWeight || null,
                     reps: exercise.defaultReps || null,
                     completed: false,
