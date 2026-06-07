@@ -320,7 +320,7 @@
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
-    background: #000;
+    background: var(--bg-app);
 }
 .aw-form-video__frame iframe {
     position: absolute;
