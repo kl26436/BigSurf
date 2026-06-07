@@ -11,6 +11,7 @@ import { haptic } from '../utils/haptics.js';
 import { navigateTo } from '../ui/navigation.js';
 import { ensureFreshBodyWeight } from '../features/bodyweight-prompt.js';
 import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from '../utils/push-notification-manager.js';
+import { convertYouTubeUrl } from './exercise-ui.js';
 
 // ===================================================================
 // STATE
@@ -430,7 +431,7 @@ function renderExerciseView(exercise, idx, savedEx) {
     // clutter exercises that don't have one configured.
     const videoUrl = exercise._formVideoUrl || null;
     const videoBtn = videoUrl
-        ? `<button class="aw-hero__video" onclick="showExerciseVideo('${escapeAttr(videoUrl)}', '${escapeAttr(exName)}', ${idx})" aria-label="Form video" title="Form video"><i class="fas fa-play-circle"></i></button>`
+        ? `<button class="aw-hero__video" onclick="awShowFormVideo('${escapeAttr(videoUrl)}', '${escapeAttr(exName)}')" aria-label="Form video" title="Form video"><i class="fas fa-play-circle"></i></button>`
         : '';
 
     return `
@@ -580,6 +581,67 @@ export function awShowLastSessionSource(idx) {
     const sourceEquip = exercise?._lastSessionEquipment;
     if (!sourceEquip) return;
     showNotification(`Last session: ${sourceEquip}`, 'info', 4000);
+}
+
+/**
+ * V2-native form video viewer. The legacy showExerciseVideo() in
+ * exercise-ui.js looks for #exercise-video-section / #exercise-video-iframe
+ * DOM nodes that only existed in the V1 exercise modal — they were never
+ * rendered by the V2 wizard, so the play button I wired to it silently
+ * no-op'd. This builds a self-contained fullscreen overlay with a YouTube
+ * embed and tears it down on backdrop tap, ESC, or close button.
+ */
+export function awShowFormVideo(url, exerciseName) {
+    if (!url) return;
+    // Strip any existing video overlay first so rapid taps don't stack.
+    document.getElementById('aw-form-video-overlay')?.remove();
+
+    const embedUrl = convertYouTubeUrl(url);
+    if (!embedUrl) {
+        showNotification('No form video available', 'info', 1500);
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'aw-form-video-overlay';
+    overlay.className = 'aw-form-video-overlay';
+    overlay.innerHTML = `
+        <div class="aw-form-video">
+            <div class="aw-form-video__header">
+                <div class="aw-form-video__title">${escapeHtml(exerciseName || 'Form video')}</div>
+                <button class="aw-form-video__close" onclick="awCloseFormVideo()" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="aw-form-video__frame">
+                <iframe src="${escapeAttr(embedUrl)}"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen></iframe>
+            </div>
+        </div>
+    `;
+    // Backdrop click (outside the .aw-form-video card) closes the viewer.
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) awCloseFormVideo();
+    });
+    // ESC closes too — common iOS gesture for "back out of this".
+    const onKey = (e) => {
+        if (e.key === 'Escape') awCloseFormVideo();
+    };
+    document.addEventListener('keydown', onKey);
+    overlay.dataset.keyHandler = '1';
+    overlay._onKey = onKey;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('aw-form-video-overlay--show'));
+}
+
+export function awCloseFormVideo() {
+    const overlay = document.getElementById('aw-form-video-overlay');
+    if (!overlay) return;
+    if (overlay._onKey) document.removeEventListener('keydown', overlay._onKey);
+    overlay.classList.remove('aw-form-video-overlay--show');
+    setTimeout(() => overlay.remove(), 200);
 }
 
 // ===================================================================

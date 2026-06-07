@@ -122,6 +122,8 @@ import {
     awSelectEquipment,
     awGoToEquipmentLibrary,
     awShowLastSessionSource,
+    awShowFormVideo,
+    awCloseFormVideo,
     awAddExercise,
     awSetAddFilter,
     awSetAddSearch,
@@ -611,6 +613,8 @@ window.awOpenEquipmentSheet = awOpenEquipmentSheet;
 window.awSelectEquipment = awSelectEquipment;
 window.awGoToEquipmentLibrary = awGoToEquipmentLibrary;
 window.awShowLastSessionSource = awShowLastSessionSource;
+window.awShowFormVideo = awShowFormVideo;
+window.awCloseFormVideo = awCloseFormVideo;
 window.awAddExercise = awAddExercise;
 window.awSetAddFilter = awSetAddFilter;
 window.awSetAddSearch = awSetAddSearch;

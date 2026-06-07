@@ -115,6 +115,8 @@ export {
     awSelectEquipment,
     awGoToEquipmentLibrary,
     awShowLastSessionSource,
+    awShowFormVideo,
+    awCloseFormVideo,
     awAddExercise,
     awSetAddFilter,
     awSetAddSearch,
