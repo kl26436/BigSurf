@@ -253,7 +253,20 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
 
                 if (exName !== exerciseName) continue;
 
-                const exEquipment = exData.equipment || data.originalWorkout?.exercises?.[idx]?.equipment || null;
+                // Equipment fallback: only trust originalWorkout's slot when
+                // its NAME still matches the exercise we just matched. If the
+                // user swapped the exercise mid-workout (Standing Arm → Shoulder
+                // Press), originalWorkout[idx] still holds the ORIGINAL
+                // exercise with its original equipment. Without this guard the
+                // fallback leaked the wrong equipment back as "last session"
+                // for the new exercise — the 6/9 "Shoulder Press loaded with
+                // standing arm equipment" report.
+                const originalAtIdx = data.originalWorkout?.exercises?.[idx];
+                const originalNameMatches = originalAtIdx &&
+                    (originalAtIdx.machine || originalAtIdx.name) === exerciseName;
+                const exEquipment = exData.equipment
+                    || (originalNameMatches ? originalAtIdx?.equipment : null)
+                    || null;
                 const equipMatches = !!equipment && !!exEquipment && equipment === exEquipment;
 
                 const result = {
