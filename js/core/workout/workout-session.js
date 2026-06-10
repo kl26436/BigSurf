@@ -1172,18 +1172,34 @@ export async function editHistoricalWorkout(docIdOrDate) {
     let workoutExercises = [];
 
     if (workoutData.originalWorkout && workoutData.originalWorkout.exercises) {
-        // Use the saved template structure
+        // Use the saved template structure. Name uses exerciseNames first
+        // (authoritative — saveWorkoutData writes it from currentWorkout
+        // at save time) before falling back to originalWorkout, since the
+        // originalWorkout slot can still carry a pre-swap predecessor on
+        // older docs. Equipment fallback to originalWorkout.equipment is
+        // gated on the slot's name still matching the authoritative name —
+        // otherwise we'd inherit the predecessor's equipment.
         workoutExercises = workoutData.originalWorkout.exercises.map((ex, index) => {
             const key = `exercise_${index}`;
             const savedExercise = workoutData.exercises?.[key] || {};
+            const authoritativeName = workoutData.exerciseNames?.[key]
+                || ex.machine
+                || ex.name
+                || null;
+            const originalName = ex.machine || ex.name || null;
+            const originalSlotNameMatches = !!authoritativeName && originalName === authoritativeName;
             return {
-                machine: ex.machine || ex.name,
+                machine: authoritativeName,
                 sets: ex.sets || 3,
                 reps: ex.reps || 10,
                 weight: ex.weight || 0,
                 video: ex.video || '',
-                equipment: savedExercise.equipment || ex.equipment || null,
-                equipmentLocation: savedExercise.equipmentLocation || ex.equipmentLocation || null,
+                equipment: savedExercise.equipment
+                    || (originalSlotNameMatches ? ex.equipment : null)
+                    || null,
+                equipmentLocation: savedExercise.equipmentLocation
+                    || (originalSlotNameMatches ? ex.equipmentLocation : null)
+                    || null,
             };
         });
     } else if (workoutData.exerciseNames) {

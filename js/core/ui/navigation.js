@@ -81,6 +81,13 @@ export function navigateTo(view) {
     if (orphanBackdrop) orphanBackdrop.remove();
     if (orphanSheet) orphanSheet.remove();
 
+    // The bottom-nav more menu (#more-menu) lives outside the section system,
+    // so hiding the source section doesn't dismiss it. bottomNavTo() already
+    // closes it before calling navigateTo, but any other code path (in-page
+    // CTA, deep link, programmatic redirect) reaches navigateTo directly and
+    // would leave the sheet visible across the navigation.
+    closeMoreMenu();
+
     // Push current view onto stack for back navigation
     if (!skipStackPush) {
         const current = getCurrentView();
@@ -469,7 +476,18 @@ export function closeMoreMenu() {
     const overlay = document.getElementById('more-menu-overlay');
     const moreBtn = document.querySelector('[data-tab="more"]');
 
-    if (menu) menu.classList.remove('visible');
+    if (menu) {
+        menu.classList.remove('visible');
+        // Hard-reset any inline transform/transition the drag handler set.
+        // If a drag was interrupted (iOS swipe-back, app backgrounded), the
+        // touchend cleanup never ran and the sheet was left with
+        // `transform: translateY(<px>)` + `transition: none` — overriding
+        // the CSS close animation. The menu would visibly stick at whatever
+        // position the user's finger left it, and the only escape was
+        // closing the app entirely.
+        menu.style.transform = '';
+        menu.style.transition = '';
+    }
     if (overlay) overlay.classList.remove('visible');
     if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
 }
@@ -484,8 +502,17 @@ function setupBottomSheetDrag(sheet, overlay) {
     let currentY = 0;
     let isDragging = false;
 
+    // Always-safe cleanup: clear inline transform/transition the drag set so
+    // a class-based close animation can run. Used both on natural touchend
+    // and on the iOS-interrupt paths below.
+    const resetInlineStyles = () => {
+        sheet.style.transition = '';
+        sheet.style.transform = '';
+    };
+
     handle.addEventListener('touchstart', (e) => {
         startY = e.touches[0].clientY;
+        currentY = startY;
         isDragging = true;
         sheet.style.transition = 'none';
     }, { passive: true });
@@ -510,10 +537,25 @@ function setupBottomSheetDrag(sheet, overlay) {
             sheet.style.transform = 'translateY(0)';
         }
         // Reset transform after close animation
-        setTimeout(() => {
-            if (sheet) sheet.style.transform = '';
-        }, 300);
+        setTimeout(resetInlineStyles, 300);
     }, { passive: true });
+
+    // iOS fires touchcancel when the OS preempts the gesture (system
+    // back-swipe, app switcher, multitasking). Without this, isDragging
+    // stayed true, the inline `transition: none` stuck, and the sheet was
+    // frozen wherever the finger left it — the "stuck partial open" the
+    // user reported. Same handler for touchend without a real touchend.
+    const handleCancel = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        resetInlineStyles();
+    };
+    handle.addEventListener('touchcancel', handleCancel, { passive: true });
+    // Belt-and-suspenders: if the page becomes hidden mid-drag (background,
+    // tab switch), clean up so coming back doesn't show the half-open sheet.
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') handleCancel();
+    });
 }
 
 /**

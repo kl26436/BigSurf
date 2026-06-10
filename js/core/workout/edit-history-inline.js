@@ -207,10 +207,27 @@ function buildEditStateFromWorkout(docId, workoutData) {
             || rawOriginal?.[i]?.name
             || rawOriginal?.[i]?.machine
             || 'Exercise';
+        // Equipment fallback: only trust the originalWorkout slot when its
+        // name still matches the authoritative name we just resolved. If
+        // the user swapped the exercise mid-workout, rawOriginal[i] still
+        // carries the predecessor's data — blindly inheriting its equipment
+        // would leak it onto the new exercise AND persist the leak on save
+        // (because the rebuild below writes exercises[key].equipment back
+        // into the originalWorkout array). Same defensive pattern lives in
+        // getLastSessionDefaults; both must enforce it to keep history clean.
+        const originalAtIdx = rawOriginal?.[i] || null;
+        const originalName = originalAtIdx
+            ? (originalAtIdx.machine || originalAtIdx.name || null)
+            : null;
+        const originalSlotNameMatches = originalName && originalName === name;
         exercises[newKey] = {
             name,
-            equipment: e.equipment || rawOriginal?.[i]?.equipment || null,
-            equipmentLocation: e.equipmentLocation || rawOriginal?.[i]?.equipmentLocation || null,
+            equipment: e.equipment
+                || (originalSlotNameMatches ? originalAtIdx?.equipment : null)
+                || null,
+            equipmentLocation: e.equipmentLocation
+                || (originalSlotNameMatches ? originalAtIdx?.equipmentLocation : null)
+                || null,
             sets,
             notes: e.notes || '',
             completed: e.completed !== false,
@@ -282,7 +299,12 @@ function deriveDisplayUnitForSets(sets) {
 function deriveSavePayload(state) {
     const exercises = {};
     const exerciseNames = {};
-    Object.keys(state.exercises).forEach((key) => {
+    const sortedKeys = Object.keys(state.exercises).sort((a, b) => {
+        const ai = parseInt(a.split('_')[1], 10);
+        const bi = parseInt(b.split('_')[1], 10);
+        return (isNaN(ai) ? 0 : ai) - (isNaN(bi) ? 0 : bi);
+    });
+    sortedKeys.forEach((key) => {
         const e = state.exercises[key];
         exercises[key] = {
             name: e.name,
@@ -307,7 +329,46 @@ function deriveSavePayload(state) {
         lastUpdated: new Date().toISOString(),
     };
     if (state.originalWorkout) {
-        patch.originalWorkout = state.originalWorkout;
+        // Rebuild originalWorkout.exercises from state.exercises so the slot
+        // names + equipment ALWAYS match the authoritative edit state. Without
+        // this, a rename / equipment-change / swap during edit only updated
+        // state.exercises[key], not state.originalWorkout.exercises[i].
+        // Persisting the stale originalWorkout meant the next reader could
+        // pull predecessor equipment via the index fallback (the 6/9 leak
+        // class). Sets/reps/weight/video defaults come from the existing
+        // originalWorkout slot when present, otherwise from the exercise's
+        // current set list (length) so a brand-new exercise still serializes
+        // sanely.
+        const rawOriginal = Array.isArray(state.originalWorkout.exercises)
+            ? state.originalWorkout.exercises
+            : [];
+        const rebuiltOriginal = sortedKeys.map((key, i) => {
+            const e = state.exercises[key];
+            // Match the original slot to this exercise by _originalKey when
+            // possible — if the user reordered, originalKey lookup keeps us
+            // pulling default sets/reps from the right historical slot.
+            const origIdx = (() => {
+                const k = e._originalKey;
+                if (!k) return -1;
+                const parsed = parseInt(k.split('_')[1], 10);
+                return Number.isFinite(parsed) ? parsed : -1;
+            })();
+            const src = (origIdx >= 0 && rawOriginal[origIdx]) || rawOriginal[i] || {};
+            return {
+                machine: e.name,
+                name: e.name,
+                sets: src.sets ?? (e.sets || []).length,
+                reps: src.reps ?? 10,
+                weight: src.weight ?? 0,
+                video: src.video || '',
+                equipment: e.equipment || null,
+                equipmentLocation: e.equipmentLocation || null,
+            };
+        });
+        patch.originalWorkout = {
+            ...state.originalWorkout,
+            exercises: rebuiltOriginal,
+        };
     }
     return patch;
 }
