@@ -444,7 +444,7 @@ function renderExerciseView(exercise, idx, savedEx) {
     const isPlateLoadable = equipType.includes('plate') || equipType.includes('barbell');
     const showPlates = !isBW && !!equipDoc && (equipDoc.baseWeight > 0 || isPlateLoadable);
     const platesBtn = showPlates
-        ? `<button class="aw-hero__plates" onclick="openPlateCalcPopover(${idx})" aria-label="Plate calculator" title="Plate calculator"><i class="fas fa-weight-hanging"></i></button>`
+        ? `<button class="aw-hero__plates" onclick="openPlateCalcPopover(${idx})" aria-label="Plate calculator" title="Plate calculator"><i class="fas fa-calculator"></i></button>`
         : '';
 
     return `
@@ -2878,6 +2878,18 @@ export async function loadAutofillForExercise(idx) {
     // so users on multiple gyms get the right numbers for "this exercise here".
     const sessionLoc = AppState.savedData?.location;
     const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+
+    // Ensure the equipment cache is loaded so the hero can resolve base weight /
+    // plate-loaded type on the very first render. Without this the plate button
+    // (and base-weight label) were missing until the user opened the equipment
+    // sheet — which is what populated the cache — so a machine already loaded on
+    // the exercise showed no plate calculator until re-selected.
+    if (!AppState._cachedEquipment || AppState._cachedEquipment.length === 0) {
+        try {
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            AppState._cachedEquipment = await new FirebaseWorkoutManager(AppState).getUserEquipment();
+        } catch (e) { debugLog('equipment cache load failed', e); }
+    }
 
     // Equipment-change call sites pass a stale `_lastSessionSets` from the
     // previous equipment. Clear it so the card doesn't flash old data while

@@ -202,6 +202,14 @@
     border-radius: var(--space-2);
     flex-shrink: 0;
 }
+/* Short loading horn — single-load machines and no-bar plate-loaded machines. */
+.barbell-peg {
+    width: var(--space-16);
+    height: var(--space-8);
+    background: var(--text-muted);
+    border-radius: var(--space-2);
+    flex-shrink: 0;
+}
 .barbell-collar {
     width: var(--space-8);
     height: var(--space-16);

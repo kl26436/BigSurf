@@ -253,23 +253,37 @@ function runCalculation() {
     `;
 }
 
-function renderBarbellDiagram(plates) {
+function renderBarbellDiagram(plates, { sides = 2, hasBar = true } = {}) {
     if (!plates.length) {
-        return `<div class="barbell-diagram"><div class="barbell-bar-only">Empty bar</div></div>`;
+        return `<div class="barbell-diagram"><div class="barbell-bar-only">${hasBar ? 'Empty bar' : 'No plates'}</div></div>`;
     }
 
     const maxPlate = Math.max(...plates, 45);
-    const reversedPlates = [...plates].reverse();
 
-    const leftPlates = reversedPlates.map(p => plateEl(p, maxPlate)).join('');
+    // Single loading point (e.g. a hack squat with one horn): one plate stack on
+    // a short peg — no bar, not mirrored.
+    if (sides === 1) {
+        const stack = plates.map(p => plateEl(p, maxPlate)).join('');
+        return `
+            <div class="barbell-diagram">
+                <div class="barbell-peg"></div>
+                <div class="barbell-side barbell-right">${stack}</div>
+            </div>
+        `;
+    }
+
+    const leftPlates = [...plates].reverse().map(p => plateEl(p, maxPlate)).join('');
     const rightPlates = plates.map(p => plateEl(p, maxPlate)).join('');
+    // Two-sided: a full barbell when there's a bar, otherwise two stacks around a
+    // short peg (a plate-loaded machine's two horns).
+    const middle = hasBar
+        ? `<div class="barbell-collar"></div><div class="barbell-bar"></div><div class="barbell-collar"></div>`
+        : `<div class="barbell-peg"></div>`;
 
     return `
         <div class="barbell-diagram">
             <div class="barbell-side barbell-left">${leftPlates}</div>
-            <div class="barbell-collar"></div>
-            <div class="barbell-bar"></div>
-            <div class="barbell-collar"></div>
+            ${middle}
             <div class="barbell-side barbell-right">${rightPlates}</div>
         </div>
     `;
@@ -390,7 +404,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
             </div>
             <div id="popover-plate-result">
                 ${result && !result.error ? `
-                    ${renderBarbellDiagram(result.plates)}
+                    ${renderBarbellDiagram(result.plates, { sides: currentSides, hasBar: barWeight > 0 })}
                     <div class="plate-calc-per-side">
                         ${currentSides === 1 ? 'Load' : 'Per side'}: ${result.plates.length ? result.plates.join(' + ') + ' ' + unit : (barWeight === 0 ? 'No plates' : 'Just the bar')}
                     </div>
@@ -420,7 +434,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
             return;
         }
         container.innerHTML = `
-            ${renderBarbellDiagram(r.plates)}
+            ${renderBarbellDiagram(r.plates, { sides: currentSides, hasBar: currentBar > 0 })}
             <div class="plate-calc-per-side">
                 ${currentSides === 1 ? 'Load' : 'Per side'}: ${r.plates.length ? r.plates.join(' + ') + ' ' + unit : (currentBar === 0 ? 'No plates' : 'Just the bar')}
             </div>
