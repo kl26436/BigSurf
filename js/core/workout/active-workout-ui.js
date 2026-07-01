@@ -979,11 +979,22 @@ function renderFooter() {
         return sets && sets.length > 0 && sets.every(s => s.completed);
     });
 
+    // Once any set is logged, offer an always-available finish so a skipped
+    // warmup (or finishing early) doesn't trap the user tapping "Next" to the
+    // end. awFinishWorkout confirms if sets are still incomplete. Hidden once
+    // the primary button has itself become "Finish" (would be redundant).
+    const hasProgress = exercises.some((_, i) =>
+        AppState.savedData?.exercises?.[`exercise_${i}`]?.sets?.some(s => s.completed));
+    const showFinishShortcut = hasProgress && !allExercisesDone;
+
     return `
         <div class="aw-footer">
             <button class="aw-footer__list-btn" onclick="awOpenJumpSheet()">
                 <i class="fas fa-list"></i> All
             </button>
+            ${showFinishShortcut
+                ? `<button class="aw-footer__finish" onclick="awFinishWorkout()" aria-label="Finish workout" title="Finish workout"><i class="fas fa-flag-checkered"></i></button>`
+                : ''}
             <button class="aw-footer__next ${allExercisesDone ? 'finish' : ''}" onclick="${allExercisesDone ? 'awFinishWorkout()' : 'awNextExercise()'}">
                 ${allExercisesDone
                     ? '<i class="fas fa-flag-checkered"></i> Finish workout'

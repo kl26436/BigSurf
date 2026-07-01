@@ -36,20 +36,21 @@
 .aw-back { background: var(--bg-card); color: var(--text-main); }
 .aw-menu { background: transparent; color: var(--text-muted); }
 .aw-title { flex: 1; text-align: center; min-width: 0; }
+/* The workout name is the header hero — mid-set you care what you're doing,
+   not the running clock. Dominant weight; the timer is a calm subtitle below. */
 .aw-title__name {
-    font-size: var(--font-xs);
-    font-weight: 600;
-    color: var(--text-muted);
+    font-size: var(--font-md);
+    font-weight: 800;
+    color: var(--text-strong);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: 1.15;
 }
-/* Elapsed time is the session hero — dominant visual weight, centered beat of the header. */
 .aw-title__elapsed {
-    color: var(--text-strong);
-    font-weight: 800;
-    font-size: var(--font-md);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: var(--font-sm);
     font-variant-numeric: tabular-nums;
     line-height: 1.2;
 }
@@ -472,8 +473,8 @@
 /* === SET COLUMN HEADERS === */
 .aw-sets-header {
     display: grid;
-    grid-template-columns: 28px 1fr 1fr 44px;
-    gap: 8px;
+    grid-template-columns: 24px 1fr 1fr 44px;
+    gap: 6px;
     padding: 0 26px 4px;
     align-items: center;
 }
@@ -508,8 +509,8 @@
     border-radius: var(--radius-md);
     padding: 10px 12px;
     display: grid;
-    grid-template-columns: 28px 1fr 1fr 44px;
-    gap: 8px;
+    grid-template-columns: 24px 1fr 1fr 44px;
+    gap: 6px;
     align-items: center;
     margin-bottom: 8px;
     position: relative;
@@ -690,6 +691,21 @@
 .aw-footer__next.finish {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
 }
+/* Always-available finish shortcut (shown once any set is logged, while the
+   primary button is still "Next"). Success-tinted so it reads as "wrap it up"
+   without competing with the primary teal action. */
+.aw-footer__finish {
+    background: var(--success-bg);
+    border: 1px solid var(--success-border);
+    color: var(--success);
+    border-radius: var(--radius-md);
+    min-width: 44px;
+    min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--font-base);
+    cursor: pointer;
+}
+.aw-footer__finish:active { transform: scale(0.96); }
 
 /* === BOTTOM SHEET === */
 .aw-sheet-backdrop {

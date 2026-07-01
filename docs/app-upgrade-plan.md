@@ -52,7 +52,7 @@ Marcus's #1, #2, #3 code-review fixes. This is the retention lever. Data already
 
 **Verify:** unit tests for the compare/aggregation logic (mirror the pure-function test pattern in `tests/unit/`); manual at-the-rack walk on dev.
 
-### Track C — At-the-rack mechanics (both lenses)
+### Track C — At-the-rack mechanics (both lenses) — ✅ shipped to dev (2026-07)
 
 Tighten the physical logging experience.
 
