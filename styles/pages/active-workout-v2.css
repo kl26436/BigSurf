@@ -241,7 +241,8 @@
     color: var(--text-muted);
     margin-top: 3px;
 }
-.aw-hero__more {
+.aw-hero__more,
+.aw-hero__plates {
     width: 34px; height: 34px;
     background: transparent;
     border: 1px solid var(--border-light);
@@ -252,6 +253,7 @@
     flex-shrink: 0;
     cursor: pointer;
 }
+.aw-hero__plates:active { opacity: 0.7; }
 .aw-hero__video {
     width: 34px; height: 34px;
     background: transparent;

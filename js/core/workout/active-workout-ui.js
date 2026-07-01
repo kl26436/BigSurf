@@ -434,6 +434,15 @@ function renderExerciseView(exercise, idx, savedEx) {
         ? `<button class="aw-hero__video" onclick="awShowFormVideo('${escapeAttr(videoUrl)}', '${escapeAttr(exName)}')" aria-label="Form video" title="Form video"><i class="fas fa-play-circle"></i></button>`
         : '';
 
+    // Plate calculator — one tap from the lift for barbell / plate-loaded gear
+    // (gated on a real bar/base weight so it doesn't clutter machines or
+    // bodyweight). Opens the existing popover, which reads the current set
+    // weight and the equipment's bar weight. openPlateCalcPopover is wired to
+    // window in main.js (lazy import).
+    const platesBtn = hasBaseWeight
+        ? `<button class="aw-hero__plates" onclick="openPlateCalcPopover(${idx})" aria-label="Plate calculator" title="Plate calculator"><i class="fas fa-weight-hanging"></i></button>`
+        : '';
+
     return `
         <div class="aw-hero">
             <div class="aw-hero__top">
@@ -442,6 +451,7 @@ function renderExerciseView(exercise, idx, savedEx) {
                     <div class="aw-hero__title">${escapeHtml(exName)}</div>
                     <div class="aw-hero__sub">${completedSets > 0 ? `Set ${completedSets} done · ${remaining} left` : `${targetSets} sets · ${targetReps} reps target`}</div>
                 </div>
+                ${platesBtn}
                 ${videoBtn}
                 <button class="aw-hero__more" onclick="awToggleExerciseMenu(${idx})" aria-label="Edit exercise" title="Edit exercise"><i class="fas fa-cog"></i></button>
             </div>
