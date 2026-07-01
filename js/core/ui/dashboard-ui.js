@@ -96,6 +96,11 @@ async function renderDashboard() {
         const recentPRs = PRTracker.getRecentPRs(3);
 
         const weekCount = weeklyStats.uniqueDays || weeklyStats.workouts.length;
+        // Pace vs last week: unique training days last week THROUGH the same
+        // weekday, so a mid-week comparison is apples-to-apples (not partial
+        // week vs full week). Computed from the already-loaded workouts — no
+        // extra query, no cross-module export (prod pins JS for a year).
+        const lastWeekPace = countLastWeekTrainingDaysThroughToday(allWorkouts);
         const weeklyGoal = AppState.settings?.weeklyGoal || 5;
         const streakDays = streaks?.currentStreak || 0;
 
@@ -143,7 +148,7 @@ async function renderDashboard() {
             container.innerHTML = `
                 ${renderGreetingHeader()}
                 ${renderActiveWorkoutPill()}
-                ${renderHeroChipRow(streakDays, weekCount, weeklyGoal, bwData)}
+                ${renderHeroChipRow(streakDays, weekCount, weeklyGoal, bwData, lastWeekPace)}
                 ${showInsight ? renderDashboardInsight(topInsight) : ''}
                 ${renderForToday(allWorkouts)}
                 ${renderTrainingSection(allWorkouts)}
@@ -310,11 +315,43 @@ function stopPillTimer() {
 // HERO CHIP ROW — Streak, Week, Body Weight
 // ===================================================================
 
-function renderHeroChipRow(streak, weekDone, weekGoal, bwData) {
+// Unique training days LAST week, counted only through the same weekday as
+// today, so "this week vs last week" compares like spans (a partial current
+// week against last week's matching partial). Reads the already-loaded
+// workouts array — no Firestore round-trip, no new cross-module export.
+function countLastWeekTrainingDaysThroughToday(allWorkouts) {
+    if (!Array.isArray(allWorkouts)) return 0;
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday
+    const startOfThisWeek = new Date(today);
+    startOfThisWeek.setDate(today.getDate() - dayOfWeek);
+    startOfThisWeek.setHours(0, 0, 0, 0);
+    const startOfLastWeek = new Date(startOfThisWeek);
+    startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
+    const cutoff = new Date(startOfLastWeek);
+    cutoff.setDate(startOfLastWeek.getDate() + dayOfWeek); // same weekday, last week
+    const startStr = getDateString(startOfLastWeek);
+    const endStr = getDateString(cutoff);
+    const days = new Set();
+    for (const w of allWorkouts) {
+        if (!w || !w.date || !w.completedAt || w.cancelledAt) continue;
+        if (w.date >= startStr && w.date <= endStr) days.add(w.date);
+    }
+    return days.size;
+}
+
+function renderHeroChipRow(streak, weekDone, weekGoal, bwData, weekLastPace = 0) {
     const bwVal = bwData ? Math.round(bwData.latest.displayWeight) : null;
     const bwUnit = bwData ? bwData.unit : '';
     const bwDelta = bwData ? bwData.delta : null;
     const deltaDirClass = getBwDeltaDirectionClass(bwDelta);
+
+    // Only surface a pace delta once there's a prior week to compare against,
+    // so a brand-new user isn't shown "+N vs nothing".
+    const weekDelta = weekLastPace > 0 ? weekDone - weekLastPace : null;
+    const weekPaceHtml = weekDelta
+        ? ` · <span class="hero-chip__wowd hero-chip__wowd--${weekDelta > 0 ? 'up' : 'down'}">${weekDelta > 0 ? '↑' : '↓'}${Math.abs(weekDelta)}</span>`
+        : '';
 
     return `
         <div class="hero-chip-row">
@@ -326,7 +363,7 @@ function renderHeroChipRow(streak, weekDone, weekGoal, bwData) {
             <div class="hero-chip">
                 <div class="hero-chip__icon hero-chip__icon--primary"><i class="fas fa-bullseye"></i></div>
                 <div class="hero-chip__val">${weekDone}<span class="hero-chip__unit">/${weekGoal}</span></div>
-                <div class="hero-chip__label">This week</div>
+                <div class="hero-chip__label">This week${weekPaceHtml}</div>
             </div>
             <div class="hero-chip">
                 <div class="hero-chip__icon hero-chip__icon--shoulders"><i class="fas fa-weight"></i></div>

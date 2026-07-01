@@ -503,7 +503,28 @@
     gap: 8px;
     align-items: center;
     margin-bottom: 8px;
+    position: relative;
     transition: background var(--anim-fast), border-color var(--anim-fast), box-shadow var(--anim-fast);
+}
+/* "Beat last time" — a set that out-lifted last session gets a success accent
+   and a green delta badge pinned to its top edge. */
+.aw-set-row--beat {
+    border-color: var(--success-border);
+    background: var(--success-bg-subtle);
+}
+.aw-set-row__beat {
+    position: absolute;
+    top: -8px;
+    right: 46px;
+    font-size: var(--font-2xs);
+    font-weight: 800;
+    color: var(--success);
+    background: var(--bg-card-hi);
+    border: 1px solid var(--success-border);
+    border-radius: var(--radius-pill);
+    padding: 1px 7px;
+    white-space: nowrap;
+    pointer-events: none;
 }
 .aw-set-row.done {
     background: var(--success-bg-subtle);

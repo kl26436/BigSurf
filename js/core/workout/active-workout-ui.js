@@ -661,6 +661,36 @@ function ensurePersistentSets(idx, targetSets) {
     return persistent;
 }
 
+/**
+ * "Beat last time" badge for a completed set vs the same-index set from last
+ * session. Weights are normalized to lbs before comparing so a kg-logged
+ * session still compares correctly against a lb one. Returns { label } when
+ * the set beat last time (heavier, or same weight for more reps), else null —
+ * matched and below sets get no badge (celebrate the win, don't nag the rest).
+ * Pure + self-contained (kept in this file, not a cross-module export — prod
+ * pins JS for a year); logic mirrored in tests/unit/beat-last-session.test.js.
+ */
+function beatBadgeFor(set, lastSet, displayUnit) {
+    if (!set || !lastSet) return null;
+    const curW = set.weight, curR = set.reps;
+    const lastW = lastSet.weight, lastR = lastSet.reps;
+    if (!curW || !curR || !lastW || !lastR) return null;
+    const cw = convertWeight(curW, set.originalUnit || 'lbs', 'lbs');
+    const lw = convertWeight(lastW, lastSet.originalUnit || 'lbs', 'lbs');
+    const EPS = 0.6; // ~½ kg rounding tolerance
+    if (cw > lw + EPS) {
+        const now = convertWeight(curW, set.originalUnit || 'lbs', displayUnit);
+        const then = convertWeight(lastW, lastSet.originalUnit || 'lbs', displayUnit);
+        const dw = Math.round((now - then) * 10) / 10;
+        return { label: `▲ +${dw}` };
+    }
+    if (Math.abs(cw - lw) <= EPS && curR > lastR) {
+        const dr = curR - lastR;
+        return { label: `▲ +${dr} rep${dr > 1 ? 's' : ''}` };
+    }
+    return null;
+}
+
 function buildSetRows(exercise, idx, savedEx, unit) {
     const targetSets = exercise.sets || 3;
     const persistent = ensurePersistentSets(idx, targetSets);
@@ -680,6 +710,16 @@ function buildSetRows(exercise, idx, savedEx, unit) {
         const classes = ['aw-set-row'];
         if (set.completed) classes.push('done');
         if (isCurrent) classes.push('current');
+
+        // "Beat last time" — for a completed set, compare to the same-index set
+        // from last session and flag a green ▲ badge when the user out-lifted
+        // it. Nothing for matched/below sets: surface the win, don't nag.
+        const lastSet = set.completed ? exercise._lastSessionSets?.[si] : null;
+        const beat = beatBadgeFor(set, lastSet, unitLabel);
+        if (beat) classes.push('aw-set-row--beat');
+        const beatBadge = beat
+            ? `<span class="aw-set-row__beat" aria-label="Beat last session">${beat.label}</span>`
+            : '';
 
         // Placeholder shows the autofill / last-session weight for an un-edited
         // set, but it must be converted to the current display unit — otherwise
@@ -722,6 +762,7 @@ function buildSetRows(exercise, idx, savedEx, unit) {
                         aria-label="${set.completed ? 'Unmark set' : 'Mark set complete'}">
                     <i class="${set.completed ? 'fas fa-check' : 'far fa-circle'}" aria-hidden="true"></i>
                 </button>
+                ${beatBadge}
             </div>
         `;
     }).join('');

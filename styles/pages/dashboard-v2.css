@@ -106,6 +106,12 @@
 .hero-chip__delta { color: var(--text-muted); }
 .hero-chip__delta--good { color: var(--success); }
 .hero-chip__delta--bad { color: var(--danger); }
+/* This-week-vs-last-week pace, inline in the "This week" label. Ahead of last
+   week reads as a win (success); behind stays muted — a lighter week isn't a
+   failure, so we inform without shaming. */
+.hero-chip__wowd { font-weight: 800; }
+.hero-chip__wowd--up { color: var(--success); }
+.hero-chip__wowd--down { color: var(--text-muted); }
 .hero-chip--streak {
     background: linear-gradient(135deg, var(--highlight-warm-bg-gradient-start), var(--highlight-warm-bg-gradient-end));
     border-color: var(--highlight-warm-border);
