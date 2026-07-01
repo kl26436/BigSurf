@@ -5,7 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification, convertWeight } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { getCategoryIcon, Config, debugLog } from '../utils/config.js';
-import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults } from '../data/data-manager.js';
+import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults, loadAllWorkouts } from '../data/data-manager.js';
 import { getNextInGroup, isLastInGroupRound, groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import { haptic } from '../utils/haptics.js';
 import { navigateTo } from '../ui/navigation.js';
@@ -547,6 +547,86 @@ function nextTargetFor(lastSets, displayUnit) {
     return `Beat it — try ${next} ${displayUnit}`;
 }
 
+/**
+ * Build this exercise's per-session progression history from the full workout
+ * log — one entry per completed session, most-recent-first, each with the
+ * heaviest working set's weight (in display unit) and the max reps achieved at
+ * that weight. Grouped by exercise NAME (matching the training-insights
+ * plateau engine), so it reads the same progression the dashboard insights do.
+ */
+function buildExerciseSessions(allWorkouts, exName, displayUnit) {
+    if (!Array.isArray(allWorkouts) || !exName) return [];
+    const sessions = [];
+    for (const w of allWorkouts) {
+        if (!w || !w.exercises || !w.date || !w.completedAt || w.cancelledAt) continue;
+        for (const [k, ex] of Object.entries(w.exercises)) {
+            const name = w.exerciseNames?.[k] || ex?.name || ex?.machine;
+            if (name !== exName) continue;
+            const working = (ex.sets || []).filter(s =>
+                s && s.completed !== false && s.weight && (s.type || 'working') !== 'warmup');
+            if (working.length === 0) break;
+            let topWeight = 0;
+            for (const s of working) {
+                topWeight = Math.max(topWeight, convertWeight(s.weight, s.originalUnit || 'lbs', displayUnit));
+            }
+            topWeight = Math.round(topWeight * 10) / 10;
+            let topReps = 0, maxReps = 0;
+            for (const s of working) {
+                maxReps = Math.max(maxReps, s.reps || 0);
+                const w2 = Math.round(convertWeight(s.weight, s.originalUnit || 'lbs', displayUnit) * 10) / 10;
+                if (w2 === topWeight) topReps = Math.max(topReps, s.reps || 0);
+            }
+            sessions.push({ date: w.date, topWeight, topReps, maxReps });
+            break; // one entry per workout
+        }
+    }
+    sessions.sort((a, b) => b.date.localeCompare(a.date));
+    return sessions;
+}
+
+/**
+ * Smart progressive-overload coach for the last-session card. Reads the
+ * multi-session history and applies double-progression logic:
+ *   1. Plateau (3+ sessions at the same top weight) → add weight / back-off.
+ *   2. Hit the rep target at this weight → add weight.
+ *   3. Just went up last session → consolidate before pushing again.
+ *   4. Below the rep target → chase a rep first.
+ *   5. Not enough signal → simple next-step suggestion.
+ * Pure; mirrored in tests/unit/beat-last-session.test.js.
+ */
+function computeOverloadNudge(sessions, displayUnit, repTarget) {
+    if (!Array.isArray(sessions) || sessions.length === 0) return null;
+    const cur = sessions[0];
+    const W = cur.topWeight;
+    if (!W) return null;
+    const inc = displayUnit === 'kg' ? 2.5 : 5;
+    const next = Math.round((W + inc) * 10) / 10;
+    const rt = repTarget && repTarget > 0 ? repTarget : null;
+    const R = cur.topReps || cur.maxReps || 0;
+
+    // 1) Plateau — same top weight three sessions running.
+    if (sessions.length >= 3 && sessions[1].topWeight === W && sessions[2].topWeight === W) {
+        const repsClimbing = (sessions[0].maxReps || 0) > (sessions[2].maxReps || 0);
+        return repsClimbing
+            ? `3 sessions at ${W} ${displayUnit} — reps are climbing, go ${next} next`
+            : `Stalled at ${W} ${displayUnit} for 3 sessions — try ${next} or a back-off set`;
+    }
+    // 2) Double progression — hit the rep target, time to add weight.
+    if (rt && R >= rt) {
+        return `${R} reps at ${W} ${displayUnit} — bump to ${next}`;
+    }
+    // 3) Went up last session — lock it in before the next jump.
+    if (sessions.length >= 2 && W > sessions[1].topWeight) {
+        return `Up from ${sessions[1].topWeight} — own ${W} ${displayUnit} for ${rt || R || 'your'} reps`;
+    }
+    // 4) Below the rep target — chase a rep first.
+    if (rt && R > 0 && R < rt) {
+        return `Add a rep — aim ${R + 1}×${W} ${displayUnit} toward ${rt}`;
+    }
+    // 5) Fallback — simple progressive step.
+    return `Beat it — try ${next} ${displayUnit}`;
+}
+
 function renderLastSessionCard(exerciseName, idx) {
     // Check if we have cached last session data on the exercise
     const exercise = AppState.currentWorkout.exercises[idx];
@@ -582,7 +662,11 @@ function renderLastSessionCard(exerciseName, idx) {
         : '';
 
     // Overload nudge — only for weighted lifts (a bodyweight "try +5" is noise).
-    const nudge = isBodyweightExercise(exercise) ? null : nextTargetFor(lastDefaults, displayUnit);
+    // Prefer the smart multi-session coach hydrated by loadAutofillForExercise;
+    // fall back to the simple last-session step until it's computed.
+    const nudge = isBodyweightExercise(exercise)
+        ? null
+        : (exercise._overloadNudge || nextTargetFor(lastDefaults, displayUnit));
     const nudgeHtml = nudge
         ? `<div class="aw-last__nudge"><i class="fas fa-bolt" aria-hidden="true"></i> ${nudge}</div>`
         : '';
@@ -2752,6 +2836,7 @@ export async function loadAutofillForExercise(idx) {
     delete exercise._lastSessionSets;
     delete exercise._lastSessionDaysAgo;
     delete exercise._lastSessionEquipment;
+    delete exercise._overloadNudge;
     delete exercise._formVideoUrl;
 
     // Resolve the form video for this exercise+equipment combo so the hero
@@ -2794,6 +2879,19 @@ export async function loadAutofillForExercise(idx) {
                 const today = new Date();
                 today.setHours(12, 0, 0, 0);
                 exercise._lastSessionDaysAgo = Math.round((today - sessionDate) / (1000 * 60 * 60 * 24));
+            }
+
+            // Smart overload nudge — multi-session progression coaching for the
+            // last-session card. Reads the cached workout log (cheap); a failure
+            // just leaves the simple last-session fallback in renderLastSessionCard.
+            try {
+                const allWorkouts = await loadAllWorkouts(AppState);
+                const nudgeUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
+                const sessions = buildExerciseSessions(allWorkouts, exName, nudgeUnit);
+                const repTarget = exercise.defaultReps || exercise.reps || null;
+                exercise._overloadNudge = computeOverloadNudge(sessions, nudgeUnit, repTarget);
+            } catch (e) {
+                debugLog('overload nudge failed', e);
             }
 
             // Pre-fill saved data sets if not already filled

@@ -123,6 +123,142 @@ describe('nextTargetFor (overload nudge)', () => {
     });
 });
 
+// --- mirror of computeOverloadNudge (active-workout-ui.js) — smart B2 coach ---
+function computeOverloadNudge(sessions, displayUnit, repTarget) {
+    if (!Array.isArray(sessions) || sessions.length === 0) return null;
+    const cur = sessions[0];
+    const W = cur.topWeight;
+    if (!W) return null;
+    const inc = displayUnit === 'kg' ? 2.5 : 5;
+    const next = Math.round((W + inc) * 10) / 10;
+    const rt = repTarget && repTarget > 0 ? repTarget : null;
+    const R = cur.topReps || cur.maxReps || 0;
+    if (sessions.length >= 3 && sessions[1].topWeight === W && sessions[2].topWeight === W) {
+        const repsClimbing = (sessions[0].maxReps || 0) > (sessions[2].maxReps || 0);
+        return repsClimbing
+            ? `3 sessions at ${W} ${displayUnit} — reps are climbing, go ${next} next`
+            : `Stalled at ${W} ${displayUnit} for 3 sessions — try ${next} or a back-off set`;
+    }
+    if (rt && R >= rt) return `${R} reps at ${W} ${displayUnit} — bump to ${next}`;
+    if (sessions.length >= 2 && W > sessions[1].topWeight) {
+        return `Up from ${sessions[1].topWeight} — own ${W} ${displayUnit} for ${rt || R || 'your'} reps`;
+    }
+    if (rt && R > 0 && R < rt) return `Add a rep — aim ${R + 1}×${W} ${displayUnit} toward ${rt}`;
+    return `Beat it — try ${next} ${displayUnit}`;
+}
+
+describe('computeOverloadNudge (smart coach)', () => {
+    const SS = (topWeight, topReps, maxReps = topReps) => ({ topWeight, topReps, maxReps });
+
+    it('flags a plateau (3 sessions same weight, reps flat)', () => {
+        const s = [SS(135, 8), SS(135, 8), SS(135, 8)];
+        expect(computeOverloadNudge(s, 'lbs', 10))
+            .toBe('Stalled at 135 lbs for 3 sessions — try 140 or a back-off set');
+    });
+
+    it('recognizes a plateau where reps are climbing', () => {
+        const s = [SS(135, 10, 10), SS(135, 9, 9), SS(135, 8, 8)];
+        expect(computeOverloadNudge(s, 'lbs', 12))
+            .toBe('3 sessions at 135 lbs — reps are climbing, go 140 next');
+    });
+
+    it('double progression: hit the rep target → add weight', () => {
+        expect(computeOverloadNudge([SS(135, 10, 10)], 'lbs', 10))
+            .toBe('10 reps at 135 lbs — bump to 140');
+    });
+
+    it('consolidates after a recent weight increase', () => {
+        const s = [SS(140, 6, 6), SS(135, 8, 8)];
+        expect(computeOverloadNudge(s, 'lbs', 10))
+            .toBe('Up from 135 — own 140 lbs for 10 reps');
+    });
+
+    it('below the rep target → chase a rep first', () => {
+        const s = [SS(135, 8, 8), SS(135, 8, 8)];
+        expect(computeOverloadNudge(s, 'lbs', 10))
+            .toBe('Add a rep — aim 9×135 lbs toward 10');
+    });
+
+    it('falls back to a simple step with thin signal', () => {
+        expect(computeOverloadNudge([SS(135, 8, 8)], 'lbs', null))
+            .toBe('Beat it — try 140 lbs');
+    });
+
+    it('uses 2.5 kg increments in kg mode', () => {
+        expect(computeOverloadNudge([SS(100, 5, 5)], 'kg', null))
+            .toBe('Beat it — try 102.5 kg');
+    });
+
+    it('returns null for empty/no-weight history', () => {
+        expect(computeOverloadNudge([], 'lbs', 10)).toBeNull();
+        expect(computeOverloadNudge([SS(0, 0, 0)], 'lbs', 10)).toBeNull();
+        expect(computeOverloadNudge(null, 'lbs', 10)).toBeNull();
+    });
+});
+
+// --- mirror of buildExerciseSessions (active-workout-ui.js) ---
+function buildExerciseSessions(allWorkouts, exName, displayUnit) {
+    if (!Array.isArray(allWorkouts) || !exName) return [];
+    const sessions = [];
+    for (const w of allWorkouts) {
+        if (!w || !w.exercises || !w.date || !w.completedAt || w.cancelledAt) continue;
+        for (const [k, ex] of Object.entries(w.exercises)) {
+            const name = w.exerciseNames?.[k] || ex?.name || ex?.machine;
+            if (name !== exName) continue;
+            const working = (ex.sets || []).filter(s =>
+                s && s.completed !== false && s.weight && (s.type || 'working') !== 'warmup');
+            if (working.length === 0) break;
+            let topWeight = 0;
+            for (const s of working) topWeight = Math.max(topWeight, convertWeight(s.weight, s.originalUnit || 'lbs', displayUnit));
+            topWeight = Math.round(topWeight * 10) / 10;
+            let topReps = 0, maxReps = 0;
+            for (const s of working) {
+                maxReps = Math.max(maxReps, s.reps || 0);
+                const w2 = Math.round(convertWeight(s.weight, s.originalUnit || 'lbs', displayUnit) * 10) / 10;
+                if (w2 === topWeight) topReps = Math.max(topReps, s.reps || 0);
+            }
+            sessions.push({ date: w.date, topWeight, topReps, maxReps });
+            break;
+        }
+    }
+    sessions.sort((a, b) => b.date.localeCompare(a.date));
+    return sessions;
+}
+
+describe('buildExerciseSessions', () => {
+    const wk = (date, sets) => ({
+        date, completedAt: `${date}T11:00:00Z`, cancelledAt: null,
+        exercises: { exercise_0: { name: 'Bench Press', sets } },
+    });
+    const set = (reps, weight, type = 'working') => ({ reps, weight, originalUnit: 'lbs', type, completed: true });
+
+    it('takes the heaviest working set per session, most-recent-first', () => {
+        const workouts = [
+            wk('2026-06-20', [set(10, 135), set(5, 155)]),
+            wk('2026-06-27', [set(8, 145), set(3, 165)]),
+        ];
+        const s = buildExerciseSessions(workouts, 'Bench Press', 'lbs');
+        expect(s.map(x => x.topWeight)).toEqual([165, 155]); // newest first
+    });
+
+    it('captures max reps at the top weight', () => {
+        const workouts = [wk('2026-06-27', [set(3, 165), set(6, 165), set(10, 135)])];
+        expect(buildExerciseSessions(workouts, 'Bench Press', 'lbs')[0]).toMatchObject({ topWeight: 165, topReps: 6, maxReps: 10 });
+    });
+
+    it('ignores warmups, other exercises, and incomplete workouts', () => {
+        const workouts = [
+            wk('2026-06-27', [set(5, 225, 'warmup'), set(8, 145)]),
+            { date: '2026-06-26', completedAt: null, cancelledAt: null, exercises: { exercise_0: { name: 'Bench Press', sets: [set(8, 200)] } } },
+            wk('2026-06-25', [set(10, 95)]),
+        ];
+        const filtered = { ...wk('2026-06-24', [set(8, 999)]) };
+        filtered.exercises = { exercise_0: { name: 'Squat', sets: [set(8, 999)] } };
+        const s = buildExerciseSessions([...workouts, filtered], 'Bench Press', 'lbs');
+        expect(s.map(x => x.topWeight)).toEqual([145, 95]); // warmup 225 ignored; incomplete + Squat excluded
+    });
+});
+
 // --- mirror of countLastWeekTrainingDaysThroughToday (dashboard-ui.js) ---
 // with an injectable `now` so the window math is deterministic in tests.
 function getDateString(d) {

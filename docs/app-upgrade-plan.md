@@ -41,7 +41,7 @@ _*A1: Marcus's code review called 38px "fine," but his mockup review and the des
 
 ### Track B — "Am I beating last week?" (the real upgrade)
 
-**Status: all four shipped to dev (2026-07, soak-testing).** B1+B4 in commit `015be78`; B2+B3 in the follow-up. Data already existed — this was UI + wiring, no new cross-module exports.
+**Status: all four shipped to dev (2026-07, soak-testing).** B1+B4 in commit `015be78`; B2+B3 in the follow-up. **B2 upgraded from a simple +step heuristic to the full smart coach** — plateau detection (3+ sessions flat), double-progression (add reps → then weight), and post-increase consolidation, driven by multi-session history (same grouping the dashboard plateau engine uses). Data already existed — UI + wiring, no new cross-module exports.
 
 Marcus's #1, #2, #3 code-review fixes. This is the retention lever. Data already exists — this is UI + wiring.
 
