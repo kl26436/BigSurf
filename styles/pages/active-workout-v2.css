@@ -406,6 +406,15 @@
     font-weight: 700;
     margin-left: 2px;
 }
+/* Overload nudge — the "put the smarts where I lift" line. Primary-tinted so
+   it reads as an actionable target, not just more history. */
+.aw-last__nudge {
+    margin-top: 3px;
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    color: var(--primary);
+}
+.aw-last__nudge > i { margin-right: 3px; }
 
 /* Icon column. Stacks the history icon + (optional) info button so the
    info glyph stays adjacent to the existing history icon without pushing

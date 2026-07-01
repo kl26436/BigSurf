@@ -523,6 +523,30 @@ function getEquipmentDoc(equipmentName) {
     return AppState._cachedEquipment.find(e => e.name?.toLowerCase() === equipmentName.toLowerCase()) || null;
 }
 
+/**
+ * Progressive-overload nudge for the last-session card: takes last session's
+ * heaviest working set and suggests the next step up (smallest standard plate
+ * jump for the display unit). Returns a short label or null (no usable weight).
+ * Grounded only in last session — not the multi-session plateau engine — so it
+ * stays synchronous and self-contained. Pure; mirrored in
+ * tests/unit/beat-last-session.test.js.
+ */
+function nextTargetFor(lastSets, displayUnit) {
+    if (!Array.isArray(lastSets) || lastSets.length === 0) return null;
+    let topLbs = 0, topSet = null;
+    for (const s of lastSets) {
+        if (!s || !s.weight || !s.reps) continue;
+        if ((s.type || 'working') === 'warmup') continue;
+        const lbs = convertWeight(s.weight, s.originalUnit || 'lbs', 'lbs');
+        if (lbs > topLbs) { topLbs = lbs; topSet = s; }
+    }
+    if (!topSet) return null;
+    const inc = displayUnit === 'kg' ? 2.5 : 5;
+    const topDisplay = convertWeight(topSet.weight, topSet.originalUnit || 'lbs', displayUnit);
+    const next = Math.round((topDisplay + inc) * 10) / 10;
+    return `Beat it — try ${next} ${displayUnit}`;
+}
+
 function renderLastSessionCard(exerciseName, idx) {
     // Check if we have cached last session data on the exercise
     const exercise = AppState.currentWorkout.exercises[idx];
@@ -557,6 +581,12 @@ function renderLastSessionCard(exerciseName, idx) {
            </button>`
         : '';
 
+    // Overload nudge — only for weighted lifts (a bodyweight "try +5" is noise).
+    const nudge = isBodyweightExercise(exercise) ? null : nextTargetFor(lastDefaults, displayUnit);
+    const nudgeHtml = nudge
+        ? `<div class="aw-last__nudge"><i class="fas fa-bolt" aria-hidden="true"></i> ${nudge}</div>`
+        : '';
+
     return `
         <div class="aw-last${equipMismatch ? ' aw-last--cross-equip' : ''}">
             <div class="aw-last__icons">
@@ -566,6 +596,7 @@ function renderLastSessionCard(exerciseName, idx) {
             <div class="aw-last__info">
                 <div class="aw-last__label">Last session · ${daysLabel}</div>
                 <div class="aw-last__val">${summary} ${displayUnit}</div>
+                ${nudgeHtml}
             </div>
         </div>
     `;
@@ -915,6 +946,45 @@ export function awNextExercise() {
     }
 }
 
+// Sets already celebrated this session, keyed by exercise+equipment+weight+reps
+// so two sets at the same new top weight in one workout don't double-fire (PRs
+// are only persisted at workout completion, so prData can't self-suppress
+// mid-session).
+const _prCelebrated = new Set();
+
+/**
+ * B3 — live PR moment. On a completed working set, check it against the user's
+ * stored PRs (recorded pre-workout) and fire an immediate haptic + toast when
+ * it's a new max-weight or max-reps PR. Detection only — the set is still
+ * recorded normally at workout completion. Fire-and-forget (async PR load) so
+ * it never blocks the log-a-set path. Skips 'first' (first-ever attempt isn't
+ * beating anything) and 'maxVolume' (fires too often to feel earned).
+ */
+async function maybeCelebratePR(exercise, set, equipName) {
+    try {
+        if (!set || !set.reps || !set.weight) return;
+        if ((set.type || 'working') === 'warmup') return;
+        const exName = getExerciseName(exercise) || exercise?.name || exercise?.machine || null;
+        if (!exName) return;
+        const total = set.weight; // already includes base/BW weight at this point
+        const key = `${exName}__${equipName || ''}__${Math.round(total * 10) / 10}__${set.reps}`;
+        if (_prCelebrated.has(key)) return;
+
+        const { PRTracker } = await import('../features/pr-tracker.js');
+        await PRTracker.loadPRData?.();
+        const pr = PRTracker.checkForNewPR(exName, set.reps, total, equipName);
+        if (pr?.isNewPR && (pr.prType === 'maxWeight' || pr.prType === 'maxReps')) {
+            _prCelebrated.add(key);
+            haptic('pr');
+            const unit = set.originalUnit || AppState.globalUnit || 'lbs';
+            const what = pr.prType === 'maxWeight' ? 'Weight PR' : 'Rep PR';
+            showNotification(`${what}! ${set.reps}×${Math.round(total * 10) / 10} ${unit}`, 'success', 3500);
+        }
+    } catch (e) {
+        debugLog('live PR check failed', e);
+    }
+}
+
 export function awToggleSet(exerciseIdx, setIdx) {
     const key = `exercise_${exerciseIdx}`;
     if (!AppState.savedData.exercises[key]) {
@@ -1006,6 +1076,9 @@ export function awToggleSet(exerciseIdx, setIdx) {
         }
 
         haptic('tap');
+
+        // B3 — live PR moment (fire-and-forget; never blocks logging).
+        maybeCelebratePR(exercise, set, equipName);
 
         // Check if exercise is complete (all target sets done)
         const targetSets = exercise.sets || 3;

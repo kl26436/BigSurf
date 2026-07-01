@@ -80,6 +80,49 @@ describe('beatBadgeFor', () => {
     });
 });
 
+// --- mirror of nextTargetFor (active-workout-ui.js) — B2 overload nudge ---
+function nextTargetFor(lastSets, displayUnit) {
+    if (!Array.isArray(lastSets) || lastSets.length === 0) return null;
+    let topLbs = 0, topSet = null;
+    for (const s of lastSets) {
+        if (!s || !s.weight || !s.reps) continue;
+        if ((s.type || 'working') === 'warmup') continue;
+        const lbs = convertWeight(s.weight, s.originalUnit || 'lbs', 'lbs');
+        if (lbs > topLbs) { topLbs = lbs; topSet = s; }
+    }
+    if (!topSet) return null;
+    const inc = displayUnit === 'kg' ? 2.5 : 5;
+    const topDisplay = convertWeight(topSet.weight, topSet.originalUnit || 'lbs', displayUnit);
+    const next = Math.round((topDisplay + inc) * 10) / 10;
+    return `Beat it — try ${next} ${displayUnit}`;
+}
+
+describe('nextTargetFor (overload nudge)', () => {
+    const S = (reps, weight, unit = 'lbs', type = 'working') => ({ reps, weight, originalUnit: unit, type });
+
+    it('suggests +5 lb over the heaviest working set', () => {
+        expect(nextTargetFor([S(10, 135), S(8, 135)], 'lbs')).toBe('Beat it — try 140 lbs');
+    });
+
+    it('suggests +2.5 kg in kg mode', () => {
+        expect(nextTargetFor([S(5, 100, 'kg')], 'kg')).toBe('Beat it — try 102.5 kg');
+    });
+
+    it('picks the heaviest set, not the last', () => {
+        expect(nextTargetFor([S(5, 185), S(10, 135)], 'lbs')).toBe('Beat it — try 190 lbs');
+    });
+
+    it('ignores warmup sets', () => {
+        expect(nextTargetFor([S(5, 225, 'lbs', 'warmup'), S(8, 135)], 'lbs')).toBe('Beat it — try 140 lbs');
+    });
+
+    it('returns null when there is no usable weight', () => {
+        expect(nextTargetFor([], 'lbs')).toBeNull();
+        expect(nextTargetFor([S(10, 0)], 'lbs')).toBeNull();
+        expect(nextTargetFor(null, 'lbs')).toBeNull();
+    });
+});
+
 // --- mirror of countLastWeekTrainingDaysThroughToday (dashboard-ui.js) ---
 // with an injectable `now` so the window math is deterministic in tests.
 function getDateString(d) {
