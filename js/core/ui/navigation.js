@@ -474,11 +474,84 @@ export function toggleMoreMenu() {
             moreBtn.setAttribute('aria-expanded', !isVisible);
         }
 
-        // Setup drag-to-dismiss on open
+        // Setup drag-to-dismiss on open + schedule a health check for the
+        // "stuck halfway open" report class. If it recurs after the current
+        // fix set, the check auto-logs to Firestore with full diagnostic
+        // state so we can see exactly what's stranding the sheet without
+        // asking the user to reproduce with dev tools open.
         if (!isVisible) {
             setupBottomSheetDrag(menu, overlay);
+            scheduleStuckMenuCheck(menu, overlay);
         }
     }
+}
+
+/**
+ * 350ms after the more menu opens (past the CSS transition), verify its
+ * bottom edge is actually flush with the viewport bottom. If it isn't, the
+ * sheet is floating — the exact "stuck halfway" symptom — so we snapshot
+ * the diagnostic state (kb-inset var, inline styles, visualViewport, menu
+ * rect) and persist it as a warning via the standard errorLogs pipeline.
+ * Zero user impact when everything's fine; automatic bug report when not.
+ */
+function scheduleStuckMenuCheck(menu, overlay) {
+    setTimeout(async () => {
+        // If the user already closed it, nothing to check.
+        if (!menu.classList.contains('visible')) return;
+
+        const rect = menu.getBoundingClientRect();
+        // How far the sheet's bottom edge sits ABOVE the viewport bottom.
+        // A properly anchored bottom sheet should have gap ≈ 0. > 20px means
+        // it's floating in mid-screen — the stuck-halfway case.
+        const gap = Math.round(window.innerHeight - rect.bottom);
+        if (gap <= 20) return;
+
+        try {
+            const { captureWarning } = await import('../utils/error-handler.js');
+            const rootStyle = getComputedStyle(document.documentElement);
+            const menuComputed = getComputedStyle(menu);
+            const vv = window.visualViewport ? {
+                height: Math.round(window.visualViewport.height),
+                offsetTop: Math.round(window.visualViewport.offsetTop),
+                scale: window.visualViewport.scale,
+            } : null;
+
+            captureWarning(
+                `More menu stuck-halfway — ${gap}px floating gap below sheet`,
+                'toggleMoreMenu',
+                {
+                    gap,
+                    menuRect: {
+                        top: Math.round(rect.top),
+                        bottom: Math.round(rect.bottom),
+                        height: Math.round(rect.height),
+                    },
+                    windowInnerHeight: window.innerHeight,
+                    windowInnerWidth: window.innerWidth,
+                    // The suspected root cause vector: kb-inset stranded non-zero.
+                    kbInsetVar: rootStyle.getPropertyValue('--kb-inset').trim() || null,
+                    // Computed values so we can see what CSS/inline combined into.
+                    menuComputedBottom: menuComputed.bottom,
+                    menuComputedTransform: menuComputed.transform,
+                    menuComputedTransition: menuComputed.transition,
+                    // Inline styles — any residue from drag or elsewhere.
+                    menuInlineStyles: {
+                        transform: menu.style.transform || null,
+                        transition: menu.style.transition || null,
+                        bottom: menu.style.bottom || null,
+                        cssText: menu.style.cssText || null,
+                    },
+                    overlayVisible: !!overlay && overlay.classList.contains('visible'),
+                    visualViewport: vv,
+                    userAgent: navigator.userAgent || null,
+                    platform: navigator.platform || null,
+                    devicePixelRatio: window.devicePixelRatio || null,
+                }
+            );
+        } catch (_) {
+            // Never let the diagnostic itself break the app.
+        }
+    }, 350);
 }
 
 // Close more menu
