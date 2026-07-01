@@ -315,9 +315,17 @@ export async function openPlateCalcPopover(exerciseIndex) {
                 ? Math.round(equipmentDoc.baseWeight * 0.453592 * 2) / 2
                 : Math.round(equipmentDoc.baseWeight * 2.20462));
     } else {
-        barWeight = isKg
-            ? (settings.plateBarKg || KG_BAR)
-            : (settings.plateBarLbs || LBS_BAR);
+        // Plate-loaded machines (e.g. an Arsenal vertical chest press) have no
+        // bar to subtract — the user loads and tracks plate weight directly, so
+        // default to no bar. Barbells / unknown fall back to the standard bar.
+        const eqType = (equipmentDoc?.equipmentType || equipmentDoc?.type || '').toLowerCase();
+        if (eqType.includes('plate')) {
+            barWeight = 0;
+        } else {
+            barWeight = isKg
+                ? (settings.plateBarKg || KG_BAR)
+                : (settings.plateBarLbs || LBS_BAR);
+        }
     }
     const availPlates = isKg
         ? (settings.plateKg || KG_PLATES)
@@ -350,7 +358,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
 
     const result = targetWeight > 0 ? calculatePlates(targetWeight, barWeight, availPlates) : null;
 
-    const barPresets = isKg ? [20, 15, 10, 7] : [45, 35, 30, 25, 15];
+    const barPresets = isKg ? [0, 20, 15, 10, 7] : [0, 45, 35, 30, 25, 15];
     const equipBarLabel = equipmentDoc?.baseWeight > 0 ? ` (${equipmentDoc.name || 'equipment'})` : '';
 
     popover.innerHTML = `
@@ -367,7 +375,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
             ${equipBarLabel ? `<div class="popover-equip-hint"><i class="fas fa-info-circle"></i> Base: ${barWeight} ${unit}${equipBarLabel}</div>` : ''}
             <div class="popover-bar-row">
                 <span class="popover-bar-label">Bar:</span>
-                ${barPresets.map(v => `<button class="popover-bar-btn ${v === barWeight ? 'active' : ''}" data-bar="${v}">${v}</button>`).join('')}
+                ${barPresets.map(v => `<button class="popover-bar-btn ${v === barWeight ? 'active' : ''}" data-bar="${v}">${v === 0 ? 'None' : v}</button>`).join('')}
                 <input type="number" id="popover-bar-custom" class="popover-bar-input" inputmode="decimal" placeholder="Other">
             </div>
             <div id="popover-plate-result">
@@ -376,7 +384,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
                     <div class="plate-calc-per-side">
                         Per side: ${result.plates.length ? result.plates.join(' + ') + ' ' + unit : 'Just the bar'}
                     </div>
-                    <div class="plate-calc-bar-label">Bar: ${barWeight} ${unit}</div>
+                    <div class="plate-calc-bar-label">${barWeight === 0 ? 'No bar · plates only' : `Bar: ${barWeight} ${unit}`}</div>
                     ${result.remainder > 0 ? `<div class="plate-calc-remainder">${result.remainder} ${unit} remainder</div>` : ''}
                 ` : (result?.error ? `<div class="plate-calc-error">${result.error}</div>` : '<div class="plate-calc-empty">Enter weight</div>')}
             </div>
@@ -406,7 +414,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
             <div class="plate-calc-per-side">
                 Per side: ${r.plates.length ? r.plates.join(' + ') + ' ' + unit : 'Just the bar'}
             </div>
-            <div class="plate-calc-bar-label">Bar: ${currentBar} ${unit}</div>
+            <div class="plate-calc-bar-label">${currentBar === 0 ? 'No bar · plates only' : `Bar: ${currentBar} ${unit}`}</div>
             ${r.remainder > 0 ? `<div class="plate-calc-remainder">${r.remainder} ${unit} remainder</div>` : ''}
         `;
     }
@@ -436,7 +444,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
     if (customBar) {
         customBar.addEventListener('input', () => {
             const val = parseFloat(customBar.value);
-            if (!isNaN(val) && val > 0) {
+            if (!isNaN(val) && val >= 0) {
                 currentBar = val;
                 popover.querySelectorAll('.popover-bar-btn').forEach(b => b.classList.remove('active'));
             }
