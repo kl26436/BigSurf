@@ -51,8 +51,8 @@ const PLATE_COLORS = {
  * @param {number[]} availablePlates - Plate sizes available, descending order
  * @returns {{ plates: number[], remainder: number, error?: string }}
  */
-export function calculatePlates(targetWeight, barWeight = LBS_BAR, availablePlates = LBS_PLATES) {
-    let perSide = (targetWeight - barWeight) / 2;
+export function calculatePlates(targetWeight, barWeight = LBS_BAR, availablePlates = LBS_PLATES, sides = 2) {
+    let perSide = (targetWeight - barWeight) / sides;
     if (perSide < 0) return { plates: [], remainder: 0, error: 'Weight is less than bar' };
     if (perSide === 0) return { plates: [], remainder: 0 };
 
@@ -356,7 +356,12 @@ export async function openPlateCalcPopover(exerciseIndex) {
     popover.id = 'plate-calc-popover';
     popover.className = 'plate-calc-popover';
 
-    const result = targetWeight > 0 ? calculatePlates(targetWeight, barWeight, availPlates) : null;
+    // Two-sided machines split the load per side; single-load machines (e.g. a
+    // hack squat with one horn) put it all on one point. Remembered per machine
+    // via equipmentDoc.plateSides; defaults to two sides.
+    let currentSides = equipmentDoc?.plateSides === 1 ? 1 : 2;
+
+    const result = targetWeight > 0 ? calculatePlates(targetWeight, barWeight, availPlates, currentSides) : null;
 
     const barPresets = isKg ? [0, 20, 15, 10, 7] : [0, 45, 35, 30, 25, 15];
     const equipBarLabel = equipmentDoc?.baseWeight > 0 ? ` (${equipmentDoc.name || 'equipment'})` : '';
@@ -378,11 +383,16 @@ export async function openPlateCalcPopover(exerciseIndex) {
                 ${barPresets.map(v => `<button class="popover-bar-btn ${v === barWeight ? 'active' : ''}" data-bar="${v}">${v === 0 ? 'None' : v}</button>`).join('')}
                 <input type="number" id="popover-bar-custom" class="popover-bar-input" inputmode="decimal" placeholder="Other">
             </div>
+            <div class="popover-bar-row popover-load-row">
+                <span class="popover-bar-label">Load:</span>
+                <button class="popover-load-btn ${currentSides === 2 ? 'active' : ''}" data-sides="2">Both sides</button>
+                <button class="popover-load-btn ${currentSides === 1 ? 'active' : ''}" data-sides="1">One side</button>
+            </div>
             <div id="popover-plate-result">
                 ${result && !result.error ? `
                     ${renderBarbellDiagram(result.plates)}
                     <div class="plate-calc-per-side">
-                        Per side: ${result.plates.length ? result.plates.join(' + ') + ' ' + unit : 'Just the bar'}
+                        ${currentSides === 1 ? 'Load' : 'Per side'}: ${result.plates.length ? result.plates.join(' + ') + ' ' + unit : (barWeight === 0 ? 'No plates' : 'Just the bar')}
                     </div>
                     <div class="plate-calc-bar-label">${barWeight === 0 ? 'No bar · plates only' : `Bar: ${barWeight} ${unit}`}</div>
                     ${result.remainder > 0 ? `<div class="plate-calc-remainder">${result.remainder} ${unit} remainder</div>` : ''}
@@ -404,7 +414,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
             container.innerHTML = '<div class="plate-calc-empty">Enter weight</div>';
             return;
         }
-        const r = calculatePlates(val, currentBar, availPlates);
+        const r = calculatePlates(val, currentBar, availPlates, currentSides);
         if (r.error) {
             container.innerHTML = `<div class="plate-calc-error">${r.error}</div>`;
             return;
@@ -412,7 +422,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
         container.innerHTML = `
             ${renderBarbellDiagram(r.plates)}
             <div class="plate-calc-per-side">
-                Per side: ${r.plates.length ? r.plates.join(' + ') + ' ' + unit : 'Just the bar'}
+                ${currentSides === 1 ? 'Load' : 'Per side'}: ${r.plates.length ? r.plates.join(' + ') + ' ' + unit : (currentBar === 0 ? 'No plates' : 'Just the bar')}
             </div>
             <div class="plate-calc-bar-label">${currentBar === 0 ? 'No bar · plates only' : `Bar: ${currentBar} ${unit}`}</div>
             ${r.remainder > 0 ? `<div class="plate-calc-remainder">${r.remainder} ${unit} remainder</div>` : ''}
@@ -451,6 +461,24 @@ export async function openPlateCalcPopover(exerciseIndex) {
             recalcPopover();
         });
     }
+
+    // Load mode (both sides / one side) — remembered per machine so a single-
+    // load machine like a hack squat stops halving the weight next time.
+    popover.querySelectorAll('.popover-load-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            popover.querySelectorAll('.popover-load-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSides = parseInt(btn.dataset.sides, 10) === 1 ? 1 : 2;
+            recalcPopover();
+            if (equipmentDoc?.id) {
+                equipmentDoc.plateSides = currentSides; // update cache immediately
+                try {
+                    const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+                    await new FirebaseWorkoutManager(AppState).updateEquipment(equipmentDoc.id, { plateSides: currentSides });
+                } catch (_) { /* non-fatal — the session already reflects the choice */ }
+            }
+        });
+    });
 }
 
 export function closePlateCalcPopover() {

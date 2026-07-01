@@ -293,7 +293,8 @@
     color: var(--text-muted);
     margin-right: var(--space-4);
 }
-.popover-bar-btn {
+.popover-bar-btn,
+.popover-load-btn {
     padding: var(--space-4) var(--space-8);
     font-size: var(--font-xs);
     background: var(--bg-card);
@@ -302,10 +303,17 @@
     color: var(--text-main);
     cursor: pointer;
 }
-.popover-bar-btn.active {
+.popover-bar-btn.active,
+.popover-load-btn.active {
     border-color: var(--primary);
     color: var(--primary);
     background: var(--primary-bg);
+}
+/* Load-mode buttons carry words ("Both sides"), so let them breathe. */
+.popover-load-btn {
+    flex: 1;
+    min-height: var(--tap-sm);
+    font-weight: 600;
 }
 .popover-bar-input {
     width: 50px;

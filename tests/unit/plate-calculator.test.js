@@ -117,4 +117,27 @@ describe('calculatePlates', () => {
             expect(result.remainder).toBe(0);
         });
     });
+
+    describe('no bar / plate-loaded machines', () => {
+        it('two-sided machine, no bar: 300 -> 150 per side', () => {
+            // (300 - 0) / 2 = 150 = 45+45+45+10+5
+            const result = calculatePlates(300, 0);
+            expect(result.plates).toEqual([45, 45, 45, 10, 5]);
+            expect(result.remainder).toBe(0);
+        });
+
+        it('single-load machine (sides=1), no bar: 300 all on one horn', () => {
+            // (300 - 0) / 1 = 300 = 45*6 + 25 + 5
+            const result = calculatePlates(300, 0, undefined, 1);
+            expect(result.plates).toEqual([45, 45, 45, 45, 45, 45, 25, 5]);
+            expect(result.remainder).toBe(0);
+        });
+
+        it('single-load with a base/sled weight subtracts once, no halving', () => {
+            // (200 - 50) / 1 = 150 = 45+45+45+10+5
+            const result = calculatePlates(200, 50, undefined, 1);
+            expect(result.plates).toEqual([45, 45, 45, 10, 5]);
+            expect(result.remainder).toBe(0);
+        });
+    });
 });
