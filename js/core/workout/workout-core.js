@@ -93,6 +93,7 @@ export {
     awNextExercise,
     awToggleSet,
     awUpdateSet,
+    awSetRpe,
     awAddSet,
     awRemoveSet,
     awSaveNotes,

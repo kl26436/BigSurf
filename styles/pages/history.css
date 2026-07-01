@@ -637,6 +637,13 @@
     background: var(--success-bg-subtle);
     border-bottom: 1px solid var(--success-border);
 }
+/* Logged RPE suffix in a history set row's weight cell. */
+.wh-rpe {
+    margin-left: var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+}
 .wh-detail-table__empty {
     padding: var(--space-32) !important;
     text-align: center;

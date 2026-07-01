@@ -823,7 +823,7 @@ export function getWorkoutHistory(appState) {
                                 <tr class="wh-detail-table__set-row">
                                     <td>Set ${index + 1}</td>
                                     <td>${set.reps || '-'}</td>
-                                    <td>${set.weight ? (() => { const dw = displayWeight(set.weight, set.originalUnit || 'lbs', appState.globalUnit || 'lbs'); return dw.value + ' ' + dw.label; })() : '-'}</td>
+                                    <td>${set.weight ? (() => { const dw = displayWeight(set.weight, set.originalUnit || 'lbs', appState.globalUnit || 'lbs'); return dw.value + ' ' + dw.label; })() : '-'}${set.rpe ? ` <span class="wh-rpe">RPE ${set.rpe}</span>` : ''}</td>
                                 </tr>`;
                             }
                         });
@@ -1312,7 +1312,7 @@ export function getWorkoutHistory(appState) {
             sets.forEach((set, index) => {
                 if (set && (set.reps || set.weight)) {
                     const dw = displayWeight(set.weight || 0, set.originalUnit || 'lbs', appState.globalUnit || 'lbs');
-                    html += `<span class="set-badge">Set ${index + 1}: ${set.reps || 0} × ${dw.value} ${dw.label}</span>`;
+                    html += `<span class="set-badge">Set ${index + 1}: ${set.reps || 0} × ${dw.value} ${dw.label}${set.rpe ? ` · RPE ${set.rpe}` : ''}</span>`;
                 }
             });
             html += '</div>';

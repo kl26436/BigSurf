@@ -495,3 +495,9 @@
     color: var(--badge-gold);
     font-weight: 700;
 }
+/* Logged RPE appended inside a set chip (exercise detail sessions). */
+.set-chip__rpe {
+    margin-left: 3px;
+    color: var(--primary);
+    font-weight: 700;
+}
