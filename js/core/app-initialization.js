@@ -131,7 +131,70 @@ function installKeyboardAwareFocusHandler() {
         setTimeout(() => {
             try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { /* noop */ }
         }, 300);
+
+        // Silent health check for the recurring "search results hidden under
+        // keyboard" report class. Waits past the keyboard animation + our
+        // scrollIntoView, then measures the input's bottom against the
+        // visualViewport height. If the input is behind the keyboard, log
+        // with the surrounding sheet/modal context so I can see which
+        // screen still fails despite the last round of fixes.
+        setTimeout(() => scheduleKeyboardOcclusionCheck(t), 600);
     });
+}
+
+async function scheduleKeyboardOcclusionCheck(input) {
+    if (!input || !input.isConnected) return;
+    if (document.activeElement !== input) return; // user moved on; not our problem
+
+    const vv = window.visualViewport;
+    // No visualViewport → can't reliably tell if keyboard is up; skip.
+    if (!vv) return;
+
+    const rect = input.getBoundingClientRect();
+    // Threshold: input's bottom edge sitting BELOW the visible viewport by
+    // more than a hair. On iOS Safari, when the keyboard covers the input,
+    // rect.bottom stays at its layout-viewport position but vv.height
+    // shrinks — the diff is the occluded distance.
+    const overhang = Math.round(rect.bottom - vv.height);
+    if (overhang <= 8) return;
+
+    try {
+        const { captureWarning } = await import('./utils/error-handler.js');
+        const sheet = input.closest('.aw-sheet, .more-menu, .modal, .field-search--sticky');
+        captureWarning(
+            `Keyboard occluding input — ${overhang}px overhang below viewport`,
+            'installKeyboardAwareFocusHandler',
+            {
+                overhang,
+                inputRect: {
+                    top: Math.round(rect.top),
+                    bottom: Math.round(rect.bottom),
+                    height: Math.round(rect.height),
+                },
+                inputTag: input.tagName,
+                inputId: input.id || null,
+                inputPlaceholder: input.placeholder || null,
+                inputClasses: input.className || null,
+                surroundingSheet: sheet ? {
+                    id: sheet.id || null,
+                    classes: sheet.className,
+                    computedBottom: getComputedStyle(sheet).bottom,
+                    inlineBottom: sheet.style.bottom || null,
+                } : null,
+                visualViewport: {
+                    height: Math.round(vv.height),
+                    offsetTop: Math.round(vv.offsetTop),
+                },
+                windowInnerHeight: window.innerHeight,
+                kbInsetVar: getComputedStyle(document.documentElement)
+                    .getPropertyValue('--kb-inset').trim() || null,
+                userAgent: navigator.userAgent || null,
+                platform: navigator.platform || null,
+            }
+        );
+    } catch (_) {
+        // Diagnostic must never break input focus.
+    }
 }
 
 // Track keyboard inset via visualViewport so fixed pinned sections can shrink

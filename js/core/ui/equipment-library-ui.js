@@ -1099,7 +1099,44 @@ function gatherGymEquipment(gymName, locationId) {
             uniqueRefs.push(r);
         }
         if (uniqueRefs.length < catalogRefs.length) {
+            const dupeCount = catalogRefs.length - uniqueRefs.length;
             healDuplicateLocationEquipment(loc.id, uniqueRefs);
+            // Silent self-report: healing kicks in — this is our chance to
+            // measure whether the write-side deduper is receding or still
+            // getting fed dupes. Same pattern as the more-menu detector:
+            // captureWarning → errorLogs → visible in bug log. Fire once
+            // per healing invocation (which is already gated by
+            // _healingLocations to one-per-location per lifecycle).
+            (async () => {
+                try {
+                    const { captureWarning } = await import('../utils/error-handler.js');
+                    // Count occurrences per catalogRef so we can see whether
+                    // it's "one ref repeated N times" or "N refs each dupe'd
+                    // once" — those hint at different write-side causes.
+                    const refCounts = {};
+                    for (const r of catalogRefs) {
+                        if (!r?.catalogRef) continue;
+                        refCounts[r.catalogRef] = (refCounts[r.catalogRef] || 0) + 1;
+                    }
+                    const worst = Object.entries(refCounts)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5)
+                        .map(([ref, count]) => ({ ref, count }));
+                    captureWarning(
+                        `Gym equipment healing: ${dupeCount} duplicate catalogRef(s) at "${gymName}"`,
+                        'gatherGymEquipment',
+                        {
+                            gymName,
+                            locationId: loc.id,
+                            totalRefsBefore: catalogRefs.length,
+                            totalRefsAfter: uniqueRefs.length,
+                            duplicatesRemoved: dupeCount,
+                            uniqueCatalogRefs: uniqueRefs.length,
+                            worstOffenders: worst,
+                        }
+                    );
+                } catch (_) { /* diagnostic must never break render */ }
+            })();
         }
 
         // Promote each catalog ref to a legacy equipment record so it shows

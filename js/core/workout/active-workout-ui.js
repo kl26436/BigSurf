@@ -2537,6 +2537,86 @@ export async function loadAutofillForAllExercises() {
     }
 }
 
+/**
+ * Silent equipment-leak detector. Fires captureWarning when the last-session
+ * autofill surfaces an equipment that shouldn't be linked to the exercise —
+ * the class of bug the 6/9 "Shoulder Press paired with Standing Arm" report
+ * caught. Cheap enough to run on every autofill: bails out early on the
+ * happy path, only escalates to the async import + Firestore write when a
+ * suspicious signal exists.
+ *
+ * Signal criteria (any one triggers a log):
+ *   1) The surfaced equipment name doesn't exist in AppState._cachedEquipment
+ *      at all (indicates history from a deleted/renamed record leaking in).
+ *   2) The surfaced equipment doesn't include the current gym in its
+ *      locations[] AND we're at a known gym (indicates the fallback tier
+ *      pulled a session from a different gym after location-match failed).
+ *   3) The surfaced equipment's exerciseTypes[] doesn't include the current
+ *      exercise name (indicates the equipment was never actually linked to
+ *      this exercise — the exact "leak" symptom).
+ */
+async function maybeLogEquipmentLeak({
+    exerciseName,
+    queryEquipment,
+    queryLocation,
+    lastSession,
+    templateEquipment,
+    userPickedEquipment,
+}) {
+    if (!lastSession || !lastSession.equipment) return;
+    const surfaced = lastSession.equipment;
+
+    // Skip the happy path: strict tier matched (query equipment === returned
+    // equipment) means the resolution chain worked as intended, no leak.
+    if (queryEquipment && surfaced === queryEquipment) return;
+
+    const cachedEquipment = Array.isArray(AppState._cachedEquipment) ? AppState._cachedEquipment : [];
+    const surfacedLC = surfaced.toLowerCase();
+    const match = cachedEquipment.find(e => (e.name || '').toLowerCase() === surfacedLC);
+
+    const missingFromLibrary = !match;
+    const locationMismatch = !!queryLocation && !!match &&
+        !(match.locations || []).some(l => l && l.toLowerCase() === queryLocation.toLowerCase());
+    const notLinkedToExercise = !!match &&
+        !(match.exerciseTypes || []).some(n => n && n.toLowerCase() === exerciseName.toLowerCase());
+
+    if (!missingFromLibrary && !locationMismatch && !notLinkedToExercise) return;
+
+    try {
+        const { captureWarning } = await import('../utils/error-handler.js');
+        captureWarning(
+            `Autofill equipment leak: "${exerciseName}" surfaced "${surfaced}"`,
+            'loadAutofillForExercise',
+            {
+                exerciseName,
+                surfacedEquipment: surfaced,
+                queryEquipment,
+                queryLocation,
+                templateEquipment,
+                userPickedEquipment,
+                lastSessionDate: lastSession.date || null,
+                lastSessionLocation: lastSession.location || null,
+                signals: {
+                    missingFromLibrary,
+                    locationMismatch,
+                    notLinkedToExercise,
+                },
+                // Enough of the matched record (if any) to see what was picked.
+                matchedEquipmentSummary: match ? {
+                    id: match.id || null,
+                    name: match.name || null,
+                    locations: match.locations || [],
+                    exerciseTypesCount: (match.exerciseTypes || []).length,
+                    hasCatalogRef: !!match.catalogRef,
+                } : null,
+                cachedEquipmentCount: cachedEquipment.length,
+            }
+        );
+    } catch (_) {
+        // Diagnostic must never break autofill.
+    }
+}
+
 export async function loadAutofillForExercise(idx) {
     const exercise = AppState.currentWorkout.exercises[idx];
     if (!exercise) return;
@@ -2578,6 +2658,20 @@ export async function loadAutofillForExercise(idx) {
 
     try {
         const lastSession = await getLastSessionDefaults(exName, equipName, locName);
+        // Silent health check: if the surfaced last-session equipment
+        // doesn't exist in the user's library, or came from an exercise
+        // history record that never actually linked this equipment, that's
+        // an equipment-leak signal (the 6/9 report class). Auto-log with
+        // the full resolution chain so I can see any remaining leak paths
+        // my write-side fix didn't close. Non-blocking, best-effort.
+        maybeLogEquipmentLeak({
+            exerciseName: exName,
+            queryEquipment: equipName,
+            queryLocation: locName,
+            lastSession,
+            templateEquipment: exercise.equipment || null,
+            userPickedEquipment: savedEx?.equipment || null,
+        });
         if (lastSession && lastSession.sets) {
             exercise._lastSessionSets = lastSession.sets;
             // Capture the source equipment so the card can show "from <other
