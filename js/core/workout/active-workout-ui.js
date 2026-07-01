@@ -270,8 +270,8 @@ function renderRestTimerBanner() {
                 <span class="aw-rest-timer__time" id="aw-rest-time">${formatTimer(restTimerRemaining)}</span>
             </div>
             <div class="aw-rest-timer__controls">
-                <button class="aw-rest-timer__btn" onclick="event.stopPropagation(); awRestAdd30()">+30s</button>
-                <button class="aw-rest-timer__btn" onclick="event.stopPropagation(); awRestSkip()">Skip</button>
+                <button class="aw-rest-timer__btn" onclick="event.stopPropagation(); awRestAdd30()" aria-label="Add 30 seconds">+30s</button>
+                <button class="aw-rest-timer__btn" onclick="event.stopPropagation(); awRestSkip()" aria-label="Skip rest">Skip</button>
             </div>
             <div class="aw-rest-timer__bar">
                 <div class="aw-rest-timer__bar-fill" id="aw-rest-fill" style="--rest-pct: ${pct}%"></div>
@@ -453,7 +453,7 @@ function renderExerciseView(exercise, idx, savedEx) {
             <span class="aw-sets-header__label"></span>
             <span class="aw-sets-header__label">Reps</span>
             <span class="aw-sets-header__label">${weightLabel}</span>
-            <button class="aw-sets-header__unit" onclick="awToggleUnit(${idx})" title="Tap to switch unit">${unit}</button>
+            <button class="aw-sets-header__unit" onclick="awToggleUnit(${idx})" title="Tap to switch unit" aria-label="Switch weight unit (currently ${unit})">${unit}</button>
         </div>
         ${showAutofillHint ? '<div class="aw-autofill-hint"><i class="fas fa-magic"></i> Pre-filled from last session · tap ✓ to confirm or edit values</div>' : ''}
         <div class="aw-sets">
@@ -482,7 +482,7 @@ function renderEquipLine(equipmentName, idx) {
         <div class="aw-equip-line">
             <i class="fas fa-cog"></i>
             <span class="aw-equip-line__name">${equipmentName ? escapeHtml(equipmentName) + baseWeightStr : 'Choose equipment'}</span>
-            <button class="aw-equip-line__change" onclick="awOpenEquipmentSheet(${idx})">Change</button>
+            <button class="aw-equip-line__change" onclick="awOpenEquipmentSheet(${idx})" aria-label="Change equipment"><i class="fas fa-exchange-alt"></i> Change</button>
         </div>
     `;
 }
@@ -745,9 +745,6 @@ function renderExerciseMenu(idx) {
         <div class="aw-ex-menu">
             <button class="aw-ex-menu__item" onclick="awReplaceExercise(${idx})">
                 <i class="fas fa-exchange-alt"></i> Swap exercise
-            </button>
-            <button class="aw-ex-menu__item" onclick="awOpenEquipmentSheet(${idx})">
-                <i class="fas fa-cog"></i> Change equipment
             </button>
             <div class="aw-ex-menu__divider"></div>
             ${group

@@ -521,7 +521,7 @@ function renderOnboardingStep() {
             `,
             footer: `
                 <button class="btn-ghost" onclick="onboardingBack()">Back</button>
-                <button class="btn-redesign onb-btn-wide" onclick="completeOnboarding()"><i class="fas fa-check"></i> All set!</button>
+                <button class="btn-redesign onb-btn-wide" onclick="completeOnboarding()"><i class="fas fa-check"></i> All set</button>
             `,
         },
     ];

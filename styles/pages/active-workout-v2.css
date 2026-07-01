@@ -66,7 +66,7 @@
     margin-left: 4px;
 }
 .aw-title__loc > i {
-    font-size: 0.5rem;
+    font-size: var(--font-2xs);
     margin-right: 1px;
 }
 
@@ -357,11 +357,18 @@
     color: var(--primary);
     font-size: var(--font-xs);
     font-weight: 600;
-    background: transparent;
-    border: none;
-    padding: 2px 6px;
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-pill);
+    padding: 6px 12px;
+    min-height: var(--tap-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
     cursor: pointer;
 }
+.aw-equip-line__change:active { transform: scale(0.96); }
 
 /* === LAST SESSION CARD === */
 .aw-last {
@@ -456,7 +463,7 @@
 /* === SET COLUMN HEADERS === */
 .aw-sets-header {
     display: grid;
-    grid-template-columns: 28px 1fr 1fr 38px;
+    grid-template-columns: 28px 1fr 1fr 44px;
     gap: 8px;
     padding: 0 26px 4px;
     align-items: center;
@@ -492,7 +499,7 @@
     border-radius: var(--radius-md);
     padding: 10px 12px;
     display: grid;
-    grid-template-columns: 28px 1fr 1fr 38px;
+    grid-template-columns: 28px 1fr 1fr 44px;
     gap: 8px;
     align-items: center;
     margin-bottom: 8px;
@@ -550,7 +557,7 @@
     font-weight: 700;
 }
 .aw-set-row__check {
-    width: 38px; height: 38px;
+    width: 44px; height: 44px;
     border-radius: 50%;
     background: var(--bg-card-hi);
     color: var(--text-muted);

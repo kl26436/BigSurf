@@ -958,7 +958,7 @@ function renderGymDetail(container) {
         container.innerHTML = chipStripHTML + `
             <div class="empty-state-compact">
                 <i class="fas fa-wrench"></i>
-                <p>${currentBpFilter === 'All' ? 'No equipment at this gym yet' : `Nothing for ${currentBpFilter} yet`}</p>
+                <p>${currentBpFilter === 'All' ? 'No equipment at this gym yet' : `No equipment for ${currentBpFilter} yet`}</p>
                 <p class="empty-state-hint">${currentBpFilter === 'All' ? 'Tap Add to inventory this gym' : 'Try another body part or add more equipment'}</p>
             </div>
         `;
