@@ -151,6 +151,19 @@ function installKeyboardInsetTracker() {
     };
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
+    // Self-heal paths. iOS Safari occasionally drops the visualViewport.resize
+    // event when an input is blurred as part of a page transition — leaving
+    // --kb-inset stranded at the keyboard height. When that happens, any
+    // element anchored to --kb-inset (previously the more menu) opens
+    // floating in the middle of the screen. These extra triggers force a
+    // recompute at moments the app naturally comes back into focus so a
+    // stranded value corrects itself within a few hundred ms.
+    document.addEventListener('focusout', () => setTimeout(update, 50));
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') update();
+    });
+    window.addEventListener('focus', update);
+    window.addEventListener('pageshow', update);
     update();
 }
 

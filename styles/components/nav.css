@@ -236,7 +236,14 @@
 }
 .more-menu {
     position: fixed;
-    bottom: var(--kb-inset, 0px);
+    /* Intentionally anchored to viewport bottom, NOT var(--kb-inset, 0px).
+       The more menu has no inputs — it never needs to dodge the keyboard.
+       On iOS Safari, --kb-inset can get stranded at a non-zero value if the
+       visualViewport resize event doesn't fire cleanly when an input is
+       blurred (e.g., due to a page transition mid-focus). When that
+       happened, the menu opened floating in the middle of the screen —
+       looking exactly like the "stuck halfway open" the user kept seeing. */
+    bottom: 0;
     left: 0;
     right: 0;
     background: var(--bg-surface);

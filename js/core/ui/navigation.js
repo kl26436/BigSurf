@@ -455,6 +455,17 @@ export function toggleMoreMenu() {
 
     if (menu && overlay) {
         const isVisible = menu.classList.contains('visible');
+
+        // Belt-and-suspenders: wipe any inline transform/transition BEFORE
+        // toggling visibility. If the previous close was interrupted mid-
+        // animation and left inline styles behind, the CSS class-based
+        // animation can't move the sheet because the inline styles win.
+        // The user was seeing "stuck halfway open" as the residue of an
+        // earlier drag/gesture that never got a clean cleanup. Nuking here
+        // guarantees every open starts from the CSS-defined baseline.
+        menu.style.transform = '';
+        menu.style.transition = '';
+
         menu.classList.toggle('visible', !isVisible);
         overlay.classList.toggle('visible', !isVisible);
 
