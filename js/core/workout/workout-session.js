@@ -250,6 +250,30 @@ export function pauseWorkout() {
     AppState.clearTimers();
 }
 
+/**
+ * Drop sets the user never actually logged — autofill placeholders left
+ * unchecked (completed !== true) — and any exercise left with no logged sets.
+ * Without this, finishing a workout early persisted last session's pre-filled
+ * numbers as if they'd been done: they showed up in history, counted toward
+ * the summary, and could even record false PRs. Mutates the exercises map in
+ * place. Fresh completions only — callers skip it for historical edits, whose
+ * sets may pre-date the `completed` flag. Internal to this module (nothing
+ * imports it), so it stays a plain function — no cross-module export.
+ */
+function pruneUnloggedSets(savedData) {
+    const exMap = savedData?.exercises;
+    if (!exMap) return;
+    for (const key of Object.keys(exMap)) {
+        const ex = exMap[key];
+        if (ex && Array.isArray(ex.sets)) {
+            ex.sets = ex.sets.filter(s => s && s.completed === true);
+        }
+        if (!ex || !ex.sets || ex.sets.length === 0) {
+            delete exMap[key];
+        }
+    }
+}
+
 export async function completeWorkout() {
     if (!AppState.currentWorkout) return;
 
@@ -294,6 +318,14 @@ export async function completeWorkout() {
         // New workout - calculate duration normally
         AppState.savedData.completedAt = new Date().toISOString();
         AppState.savedData.totalDuration = Math.floor((new Date() - AppState.workoutStartTime) / 1000);
+    }
+
+    // Drop unlogged (autofill-only) sets and empty exercises so finishing early
+    // doesn't persist last session's pre-filled numbers as if done — this also
+    // keeps them out of PR detection and the summary below. Fresh completions
+    // only; historical edits keep their existing sets.
+    if (!isEditingHistorical) {
+        pruneUnloggedSets(AppState.savedData);
     }
 
     // Fire-and-forget save — don't block UI on Firebase write
