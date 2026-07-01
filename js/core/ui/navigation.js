@@ -81,6 +81,12 @@ export function navigateTo(view) {
     if (orphanBackdrop) orphanBackdrop.remove();
     if (orphanSheet) orphanSheet.remove();
 
+    // Same story for the plate-calculator popover and the form-video overlay —
+    // both are appended to <body> and, being position:fixed, would linger on
+    // top of the next screen until dismissed by their own close button.
+    document.getElementById('plate-calc-popover')?.remove();
+    document.getElementById('aw-form-video-overlay')?.remove();
+
     // The bottom-nav more menu (#more-menu) lives outside the section system,
     // so hiding the source section doesn't dismiss it. bottomNavTo() already
     // closes it before calling navigateTo, but any other code path (in-page
