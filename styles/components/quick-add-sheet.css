@@ -187,3 +187,48 @@
     font-variant-numeric: tabular-nums;
     margin-right: var(--space-6);
 }
+
+/* "Can't find it?" — inline custom equipment create (E1). */
+.qa-custom__open {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-6);
+    width: 100%;
+    margin-top: var(--space-12);
+    padding: var(--space-12);
+    background: transparent;
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+.qa-custom__open:active { background: var(--bg-card); }
+.qa-custom {
+    margin-top: var(--space-12);
+    padding: var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+}
+.qa-custom__title {
+    font-size: var(--font-sm);
+    font-weight: 800;
+    color: var(--text-strong);
+}
+.qa-custom__types {
+    flex-wrap: wrap;
+}
+.qa-custom__actions {
+    display: flex;
+    gap: var(--space-8);
+}
+.qa-custom__cancel,
+.qa-custom__save {
+    flex: 1;
+}

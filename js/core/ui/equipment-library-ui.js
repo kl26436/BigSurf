@@ -1600,6 +1600,9 @@ export async function openQuickAddSheet(gymName) {
         bpFilter: 'All',
         alreadyTagged,
         allMachines: flattenCatalogMachines(),
+        customOpen: false,
+        customName: '',
+        customType: 'Plate-Loaded',
     };
 
     renderQuickAddSheet();
@@ -1761,7 +1764,32 @@ function renderQuickAddBody() {
         `).join('');
     }
 
-    return searchHTML + chipsHTML + resultsHTML;
+    // "Can't find it?" — create a custom equipment inline when the catalog is
+    // missing a machine. Saved as a standalone equipment doc tagged to this gym
+    // (locations[]), so it shows in the gym detail alongside catalog items.
+    const { customOpen, customName, customType } = quickAddState;
+    const customHTML = customOpen
+        ? `
+        <div class="qa-custom">
+            <div class="qa-custom__title">Add custom equipment</div>
+            <input type="text" id="qa-custom-name" class="qa-sheet__search-input qa-custom__name"
+                   placeholder="Equipment name" value="${escapeAttr(customName)}"
+                   oninput="setQuickAddCustomName(this.value)">
+            <div class="chips qa-custom__types">
+                ${EQUIPMENT_TYPES_LIST.map((t) => `
+                    <button class="chip${customType === t ? ' active' : ''}"
+                            onclick="setQuickAddCustomType('${escapeAttr(t)}')"
+                            aria-pressed="${customType === t}">${escapeHtml(t)}</button>
+                `).join('')}
+            </div>
+            <div class="qa-custom__actions">
+                <button class="btn-ghost qa-custom__cancel" onclick="toggleQuickAddCustom()">Cancel</button>
+                <button class="btn-redesign qa-custom__save" onclick="commitQuickAddCustom()">Add ${escapeHtml(customType)}</button>
+            </div>
+        </div>`
+        : `<button class="qa-custom__open" onclick="toggleQuickAddCustom()"><i class="fas fa-plus"></i> Can't find it? Add custom equipment</button>`;
+
+    return searchHTML + chipsHTML + resultsHTML + customHTML;
 }
 
 /**
@@ -1828,6 +1856,64 @@ export function setQuickAddBp(bp) {
     if (!quickAddState || bp === quickAddState.bpFilter) return;
     quickAddState.bpFilter = bp;
     rerenderQuickAddBody();
+}
+
+/**
+ * Toggle the inline "add custom equipment" form at the bottom of the sheet.
+ */
+export function toggleQuickAddCustom() {
+    if (!quickAddState) return;
+    quickAddState.customOpen = !quickAddState.customOpen;
+    rerenderQuickAddBody();
+}
+
+/**
+ * Store the custom equipment name WITHOUT re-rendering, so typing keeps focus.
+ */
+export function setQuickAddCustomName(name) {
+    if (!quickAddState) return;
+    quickAddState.customName = name;
+}
+
+/**
+ * Pick the custom equipment type (re-renders to reflect the active chip + the
+ * "Add <type>" button label).
+ */
+export function setQuickAddCustomType(type) {
+    if (!quickAddState) return;
+    quickAddState.customType = type;
+    rerenderQuickAddBody();
+}
+
+/**
+ * Create a custom (non-catalog) equipment tagged to this gym and refresh.
+ */
+export async function commitQuickAddCustom() {
+    if (!quickAddState) return;
+    const name = (quickAddState.customName || '').trim();
+    if (!name) { showNotification('Add a name', 'warning'); return; }
+    const type = quickAddState.customType || 'Other';
+
+    try {
+        let { gymId, gymName } = quickAddState;
+        if (!gymId) {
+            const newLoc = await getManager().saveLocation({ name: gymName });
+            gymId = newLoc.id;
+            allLocations.push(newLoc);
+        }
+        // Standalone equipment doc tagged to the gym via locations[] — the gym
+        // detail merges these with catalog refs, so it shows there right away.
+        await getManager().saveEquipment({ name, equipmentType: type, locations: [gymName] });
+        allEquipment = await getManager().getUserEquipment();
+        AppState._cachedEquipment = allEquipment;
+
+        closeQuickAddSheet();
+        showNotification(`${name} added to ${gymName}`, 'success');
+        renderEquipmentLibrary();
+    } catch (err) {
+        console.error('❌ Custom equipment add failed:', err);
+        showNotification(`Couldn't save — try again`, 'error');
+    }
 }
 
 function rerenderQuickAddBody() {

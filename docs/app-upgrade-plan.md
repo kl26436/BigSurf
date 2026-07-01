@@ -71,7 +71,9 @@ Bigger, optional, each its own effort. Sequence after B lands.
 - **D3 — Zero-history dashboard empty state** `[M-Low]`. Design + verify the true day-one view (no streak/PRs/history) — the coaching value must land before data exists. **Done when:** a brand-new account sees a purposeful first screen, not empty widgets.
 - **D4 — e1RM trend per lift** `[Low]`. Surface estimated-1RM climbing per lift (data in progress-calculations). Parity with Boostcamp's headline number.
 
-### Track E — Equipment library finish (design agent + redesign brief)
+### Track E — Equipment library finish (design agent + redesign brief) — ✅ shipped to dev (2026-07)
+
+**Status:** E1 (inline "Can't find it? Add custom equipment" form in the quick-add sheet — saves a standalone equipment doc tagged to the gym via `locations[]`, so it shows in the gym detail) shipped. E2 (empty-state parity) verified already-compliant — the equipment/gym empties carry what-this-is + how-to-start lines, and the custom-add button now gives "No matches in the catalog" a next step.
 
 - **E1 — Quick-add "Can't find it? → create custom equipment"** `[D-Med]`. Real gap vs. [specs/equipment-library-redesign-brief.md](../specs/equipment-library-redesign-brief.md): the quick-add sheet has no custom-equipment fallback. Add an inline create form at the sheet bottom. **Done when:** a user can add equipment the catalog doesn't have without leaving the sheet.
 - **E2 — Equipment empty-state parity** `[D-Low]`. A couple of equipment empties lack the "how to start" line; align to the empty-state rule.
