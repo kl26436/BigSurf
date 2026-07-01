@@ -115,8 +115,13 @@ async function renderDashboard() {
                 ${renderActiveWorkoutPill()}
                 <div class="empty-state">
                     <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
-                    <div class="empty-state-title">No workouts yet</div>
-                    <div class="empty-state-description">Tap the dumbbell button below to start your first workout.</div>
+                    <div class="empty-state-title">Start your first workout</div>
+                    <div class="empty-state-description">Log a session and Big Surf takes it from there — pre-filling last time's numbers, flagging when you beat them, and coaching your next lift. Tap the dumbbell button below to begin.</div>
+                    <ul class="empty-state-points">
+                        <li><i class="fas fa-bolt"></i> Smart overload nudges at the rack</li>
+                        <li><i class="fas fa-arrow-trend-up"></i> Beat-last-time signals every set</li>
+                        <li><i class="fas fa-trophy"></i> PRs and streaks as you go</li>
+                    </ul>
                 </div>
             `;
             if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();

@@ -60,9 +60,11 @@ Tighten the physical logging experience.
 - **C2 — Header hierarchy** `[M-Low]`. Lift name (`--font-xs`/muted, css:40) is quieter than elapsed time (`--font-md`/800, css:49). Promote the name, calm the clock. **Done when:** the lift you're on is the loudest thing in the header.
 - **C3 — Footer finish affordance** `[M-Med]`. "Finish workout" only appears when *every* set is done ([active-workout-ui.js:823](../js/core/workout/active-workout-ui.js#L823)); a skipped warmup traps you tapping "Next." Offer an always-available finish once main sets are logged. **Done when:** you can end a session without completing every last placeholder set.
 
-### Track D — Feature completeness / competitive parity (scope each separately)
+### Track D — Feature completeness / competitive parity — ✅ shipped to dev (2026-07)
 
 Bigger, optional, each its own effort. Sequence after B lands.
+
+**Status:** D1 (plate calc on the hero, gated to plate-loaded/barbell equipment by type OR base weight), D2 (opt-in RPE per set behind `trackRpe`), D3 (richer zero-history empty state), D4 (est-1RM climbing delta on the exercise detail) all on dev. RPE history-display deferred as an optional follow-up.
 
 - **D1 — Plate math on the set row** `[M-Med]`. Reuse the existing plate-calc popover (`closePlateCalcPopover`, `calculatePlates` in plate-calculator.js) as a one-tap breakdown off the weight input, using the exercise's known bar weight. **Done when:** "135 = 45+45/side" is one tap from the input, no page change.
 - **D2 — RPE/RIR per set** `[Low]`. Optional per-set field ("left 2 in the tank"); schema already has `set.type`. Additive; gate behind a setting so casual users aren't taxed.

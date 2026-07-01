@@ -538,6 +538,38 @@
     white-space: nowrap;
     pointer-events: none;
 }
+
+/* RPE row (opt-in) — effort chips tucked under a completed set. */
+.aw-rpe-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: -4px 0 8px 24px;
+    flex-wrap: wrap;
+}
+.aw-rpe-row__label {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.aw-rpe-chip {
+    min-width: 34px;
+    min-height: 32px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 700;
+    cursor: pointer;
+}
+.aw-rpe-chip.active {
+    background: var(--primary-bg);
+    border-color: var(--primary-border);
+    color: var(--primary);
+}
 .aw-set-row.done {
     background: var(--success-bg-subtle);
     border-color: var(--success-border);

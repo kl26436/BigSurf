@@ -229,6 +229,14 @@
     font-variant-numeric: tabular-nums;
     margin-left: 4px;
 }
+/* Est-1RM trend over the range — climbing reads as a win, dropping stays muted. */
+.d-pill__delta {
+    margin-left: 6px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.d-pill__delta--up { color: var(--success); }
+.d-pill__delta--down { color: var(--text-muted); }
 
 /* ===== SESSION ROW (exercise detail) ===== */
 .d-session-row {

@@ -17,6 +17,9 @@ const DEFAULT_SETTINGS = {
     restTimerAutoStart: true,
     restTimerVibration: true,
     restTimerSound: false,
+    // Log RPE (rate of perceived exertion, 6–10) per completed set. Off by
+    // default so casual users aren't taxed; opt-in shows a chip row per set.
+    trackRpe: false,
 
     // Goals
     weeklyGoal: 5,
@@ -264,6 +267,14 @@ export function renderSettings() {
                         <div class="srow-desc">Vibrate when rest timer expires</div>
                     </div>
                     ${toggleBtn('restTimerVibration', s.restTimerVibration)}
+                </div>
+                <div class="srow">
+                    <div class="srow-icon ic-primary"><i class="fas fa-gauge-high"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Track RPE</div>
+                        <div class="srow-desc">Log effort (6–10) per set</div>
+                    </div>
+                    ${toggleBtn('trackRpe', s.trackRpe)}
                 </div>
                 <div class="srow">
                     <div class="srow-icon ic-purple"><i class="fas fa-map-marker-alt"></i></div>

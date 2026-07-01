@@ -434,12 +434,16 @@ function renderExerciseView(exercise, idx, savedEx) {
         ? `<button class="aw-hero__video" onclick="awShowFormVideo('${escapeAttr(videoUrl)}', '${escapeAttr(exName)}')" aria-label="Form video" title="Form video"><i class="fas fa-play-circle"></i></button>`
         : '';
 
-    // Plate calculator — one tap from the lift for barbell / plate-loaded gear
-    // (gated on a real bar/base weight so it doesn't clutter machines or
-    // bodyweight). Opens the existing popover, which reads the current set
-    // weight and the equipment's bar weight. openPlateCalcPopover is wired to
-    // window in main.js (lazy import).
-    const platesBtn = hasBaseWeight
+    // Plate calculator — one tap from the lift for barbell / plate-loaded gear.
+    // Show it when the equipment takes plates: either a recorded bar/base weight
+    // OR a plate-loaded / barbell equipment type (many plate-loaded machines,
+    // e.g. an Arsenal vertical chest press, have no base weight recorded but
+    // still load plates). Hidden for bodyweight and selectorized/machine gear.
+    // Opens the existing popover; openPlateCalcPopover is wired in main.js.
+    const equipType = (equipDoc?.equipmentType || equipDoc?.type || '').toLowerCase();
+    const isPlateLoadable = equipType.includes('plate') || equipType.includes('barbell');
+    const showPlates = !isBW && !!equipDoc && (equipDoc.baseWeight > 0 || isPlateLoadable);
+    const platesBtn = showPlates
         ? `<button class="aw-hero__plates" onclick="openPlateCalcPopover(${idx})" aria-label="Plate calculator" title="Plate calculator"><i class="fas fa-weight-hanging"></i></button>`
         : '';
 
@@ -846,6 +850,17 @@ function buildSetRows(exercise, idx, savedEx, unit) {
             ? `<span class="aw-set-row__beat" aria-label="Beat last session">${beat.label}</span>`
             : '';
 
+        // RPE row (opt-in via settings.trackRpe) — effort chips under each
+        // completed set. Rendered as a sibling of the set row so the set grid
+        // and awToggleSet's row indexing are untouched.
+        const showRpe = !!AppState.settings?.trackRpe && set.completed;
+        const rpeRow = showRpe
+            ? `<div class="aw-rpe-row">
+                <span class="aw-rpe-row__label">RPE</span>
+                ${[6, 7, 8, 9, 10].map(v => `<button class="aw-rpe-chip${set.rpe === v ? ' active' : ''}" onclick="awSetRpe(${idx}, ${si}, ${v})" aria-label="RPE ${v}">${v}</button>`).join('')}
+            </div>`
+            : '';
+
         // Placeholder shows the autofill / last-session weight for an un-edited
         // set, but it must be converted to the current display unit — otherwise
         // a 154 lbs autofill looks like "154" in a kg-mode field, which (a)
@@ -889,6 +904,7 @@ function buildSetRows(exercise, idx, savedEx, unit) {
                 </button>
                 ${beatBadge}
             </div>
+            ${rpeRow}
         `;
     }).join('');
 
@@ -1241,6 +1257,19 @@ export function awUpdateSet(exerciseIdx, setIdx, field, value) {
     set.originalUnit = AppState.exerciseUnits?.[exerciseIdx] || AppState.globalUnit || 'lbs';
 
     debouncedSaveWorkoutData(AppState);
+}
+
+/**
+ * Set (or clear) a completed set's RPE. Tapping the already-active value
+ * clears it. Only meaningful when settings.trackRpe is on.
+ */
+export function awSetRpe(exerciseIdx, setIdx, value) {
+    const savedEx = AppState.savedData?.exercises?.[`exercise_${exerciseIdx}`];
+    const set = savedEx?.sets?.[setIdx];
+    if (!set) return;
+    set.rpe = set.rpe === value ? null : value;
+    debouncedSaveWorkoutData(AppState);
+    renderAll();
 }
 
 export function awAddSet(exerciseIdx) {

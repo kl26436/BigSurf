@@ -100,6 +100,7 @@ import {
     awNextExercise,
     awToggleSet,
     awUpdateSet,
+    awSetRpe,
     awAddSet,
     awRemoveSet,
     awSaveNotes,
@@ -591,6 +592,7 @@ window.awJumpTo = awJumpTo;
 window.awNextExercise = awNextExercise;
 window.awToggleSet = awToggleSet;
 window.awUpdateSet = awUpdateSet;
+window.awSetRpe = awSetRpe;
 window.awAddSet = awAddSet;
 window.awRemoveSet = awRemoveSet;
 window.awSaveNotes = awSaveNotes;

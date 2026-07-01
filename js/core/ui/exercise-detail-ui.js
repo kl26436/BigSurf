@@ -36,6 +36,20 @@ export function renderExerciseDetail(exerciseName) {
     const bodyPart = classifyBodyPart(exerciseName);
     const color = bodyPartColor(bodyPart);
 
+    // Estimated-1RM trend over the range (Epley), so the headline number reads
+    // as "climbing" not just a static peak. Date-sorted so it's correct
+    // regardless of the sessions array order.
+    const bestE1RM = (sets) => (sets || []).reduce(
+        (m, x) => (x.reps && x.weight) ? Math.max(m, x.weight * (1 + x.reps / 30)) : m, 0);
+    let est1RMDelta = '';
+    if (s.sessions.length >= 2) {
+        const byDate = [...s.sessions].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        const d = Math.round(bestE1RM(byDate[byDate.length - 1].sets) - bestE1RM(byDate[0].sets));
+        if (d !== 0) {
+            est1RMDelta = ` <span class="d-pill__delta d-pill__delta--${d > 0 ? 'up' : 'down'}">${d > 0 ? '↑' : '↓'}${Math.abs(d)}</span>`;
+        }
+    }
+
     container.innerHTML = `
         <div class="d-header">
             <button class="d-back" onclick="navigateBack()"><i class="fas fa-chevron-left"></i></button>
@@ -62,7 +76,7 @@ export function renderExerciseDetail(exerciseName) {
             </div>
 
             <div class="d-pill-row">
-                <div class="d-pill">Est. 1RM <strong>${Math.round(s.est1RM)} lb</strong></div>
+                <div class="d-pill">Est. 1RM <strong>${Math.round(s.est1RM)} lb</strong>${est1RMDelta}</div>
                 <div class="d-pill">Volume <strong>${formatVolume(s.totalVolume)} lb</strong></div>
             </div>
 

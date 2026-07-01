@@ -28,6 +28,30 @@
     max-width: 280px;
     margin-bottom: var(--space-20);
 }
+/* Value points on the first-run dashboard — convey the coaching payoff
+   before the user has any data. */
+.empty-state-points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+.empty-state-points li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--font-sm);
+    color: var(--text-main);
+}
+.empty-state-points li i {
+    color: var(--primary);
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
 
 /* ===========================================
    SKELETON LOADING STATES
