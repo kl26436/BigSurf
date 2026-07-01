@@ -893,7 +893,8 @@ THE DATA YOU RECEIVE INCLUDES (depending on what's available):
 - Key lift trends — max weight across recent sessions, normalized to display unit
 - Recent workouts in detail — date, location, exercises with sets/reps/weights and notes
 - Equipment library grouped by gym (so you know what's actually available at each location)
-- Latest body weight and DEXA scan (lean mass, body fat %, VAT) when present
+- Body weight & body-fat trend — latest value, 30/90-day and 1-year change, and a monthly trajectory when present
+- DEXA scan history — newest-first scans (body fat %, lean mass, fat mass, VAT, bone T-score), scan-to-scan deltas, and any left/right lean-mass asymmetry
 - Training frequency, weekly goal, and unit preference
 
 HOW TO USE THE DATA — this is non-negotiable:
@@ -902,6 +903,7 @@ HOW TO USE THE DATA — this is non-negotiable:
 - If the user asks about a specific day (legs, push, pull), stay on that topic; don't drift.
 - If the data doesn't support a confident answer, say so plainly — never invent details.
 - Match prescriptions to the user's current weights, not generic %1RMs.
+- When body-composition data is present, tie it to training: read weight + body-fat trend together (gaining lean while body fat holds = recomp), flag lean-mass loss during a cut, and turn left/right lean-mass asymmetry into specific unilateral-work suggestions for the weaker side.
 
 Training principles to apply (when supported by the data):
 - Progressive overload is the primary driver of strength and hypertrophy
@@ -966,7 +968,9 @@ RESPOND WITH ONLY VALID JSON matching this schema — no markdown, no explanatio
  */
 exports.getTrainingRecommendation = functions.runWith({
     secrets: [anthropicApiKey],
-    timeoutSeconds: 60,
+    // 120s (up from 60): Opus 4.8 at 'xhigh' effort reasons longer; the
+    // callable buffers the full response, so give it room before the timeout.
+    timeoutSeconds: 120,
     memory: '256MB',
 }).https.onCall(async (data, context) => {
     if (!context.auth) {
@@ -1026,13 +1030,17 @@ exports.getTrainingRecommendation = functions.runWith({
             }];
 
         const requestBody = JSON.stringify({
-            model: 'claude-opus-4-7',
-            max_tokens: 12000,
-            // Opus 4.7 uses adaptive thinking + output_config.effort for the
-            // depth knob (not budget_tokens). 'high' gives the deeper
-            // reasoning we want for coaching across plateaus / volume / etc.
+            model: 'claude-opus-4-8',
+            // 16k (up from 12k): thinking tokens count against max_tokens, and
+            // at 'xhigh' effort the reasoning can eat into the budget — give the
+            // visible answer room so deep analyses don't truncate.
+            max_tokens: 16000,
+            // Opus 4.8 uses adaptive thinking + output_config.effort for the
+            // depth knob (not budget_tokens). 'xhigh' (between 'high' and 'max')
+            // gives the deepest practical reasoning for coaching across
+            // plateaus / volume / recomp without the overthinking risk of 'max'.
             thinking: { type: 'adaptive' },
-            output_config: { effort: 'high' },
+            output_config: { effort: 'xhigh' },
             system: TRAINING_SCIENCE_PROMPT,
             messages: apiMessages,
         });
@@ -1114,7 +1122,8 @@ exports.getTrainingRecommendation = functions.runWith({
  */
 exports.generateWorkoutTemplate = functions.runWith({
     secrets: [anthropicApiKey],
-    timeoutSeconds: 60,
+    // 120s (up from 60): headroom for Opus 4.8 reasoning before the timeout.
+    timeoutSeconds: 120,
     memory: '256MB',
 }).https.onCall(async (data, context) => {
     if (!context.auth) {
@@ -1150,7 +1159,7 @@ Weight unit: ${unit || 'lbs'}
 Build the workout now. Return ONLY the JSON object.`;
 
         const requestBody = JSON.stringify({
-            model: 'claude-opus-4-7',
+            model: 'claude-opus-4-8',
             // Bumped from 4k: 4k was occasionally truncating mid-JSON when
             // the template had alternatives + weights, producing parse
             // errors that surfaced as "didn't build me a template".
@@ -1281,10 +1290,16 @@ Return ONLY a valid JSON object with this structure:
     "tScore": number or null,
     "zScore": number or null
   },
-  "vat": number or null (visceral adipose tissue in lbs/kg),
+  "vat": number or null (visceral adipose tissue MASS in lbs/kg),
+  "vatVolume": number or null (visceral adipose tissue VOLUME in in³/cm³, if reported),
   "totalWeight": number or null (total body weight at scan),
   "totalLeanMass": number or null (total lean mass),
   "totalFatMass": number or null (total fat mass),
+  "totalBMC": number or null (total Bone Mineral Content in lbs/kg — the mass, NOT the T/Z-score),
+  "rmr": number or null (Resting Metabolic Rate in calories/day, from a "Supplemental Results" or "RMR" section if present),
+  "androidFatPct": number or null (android region body fat %, the lower-abdominal region),
+  "gynoidFatPct": number or null (gynoid region body fat %, hips/thighs/buttocks),
+  "agRatio": number or null (Android/Gynoid ratio, e.g. 0.71),
   "confidence": {
     "totalBodyFat": 0.0-1.0,
     "regionFat": 0.0-1.0,
@@ -1292,7 +1307,9 @@ Return ONLY a valid JSON object with this structure:
     "fatMass": 0.0-1.0,
     "boneDensity": 0.0-1.0,
     "vat": 0.0-1.0,
-    "totalWeight": 0.0-1.0
+    "totalWeight": 0.0-1.0,
+    "rmr": 0.0-1.0,
+    "androidGynoid": 0.0-1.0
   }
 }
 
@@ -1348,7 +1365,7 @@ exports.extractDexaData = functions.runWith({
 
         // Call Claude API with PDF document
         const requestBody = JSON.stringify({
-            model: 'claude-opus-4-7',
+            model: 'claude-opus-4-8',
             max_tokens: 4000,
             system: DEXA_EXTRACTION_PROMPT,
             messages: [{

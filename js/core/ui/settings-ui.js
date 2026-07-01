@@ -307,6 +307,14 @@ export function renderSettings() {
                     </div>
                     <i class="fas fa-chevron-right srow-chev"></i>
                 </div>
+                <div class="srow srow--clickable" onclick="exportDataForAI(window.AppState)">
+                    <div class="srow-icon ic-muted"><i class="fas fa-robot"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Export for ChatGPT</div>
+                        <div class="srow-desc">JSON with workouts, body weight &amp; DEXA</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
                 <div class="srow srow--clickable" onclick="showImportModal()">
                     <div class="srow-icon ic-muted"><i class="fas fa-upload"></i></div>
                     <div class="srow-info"><div class="srow-name">Import</div></div>

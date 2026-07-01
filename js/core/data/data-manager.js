@@ -1332,3 +1332,114 @@ export async function exportWorkoutData(state) {
         showNotification('Export failed', 'error');
     }
 }
+
+/**
+ * Export an AI-friendly JSON bundle for pasting/uploading into ChatGPT (or any
+ * LLM). Unlike exportWorkoutData, this resolves exercise names inline (so the
+ * data reads as "Hack Squat" not "exercise_0") and includes the full
+ * body-composition picture — body-weight/body-fat trend and DEXA history —
+ * which is what makes for good charts and analysis. Self-contained name
+ * resolver (see prod JS cache note — avoid cross-module exports).
+ */
+export async function exportDataForAI(state) {
+    if (!state.currentUser) {
+        showNotification('Sign in to export data', 'warning');
+        return;
+    }
+
+    const resolveName = (w, key, ex) => ex?.name || ex?.machine || w?.exerciseNames?.[key] || 'Unknown';
+
+    try {
+        showNotification('Preparing ChatGPT export…', 'info', 2000);
+        const userId = state.currentUser.uid;
+        const unit = state.globalUnit || 'lbs';
+
+        // Workouts + equipment from Firestore; DEXA + measurements via their
+        // feature modules (dynamic import keeps firebase deps lazy).
+        const [workoutsSnap, equipmentSnap, dexaMod, bodyMod] = await Promise.all([
+            getDocs(collection(db, 'users', userId, 'workouts')),
+            getDocs(collection(db, 'users', userId, 'equipment')),
+            import('../features/dexa-scan.js'),
+            import('../features/body-measurements.js'),
+        ]);
+
+        const workouts = [];
+        workoutsSnap.forEach(d => {
+            const w = { id: d.id, ...d.data() };
+            if (!w.completedAt || w.cancelledAt) return; // completed only
+            const exercises = Object.entries(w.exercises || {}).map(([key, ex]) => ({
+                name: resolveName(w, key, ex),
+                equipment: ex.equipment || null,
+                sets: (ex.sets || []).map(s => ({
+                    reps: s.reps ?? null,
+                    weight: s.weight ?? null,
+                    unit: s.originalUnit || unit,
+                    type: s.type || 'working',
+                    completed: s.completed !== false,
+                })),
+            }));
+            workouts.push({
+                date: w.date,
+                type: w.workoutType || 'Workout',
+                location: w.location || null,
+                durationSec: w.totalDuration ?? null,
+                exercises,
+            });
+        });
+        workouts.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        const equipment = [];
+        equipmentSnap.forEach(d => {
+            const e = d.data();
+            equipment.push({ name: e.name, type: e.equipmentType || null, locations: e.locations || [] });
+        });
+
+        const [dexaScans, measurements] = await Promise.all([
+            dexaMod.loadDexaHistory?.(50) ?? [],
+            // High cap so daily Withings weigh-ins going back years are all
+            // included — the full body-weight history is what makes the
+            // transformation legible in a chart.
+            bodyMod.loadBodyWeightHistory?.(5000) ?? [],
+        ]);
+
+        const bundle = {
+            app: 'Big Surf Workout Tracker',
+            exportDate: new Date().toISOString(),
+            preferredUnit: unit,
+            instructions: 'Workout export. Each set weight is in its own "unit" field (lbs/kg). bodyComposition.measurements weights use their "unit". DEXA masses use each scan\'s "massUnit". Dates are YYYY-MM-DD, newest first for workouts/DEXA and oldest first for measurements.',
+            profile: {
+                heightCm: state.settings?.profileHeightCm ?? null,
+                weeklyGoalDays: state.settings?.weeklyGoal ?? null,
+            },
+            workouts,
+            bodyComposition: {
+                measurements: (measurements || []).map(m => ({
+                    date: m.date,
+                    weight: m.weight ?? null,
+                    unit: m.unit || 'lbs',
+                    bodyFat: m.bodyFat ?? null,
+                    muscleMass: m.muscleMass ?? null,
+                    source: m.source || 'manual',
+                })),
+                dexaScans: dexaScans || [],
+            },
+            equipment,
+        };
+
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const today = getDateString(new Date());
+        a.download = `bigsurf-chatgpt-${today}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showNotification(`Exported ${workouts.length} workouts + body data`, 'success', 2500);
+    } catch (error) {
+        console.error('❌ ChatGPT export failed:', error);
+        showNotification('Export failed', 'error');
+    }
+}

@@ -10,6 +10,21 @@ import { TrainingInsights } from './training-insights.js';
 import { Config, debugLog, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 
+/**
+ * Iterate a workout's exercises with `name` resolved from the workout-level
+ * `exerciseNames` map (persisted exercises carry no inline name). Inlined
+ * rather than imported from aggregators.js: prod pins JS for a year, so a
+ * cross-module export would crash on version skew. Keep in sync with the
+ * copies in aggregators.js / training-insights.js.
+ */
+function withResolvedNames(workout) {
+    const exercises = workout?.exercises || {};
+    return Object.entries(exercises).map(([key, ex]) => ({
+        ...ex,
+        name: ex?.name || ex?.machine || workout?.exerciseNames?.[key] || null,
+    }));
+}
+
 // Conversation history for the current chat session. Each entry is
 // { role: 'user' | 'assistant', content: string }. The Cloud Function
 // sends the full thread to Claude so the model can carry context across
@@ -192,20 +207,6 @@ export function showAICoach(prefillContext) {
         })();
     }
 
-    // Warm latest body weight + DEXA so the coach can reference them.
-    (async () => {
-        try {
-            const { getLatestBodyWeight } = await import('./body-measurements.js');
-            const w = await getLatestBodyWeight();
-            if (w) AppState._cachedLatestBodyWeight = w;
-        } catch (_) { /* non-fatal */ }
-        try {
-            const dexaMod = await import('./dexa-scan.js');
-            const latestDexa = await dexaMod.getLatestDexaScan?.();
-            if (latestDexa) AppState._cachedLatestDexa = latestDexa;
-        } catch (_) { /* non-fatal */ }
-    })();
-
     // If prefill context, auto-ask about a plateau
     if (prefillContext) {
         setTimeout(() => {
@@ -303,7 +304,11 @@ export async function askCoach(question) {
         // 8-week window is too narrow once a user has any meaningful history.
         const { loadAllWorkouts } = await import('../data/data-manager.js');
         const allWorkouts = await loadAllWorkouts(AppState);
-        const context = buildTrainingContext(allWorkouts);
+        let healthSummary = '';
+        try {
+            healthSummary = await buildHealthSummary(AppState.globalUnit || 'lbs');
+        } catch (e) { debugLog('coach: health summary failed', e); }
+        const context = buildTrainingContext(allWorkouts, healthSummary);
 
         // Append the user's turn to the running conversation. The first user
         // turn gets the training context prepended so Claude grounds its
@@ -384,7 +389,7 @@ export function resetCoachUI() {
  * @param {Array} workouts - Recent workouts (up to 8 weeks)
  * @returns {string} Compact training summary
  */
-function buildTrainingContext(workouts) {
+function buildTrainingContext(workouts, healthSummary = '') {
     if (!workouts || workouts.length === 0) return 'No workout data available.';
 
     const weeks = getWeeksSpan(workouts);
@@ -414,7 +419,7 @@ function buildTrainingContext(workouts) {
     const liftTrends = {};
     for (const workout of workouts) {
         if (!workout.exercises) continue;
-        for (const ex of Object.values(workout.exercises)) {
+        for (const ex of withResolvedNames(workout)) {
             if (!ex.name || !ex.sets) continue;
             const normalized = ex.sets
                 .filter(s => s.weight)
@@ -465,8 +470,7 @@ function buildTrainingContext(workouts) {
             const wName = w.workoutType || 'Workout';
             const loc = w.location || '';
             summary += `\n${w.date} · ${wName}${loc ? ` @ ${loc}` : ''}\n`;
-            const exercises = Object.values(w.exercises || {});
-            for (const ex of exercises) {
+            for (const ex of withResolvedNames(w)) {
                 if (!ex.name) continue;
                 const equip = ex.equipment ? ` [${ex.equipment}]` : '';
                 const sets = (ex.sets || [])
@@ -501,26 +505,111 @@ function buildTrainingContext(workouts) {
         }
     }
 
-    // Body measurements — latest body weight + DEXA snapshot let the coach
-    // ground macro / recovery / volume tolerance recommendations in real
-    // numbers instead of guessing.
-    const bw = AppState._cachedLatestBodyWeight;
-    if (bw?.weight) {
-        const wt = convertWeight(bw.weight, bw.unit || 'lbs', unit);
-        summary += `\nLatest body weight (${bw.date || 'recent'}): ${wt} ${unit}\n`;
-    }
-    const dexa = AppState._cachedLatestDexa;
-    if (dexa) {
-        const parts = [];
-        if (dexa.totalBodyFat) parts.push(`${dexa.totalBodyFat}% body fat`);
-        if (dexa.totalLeanMass) parts.push(`${dexa.totalLeanMass} ${dexa.massUnit || 'lbs'} lean`);
-        if (dexa.vat) parts.push(`VAT ${dexa.vat}`);
-        if (parts.length > 0) {
-            summary += `Latest DEXA (${dexa.date || 'recent'}): ${parts.join(' · ')}\n`;
-        }
-    }
+    // Body composition — weight/body-fat trend + full DEXA history with
+    // scan-to-scan deltas and lean-mass imbalances. Built async (hits
+    // Firestore) and passed in so this function stays synchronous.
+    if (healthSummary) summary += healthSummary;
 
     return summary;
+}
+
+/**
+ * Build a body-composition section for the coach: weight + body-fat trend from
+ * tracked measurements (Withings/manual) plus full DEXA history with
+ * scan-to-scan deltas and lean-mass asymmetry. Returns '' when no data.
+ * Kept async + separate from buildTrainingContext because it reads Firestore.
+ */
+async function buildHealthSummary(unit) {
+    let out = '';
+
+    // --- Weight + body-fat trend (Withings scale / manual entries) ---
+    try {
+        const { loadBodyWeightHistory } = await import('./body-measurements.js');
+        const hist = await loadBodyWeightHistory(365); // ascending by date, deduped
+        if (hist.length > 0) {
+            const toUnit = (e) => convertWeight(e.weight, e.unit || 'lbs', unit);
+            const newest = hist[hist.length - 1];
+            const wNow = toUnit(newest);
+            out += `\nBody weight & composition (tracked, latest ${newest.date}): ${wNow} ${unit}`;
+            if (newest.bodyFat != null) out += `, ${newest.bodyFat}% body fat`;
+            if (newest.muscleMass != null) out += `, ${convertWeight(newest.muscleMass, 'kg', unit)} ${unit} muscle mass`;
+            out += `\n`;
+
+            // Change vs the earliest entry within each look-back window.
+            const newestMs = new Date(newest.date).getTime();
+            const changeOver = (days) => {
+                const cutoff = new Date(newestMs - days * 86400000).toISOString().slice(0, 10);
+                const past = hist.find(e => e.date >= cutoff);
+                return (!past || past.date === newest.date) ? null : { from: toUnit(past), date: past.date };
+            };
+            for (const days of [30, 90, 365]) {
+                const past = changeOver(days);
+                if (!past) continue;
+                const diff = Math.round((wNow - past.from) * 10) / 10;
+                out += `  ${days === 365 ? '1-yr' : days + '-day'} change: ${diff > 0 ? '+' : ''}${diff} ${unit} (from ${past.from} on ${past.date})\n`;
+            }
+
+            // Monthly trajectory (last reading per month, up to 12 months) so the
+            // coach sees the shape of the cut/bulk, not just two endpoints.
+            const byMonth = new Map();
+            for (const e of hist) byMonth.set(e.date.slice(0, 7), e); // ascending → last wins
+            const months = [...byMonth.entries()].slice(-12);
+            if (months.length >= 3) {
+                out += `  Monthly trend:\n`;
+                for (const [ym, e] of months) {
+                    out += `    ${ym}: ${toUnit(e)} ${unit}${e.bodyFat != null ? ` · ${e.bodyFat}% BF` : ''}\n`;
+                }
+            }
+        }
+    } catch (e) { debugLog('coach health: weight history failed', e); }
+
+    // --- DEXA history (lean/fat/regional) ---
+    try {
+        const { loadDexaHistory, compareDexaScans, analyzeImbalances } = await import('./dexa-scan.js');
+        const scans = await loadDexaHistory(50); // newest-first
+        if (scans.length > 0) {
+            out += `\nDEXA scans (${scans.length} total, newest first):\n`;
+            for (const s of scans.slice(0, 5)) {
+                const mu = s.massUnit || 'lbs';
+                const parts = [];
+                if (s.totalBodyFat != null) parts.push(`${s.totalBodyFat}% body fat`);
+                if (s.totalLeanMass != null) parts.push(`${s.totalLeanMass} ${mu} lean`);
+                if (s.totalFatMass != null) parts.push(`${s.totalFatMass} ${mu} fat`);
+                if (s.totalWeight != null) parts.push(`${s.totalWeight} ${mu} total`);
+                if (s.vat != null) parts.push(`VAT ${s.vat}`);
+                if (s.rmr != null) parts.push(`RMR ${s.rmr} cal/day`);
+                if (s.boneDensity?.tScore != null) parts.push(`bone T-score ${s.boneDensity.tScore}`);
+                out += `  ${s.date}: ${parts.join(' · ')}\n`;
+            }
+            // Metabolic / fat-distribution markers from the most recent scan.
+            const n = scans[0];
+            const metab = [];
+            if (n.agRatio != null) metab.push(`A/G ratio ${n.agRatio}${n.agRatio < 1 ? ' (healthy)' : ' (elevated)'}`);
+            if (n.androidFatPct != null) metab.push(`android ${n.androidFatPct}%`);
+            if (n.gynoidFatPct != null) metab.push(`gynoid ${n.gynoidFatPct}%`);
+            if (n.totalBMC != null) metab.push(`bone mineral content ${n.totalBMC} ${n.massUnit || 'lbs'}`);
+            if (n.vatVolume != null) metab.push(`VAT volume ${n.vatVolume} in³`);
+            if (metab.length > 0) out += `  Latest metabolic/distribution: ${metab.join(' · ')}\n`;
+            if (scans.length >= 2) {
+                const d = compareDexaScans(scans[1], scans[0]); // (older, newer)
+                if (d) {
+                    const bits = [];
+                    if (d.totalLeanMass != null) bits.push(`lean ${d.totalLeanMass > 0 ? '+' : ''}${d.totalLeanMass}`);
+                    if (d.totalFatMass != null) bits.push(`fat ${d.totalFatMass > 0 ? '+' : ''}${d.totalFatMass}`);
+                    if (d.totalBodyFat != null) bits.push(`body fat ${d.totalBodyFat > 0 ? '+' : ''}${d.totalBodyFat}%`);
+                    if (bits.length) out += `  Since previous scan (${d.daysBetween} days): ${bits.join(' · ')}\n`;
+                }
+            }
+            const imbalances = analyzeImbalances(scans[0]);
+            if (imbalances.length > 0) {
+                out += `  Lean-mass asymmetry (latest scan): `
+                    + imbalances.map(i => `${i.region.toLowerCase()} — ${i.weaker.toLowerCase()} side ${i.percentDiff}% smaller (${i.severity})`).join('; ')
+                    + `\n`;
+            }
+        }
+    } catch (e) { debugLog('coach health: dexa failed', e); }
+
+    return out;
 }
 
 /**

@@ -475,6 +475,49 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
                        value="${data.vat ?? ''}">
             </div>
 
+            <!-- Supplemental (RMR, A/G, android/gynoid, BMC) -->
+            <div class="dexa-regional-section">
+                <h4 class="dexa-regional-label">Supplemental <span class="optional-label">(optional)</span></h4>
+                <div class="dexa-regional-grid">
+                    <div class="dexa-regional-item">
+                        <label>RMR (cal/day)</label>
+                        <input type="number" id="dexa-rmr" class="form-input"
+                               placeholder="e.g. 1671" step="1" min="0" max="9999" inputmode="numeric"
+                               value="${data.rmr ?? ''}">
+                    </div>
+                    <div class="dexa-regional-item">
+                        <label>A/G ratio</label>
+                        <input type="number" id="dexa-ag-ratio" class="form-input"
+                               placeholder="e.g. 0.71" step="0.01" min="0" max="5" inputmode="decimal"
+                               value="${data.agRatio ?? ''}">
+                    </div>
+                    <div class="dexa-regional-item">
+                        <label>Android fat %</label>
+                        <input type="number" id="dexa-android-fat" class="form-input"
+                               placeholder="e.g. 12.8" step="0.1" min="0" max="100" inputmode="decimal"
+                               value="${data.androidFatPct ?? ''}">
+                    </div>
+                    <div class="dexa-regional-item">
+                        <label>Gynoid fat %</label>
+                        <input type="number" id="dexa-gynoid-fat" class="form-input"
+                               placeholder="e.g. 18.0" step="0.1" min="0" max="100" inputmode="decimal"
+                               value="${data.gynoidFatPct ?? ''}">
+                    </div>
+                    <div class="dexa-regional-item">
+                        <label>Bone mineral content (${unit})</label>
+                        <input type="number" id="dexa-total-bmc" class="form-input"
+                               placeholder="e.g. 6.2" step="0.1" min="0" max="50" inputmode="decimal"
+                               value="${data.totalBMC ?? ''}">
+                    </div>
+                    <div class="dexa-regional-item">
+                        <label>VAT volume (in³)</label>
+                        <input type="number" id="dexa-vat-volume" class="form-input"
+                               placeholder="e.g. 33.7" step="0.1" min="0" max="999" inputmode="decimal"
+                               value="${data.vatVolume ?? ''}">
+                    </div>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label>Notes <span class="optional-label">(optional)</span></label>
                 <input type="text" id="dexa-notes" class="form-input"
@@ -595,6 +638,12 @@ export async function confirmDexaSave() {
         regionFat: readRegional('regionFat'),
         boneDensity: (tScore != null || zScore != null) ? { tScore, zScore } : null,
         vat: parseFloatOrNull('dexa-vat'),
+        vatVolume: parseFloatOrNull('dexa-vat-volume'),
+        rmr: parseFloatOrNull('dexa-rmr'),
+        agRatio: parseFloatOrNull('dexa-ag-ratio'),
+        androidFatPct: parseFloatOrNull('dexa-android-fat'),
+        gynoidFatPct: parseFloatOrNull('dexa-gynoid-fat'),
+        totalBMC: parseFloatOrNull('dexa-total-bmc'),
         notes: document.getElementById('dexa-notes')?.value?.trim() || '',
         reportUrl: document.getElementById('dexa-report-url')?.value || null,
         extractionConfidence: tryParseJson(document.getElementById('dexa-confidence')?.value),
@@ -836,6 +885,24 @@ export async function showDexaDetail(scanId) {
         `;
     }
 
+    // Metabolic & fat-distribution supplemental metrics
+    let supplementalHTML = '';
+    const supp = [];
+    if (scan.rmr != null) supp.push(['fa-fire', 'RMR', `${scan.rmr} cal/day`]);
+    if (scan.agRatio != null) supp.push(['fa-balance-scale', 'A/G ratio', `${scan.agRatio}${scan.agRatio < 1 ? ' · healthy (<1.0)' : ' · elevated'}`]);
+    if (scan.androidFatPct != null) supp.push(['fa-dot-circle', 'Android (belly) fat', `${scan.androidFatPct}%`]);
+    if (scan.gynoidFatPct != null) supp.push(['fa-dot-circle', 'Gynoid (hip) fat', `${scan.gynoidFatPct}%`]);
+    if (scan.totalBMC != null) supp.push(['fa-bone', 'Bone mineral content', `${scan.totalBMC} ${unit}`]);
+    if (scan.vatVolume != null) supp.push(['fa-cube', 'VAT volume', `${scan.vatVolume} in³`]);
+    if (supp.length > 0) {
+        supplementalHTML = `<div class="sec-head"><h3>Metabolic &amp; distribution</h3></div>`
+            + supp.map(([icon, label, val]) => `
+            <div class="dexa-insight-card">
+                <i class="fas ${icon}"></i>
+                <div><strong>${label}</strong>: ${escapeHtml(String(val))}</div>
+            </div>`).join('');
+    }
+
     // Notes
     let notesHTML = '';
     if (scan.notes) {
@@ -851,6 +918,7 @@ export async function showDexaDetail(scanId) {
             ${regionalHTML}
             ${imbalanceHTML}
             ${vatHTML}
+            ${supplementalHTML}
             ${notesHTML}
         `;
     }

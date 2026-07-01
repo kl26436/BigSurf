@@ -7,6 +7,22 @@ import { Config, debugLog } from '../utils/config.js';
 import { formatBodyPart } from '../utils/workout-helpers.js';
 
 /**
+ * Iterate a workout's exercises with `name` resolved from the workout-level
+ * `exerciseNames` map (persisted exercises carry no inline name — see the
+ * exercise-name-resolution note). Inlined deliberately rather than imported:
+ * prod pins JS for a year, so a cross-module export would crash on version
+ * skew between this file and aggregators.js. Keep this in sync with the copy
+ * in aggregators.js / ai-coach-ui.js.
+ */
+function withResolvedNames(workout) {
+    const exercises = workout?.exercises || {};
+    return Object.entries(exercises).map(([key, ex]) => ({
+        ...ex,
+        name: ex?.name || ex?.machine || workout?.exerciseNames?.[key] || null,
+    }));
+}
+
+/**
  * Normalize a set's weight to the user's display unit so comparisons across
  * sessions are apples-to-apples even when some sets were logged in a
  * different unit. Returns 0 for missing/invalid weights.
@@ -80,7 +96,7 @@ export function analyzeWeeklyVolume(workouts, exerciseDatabase) {
     for (const workout of workouts) {
         if (!workout.exercises) continue;
 
-        for (const exercise of Object.values(workout.exercises)) {
+        for (const exercise of withResolvedNames(workout)) {
             const bodyPart = exercise.bodyPart || getBodyPartForExercise(exercise.name, exerciseDatabase);
             if (!bodyPart) continue;
 
@@ -124,7 +140,7 @@ export function detectPlateaus(workouts, minSessions = Config.PLATEAU_MIN_SESSIO
     for (const workout of workouts) {
         if (!workout.exercises || !workout.date) continue;
 
-        for (const exercise of Object.values(workout.exercises)) {
+        for (const exercise of withResolvedNames(workout)) {
             const name = exercise.name;
             if (!name) continue;
 
@@ -264,7 +280,7 @@ export function analyzeFrequency(workouts, exerciseDatabase, weeks = 4) {
         if (!workout.exercises || !workout.date) continue;
         const weekKey = getISOWeekKey(workout.date);
 
-        for (const exercise of Object.values(workout.exercises)) {
+        for (const exercise of withResolvedNames(workout)) {
             const bodyPart = exercise.bodyPart || getBodyPartForExercise(exercise.name, exerciseDatabase);
             if (!bodyPart) continue;
 
@@ -309,7 +325,7 @@ export function detectPositiveTrends(workouts) {
     for (const workout of workouts) {
         if (!workout.exercises || !workout.date) continue;
 
-        for (const exercise of Object.values(workout.exercises)) {
+        for (const exercise of withResolvedNames(workout)) {
             const name = exercise.name;
             if (!name) continue;
 
