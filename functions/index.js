@@ -28,6 +28,36 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
+// ── AI spend protection ──────────────────────────────────────────────
+// Every function that calls the Anthropic API must pass through this
+// limiter. Per-user daily caps live in a single doc per user, so a
+// client retry loop or an abusive account can't run up the API bill.
+// The admin UID is exempt so day-to-day testing isn't throttled — this
+// replaces the old pattern of commenting limits out "for testing".
+const ADMIN_UID = 'YpB4kgun28TD3eSBAR8QYfkK4a13';
+
+async function enforceAiDailyLimit(userId, kind, maxPerDay) {
+    if (userId === ADMIN_UID) return;
+    const ref = db.collection('users').doc(userId)
+        .collection('preferences').doc('aiRateLimits');
+    const dayKey = new Date().toISOString().slice(0, 10);
+    await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const data = snap.exists ? snap.data() : {};
+        const entry = data[kind] || {};
+        const count = entry.dayKey === dayKey ? (entry.count || 0) : 0;
+        if (count >= maxPerDay) {
+            throw new functions.https.HttpsError(
+                'resource-exhausted',
+                'Daily limit reached — try again tomorrow'
+            );
+        }
+        // Count before the API call: failed calls still consume quota,
+        // which is the safe direction for spend protection.
+        tx.set(ref, { [kind]: { dayKey, count: count + 1 } }, { merge: true });
+    });
+}
+
 // VAPID keys for Web Push (generated using web-push library)
 // Public key is also in push-notification-manager.js on client
 const VAPID_PUBLIC_KEY = 'BCCpd5gMslosl6OBbQe5mSwa6YWG2AK8q7pNKAm2MdSIUR41iWFKsUarOxbb4NathzspJ9XdbvYtPTexZxNdrxs';
@@ -972,6 +1002,9 @@ exports.getTrainingRecommendation = functions.runWith({
     // callable buffers the full response, so give it room before the timeout.
     timeoutSeconds: 120,
     memory: '256MB',
+    // Hard concurrency ceiling — caps worst-case API burn even if the
+    // per-user limiter is somehow bypassed.
+    maxInstances: 2,
 }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
@@ -989,17 +1022,8 @@ exports.getTrainingRecommendation = functions.runWith({
         throw new functions.https.HttpsError('invalid-argument', 'Missing question or messages');
     }
 
-    // Rate limiting: disabled for testing (was 1 call per 24 hours)
-    // TODO: Re-enable before production
-    // const lastCallDoc = await db.collection('users').doc(userId)
-    //     .collection('preferences').doc('coachRateLimit').get();
-    // if (lastCallDoc.exists) {
-    //     const lastCall = lastCallDoc.data().timestamp;
-    //     const hoursSince = (Date.now() - lastCall) / (1000 * 60 * 60);
-    //     if (hoursSince < 24) {
-    //         throw new functions.https.HttpsError('resource-exhausted', 'Coach is available once per day.');
-    //     }
-    // }
+    // Spend protection: 10 coach questions per user per day (admin exempt)
+    await enforceAiDailyLimit(userId, 'coach', 10);
 
     try {
         const apiKey = anthropicApiKey.value();
@@ -1125,6 +1149,7 @@ exports.generateWorkoutTemplate = functions.runWith({
     // 120s (up from 60): headroom for Opus 4.8 reasoning before the timeout.
     timeoutSeconds: 120,
     memory: '256MB',
+    maxInstances: 2,
 }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
@@ -1136,6 +1161,9 @@ exports.generateWorkoutTemplate = functions.runWith({
     if (!focus) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing workout focus');
     }
+
+    // Spend protection: 5 generated workouts per user per day (admin exempt)
+    await enforceAiDailyLimit(userId, 'template', 5);
 
     try {
         const apiKey = anthropicApiKey.value();
@@ -1324,6 +1352,7 @@ exports.extractDexaData = functions.runWith({
     secrets: [anthropicApiKey],
     timeoutSeconds: 120,
     memory: '1GB',
+    maxInstances: 2,
 }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
@@ -1342,17 +1371,8 @@ exports.extractDexaData = functions.runWith({
         throw new functions.https.HttpsError('invalid-argument', 'File too large. Maximum 10 MB.');
     }
 
-    // Rate limiting: disabled for testing (was 5 extractions per day)
-    // TODO: Re-enable before production
-    // const rateLimitDoc = await db.collection('users').doc(userId)
-    //     .collection('preferences').doc('dexaRateLimit').get();
-    // if (rateLimitDoc.exists) {
-    //     const { timestamp, count } = rateLimitDoc.data();
-    //     const hoursSince = (Date.now() - timestamp) / (1000 * 60 * 60);
-    //     if (hoursSince < 24 && count >= 5) {
-    //         throw new functions.https.HttpsError('resource-exhausted', 'DEXA extraction limit reached.');
-    //     }
-    // }
+    // Spend protection: 5 DEXA extractions per user per day (admin exempt)
+    await enforceAiDailyLimit(userId, 'dexa', 5);
 
     try {
         const apiKey = anthropicApiKey.value();
@@ -1437,15 +1457,6 @@ exports.extractDexaData = functions.runWith({
         if (extractedData.totalBodyFat === undefined || extractedData.totalBodyFat === null) {
             console.warn('⚠️ DEXA extraction missing totalBodyFat, returning partial data');
         }
-
-        // Rate limit counter: disabled for testing
-        // TODO: Re-enable before production
-        // const currentData = rateLimitDoc.exists ? rateLimitDoc.data() : {};
-        // const hoursSinceLastCall = currentData.timestamp
-        //     ? (Date.now() - currentData.timestamp) / (1000 * 60 * 60) : 999;
-        // await db.collection('users').doc(userId)
-        //     .collection('preferences').doc('dexaRateLimit')
-        //     .set({ timestamp: Date.now(), count: hoursSinceLastCall < 24 ? (currentData.count || 0) + 1 : 1 });
 
         console.log(`✅ DEXA scan extracted for user ${userId}: ${extractedData.totalBodyFat}% body fat`);
 
