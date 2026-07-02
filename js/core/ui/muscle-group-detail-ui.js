@@ -4,7 +4,7 @@ import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr } from './ui-helpers.js';
 import {
     aggregateBodyPartStats, getExercisesForBodyPart, getPRsForBodyPart,
-    formatVolume, capitalize, BP_TO_CAT,
+    formatVolume, capitalize,
 } from '../features/metrics/aggregators.js';
 import { rangeLabel } from '../features/metrics/range-filter.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';

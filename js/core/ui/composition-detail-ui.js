@@ -2,7 +2,6 @@
 // Shows DEXA summary, body weight trend, and links to upload/history
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml } from './ui-helpers.js';
 import { chartDonut } from '../features/charts/chart-donut.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
 

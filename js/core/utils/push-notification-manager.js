@@ -6,7 +6,6 @@
  */
 
 import { functions, auth, httpsCallable } from '../data/firebase-config.js';
-import { AppState } from './app-state.js';
 import { debugLog } from './config.js';
 
 // Push subscription for this device
@@ -167,7 +166,7 @@ export async function scheduleRestNotification(delaySeconds, exerciseName) {
                 pushSubscription = existing;
                 debugLog('🔄 Recovered push subscription from SW');
             }
-        } catch (_) {
+        } catch {
             // Fall through to the normal guard below.
         }
     }

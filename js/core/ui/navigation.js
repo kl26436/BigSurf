@@ -402,13 +402,6 @@ function openExerciseManager() {
     }
 }
 
-function showWorkoutManagement() {
-    const { showWorkoutManagement: showManagement } = window;
-    if (showManagement) {
-        showManagement();
-    }
-}
-
 // ===================================================================
 // BOTTOM NAVIGATION
 // ===================================================================
@@ -432,7 +425,7 @@ export function bottomNavTo(tab) {
         case 'ai-coach':
             navigateTo('ai-coach');
             break;
-        case 'workout':
+        case 'workout': {
             // Check if there's an active workout (live session or detected on load)
             const { AppState } = window;
             if (AppState && AppState.currentWorkout) {
@@ -448,6 +441,7 @@ export function bottomNavTo(tab) {
                 navigateTo('start-workout');
             }
             break;
+        }
         case 'more':
             toggleMoreMenu();
             break;
@@ -571,7 +565,7 @@ function scheduleStuckMenuCheck(menu, overlay) {
                     devicePixelRatio: window.devicePixelRatio || null,
                 }
             );
-        } catch (_) {
+        } catch {
             // Never let the diagnostic itself break the app.
         }
     }, 350);

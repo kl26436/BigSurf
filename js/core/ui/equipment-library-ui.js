@@ -3,7 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
-import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, getDoc, writeBatch } from '../data/firebase-config.js';
+import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, writeBatch } from '../data/firebase-config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { clearAllWorkoutsCache } from '../data/data-manager.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
@@ -23,7 +23,6 @@ let allEquipment = [];
 let allLocations = [];        // user's saved gym locations (cached on open)
 let currentLocationFilter = null;
 let currentSearchTerm = '';
-let currentDetailId = null;
 
 // Pocket Inventory redesign — three-tab IA on the Equipment Library landing.
 // 'gyms'    : My gyms — gym cards + stat strip + orphan banner (default)
@@ -1140,7 +1139,7 @@ function gatherGymEquipment(gymName, locationId) {
                             worstOffenders: worst,
                         }
                     );
-                } catch (_) { /* diagnostic must never break render */ }
+                } catch { /* diagnostic must never break render */ }
             })();
         }
 
@@ -1270,7 +1269,7 @@ function catalogDisplayName(brand, line, machineName) {
  *
  * Returns the equipment record (or null on failure).
  */
-async function promoteCatalogToEquipment(catalogRef, gymName = null) {
+async function promoteCatalogToEquipment(catalogRef, gymName = null, { refresh = true } = {}) {
     const catalog = getCatalogSync();
     const resolved = resolveCatalogRef(catalogRef, catalog);
     if (!resolved) return null;
@@ -1305,15 +1304,83 @@ async function promoteCatalogToEquipment(catalogRef, gymName = null) {
         }
 
         // Refresh the module-level cache so the rest of the page sees the new
-        // record without forcing a full reload.
-        const allRefreshed = await getManager().getUserEquipment();
-        allEquipment = allRefreshed;
-        AppState._cachedEquipment = allRefreshed;
+        // record without forcing a full reload. Batch callers (quick-add)
+        // pass refresh:false and reload once after the loop instead.
+        if (refresh) {
+            await refreshEquipmentCaches();
+        }
 
-        return allRefreshed.find((e) => e.id === result.id) || result;
+        return allEquipment.find((e) => e.id === result.id) || result;
     } catch (err) {
         console.error('promoteCatalogToEquipment failed:', err);
         return null;
+    }
+}
+
+/**
+ * Reload the module-level equipment cache AND the app-wide cache the
+ * active-workout picker reads (AppState._cachedEquipment). Every write path
+ * that changes equipment↔gym tags must end here, otherwise a workout started
+ * right after the change sees stale equipment.
+ */
+async function refreshEquipmentCaches() {
+    const allRefreshed = await getManager().getUserEquipment();
+    allEquipment = allRefreshed;
+    AppState._cachedEquipment = allRefreshed;
+    return allRefreshed;
+}
+
+/**
+ * Doc-side counterpart of removeLocationEquipment: when a catalog machine is
+ * untagged from a gym, remove the gym from any promoted equipment doc that
+ * represents that machine. Uses the same matcher as migrateLocationCatalogRefs
+ * so pre-catalogRef promotions (name matches) are covered too.
+ */
+async function untagGymFromPromotedDocs(catalogRef, gymName) {
+    const resolved = resolveCatalogRef(catalogRef, getCatalogSync());
+    const nameLC = resolved ? resolved.machine.name.toLowerCase() : null;
+    const matches = allEquipment.filter((eq) =>
+        (eq.catalogRef === catalogRef
+            || (nameLC && ((eq.function || '').toLowerCase() === nameLC
+                || (eq.name || '').toLowerCase() === nameLC)))
+        && (eq.locations || []).includes(gymName)
+    );
+    for (const eq of matches) {
+        const locations = (eq.locations || []).filter((l) => l !== gymName);
+        await getManager().updateEquipment(eq.id, { locations });
+        eq.locations = locations;
+    }
+    if (matches.length > 0) {
+        AppState._cachedEquipment = allEquipment;
+    }
+}
+
+/**
+ * Location-array counterpart for doc-side edits: when a promoted equipment
+ * doc gains/loses a gym from the equipment-detail page, mirror the change
+ * onto that gym's location.equipment[] so the gym view and quick-add's
+ * "already at this gym" state stay truthful.
+ */
+async function syncCatalogRefOnLocation(catalogRef, gymName, shouldExist) {
+    if (!catalogRef || !gymName) return;
+    const loc = allLocations.find((l) => l.name === gymName);
+    if (!loc?.id) return;
+    try {
+        if (shouldExist) {
+            await getManager().addLocationEquipment(loc.id, [{ catalogRef }]);
+        } else {
+            await getManager().removeLocationEquipment(loc.id, catalogRef);
+        }
+        const items = Array.isArray(loc.equipment) ? loc.equipment : [];
+        loc.equipment = shouldExist
+            ? (items.some((e) => e.catalogRef === catalogRef)
+                ? items
+                : [...items, { catalogRef, nickname: '', notes: '', addedAt: new Date().toISOString() }])
+            : items.filter((e) => e.catalogRef !== catalogRef);
+    } catch (err) {
+        // Non-fatal: the doc is the source of truth; the gym-view merge heals
+        // stale arrays on next render.
+        console.error('syncCatalogRefOnLocation failed:', err);
     }
 }
 
@@ -1416,7 +1483,7 @@ export async function openCatalogMachine(catalogRef) {
     try {
         const locs = await getManager().getUserLocations();
         if (Array.isArray(locs)) allLocations = locs;
-    } catch (_) { /* fall back to whatever's already cached */ }
+    } catch { /* fall back to whatever's already cached */ }
 
     const equipment = await promoteCatalogToEquipment(catalogRef);
     if (!equipment) {
@@ -1555,9 +1622,15 @@ export async function toggleCatalogMachineAtGym(locationId) {
     try {
         if (hasIt) {
             await getManager().removeLocationEquipment(locationId, _catalogDetailRef);
+            // Mirror onto the promoted equipment doc so the workout picker
+            // stops offering this machine "At <gym>".
+            await untagGymFromPromotedDocs(_catalogDetailRef, loc.name);
             showNotification(`Removed from ${loc.name}`, 'success', 1200);
         } else {
             await getManager().addLocationEquipment(locationId, [{ catalogRef: _catalogDetailRef }]);
+            // Promote so the machine exists as a real equipment doc tagged to
+            // this gym — visible to the workout picker immediately.
+            await promoteCatalogToEquipment(_catalogDetailRef, loc.name);
             showNotification(`Added to ${loc.name}`, 'success', 1200);
         }
         // Reconcile with the server in case anything else changed.
@@ -1900,7 +1973,8 @@ export async function commitQuickAddCustom() {
     const type = quickAddState.customType || 'Other';
 
     try {
-        let { gymId, gymName } = quickAddState;
+        const { gymName } = quickAddState;
+        let { gymId } = quickAddState;
         if (!gymId) {
             const newLoc = await getManager().saveLocation({ name: gymName });
             gymId = newLoc.id;
@@ -1978,12 +2052,22 @@ export async function commitQuickAdd() {
         const items = selected.map((catalogRef) => ({ catalogRef }));
         const added = await getManager().addLocationEquipment(gymId, items);
 
+        // Promote each machine to a real equipment doc NOW, not lazily on the
+        // next gym-view render. This is what makes quick-added machines show
+        // up in the active-workout picker immediately — the whole point of
+        // adding equipment at a new gym.
+        const gymName = quickAddState.gymName;
+        for (const catalogRef of selected) {
+            await promoteCatalogToEquipment(catalogRef, gymName, { refresh: false });
+        }
+        await refreshEquipmentCaches();
+
         // Refresh local locations cache so the gym detail / My gyms reflect the change
         const refreshed = await getManager().getUserLocations();
         allLocations = refreshed;
 
         closeQuickAddSheet();
-        showNotification(`Added ${added.length} machine${added.length !== 1 ? 's' : ''} to ${quickAddState?.gymName || 'gym'}`, 'success');
+        showNotification(`Added ${added.length} machine${added.length !== 1 ? 's' : ''} to ${gymName}`, 'success');
         renderEquipmentLibrary();
     } catch (err) {
         console.error('❌ Quick-add commit failed:', err);
@@ -3213,8 +3297,6 @@ export function filterEquipmentBySearch(term) {
 // ===================================================================
 
 export async function openEquipmentDetail(equipmentId) {
-    currentDetailId = equipmentId;
-
     // Find equipment from cache or reload
     let equipment = allEquipment.find(e => e.id === equipmentId);
     if (!equipment) {
@@ -3473,7 +3555,6 @@ export async function openEquipmentDetail(equipmentId) {
 }
 
 export function backToEquipmentList() {
-    currentDetailId = null;
     _catalogDetailRef = null;
     // Always restore the canonical header + list view so a future standalone
     // open of the library shows a clean state, even if we're about to hand
@@ -4422,6 +4503,12 @@ export async function removeEquipmentLocation(equipmentId, locationName) {
         const userId = AppState.currentUser.uid;
         await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { locations });
         eq.locations = locations;
+        AppState._cachedEquipment = allEquipment;
+        // Mirror onto the gym's location.equipment[] so the gym view and
+        // quick-add's "already at this gym" state stay truthful.
+        if (eq.catalogRef) {
+            await syncCatalogRefOnLocation(eq.catalogRef, locationName, false);
+        }
         // Re-render detail page
         openEquipmentDetail(equipmentId);
     } catch (error) {
@@ -4476,6 +4563,10 @@ async function commitEquipmentLocation(equipmentId, gymName) {
         const userId = AppState.currentUser.uid;
         await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { locations });
         eq.locations = locations;
+        AppState._cachedEquipment = allEquipment;
+        if (eq.catalogRef) {
+            await syncCatalogRefOnLocation(eq.catalogRef, gymName, true);
+        }
         showNotification(`Added to ${gymName}`, 'success', 1200);
         openEquipmentDetail(equipmentId);
     } catch (error) {

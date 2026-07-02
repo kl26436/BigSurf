@@ -7,7 +7,7 @@
 // preserved — callers don't need updating.
 
 import { AppState } from '../utils/app-state.js';
-import { escapeAttr, escapeHtml } from './ui-helpers.js';
+import { escapeAttr } from './ui-helpers.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 
 /**

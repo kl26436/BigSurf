@@ -10,20 +10,13 @@ import {
     deleteDoc,
     collection,
     query,
-    where,
     getDocs,
     getDocsFromServer,
     orderBy,
-    limit,
-    onSnapshot,
-    writeBatch,
-    arrayUnion,
-    arrayRemove,
     runTransaction,
 } from './firebase-config.js';
 import { showNotification } from '../ui/ui-helpers.js';
 import {
-    sanitizeString,
     validateExerciseData,
     validateEquipmentData,
     validateTemplateData,
@@ -511,8 +504,6 @@ export class FirebaseWorkoutManager {
             };
 
             await setDoc(docRef, exerciseToSave);
-
-            const action = isEditing ? 'Updated' : 'Created';
 
             return exerciseId;
         } catch (error) {

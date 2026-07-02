@@ -52,12 +52,10 @@ export async function calculateStreaks() {
         // Calculate current streak (consecutive days with workouts)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const todayStr = getDateString(today);
 
         let currentStreak = 0;
         let longestStreak = 0;
         let tempStreak = 1;
-        let lastDate = null;
 
         // Work backwards from today to find current streak
         // Give user until end of today to maintain streak (not midnight)
@@ -76,11 +74,9 @@ export async function calculateStreaks() {
                 if (daysDiff === 0) {
                     // Worked out today - streak definitely active
                     currentStreak = 1;
-                    lastDate = workoutDate;
                 } else if (daysDiff === 1) {
                     // Worked out yesterday - still have today to continue streak
                     currentStreak = 1;
-                    lastDate = workoutDate;
                 } else {
                     // More than 1 day ago - streak is broken
                     break;

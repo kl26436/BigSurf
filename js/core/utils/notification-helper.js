@@ -23,7 +23,7 @@ export async function initializeNotifications() {
 
         // Request notification permission
         if ('Notification' in window && Notification.permission === 'default') {
-            const permission = await Notification.requestPermission();
+            await Notification.requestPermission();
         }
 
         return true;

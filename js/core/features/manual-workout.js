@@ -376,8 +376,6 @@ function renderManualExercises() {
         return;
     }
 
-    const unit = AppState.globalUnit || 'lbs';
-
     container.innerHTML = recentStripHtml + manualWorkoutState.exercises
         .map((exercise, exIndex) => {
             const equipmentDisplay = exercise.equipment || '';

@@ -406,7 +406,6 @@ export async function processWorkoutForPRs(workoutData) {
     // Get the workout's saved location (from when the workout was done)
     const workoutLocation = workoutData.location || prData.currentLocation || 'Unknown Location';
 
-    let newPRCount = 0;
     const newPRs = [];
 
     // Iterate through all exercises in the workout
@@ -432,7 +431,6 @@ export async function processWorkoutForPRs(workoutData) {
             if (prCheck.isNewPR) {
                 // Use the workout's location, not the current location
                 await recordPR(exerciseName, set.reps, set.weight, equipment, workoutLocation, workoutDate, bodyPart, set.originalUnit || 'lbs');
-                newPRCount++;
                 newPRs.push({
                     exercise: exerciseName,
                     weight: set.weight,

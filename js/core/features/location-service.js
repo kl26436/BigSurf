@@ -1,7 +1,6 @@
 // Location Service Module
 // Handles GPS location detection and gym location management
 
-import { AppState } from '../utils/app-state.js';
 import { showNotification, openModal, closeModal } from '../ui/ui-helpers.js';
 import { Config, debugLog } from '../utils/config.js';
 
@@ -279,7 +278,7 @@ export function closeLocationPrompt() {
  * @param {string | null} locationName
  * @param {boolean} locked
  */
-export function updateLocationIndicator(locationName, locked = false) {
+export function updateLocationIndicator(locationName, _locked = false) {
     const indicator = document.getElementById('workout-location-indicator');
     const nameSpan = document.getElementById('workout-location-name');
     const lockIcon = document.getElementById('workout-location-lock');

@@ -7,7 +7,7 @@ import { showNotification, escapeHtml, escapeAttr, convertWeight } from '../ui/u
 import { formatRelativeDate } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { TrainingInsights } from './training-insights.js';
-import { Config, debugLog, getCategoryIcon } from '../utils/config.js';
+import { debugLog, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 
 /**
@@ -206,7 +206,7 @@ export function showAICoach(prefillContext) {
             try {
                 const wm = new FirebaseWorkoutManager(AppState);
                 AppState._cachedEquipment = await wm.getUserEquipment();
-            } catch (_) { /* non-fatal — coach still works without equipment */ }
+            } catch { /* non-fatal — coach still works without equipment */ }
         })();
     }
 

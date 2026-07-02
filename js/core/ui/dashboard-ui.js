@@ -18,7 +18,7 @@ import { updateSetting } from './settings-ui.js';
 
 import {
     aggregateBodyPartStats, getTemplatesForDayOfWeek,
-    formatVolume, capitalize, BP_TO_CAT,
+    formatVolume, capitalize,
 } from '../features/metrics/aggregators.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
 import { chartDonut } from '../features/charts/chart-donut.js';
@@ -173,7 +173,7 @@ async function renderDashboard() {
             if (locMenuItem) {
                 locMenuItem.classList.toggle('hidden', !locations || locations.length === 0);
             }
-        } catch (e) { /* Non-critical */ }
+        } catch { /* Non-critical */ }
 
         showFirstUseTip('more-menu');
     } catch (error) {

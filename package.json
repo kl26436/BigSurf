@@ -9,7 +9,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint js/",
+    "lint": "eslint js/ --max-warnings 24",
     "lint:fix": "eslint js/ --fix",
     "format": "prettier --write \"js/**/*.js\" \"*.css\" \"*.html\"",
     "format:check": "prettier --check \"js/**/*.js\" \"*.css\" \"*.html\"",

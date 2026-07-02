@@ -10,7 +10,7 @@ function tick() {
     for (const [key, fn] of updaters) {
         try {
             fn();
-        } catch (e) {
+        } catch {
             // Updater threw (element gone, etc.) — unregister it
             updaters.delete(key);
         }

@@ -303,7 +303,7 @@ async function getLastSessionForExercise(exerciseName, equipment = null) {
         }
         _lastSessionCache.set(key, result);
         return result;
-    } catch (_) {
+    } catch {
         _lastSessionCache.set(key, null);
         return null;
     }
@@ -338,7 +338,7 @@ async function renderWorkoutSelectorUI() {
             const snapshot = await getDocs(q);
             cachedWorkoutHistory = [];
             snapshot.forEach(doc => cachedWorkoutHistory.push(doc.data()));
-        } catch (_) {
+        } catch {
             cachedWorkoutHistory = [];
         }
     }
@@ -1896,7 +1896,7 @@ async function openTemplateEditor(template) {
             // Fallback: show basic editor
             showBasicTemplateEditor(template);
         }
-    } catch (error) {
+    } catch {
         // Fallback: show basic editor
         showBasicTemplateEditor(template);
     }

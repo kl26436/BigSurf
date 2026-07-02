@@ -5,7 +5,6 @@ import { escapeHtml } from './ui-helpers.js';
 import {
     aggregateExerciseStats, classifyBodyPart, capitalize, formatVolume,
 } from '../features/metrics/aggregators.js';
-import { rangeLabel } from '../features/metrics/range-filter.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
 
 const BP_ICONS = {

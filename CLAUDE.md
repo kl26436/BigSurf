@@ -72,8 +72,6 @@ js/
     │   ├── navigation.js           # Bottom nav, routing
     │   ├── settings-ui.js          # Settings page, onboarding flow
     │   ├── stats-ui.js             # Stats page
-    │   ├── sheet.js                # Bottom-sheet primitive (openSheet / awCloseSheet / closeSheetImmediate)
-    │   ├── add-exercise-sheet.js   # Shared add-exercise sheet (used by active workout AND template editor — Phase 4)
     │   ├── equipment-picker.js     # Equipment picker render helper (categorized: For exercise / At gym / Other)
     │   ├── template-selection.js   # Workouts page — unified library + inline editor (Phases 1-7)
     │   ├── ui-helpers.js           # Notifications, conversions, modal helpers
@@ -312,20 +310,37 @@ The inline editor (in `template-selection.js`) handles rename, sets/reps/weight 
 
 ### Adding a bottom sheet
 
-Use the shared primitive — don't reinvent.
+There is NO shared sheet primitive (`js/core/ui/sheet.js` never existed — don't hunt for it). Sheets are built manually with the `aw-sheet` DOM pattern; canonical examples are `renderManualLinkSheet` in [equipment-library-ui.js](js/core/ui/equipment-library-ui.js) and `showGymChooserSheet` in [workout-session.js](js/core/workout/workout-session.js):
 
 ```js
-import { openSheet, awCloseSheet } from '../ui/sheet.js';
-openSheet({
-  title: 'Title',
-  subtitle: 'optional',
-  body: '<div>...</div>',
-  actions: [
-    { label: 'Cancel', onClick: 'awCloseSheet()' },
-    { label: 'Confirm', onClick: 'myConfirmHandler()', primary: true },
-  ],
-});
+const backdrop = document.createElement('div');
+backdrop.className = 'aw-sheet-backdrop';
+backdrop.id = 'my-sheet-backdrop';
+backdrop.onclick = closeMySheet;
+
+const sheet = document.createElement('div');
+sheet.className = 'aw-sheet';
+sheet.id = 'my-sheet';
+sheet.setAttribute('role', 'dialog');
+sheet.setAttribute('aria-modal', 'true');
+sheet.innerHTML = `
+    <div class="aw-sheet__handle"></div>
+    <div class="aw-sheet__header">
+        <div class="aw-sheet__title">Title</div>
+        <div class="aw-sheet__subtitle">Optional subtitle</div>
+    </div>
+    <div class="aw-sheet__body">${rows}</div>
+    <div class="aw-sheet__actions">
+        <button class="aw-sheet__action" onclick="closeMySheet()">Cancel</button>
+        <button class="aw-sheet__action primary" onclick="confirmMySheet()">Confirm</button>
+    </div>
+`;
+document.body.appendChild(backdrop);
+document.body.appendChild(sheet);
+requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
 ```
+
+Sheet chrome classes live in [styles/pages/active-workout-v2.css](styles/pages/active-workout-v2.css); list rows inside sheets use the `.js-row` pattern. Note `navigateTo()` force-removes `#aw-sheet`/`#aw-sheet-backdrop` on navigation — use unique ids for your sheet and clean up on close.
 
 For add-exercise / equipment / similar shared flows, prefer the parameterized helpers (`openSharedAddExerciseSheet`, `openSharedEquipmentSheet` in [active-workout-ui.js](js/core/workout/active-workout-ui.js)) — they take an `onSelect` callback so the same sheet works from any context.
 
@@ -529,7 +544,7 @@ After meaningful changes, run the relevant subset before saying a task is comple
 | CSS-only (tokens, components, restyle) | `npm run audit:design` (catches raw colors, untokenized font sizes, duplicate classes) |
 | HTML structure | `npm run audit:design` + manual smoke test |
 
-`npm run audit:design --strict` is the must-pass variant. Existing baseline: ~127 lint warnings (mostly `no-unused-vars`), 0 lint errors. New work shouldn't make either worse. Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
+`npm run audit:design --strict` is the must-pass variant. Lint baseline: 24 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 24` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
 
 ## Important Notes
 
@@ -582,7 +597,7 @@ All shipped:
 
 ### Ongoing tech-debt notes
 
-- ESLint config has browser globals enabled now (Phase 9 cleanup); `npm run lint` reports 0 errors, ~127 warnings (mostly `no-unused-vars` on minor locals — non-blocking).
+- ESLint config has browser globals enabled now (Phase 9 cleanup); `npm run lint` reports 0 errors, 24 warnings (2026-07 sweep cut it from 131; the rest are load-bearing destructuring omissions, unused function params, and no-useless-assignment cases needing per-site judgment). The `--max-warnings 24` ratchet in package.json blocks regressions.
 - workout-history.js's calendar uses in-memory month iteration over currentHistory (~1ms for 1000 workouts; not a real bottleneck).
 - Recent workouts list in history is paginated but not virtual-scrolled. Becomes DOM-stress past ~500 visible items.
 - `firebase-workout-manager.js#getUserWorkouts` uses `getDocsFromServer` deliberately (delete consistency); has its own un-shared cost.

@@ -131,7 +131,7 @@ export async function copyErrorLog() {
             btn.innerHTML = '<i class="fas fa-check"></i> Copied';
             setTimeout(() => { btn.innerHTML = orig; }, 1500);
         }
-    } catch (_) {
+    } catch {
         // Fallback: select text in a textarea
     }
 }
@@ -173,7 +173,6 @@ export async function exportErrorLog() {
  * Open bug report form — captures app context, recent errors, and user description.
  */
 export async function showBugReport() {
-    const modal = document.getElementById('error-log-modal');
     const list = document.getElementById('error-log-list');
     if (!list) return;
 

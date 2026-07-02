@@ -228,7 +228,6 @@ export function getTopLiftsTrendPoints(workouts, { start, end }) {
                 if (ex.name !== lift) continue;
                 for (const set of ex.sets || []) {
                     if (!set.reps || !set.weight) continue;
-                    const oneRM = set.weight * (1 + set.reps / 30);
                     combined = Math.max(combined, (dateMap.get(w.date) || 0));
                     // Track per-workout best across all lifts
                     let best = 0;

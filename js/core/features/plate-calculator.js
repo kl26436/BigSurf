@@ -25,7 +25,7 @@ async function ensureEquipmentCache() {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const mgr = new FirebaseWorkoutManager(AppState);
         AppState._cachedEquipment = await mgr.getUserEquipment();
-    } catch (_) {
+    } catch {
         AppState._cachedEquipment = [];
     }
 }
@@ -76,8 +76,6 @@ export function calculatePlates(targetWeight, barWeight = LBS_BAR, availablePlat
 // STANDALONE PAGE
 // ===================================================================
 
-let pageInitialized = false;
-
 export function initPlateCalculatorPage() {
     const container = document.getElementById('plate-calc-content');
     if (!container) return;
@@ -119,7 +117,6 @@ export function initPlateCalculatorPage() {
     `;
 
     bindPlateCalcEvents();
-    pageInitialized = true;
 
     // Register window functions for inline onclick handlers
     window.closePlateCalcPopover = closePlateCalcPopover;
@@ -489,7 +486,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
                 try {
                     const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
                     await new FirebaseWorkoutManager(AppState).updateEquipment(equipmentDoc.id, { plateSides: currentSides });
-                } catch (_) { /* non-fatal — the session already reflects the choice */ }
+                } catch { /* non-fatal — the session already reflects the choice */ }
             }
         });
     });

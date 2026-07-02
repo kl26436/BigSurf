@@ -411,7 +411,6 @@ export function getWorkoutHistory(appState) {
             const month = this.currentCalendarDate.getMonth();
 
             const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday
 
@@ -427,10 +426,6 @@ export function getWorkoutHistory(appState) {
                 const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
                 const isCurrentMonth = currentDate.getMonth() === month;
                 const isToday = dateStr === todayStr;
-                const isFutureDate = currentDate > today;
-
-                // Check if this date is before the first workout
-                const isBeforeFirstWorkout = this.firstWorkoutDate ? dateStr < this.firstWorkoutDate : false;
 
                 const workout = this.calendarWorkouts[dateStr];
 
@@ -826,7 +821,7 @@ export function getWorkoutHistory(appState) {
             return html;
         },
 
-        generateWorkoutDetailHTML(workout, date, workoutIndex = 0) {
+        generateWorkoutDetailHTML(workout, date, _workoutIndex = 0) {
             // Schema v3.0: Use docId for all operations instead of date
             const docId = workout.docId;
             let exerciseHTML = '';
@@ -1205,7 +1200,7 @@ export function getWorkoutHistory(appState) {
             }
         },
 
-        showFixedWorkoutModal(workout, workoutIndex = 0) {
+        showFixedWorkoutModal(workout, _workoutIndex = 0) {
             // Use the correct modal elements that actually exist
             const modal = document.getElementById('workout-detail-section');
             const content = document.getElementById('workout-detail-content');

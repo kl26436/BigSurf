@@ -2,7 +2,7 @@
 // Handles workout history UI interactions with FULL CALENDAR VIEW
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { formatStatus } from '../utils/workout-helpers.js';
 

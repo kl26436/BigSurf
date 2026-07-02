@@ -63,13 +63,6 @@ export function generateWorkoutId(date) {
     return `${date}_${timestamp}_${random}`;
 }
 
-/**
- * Check if a document ID uses the old schema (date as ID)
- */
-function isOldSchemaDoc(docId) {
-    return /^\d{4}-\d{2}-\d{2}$/.test(docId);
-}
-
 export async function saveWorkoutData(state) {
     if (!state.currentUser) return;
 
@@ -449,8 +442,6 @@ export async function deleteWorkoutById(state, workoutId) {
     }
 }
 
-import { FirebaseWorkoutManager } from './firebase-workout-manager.js';
-
 export async function loadWorkoutPlans(state) {
     try {
         const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
@@ -527,7 +518,6 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
         let lastWorkout = null;
         let lastExerciseData = null;
         let workoutDate = null;
-        let matchType = null; // Track what type of match we found
 
         // Find the most recent workout with this exercise (excluding today)
         const today = state.getTodayDateString();
@@ -633,7 +623,6 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             lastWorkout = bestMatch.workout;
             lastExerciseData = bestMatch.exerciseData;
             workoutDate = bestMatch.date;
-            matchType = bestMatch.matchDescription;
         }
 
         // Display the results
@@ -958,53 +947,6 @@ function getDefaultExercises() {
         },
     ];
 }
-// RECOVERY FUNCTION: Fix corrupted weight data
-async function recoverCorruptedWeights(state) {
-    if (!state.currentUser) return;
-
-    let fixedCount = 0;
-
-    // Get all workout data
-    const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
-    const snapshot = await getDocs(workoutsRef);
-
-    for (const docSnapshot of snapshot.docs) {
-        const data = docSnapshot.data();
-        let needsUpdate = false;
-
-        if (data.exercises) {
-            Object.keys(data.exercises).forEach((exerciseKey) => {
-                const exerciseData = data.exercises[exerciseKey];
-                if (exerciseData.sets) {
-                    exerciseData.sets.forEach((set) => {
-                        // Check if weight is corrupted (unreasonably high)
-                        if (set.weight && set.weight > 500 && set.originalWeights) {
-                            // Use the original kg value if available
-                            if (set.originalWeights.kg && set.originalUnit === 'kg') {
-                                set.weight = Math.round(set.originalWeights.kg * 2.20462);
-                            } else if (set.originalWeights.lbs) {
-                                set.weight = set.originalWeights.lbs;
-                            }
-
-                            set.alreadyConverted = true;
-                            needsUpdate = true;
-                            fixedCount++;
-                        }
-                    });
-                }
-            });
-        }
-
-        if (needsUpdate) {
-            await setDoc(doc(db, 'users', state.currentUser.uid, 'workouts', docSnapshot.id), data);
-        }
-    }
-
-    if (fixedCount > 0) {
-        showNotification(`Recovered ${fixedCount} corrupted weights!`, 'success');
-    }
-}
-
 /**
  * Count how many workouts and templates would be affected by equipment reassignment.
  * Used to show the user a preview before committing.

@@ -41,7 +41,7 @@ export function generateCSV(workouts) {
     const rows = [headers.join(',')];
 
     for (const workout of workouts) {
-        for (const [key, exercise] of Object.entries(workout.exercises || {})) {
+        for (const exercise of Object.values(workout.exercises || {})) {
             for (let i = 0; i < (exercise.sets || []).length; i++) {
                 const set = exercise.sets[i];
                 rows.push([
@@ -246,7 +246,7 @@ export function handleImportFileSelect(event) {
             // Store data and show import button
             pendingImportData = data;
             actions.classList.remove('hidden');
-        } catch (err) {
+        } catch {
             preview.classList.remove('hidden');
             preview.innerHTML = `
                 <div class="import-error">

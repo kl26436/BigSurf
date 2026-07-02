@@ -2,7 +2,7 @@
 // Dashboard widget, weight entry modal, Stats chart, body measurements modal
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification, openModal, closeModal, displayWeight, formatHeight, parseHeightToCm } from '../ui/ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, openModal, closeModal, formatHeight, parseHeightToCm } from '../ui/ui-helpers.js';
 import { formatRelativeDate, getDateString } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import {

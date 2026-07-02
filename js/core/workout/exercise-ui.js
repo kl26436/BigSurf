@@ -984,7 +984,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
     let lastSession = null;
     try {
         lastSession = await getLastSessionDefaults(modalExerciseName, exercise.equipment || null);
-    } catch (_) { /* fall back to template defaults */ }
+    } catch { /* fall back to template defaults */ }
 
     // Format last session date label
     let lastSessionLabel = '';
@@ -1149,7 +1149,7 @@ async function generateBodyweightExerciseTable(exercise, exerciseIndex, unit) {
     let lastSession = null;
     try {
         lastSession = await getLastSessionDefaults(exerciseName, exercise.equipment || null);
-    } catch (_) { /* ignore */ }
+    } catch { /* ignore */ }
 
     let lastSessionLabel = '';
     if (lastSession?.date) {
@@ -2091,12 +2091,6 @@ export function markExerciseComplete(exerciseIndex) {
 
     // Update compact hero progress
     if (window.updateWorkoutProgress) window.updateWorkoutProgress();
-}
-
-function markSetComplete(exerciseIndex, setIndex) {
-    const exercise = AppState.currentWorkout.exercises[exerciseIndex];
-    updateSet(exerciseIndex, setIndex, 'reps', exercise.reps || 10);
-    updateSet(exerciseIndex, setIndex, 'weight', exercise.weight || 50);
 }
 
 export function deleteExerciseFromWorkout(exerciseIndex) {

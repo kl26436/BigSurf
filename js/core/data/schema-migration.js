@@ -3,7 +3,7 @@
 // - Old schema: document ID = date (YYYY-MM-DD), one workout per day
 // - New schema: document ID = unique ID, date stored as field, multiple workouts per day
 
-import { db, doc, setDoc, getDoc, deleteDoc, collection, getDocs, updateDoc, writeBatch } from './firebase-config.js';
+import { db, doc, setDoc, deleteDoc, collection, getDocs, writeBatch } from './firebase-config.js';
 import { debugLog } from '../utils/config.js';
 
 /**

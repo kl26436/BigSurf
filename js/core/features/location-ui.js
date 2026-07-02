@@ -544,7 +544,7 @@ async function detectGPSForModal() {
             statusBox.innerHTML =
                 '<i class="fas fa-exclamation-circle"></i><span>Could not detect location. Try another method.</span>';
         }
-    } catch (error) {
+    } catch {
         statusBox.className = 'gps-status-box error';
         statusBox.innerHTML =
             '<i class="fas fa-exclamation-circle"></i><span>Location access denied. Try another method.</span>';

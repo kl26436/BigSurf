@@ -3,10 +3,8 @@
 
 import {
     auth,
-    provider,
     onAuthStateChanged,
     signInWithPopup,
-    signInWithRedirect,
     getRedirectResult,
     signOut,
     db,
@@ -129,7 +127,7 @@ function installKeyboardAwareFocusHandler() {
         // still benefit from this because scrollIntoView respects the
         // visualViewport on most modern engines.
         setTimeout(() => {
-            try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { /* noop */ }
+            try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { /* noop */ }
         }, 300);
 
         // Silent health check for the recurring "search results hidden under
@@ -192,7 +190,7 @@ async function scheduleKeyboardOcclusionCheck(input) {
                 platform: navigator.platform || null,
             }
         );
-    } catch (_) {
+    } catch {
         // Diagnostic must never break input focus.
     }
 }
@@ -308,7 +306,7 @@ export async function signIn() {
             prompt: 'select_account',
         });
 
-        const result = await signInWithPopup(auth, signInProvider);
+        await signInWithPopup(auth, signInProvider);
 
         // Show loading screen with initialization message
         const loadingScreen = document.getElementById('loading-screen');
@@ -504,7 +502,7 @@ export function setupAuthenticationListener() {
             try {
                 const { initializeFCM } = await import('./utils/push-notification-manager.js');
                 await initializeFCM();
-            } catch (e) {
+            } catch {
                 // FCM not available or not configured - local notifications still work
             }
 

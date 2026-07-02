@@ -5,7 +5,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { getLatestBodyWeight, saveBodyWeight } from './body-measurements.js';
-import { convertWeight, openModal, closeModal } from '../ui/ui-helpers.js';
+import { convertWeight } from '../ui/ui-helpers.js';
 import { BW_STALENESS_DAYS, checkBodyWeightFreshness } from '../utils/weight-calculations.js';
 
 /**

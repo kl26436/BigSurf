@@ -3,7 +3,7 @@
 // Phase 17.2 — runs on dashboard load using local data only
 
 import { AppState } from '../utils/app-state.js';
-import { Config, debugLog } from '../utils/config.js';
+import { Config } from '../utils/config.js';
 import { formatBodyPart } from '../utils/workout-helpers.js';
 
 /**
@@ -291,7 +291,6 @@ export function analyzeFrequency(workouts, exerciseDatabase, weeks = 4) {
     }
 
     return Object.entries(bodyPartWeeks).map(([part, weekData]) => {
-        const weekCount = Object.keys(weekData).length;
         const totalSessions = Object.values(weekData).reduce((sum, c) => sum + c, 0);
         const avgPerWeek = weeks > 0 ? totalSessions / weeks : 0;
 

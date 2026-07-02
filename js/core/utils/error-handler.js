@@ -234,7 +234,7 @@ async function persistErrorToFirestore(record) {
         if (Math.random() < 0.05) {
             await trimFirestoreErrors();
         }
-    } catch (_) {
+    } catch {
         // Silently fail — we still have the in-memory log
     }
 }
@@ -254,7 +254,7 @@ async function trimFirestoreErrors() {
                 await deleteDoc(d.ref);
             }
         }
-    } catch (_) {
+    } catch {
         // Cleanup failure is not critical
     }
 }
@@ -274,7 +274,7 @@ export async function loadPersistedErrors() {
         const snapshot = await getDocs(q);
 
         return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    } catch (_) {
+    } catch {
         return [];
     }
 }
@@ -295,7 +295,7 @@ export async function clearPersistedErrors() {
         for (const d of snapshot.docs) {
             await deleteDoc(d.ref);
         }
-    } catch (_) {
+    } catch {
         // Best effort
     }
 }

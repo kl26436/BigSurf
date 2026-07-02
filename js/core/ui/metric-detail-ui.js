@@ -2,8 +2,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml } from './ui-helpers.js';
-import { setBottomNavVisible, updateBottomNavActive, navigateTo } from './navigation.js';
-import { setHeaderMode } from './ui-helpers.js';
+import { navigateTo } from './navigation.js';
 import { formatRelativeDate as formatRelativeDateShared } from '../utils/date-helpers.js';
 
 import { renderRangeFilter, getRangeBounds, getPreviousRangeBounds, rangeLabel } from '../features/metrics/range-filter.js';
@@ -438,7 +437,7 @@ async function renderBodyCompositionDetail(container, range) {
     container.innerHTML = '<div class="skeleton skeleton-card md-skel-tall"></div>';
 
     try {
-        const { loadDexaHistory, getLatestDexaScan, compareDexaScans } = await import('../features/dexa-scan.js');
+        const { loadDexaHistory, compareDexaScans } = await import('../features/dexa-scan.js');
         const history = await loadDexaHistory(10);
 
         if (!history || history.length === 0) {

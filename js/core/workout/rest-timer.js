@@ -381,33 +381,6 @@ export function restoreModalRestTimer(exerciseIndex, timerState) {
     };
 }
 
-function stopModalRestTimer(exerciseIndex) {
-    const modalTimer = document.getElementById(`modal-rest-timer-${exerciseIndex}`);
-    if (!modalTimer) return;
-
-    // Clear animation frame
-    if (modalTimer.timerData && modalTimer.timerData.animationFrame) {
-        cancelAnimationFrame(modalTimer.timerData.animationFrame);
-    }
-
-    // Hide timer and reset
-    modalTimer.classList.add('hidden');
-    modalTimer.timerData = null;
-
-    // Reset display color
-    const timerDisplay = modalTimer.querySelector('.modal-rest-display');
-    if (timerDisplay) {
-        timerDisplay.classList.remove('timer-complete');
-    }
-
-    // Reset pause button
-    const pauseBtn = modalTimer.querySelector('.modal-rest-controls .btn:first-child');
-    if (pauseBtn) {
-        pauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
-        pauseBtn.setAttribute('aria-label', 'Pause timer');
-    }
-}
-
 // Save timer state to global variable before modal re-render
 export function saveActiveTimerState(exerciseIndex) {
     const modalTimer = document.getElementById(`modal-rest-timer-${exerciseIndex}`);

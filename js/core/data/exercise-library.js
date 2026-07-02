@@ -59,7 +59,6 @@ export function getExerciseLibrary(appState) {
 
             currentContext = 'manual-workout';
 
-            const modal = document.getElementById('exercise-library-section');
             const modalTitle = document.querySelector('#exercise-library-section .modal-title');
 
             if (modalTitle) {
@@ -74,7 +73,6 @@ export function getExerciseLibrary(appState) {
             appState.addingToTemplate = true;
             appState.templateEditingContext = template;
 
-            const modal = document.getElementById('exercise-library-section');
             const modalTitle = document.querySelector('#exercise-library-section .modal-title');
 
             if (modalTitle) {
@@ -92,7 +90,6 @@ export function getExerciseLibrary(appState) {
 
             currentContext = 'workout-add';
 
-            const modal = document.getElementById('exercise-library-section');
             const modalTitle = document.querySelector('#exercise-library-section .modal-title');
 
             if (modalTitle) {
@@ -420,7 +417,6 @@ function selectExerciseGeneric(exerciseDataOrName, exerciseJson) {
         // Handle different parameter formats
         if (arguments.length === 2) {
             // Format: selectExerciseGeneric('Exercise Name', 'jsonString')
-            const exerciseName = exerciseDataOrName;
             exercise = typeof exerciseJson === 'string' ? JSON.parse(exerciseJson) : exerciseJson;
         } else if (arguments.length === 1) {
             // Format: selectExerciseGeneric(exerciseObject) or selectExerciseGeneric('Exercise Name')

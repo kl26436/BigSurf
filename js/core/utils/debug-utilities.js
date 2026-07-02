@@ -15,7 +15,7 @@ export function debugManualWorkoutDate() {
     console.log('🔍 DEBUGGING MANUAL WORKOUT DATE ISSUE:');
 
     // Get current manual workout from the manual workout module
-    const { getCurrentManualWorkout } = import('../features/manual-workout.js').then((module) => {
+    import('../features/manual-workout.js').then((module) => {
         const currentManualWorkout = module.getCurrentManualWorkout();
         console.log('currentManualWorkout.date:', currentManualWorkout.date);
     });
@@ -396,7 +396,7 @@ export async function debugNetworkConnectivity() {
 
     try {
         // Test basic internet connectivity
-        const response = await fetch('https://www.google.com/favicon.ico', {
+        await fetch('https://www.google.com/favicon.ico', {
             method: 'HEAD',
             mode: 'no-cors',
         });
@@ -678,7 +678,7 @@ export async function mergeDuplicateExercises() {
     console.log('🔄 Merging duplicate exercises...\n');
 
     try {
-        const { db, collection, getDocs, deleteDoc, doc, updateDoc } = await import('../data/firebase-config.js');
+        const { db, collection, getDocs, deleteDoc, doc } = await import('../data/firebase-config.js');
         const uid = AppState.currentUser.uid;
 
         // First, get all exercises grouped by name
@@ -728,7 +728,6 @@ export async function mergeDuplicateExercises() {
         const workoutsSnapshot = await getDocs(workoutsRef);
 
         let mergeCount = 0;
-        const workoutsUpdated = 0;
 
         for (const [name, exercises] of Object.entries(exercisesByName)) {
             if (exercises.length <= 1) continue;
@@ -749,8 +748,6 @@ export async function mergeDuplicateExercises() {
                 // Check each workout for references to this duplicate
                 for (const workoutDoc of workoutsSnapshot.docs) {
                     const workoutData = workoutDoc.data();
-                    const needsUpdate = false;
-                    const updates = {};
 
                     // Check exerciseNames
                     if (workoutData.exerciseNames) {
@@ -760,17 +757,6 @@ export async function mergeDuplicateExercises() {
                                 // but good to know it exists
                             }
                         }
-                    }
-
-                    // Check originalWorkout.exercises for equipment references
-                    if (workoutData.originalWorkout?.exercises) {
-                        const updatedExercises = workoutData.originalWorkout.exercises.map((ex) => {
-                            // If this exercise matches the duplicate, merge equipment settings from keepExercise
-                            if (ex.machine?.toLowerCase() === name) {
-                                // Keep the workout's existing data, it's fine
-                            }
-                            return ex;
-                        });
                     }
                 }
 
@@ -1168,7 +1154,7 @@ export async function bulkUpdateEquipment(exerciseName, oldEquipment, newEquipme
     console.log(`🔄 Bulk updating "${exerciseName}" equipment...\n`);
 
     try {
-        const { db, collection, getDocs, doc, getDoc, updateDoc } = await import('../data/firebase-config.js');
+        const { db, collection, getDocs, doc, updateDoc } = await import('../data/firebase-config.js');
         const uid = AppState.currentUser.uid;
 
         const workoutsRef = collection(db, 'users', uid, 'workouts');

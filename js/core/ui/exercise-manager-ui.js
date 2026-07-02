@@ -408,23 +408,6 @@ export function handleExerciseCardClick(exerciseId) {
     }
 }
 
-function getDeleteButton(exercise) {
-    const eid = escapeAttr(exercise.id);
-    if (exercise.isOverride) {
-        return `<button class="btn-icon btn-icon-warning" data-action="deleteExercise" data-exercise-id="${eid}" title="Revert to default">
-            <i class="fas fa-undo"></i>
-        </button>`;
-    } else if (exercise.isCustom) {
-        return `<button class="btn-icon btn-icon-danger" data-action="deleteExercise" data-exercise-id="${eid}" title="Delete exercise">
-            <i class="fas fa-trash"></i>
-        </button>`;
-    } else {
-        return `<button class="btn-icon" data-action="deleteExercise" data-exercise-id="${eid}" title="Hide exercise">
-            <i class="fas fa-eye-slash"></i>
-        </button>`;
-    }
-}
-
 // Filter exercises - used by both category view search and list view search
 export function filterExerciseLibrary() {
     // Check list view search input first (used when in list view)
@@ -769,7 +752,6 @@ async function populateEquipmentListForSection(
 
     const listEl = document.getElementById('edit-equipment-list');
     const selectedDisplay = document.getElementById('edit-selected-equipment');
-    const selectedText = document.getElementById('edit-selected-equipment-text');
 
     // Reset selection state
     selectedEquipmentId = null;
@@ -917,38 +899,6 @@ export function clearSelectedEquipment() {
 
     // Hide display
     if (selectedDisplay) selectedDisplay.classList.add('hidden');
-}
-
-// Delete equipment item
-async function deleteEquipmentItem(equipmentId) {
-    if (!confirm('Delete this equipment? You can re-add it later.')) {
-        return;
-    }
-
-    try {
-        if (!workoutManager) {
-            workoutManager = new FirebaseWorkoutManager(AppState);
-        }
-
-        await workoutManager.deleteEquipment(equipmentId);
-        showNotification('Equipment deleted', 'success');
-
-        // If this was the selected equipment, clear selection
-        if (selectedEquipmentId === equipmentId) {
-            clearSelectedEquipment();
-        }
-
-        // Refresh the equipment list for this exercise
-        const exerciseName =
-            currentEditingExercise?.name ||
-            currentEditingExercise?.machine ||
-            document.getElementById('edit-exercise-name')?.value.trim() ||
-            null;
-        await populateEquipmentListForSection(exerciseName);
-    } catch (error) {
-        console.error('❌ Error deleting equipment:', error);
-        showNotification('Error deleting equipment', 'error');
-    }
 }
 
 /**
@@ -1873,7 +1823,6 @@ function showSourceExercisePicker(exerciseTypes) {
 
         // Show cancel button to close
         const cancelBtn = modal.querySelector('[data-action="closeReassignModal"]');
-        const origHandler = cancelBtn?.onclick;
         if (cancelBtn) {
             cancelBtn.onclick = () => { closeModal(modal); resolve(null); };
         }

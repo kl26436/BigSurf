@@ -4,7 +4,6 @@
 import { functions, httpsCallable } from '../data/firebase-config.js';
 import { AppState } from '../utils/app-state.js';
 import { showNotification } from '../ui/ui-helpers.js';
-import { debugLog } from '../utils/config.js';
 
 // Withings OAuth client ID (public — safe to include client-side)
 const WITHINGS_CLIENT_ID = '332086edb8febf30285cb268783ae86686a2253dd2c2883f685963b607c21756';

@@ -2365,7 +2365,7 @@ export async function awCreateAndInsertExercise(rawName) {
     try {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const mgr = new FirebaseWorkoutManager(AppState);
-        const result = await mgr.saveCustomExercise({
+        await mgr.saveCustomExercise({
             name,
             machine: name,
             bodyPart: category,
@@ -2897,7 +2897,7 @@ async function maybeLogEquipmentLeak({
                 cachedEquipmentCount: cachedEquipment.length,
             }
         );
-    } catch (_) {
+    } catch {
         // Diagnostic must never break autofill.
     }
 }
@@ -2950,7 +2950,7 @@ export async function loadAutofillForExercise(idx) {
         const { resolveFormVideo } = await import('./exercise-ui.js');
         const formVideo = await resolveFormVideo(exName, equipName);
         exercise._formVideoUrl = formVideo?.url || null;
-    } catch (_) {
+    } catch {
         exercise._formVideoUrl = null;
     }
 

@@ -131,7 +131,6 @@ function debouncedSaveSettings() {
  * @param {string} [parseType] - 'int' to parseInt the value
  */
 function segmented(settingKey, options, currentValue, parseType) {
-    const parse = parseType === 'int' ? 'parseInt(this.dataset.val)' : `this.dataset.val`;
     return `<div class="segmented">${options.map(o =>
         `<button class="${o.value === currentValue ? 'active' : ''}" data-val="${o.value}"
             onclick="updateSetting('${settingKey}', ${parseType === 'int' ? o.value : `'${o.value}'`}); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">${escapeHtml(o.label)}</button>`

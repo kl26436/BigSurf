@@ -2,7 +2,7 @@
 // Upload modal, AI review form, dashboard card, history, detail views
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification, openModal, closeModal } from '../ui/ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification } from '../ui/ui-helpers.js';
 import { formatRelativeDate } from '../utils/date-helpers.js';
 import {
     uploadDexaPdf,
@@ -967,8 +967,7 @@ function renderStatCard({ label, val, unitStr, delta, deltaUnit, invertColor }) 
         // For body fat / fat mass, decrease is good; for lean / bone, increase is good
         const isGood = invertColor ? delta < 0 : delta > 0;
         const arrow = delta > 0 ? '\u2191' : '\u2193';
-        const cls = isGood ? 'down' : 'up'; // "down" = green (good), "up" = red (bad) per mockup convention
-        // Actually: mockup uses "down" class with down arrow for BF decrease (green) and "up" for lean increase (green)
+        // Mockup uses "down" class with down arrow for BF decrease (green) and "up" for lean increase (green)
         // So: .stat-delta.up = green (positive change), .stat-delta.down = green (decrease that's good)
         const deltaClass = isGood ? (delta < 0 ? 'down' : 'up') : (delta < 0 ? 'up' : 'down');
         deltaHTML = `<div class="stat-delta ${deltaClass}">${arrow} ${Math.abs(delta)}${deltaUnit}</div>`;
