@@ -95,7 +95,7 @@
 
 /* Connect more data card */
 .connect-card {
-    background: linear-gradient(135deg, rgba(29, 211, 176, 0.08), rgba(29, 211, 176, 0.02));
+    background: linear-gradient(135deg, var(--primary-bg-gradient-start), var(--primary-bg-gradient-end));
     border: 1px dashed var(--primary-border);
     padding: var(--pad-card-y);
     border-radius: var(--radius-md);

@@ -39,40 +39,42 @@
     font-weight: 600;
 }
 
-/* Category-colored active states */
+/* Category-colored active states — token pattern matches .cat-shoulders below.
+   (The old hardcoded cat-arms tint used a stale orange-red hue that didn't
+   match --cat-arms; the token derives from the real color.) */
 .chip.cat-push.active {
-    background: rgba(74, 144, 217, 0.12);
-    border-color: rgba(74, 144, 217, 0.4);
+    background: var(--cat-push-bg);
+    border-color: var(--cat-push-border);
     color: var(--cat-push);
 }
 
 .chip.cat-pull.active {
-    background: rgba(217, 74, 122, 0.12);
-    border-color: rgba(217, 74, 122, 0.4);
+    background: var(--cat-pull-bg);
+    border-color: var(--cat-pull-border);
     color: var(--cat-pull);
 }
 
 .chip.cat-legs.active {
-    background: rgba(123, 74, 217, 0.12);
-    border-color: rgba(123, 74, 217, 0.4);
+    background: var(--cat-legs-bg);
+    border-color: var(--cat-legs-border);
     color: var(--cat-legs);
 }
 
 .chip.cat-core.active {
-    background: rgba(74, 217, 167, 0.12);
-    border-color: rgba(74, 217, 167, 0.4);
+    background: var(--cat-core-bg);
+    border-color: var(--cat-core-border);
     color: var(--cat-core);
 }
 
 .chip.cat-cardio.active {
-    background: rgba(217, 167, 74, 0.12);
-    border-color: rgba(217, 167, 74, 0.4);
+    background: var(--cat-cardio-bg);
+    border-color: var(--cat-cardio-border);
     color: var(--cat-cardio);
 }
 
 .chip.cat-arms.active {
-    background: rgba(217, 106, 74, 0.12);
-    border-color: rgba(217, 106, 74, 0.4);
+    background: var(--cat-arms-bg);
+    border-color: var(--cat-arms-border);
     color: var(--cat-arms);
 }
 

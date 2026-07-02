@@ -29,6 +29,8 @@ const BUDGETS = {
     rawRadiusPxInPages: 0,
     rawRgbaInPages: 2,
     rawHexInPages: 0,
+    rawRgbaInComponents: 0,
+    rawHexNamedInComponents: 0,
     duplicateClassDefs: 5,
 };
 
@@ -70,6 +72,9 @@ function listMatches(files, regex) {
 
 const jsFiles = walk(JS_DIR, (f) => f.endsWith('.js') && !f.includes('node_modules'));
 const pagesCss = walk(PAGES_DIR, (f) => f.endsWith('.css'));
+const componentsCss = walk(COMPONENTS_DIR, (f) => f.endsWith('.css'));
+const utilitiesCss = [path.join(STYLES_ROOT, 'utilities.css')].filter((f) => fs.existsSync(f));
+const compAndUtilCss = [...componentsCss, ...utilitiesCss];
 const allCss = walk(STYLES_ROOT, (f) => f.endsWith('.css') && !path.basename(f).startsWith('tokens'));
 
 const metrics = {
@@ -78,6 +83,13 @@ const metrics = {
     rawRadiusPxInPages: countMatches(pagesCss, /border-radius:\s*\d+px/g),
     rawRgbaInPages: countMatches(pagesCss, /\brgba?\s*\(/g),
     rawHexInPages: countMatches(pagesCss, /#[0-9a-fA-F]{3,8}(?![0-9a-fA-F])/g),
+    // Components + utilities: rgba with a NUMERIC first arg (rgba(var(--x-rgb), a)
+    // is token-derived and allowed) and hex/named colors inside declarations
+    // (property-line match so #id selectors don't count).
+    rawRgbaInComponents: countMatches(compAndUtilCss, /\brgba?\(\s*\d/g),
+    rawHexNamedInComponents:
+        countMatches(compAndUtilCss, /^\s*[-a-z]+[-a-z ]*:\s*[^;{}]*#[0-9a-fA-F]{3,8}\b/gim) +
+        countMatches(compAndUtilCss, /^\s*[-a-z]+[-a-z ]*:\s*white\b/gim),
 };
 
 // --- Duplicate class definitions --------------------------------------------
@@ -115,6 +127,8 @@ const rows = [
     row('Raw border-radius px in pages/',    metrics.rawRadiusPxInPages,   BUDGETS.rawRadiusPxInPages),
     row('Raw rgba() in pages/',              metrics.rawRgbaInPages,       BUDGETS.rawRgbaInPages),
     row('Raw hex #xxx in pages/',            metrics.rawHexInPages,        BUDGETS.rawHexInPages),
+    row('Raw rgba() in components/+util',    metrics.rawRgbaInComponents,  BUDGETS.rawRgbaInComponents),
+    row('Raw hex/named in components/+util', metrics.rawHexNamedInComponents, BUDGETS.rawHexNamedInComponents),
     row('Duplicate class defs (cross-file)', metrics.duplicateClassDefs,   BUDGETS.duplicateClassDefs),
 ];
 

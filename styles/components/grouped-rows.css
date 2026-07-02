@@ -51,12 +51,12 @@
 }
 
 /* Icon tint variants */
-.ic-primary { background: rgba(29, 211, 176, 0.12); color: var(--primary); }
-.ic-warning { background: rgba(240, 194, 75, 0.12); color: var(--warning); }
-.ic-warm    { background: rgba(247, 168, 101, 0.12); color: var(--highlight-warm); }
-.ic-danger  { background: rgba(227, 93, 106, 0.12); color: var(--danger); }
-.ic-blue    { background: rgba(74, 144, 217, 0.12); color: var(--cat-push); }
-.ic-purple  { background: rgba(123, 74, 217, 0.12); color: var(--cat-legs); }
+.ic-primary { background: var(--primary-bg); color: var(--primary); }
+.ic-warning { background: var(--warning-bg-subtle); color: var(--warning); }
+.ic-warm    { background: var(--highlight-warm-bg); color: var(--highlight-warm); }
+.ic-danger  { background: var(--danger-soft-bg); color: var(--danger); }
+.ic-blue    { background: var(--cat-push-bg); color: var(--cat-push); }
+.ic-purple  { background: var(--cat-legs-bg); color: var(--cat-legs); }
 .ic-muted   { background: var(--bg-card-hi); color: var(--text-secondary); }
 
 /* Row info section (center) */

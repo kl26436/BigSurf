@@ -34,7 +34,7 @@
 }
 .btn-success {
     background: var(--success);
-    color: white;
+    color: var(--text-on-color);
 }
 .btn-danger {
     background: transparent;

@@ -12,7 +12,7 @@
     position: fixed;
     inset: 0;
     z-index: var(--z-modal, 500);
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--overlay-heavy);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -38,7 +38,7 @@
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: rgba(86, 182, 194, 0.15);
+    background: var(--cat-shoulders-bg);
     color: var(--cat-shoulders);
     display: flex;
     align-items: center;

@@ -240,7 +240,7 @@
     background: var(--success);
     border: none;
     border-radius: var(--radius-md);
-    color: white;
+    color: var(--text-on-color);
     font-size: var(--font-md);
     font-weight: 600;
     cursor: pointer;
@@ -302,7 +302,7 @@
     background: var(--success);
     border: none;
     border-radius: var(--radius-md);
-    color: white;
+    color: var(--text-on-color);
     font-size: var(--font-md);
     font-weight: 600;
     cursor: pointer;
