@@ -1,7 +1,7 @@
 // Exercise Detail — Level 3 drill-down from muscle group exercise list
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml } from './ui-helpers.js';
+import { escapeHtml, escapeAttr } from './ui-helpers.js';
 import {
     aggregateExerciseStats, classifyBodyPart, capitalize, formatVolume,
 } from '../features/metrics/aggregators.js';
@@ -24,10 +24,20 @@ function bodyPartColor(bp) {
 }
 
 const DETAIL_RANGES = ['M', '3M', '6M', 'Y', 'All'];
+const SESSIONS_COLLAPSED_LIMIT = 5;
+
+// Module state: which exercise is currently expanded to "show all sessions".
+// Tracked per exercise so switching exercises resets the toggle naturally.
+let _expandedSessionsFor = null;
 
 export function renderExerciseDetail(exerciseName) {
     const container = document.getElementById('exercise-detail-content');
     if (!container || !exerciseName) return;
+
+    // Reset the expanded state when we switch to a different exercise.
+    if (_expandedSessionsFor && _expandedSessionsFor !== exerciseName) {
+        _expandedSessionsFor = null;
+    }
 
     const range = AppState.exerciseDetailRange || '6M';
     const workouts = AppState.workouts || [];
@@ -66,24 +76,24 @@ export function renderExerciseDetail(exerciseName) {
             <div class="d-hero-stats">
                 <div class="d-stat">
                     <div class="d-stat__label"><i class="fas fa-trophy text-badge-gold"></i> Max weight</div>
-                    <div class="d-stat__val">${s.maxWeight}<span class="d-stat__unit"> lb</span></div>
+                    <div class="d-stat__val">${Math.round(s.maxWeight)}<span class="d-stat__unit"> ${s.displayUnit || 'lb'}</span></div>
                 </div>
                 <div class="d-stat">
                     <div class="d-stat__label">Heaviest set</div>
-                    <div class="d-stat__val">${s.heaviestSet ? `${s.heaviestSet.totalWeight}<span class="d-stat__unit">× ${s.heaviestSet.reps}</span>` : '—'}</div>
+                    <div class="d-stat__val">${s.heaviestSet ? `${Math.round(s.heaviestSet.totalWeight)}<span class="d-stat__unit">× ${s.heaviestSet.reps}</span>` : '—'}</div>
                 </div>
             </div>
 
             <div class="d-pill-row">
-                <div class="d-pill">Est. 1RM <strong>${Math.round(s.est1RM)} lb</strong>${est1RMDelta}</div>
-                <div class="d-pill">Volume <strong>${formatVolume(s.totalVolume)} lb</strong></div>
+                <div class="d-pill">Est. 1RM <strong>${Math.round(s.est1RM)} ${s.displayUnit || 'lb'}</strong>${est1RMDelta}</div>
+                <div class="d-pill">Volume <strong>${formatVolume(s.totalVolume)} ${s.displayUnit || 'lb'}</strong></div>
             </div>
 
             ${s.trend.length > 1 ? `
                 <div class="d-chart-card">
                     <div class="d-chart-head">
                         <div class="d-chart-title">Heaviest weight per session</div>
-                        <div class="d-chart-legend">${s.trend.length >= 2 ? `${s.trend[s.trend.length - 1].y - s.trend[0].y >= 0 ? '↑' : '↓'} ${Math.abs(s.trend[s.trend.length - 1].y - s.trend[0].y)} lb` : ''}</div>
+                        <div class="d-chart-legend">${s.trend.length >= 2 ? `${s.trend[s.trend.length - 1].y - s.trend[0].y >= 0 ? '↑' : '↓'} ${Math.round(Math.abs(s.trend[s.trend.length - 1].y - s.trend[0].y))} ${s.displayUnit || 'lb'}` : ''}</div>
                     </div>
                     ${chartSparkline({ points: s.trend.map((t, i) => ({ x: i, y: t.y })), color, width: 280, height: 100 })}
                 </div>
@@ -95,7 +105,7 @@ export function renderExerciseDetail(exerciseName) {
                     ${s.topSets.map((set, i) => `
                         <div class="d-best-row">
                             <div class="d-best-rank">${i + 1}</div>
-                            <div class="d-best-weight">${set.totalWeight} lb</div>
+                            <div class="d-best-weight">${Math.round(set.totalWeight)} ${s.displayUnit || 'lb'}</div>
                             <div class="d-best-reps">${set.reps} reps</div>
                             <div class="d-best-1rm">~${Math.round(set.est1RM)} 1RM</div>
                         </div>
@@ -103,11 +113,22 @@ export function renderExerciseDetail(exerciseName) {
                 </div>
             ` : ''}
 
-            ${s.sessions.length > 0 ? `
-                <div class="d-sec-head">Recent sessions</div>
-                ${s.sessions.slice(0, 5).map(renderSessionRow).join('')}
-                ${s.sessions.length > 5 ? `<button class="d-see-all">See all ${s.sessions.length} sessions</button>` : ''}
-            ` : ''}
+            ${s.sessions.length > 0 ? (() => {
+                const expanded = _expandedSessionsFor === exerciseName;
+                const shown = expanded ? s.sessions : s.sessions.slice(0, SESSIONS_COLLAPSED_LIMIT);
+                const overflowBtn = s.sessions.length > SESSIONS_COLLAPSED_LIMIT
+                    ? `<button class="d-see-all" onclick="toggleAllSessions('${escapeAttr(exerciseName)}')">${
+                        expanded
+                            ? `Show recent only`
+                            : `See all ${s.sessions.length} sessions`
+                    }</button>`
+                    : '';
+                return `
+                    <div class="d-sec-head">${expanded ? 'All' : 'Recent'} sessions</div>
+                    ${shown.map(renderSessionRow).join('')}
+                    ${overflowBtn}
+                `;
+            })() : ''}
         </div>
     `;
 }
@@ -150,4 +171,15 @@ function formatSessionDate(dateStr) {
 export function setExerciseRange(range) {
     AppState.exerciseDetailRange = range;
     renderExerciseDetail(AppState.activeExercise);
+}
+
+/**
+ * Toggle the "Recent sessions" list between the first N and the full history.
+ * Wired to the "See all N sessions" button in the exercise detail — before
+ * this, the button had no onclick and did nothing (the 7/2 report).
+ */
+export function toggleAllSessions(exerciseName) {
+    if (!exerciseName) return;
+    _expandedSessionsFor = _expandedSessionsFor === exerciseName ? null : exerciseName;
+    renderExerciseDetail(exerciseName);
 }

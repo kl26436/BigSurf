@@ -438,6 +438,7 @@ import {
     resumeActiveWorkout,
     confirmCancelActiveWorkout,
     toggleWeekPaceMode,
+    showTodaysPRs,
 } from './core/ui/dashboard-ui.js';
 
 // Metric detail (drill-down from dashboard cards)
@@ -773,6 +774,7 @@ window.setHeaderMode = setHeaderMode;
 window.dismissInsight = dismissInsight;
 window.openWorkoutSelectorForDay = openWorkoutSelectorForDay;
 window.toggleWeekPaceMode = toggleWeekPaceMode;
+window.showTodaysPRs = showTodaysPRs;
 window.startWorkoutFromHistory = startWorkoutFromHistory;
 window.resumeActiveWorkout = resumeActiveWorkout;
 window.confirmCancelActiveWorkout = confirmCancelActiveWorkout;
@@ -790,6 +792,10 @@ window.setMuscleRange = async function (range) {
 window.setExerciseRange = async function (range) {
     const { setExerciseRange } = await import('./core/ui/exercise-detail-ui.js');
     setExerciseRange(range);
+};
+window.toggleAllSessions = async function (exerciseName) {
+    const { toggleAllSessions } = await import('./core/ui/exercise-detail-ui.js');
+    toggleAllSessions(exerciseName);
 };
 
 // Metric Detail Functions

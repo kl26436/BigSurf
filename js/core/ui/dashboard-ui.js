@@ -804,13 +804,83 @@ function renderTodayPRBanner(recentPRs) {
         ? `New PR — ${escapeHtml(first.exercise)} · ${first.reps}×${convertWeight(first.weight, first.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}`
         : `${todays.length} new PRs today!`;
 
+    // With multiple PRs, opening an overlay listing all of them beats a
+    // single-exercise drill-down that hides the other winners (the 7/2
+    // report: "shows 2 PRs today but tapping only shows one exercise").
+    const onclick = todays.length === 1
+        ? `showExerciseDetail('${escapeAttr(first.exercise)}')`
+        : `showTodaysPRs()`;
+
     return `
-        <div class="dash-pr-banner" onclick="showExerciseDetail('${escapeAttr(first.exercise)}')">
+        <div class="dash-pr-banner" onclick="${onclick}">
             <div class="dash-pr-banner__badge"><i class="fas fa-trophy"></i></div>
             <div class="dash-pr-banner__text">${label}</div>
             <i class="fas fa-chevron-right dash-chev"></i>
         </div>
     `;
+}
+
+/**
+ * Open an overlay listing every PR the user hit today, each row tappable to
+ * drill into that exercise's detail. Built dynamically so we don't need a
+ * dedicated modal element in index.html; teardown on backdrop tap or close
+ * button restores focus + removes listeners.
+ */
+export function showTodaysPRs() {
+    const today = AppState.getTodayDateString();
+    const recentPRs = window.PRTracker?.getRecentPRs?.(30) || [];
+    const todays = recentPRs.filter(pr => pr.date === today);
+    if (todays.length === 0) return;
+
+    document.getElementById('dash-todays-prs-overlay')?.remove();
+
+    const unit = AppState.globalUnit || 'lbs';
+    const rows = todays.map(pr => `
+        <button type="button" class="dash-todays-prs__row" data-exercise="${escapeAttr(pr.exercise)}">
+            <div class="dash-todays-prs__badge"><i class="fas fa-trophy"></i></div>
+            <div class="dash-todays-prs__info">
+                <div class="dash-todays-prs__name">${escapeHtml(pr.exercise)}</div>
+                <div class="dash-todays-prs__meta">${pr.reps} reps</div>
+            </div>
+            <div class="dash-todays-prs__val">${convertWeight(pr.weight, pr.unit || 'lbs', unit)} ${unit}</div>
+            <i class="fas fa-chevron-right dash-chev"></i>
+        </button>
+    `).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'dash-todays-prs-overlay';
+    overlay.className = 'dash-todays-prs-overlay';
+    overlay.innerHTML = `
+        <div class="dash-todays-prs">
+            <div class="dash-todays-prs__header">
+                <div class="dash-todays-prs__title">Today's PRs</div>
+                <button class="dash-todays-prs__close" aria-label="Close" data-close><i class="fas fa-times"></i></button>
+            </div>
+            <div class="dash-todays-prs__list">${rows}</div>
+        </div>
+    `;
+
+    const close = () => {
+        overlay.classList.remove('dash-todays-prs-overlay--show');
+        setTimeout(() => overlay.remove(), 200);
+    };
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay || e.target.closest('[data-close]')) {
+            close();
+            return;
+        }
+        const row = e.target.closest('.dash-todays-prs__row');
+        if (row) {
+            const ex = row.dataset.exercise;
+            close();
+            if (ex && typeof window.showExerciseDetail === 'function') {
+                window.showExerciseDetail(ex);
+            }
+        }
+    });
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('dash-todays-prs-overlay--show'));
 }
 
 function renderRecentPRs(recentPRs) {

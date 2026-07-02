@@ -2,6 +2,7 @@
 // All functions take workout arrays + date bounds, return computed data.
 
 import { AppState } from '../../utils/app-state.js';
+import { convertWeight } from '../../ui/ui-helpers.js';
 
 // ===================================================================
 // EXERCISE NAME RESOLVER
@@ -640,6 +641,14 @@ export function getPRsForBodyPart(workouts, bodyPart) {
 export function aggregateExerciseStats(workouts, exerciseName, range = 'All') {
     const { getRangeBounds } = _rangeFns;
     const bounds = getRangeBounds(range);
+    // Normalize every set to the user's display unit BEFORE any math. Without
+    // this, a user with mixed-unit history (a session logged in kg, another
+    // in lbs) saw the kg numbers plotted as raw values against lb numbers —
+    // 40 kg (~88 lbs) rendered as "40" next to "100 lbs" and looked like a
+    // massive regression. The 7/2 "graphs show declines for months" report.
+    const displayUnit = AppState.globalUnit || 'lbs';
+    const toDisplay = (weight, originalUnit) =>
+        convertWeight(weight, originalUnit || displayUnit, displayUnit);
     const sessions = [];
     const allSets = [];
 
@@ -649,7 +658,10 @@ export function aggregateExerciseStats(workouts, exerciseName, range = 'All') {
         const matching = withResolvedNames(w).filter(e => e.name === exerciseName);
         if (matching.length === 0) continue;
 
-        const sessionSets = matching.flatMap(e => e.sets || []).filter(s => s.weight && s.reps);
+        const sessionSets = matching
+            .flatMap(e => e.sets || [])
+            .filter(s => s.weight && s.reps)
+            .map(s => ({ ...s, weight: toDisplay(s.weight, s.originalUnit) }));
         if (sessionSets.length === 0) continue;
 
         sessions.push({ date: w.date, sets: sessionSets });
@@ -657,7 +669,7 @@ export function aggregateExerciseStats(workouts, exerciseName, range = 'All') {
     }
 
     if (allSets.length === 0) {
-        return { maxWeight: 0, heaviestSet: null, est1RM: 0, totalVolume: 0, sessions, topSets: [], trend: [] };
+        return { maxWeight: 0, heaviestSet: null, est1RM: 0, totalVolume: 0, sessions, topSets: [], trend: [], displayUnit };
     }
 
     const maxWeight = Math.max(...allSets.map(s => s.weight));
@@ -681,7 +693,7 @@ export function aggregateExerciseStats(workouts, exerciseName, range = 'All') {
         .sort((a, b) => b.est1RM - a.est1RM)
         .slice(0, 4);
 
-    return { maxWeight, heaviestSet, est1RM, totalVolume, sessions, topSets, trend };
+    return { maxWeight, heaviestSet, est1RM, totalVolume, sessions, topSets, trend, displayUnit };
 }
 
 /** Export classifyBodyPart for use by other modules. */

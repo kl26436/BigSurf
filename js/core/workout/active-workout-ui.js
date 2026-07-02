@@ -2841,6 +2841,7 @@ export async function loadAutofillForAllExercises() {
  *      this exercise — the exact "leak" symptom).
  */
 async function maybeLogEquipmentLeak({
+    exerciseIdx,
     exerciseName,
     queryEquipment,
     queryLocation,
@@ -2855,9 +2856,31 @@ async function maybeLogEquipmentLeak({
     // equipment) means the resolution chain worked as intended, no leak.
     if (queryEquipment && surfaced === queryEquipment) return;
 
+    // Skip supersets — the equipment surfaced is legitimately shared with a
+    // grouped partner exercise (Calf Raise + Leg Press was the 7/2 false
+    // positive). Explicit group on the exercise OR on savedEx.
+    const exercise = AppState.currentWorkout?.exercises?.[exerciseIdx];
+    const savedEx = AppState.savedData?.exercises?.[`exercise_${exerciseIdx}`];
+    if (exercise?.group || savedEx?.group) return;
+
     const cachedEquipment = Array.isArray(AppState._cachedEquipment) ? AppState._cachedEquipment : [];
     const surfacedLC = surfaced.toLowerCase();
     const match = cachedEquipment.find(e => (e.name || '').toLowerCase() === surfacedLC);
+
+    // Workout-partner heuristic: if the surfaced equipment is assigned to
+    // ANY exercise in the current workout, it's likely a legitimate
+    // relationship — either implicit superset that lost the group flag or
+    // shared-equipment cluster. Also covers the case where the current
+    // workout template has this equipment on another exercise.
+    const workoutExercises = AppState.currentWorkout?.exercises || [];
+    const surfacedIsWorkoutPartner = workoutExercises.some((ex, i) => {
+        if (i === exerciseIdx) return false;
+        const partnerEq = AppState.savedData?.exercises?.[`exercise_${i}`]?.equipment
+            || ex.equipment
+            || null;
+        return partnerEq && partnerEq.toLowerCase() === surfacedLC;
+    });
+    if (surfacedIsWorkoutPartner) return;
 
     const missingFromLibrary = !match;
     const locationMismatch = !!queryLocation && !!match &&
@@ -2865,7 +2888,13 @@ async function maybeLogEquipmentLeak({
     const notLinkedToExercise = !!match &&
         !(match.exerciseTypes || []).some(n => n && n.toLowerCase() === exerciseName.toLowerCase());
 
-    if (!missingFromLibrary && !locationMismatch && !notLinkedToExercise) return;
+    // Only trigger on GENUINE leak signals: equipment doesn't exist in the
+    // library, or it exists but isn't linked to this exercise. Location
+    // mismatch alone is not a leak — it's the location fallback tier
+    // working as designed (user at gym A, no history there, fell back to
+    // gym B session). Kept in context if some other signal fires so the
+    // resolution chain is visible.
+    if (!missingFromLibrary && !notLinkedToExercise) return;
 
     try {
         const { captureWarning } = await import('../utils/error-handler.js');
@@ -2963,6 +2992,7 @@ export async function loadAutofillForExercise(idx) {
         // the full resolution chain so I can see any remaining leak paths
         // my write-side fix didn't close. Non-blocking, best-effort.
         maybeLogEquipmentLeak({
+            exerciseIdx: idx,
             exerciseName: exName,
             queryEquipment: equipName,
             queryLocation: locName,

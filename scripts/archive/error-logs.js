@@ -157,8 +157,17 @@ async function listErrors(token, { all = false, bugsOnly = false } = {}) {
     }
 }
 
-async function clearErrors(token, { olderThanDays = null, beforeDate = null } = {}) {
+async function clearErrors(token, { olderThanDays = null, beforeDate = null, detectorsOnly = false } = {}) {
     const docs = await runQuery(token, { all: true });
+
+    // Sources our silent detectors report through — clearing these leaves
+    // user bug reports (source: user-bug-report) and real crashes intact.
+    const DETECTOR_SOURCES = new Set([
+        'toggleMoreMenu',
+        'loadAutofillForExercise',
+        'installKeyboardAwareFocusHandler',
+        'gatherGymEquipment',
+    ]);
 
     let toDelete = docs;
     if (olderThanDays) {
@@ -168,6 +177,8 @@ async function clearErrors(token, { olderThanDays = null, beforeDate = null } = 
     } else if (beforeDate) {
         const cutoff = new Date(beforeDate);
         toDelete = docs.filter(e => new Date(e.timestamp) < cutoff);
+    } else if (detectorsOnly) {
+        toDelete = docs.filter(e => DETECTOR_SOURCES.has(e.source));
     }
 
     if (toDelete.length === 0) {
@@ -195,6 +206,8 @@ const clearBeforeDate = clearBeforeArg ? clearBeforeArg.split('=')[1] : null;
             await clearErrors(token);
         } else if (clearBeforeDate) {
             await clearErrors(token, { beforeDate: clearBeforeDate });
+        } else if (flags.has('--clear-detectors')) {
+            await clearErrors(token, { detectorsOnly: true });
         } else if (flags.has('--clear-old')) {
             await clearErrors(token, { olderThanDays: 7 });
         } else {
