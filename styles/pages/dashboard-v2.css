@@ -420,6 +420,7 @@
 .dash-template-info { flex: 1; min-width: 0; }
 .dash-template-name { font-size: var(--font-sm); font-weight: 600; color: var(--text-strong); }
 .dash-template-meta { font-size: var(--font-xs); color: var(--text-muted); margin-top: 1px; }
+.dash-template-meta--sub { font-size: var(--font-2xs); opacity: 0.85; }
 .dash-template-count {
     background: var(--primary-bg-subtle);
     color: var(--primary);

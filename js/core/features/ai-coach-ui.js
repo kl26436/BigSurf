@@ -164,13 +164,16 @@ export function renderAICoachSection() {
                     <div class="coach-hero">
                         <div class="coach-hero__icon"><i class="fas fa-robot"></i></div>
                         <div class="coach-hero__title">Ask anything</div>
-                        <div class="coach-hero__desc">I know your training history. Try:</div>
+                        <div class="coach-hero__desc">I know your training history.</div>
                     </div>
 
+                    <!-- Past reviews lead when they exist (revealed by loadCoachHistory);
+                         the prompt cards below are the "start something new" fallback. -->
+                    <div id="coach-history-section" class="coach-history-section hidden"></div>
+
+                    <div class="coach-prompt-intro">Try asking…</div>
                     <div class="coach-prompt-list">${promptsHtml}
                     </div>
-
-                    <div id="coach-history-section" class="coach-history-section hidden"></div>
                 </div>
 
                 <div id="coach-chat-messages" class="coach-chat"></div>

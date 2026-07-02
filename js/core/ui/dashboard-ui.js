@@ -22,6 +22,7 @@ import {
 } from '../features/metrics/aggregators.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
 import { chartDonut } from '../features/charts/chart-donut.js';
+import { chartLine } from '../features/charts/chart-line.js';
 
 // ===================================================================
 // CONSTANTS
@@ -153,7 +154,7 @@ async function renderDashboard() {
             container.innerHTML = `
                 ${renderGreetingHeader()}
                 ${renderActiveWorkoutPill()}
-                ${renderHeroChipRow(streakDays, weekCount, weeklyGoal, bwData, lastWeekPace)}
+                ${renderHeroChipRow(streakDays, weekCount, weeklyGoal, bwData, lastWeekPace, detectDeloadWeek(allWorkouts))}
                 ${showInsight ? renderDashboardInsight(topInsight) : ''}
                 ${renderForToday(allWorkouts)}
                 ${renderTrainingSection(allWorkouts)}
@@ -345,7 +346,41 @@ function countLastWeekTrainingDaysThroughToday(allWorkouts) {
     return days.size;
 }
 
-function renderHeroChipRow(streak, weekDone, weekGoal, bwData, weekLastPace = 0) {
+// Conservative, honest deload detection using rolling 7-day windows from today
+// (contiguous by construction — no ISO-week gap/boundary bugs). A "deload week"
+// is: you trained 1..HARD-1 days in the last 7, but each of the prior
+// DELOAD_CONSECUTIVE_WEEKS windows was hard (>=HARD days). We deliberately do NOT
+// treat a zero-workout week as a deload — that's indistinguishable from a lapse,
+// and labeling it "Deload week" would be a lie. (A future explicit "mark this
+// week as a deload" control could complement this for the ambiguous cases.)
+function detectDeloadWeek(allWorkouts) {
+    if (!allWorkouts || allWorkouts.length === 0) return false;
+    const HARD = Config.DELOAD_DAYS_PER_WEEK || 5;
+    const NEEDED = Config.DELOAD_CONSECUTIVE_WEEKS || 3;
+    const today = new Date(getDateString());
+
+    const uniqueDaysInWindow = (startDaysAgo, endDaysAgo) => {
+        const set = new Set();
+        for (const w of allWorkouts) {
+            if (!w.date || !w.completedAt) continue;
+            const diff = Math.round((today - new Date(w.date)) / 86400000);
+            if (diff >= startDaysAgo && diff <= endDaysAgo) set.add(w.date);
+        }
+        return set.size;
+    };
+
+    const current = uniqueDaysInWindow(0, 6);
+    if (current < 1 || current >= HARD) return false;
+
+    let hardWeeks = 0;
+    for (let wk = 1; wk <= 8; wk++) {
+        if (uniqueDaysInWindow(wk * 7, wk * 7 + 6) >= HARD) hardWeeks++;
+        else break;
+    }
+    return hardWeeks >= NEEDED;
+}
+
+function renderHeroChipRow(streak, weekDone, weekGoal, bwData, weekLastPace = 0, isDeload = false) {
     const bwVal = bwData ? Math.round(bwData.latest.displayWeight) : null;
     const bwUnit = bwData ? bwData.unit : '';
     const bwDelta = bwData ? bwData.delta : null;
@@ -361,9 +396,9 @@ function renderHeroChipRow(streak, weekDone, weekGoal, bwData, weekLastPace = 0)
     return `
         <div class="hero-chip-row">
             <div class="hero-chip hero-chip--streak">
-                <div class="hero-chip__icon hero-chip__icon--warm"><i class="fas fa-fire"></i></div>
+                <div class="hero-chip__icon hero-chip__icon--warm"><i class="fas ${isDeload ? 'fa-battery-half' : 'fa-fire'}"></i></div>
                 <div class="hero-chip__val">${streak}</div>
-                <div class="hero-chip__label">Streak</div>
+                <div class="hero-chip__label">${isDeload ? 'Deload week' : 'Streak'}</div>
             </div>
             <div class="hero-chip">
                 <div class="hero-chip__icon hero-chip__icon--primary"><i class="fas fa-bullseye"></i></div>
@@ -435,13 +470,36 @@ function renderForToday(allWorkouts) {
     const visible = ranked.filter(r => r.count > 0 || r.scheduled).slice(0, 4);
     if (visible.length === 0) return '';
 
+    // Most-recent completed session per workout type — lets each row show
+    // "Last done 4d ago · ~52 min" so the user can tell if they're on schedule.
+    // allWorkouts is date-desc, so the first match per type is the latest.
+    const lastDoneByType = {};
+    for (const w of allWorkouts) {
+        const type = w.workoutType;
+        if (!type || lastDoneByType[type]) continue;
+        if (!w.completedAt) continue;
+        lastDoneByType[type] = { date: w.date, duration: w.totalDuration || 0 };
+    }
+
     return `
         <div class="dash-section-head">
             <h3>For ${dayName}</h3>
             <a onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">All →</a>
         </div>
-        ${visible.map((r, i) => renderForTodayRow(r, i === 0, dayName)).join('')}
+        ${visible.map((r, i) => renderForTodayRow(r, i === 0, dayName, lastDoneByType)).join('')}
     `;
+}
+
+// "Last done 4d ago · ~52 min" from a {date, duration} record, or '' if never.
+function formatLastDoneMeta(rec) {
+    if (!rec || !rec.date) return '';
+    const today = new Date(getDateString());
+    const then = new Date(rec.date);
+    const days = Math.round((today - then) / 86400000);
+    const when = days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days}d ago`;
+    const mins = Math.round((rec.duration || 0) / 60);
+    const durPart = mins > 0 ? ` · ~${mins} min` : '';
+    return `Last done ${when}${durPart}`;
 }
 
 // Navigate to the workout selector, pre-sorted by how often each template is
@@ -451,7 +509,7 @@ export function openWorkoutSelectorForDay(dayName) {
     window.bottomNavTo?.('workout');
 }
 
-function renderForTodayRow({ template, count, scheduled }, isMostUsed, dayName) {
+function renderForTodayRow({ template, count, scheduled }, isMostUsed, dayName, lastDoneByType = {}) {
     const category = template.category || getWorkoutCategory(template.name || template.day) || 'other';
     const icon = getCategoryIcon(category);
     const exCount = template.exercises ? template.exercises.length : 0;
@@ -462,6 +520,14 @@ function renderForTodayRow({ template, count, scheduled }, isMostUsed, dayName) 
         ? '<span class="dash-template-count">Scheduled</span>'
         : (isMostUsed && count >= 1 ? '<span class="dash-template-count">Most used</span>' : '');
 
+    // Second meta line: how long since this workout was last done (and roughly
+    // how long it took) — the "am I on schedule?" signal that usage-count alone
+    // doesn't give. Omitted entirely if it's never been completed.
+    const lastDoneText = formatLastDoneMeta(lastDoneByType[template.name || template.day]);
+    const lastDoneHtml = lastDoneText
+        ? `<div class="dash-template-meta dash-template-meta--sub">${lastDoneText}</div>`
+        : '';
+
     return `
         <div class="dash-template-row" onclick="startWorkout('${escapeAttr(template.day || template.name || template.id)}')">
             <div class="dash-template-icon cat-bg-${category.toLowerCase()}"><i class="${icon}"></i></div>
@@ -471,6 +537,7 @@ function renderForTodayRow({ template, count, scheduled }, isMostUsed, dayName) 
                     ${badge}
                 </div>
                 <div class="dash-template-meta">${exCount} exercises · ${usageText}</div>
+                ${lastDoneHtml}
             </div>
             <button class="dash-template-play" onclick="event.stopPropagation(); startWorkout('${escapeAttr(template.day || template.name || template.id)}')">
                 <i class="fas fa-play"></i>
@@ -494,7 +561,7 @@ function renderTrainingSection(allWorkouts) {
     return `
         <div class="dash-section-head">
             <h3>Training</h3>
-            <span class="dash-section-head__meta">This week</span>
+            <a onclick="showProgressPage()">All →</a>
         </div>
         ${stats.map(renderBodyPartCard).join('')}
     `;
@@ -687,6 +754,135 @@ function renderRecentPRs(recentPRs) {
                 <div class="pr-val">${convertWeight(pr.weight, pr.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}</div>
             </div>
         `).join('')}
+    `;
+}
+
+// ===================================================================
+// PROGRESS PAGE — consolidated stats destination (volume trend, body-part
+// trends, PR table). Lives here so it can reuse aggregateBodyPartStats,
+// renderBodyPartCard, chartSparkline, PRTracker and StreakTracker — all
+// already imported — without new cross-module exports.
+// ===================================================================
+
+// Total training volume per rolling 7-day window, oldest→newest for chartLine.
+function weeklyVolumeSeries(allWorkouts, weeks = 12) {
+    const today = new Date(getDateString());
+    const buckets = new Array(weeks).fill(0);
+    for (const w of allWorkouts) {
+        if (!w.date || !w.completedAt || !w.exercises) continue;
+        const diff = Math.round((today - new Date(w.date)) / 86400000);
+        if (diff < 0) continue;
+        const wk = Math.floor(diff / 7);
+        if (wk >= weeks) continue;
+        Object.values(w.exercises).forEach(ex => (ex.sets || []).forEach(s => {
+            if (s.reps && s.weight) buckets[wk] += s.reps * s.weight;
+        }));
+    }
+    return buckets.map((y, i) => ({ x: i, y })).reverse();
+}
+
+function renderProgressSummary(streak, sessions, prCount) {
+    return `
+        <div class="progress-summary">
+            <div class="progress-summary__cell">
+                <div class="progress-summary__val">${streak}</div>
+                <div class="progress-summary__label">Day streak</div>
+            </div>
+            <div class="progress-summary__cell">
+                <div class="progress-summary__val">${sessions}</div>
+                <div class="progress-summary__label">Workouts</div>
+            </div>
+            <div class="progress-summary__cell">
+                <div class="progress-summary__val">${prCount}</div>
+                <div class="progress-summary__label">PRs</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderVolumeTrend(series) {
+    if (!series.some(p => p.y > 0)) return '';
+    return `
+        <div class="dash-section-head dash-section-head--tight">
+            <h3>Weekly volume</h3>
+            <span class="dash-section-head__meta">Last ${series.length} weeks</span>
+        </div>
+        <div class="progress-card">
+            <div class="progress-chart">${chartLine({ points: series, width: 320, height: 120, color: 'var(--primary)', fill: true })}</div>
+        </div>
+    `;
+}
+
+function renderPRTable(prs) {
+    if (!prs || prs.length === 0) {
+        return `
+            <div class="dash-section-head dash-section-head--tight"><h3>Personal records</h3></div>
+            <div class="progress-empty">No PRs yet. Beat a previous set and it'll show up here.</div>
+        `;
+    }
+    return `
+        <div class="dash-section-head dash-section-head--tight"><h3>Personal records</h3></div>
+        ${prs.map(pr => `
+            <div class="pr-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')">
+                <div class="pr-badge"><i class="fas fa-trophy"></i></div>
+                <div class="pr-info">
+                    <div class="pr-name">${escapeHtml(pr.exercise)}</div>
+                    <div class="pr-meta">${formatRelativeDate(pr.date, { daysAgo: true })} · ${pr.reps} reps</div>
+                </div>
+                <div class="pr-val">${convertWeight(pr.weight, pr.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}</div>
+            </div>
+        `).join('')}
+    `;
+}
+
+export async function renderProgressPage() {
+    const container = document.getElementById('progress-content');
+    if (!container) return;
+
+    // Prefer the dashboard's cached full history; fall back to a fresh load.
+    let allWorkouts = AppState.workouts;
+    if (!allWorkouts || allWorkouts.length === 0) {
+        allWorkouts = await loadAllWorkouts(AppState);
+        AppState.workouts = allWorkouts;
+    }
+
+    const [streaks] = await Promise.all([
+        StreakTracker.calculateStreaks(),
+        PRTracker.loadPRData(),
+    ]);
+    const streakDays = streaks?.currentStreak || 0;
+    const prs = PRTracker.getRecentPRs(15);
+    const totalSessions = allWorkouts.filter(w => w.completedAt).length;
+    const series = weeklyVolumeSeries(allWorkouts, 12);
+
+    const stats = BODY_PARTS.map(bp => aggregateBodyPartStats(allWorkouts, bp, 'W'));
+    stats.sort((a, b) => {
+        if (a.isStale !== b.isStale) return a.isStale ? 1 : -1;
+        return (a.lastTrained?.daysAgo || 999) - (b.lastTrained?.daysAgo || 999);
+    });
+
+    container.innerHTML = `
+        <div class="d-header">
+            <button class="d-back" onclick="navigateBack()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+            <div class="d-header-info">
+                <div>
+                    <div class="d-title">Progress</div>
+                    <div class="d-subtitle">${totalSessions} ${totalSessions === 1 ? 'workout' : 'workouts'} logged</div>
+                </div>
+            </div>
+        </div>
+        <div class="d-content">
+            <div class="progress-page">
+                ${renderProgressSummary(streakDays, totalSessions, prs.length)}
+                ${renderVolumeTrend(series)}
+                <div class="dash-section-head dash-section-head--tight">
+                    <h3>Training</h3>
+                    <span class="dash-section-head__meta">This week</span>
+                </div>
+                ${stats.map(renderBodyPartCard).join('')}
+                ${renderPRTable(prs)}
+            </div>
+        </div>
     `;
 }
 

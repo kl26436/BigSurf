@@ -437,6 +437,21 @@
     gap: 6px;
     flex-shrink: 0;
 }
+/* Tap-through to this lift's progress page — the "see my 6-month trend during
+   a rest set" affordance. Typed set values persist on blur before we navigate. */
+.aw-last__progress {
+    flex-shrink: 0;
+    width: var(--tap);
+    height: var(--tap);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.aw-last__progress:active { opacity: 0.6; }
 .aw-last__icons > i {
     color: var(--text-muted);
     font-size: var(--font-sm);

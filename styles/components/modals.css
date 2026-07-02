@@ -1047,6 +1047,32 @@ dialog.modal:not([open]) {
     margin: 0 0 var(--space-10) 0;
     font-size: var(--font-base);
 }
+/* History-detail exercise name is a link to that lift's progress page */
+.exercise-summary {
+    margin-bottom: var(--space-12);
+}
+.exercise-summary__name {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    width: 100%;
+    min-height: var(--tap);
+    background: transparent;
+    border: none;
+    padding: var(--space-6) 0;
+    color: var(--text-strong);
+    font-size: var(--font-base);
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+.exercise-summary__name i {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+}
+.exercise-summary__name:active { opacity: 0.6; }
 .exercise-detail-item {
     background: var(--bg-card);
     border-radius: var(--radius-md);

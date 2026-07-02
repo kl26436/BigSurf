@@ -743,6 +743,9 @@ function renderLastSessionCard(exerciseName, idx) {
                 <div class="aw-last__val">${summary} ${displayUnit}</div>
                 ${nudgeHtml}
             </div>
+            <button class="aw-last__progress" onclick="showExerciseDetail('${escapeAttr(exerciseName)}')" aria-label="View ${escapeAttr(exerciseName)} progress">
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </button>
         </div>
     `;
 }

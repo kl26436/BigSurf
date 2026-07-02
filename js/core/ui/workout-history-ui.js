@@ -262,7 +262,10 @@ function showWorkoutDetailModal(workout) {
             .map(
                 (exercise) => `
             <div class="exercise-summary">
-                <h4>${escapeHtml(exercise.name)}</h4>
+                <button class="exercise-summary__name" onclick="showExerciseDetail('${escapeAttr(exercise.name)}')" aria-label="View ${escapeAttr(exercise.name)} progress">
+                    <span>${escapeHtml(exercise.name)}</span>
+                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                </button>
                 <div class="exercise-sets">
                     ${exercise.sets
                         .map(

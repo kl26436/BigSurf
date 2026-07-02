@@ -126,7 +126,7 @@ export {
     awCloseSheet,
     awRestAdd30,
     awRestSkip,
-    awEditRestDuration,
+    awRestDismiss,
     awToggleUnit,
     awToggleReorder,
     awMoveExercise,

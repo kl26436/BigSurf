@@ -427,6 +427,7 @@ import {
     showMuscleGroupDetail,
     showExerciseDetail,
     showCompositionDetail,
+    showProgressPage,
 } from './core/ui/navigation.js';
 
 // Dashboard functionality
@@ -777,6 +778,7 @@ window.setWorkoutActiveState = setWorkoutActiveState;
 window.showMuscleGroupDetail = showMuscleGroupDetail;
 window.showExerciseDetail = showExerciseDetail;
 window.showCompositionDetail = showCompositionDetail;
+window.showProgressPage = showProgressPage;
 
 // Muscle group + exercise detail range setters (lazy-loaded)
 window.setMuscleRange = async function (range) {

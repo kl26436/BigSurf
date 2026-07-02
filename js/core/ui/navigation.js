@@ -15,6 +15,7 @@ const SECTION_IDS = [
     'metric-detail-section',
     'muscle-group-detail-section',
     'exercise-detail-section',
+    'progress-section',
     'composition-detail-section',
     'exercise-manager-section',
     'location-management-section',
@@ -172,6 +173,10 @@ function routeToView(view) {
             showExerciseDetailView();
             break;
 
+        case 'progress':
+            showProgressView();
+            break;
+
         case 'composition-detail':
             showCompositionDetailView();
             break;
@@ -313,6 +318,20 @@ async function showMuscleGroupDetailView() {
     const { renderMuscleGroupDetail } = await import('./muscle-group-detail-ui.js');
     const { AppState } = await import('../utils/app-state.js');
     renderMuscleGroupDetail(AppState.activeMuscleGroup);
+}
+
+async function showProgressView() {
+    const section = document.getElementById('progress-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('dashboard');
+    const { renderProgressPage } = await import('./dashboard-ui.js');
+    await renderProgressPage();
+}
+
+// Entry point for onclick handlers (window-bound in main.js).
+export function showProgressPage() {
+    navigateTo('progress');
 }
 
 async function showExerciseDetailView() {
