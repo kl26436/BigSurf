@@ -15,10 +15,11 @@
 // imports it; new callers and this file always ship together).
 
 import { escapeHtml } from './ui-helpers.js';
+import { haptic } from '../utils/haptics.js';
 
 let activeSheet = null;
 
-function openSheet({ title, message, bodyHTML, actionsHTML, onWire }) {
+function openSheet({ title, message, bodyHTML, actionsHTML, onWire, iconHTML = '', hapticType = 'tap' }) {
     // A second sheet while one is open cancels the first (native dialogs
     // can't meaningfully stack either).
     if (activeSheet) activeSheet.cancel();
@@ -28,7 +29,8 @@ function openSheet({ title, message, bodyHTML, actionsHTML, onWire }) {
     dlg.setAttribute('aria-label', title);
     dlg.innerHTML = `
         <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
+        <div class="aw-sheet__header confirm-sheet__header">
+            ${iconHTML}
             <div class="aw-sheet__title">${escapeHtml(title)}</div>
         </div>
         ${message ? `<div class="confirm-sheet__message">${escapeHtml(message)}</div>` : ''}
@@ -66,6 +68,10 @@ function openSheet({ title, message, bodyHTML, actionsHTML, onWire }) {
         });
 
         dlg.showModal();
+        // Attention cues: the whole screen dims+blurs behind the top-layer
+        // dialog, and a haptic fires in-hand — a bottom sheet alone is easy
+        // to miss mid-workout. haptic() respects prefers-reduced-motion.
+        haptic(hapticType);
         requestAnimationFrame(() => {
             dlg.classList.add('visible');
             wired.focusEl?.focus();
@@ -90,6 +96,11 @@ export function confirmSheet({ title, message = '', confirmLabel, cancelLabel = 
     return openSheet({
         title,
         message,
+        // Destructive sheets announce themselves: danger icon + strong haptic.
+        iconHTML: destructive
+            ? '<div class="confirm-sheet__icon confirm-sheet__icon--danger"><i class="fas fa-exclamation-triangle"></i></div>'
+            : '',
+        hapticType: destructive ? 'warning' : 'tap',
         actionsHTML: `
             <button class="aw-sheet__action" data-confirm-sheet="cancel">${escapeHtml(cancelLabel)}</button>
             <button class="aw-sheet__action ${destructive ? 'danger' : 'primary'}" data-confirm-sheet="confirm">${escapeHtml(confirmLabel)}</button>

@@ -16,10 +16,48 @@ dialog.confirm-sheet {
        margin:auto — pin it back to the bottom edge. */
     top: auto;
     color: inherit;
+    /* Springier entrance than the picker sheets — a decision sheet should
+       feel like it ARRIVED. Keep aw-sheet's bottom/max-height transitions so
+       keyboard-inset behavior is preserved. */
+    transition: transform 320ms var(--ease-out-back), bottom 0.15s ease, max-height 0.15s ease;
 }
 
 dialog.confirm-sheet::backdrop {
     background: var(--overlay-heavy);
+    /* Blur the app behind the sheet — dimmed-but-sharp content still competes
+       for attention; blurred, the sheet is the only readable thing on screen. */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.confirm-sheet__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.confirm-sheet__icon {
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-bg);
+    color: var(--primary);
+    font-size: var(--font-base);
+    flex-shrink: 0;
+}
+
+.confirm-sheet__icon--danger {
+    background: var(--danger-soft-bg);
+    color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    dialog.confirm-sheet {
+        transition: none;
+    }
 }
 
 .confirm-sheet__message {
