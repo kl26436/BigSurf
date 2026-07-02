@@ -69,28 +69,8 @@
     border-radius: var(--radius-sm);
 }
 
-.skeleton-line {
-    height: 14px;
-    margin-bottom: var(--space-8);
-}
-.skeleton-line-short { width: 60%; }
-.skeleton-line-medium { width: 80%; }
-.skeleton-line-full { width: 100%; }
-
-.skeleton-circle {
-    width: var(--icon-md);
-    height: var(--icon-md);
-    border-radius: var(--radius-pill);
-}
-
 .skeleton-card {
     height: 72px;
     margin-bottom: var(--gap-items);
     border-radius: var(--radius-md);
-}
-
-.skeleton-ring {
-    width: 80px;
-    height: 80px;
-    border-radius: var(--radius-pill);
 }

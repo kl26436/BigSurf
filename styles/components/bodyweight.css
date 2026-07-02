@@ -320,12 +320,6 @@
     padding-left: 2px;
 }
 
-.equip-detail-hint {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    font-weight: 400;
-}
-
 /* ── PLATE CALC EQUIPMENT HINT ── */
 .popover-equip-hint {
     font-size: 0.72rem;

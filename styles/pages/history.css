@@ -1,83 +1,7 @@
 /* ===========================================
    10. CALENDAR / HISTORY
    =========================================== */
-.calendar-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-12);
-    margin-bottom: var(--space-16);
-    padding: var(--space-16);
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    overflow: hidden;
-}
-.calendar-header::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
-}
-.calendar-title {
-    text-align: center;
-}
-.calendar-title h1 {
-    font-size: var(--font-lg);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-10);
-    color: var(--text-strong);
-}
-.calendar-title h1 i {
-    color: var(--primary);
-}
-.header-actions {
-    display: flex;
-    gap: var(--space-10);
-    justify-content: center;
-}
-.calendar-actions {
-    text-align: center;
-    margin-top: var(--space-16);
-}
 /* .month-navigation canonical declaration is below (compact + sticky variant). */
-.month-nav {
-    display: flex;
-    align-items: center;
-    gap: var(--space-20);
-}
-.month-nav button {
-    background: var(--border-light);
-    border: none;
-    color: var(--text-main);
-    font-size: var(--font-md);
-    cursor: pointer;
-    width: var(--tap);
-    height: var(--tap);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition:
-        background 0.2s,
-        color 0.2s;
-}
-.month-nav button:hover {
-    background: var(--primary);
-    color: var(--bg-app);
-}
-/* Workout History List */
-.history-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-}
 /* .history-card family removed in Phase C — superseded by .recent-workout-item.
    (card, card::before, card:hover, date, date-day, date-month, info, name, meta) */
 
@@ -192,67 +116,6 @@
 .calendar-day .day-number {
     font-weight: 500;
 }
-.calendar-day .workout-indicator {
-    width: var(--space-6);
-    height: var(--space-6);
-    background: var(--primary);
-    border-radius: 50%;
-    margin-top: var(--space-2);
-}
-.calendar-day .workout-status-icon {
-    font-size: var(--font-2xs);
-    margin-top: var(--space-2);
-}
-.calendar-day .workout-status-icon.completed {
-    color: var(--success);
-}
-.calendar-day .workout-status-icon.in-progress {
-    color: var(--warning);
-}
-.calendar-day .workout-status-icon.missed {
-    color: var(--danger);
-}
-
-/* Calendar workout icons */
-.calendar-day .workout-icon {
-    font-size: var(--font-xs);
-    margin-top: var(--space-2);
-}
-.calendar-day .workout-icon.status-completed {
-    color: var(--success);
-}
-.calendar-day .workout-icon.status-incomplete {
-    color: var(--warning);
-}
-.calendar-day .workout-icon.status-partial {
-    color: var(--warning);
-}
-.calendar-day .workout-icon.status-cancelled {
-    color: var(--text-muted);
-}
-
-
-/* Schema v3.0: Multiple workouts per day - count badge */
-.workout-count-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    background: var(--primary);
-    color: var(--bg-app);
-    font-size: var(--font-2xs);
-    font-weight: 700;
-    width: var(--space-16);
-    height: var(--space-16);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-}
-.calendar-day .workout-icon {
-    position: relative;
-}
-
 /* History search & filter bar.
    Stacks vertically so the text box gets full width (primary action after
    tapping Search). Category select sits below as a secondary filter and
@@ -463,11 +326,6 @@
 }
 
 /* 8c: Collapsible search bar */
-.history-header-actions {
-    display: flex;
-    gap: var(--space-8);
-    align-items: center;
-}
 .btn-icon-sm {
     width: 40px;
     height: 40px;
@@ -557,10 +415,6 @@
     font-size: var(--font-sm);
     font-weight: 500;
     line-height: 1;
-}
-.calendar-day .workout-icon,
-.calendar-day .workout-status-icon {
-    font-size: var(--font-xs);
 }
 
 /* Month nav — scrolls with the calendar (not sticky). Canonical. */

@@ -9,17 +9,6 @@
     margin-top: var(--space-6);
 }
 
-/* Back button sits next to the title in section-header-row */
-.btn-icon--back { margin-right: var(--space-8); }
-
-/* Truncating section title when a long location name is shown */
-.section-title--truncate {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 /* ── Map card (location detail) ── */
 .loc-map-card {
     background: var(--bg-card);

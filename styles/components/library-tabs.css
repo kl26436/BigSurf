@@ -12,43 +12,6 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   Library toggle (Exercises | Equipment)
-   -------------------------------------------------------------------------- */
-.lib-toggle {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
-    padding: var(--space-4);
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-pill);
-    margin: var(--space-8) var(--pad-page);
-}
-.lib-toggle__btn {
-    appearance: none;
-    background: transparent;
-    border: 0;
-    color: var(--text-muted);
-    font-family: inherit;
-    font-size: var(--font-sm);
-    font-weight: 600;
-    padding: var(--space-8) var(--space-12);
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-    transition: background var(--anim-normal), color var(--anim-normal);
-    /* Ensure 44px minimum tap target (Apple HIG) */
-    min-height: var(--tap);
-}
-.lib-toggle__btn.is-active {
-    background: var(--primary-bg-strong);
-    color: var(--primary);
-}
-.lib-toggle__btn:focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
-}
-
-/* --------------------------------------------------------------------------
    Compact tabs (My gyms / Library / Catalog)
    -------------------------------------------------------------------------- */
 .compact-tabs {

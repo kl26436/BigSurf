@@ -180,37 +180,6 @@
     box-shadow: 0 0 0 2px var(--primary-bg-strong);
 }
 
-/* Set Action Buttons */
-.set-actions {
-    display: flex;
-    gap: var(--space-10);
-    margin-bottom: var(--space-16);
-}
-.set-actions button {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-6);
-    padding: var(--space-12) var(--space-16);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-main);
-    font-size: var(--font-base);
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-.set-actions button:last-child {
-    background: var(--primary-bg);
-    border-color: var(--primary-border);
-    color: var(--primary);
-}
-.set-actions button:hover {
-    border-color: var(--primary);
-}
-
 /* Exercise Notes Textarea */
 .exercise-notes {
     width: 100%;
@@ -233,27 +202,7 @@
     color: var(--text-muted);
 }
 
-/* Mark Complete Button */
-.complete-exercise-btn {
-    width: 100%;
-    padding: var(--space-16);
-    background: var(--success);
-    border: none;
-    border-radius: var(--radius-md);
-    color: var(--text-on-color);
-    font-size: var(--font-md);
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-8);
-}
-
 /* Unit Toggle */
-.unit-toggle-container {
-    margin-bottom: var(--space-16);
-}
 .unit-toggle {
     display: inline-flex;
     background: var(--bg-card);
@@ -293,20 +242,6 @@
     gap: var(--space-10);
     justify-content: center;
     margin-top: var(--space-12);
-}
-
-/* Mark Complete Button */
-.complete-exercise-btn {
-    width: 100%;
-    padding: var(--space-16);
-    background: var(--success);
-    border: none;
-    border-radius: var(--radius-md);
-    color: var(--text-on-color);
-    font-size: var(--font-md);
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: var(--space-20);
 }
 
 /* Fallback close button — visible when JS fails to populate modal content */
@@ -417,8 +352,7 @@ dialog.modal:not([open]) {
         opacity: 1;
     }
 }
-.modal-content-small,
-.modal-small {
+.modal-content-small {
     max-width: 400px; /* small modal constraint */
     margin: auto;
     border-radius: var(--radius-lg);
@@ -429,12 +363,6 @@ dialog.modal:not([open]) {
     margin: auto;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle);
-}
-.modal-description {
-    color: var(--text-muted);
-    font-size: var(--font-base);
-    margin-bottom: var(--space-16);
-    line-height: 1.5;
 }
 .close-btn:active {
     color: var(--text-strong);
@@ -452,12 +380,6 @@ dialog.modal:not([open]) {
     gap: var(--space-16);
     margin-top: var(--space-32);
 }
-.modal-actions-top {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: var(--space-16);
-}
-
 /* Full-screen modals (no dead space at top) */
 #add-exercise-modal,
 #template-selection-modal {
@@ -641,14 +563,6 @@ dialog.modal:not([open]) {
     font-weight: 600;
     font-size: var(--font-sm);
 }
-.equipment-video-url {
-    display: block;
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
 .equipment-video-input {
     margin-top: var(--space-4);
     font-size: var(--font-xs);
@@ -656,15 +570,6 @@ dialog.modal:not([open]) {
 }
 
 /* Equipment Library Page */
-.equipment-type-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-4);
-    font-size: var(--font-xs);
-    font-weight: 600;
-    padding: var(--space-4) var(--space-10);
-    border-radius: var(--radius-xs);
-}
 /* .location-chip removed — no JS callsites. */
 .btn-icon {
     width: var(--tap);
@@ -701,12 +606,6 @@ dialog.modal:not([open]) {
     flex: 1;
     margin: 0;
     font-size: var(--font-lg);
-}
-.equip-lib-toolbar {
-    padding: 0 var(--pad-page);
-    margin-bottom: var(--space-12);
-    display: flex;
-    gap: var(--space-8);
 }
 .equip-lib-search {
     flex: 1;
@@ -749,15 +648,6 @@ dialog.modal:not([open]) {
     cursor: pointer;
     padding: var(--space-4) var(--space-8);
     font-size: var(--font-sm);
-}
-.equip-lib-filter {
-    background: var(--bg-card);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: var(--space-8) var(--space-10);
-    font-size: var(--font-sm);
-    max-width: 140px;
 }
 .equip-lib-list {
     padding: 0 var(--pad-page);
@@ -824,35 +714,6 @@ dialog.modal:not([open]) {
     font-weight: 500;
 }
 
-/* Exercise row (collapsible) */
-.equip-exercise-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-12) var(--space-16);
-    cursor: pointer;
-    border-bottom: 1px solid var(--border-subtle);
-}
-.equip-exercise-row:active {
-    background: var(--bg-card-hi);
-}
-.equip-exercise-row__name {
-    font-size: var(--font-base);
-    font-weight: 600;
-    color: var(--text-strong);
-}
-.equip-exercise-row__meta {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-}
-.equip-exercise-row__count {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    background: var(--border-light);
-    padding: var(--space-2) var(--space-6);
-    border-radius: var(--radius-pill);
-}
 .equip-exercise-chevron {
     font-size: var(--font-xs);
     color: var(--text-muted);
@@ -902,89 +763,9 @@ dialog.modal:not([open]) {
     font-size: var(--font-lg);
     color: var(--text-strong);
 }
-/* Back-arrow + title header used on the "Add Equipment" form */
-.equip-add { padding: var(--pad-page); }
-.equip-add__header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    margin-bottom: var(--gap-section);
-}
-.equip-add__title { flex: 1; margin: 0; }
-.equip-add__group { margin-bottom: var(--space-16); }
-.equip-add__optional {
-    color: var(--text-muted);
-    font-weight: 400;
-}
-.equip-add__type-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-8);
-}
-.equip-add__preview {
-    background: var(--bg-card-hi);
-    border-radius: var(--radius-sm);
-    padding: var(--space-12);
-    margin-bottom: var(--space-24);
-}
-.equip-add__preview-label {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-}
-.equip-add__preview-val {
-    display: block;
-    margin-top: var(--space-4);
-    color: var(--text-strong);
-}
-.equip-add__submit { width: 100%; }
 .equip-detail-page {
     padding: var(--pad-page);
 }
-.equip-detail-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-6);
-    margin-bottom: var(--space-20);
-}
-.equip-detail-section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--space-8);
-}
-.equip-detail-section-header h4 {
-    margin: 0;
-    font-size: var(--font-sm);
-    font-weight: 700;
-    color: var(--text-strong);
-}
-.equip-detail-notes-header {
-    margin-top: var(--space-20);
-}
-.equip-detail-notes {
-    width: 100%;
-    min-height: 80px;
-    resize: vertical;
-}
-.equip-detail-exercise-row {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-8);
-    padding: var(--space-10) 0;
-    border-bottom: 1px solid var(--border-subtle);
-}
-.equip-detail-exercise-info {
-    flex: 1;
-    min-width: 0;
-}
-.equip-detail-exercise-name {
-    display: block;
-    font-weight: 600;
-    font-size: var(--font-sm);
-    color: var(--text-strong);
-    margin-bottom: var(--space-4);
-}
-
 /* Empty state (compact) */
 .empty-state-compact {
     text-align: center;
@@ -1109,12 +890,6 @@ dialog.modal:not([open]) {
 /* ===========================================
    25. MANUAL WORKOUT (legacy modal styles removed — see pages/manual-workout.css)
    =========================================== */
-.section-label {
-    display: block;
-    font-size: var(--font-base);
-    font-weight: 600;
-    margin-bottom: var(--space-12);
-}
 .workout-source-option {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -1147,58 +922,12 @@ dialog.modal:not([open]) {
     display: none;
 }
 
-.step-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    margin-bottom: var(--space-20);
-}
-.step-info {
-    flex: 1;
-}
-.step-info h4 {
-    margin: 0 0 var(--space-4);
-}
-.step-info p {
-    margin: 0;
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-}
-
-.step-actions {
-    display: flex;
-    gap: var(--space-10);
-    justify-content: space-between;
-    margin-top: var(--space-20);
-    padding-top: var(--space-16);
-    border-top: 1px solid var(--border);
-}
-
-.manual-location-section {
-    margin-bottom: var(--space-16);
-}
-.manual-location-row {
-    display: flex;
-    gap: var(--space-10);
-}
 .manual-exercises-container {
     margin-bottom: var(--space-16);
 }
 .manual-add-exercise-section {
     margin-bottom: var(--space-16);
 }
-.manual-final-details {
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-    padding: var(--space-16);
-    margin-bottom: var(--space-16);
-}
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-12);
-}
-
 .library-loading {
     text-align: center;
     padding: var(--space-20);
@@ -1246,13 +975,6 @@ dialog.modal[open] .modal-content {
    EQUIPMENT DETAIL PAGE — §9a polish. Classes added during Phase F.
    ============================================================================ */
 
-.equip-detail-title {
-    font-size: var(--font-md);
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
 .equip-detail-body {
     padding: var(--space-12) var(--space-16) var(--space-80);
 }

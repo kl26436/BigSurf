@@ -275,10 +275,6 @@
     margin-top: 2px;
 }
 
-/* Shared spacer used in section-header-row to keep title centered
-   (36px matches .btn-icon-sm width) */
-.header-spacer { width: 36px; flex-shrink: 0; }
-
 /* Notification diagnostics — status pills on the srow-right side */
 .notif-status {
     font-size: var(--font-2xs);

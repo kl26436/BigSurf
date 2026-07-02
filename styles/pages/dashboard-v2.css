@@ -4,7 +4,6 @@
 .dashboard {
     padding-top: var(--space-8);
 }
-.dashboard-loading,
 .dashboard-error {
     text-align: center;
     padding: var(--space-40);
@@ -296,26 +295,6 @@
     flex-shrink: 0;
     /* Color comes from --dot-color set inline (truly dynamic per segment) */
     background: var(--dot-color, var(--text-muted));
-}
-.bc-weight {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border-subtle);
-    display: flex;
-    justify-content: space-between;
-}
-.bc-weight strong {
-    color: var(--text-strong);
-    font-variant-numeric: tabular-nums;
-}
-.bc-donut-empty {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: 6px solid var(--border-light);
-    flex-shrink: 0;
 }
 .bc-dexa-ago {
     font-size: var(--font-xs);
@@ -626,11 +605,6 @@
     font-variant-numeric: tabular-nums;
     display: inline-block;
     margin: 1px 2px;
-}
-.set-chip--pr {
-    background: var(--badge-gold-bg);
-    color: var(--badge-gold);
-    font-weight: 700;
 }
 /* Logged RPE appended inside a set chip (exercise detail sessions). */
 .set-chip__rpe {

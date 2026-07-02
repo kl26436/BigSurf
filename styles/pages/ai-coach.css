@@ -3,88 +3,6 @@
    Uses tokens from tokens.css. Dashboard card follows existing card patterns.
    ============================================================================ */
 
-/* ===== Training Insights Dashboard Card ===== */
-
-.insights-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-    margin-bottom: var(--gap-section);
-}
-
-.insight-item {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-12);
-    padding: var(--pad-card-y) var(--pad-card-x);
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-    font-size: var(--font-sm);
-    line-height: 1.45;
-    border-left: 3px solid transparent;
-}
-
-.insight-icon {
-    flex-shrink: 0;
-    width: var(--icon-sm);
-    height: var(--icon-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-    font-size: var(--font-sm);
-}
-
-.insight-text {
-    flex: 1;
-    color: var(--text-main);
-}
-
-.insight-coach-btn {
-    flex-shrink: 0;
-    align-self: center;
-    font-size: var(--font-xs);
-    font-weight: 600;
-    color: var(--primary);
-    cursor: pointer;
-    padding: var(--space-4) var(--space-10);
-    border-radius: var(--radius-pill);
-    background: var(--border-light);
-    border: none;
-    white-space: nowrap;
-}
-
-.insight-coach-btn:active {
-    background: var(--primary-bg-strong);
-}
-
-/* Severity: warning — warm amber */
-.insight-warning {
-    border-left-color: var(--warning);
-}
-.insight-warning .insight-icon {
-    background: var(--warning-bg);
-    color: var(--warning);
-}
-
-/* Severity: info — primary teal */
-.insight-info {
-    border-left-color: var(--primary);
-}
-.insight-info .insight-icon {
-    background: var(--primary-bg);
-    color: var(--primary);
-}
-
-/* Severity: success — green */
-.insight-success {
-    border-left-color: var(--success);
-}
-.insight-success .insight-icon {
-    background: var(--success-bg);
-    color: var(--success);
-}
-
 /* ===== AI Coach — Chat UI (Phase F §8 full-page) ===== */
 
 /* Chat container fills the space below .page-header inside the pinned section */
@@ -265,18 +183,6 @@
 .coach-input-bar__send:active { opacity: 0.8; }
 
 /* Thinking dots animation */
-.coach-thinking {
-    display: inline-flex;
-    gap: 4px;
-    padding: 12px 14px;
-}
-.coach-thinking i {
-    font-size: 0.4rem;
-    color: var(--text-muted);
-    animation: thinking-bounce 1.4s ease-in-out infinite;
-}
-.coach-thinking i:nth-child(2) { animation-delay: 0.2s; }
-.coach-thinking i:nth-child(3) { animation-delay: 0.4s; }
 @keyframes thinking-bounce {
     0%, 100% { opacity: 0.3; transform: translateY(0); }
     50%      { opacity: 1;   transform: translateY(-3px); }
@@ -353,37 +259,6 @@
 .coach-msg .coach-loading i {
     color: var(--primary);
     font-size: var(--font-lg);
-}
-
-/* Coach recommendation inside bot bubble */
-.coach-recommendation {
-    font-size: var(--font-sm);
-    line-height: 1.6;
-    color: var(--text-main);
-}
-
-.coach-recommendation ul {
-    list-style: none;
-    padding: 0;
-    margin: var(--space-10) 0;
-}
-
-.coach-recommendation li {
-    position: relative;
-    padding-left: var(--space-20);
-    margin-bottom: var(--space-6);
-}
-
-.coach-recommendation li::before {
-    content: '\2022';
-    position: absolute;
-    left: 0;
-    color: var(--primary);
-    font-weight: bold;
-}
-
-.coach-recommendation strong {
-    color: var(--text-strong);
 }
 
 /* Past session label */

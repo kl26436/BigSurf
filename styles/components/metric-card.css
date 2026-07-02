@@ -58,11 +58,3 @@
 .metric-card__delta.delta-down { color: var(--danger); }
 
 .metric-card__body { margin-top: var(--space-10); }
-
-/* Metrics column layout */
-.metrics-col {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-10);
-    margin-bottom: var(--space-16);
-}

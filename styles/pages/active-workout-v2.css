@@ -413,11 +413,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.aw-last__pr {
-    color: var(--highlight-warm);
-    font-weight: 700;
-    margin-left: 2px;
-}
 /* Overload nudge — the "put the smarts where I lift" line. Primary-tinted so
    it reads as an actionable target, not just more history. */
 .aw-last__nudge {
@@ -1159,63 +1154,6 @@
     overflow: hidden;
 }
 
-/* === SUMMARY HERO === */
-.aw-summary-hero {
-    text-align: center;
-    padding: 20px 0 16px;
-}
-.aw-summary-hero__icon {
-    font-size: var(--font-3xl);
-    color: var(--success);
-    margin-bottom: 8px;
-}
-.aw-summary-hero__title {
-    font-size: var(--font-xl);
-    font-weight: 800;
-    color: var(--text-strong);
-}
-.aw-summary-hero__sub {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-    margin-top: 4px;
-}
-.aw-summary-stats {
-    display: flex;
-    justify-content: space-around;
-    padding: 16px 0;
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
-    margin-bottom: 16px;
-}
-.aw-summary-stat { text-align: center; }
-.aw-summary-stat .v {
-    font-size: var(--font-xl);
-    font-weight: 800;
-    color: var(--text-strong);
-    font-variant-numeric: tabular-nums;
-}
-.aw-summary-stat .l {
-    font-size: var(--font-2xs);
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-}
-.aw-summary-pr {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--highlight-warm-bg);
-    border: 1px solid var(--highlight-warm-border);
-    border-radius: var(--radius-sm);
-    margin-bottom: 8px;
-}
-.aw-summary-pr > i { color: var(--highlight-warm); font-size: var(--font-md); }
-.aw-summary-pr__text { flex: 1; }
-.aw-summary-pr__name { font-size: var(--font-sm); font-weight: 700; color: var(--text-strong); }
-.aw-summary-pr__val { font-size: var(--font-xs); color: var(--highlight-warm); font-weight: 600; }
-
 /* === ADD EXERCISE LIST === */
 .aw-add-ex-row {
     display: flex;
@@ -1297,88 +1235,6 @@
     font-size: var(--font-xs);
     color: var(--text-muted);
     margin-top: var(--space-8);
-}
-
-/* === TOTAL COLUMN (for base weight + bodyweight) === */
-.aw-set-row__total {
-    font-size: var(--font-sm);
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-    min-width: 50px;
-}
-.aw-set-row__total.done-val {
-    color: var(--success);
-}
-
-/* Volume row for bodyweight exercises */
-.aw-volume-row {
-    margin: 0 14px 8px;
-    padding: 8px 12px;
-    border-top: 1px solid var(--border-subtle);
-    display: flex;
-    justify-content: space-between;
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-}
-.aw-volume-row strong {
-    color: var(--text-strong);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-}
-
-/* Added weight row (v2 — uses existing bodyweight.css pattern names with prefixes) */
-.added-weight-row {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-.added-weight-row > i {
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-}
-.added-weight-row--active {
-    background: var(--primary-bg);
-    border-color: var(--primary-border);
-}
-.added-weight-row--active > i { color: var(--primary); }
-.added-weight-row__info { flex: 1; min-width: 0; }
-.added-weight-row__name {
-    font-size: var(--font-sm);
-    font-weight: 600;
-    color: var(--text-strong);
-}
-.added-weight-row__hint {
-    font-size: var(--font-2xs);
-    color: var(--text-muted);
-    margin-top: 1px;
-}
-.added-weight-row__input {
-    width: 68px;
-    background: var(--bg-app);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-xs);
-    padding: 8px;
-    color: var(--text-strong);
-    font-size: var(--font-base);
-    font-weight: 700;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-    outline: none;
-}
-.added-weight-row--active .added-weight-row__input {
-    border-color: var(--primary-border);
-}
-.added-weight-row__unit {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    font-weight: 500;
 }
 
 /* Notes area */

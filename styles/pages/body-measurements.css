@@ -93,57 +93,6 @@
     margin-bottom: var(--space-12);
 }
 
-/* ---- Weight Entry Modal ---- */
-.weight-entry-form {
-    padding: var(--space-8) 0;
-}
-
-.weight-input-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-12);
-    margin-bottom: var(--space-24);
-}
-
-.weight-input-large {
-    font-size: var(--font-3xl);
-    font-weight: 700;
-    width: 160px; /* weight input sizing */
-    text-align: center;
-    background: var(--bg-secondary);
-    border: 2px solid var(--border-light);
-    border-radius: var(--radius-md);
-    color: var(--text-strong);
-    padding: var(--space-12);
-    outline: none;
-    transition: border-color 0.2s;
-}
-
-.weight-input-large:focus {
-    border-color: var(--primary);
-}
-
-.weight-input-unit {
-    font-size: var(--font-lg);
-    color: var(--text-secondary);
-    font-weight: 600;
-}
-
-.weight-entry-optional {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-    margin-bottom: var(--space-20);
-}
-
-.weight-entry-optional .form-group label {
-    font-size: var(--font-sm);
-    color: var(--text-secondary);
-    margin-bottom: var(--space-4);
-    display: block;
-}
-
 .optional-label {
     font-weight: 400;
     color: var(--text-muted);
@@ -369,114 +318,6 @@
     margin-top: var(--space-16);
 }
 
-/* ---- Redesigned Log Measurements Modal ---- */
-
-/* Hero weight card */
-.bw-hero-card {
-    background: linear-gradient(135deg, var(--cat-shoulders-bg-gradient-start), var(--cat-shoulders-bg-subtle));
-    border: 1px solid var(--cat-shoulders-border);
-    border-radius: var(--radius-md);
-    padding: 16px;
-    margin-bottom: 14px;
-}
-
-.bw-hero-input-row {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 4px;
-}
-
-.bw-hero-input {
-    background: transparent;
-    border: none;
-    color: var(--text-strong);
-    font-size: 1.5rem;
-    font-weight: 800;
-    outline: none;
-    width: 120px;
-    font-variant-numeric: tabular-nums;
-}
-
-.bw-hero-unit {
-    color: var(--cat-shoulders);
-    font-size: var(--font-base);
-    font-weight: 600;
-}
-
-.bw-hero-last {
-    flex: 1;
-    text-align: right;
-}
-
-.bw-hero-last-label {
-    font-size: var(--font-2xs);
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-}
-
-.bw-hero-last-value {
-    font-size: var(--font-xs);
-    color: var(--text-secondary);
-    font-variant-numeric: tabular-nums;
-}
-
-/* Measurement rows */
-.meas-row {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    padding: 12px 14px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 8px;
-}
-
-.meas-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--bg-card-hi);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-secondary);
-    flex-shrink: 0;
-}
-
-.meas-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.meas-name {
-    font-size: var(--font-sm);
-    font-weight: 600;
-    color: var(--text-strong);
-}
-
-.meas-prev {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    margin-top: 2px;
-}
-
-.meas-input {
-    width: 72px;
-    background: transparent;
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    padding: 8px 10px;
-    color: var(--text-strong);
-    font-size: var(--font-base);
-    font-weight: 600;
-    text-align: right;
-    outline: none;
-    font-variant-numeric: tabular-nums;
-}
-
 /* ============================================================================
    BODY MEASUREMENTS ENTRY — full-page form (Phase F §2).
    Matches PAGES-REDESIGN-IMPLEMENTATION.md spec: bm-weight-card hero +
@@ -607,12 +448,4 @@
     background: var(--primary-bg);
     border-color: var(--primary-border);
     color: var(--primary);
-}
-
-.meas-unit {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    font-weight: 500;
-    width: 24px;
-    text-align: left;
 }

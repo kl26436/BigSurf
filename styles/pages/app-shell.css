@@ -163,26 +163,6 @@ body.workout-active .bottom-nav__fab i {
 .full-page-section.hidden {
     display: none;
 }
-.full-page-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-12) var(--pad-page);
-    padding-top: calc(var(--space-12) + env(safe-area-inset-top, 0px));
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border-subtle);
-    flex-shrink: 0;
-}
-.full-page-header h3 {
-    flex: 1;
-    margin: 0;
-    font-size: var(--font-lg);
-    font-weight: 700;
-    color: var(--text-strong);
-}
-.full-page-header-action {
-    flex-shrink: 0;
-}
 .full-page-body {
     flex: 1;
     overflow-y: auto;

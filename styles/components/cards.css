@@ -22,24 +22,6 @@
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
-/* Warm accent for streaks/achievements */
-.hero-card-warm::before {
-    background: linear-gradient(90deg, var(--highlight-warm), var(--highlight-warm-dark));
-}
-.hero-card-warm {
-    border-color: var(--warning-border);
-}
-
-/* Success accent */
-.hero-card-success::before {
-    background: var(--success);
-}
-
-/* No accent bar variant */
-.hero-card-flat::before {
-    display: none;
-}
-
 /* Active state */
 .hero-card:active {
     background: var(--bg-card-hi);
@@ -75,14 +57,6 @@
     flex-shrink: 0;
     font-size: var(--font-md);
 }
-.row-card__icon--warning {
-    background: rgba(var(--warning-rgb), 0.12);
-    color: var(--highlight-warm);
-}
-.row-card__icon--success {
-    background: var(--success-bg);
-    color: var(--success);
-}
 .row-card__content {
     flex: 1;
     min-width: 0;
@@ -109,31 +83,6 @@
 .row-card__action {
     color: var(--text-muted);
     font-size: var(--font-md);
-}
-
-/* ===========================================
-   3c. SECTION HEADER PATTERN (Unified Headers)
-   =========================================== */
-/* Use for: all section headers across the app */
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: var(--space-32) 0 var(--gap-items);
-}
-.section-header__title {
-    font-size: var(--font-md);
-    font-weight: 700;
-    color: var(--text-strong);
-}
-.section-header__action {
-    color: var(--primary);
-    cursor: pointer;
-    font-size: var(--font-base);
-    font-weight: 500;
-}
-.section-header__action:hover {
-    text-decoration: underline;
 }
 
 /* ===========================================

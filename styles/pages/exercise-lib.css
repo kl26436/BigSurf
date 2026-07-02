@@ -48,11 +48,6 @@
 }
 
 /* Filter/Search */
-.search-bar {
-    display: flex;
-    gap: var(--gap-items);
-    margin-bottom: var(--space-16);
-}
 .search-input {
     flex: 1;
     padding: var(--space-12) var(--space-16);
@@ -61,19 +56,6 @@
     border-radius: var(--radius-md);
     color: var(--text-strong);
 }
-.filter-btn {
-    padding: var(--space-12) var(--space-16);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-main);
-    cursor: pointer;
-}
-.filter-btn.active {
-    border-color: var(--primary);
-    color: var(--primary);
-}
-
 /* ===========================================
    13. LOCATION MANAGEMENT
    =========================================== */
@@ -82,22 +64,9 @@
     flex-direction: column;
     gap: var(--space-8);
 }
-.location-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-16);
-    background: var(--bg-card);
-    border-radius: var(--radius-sm);
-}
 .location-name {
     font-weight: 500;
 }
-.location-meta {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-}
-
 /* Location Selector Modal */
 .location-option {
     padding: var(--space-16);
@@ -118,11 +87,6 @@
 /* ===========================================
    14. EQUIPMENT PICKER
    =========================================== */
-.equipment-grid {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-}
 .equipment-option {
     padding: var(--space-16);
     background: var(--bg-card);
@@ -254,100 +218,15 @@
 /* ===========================================
    WORKOUT LIBRARY (Category Grid + List View)
    =========================================== */
-.workout-library-view {
-    padding: var(--space-16);
-}
-.workout-library-view.hidden {
-    display: none;
-}
-
 .workout-list-container {
     display: flex;
     flex-direction: column;
     gap: var(--space-10);
 }
 
-/* Workout List Item (like exercise library items) */
-.workout-list-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-16);
-    padding: var(--space-16) var(--space-16);
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-    cursor: pointer;
-    transition:
-        background 0.15s,
-        transform 0.15s;
-}
-.workout-list-item:hover {
-    background: var(--bg-card-hi);
-}
-.workout-list-item:active {
-    transform: scale(0.98);
-}
-
-.workout-item-icon {
-    width: var(--icon-lg);
-    height: var(--icon-lg);
-    border-radius: var(--radius-sm);
-    background: var(--primary-bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--primary);
-    font-size: var(--font-lg);
-    flex-shrink: 0;
-}
-
-.workout-item-content {
-    flex: 1;
-    min-width: 0;
-}
-
-.workout-item-name {
-    font-weight: 600;
-    color: var(--text-strong);
-    font-size: var(--font-md);
-    margin-bottom: var(--space-2);
-}
-
-.workout-item-meta {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-    margin-bottom: var(--space-4);
-}
-
-.workout-item-exercises {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.workout-item-edit {
-    padding: var(--space-8) var(--space-16);
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-weight: 600;
-    font-size: var(--font-sm);
-    cursor: pointer;
-    flex-shrink: 0;
-}
-.workout-item-edit:hover {
-    color: var(--primary);
-}
-
 /* ===========================================
    24. EDIT EXERCISE SECTION
    =========================================== */
-.edit-exercise-container {
-    padding: 0 var(--space-16) var(--space-32);
-}
 .edit-exercise-header {
     display: flex;
     align-items: center;
@@ -429,37 +308,6 @@
     border-color: var(--primary);
 }
 
-.edit-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-12);
-    margin-bottom: var(--space-12);
-}
-.edit-row-three {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: var(--space-12);
-}
-.edit-field label {
-    display: block;
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-    margin-bottom: var(--space-6);
-}
-.edit-select,
-.edit-input-number {
-    width: 100%;
-    padding: var(--space-10) var(--space-12);
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-strong);
-    font-size: var(--font-md);
-}
-.edit-select {
-    appearance: none;
-}
-
 .edit-subsection-title {
     font-size: var(--font-sm);
     color: var(--text-muted);
@@ -534,14 +382,6 @@
     border-color: var(--primary);
     color: var(--primary);
 }
-.edit-add-equipment {
-    margin-top: var(--space-16);
-}
-.edit-equipment-form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-10);
-}
 .btn-add-equipment {
     padding: var(--space-12);
     background: var(--bg-card-hi);
@@ -604,30 +444,6 @@
 .location-management-content {
     padding: var(--space-16);
 }
-.current-location-card {
-    background: var(--bg-card);
-    border: 1px solid var(--primary);
-    border-radius: var(--radius-md);
-    padding: var(--space-16);
-    margin-bottom: var(--space-20);
-}
-.current-location-label {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    text-transform: uppercase;
-    margin-bottom: var(--space-8);
-}
-.current-location-display {
-    display: flex;
-    align-items: center;
-    gap: var(--space-10);
-    font-size: var(--font-md);
-    font-weight: 600;
-}
-.current-location-display i {
-    color: var(--primary);
-}
-
 .location-map-container {
     background: var(--bg-card);
     border-radius: var(--radius-md);
@@ -663,16 +479,6 @@
     font-weight: 500;
 }
 
-.location-list-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--space-12);
-}
-.location-list-header h3 {
-    margin: 0;
-    font-size: var(--font-md);
-}
 .location-count {
     font-size: var(--font-sm);
     color: var(--text-muted);
@@ -682,7 +488,6 @@
 }
 
 /* Location Items */
-.location-item,
 .location-management-item {
     background: var(--bg-card);
     border-radius: var(--radius-md);
@@ -760,29 +565,11 @@
     border-color: var(--primary);
     color: var(--primary);
 }
-.location-item-actions button.btn-delete:hover,
 .location-item-actions button.delete-btn:hover {
     border-color: var(--danger);
     color: var(--danger);
 }
 
-.add-location-form {
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-    padding: var(--space-16);
-}
-.add-location-form h4 {
-    margin: 0 0 var(--space-12);
-    font-size: var(--font-base);
-}
-.add-location-inputs {
-    display: flex;
-    gap: var(--space-10);
-    margin-bottom: var(--space-12);
-}
-.add-location-inputs .input-field {
-    flex: 1;
-}
 .input-field {
     padding: var(--space-12);
     background: var(--bg-surface);
@@ -1259,28 +1046,6 @@
     font-size: var(--font-sm);
     color: var(--text-muted);
 }
-.workout-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-12);
-    background: var(--bg-card);
-    border-radius: var(--radius-sm);
-    margin-bottom: var(--space-8);
-    cursor: pointer;
-}
-.workout-item:hover {
-    background: var(--bg-card-hi);
-}
-.workout-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-}
-.workout-date {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-}
 .workout-category {
     font-size: var(--font-xs);
     background: var(--bg-surface);
@@ -1288,101 +1053,6 @@
     border-radius: var(--radius-xs);
     color: var(--text-muted);
 }
-.workout-icon {
-    color: var(--primary);
-}
-
-/* ===========================================
-   46c. DASHBOARD MINI CHART
-   =========================================== */
-.mini-chart-card {
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-    padding: var(--space-16);
-    border: 1px solid var(--border-subtle);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.mini-chart-card:hover {
-    border-color: var(--primary-bg-strong);
-}
-
-.mini-chart-header {
-    margin-bottom: var(--space-12);
-}
-
-.mini-chart-exercise {
-    font-size: var(--font-base);
-    font-weight: 600;
-    color: var(--text-main);
-}
-
-.mini-chart-equipment {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    margin-top: var(--space-2);
-}
-
-.mini-chart-body {
-    display: flex;
-    align-items: center;
-    gap: var(--space-16);
-}
-
-.mini-chart-sparkline {
-    flex: 1;
-    height: 50px;
-    min-width: 0;
-}
-
-.mini-chart-stats {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: var(--space-2);
-    flex-shrink: 0;
-}
-
-.mini-chart-current {
-    font-size: var(--font-md);
-    font-weight: 700;
-    color: var(--text-main);
-}
-
-.mini-chart-change {
-    font-size: var(--font-xs);
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-}
-
-.mini-chart-change.positive {
-    color: var(--success);
-}
-
-.mini-chart-change.negative {
-    color: var(--error);
-}
-
-.mini-chart-period {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-}
-
-.mini-chart-tap-hint {
-    margin-top: var(--space-10);
-    text-align: center;
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    opacity: 0.6;
-}
-
-.mini-chart-tap-hint i {
-    margin-right: var(--space-4);
-}
-
 /* ===========================================
    SECTION 9: EXERCISE LIBRARY POLISH
    =========================================== */

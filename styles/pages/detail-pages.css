@@ -302,11 +302,6 @@
     font-weight: 600;
     color: var(--text-strong);
 }
-.d-session-row__pr {
-    font-size: var(--font-2xs);
-    color: var(--badge-gold);
-    font-weight: 700;
-}
 .d-session-row__chips {
     display: flex;
     flex-wrap: wrap;

@@ -122,13 +122,6 @@
     color: var(--text-main);
 }
 
-/* Old page-title — retained for sections that still use it */
-.page-title {
-    font-size: var(--font-md);
-    font-weight: 700;
-    color: var(--text-strong);
-}
-
 /* Legacy inline page-title pattern — <h2 class="section-title"> */
 .section-title {
     font-size: var(--font-md);
@@ -137,12 +130,6 @@
     margin: var(--pad-page) 0 var(--space-8);
     letter-spacing: -0.01em;
 }
-.section-link {
-    font-size: var(--font-sm);
-    color: var(--primary);
-    cursor: pointer;
-}
-
 /* ============================================================================
    SECTION HEADER ROW — pinned page header with safe-area-inset (legacy)
    Used by pages that embed a <h2 class="section-title"> inline (not the BEM
@@ -177,13 +164,6 @@
 }
 .section-header-row .btn {
     white-space: nowrap;
-}
-.section-body {
-    padding: 0;
-}
-.section-content {
-    padding: var(--gap-section) var(--pad-card-x);
-    background: var(--bg-app);
 }
 
 /* ============================================================================

@@ -50,24 +50,10 @@
     100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 
-.pr-badge-new {
-    animation: prPop 500ms var(--ease-out-back) both;
-}
-
 /* ── Rest timer pulse ── */
 @keyframes timerPulse {
     0%, 100% { transform: scale(1); opacity: 1; }
     50%      { transform: scale(1.05); opacity: 0.8; }
-}
-
-.rest-timer-active {
-    animation: timerPulse 1.5s ease-in-out infinite;
-}
-
-/* Last 5 seconds — urgent pulse */
-.rest-timer-ending {
-    animation: timerPulse 0.5s ease-in-out infinite;
-    color: var(--warning);
 }
 
 /* ── Page/section transitions ── */

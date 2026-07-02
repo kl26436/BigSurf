@@ -11,41 +11,6 @@
    .quick-add-chips / .quick-add-label / .quick-add-chip canonical
    definitions live in pages/exercise-lib.css. */
 
-/* Save as Template banner */
-.save-template-banner {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-10);
-    padding: var(--space-12) var(--space-16);
-    margin-bottom: var(--space-12);
-    background: var(--primary-bg);
-    border: 1px solid var(--primary-border);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-base);
-    color: var(--text-strong);
-    animation: slideDown 0.3s ease;
-}
-
-.save-template-banner > span {
-    flex: 1 1 100%;
-}
-.save-template-actions {
-    display: flex;
-    gap: var(--space-8);
-    align-items: center;
-    flex: 1;
-}
-
-.btn-dismiss {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: var(--space-4) var(--space-8);
-    font-size: var(--font-md);
-}
-
 @keyframes slideDown {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -66,13 +31,6 @@
     color: var(--text-muted);
     font-size: var(--font-sm);
     white-space: nowrap;
-}
-.template-exercise-equipment {
-    font-size: var(--font-xs);
-    background: var(--primary-bg);
-    color: var(--primary);
-    padding: var(--space-2) var(--space-8);
-    border-radius: var(--radius-sm);
 }
 .exercise-equipment-line {
     font-size: var(--font-xs);
@@ -317,17 +275,6 @@
 .template-row__title-input:focus {
     border-color: var(--primary);
 }
-.template-row__detail {
-    font-size: var(--font-xs);
-    color: var(--text-secondary);
-    margin-top: 2px;
-    font-variant-numeric: tabular-nums;
-}
-.template-row__detail--new {
-    color: var(--primary);
-    font-weight: 500;
-}
-
 /* ── Inline template editor (expanded state) ── */
 .template-row.expanded {
     border-color: var(--primary-border);
@@ -618,71 +565,6 @@
     gap: var(--space-4);
     margin-bottom: var(--space-12);
 }
-.template-editor__exercise {
-    display: flex;
-    align-items: center;
-    gap: var(--space-10);
-    padding: var(--space-10) var(--space-12);
-    background: var(--bg-card);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
-}
-/* Reorder up/down buttons */
-.template-editor__reorder {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    flex-shrink: 0;
-}
-.template-editor__reorder-btn {
-    width: 24px;
-    height: 18px;
-    border: none;
-    background: none;
-    color: var(--text-muted);
-    font-size: var(--font-2xs, 10px);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    opacity: 0.6;
-}
-.template-editor__reorder-btn:active:not(:disabled) {
-    color: var(--primary);
-    opacity: 1;
-}
-.template-editor__reorder-btn:disabled {
-    opacity: 0.15;
-    cursor: default;
-}
-.template-editor__exercise-name {
-    flex: 1;
-    font-size: var(--font-base);
-    color: var(--text-strong);
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.template-editor__remove-btn {
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: none;
-    color: var(--text-muted);
-    font-size: var(--font-xs);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.4;
-    flex-shrink: 0;
-}
-.template-editor__remove-btn:active {
-    color: var(--danger);
-    opacity: 1;
-}
 .template-editor__add-btn {
     display: flex;
     align-items: center;
@@ -824,30 +706,6 @@
 /* ===========================================
    43. DAY SELECTOR
    =========================================== */
-.day-selector {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-8);
-    margin: var(--space-12) 0;
-}
-.day-checkbox {
-    display: flex;
-    align-items: center;
-    gap: var(--space-6);
-    padding: var(--space-8) var(--space-12);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-}
-.day-checkbox input {
-    display: none;
-}
-.day-checkbox.checked,
-.day-checkbox:has(input:checked) {
-    border-color: var(--primary);
-    background: var(--primary-bg);
-}
 .day-number {
     font-weight: 500;
 }
@@ -858,64 +716,6 @@
     align-items: center;
     padding-right: var(--space-6);
 }
-.superset-select-checkbox {
-    width: var(--space-20);
-    height: var(--space-20);
-    accent-color: var(--primary);
-    cursor: pointer;
-    border-radius: var(--radius-xs);
-}
-
-/* Custom checkbox look for dark theme */
-@supports (appearance: none) {
-    .superset-select-checkbox {
-        appearance: none;
-        -webkit-appearance: none;
-        background: var(--bg-card);
-        border: 2px solid var(--border);
-        border-radius: var(--radius-xs);
-        position: relative;
-        transition: background 0.15s, border-color 0.15s;
-    }
-    .superset-select-checkbox:checked {
-        background: var(--primary);
-        border-color: var(--primary);
-    }
-    .superset-select-checkbox:checked::after {
-        content: '';
-        position: absolute;
-        left: 4px;
-        top: 1px;
-        width: 5px;
-        height: 9px;
-        border: solid var(--bg-app);
-        border-width: 0 2px 2px 0;
-        transform: rotate(45deg);
-    }
-}
-.superset-badge {
-    display: inline-block;
-    font-size: var(--font-xs);
-    font-weight: 700;
-    padding: var(--space-2) var(--space-8);
-    border-radius: var(--radius-sm);
-    margin-right: var(--space-4);
-    vertical-align: middle;
-}
-.superset-action-bar {
-    position: sticky;
-    bottom: 0;
-    background: var(--bg-card-hi);
-    border-top: 1px solid var(--border);
-    padding: var(--space-10) var(--space-16);
-    display: flex;
-    justify-content: center;
-    z-index: 10;
-}
-.superset-action-bar.hidden {
-    display: none;
-}
-
 /* Equipment compatibility badges on template cards (Phase 16.1) */
 .compat-badge {
     display: inline-flex;
@@ -945,29 +745,6 @@
     border-color: var(--primary);
 }
 
-/* Template count badges on category cards */
-.template-count-badge {
-    display: block;
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    margin-top: var(--space-4);
-}
-
-/* Recent templates section */
-.recent-templates-section {
-    margin-bottom: var(--space-16);
-}
-.recent-templates-list {
-    display: flex;
-    gap: var(--space-8);
-    overflow-x: auto;
-    padding-bottom: var(--space-8);
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-}
-.recent-templates-list::-webkit-scrollbar {
-    display: none;
-}
 /* .recent-template-chip family removed — no JS callsites. */
 
 /* ---- Phase 9 cleanup: deleted .ex-row, .est-stats, .template-editor-body
@@ -975,11 +752,6 @@
    uses them in the details accordion. ---- */
 
 /* Day-of-week chip row (7-col grid of uniform circles) */
-.day-chips {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: var(--space-6);
-}
 .day-chip {
     aspect-ratio: 1;
     background: var(--bg-card);

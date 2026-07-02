@@ -20,17 +20,6 @@
     }
 }
 
-.fade-in {
-    animation: fadeIn 0.3s ease;
-}
-.scale-in {
-    animation: scaleIn 0.2s ease;
-}
-
-/* PR Badge Animation */
-.pr-badge-animate {
-    animation: prPop 0.5s ease;
-}
 /* Pulsing trophy icon used in set rows when a PR just happened */
 .pr-trophy-inline {
     margin-left: 0.5rem;
@@ -56,9 +45,7 @@
 /* Consistent tap feedback — all interactive elements */
 .hero-card:active,
 .row-card:active,
-.exercise-card:active,
-.workout-list-item:active,
-.suggested-compact:active {
+.exercise-card:active {
     transform: scale(0.98);
     transition: transform var(--anim-fast) ease;
 }
@@ -87,9 +74,6 @@ dialog[open] > .modal-content {
 }
 
 /* Success flash (set completion, save) */
-.flash-success {
-    animation: flash-green var(--anim-slow) ease;
-}
 @keyframes flash-green {
     0% { background-color: var(--success-bg); }
     100% { background-color: transparent; }
@@ -107,61 +91,6 @@ dialog[open] > .modal-content {
 .flex {
     display: flex;
 }
-.flex-col {
-    flex-direction: column;
-}
-.flex-center {
-    align-items: center;
-    justify-content: center;
-}
-.flex-between {
-    justify-content: space-between;
-}
-.gap-sm {
-    gap: var(--space-8);
-}
-.gap-md {
-    gap: var(--space-12);
-}
-.gap-lg {
-    gap: var(--space-16);
-}
-
-.mt-sm {
-    margin-top: var(--space-8);
-}
-.mt-md {
-    margin-top: var(--space-12);
-}
-.mt-lg {
-    margin-top: var(--space-16);
-}
-.mb-sm {
-    margin-bottom: var(--space-8);
-}
-.mb-md {
-    margin-bottom: var(--space-12);
-}
-.mb-lg {
-    margin-bottom: var(--space-16);
-}
-
-.p-sm {
-    padding: var(--space-8);
-}
-.p-md {
-    padding: var(--space-12);
-}
-.p-lg {
-    padding: var(--space-16);
-}
-
-.text-center {
-    text-align: center;
-}
-.font-bold {
-    font-weight: 700;
-}
 
 /* Full-width button utility — replaces inline `style="width:100%"` on buttons. */
 .btn-block { width: 100%; }
@@ -174,7 +103,6 @@ dialog[open] > .modal-content {
 .text-warning { color: var(--warning); }
 .text-muted { color: var(--text-muted); }
 .text-secondary { color: var(--text-secondary); }
-.text-strong { color: var(--text-strong); }
 .text-badge-gold { color: var(--badge-gold); }
 /* Inline trophy/star spacing when used next to a label */
 .icon-leading { margin-right: 4px; }
@@ -239,43 +167,12 @@ dialog[open] > .modal-content {
     padding: var(--pad-page);
 }
 
-/* Sign-in prompt */
-.sign-in-prompt {
-    text-align: center;
-    padding: var(--space-40) var(--space-20);
-}
-.sign-in-prompt h2 {
-    margin-bottom: var(--space-12);
-}
-.sign-in-prompt p {
-    color: var(--text-muted);
-    margin-bottom: var(--space-24);
-}
-
 /* Auth section */
 .auth-section {
     padding: var(--space-20);
 }
-.user-profile {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-16);
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-}
-.user-avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: var(--radius-pill);
-    object-fit: cover;
-}
 .user-name {
     font-weight: 600;
-}
-.user-email {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
 }
 
 /* Loading screen */
@@ -301,10 +198,6 @@ dialog[open] > .modal-content {
     width: 200px;
     height: 200px;
     margin-bottom: var(--space-24);
-}
-.loading-title {
-    font-size: var(--font-xl);
-    margin-bottom: var(--space-20);
 }
 .loading-spinner {
     width: 40px;
@@ -460,37 +353,15 @@ dialog[open] > .modal-content {
    19. RESPONSIVE
    =========================================== */
 @media (max-width: 480px) {
-    .hero-content {
-        flex-direction: column;
-        text-align: center;
-    }
-    .progress-ring-container {
-        margin: 0 auto;
-    }
-    .hero-stats {
-        flex-wrap: wrap;
-    }
-
     .set-row {
         grid-template-columns: 40px 1fr 1fr auto;
         gap: var(--space-8);
-    }
-
-    .template-actions {
-        flex-wrap: wrap;
-    }
-    .template-actions .btn {
-        flex: 1;
-        min-width: 100px;
     }
 }
 
 /* ===========================================
    44. MISC UTILITIES
    =========================================== */
-.full-width {
-    width: 100%;
-}
 .separator {
     height: 1px;
     background: var(--border);
@@ -516,11 +387,6 @@ dialog[open] > .modal-content {
     display: flex;
     gap: var(--space-10);
     justify-content: flex-end;
-}
-.quick-sets-row {
-    display: flex;
-    gap: var(--space-8);
-    flex-wrap: wrap;
 }
 .exercise-actions-bar {
     display: flex;

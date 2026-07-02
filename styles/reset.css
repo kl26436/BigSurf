@@ -38,17 +38,14 @@ a,
 .btn,
 input,
 select,
-textarea,
-.bottom-nav-item {
+textarea {
     touch-action: manipulation;
 }
 /* .clickable carries its own touch-action — see utilities.css */
 
 /* iOS momentum scrolling for scrollable containers */
 .modal > .modal-content,
-.modal-content-editor,
-.exercise-list-container,
-.section-content-scroll {
+.exercise-list-container {
     -webkit-overflow-scrolling: touch;
 }
 

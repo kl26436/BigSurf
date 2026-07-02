@@ -61,16 +61,6 @@ input[type='number'] {
     gap: var(--space-16);
     padding: var(--space-16);
 }
-.edit-field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-}
-.edit-field label {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-    font-weight: 500;
-}
 .edit-input-full,
 .edit-input-large {
     width: 100%;
