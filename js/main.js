@@ -7,6 +7,7 @@
 // Core modules
 import { AppState } from './core/utils/app-state.js';
 import { startApplication } from './core/app-initialization.js';
+import { confirmSheet } from './core/ui/confirm-sheet.js';
 import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal, completeOnboarding, restartOnboarding, rebuildPRsFromSettings, confirmDeleteAllData, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, selectProfileExperience, closeProfileExperiencePicker, closeProfile, editBodyWeightGoal, notifDiagEnable, notifDiagTest } from './core/ui/settings-ui.js';
 import { exportWorkoutData, exportDataForAI } from './core/data/data-manager.js';
 import { dismissFirstUseTip } from './core/features/first-use-tips.js';
@@ -984,11 +985,22 @@ let _withingsConnected = false;
 window.handleWithingsSettingsAction = async function () {
     if (_withingsConnected) {
         // Already connected — offer sync or disconnect
-        const action = confirm('Sync Withings now? Cancel to disconnect.');
-        if (action) {
+        const syncNow = await confirmSheet({
+            title: 'Sync Withings now?',
+            confirmLabel: 'Sync now',
+            cancelLabel: 'Disconnect instead',
+        });
+        if (syncNow) {
             await syncWithingsWeight();
         } else {
-            if (confirm('Disconnect Withings?')) {
+            const disconnect = await confirmSheet({
+                title: 'Disconnect Withings?',
+                message: 'You can reconnect anytime.',
+                confirmLabel: 'Disconnect',
+                cancelLabel: 'Stay connected',
+                destructive: true,
+            });
+            if (disconnect) {
                 await disconnectWithings();
                 _withingsConnected = false;
                 updateWithingsUI(false);

@@ -21,6 +21,7 @@ import { renderActiveWorkout, loadAutofillForAllExercises } from './active-worko
 import { haptic } from '../utils/haptics.js';
 import { Config } from '../utils/config.js';
 import { cancelRestNotification } from '../utils/push-notification-manager.js';
+import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
 
 // ===================================================================
 // TEMPLATE CHANGE DETECTION
@@ -68,7 +69,7 @@ window.addEventListener('exerciseRenamed', (event) => {
 
 export async function startWorkout(workoutType) {
     if (!AppState.currentUser) {
-        alert('Sign in to start a workout');
+        showNotification('Sign in to start a workout', 'warning');
         return;
     }
 
@@ -80,12 +81,13 @@ export async function startWorkout(workoutType) {
         if (todaysWorkout.completedAt && !todaysWorkout.cancelledAt) {
             // There's already a COMPLETED workout today - warn about overriding
             const workoutName = todaysWorkout.workoutType || 'Unknown';
-            const confirmed = confirm(
-                `\u26A0\uFE0F You already completed a workout today: "${workoutName}"\n\n` +
-                    `Starting a new workout will REPLACE your completed workout data.\n\n` +
-                    `Your previous workout progress, PRs from that session, and stats will be overwritten.\n\n` +
-                    `Start a new workout?`
-            );
+            const confirmed = await confirmSheet({
+                title: `Replace today's "${workoutName}" workout?`,
+                message: "You already completed a workout today. Starting a new one overwrites its progress, PRs, and stats.",
+                confirmLabel: 'Start new workout',
+                cancelLabel: 'Keep workout',
+                destructive: true,
+            });
 
             if (!confirmed) {
                 // Navigate back to dashboard
@@ -96,11 +98,13 @@ export async function startWorkout(workoutType) {
         } else if (!todaysWorkout.completedAt && !todaysWorkout.cancelledAt) {
             // There's an in-progress workout - existing behavior
             const workoutName = todaysWorkout.workoutType || 'Unknown';
-            const confirmed = confirm(
-                `\u26A0\uFE0F You already have a workout in progress: "${workoutName}"\n\n` +
-                    `Starting a new workout will cancel your current workout and you'll lose any unsaved progress.\n\n` +
-                    `Do you want to continue?`
-            );
+            const confirmed = await confirmSheet({
+                title: `Cancel "${workoutName}" and start a new workout?`,
+                message: "Your in-progress workout will be cancelled and you'll lose any unsaved progress.",
+                confirmLabel: 'Start new workout',
+                cancelLabel: 'Keep current workout',
+                destructive: true,
+            });
 
             if (!confirmed) {
                 // Navigate back to dashboard
@@ -671,7 +675,11 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
     // to the user's library.
     document.getElementById('save-as-new-template-btn')?.addEventListener('click', async () => {
         const suggested = `${workoutData.workoutType || 'Workout'} (modified)`;
-        const newName = prompt('Name this new workout:', suggested);
+        const newName = await promptSheet({
+            title: 'Name this new workout',
+            initialValue: suggested,
+            confirmLabel: 'Save workout',
+        });
         if (!newName || !newName.trim()) return;
 
         try {
@@ -977,7 +985,7 @@ export function showMidWorkoutSummary() {
     openModal('workout-completion-modal');
 }
 
-export function saveActiveWorkoutAsTemplate() {
+export async function saveActiveWorkoutAsTemplate() {
     if (!AppState.currentWorkout) {
         showNotification('No active workout', 'warning');
         return;
@@ -998,11 +1006,14 @@ export function saveActiveWorkoutAsTemplate() {
     const canUpdate = snapshot.templateId && !snapshot.templateIsDefault;
 
     if (canUpdate) {
-        // Offer choice: update existing or save new
-        const choice = confirm(
-            `Update the existing "${snapshot.workoutType}" template with your current exercises and weights?\n\n` +
-            `OK = Update existing template\nCancel = Save as a new template`
-        );
+        // Offer choice: update existing or save new. Cancel (or backdrop/Escape)
+        // takes the save-as-new path — same as native confirm's Cancel did.
+        const choice = await confirmSheet({
+            title: `Update "${snapshot.workoutType}"?`,
+            message: 'Replaces its exercises and weights with your current session, or save them as a new workout instead.',
+            confirmLabel: 'Update workout',
+            cancelLabel: 'Save as new',
+        });
         if (choice) {
             updateExistingTemplate(snapshot);
         } else if (window.saveWorkoutAsTemplate) {
@@ -1032,11 +1043,16 @@ export async function cancelWorkout(skipConfirmation = false) {
             .flatMap(ex => ex.sets || [])
             .filter(s => s.completed).length;
 
-        const message = completedSets > 0
-            ? `Cancel workout? You've completed ${completedSets} set${completedSets !== 1 ? 's' : ''} — they'll be saved as a cancelled session.`
-            : 'Cancel this workout?';
-
-        if (!confirm(message)) {
+        const confirmed = await confirmSheet({
+            title: 'Cancel this workout?',
+            message: completedSets > 0
+                ? `You've completed ${completedSets} set${completedSets !== 1 ? 's' : ''} — they'll be saved as a cancelled session.`
+                : '',
+            confirmLabel: 'Cancel workout',
+            cancelLabel: 'Keep going',
+            destructive: true,
+        });
+        if (!confirmed) {
             return; // User chose not to cancel
         }
     }
@@ -1166,7 +1182,7 @@ export function continueInProgressWorkout() {
  */
 export async function editHistoricalWorkout(docIdOrDate) {
     if (!AppState.currentUser) {
-        alert('Sign in to edit workouts');
+        showNotification('Sign in to edit workouts', 'warning');
         return;
     }
 
@@ -1177,12 +1193,12 @@ export async function editHistoricalWorkout(docIdOrDate) {
     const hasActive = !window.editingHistoricalWorkout
         && (AppState.currentWorkout || window.inProgressWorkout);
     if (hasActive) {
-        const ok = confirm(
-            'You have an active workout in progress.\n\n' +
-            'Editing this historical workout will set aside your active session. ' +
-            'You can resume it from the Dashboard afterward.\n\n' +
-            'Continue?'
-        );
+        const ok = await confirmSheet({
+            title: 'Set aside your active workout?',
+            message: 'Editing this workout pauses your active session — resume it from the dashboard when you\'re done.',
+            confirmLabel: 'Edit workout',
+            cancelLabel: 'Not now',
+        });
         if (!ok) return;
     }
 
@@ -1416,10 +1432,13 @@ export async function discardInProgressWorkout() {
         return;
     }
 
-    const confirmDiscard = confirm(
-        `Discard in-progress "${window.inProgressWorkout.workoutType}" workout? ` +
-            `This permanently deletes your progress and can't be undone.`
-    );
+    const confirmDiscard = await confirmSheet({
+        title: `Discard "${window.inProgressWorkout.workoutType}" workout?`,
+        message: "This permanently deletes your progress and can't be undone.",
+        confirmLabel: 'Discard workout',
+        cancelLabel: 'Keep workout',
+        destructive: true,
+    });
 
     if (!confirmDiscard) {
         return;
@@ -1451,7 +1470,7 @@ export async function discardInProgressWorkout() {
         navigateTo('dashboard');
     } catch (error) {
         console.error('Error during discard process:', error);
-        alert("Couldn't discard workout — try again");
+        showNotification("Couldn't discard workout — try again", 'error');
     }
 }
 

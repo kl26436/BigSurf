@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
+import { confirmSheet } from './confirm-sheet.js';
 import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, writeBatch } from '../data/firebase-config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { clearAllWorkoutsCache } from '../data/data-manager.js';
@@ -709,7 +710,12 @@ export async function autoLinkAllOrphans() {
         return;
     }
 
-    if (!window.confirm(`Auto-link ${targets.length} orphan${targets.length !== 1 ? 's' : ''} with ≥85% confidence?`)) return;
+    const confirmed = await confirmSheet({
+        title: `Auto-link ${targets.length} orphan${targets.length !== 1 ? 's' : ''}?`,
+        message: 'Only matches with at least 85% confidence get linked.',
+        confirmLabel: 'Auto-link',
+    });
+    if (!confirmed) return;
 
     for (const t of targets) {
         await linkOrphanToSuggestion(t.name, t.suggestion.id);
@@ -782,7 +788,14 @@ export function dismissUnlinkedEquipment(name) {
 export async function deleteOrphanFromHistory(orphanName) {
     if (!orphanName) return;
     const sessionCount = unlinkedEquipment?.get(orphanName)?.count || 0;
-    if (!confirm(`Delete "${orphanName}" from ${sessionCount} workout session${sessionCount !== 1 ? 's' : ''}?\n\nThis clears the equipment label only — your sets and reps stay intact.`)) {
+    const confirmed = await confirmSheet({
+        title: `Delete "${orphanName}" from ${sessionCount} workout session${sessionCount !== 1 ? 's' : ''}?`,
+        message: 'This clears the equipment label only — your sets and reps stay intact.',
+        confirmLabel: 'Delete label',
+        cancelLabel: 'Keep label',
+        destructive: true,
+    });
+    if (!confirmed) {
         return;
     }
     try {
@@ -3711,7 +3724,14 @@ export async function confirmAssignExercise(exerciseName) {
 }
 
 export async function unassignExercise(equipmentId, exerciseName) {
-    if (!confirm(`Remove "${exerciseName}" from this equipment? Past workouts won't be affected.`)) return;
+    const confirmed = await confirmSheet({
+        title: `Remove "${exerciseName}" from this equipment?`,
+        message: "Past workouts won't be affected.",
+        confirmLabel: 'Remove exercise',
+        cancelLabel: 'Keep exercise',
+        destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
         const userId = AppState.currentUser.uid;
@@ -3765,7 +3785,14 @@ export async function saveEquipmentExerciseVideoFromLib(equipmentId, exerciseNam
 
 export async function deleteEquipmentFromLibrary(equipmentId) {
     const equipment = allEquipment.find(e => e.id === equipmentId);
-    if (!confirm(`Delete "${equipment?.name || 'this equipment'}"? This can't be undone.`)) return;
+    const confirmed = await confirmSheet({
+        title: `Delete "${equipment?.name || 'this equipment'}"?`,
+        message: "This can't be undone.",
+        confirmLabel: 'Delete equipment',
+        cancelLabel: 'Keep equipment',
+        destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
         await getManager().deleteEquipment(equipmentId);

@@ -72,6 +72,7 @@ js/
     │   ├── navigation.js           # Bottom nav, routing
     │   ├── settings-ui.js          # Settings page, onboarding flow
     │   ├── stats-ui.js             # Stats page
+    │   ├── confirm-sheet.js        # confirmSheet()/promptSheet() — promise-based replacement for native confirm/prompt
     │   ├── equipment-picker.js     # Equipment picker render helper (categorized: For exercise / At gym / Other)
     │   ├── template-selection.js   # Workouts page — unified library + inline editor (Phases 1-7)
     │   ├── ui-helpers.js           # Notifications, conversions, modal helpers
@@ -459,7 +460,8 @@ CTAs and confirm dialogs name the action, not the question.
 
 - **Question names the action and target.** `Delete workout from April 12?` not `Are you sure?`
 - **Consequence on a second line, conversational.** `This can't be undone.` not `This action cannot be undone.`
-- **Buttons name the actions.** `Delete workout` / `Keep workout`, not `OK` / `Cancel`. (Until in-app modals replace native `confirm()`, write the question so the OK action is obvious.)
+- **Buttons name the actions.** `Delete workout` / `Keep workout`, not `OK` / `Cancel`.
+- **Use the in-app primitive, never native dialogs.** `confirmSheet()` / `promptSheet()` from [confirm-sheet.js](js/core/ui/confirm-sheet.js) — promise-based bottom sheets rendered as top-layer `<dialog>`s (they stack above any open modal). `confirmLabel` is required and must name the action; pass `destructive: true` for delete/discard. Native `confirm()`/`alert()`/`prompt()` were fully migrated in 2026-07 — don't reintroduce them (`alert` → `showNotification`).
 - **Tell the truth about consequences.** Don't say `All progress will be lost` if the data is preserved.
 
 ### 7. Empty states

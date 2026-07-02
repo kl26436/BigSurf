@@ -31,6 +31,7 @@
 @import url('components/library-tabs.css');
 @import url('components/gym-card.css');
 @import url('components/quick-add-sheet.css');
+@import url('components/confirm-sheet.css');
 
 /* 4. Page-specific layouts */
 @import url('pages/app-shell.css');

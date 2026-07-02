@@ -1,0 +1,34 @@
+/* ============================================================================
+   CONFIRM / PROMPT SHEET — <dialog> wrapper around the aw-sheet chrome
+   Rendered by js/core/ui/confirm-sheet.js via showModal(), so it lives in the
+   browser top layer and stacks above any open modal. These rules only reset
+   the <dialog> UA styles and add the message/input rows; the sheet chrome
+   (handle, header, actions) comes from the aw-sheet classes.
+   ============================================================================ */
+
+dialog.confirm-sheet {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border: none;
+    padding: 0;
+    /* aw-sheet supplies background/position/radius; the UA sets inset:0 with
+       margin:auto — pin it back to the bottom edge. */
+    top: auto;
+    color: inherit;
+}
+
+dialog.confirm-sheet::backdrop {
+    background: var(--overlay-heavy);
+}
+
+.confirm-sheet__message {
+    padding: 0 16px 12px;
+    font-size: var(--font-base);
+    color: var(--text-main);
+    line-height: 1.5;
+}
+
+.confirm-sheet__input-wrap {
+    padding: 0 16px 12px;
+}

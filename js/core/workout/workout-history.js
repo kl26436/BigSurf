@@ -4,6 +4,7 @@ import { getDateString } from '../utils/date-helpers.js';
 import { getExerciseName, formatStatus, formatCategory, CATEGORY_LABELS } from '../utils/workout-helpers.js';
 import { debugLog, CATEGORY_ICONS } from '../utils/config.js';
 import { classifyBodyPart } from '../features/metrics/aggregators.js';
+import { confirmSheet } from '../ui/confirm-sheet.js';
 
 export function getWorkoutHistory(appState) {
     const currentHistory = [];
@@ -1439,9 +1440,13 @@ export function getWorkoutHistory(appState) {
             const workout = this.currentHistory.find((w) => w.id === workoutId);
             if (!workout) return;
 
-            const confirmDelete = confirm(
-                `Delete workout "${resolveWorkoutDisplayName(workout)}" from ${new Date(workout.date).toLocaleDateString()}?\n\nThis can't be undone.`
-            );
+            const confirmDelete = await confirmSheet({
+                title: `Delete "${resolveWorkoutDisplayName(workout)}" from ${new Date(workout.date).toLocaleDateString()}?`,
+                message: "This can't be undone.",
+                confirmLabel: 'Delete workout',
+                cancelLabel: 'Keep workout',
+                destructive: true,
+            });
             if (!confirmDelete) return;
 
             try {
@@ -1481,7 +1486,7 @@ export function getWorkoutHistory(appState) {
                 window.startWorkout(workoutName);
             } else {
                 console.error('❌ startWorkout function not available');
-                alert("Couldn't start workout — refresh the page");
+                showNotification("Couldn't start workout — refresh the page", 'error');
             }
         },
 
@@ -1569,7 +1574,14 @@ window.deleteWorkoutById = async function (docId) {
 
     const displayDate = workout?.date ? new Date(workout.date + 'T12:00:00').toLocaleDateString() : 'this date';
 
-    if (confirm(`Delete workout from ${displayDate}? This can't be undone.`)) {
+    const confirmDelete = await confirmSheet({
+        title: `Delete workout from ${displayDate}?`,
+        message: "This can't be undone.",
+        confirmLabel: 'Delete workout',
+        cancelLabel: 'Keep workout',
+        destructive: true,
+    });
+    if (confirmDelete) {
         try {
             debugLog(`🗑️ Deleting workout: ${docId}`);
             const { deleteDoc, doc, db } = await import('../data/firebase-config.js');

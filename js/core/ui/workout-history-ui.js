@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { confirmSheet } from './confirm-sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { formatStatus } from '../utils/workout-helpers.js';
 
@@ -106,7 +107,7 @@ export function resumeWorkoutById(docId) {
     resumeWorkout(docId);
 }
 
-export function resumeWorkout(workoutId) {
+export async function resumeWorkout(workoutId) {
     if (!window.workoutHistory) return;
 
     const workout = window.workoutHistory.getWorkoutDetails(workoutId);
@@ -131,8 +132,12 @@ export function resumeWorkout(workoutId) {
 
     // Confirm and resume
     const workoutDate = workout.rawData?.date || workoutId;
-    const confirmMessage = `Resume "${workoutName}" from ${new Date(workoutDate + 'T12:00:00').toLocaleDateString()}?`;
-    if (confirm(confirmMessage)) {
+    const ok = await confirmSheet({
+        title: `Resume "${workoutName}" from ${new Date(workoutDate + 'T12:00:00').toLocaleDateString()}?`,
+        confirmLabel: 'Resume workout',
+        cancelLabel: 'Not now',
+    });
+    if (ok) {
         // Close the modal first
         if (window.workoutHistory) {
             window.workoutHistory.closeWorkoutDetailModal();
@@ -144,7 +149,7 @@ export function resumeWorkout(workoutId) {
                 window.continueInProgressWorkout();
             } else {
                 console.error('❌ continueInProgressWorkout function not available');
-                alert("Couldn't resume workout — refresh the page");
+                showNotification("Couldn't resume workout — refresh the page", 'error');
             }
         } else {
             // For older workouts, load the workout data and continue it
@@ -155,7 +160,7 @@ export function resumeWorkout(workoutId) {
                     window.continueInProgressWorkout();
                 } else {
                     console.error('❌ continueInProgressWorkout function not available');
-                    alert("Couldn't resume workout — refresh the page");
+                    showNotification("Couldn't resume workout — refresh the page", 'error');
                 }
             } else {
                 showNotification("Couldn't load workout data", 'error');
@@ -164,7 +169,7 @@ export function resumeWorkout(workoutId) {
     }
 }
 
-export function repeatWorkout(workoutId) {
+export async function repeatWorkout(workoutId) {
     if (!window.workoutHistory) return;
 
     const workout = window.workoutHistory.getWorkoutDetails(workoutId);
@@ -176,8 +181,12 @@ export function repeatWorkout(workoutId) {
     // Get workout name from formatted object or rawData
     const workoutName = workout.name || workout.rawData?.workoutType || 'Workout';
 
-    const confirmMessage = `Start a new workout based on "${workoutName}"?`;
-    if (confirm(confirmMessage)) {
+    const ok = await confirmSheet({
+        title: `Start a new workout based on "${workoutName}"?`,
+        confirmLabel: 'Start workout',
+        cancelLabel: 'Not now',
+    });
+    if (ok) {
         // Close the modal first
         if (window.workoutHistory) {
             window.workoutHistory.closeWorkoutDetailModal();
@@ -188,7 +197,7 @@ export function repeatWorkout(workoutId) {
             window.startWorkout(workoutName);
         } else {
             console.error('❌ startWorkout function not available');
-            alert("Couldn't start workout — refresh the page");
+            showNotification("Couldn't start workout — refresh the page", 'error');
         }
     }
 }
@@ -208,7 +217,7 @@ export function deleteWorkout(workoutId) {
         window.deleteWorkoutFromCalendar(workoutId);
     } else {
         console.error('❌ Delete workout function not available');
-        alert("Couldn't delete workout — refresh the page");
+        showNotification("Couldn't delete workout — refresh the page", 'error');
     }
 }
 
@@ -234,7 +243,7 @@ export function retryWorkout(workoutId) {
         window.startWorkout(workoutName);
     } else {
         console.error('❌ startWorkout function not available');
-        alert("Couldn't retry workout — refresh the page");
+        showNotification("Couldn't retry workout — refresh the page", 'error');
     }
 }
 

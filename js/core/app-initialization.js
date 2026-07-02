@@ -16,6 +16,7 @@ import { GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/fi
 import { AppState } from './utils/app-state.js';
 import { debugLog } from './utils/config.js';
 import { showNotification, setTodayDisplay, initModalScrollLock, openModal, closeModal, escapeHtml } from './ui/ui-helpers.js';
+import { confirmSheet } from './ui/confirm-sheet.js';
 import { loadWorkoutPlans } from './data/data-manager.js'; // ADD loadWorkoutData here
 import { getExerciseLibrary } from './data/exercise-library.js';
 import { getWorkoutHistory } from './workout/workout-history.js';
@@ -954,10 +955,15 @@ function showInProgressWorkoutPrompt(workoutData) {
         // Fallback to old confirm dialog if card elements not found
         console.warn('Resume card elements not found, using fallback confirm dialog');
         const workoutDate = new Date(workoutData.date).toLocaleDateString();
-        const message = `You have an in-progress "${workoutData.workoutType}" workout from ${workoutDate}.\n\nWould you like to continue where you left off?`;
 
-        setTimeout(() => {
-            if (confirm(message)) {
+        setTimeout(async () => {
+            const resume = await confirmSheet({
+                title: `Continue "${workoutData.workoutType}" from ${workoutDate}?`,
+                message: 'Pick up where you left off, or discard it.',
+                confirmLabel: 'Continue workout',
+                cancelLabel: 'Discard workout',
+            });
+            if (resume) {
                 import('./workout/workout-core.js').then((module) => {
                     module.continueInProgressWorkout();
                 });

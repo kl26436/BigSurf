@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification } from '../ui/ui-helpers.js';
+import { confirmSheet } from '../ui/confirm-sheet.js';
 import { formatRelativeDate } from '../utils/date-helpers.js';
 import {
     uploadDexaPdf,
@@ -759,8 +760,15 @@ export async function showDexaDetail(scanId) {
     // Overflow menu handler
     const overflowBtn = document.getElementById('dexa-detail-overflow');
     if (overflowBtn) {
-        overflowBtn.onclick = () => {
-            if (confirm('Delete this scan?')) {
+        overflowBtn.onclick = async () => {
+            const confirmed = await confirmSheet({
+                title: 'Delete this scan?',
+                message: "This can't be undone.",
+                confirmLabel: 'Delete scan',
+                cancelLabel: 'Keep scan',
+                destructive: true,
+            });
+            if (confirmed) {
                 deleteDexaEntry(scan.id);
             }
         };

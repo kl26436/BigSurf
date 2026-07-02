@@ -4,6 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { Config, APP_VERSION } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr, formatHeight, parseHeightToCm } from './ui-helpers.js';
+import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { navigateTo } from './navigation.js';
 import { db, doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from '../data/firebase-config.js';
 import { exportWorkoutData } from '../data/data-manager.js';
@@ -567,11 +568,16 @@ export function onboardingSkipWeightGoal() {
 }
 
 /** Prompt-based editor for Target weight (in the user's unit). */
-export function editBodyWeightGoal() {
+export async function editBodyWeightGoal() {
     const s = AppState.settings || DEFAULT_SETTINGS;
     const unitLabel = s.weightUnit === 'kg' ? 'kg' : 'lb';
     const current = s.bodyWeightGoal != null ? String(s.bodyWeightGoal) : '';
-    const next = prompt(`Target weight in ${unitLabel} (blank to clear):`, current);
+    const next = await promptSheet({
+        title: `Target weight in ${unitLabel}`,
+        message: 'Leave blank to clear your goal.',
+        initialValue: current,
+        confirmLabel: 'Save',
+    });
     if (next == null) return;
     if (next.trim() === '') {
         updateSetting('bodyWeightGoal', null);
@@ -731,25 +737,31 @@ function formatBirthday(iso) {
 }
 
 /** Prompt-based editors for each profile field. */
-export function editProfileName() {
+export async function editProfileName() {
     const s = AppState.settings || DEFAULT_SETTINGS;
     const current = s.profileName || AppState.currentUser?.displayName || '';
-    const next = prompt('Display name:', current);
+    const next = await promptSheet({
+        title: 'Display name',
+        initialValue: current,
+        confirmLabel: 'Save',
+    });
     if (next != null) {
         updateSetting('profileName', next.trim() || null);
         renderProfileDetail();
     }
 }
-export function editProfileHeight() {
+export async function editProfileHeight() {
     const s = AppState.settings || DEFAULT_SETTINGS;
     const usesImperial = s.weightUnit === 'lbs';
     const current = s.profileHeightCm != null
         ? (usesImperial ? formatHeight(s.profileHeightCm, 'lbs') : String(Math.round(s.profileHeightCm)))
         : '';
-    const promptLabel = usesImperial
-        ? 'Height (e.g. 5\'10" or 70in):'
-        : 'Height in cm:';
-    const next = prompt(promptLabel, current);
+    const next = await promptSheet({
+        title: 'Height',
+        message: usesImperial ? 'Use a format like 5\'10" or 70in.' : 'Enter a number in cm.',
+        initialValue: current,
+        confirmLabel: 'Save',
+    });
     if (next == null) return;
     if (next.trim() === '') {
         updateSetting('profileHeightCm', null);
@@ -766,10 +778,16 @@ export function editProfileHeight() {
     updateSetting('profileHeightCm', cm);
     renderProfileDetail();
 }
-export function editProfileBirthday() {
+export async function editProfileBirthday() {
     const s = AppState.settings || DEFAULT_SETTINGS;
     const current = s.profileBirthday || '';
-    const next = prompt('Birthday (YYYY-MM-DD):', current);
+    const next = await promptSheet({
+        title: 'Birthday',
+        message: 'Use YYYY-MM-DD format.',
+        placeholder: 'YYYY-MM-DD',
+        initialValue: current,
+        confirmLabel: 'Save',
+    });
     if (next != null) {
         const cleaned = next.trim();
         if (cleaned === '' || /^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
@@ -879,15 +897,21 @@ const USER_PREFERENCE_DOCS = ['settings', 'favorites'];
  * they land on the auth screen with a clean slate.
  */
 export async function confirmDeleteAllData() {
-    const first = window.confirm(
-        'Delete ALL your data?\n\n' +
-        'This permanently removes every workout, template, equipment entry, ' +
-        'location, measurement, DEXA scan, coach conversation, and preference. ' +
-        "This can't be undone.\n\nContinue?"
-    );
+    const first = await confirmSheet({
+        title: 'Delete all your data?',
+        message: 'Permanently removes all your workouts, equipment, locations, ' +
+            "measurements, DEXA scans, coach conversations, and settings. This can't be undone.",
+        confirmLabel: 'Delete everything',
+        cancelLabel: 'Keep my data',
+        destructive: true,
+    });
     if (!first) return;
 
-    const typed = window.prompt('Type DELETE in all caps to confirm:');
+    const typed = await promptSheet({
+        title: 'Type DELETE in all caps to confirm',
+        placeholder: 'DELETE',
+        confirmLabel: 'Delete all data',
+    });
     if (typed !== 'DELETE') {
         showNotification('Deletion cancelled', 'info', 2000);
         return;

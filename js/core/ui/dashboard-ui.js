@@ -3,6 +3,7 @@
 
 import { StatsTracker } from '../features/stats-tracker.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr, convertWeight } from './ui-helpers.js';
+import { confirmSheet } from './confirm-sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
@@ -1065,8 +1066,15 @@ export function resumeActiveWorkout() {
     }
 }
 
-export function confirmCancelActiveWorkout() {
-    if (!confirm('Cancel this workout? Logged sets will be saved as an incomplete entry.')) return;
+export async function confirmCancelActiveWorkout() {
+    const confirmed = await confirmSheet({
+        title: 'Cancel this workout?',
+        message: 'Logged sets are saved as an incomplete entry.',
+        confirmLabel: 'Cancel workout',
+        cancelLabel: 'Keep going',
+        destructive: true,
+    });
+    if (!confirmed) return;
     stopPillTimer();
     document.getElementById('active-workout-pill')?.remove();
     // Pass true so cancelWorkout() doesn't show a second confirm dialog —

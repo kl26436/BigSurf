@@ -2,6 +2,7 @@
 import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
+import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
 import { saveWorkoutData } from '../data/data-manager.js';
 import { normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
 import { getSessionLocation, detectLocation } from '../features/location-service.js';
@@ -54,9 +55,12 @@ export async function saveWorkoutAsTemplate(workoutData) {
     }
 
     const defaultName = workoutData.workoutType || '';
-    const name = (typeof prompt === 'function')
-        ? prompt('Save as workout — name:', defaultName)
-        : defaultName;
+    const name = await promptSheet({
+        title: 'Name this workout',
+        placeholder: 'Workout name',
+        initialValue: defaultName,
+        confirmLabel: 'Save workout',
+    });
     if (!name || !name.trim()) return;
 
     const toSave = {
@@ -88,7 +92,11 @@ export async function saveWorkoutAsTemplate(workoutData) {
  * showTemplateEditor flow.
  */
 export async function createNewTemplate() {
-    const name = (typeof prompt === 'function') ? prompt('New workout name:', '') : '';
+    const name = await promptSheet({
+        title: 'Name your new workout',
+        placeholder: 'e.g. Upper body',
+        confirmLabel: 'Create workout',
+    });
     if (!name || !name.trim()) return;
 
     const toSave = {
@@ -139,7 +147,7 @@ export async function editTemplate(templateId, isDefault = false) {
 export async function deleteTemplate(templateId, isDefault = false) {
     if (!workoutManager) {
         console.error('❌ Workout manager not initialized');
-        alert("Can't perform action — system not ready");
+        showNotification("Can't delete right now — try again in a moment", 'error');
         return;
     }
 
@@ -155,9 +163,15 @@ export async function deleteTemplate(templateId, isDefault = false) {
         }
     }
 
-    const message = "Delete this workout? This can't be undone.";
+    const confirmed = await confirmSheet({
+        title: 'Delete this workout?',
+        message: "This can't be undone.",
+        confirmLabel: 'Delete workout',
+        cancelLabel: 'Keep workout',
+        destructive: true,
+    });
 
-    if (confirm(message)) {
+    if (confirmed) {
         try {
             if (isDefault) {
                 // Create a "hidden" marker for this default template
@@ -178,7 +192,7 @@ export async function deleteTemplate(templateId, isDefault = false) {
             AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
         } catch (error) {
             console.error(`❌ Error deleting template:`, error);
-            alert(`Couldn't delete workout — try again`);
+            showNotification("Couldn't delete workout — try again", 'error');
         }
     }
 }
@@ -186,11 +200,19 @@ export async function deleteTemplate(templateId, isDefault = false) {
 export async function resetToDefault(defaultTemplateId) {
     if (!workoutManager) {
         console.error('❌ Workout manager not initialized');
-        alert("Can't reset — system not ready");
+        showNotification("Can't reset right now — try again in a moment", 'error');
         return;
     }
 
-    if (confirm('Reset this workout to default? Your changes will be lost.')) {
+    const confirmed = await confirmSheet({
+        title: 'Reset this workout to default?',
+        message: 'Your changes will be lost.',
+        confirmLabel: 'Reset workout',
+        cancelLabel: 'Keep changes',
+        destructive: true,
+    });
+
+    if (confirmed) {
         try {
             // Find and delete the override/hidden marker
             const templates = await workoutManager.getUserWorkoutTemplates();
@@ -204,7 +226,7 @@ export async function resetToDefault(defaultTemplateId) {
             }
         } catch (error) {
             console.error('❌ Error resetting template:', error);
-            alert("Couldn't reset workout — try again");
+            showNotification("Couldn't reset workout — try again", 'error');
         }
     }
 }
@@ -994,11 +1016,11 @@ export async function createNewExercise(event) {
     }
 }
 
-export function returnToWorkoutsFromManagement(appState) {
+export async function returnToWorkoutsFromManagement(appState) {
     // Phase 9: workout-management-section is gone, so there is no "management
     // UI" to hide. Just navigate to the selector.
     const hasActiveCustomTemplate = checkForActiveCustomTemplate(appState);
-    showWorkoutSelectorSafe(appState, hasActiveCustomTemplate);
+    await showWorkoutSelectorSafe(appState, hasActiveCustomTemplate);
 }
 
 // Helper function to detect active custom templates
@@ -1014,15 +1036,18 @@ function checkForActiveCustomTemplate(appState) {
 }
 
 // Safe wrapper for showWorkoutSelector that respects navigation context
-function showWorkoutSelectorSafe(appState, fromNavigation = false) {
+async function showWorkoutSelectorSafe(appState, fromNavigation = false) {
     // Only show warning popup if NOT from navigation and has real progress
     const shouldShowWarning =
         !fromNavigation && appState.hasWorkoutProgress() && appState.currentWorkout && appState.savedData.workoutType;
 
     if (shouldShowWarning) {
-        const confirmChange = confirm(
-            'You have progress on your current workout. Changing will save your progress but return you to workout selection. Continue?'
-        );
+        const confirmChange = await confirmSheet({
+            title: 'Leave your current workout?',
+            message: "Your progress is saved — you can pick it back up anytime.",
+            confirmLabel: 'Go to workouts',
+            cancelLabel: 'Stay here',
+        });
         if (!confirmChange) {
             // User chose to stay — bail out without changing pages.
             return;

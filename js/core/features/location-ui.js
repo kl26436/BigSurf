@@ -2,6 +2,7 @@
 // Handles location management UI - uses Firebase locations
 
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
+import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
 import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { getSessionLocation, setSessionLocation, getCurrentPosition, findNearbyLocation } from './location-service.js';
@@ -961,7 +962,12 @@ export async function editLocationName(locationId) {
     const location = cachedLocations.find((loc) => loc.id === locationId);
     if (!location) return;
 
-    const newName = prompt(`Rename "${location.name}" to:`, location.name);
+    const newName = await promptSheet({
+        title: `Rename "${location.name}"`,
+        placeholder: 'Location name',
+        initialValue: location.name,
+        confirmLabel: 'Rename',
+    });
 
     if (!newName || newName.trim() === '' || newName.trim() === location.name) {
         return;
@@ -1009,7 +1015,14 @@ export async function deleteLocation(locationId) {
         return;
     }
 
-    if (!confirm(`Delete "${location.name}"? This won't affect your workout history.`)) {
+    const confirmed = await confirmSheet({
+        title: `Delete "${location.name}"?`,
+        message: "This won't affect your workout history.",
+        confirmLabel: 'Delete location',
+        cancelLabel: 'Keep location',
+        destructive: true,
+    });
+    if (!confirmed) {
         return;
     }
 

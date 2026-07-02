@@ -30,6 +30,7 @@ import { CATEGORY_COLORS } from '../utils/config.js';
 import { haptic } from '../utils/haptics.js';
 import { getWorkoutCategory } from '../ui/template-selection.js';
 import { getSetTotalWeight } from '../utils/weight-calculations.js';
+import { confirmSheet } from '../ui/confirm-sheet.js';
 
 // ===================================================================
 // BODYWEIGHT EXERCISE DETECTION
@@ -233,10 +234,10 @@ function initSwipeToDelete(card, exerciseIndex) {
     const deleteAction = document.createElement('div');
     deleteAction.className = 'exercise-swipe-delete';
     deleteAction.innerHTML = '<i class="fas fa-trash-alt"></i>';
+    // Note: deleteExerciseFromWorkout shows its own confirm sheet, so no
+    // confirm here — the old double confirm() was redundant.
     deleteAction.addEventListener('click', () => {
-        if (confirm('Remove this exercise?')) {
-            deleteExerciseFromWorkout(exerciseIndex);
-        }
+        deleteExerciseFromWorkout(exerciseIndex);
     });
     card.style.position = 'relative';
     card.style.overflow = 'hidden';
@@ -2093,13 +2094,19 @@ export function markExerciseComplete(exerciseIndex) {
     if (window.updateWorkoutProgress) window.updateWorkoutProgress();
 }
 
-export function deleteExerciseFromWorkout(exerciseIndex) {
+export async function deleteExerciseFromWorkout(exerciseIndex) {
     if (!AppState.currentWorkout) return;
 
     const exerciseName = AppState.currentWorkout.exercises[exerciseIndex].machine;
 
-    // Show confirmation dialog
-    if (!confirm(`Remove ${exerciseName} from workout?`)) {
+    // Show confirmation sheet
+    const ok = await confirmSheet({
+        title: `Remove ${exerciseName} from workout?`,
+        confirmLabel: 'Remove exercise',
+        cancelLabel: 'Keep exercise',
+        destructive: true,
+    });
+    if (!ok) {
         return; // User cancelled
     }
 
@@ -2150,7 +2157,7 @@ export function addExerciseToActiveWorkout() {
     }
 
     if (!AppState.currentUser) {
-        alert('Sign in to add exercises');
+        showNotification('Sign in to add exercises', 'warning');
         return;
     }
 

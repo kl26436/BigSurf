@@ -15,6 +15,7 @@ import { loadWorkoutById, updateHistoricalWorkout } from '../data/data-manager.j
 import { displayWeight, escapeHtml, escapeAttr, showNotification } from '../ui/ui-helpers.js';
 import { getCategoryIcon } from '../utils/config.js';
 import { openSharedAddExerciseSheet, openSharedEquipmentSheet } from './active-workout-ui.js';
+import { confirmSheet } from '../ui/confirm-sheet.js';
 
 // ---------------------------------------------------------------------------
 // Module state
@@ -129,13 +130,18 @@ export async function saveHistoricalEdits() {
     showNotification('Changes saved', 'success');
 }
 
-export function discardHistoricalEdits() {
+export async function discardHistoricalEdits() {
     if (!editState) return;
 
     const n = dirtyCount();
     if (n > 0) {
-        const ok = confirm(`Discard ${n} unsaved ${n === 1 ? 'change' : 'changes'}?`);
-        if (!ok) return;
+        const ok = await confirmSheet({
+            title: `Discard ${n} unsaved ${n === 1 ? 'change' : 'changes'}?`,
+            confirmLabel: 'Discard changes',
+            cancelLabel: 'Keep editing',
+            destructive: true,
+        });
+        if (!ok || !editState) return;
     }
 
     const docId = editState.docId;
@@ -162,19 +168,37 @@ export function discardHistoricalEdits() {
 
 // Used by the section's back button (window.closeWorkoutDetailModal in main.js)
 // to avoid silent loss of unsaved edits. Returns true if the caller should
-// proceed with closing, false if the user cancelled the discard.
+// proceed with closing immediately. main.js reads the return value
+// synchronously, so with the async confirm sheet we can't block for an
+// answer: when edits are dirty this returns false right away, shows the
+// sheet, and on "Discard changes" clears edit state and re-invokes
+// window.closeWorkoutDetailModal() — which then finds edit mode off and
+// completes the close. Net behavior matches the old blocking confirm().
 export function requestExitEditMode() {
     if (!editState) return true;
     const n = dirtyCount();
-    if (n > 0) {
-        const ok = confirm(`Discard ${n} unsaved ${n === 1 ? 'change' : 'changes'}?`);
-        if (!ok) return false;
+    if (n === 0) {
+        clearEditState();
+        return true;
     }
+    confirmSheet({
+        title: `Discard ${n} unsaved ${n === 1 ? 'change' : 'changes'}?`,
+        confirmLabel: 'Discard changes',
+        cancelLabel: 'Keep editing',
+        destructive: true,
+    }).then((ok) => {
+        if (!ok || !editState) return;
+        clearEditState();
+        window.closeWorkoutDetailModal?.();
+    });
+    return false;
+}
+
+function clearEditState() {
     editState = null;
     originalState = null;
     editingSet = null;
     clearPendingUndo();
-    return true;
 }
 
 export function isInEditMode() {
@@ -595,12 +619,17 @@ export function wehAddSet(exKey) {
     }, 0);
 }
 
-export function wehRemoveExercise(exKey) {
+export async function wehRemoveExercise(exKey) {
     if (!editState) return;
     const ex = editState.exercises[exKey];
     if (!ex) return;
-    const ok = confirm(`Remove ${ex.name} from this workout?`);
-    if (!ok) return;
+    const ok = await confirmSheet({
+        title: `Remove ${ex.name} from this workout?`,
+        confirmLabel: 'Remove exercise',
+        cancelLabel: 'Keep exercise',
+        destructive: true,
+    });
+    if (!ok || !editState) return;
     delete editState.exercises[exKey];
     rekeyExercisesContiguous(editState);
     renderEditMode();

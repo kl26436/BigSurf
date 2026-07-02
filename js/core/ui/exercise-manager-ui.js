@@ -3,6 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
+import { confirmSheet } from './confirm-sheet.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { countReassignmentImpact, reassignEquipment } from '../data/data-manager.js';
 import { setBottomNavVisible } from './navigation.js';
@@ -1097,7 +1098,7 @@ export async function saveExercise(event) {
     };
 
     if (!formData.name) {
-        alert('Add an exercise name');
+        showNotification('Add an exercise name', 'warning');
         return;
     }
 
@@ -1147,8 +1148,36 @@ export async function saveExercise(event) {
         }
     } catch (error) {
         console.error('❌ Error saving exercise:', error);
-        alert('Error saving exercise: ' + error.message);
+        showNotification("Couldn't save exercise — try again", 'error');
     }
+}
+
+/** Branch-specific confirm-sheet options for hide / revert / delete. */
+function buildDeleteExerciseConfirm(exercise) {
+    if (exercise.isDefault && !exercise.isOverride) {
+        return {
+            title: `Hide "${exercise.name}" from your library?`,
+            message: 'You can unhide it later if needed.',
+            confirmLabel: 'Hide exercise',
+            cancelLabel: 'Keep exercise',
+        };
+    }
+    if (exercise.isOverride) {
+        return {
+            title: `Revert "${exercise.name}" to the default version?`,
+            message: 'Your custom changes will be removed.',
+            confirmLabel: 'Revert exercise',
+            cancelLabel: 'Keep changes',
+            destructive: true,
+        };
+    }
+    return {
+        title: `Delete "${exercise.name}" from your library?`,
+        message: "This can't be undone.",
+        confirmLabel: 'Delete exercise',
+        cancelLabel: 'Keep exercise',
+        destructive: true,
+    };
 }
 
 // Delete exercise
@@ -1156,16 +1185,9 @@ export async function deleteExercise(exerciseId) {
     const exercise = allExercises.find((ex) => ex.id === exerciseId);
     if (!exercise) return;
 
-    let confirmMessage;
-    if (exercise.isDefault && !exercise.isOverride) {
-        confirmMessage = `Hide "${exercise.name}" from your library? (You can unhide it later if needed)`;
-    } else if (exercise.isOverride) {
-        confirmMessage = `Revert "${exercise.name}" to default version? (This will remove your custom changes)`;
-    } else if (exercise.isCustom) {
-        confirmMessage = `Permanently delete "${exercise.name}"? This can't be undone.`;
-    }
+    const confirmed = await confirmSheet(buildDeleteExerciseConfirm(exercise));
 
-    if (confirm(confirmMessage)) {
+    if (confirmed) {
         try {
             // Initialize workout manager if needed
             if (!workoutManager) {
@@ -1189,7 +1211,7 @@ export async function deleteExercise(exerciseId) {
             await loadExercises();
         } catch (error) {
             console.error('❌ Error deleting exercise:', error);
-            alert('Error processing request: ' + error.message);
+            showNotification("Couldn't update exercise — try again", 'error');
         }
     }
 }
@@ -1202,18 +1224,9 @@ export async function deleteExerciseFromSection() {
     }
 
     const exercise = currentEditingExercise;
-    let confirmMessage;
-    if (exercise.isDefault && !exercise.isOverride) {
-        confirmMessage = `Hide "${exercise.name}" from your library? (You can unhide it later if needed)`;
-    } else if (exercise.isOverride) {
-        confirmMessage = `Revert "${exercise.name}" to default version? (This will remove your custom changes)`;
-    } else if (exercise.isCustom) {
-        confirmMessage = `Permanently delete "${exercise.name}"? This can't be undone.`;
-    } else {
-        confirmMessage = `Delete "${exercise.name}"?`;
-    }
+    const confirmed = await confirmSheet(buildDeleteExerciseConfirm(exercise));
 
-    if (confirm(confirmMessage)) {
+    if (confirmed) {
         try {
             // Initialize workout manager if needed
             if (!workoutManager) {
@@ -1240,7 +1253,7 @@ export async function deleteExerciseFromSection() {
             closeEditExerciseSection();
         } catch (error) {
             console.error('❌ Error deleting exercise:', error);
-            alert('Error processing request: ' + error.message);
+            showNotification("Couldn't update exercise — try again", 'error');
         }
     }
 }
@@ -1627,7 +1640,13 @@ export async function deleteEquipmentFromEditor() {
     const equipmentId = editingEquipmentData.id;
     const equipmentName = editingEquipmentData.name;
 
-    const confirmed = confirm(`Delete "${equipmentName}"? This can't be undone.`);
+    const confirmed = await confirmSheet({
+        title: `Delete "${equipmentName}"?`,
+        message: "This can't be undone.",
+        confirmLabel: 'Delete equipment',
+        cancelLabel: 'Keep equipment',
+        destructive: true,
+    });
     if (!confirmed) return;
 
     try {

@@ -4,6 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { getCategoryIcon, CATEGORY_COLORS } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
+import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { getEquipmentAtLocation, getExercisesAtLocation, checkTemplateCompatibility, categorizeTemplates } from '../features/equipment-planner.js';
@@ -163,7 +164,7 @@ export function closeTemplateSelection() {
 
 export async function selectTemplate(templateId, isDefault = false) {
     if (!AppState.currentUser) {
-        alert('Sign in to start workouts');
+        showNotification('Sign in to start workouts', 'warning');
         return;
     }
 
@@ -199,7 +200,7 @@ export async function selectTemplate(templateId, isDefault = false) {
         await startWorkout(selectedTemplate.day || selectedTemplate.name || templateId);
     } catch (error) {
         console.error('Error selecting template:', error);
-        alert("Couldn't start workout");
+        showNotification("Couldn't start workout", 'error');
     }
 }
 
@@ -1072,7 +1073,13 @@ export async function removeTemplateExerciseInline(templateId, index) {
 
     const exercises = normalizeExercisesToArray(template.exercises);
     const name = getExerciseName(exercises[index]);
-    if (!confirm(`Remove "${name}" from this workout?`)) return;
+    const ok = await confirmSheet({
+        title: `Remove "${name}" from this workout?`,
+        confirmLabel: 'Remove exercise',
+        cancelLabel: 'Keep exercise',
+        destructive: true,
+    });
+    if (!ok) return;
 
     exercises.splice(index, 1);
     template.exercises = exercises;
@@ -1370,13 +1377,13 @@ export async function useTemplateFromManagement(templateId, isDefault) {
         await selectTemplate(templateId, isDefault);
     } catch (error) {
         console.error('Error in useTemplateFromManagement:', error);
-        alert("Couldn't start workout");
+        showNotification("Couldn't start workout", 'error');
     }
 }
 
 export async function copyTemplateToCustom(templateId) {
     if (!AppState.currentUser) {
-        alert('Sign in to copy workouts');
+        showNotification('Sign in to copy workouts', 'warning');
         return;
     }
 
@@ -1423,17 +1430,24 @@ export async function copyTemplateToCustom(templateId) {
         showNotification(`Duplicated as "${newName}"`, 'success', 1500);
     } catch (error) {
         console.error('Error copying template:', error);
-        alert("Couldn't copy workout");
+        showNotification("Couldn't copy workout", 'error');
     }
 }
 
 export async function deleteCustomTemplate(templateId) {
     if (!AppState.currentUser) {
-        alert('Sign in to delete workouts');
+        showNotification('Sign in to delete workouts', 'warning');
         return;
     }
 
-    if (!confirm("Delete this workout? This can't be undone.")) {
+    const ok = await confirmSheet({
+        title: 'Delete this workout?',
+        message: "This can't be undone.",
+        confirmLabel: 'Delete workout',
+        cancelLabel: 'Keep workout',
+        destructive: true,
+    });
+    if (!ok) {
         return;
     }
 
@@ -1857,7 +1871,7 @@ function createWorkoutCard(workout) {
 
 export async function editTemplate(templateId) {
     if (!AppState.currentUser) {
-        alert('Sign in to edit workouts');
+        showNotification('Sign in to edit workouts', 'warning');
         return;
     }
 
@@ -1881,7 +1895,7 @@ export async function editTemplate(templateId) {
         await openTemplateEditor(template);
     } catch (error) {
         console.error('Error editing template:', error);
-        alert('Error loading template for editing');
+        showNotification("Couldn't open workout for editing", 'error');
     }
 }
 
@@ -2024,7 +2038,7 @@ export async function saveBasicTemplate() {
     const categorySelect = document.getElementById('basic-template-category');
 
     if (!nameInput?.value.trim()) {
-        alert('Add a workout name');
+        showNotification('Add a workout name', 'warning');
         return;
     }
 
@@ -2048,7 +2062,7 @@ export async function saveBasicTemplate() {
         }
     } catch (error) {
         console.error('Error saving template:', error);
-        alert('Error saving template');
+        showNotification("Couldn't save workout", 'error');
     }
 }
 
@@ -2138,16 +2152,16 @@ export function setCurrentTemplateCategory(category) {
 // WINDOW FUNCTION ASSIGNMENTS (for HTML onclick handlers)
 // ===================================================================
 
-window.addExerciseToBasicTemplate = function () {
+window.addExerciseToBasicTemplate = async function () {
     const modal = document.getElementById('basic-template-editor-modal');
     if (!modal || !modal.templateData) return;
 
-    const exerciseName = prompt('Exercise name:');
+    const exerciseName = await promptSheet({ title: 'Add exercise', placeholder: 'Exercise name', confirmLabel: 'Next' });
     if (!exerciseName) return;
 
-    const sets = parseInt(prompt('Number of sets:', '3') || '3');
-    const reps = parseInt(prompt('Number of reps:', '10') || '10');
-    const weight = parseFloat(prompt('Weight (lbs):', '50') || '50');
+    const sets = parseInt(await promptSheet({ title: 'Number of sets', initialValue: '3', confirmLabel: 'Next' }) || '3');
+    const reps = parseInt(await promptSheet({ title: 'Number of reps', initialValue: '10', confirmLabel: 'Next' }) || '10');
+    const weight = parseFloat(await promptSheet({ title: 'Weight (lbs)', initialValue: '50', confirmLabel: 'Add exercise' }) || '50');
 
     modal.templateData.exercises.push({
         name: exerciseName.trim(),
@@ -2159,19 +2173,19 @@ window.addExerciseToBasicTemplate = function () {
     showBasicTemplateEditor(modal.templateData);
 };
 
-window.editBasicExercise = function (index) {
+window.editBasicExercise = async function (index) {
     const modal = document.getElementById('basic-template-editor-modal');
     if (!modal || !modal.templateData || index >= modal.templateData.exercises.length) return;
 
     const exercise = modal.templateData.exercises[index];
 
-    const newName = prompt('Exercise name:', exercise.name);
+    const newName = await promptSheet({ title: 'Exercise name', initialValue: String(exercise.name ?? ''), confirmLabel: 'Next' });
     if (newName === null) return;
-    const newSets = prompt('Number of sets:', exercise.sets);
+    const newSets = await promptSheet({ title: 'Number of sets', initialValue: String(exercise.sets ?? ''), confirmLabel: 'Next' });
     if (newSets === null) return;
-    const newReps = prompt('Number of reps:', exercise.reps);
+    const newReps = await promptSheet({ title: 'Number of reps', initialValue: String(exercise.reps ?? ''), confirmLabel: 'Next' });
     if (newReps === null) return;
-    const newWeight = prompt('Weight (lbs):', exercise.weight);
+    const newWeight = await promptSheet({ title: 'Weight (lbs)', initialValue: String(exercise.weight ?? ''), confirmLabel: 'Save changes' });
     if (newWeight === null) return;
 
     exercise.name = newName.trim() || exercise.name;
@@ -2182,11 +2196,17 @@ window.editBasicExercise = function (index) {
     showBasicTemplateEditor(modal.templateData);
 };
 
-window.removeBasicExercise = function (index) {
+window.removeBasicExercise = async function (index) {
     const modal = document.getElementById('basic-template-editor-modal');
     if (!modal || !modal.templateData) return;
 
-    if (confirm('Remove this exercise from this workout?')) {
+    const ok = await confirmSheet({
+        title: 'Remove this exercise from this workout?',
+        confirmLabel: 'Remove exercise',
+        cancelLabel: 'Keep exercise',
+        destructive: true,
+    });
+    if (ok) {
         modal.templateData.exercises.splice(index, 1);
         showBasicTemplateEditor(modal.templateData);
     }

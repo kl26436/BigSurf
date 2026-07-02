@@ -12,6 +12,7 @@ import { navigateTo } from '../ui/navigation.js';
 import { ensureFreshBodyWeight } from '../features/bodyweight-prompt.js';
 import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from '../utils/push-notification-manager.js';
 import { convertYouTubeUrl } from './exercise-ui.js';
+import { confirmSheet } from '../ui/confirm-sheet.js';
 
 // ===================================================================
 // STATE
@@ -1395,10 +1396,16 @@ export function awCloseMenus() {
     renderAll();
 }
 
-export function awDeleteExercise(idx) {
+export async function awDeleteExercise(idx) {
     const exercises = AppState.currentWorkout.exercises;
     const name = getExerciseName(exercises[idx]);
-    if (!confirm(`Remove ${name} from workout?`)) return;
+    const ok = await confirmSheet({
+        title: `Remove ${name} from workout?`,
+        confirmLabel: 'Remove exercise',
+        cancelLabel: 'Keep exercise',
+        destructive: true,
+    });
+    if (!ok) return;
 
     exercises.splice(idx, 1);
 
@@ -1431,21 +1438,34 @@ export function awReplaceExercise(idx) {
     }
 }
 
-export function awConfirmExit() {
+export async function awConfirmExit() {
     if (AppState.savedData && Object.keys(AppState.savedData.exercises || {}).length > 0) {
         const hasSets = Object.values(AppState.savedData.exercises).some(ex =>
             ex.sets?.some(s => s.completed)
         );
         if (hasSets) {
-            if (!confirm('Leave workout? Your progress is saved and you can resume later.')) return;
+            const ok = await confirmSheet({
+                title: 'Leave workout?',
+                message: 'Your progress is saved — resume anytime from the dashboard.',
+                confirmLabel: 'Leave workout',
+                cancelLabel: 'Keep lifting',
+            });
+            if (!ok) return;
         }
     }
     cleanup();
     navigateTo('dashboard');
 }
 
-export function awCancelWorkout() {
-    if (!confirm('Cancel workout? Logged sets will be saved as a cancelled session.')) return;
+export async function awCancelWorkout() {
+    const ok = await confirmSheet({
+        title: 'Cancel this workout?',
+        message: 'Logged sets will be saved as a cancelled session.',
+        confirmLabel: 'Cancel workout',
+        cancelLabel: 'Keep lifting',
+        destructive: true,
+    });
+    if (!ok) return;
     // Delegate to the canonical cancelWorkout() so AppState.reset() runs and
     // the dashboard doesn't still think a workout is active. Skip its inner
     // confirm since we just showed one.
@@ -1465,7 +1485,12 @@ export async function awFinishWorkout() {
     });
 
     if (incompleteSets > 0) {
-        if (!confirm(`Finish anyway? ${incompleteSets} set${incompleteSets > 1 ? 's are' : ' is'} incomplete.`)) return;
+        const ok = await confirmSheet({
+            title: `Finish workout with ${incompleteSets} incomplete set${incompleteSets > 1 ? 's' : ''}?`,
+            confirmLabel: 'Finish workout',
+            cancelLabel: 'Keep lifting',
+        });
+        if (!ok) return;
     }
 
     cleanup();

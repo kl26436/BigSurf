@@ -9,6 +9,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
+import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 
 // ===================================================================
@@ -505,21 +506,31 @@ export function removeManualSet(exIndex, setIndex) {
     renderManualExercises();
 }
 
-export function removeManualExercise(exIndex) {
-    if (confirm('Remove this exercise?')) {
+export async function removeManualExercise(exIndex) {
+    const confirmed = await confirmSheet({
+        title: 'Remove this exercise?',
+        confirmLabel: 'Remove exercise',
+        cancelLabel: 'Keep exercise',
+        destructive: true,
+    });
+    if (confirmed) {
         manualWorkoutState.exercises.splice(exIndex, 1);
         renderManualExercises();
     }
 }
 
 // Open exercise picker for custom workouts
-export function openExercisePickerForManual() {
+export async function openExercisePickerForManual() {
     // Use the existing exercise library
     if (window.exerciseLibrary && window.exerciseLibrary.openForManualWorkout) {
         window.exerciseLibrary.openForManualWorkout();
     } else {
-        // Fallback: simple prompt
-        const exerciseName = prompt('Enter exercise name:');
+        // Fallback: simple name prompt
+        const exerciseName = await promptSheet({
+            title: 'Add an exercise',
+            placeholder: 'Exercise name',
+            confirmLabel: 'Add exercise',
+        });
         if (exerciseName && exerciseName.trim()) {
             addExerciseToManualWorkout({
                 name: exerciseName.trim(),
@@ -785,7 +796,13 @@ export async function saveManualWorkout() {
 
         // If custom workout, offer to save as template
         if (manualWorkoutState.isCustom && manualWorkoutState.exercises.length > 0) {
-            if (confirm('Save this as a workout for future use?')) {
+            const saveIt = await confirmSheet({
+                title: 'Save this as a workout for future use?',
+                message: "It'll show up in your workouts list.",
+                confirmLabel: 'Save workout',
+                cancelLabel: 'Not now',
+            });
+            if (saveIt) {
                 await saveAsNewTemplate();
             }
         }
