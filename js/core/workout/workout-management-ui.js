@@ -1040,16 +1040,12 @@ function showWorkoutSelectorSafe(appState, fromNavigation = false) {
 async function navigateToWorkoutSelector(fromNavigation, appState) {
     const workoutSelector = document.getElementById('workout-selector');
     const activeWorkout = document.getElementById('active-workout');
-    const workoutManagement = document.getElementById('workout-management');
     const historySection = document.getElementById('workout-history-section');
-    const templateEditor = document.getElementById('template-editor-section');
 
     // Show/hide appropriate sections
     if (workoutSelector) workoutSelector.classList.remove('hidden');
     if (activeWorkout) activeWorkout.classList.add('hidden');
-    if (workoutManagement) workoutManagement.classList.add('hidden');
     if (historySection) historySection.classList.add('hidden');
-    if (templateEditor) templateEditor.classList.add('hidden');
 
     // Clear timers
     appState.clearTimers();

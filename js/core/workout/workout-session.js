@@ -3,9 +3,8 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml, openModal, closeModal } from '../ui/ui-helpers.js';
-import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, navigateTo, setWorkoutActiveState } from '../ui/navigation.js';
-import { saveWorkoutData, debouncedSaveWorkoutData, clearLastSessionCache, clearAllWorkoutsCache, loadAllWorkouts } from '../data/data-manager.js';
+import { saveWorkoutData, clearLastSessionCache, clearAllWorkoutsCache, loadAllWorkouts } from '../data/data-manager.js';
 import {
     detectLocation,
     setSessionLocation,
@@ -17,7 +16,6 @@ import {
     updateLocationIndicator,
     getCurrentCoords,
 } from '../features/location-service.js';
-import { renderExercises, toggleExerciseExpansion } from './exercise-ui.js';
 import { renderActiveWorkout, loadAutofillForAllExercises } from './active-workout-ui.js';
 import { haptic } from '../utils/haptics.js';
 import { cancelRestNotification } from '../utils/push-notification-manager.js';
@@ -198,13 +196,11 @@ export async function startWorkout(workoutType) {
     // Hide other sections and show active workout
     const workoutSelector = document.getElementById('workout-selector');
     const activeWorkout = document.getElementById('active-workout');
-    const workoutManagementSection = document.getElementById('workout-management-section');
     const exerciseManagerSection = document.getElementById('exercise-manager-section');
     const historySection = document.getElementById('workout-history-section');
     const dashboard = document.getElementById('dashboard');
 
     if (workoutSelector) workoutSelector.classList.add('hidden');
-    if (workoutManagementSection) workoutManagementSection.classList.add('hidden');
     if (exerciseManagerSection) exerciseManagerSection.classList.add('hidden');
     if (historySection) historySection.classList.add('hidden');
     if (dashboard) dashboard.classList.add('hidden');
@@ -718,60 +714,6 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
     });
 }
 
-function showSaveAsTemplatePrompt(workoutData) {
-    const workoutName = escapeHtml(workoutData.workoutType || 'Workout');
-    const canUpdate = workoutData.templateId && !workoutData.templateIsDefault;
-
-    const banner = document.createElement('div');
-    banner.className = 'save-template-banner';
-    banner.innerHTML = `
-        <span>${canUpdate ? `Update workout "${workoutName}"?` : `Save "${workoutName}" as a workout?`}</span>
-        <div class="save-template-actions">
-            ${canUpdate ? `
-                <button class="btn btn-primary btn-small" id="update-template-btn">
-                    <i class="fas fa-sync-alt"></i> Update
-                </button>
-                <button class="btn btn-secondary btn-small" id="save-as-template-btn">
-                    <i class="fas fa-plus"></i> Save new
-                </button>
-            ` : `
-                <button class="btn btn-primary btn-small" id="save-as-template-btn">
-                    <i class="fas fa-bookmark"></i> Save
-                </button>
-            `}
-            <button class="btn-dismiss" id="dismiss-template-banner" aria-label="Dismiss">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-
-    const dashboard = document.getElementById('dashboard');
-    if (dashboard) {
-        dashboard.prepend(banner);
-    }
-
-    document.getElementById('update-template-btn')?.addEventListener('click', () => {
-        banner.remove();
-        updateExistingTemplate(workoutData);
-    });
-
-    document.getElementById('save-as-template-btn')?.addEventListener('click', () => {
-        banner.remove();
-        if (window.saveWorkoutAsTemplate) {
-            window.saveWorkoutAsTemplate(workoutData);
-        }
-    });
-
-    document.getElementById('dismiss-template-banner')?.addEventListener('click', () => {
-        banner.remove();
-    });
-
-    // Auto-dismiss after 15 seconds
-    setTimeout(() => {
-        if (banner.parentNode) banner.remove();
-    }, 15000);
-}
-
 async function updateExistingTemplate(workoutData) {
     if (!workoutData.templateId || !AppState.currentUser) return;
 
@@ -1165,7 +1107,6 @@ export function continueInProgressWorkout() {
         'muscle-group-detail-section',
         'exercise-detail-section',
         'composition-detail-section',
-        'workout-management-section',
         'exercise-manager-section',
         'location-management-section',
     ];
@@ -1369,7 +1310,6 @@ export async function editHistoricalWorkout(docIdOrDate) {
         'muscle-group-detail-section',
         'exercise-detail-section',
         'composition-detail-section',
-        'workout-management-section',
         'exercise-manager-section',
         'location-management-section',
     ];
@@ -1520,14 +1460,12 @@ export async function discardInProgressWorkout() {
 export async function showWorkoutSelector() {
     const workoutSelector = document.getElementById('workout-selector');
     const activeWorkout = document.getElementById('active-workout');
-    const workoutManagement = document.getElementById('workout-management');
     const historySection = document.getElementById('workout-history-section');
 
     // If user has an active workout in progress, show that instead of selector
     if (AppState.currentWorkout && AppState.savedData.workoutType) {
         if (workoutSelector) workoutSelector.classList.add('hidden');
         if (activeWorkout) activeWorkout.classList.remove('hidden');
-        if (workoutManagement) workoutManagement.classList.add('hidden');
         if (historySection) historySection.classList.add('hidden');
 
         // Re-render v2 wizard UI to ensure UI is up to date
@@ -1538,71 +1476,9 @@ export async function showWorkoutSelector() {
     // No active workout - show selector
     if (workoutSelector) workoutSelector.classList.remove('hidden');
     if (activeWorkout) activeWorkout.classList.add('hidden');
-    if (workoutManagement) workoutManagement.classList.add('hidden');
     if (historySection) historySection.classList.add('hidden');
 
     // In-progress workout check removed - dashboard banner handles this now
-}
-
-async function checkForInProgressWorkout() {
-    // Skip if already showing prompt
-    if (window.showingProgressPrompt) return;
-
-    // Skip if user is already in an active workout - they dont need a prompt
-    if (AppState.currentWorkout && AppState.savedData.workoutType) {
-        return;
-    }
-
-    try {
-        const { loadTodaysWorkout } = await import('../data/data-manager.js');
-        const todaysData = await loadTodaysWorkout(AppState);
-
-        // Check if there's an incomplete workout from today
-        if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
-            // Validate workout plan exists
-            const workoutPlan = AppState.workoutPlans.find(
-                (plan) =>
-                    plan.day === todaysData.workoutType ||
-                    plan.name === todaysData.workoutType ||
-                    plan.id === todaysData.workoutType
-            );
-
-            if (!workoutPlan) {
-                console.warn('\u26A0\uFE0F Workout plan not found for:', todaysData.workoutType);
-                return;
-            }
-
-            // Store in-progress workout globally
-            // Use todaysData.originalWorkout if it exists (contains modified exercise list)
-            window.inProgressWorkout = {
-                ...todaysData,
-                originalWorkout: todaysData.originalWorkout || workoutPlan,
-            };
-
-            // Show the prompt
-            showInProgressWorkoutPrompt(todaysData);
-        } else {
-        }
-    } catch (error) {
-        console.error('\u274CError checking for in-progress workout:', error);
-    }
-}
-
-function showInProgressWorkoutPrompt(workoutData) {
-    if (window.showingProgressPrompt) return;
-    window.showingProgressPrompt = true;
-
-    const workoutDate = new Date(workoutData.date).toLocaleDateString();
-    const message = `You have an in-progress "${workoutData.workoutType}" workout from ${workoutDate}.\n\nWould you like to continue where you left off?`;
-
-    setTimeout(() => {
-        if (confirm(message)) {
-            continueInProgressWorkout(); // Already exists in this file
-        } else {
-            discardInProgressWorkout(); // Already exists in this file
-        }
-        window.showingProgressPrompt = false;
-    }, 500);
 }
 
 // ===================================================================

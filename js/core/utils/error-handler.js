@@ -71,7 +71,7 @@ function getAppContext() {
     const sections = [
         'dashboard', 'active-workout', 'workout-selector',
         'muscle-group-detail-section', 'exercise-detail-section', 'composition-detail-section',
-        'workout-history-section', 'workout-management-section', 'exercise-manager-section',
+        'workout-history-section', 'exercise-manager-section',
         'settings-section', 'plate-calculator-section', 'equipment-library-section',
         'location-management-section',
     ];

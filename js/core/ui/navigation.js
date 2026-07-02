@@ -10,7 +10,6 @@ const SECTION_IDS = [
     'active-workout',
     'workout-history-section',
     'workout-detail-section',
-    'workout-management-section',
     'dashboard',
     'metric-detail-section',
     'muscle-group-detail-section',
@@ -198,9 +197,8 @@ function routeToView(view) {
 
         case 'templates':
         case 'workout-management':
-            // Phase 1: route to the unified workout-selector. The legacy
-            // workout-management-section is retired in Phase 9; for now it
-            // stays in the DOM but is unreachable from any nav entry point.
+            // Legacy route names — the workout-management section was removed
+            // in Phase 9; both route to the unified workout-selector.
             showWorkoutSelector();
             break;
 

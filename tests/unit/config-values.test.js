@@ -1,55 +1,10 @@
 // Tests for config module (Phase 0.2)
-// Verifies all config constants exist with correct types and expected values
+// Verifies all config constants exist with correct types and expected values.
+// Imports the real module (config.js is pure — its only window reference is
+// guarded), so constant changes in source can't drift past these tests.
 
 import { describe, it, expect } from 'vitest';
-
-// Re-create the Config object for isolated testing (mirrors js/core/utils/config.js)
-const Config = {
-    DEBUG_MODE: false, // Would be true with ?debug in URL
-    ABANDONED_WORKOUT_TIMEOUT_HOURS: 3,
-    DEFAULT_REST_TIMER_SECONDS: 90,
-    GPS_MATCH_RADIUS_METERS: 500,
-    PR_CUTOFF_DATE: '2025-07-01',
-    EXERCISE_MODAL_HISTORY_COUNT: 5,
-    RECENT_EXERCISES_COUNT: 8,
-    FIREBASE_TIMEOUT_MS: 10000,
-    MAX_STREAK_QUERY_LIMIT: 100,
-};
-
-const CATEGORY_ICONS = {
-    push: 'fa-hand-paper',
-    pull: 'fa-fist-raised',
-    legs: 'fa-walking',
-    leg: 'fa-walking',
-    cardio: 'fa-heartbeat',
-    core: 'fa-bullseye',
-    arms: 'fa-hand-rock',
-    shoulders: 'fa-arrows-alt-v',
-    chest: 'fa-hand-paper',
-    back: 'fa-fist-raised',
-    upper: 'fa-hand-paper',
-    lower: 'fa-walking',
-    'full body': 'fa-child',
-    fullbody: 'fa-child',
-    glutes: 'fa-fire',
-    other: 'fa-dumbbell',
-};
-
-const CATEGORY_COLORS = {
-    Push: '#4A90D9',
-    Pull: '#D94A7A',
-    Legs: '#7B4AD9',
-    Cardio: '#D9A74A',
-    Core: '#4AD9A7',
-    Arms: '#D96A4A',
-    'Full Body': '#4AD9D9',
-    Other: '#1dd3b0',
-};
-
-function getCategoryIcon(category) {
-    const cat = (category || '').toLowerCase();
-    return `fas ${CATEGORY_ICONS[cat] || CATEGORY_ICONS.other}`;
-}
+import { Config, CATEGORY_ICONS, CATEGORY_COLORS, getCategoryIcon } from '../../js/core/utils/config.js';
 
 describe('Config constants', () => {
     it('has correct workout timeout', () => {
@@ -83,6 +38,32 @@ describe('Config constants', () => {
 
     it('has positive recent exercises count', () => {
         expect(Config.RECENT_EXERCISES_COUNT).toBeGreaterThan(0);
+    });
+});
+
+describe('Config training insights constants (Phase 17)', () => {
+    it('has volume landmarks with MEV below MRV', () => {
+        expect(Config.VOLUME_MEV).toBe(8);
+        expect(Config.VOLUME_MRV).toBe(22);
+        expect(Config.VOLUME_MEV).toBeLessThan(Config.VOLUME_MRV);
+    });
+
+    it('has plateau detection threshold', () => {
+        expect(Config.PLATEAU_MIN_SESSIONS).toBe(3);
+    });
+
+    it('has deload detection thresholds', () => {
+        expect(Config.DELOAD_DAYS_PER_WEEK).toBe(5);
+        expect(Config.DELOAD_DAYS_PER_WEEK).toBeLessThanOrEqual(7);
+        expect(Config.DELOAD_CONSECUTIVE_WEEKS).toBe(4);
+    });
+
+    it('has minimum workouts gate for insights', () => {
+        expect(Config.INSIGHTS_MIN_WORKOUTS).toBe(3);
+    });
+
+    it('has AI coach rate limit in hours', () => {
+        expect(Config.COACH_RATE_LIMIT_HOURS).toBe(24);
     });
 });
 
@@ -121,6 +102,12 @@ describe('getCategoryIcon', () => {
     it('handles full body variants', () => {
         expect(getCategoryIcon('full body')).toBe('fas fa-child');
         expect(getCategoryIcon('fullbody')).toBe('fas fa-child');
+    });
+});
+
+describe('CATEGORY_ICONS', () => {
+    it('has a fallback icon', () => {
+        expect(CATEGORY_ICONS.other).toBe('fa-dumbbell');
     });
 });
 

@@ -5,6 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, getDoc, writeBatch } from '../data/firebase-config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
+import { clearAllWorkoutsCache } from '../data/data-manager.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
 import {
     loadEquipmentCatalog,
@@ -516,6 +517,9 @@ export async function linkOrphanToSuggestion(orphanName, equipmentId) {
             }
             await batch.commit();
         }
+        // Rewrote workout docs — downstream loadAllWorkouts consumers (dashboard,
+        // history) must not serve the pre-rewrite cache for the next 5 minutes.
+        if (affected.length > 0) clearAllWorkoutsCache();
 
         // 3. Refresh state
         allEquipment = await getManager().getUserEquipment();
@@ -812,6 +816,7 @@ export async function deleteOrphanFromHistory(orphanName) {
             }
             await batch.commit();
         }
+        if (affected.length > 0) clearAllWorkoutsCache();
 
         if (unlinkedEquipment) unlinkedEquipment.delete(orphanName);
         showNotification(`Removed "${orphanName}" from ${affected.length} workout${affected.length !== 1 ? 's' : ''}`, 'success', 2000);

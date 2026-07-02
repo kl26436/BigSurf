@@ -80,9 +80,6 @@ if (typeof document !== 'undefined') {
     });
 }
 
-// Track if exercises were reordered for template save prompt
-let exercisesReordered = false;
-
 // ===================================================================
 // PUBLIC API — called from window
 // ===================================================================
@@ -1468,13 +1465,7 @@ export async function awFinishWorkout() {
         if (!confirm(`Finish anyway? ${incompleteSets} set${incompleteSets > 1 ? 's are' : ' is'} incomplete.`)) return;
     }
 
-    // Flag reorder so completeWorkout's template detection picks it up
-    if (exercisesReordered) {
-        window._awExercisesReordered = true;
-    }
-
     cleanup();
-    exercisesReordered = false;
 
     // Delegate to existing completeWorkout which handles PRs, saving, summary
     if (window.completeWorkout) {
@@ -2659,9 +2650,6 @@ export function awMoveExercise(fromIdx, direction) {
         if (fromUnit !== undefined) AppState.exerciseUnits[toIdx] = fromUnit;
         else delete AppState.exerciseUnits[toIdx];
     }
-
-    // Track reorder for template save prompt
-    exercisesReordered = true;
 
     // Update current index if needed
     if (currentExerciseIdx === fromIdx) currentExerciseIdx = toIdx;

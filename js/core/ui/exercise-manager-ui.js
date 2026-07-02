@@ -66,7 +66,6 @@ export function openExerciseManager() {
             'muscle-group-detail-section',
             'exercise-detail-section',
             'composition-detail-section',
-            'workout-management-section',
             'location-management-section',
         ];
         sections.forEach((id) => {
@@ -202,19 +201,6 @@ export function handleExerciseSearch() {
         }
 
         filterAndRenderExercises(searchTerm);
-    }
-}
-
-// Toggle search bar in list view
-export function toggleExerciseListSearch() {
-    const searchDiv = document.getElementById('exercise-list-search');
-    const searchInput = document.getElementById('exercise-list-search-input');
-
-    if (searchDiv) {
-        searchDiv.classList.toggle('hidden');
-        if (!searchDiv.classList.contains('hidden') && searchInput) {
-            searchInput.focus();
-        }
     }
 }
 
@@ -439,20 +425,6 @@ function getDeleteButton(exercise) {
     }
 }
 
-// Toggle exercise group visibility
-export function toggleExerciseGroup(groupId) {
-    const group = document.getElementById(groupId);
-    const header = group?.previousElementSibling;
-
-    if (group && header) {
-        group.classList.toggle('collapsed');
-        const icon = header.querySelector('.group-toggle-icon');
-        if (icon) {
-            icon.style.transform = group.classList.contains('collapsed') ? 'rotate(0deg)' : 'rotate(180deg)';
-        }
-    }
-}
-
 // Filter exercises - used by both category view search and list view search
 export function filterExerciseLibrary() {
     // Check list view search input first (used when in list view)
@@ -464,32 +436,6 @@ export function filterExerciseLibrary() {
     const searchTerm = (listSearchInput?.value || categorySearchInput?.value || '').toLowerCase();
 
     filterAndRenderExercises(searchTerm);
-}
-
-// Clear filters
-export function clearExerciseFilters() {
-    const searchInput = document.getElementById('exercise-search-input');
-    const bodyPartFilter = document.getElementById('exercise-body-part-filter');
-    const equipmentFilter = document.getElementById('exercise-equipment-filter');
-
-    if (searchInput) searchInput.value = '';
-    if (bodyPartFilter) bodyPartFilter.value = '';
-    if (equipmentFilter) equipmentFilter.value = '';
-
-    filteredExercises = [...allExercises];
-    renderExercises();
-}
-
-// Refresh exercise library
-export async function refreshExerciseLibrary() {
-    // Initialize workout manager if needed
-    if (!workoutManager) {
-        workoutManager = new FirebaseWorkoutManager(AppState);
-    }
-
-    // Reload from Firebase
-    AppState.exerciseDatabase = await workoutManager.getExerciseLibrary();
-    await loadExercises();
 }
 
 // Show add exercise section (full screen)
@@ -516,17 +462,12 @@ export function openEditExerciseSection(exercise) {
         'muscle-group-detail-section',
         'exercise-detail-section',
         'composition-detail-section',
-        'workout-management-section',
         'exercise-manager-section',
     ];
     sections.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
-
-    // Also hide template editor modal if open (we'll show it again when returning)
-    const templateModal = document.getElementById('template-editor-section');
-    if (templateModal) closeModal(templateModal);
 
     // Resolve title + initial field values (null `exercise` = create mode)
     const isEdit = !!exercise;
@@ -704,20 +645,7 @@ export function closeEditExerciseSection() {
     const section = document.getElementById('edit-exercise-section');
     if (section) section.classList.add('hidden');
 
-    // Check if we were editing from template editor
-    if (window.editingFromTemplateEditor) {
-        // Return to template editor modal (workout-management-section)
-        const workoutManagement = document.getElementById('workout-management-section');
-        if (workoutManagement) workoutManagement.classList.remove('hidden');
-
-        // Show the template editor modal
-        const templateModal = document.getElementById('template-editor-section');
-        if (templateModal) openModal(templateModal);
-
-        // Clear the flags (callback clears these, but do it here too for cancel case)
-        window.editingFromTemplateEditor = false;
-        window.templateExerciseEditCallback = null;
-    } else if (window.editingFromActiveWorkout) {
+    if (window.editingFromActiveWorkout) {
         // Return to active workout - hide exercise manager section first
         const exerciseManager = document.getElementById('exercise-manager-section');
         if (exerciseManager) exerciseManager.classList.add('hidden');
@@ -1404,16 +1332,6 @@ export async function saveExerciseFromSection() {
     if (!formData.name) {
         showNotification('Add an exercise name', 'warning');
         document.getElementById('edit-exercise-name')?.focus();
-        return;
-    }
-
-    // Check if we're editing from template editor - if so, call callback instead of saving to Firebase
-    if (window.editingFromTemplateEditor && typeof window.templateExerciseEditCallback === 'function') {
-        // Call the callback with the form data
-        window.templateExerciseEditCallback(formData);
-
-        // Close section and return to template editor
-        closeEditExerciseSection();
         return;
     }
 

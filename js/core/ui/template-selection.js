@@ -1366,12 +1366,6 @@ export function useTemplate(templateId) {
 
 export async function useTemplateFromManagement(templateId, isDefault) {
     try {
-        // Hide management UI first
-        const workoutManagement = document.getElementById('workout-management-section');
-        if (workoutManagement) {
-            workoutManagement.classList.add('hidden');
-        }
-
         // Start workout with template directly (don't show workout selector)
         await selectTemplate(templateId, isDefault);
     } catch (error) {
