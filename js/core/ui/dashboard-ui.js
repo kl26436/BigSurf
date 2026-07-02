@@ -101,7 +101,7 @@ async function renderDashboard() {
         // weekday, so a mid-week comparison is apples-to-apples (not partial
         // week vs full week). Computed from the already-loaded workouts — no
         // extra query, no cross-module export (prod pins JS for a year).
-        const lastWeekPace = countLastWeekTrainingDaysThroughToday(allWorkouts);
+        const weekPace = computeWeekPace(allWorkouts);
         const weeklyGoal = AppState.settings?.weeklyGoal || 5;
         const streakDays = streaks?.currentStreak || 0;
 
@@ -154,7 +154,7 @@ async function renderDashboard() {
             container.innerHTML = `
                 ${renderGreetingHeader()}
                 ${renderActiveWorkoutPill()}
-                ${renderHeroChipRow(streakDays, weekCount, weeklyGoal, bwData, lastWeekPace, detectDeloadWeek(allWorkouts))}
+                ${renderHeroChipRow(streakDays, weekCount, weeklyGoal, bwData, weekPace, detectDeloadWeek(allWorkouts))}
                 ${showInsight ? renderDashboardInsight(topInsight) : ''}
                 ${renderForToday(allWorkouts)}
                 ${renderTrainingSection(allWorkouts)}
@@ -321,12 +321,14 @@ function stopPillTimer() {
 // HERO CHIP ROW — Streak, Week, Body Weight
 // ===================================================================
 
-// Unique training days LAST week, counted only through the same weekday as
-// today, so "this week vs last week" compares like spans (a partial current
-// week against last week's matching partial). Reads the already-loaded
-// workouts array — no Firestore round-trip, no new cross-module export.
-function countLastWeekTrainingDaysThroughToday(allWorkouts) {
-    if (!Array.isArray(allWorkouts)) return 0;
+// "This week vs last week" pace, comparing like spans: the current partial week
+// against last week THROUGH the same weekday. Returns both a training-day count
+// and total volume for each span so the hero chip can show either — sessions
+// answers "am I hitting my goal?", volume answers "am I actually doing more?".
+// Reads the already-loaded workouts array — no Firestore round-trip.
+function computeWeekPace(allWorkouts) {
+    const empty = { lastWeekDays: 0, thisWeekVol: 0, lastWeekVol: 0 };
+    if (!Array.isArray(allWorkouts)) return empty;
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 = Sunday
     const startOfThisWeek = new Date(today);
@@ -334,16 +336,42 @@ function countLastWeekTrainingDaysThroughToday(allWorkouts) {
     startOfThisWeek.setHours(0, 0, 0, 0);
     const startOfLastWeek = new Date(startOfThisWeek);
     startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
-    const cutoff = new Date(startOfLastWeek);
-    cutoff.setDate(startOfLastWeek.getDate() + dayOfWeek); // same weekday, last week
-    const startStr = getDateString(startOfLastWeek);
-    const endStr = getDateString(cutoff);
-    const days = new Set();
+    const lastCutoff = new Date(startOfLastWeek);
+    lastCutoff.setDate(startOfLastWeek.getDate() + dayOfWeek); // same weekday, last week
+
+    const thisStart = getDateString(startOfThisWeek);
+    const todayStr = getDateString(today);
+    const lastStart = getDateString(startOfLastWeek);
+    const lastEnd = getDateString(lastCutoff);
+
+    let thisWeekVol = 0;
+    let lastWeekVol = 0;
+    const lastDays = new Set();
     for (const w of allWorkouts) {
         if (!w || !w.date || !w.completedAt || w.cancelledAt) continue;
-        if (w.date >= startStr && w.date <= endStr) days.add(w.date);
+        const inThis = w.date >= thisStart && w.date <= todayStr;
+        const inLast = w.date >= lastStart && w.date <= lastEnd;
+        if (!inThis && !inLast) continue;
+        if (inLast) lastDays.add(w.date);
+        let vol = 0;
+        if (w.exercises) {
+            Object.values(w.exercises).forEach(ex => (ex.sets || []).forEach(s => {
+                if (s.reps && s.weight) vol += s.reps * s.weight;
+            }));
+        }
+        if (inThis) thisWeekVol += vol;
+        if (inLast) lastWeekVol += vol;
     }
-    return days.size;
+    return { lastWeekDays: lastDays.size, thisWeekVol, lastWeekVol };
+}
+
+// Flip the "This week" chip between session-pace and volume-pace (persisted).
+export function toggleWeekPaceMode() {
+    const next = AppState.settings?.weekPaceMode === 'volume' ? 'sessions' : 'volume';
+    if (!AppState.settings) AppState.settings = {};
+    AppState.settings.weekPaceMode = next;
+    updateSetting('weekPaceMode', next);
+    showDashboard();
 }
 
 // Conservative, honest deload detection using rolling 7-day windows from today
@@ -380,18 +408,33 @@ function detectDeloadWeek(allWorkouts) {
     return hardWeeks >= NEEDED;
 }
 
-function renderHeroChipRow(streak, weekDone, weekGoal, bwData, weekLastPace = 0, isDeload = false) {
+function renderHeroChipRow(streak, weekDone, weekGoal, bwData, weekPace = {}, isDeload = false) {
     const bwVal = bwData ? Math.round(bwData.latest.displayWeight) : null;
     const bwUnit = bwData ? bwData.unit : '';
     const bwDelta = bwData ? bwData.delta : null;
     const deltaDirClass = getBwDeltaDirectionClass(bwDelta);
 
-    // Only surface a pace delta once there's a prior week to compare against,
-    // so a brand-new user isn't shown "+N vs nothing".
-    const weekDelta = weekLastPace > 0 ? weekDone - weekLastPace : null;
-    const weekPaceHtml = weekDelta
-        ? ` · <span class="hero-chip__wowd hero-chip__wowd--${weekDelta > 0 ? 'up' : 'down'}">${weekDelta > 0 ? '↑' : '↓'}${Math.abs(weekDelta)}</span>`
-        : '';
+    // Pace vs last week — session count OR total volume, tappable to switch.
+    // Only surfaced once there's a prior week to compare against, so a brand-new
+    // user isn't shown "+N vs nothing".
+    const paceMode = AppState.settings?.weekPaceMode === 'volume' ? 'volume' : 'sessions';
+    let weekPaceHtml = '';
+    if (paceMode === 'volume') {
+        const { thisWeekVol = 0, lastWeekVol = 0 } = weekPace;
+        if (lastWeekVol > 0) {
+            const pct = Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100);
+            if (pct !== 0) {
+                weekPaceHtml = ` · <span class="hero-chip__wowd hero-chip__wowd--${pct > 0 ? 'up' : 'down'}">${pct > 0 ? '↑' : '↓'}${Math.abs(pct)}%</span>`;
+            }
+        }
+    } else {
+        const lastDays = weekPace.lastWeekDays || 0;
+        const weekDelta = lastDays > 0 ? weekDone - lastDays : null;
+        weekPaceHtml = weekDelta
+            ? ` · <span class="hero-chip__wowd hero-chip__wowd--${weekDelta > 0 ? 'up' : 'down'}">${weekDelta > 0 ? '↑' : '↓'}${Math.abs(weekDelta)}</span>`
+            : '';
+    }
+    const paceLabel = paceMode === 'volume' ? 'Tap to compare by workouts' : 'Tap to compare by volume';
 
     return `
         <div class="hero-chip-row">
@@ -400,7 +443,7 @@ function renderHeroChipRow(streak, weekDone, weekGoal, bwData, weekLastPace = 0,
                 <div class="hero-chip__val">${streak}</div>
                 <div class="hero-chip__label">${isDeload ? 'Deload week' : 'Streak'}</div>
             </div>
-            <div class="hero-chip">
+            <div class="hero-chip hero-chip--tap" onclick="toggleWeekPaceMode()" role="button" tabindex="0" title="${paceLabel}" aria-label="This week, ${weekDone} of ${weekGoal}. ${paceLabel}">
                 <div class="hero-chip__icon hero-chip__icon--primary"><i class="fas fa-bullseye"></i></div>
                 <div class="hero-chip__val">${weekDone}<span class="hero-chip__unit">/${weekGoal}</span></div>
                 <div class="hero-chip__label">This week${weekPaceHtml}</div>

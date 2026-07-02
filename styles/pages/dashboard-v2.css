@@ -70,6 +70,8 @@
     padding: 10px 10px;
     text-align: center;
 }
+.hero-chip--tap { cursor: pointer; }
+.hero-chip--tap:active { transform: scale(0.97); }
 .hero-chip__icon {
     font-size: var(--font-base);
     margin-bottom: 4px;

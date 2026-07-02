@@ -512,17 +512,22 @@ export function getWorkoutHistory(appState) {
             const container = document.getElementById('recent-workouts-list');
             if (!container) return;
 
-            // Get workouts for the displayed month, sorted by date descending
             const year = this.currentCalendarDate.getFullYear();
             const month = this.currentCalendarDate.getMonth();
             const searchTerm = this.historySearchTerm || '';
             const catFilter = this.historyCategoryFilter || '';
+            const isFiltering = !!(searchTerm || catFilter);
+
+            // When a search or category filter is active, look across ALL history
+            // so "show me every Bench session" spans time — not just whatever
+            // month the calendar happens to be showing. Unfiltered, stay
+            // month-scoped so the list matches the calendar above it.
             const monthWorkouts = this.currentHistory
                 .filter((w) => {
                     if (!w.date) return false;
                     const parts = w.date.split('-');
                     if (parts.length !== 3) return false;
-                    if (parseInt(parts[0]) !== year || parseInt(parts[1]) - 1 !== month) return false;
+                    if (!isFiltering && (parseInt(parts[0]) !== year || parseInt(parts[1]) - 1 !== month)) return false;
 
                     // Category filter
                     if (catFilter && w.workoutType !== catFilter) return false;
@@ -543,8 +548,8 @@ export function getWorkoutHistory(appState) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-calendar-alt"></i>
-                        <h3>No workouts this month</h3>
-                        <p>Complete a workout and it will show up here.</p>
+                        <h3>${isFiltering ? 'No matching workouts' : 'No workouts this month'}</h3>
+                        <p>${isFiltering ? 'Try a different exercise or workout name.' : 'Complete a workout and it will show up here.'}</p>
                     </div>
                 `;
                 return;
@@ -555,7 +560,7 @@ export function getWorkoutHistory(appState) {
             const hasMore = monthWorkouts.length > visibleCount;
 
             let html =
-                '<h3 class="recent-workouts-heading">Workouts This Month</h3>';
+                `<h3 class="recent-workouts-heading">${isFiltering ? `Search results (${monthWorkouts.length})` : 'Workouts This Month'}</h3>`;
             html += '<div class="recent-workouts-items">';
 
             visibleWorkouts.forEach((workout) => {

@@ -437,6 +437,7 @@ import {
     openWorkoutSelectorForDay,
     resumeActiveWorkout,
     confirmCancelActiveWorkout,
+    toggleWeekPaceMode,
 } from './core/ui/dashboard-ui.js';
 
 // Metric detail (drill-down from dashboard cards)
@@ -771,6 +772,7 @@ window.setHeaderMode = setHeaderMode;
 // Dashboard Functions
 window.dismissInsight = dismissInsight;
 window.openWorkoutSelectorForDay = openWorkoutSelectorForDay;
+window.toggleWeekPaceMode = toggleWeekPaceMode;
 window.startWorkoutFromHistory = startWorkoutFromHistory;
 window.resumeActiveWorkout = resumeActiveWorkout;
 window.confirmCancelActiveWorkout = confirmCancelActiveWorkout;
