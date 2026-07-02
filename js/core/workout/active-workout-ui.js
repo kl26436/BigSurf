@@ -1761,13 +1761,43 @@ function renderEquipmentSheet(exerciseIdx) {
         subtitle: exName,
         body,
         actions: [
-            // Route to the equipment library's full add flow (cascading
-            // Brand → Line → Function picker driven by the catalog) instead
-            // of the bare-bones manual form. Users wanted catalog browsing
-            // when adding equipment, not just a name field.
-            { label: '<i class="fas fa-plus"></i> Add from catalog', onClick: `awGoToEquipmentLibrary()` },
+            // Opens the catalog quick-add sheet inline, parameterized with the
+            // session gym — the added machine is created, gym-tagged,
+            // exercise-linked, and selected without leaving the workout.
+            { label: '<i class="fas fa-plus"></i> Add from catalog', onClick: `awOpenCatalogQuickAdd(${exerciseIdx})` },
             { label: 'Done', onClick: 'awCloseSheet()', primary: true },
         ],
+    });
+}
+
+/**
+ * "Add from catalog" mid-workout: open the equipment library's quick-add
+ * sheet in place, scoped to the session gym. On commit the machine is
+ * promoted to an equipment doc (gym-tagged + exercise-mapped); if exactly
+ * one was added, select it for this exercise — the user is standing in
+ * front of it. Falls back to the navigate-to-library bridge when no gym is
+ * set (quick-add needs a gym to tag).
+ */
+export function awOpenCatalogQuickAdd(exerciseIdx) {
+    const sessionLoc = AppState.savedData?.location;
+    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+    // window.* rather than an import: openQuickAddSheet has been window-wired
+    // since the quick-add shipped, so this can't version-skew against a
+    // cached equipment-library-ui.js the way a new named import could.
+    if (!locName || typeof window.openQuickAddSheet !== 'function') {
+        awGoToEquipmentLibrary();
+        return;
+    }
+    awCloseSheet();
+    window.openQuickAddSheet(locName, {
+        onDone: (added) => {
+            if (added.length === 1) {
+                awSelectEquipment(exerciseIdx, added[0].name);
+            } else {
+                // Zero or several added — reopen the picker so they choose.
+                awOpenEquipmentSheet(exerciseIdx);
+            }
+        },
     });
 }
 
@@ -1901,6 +1931,18 @@ function renderSharedEquipmentSheet() {
         </div>
     `;
 
+    // Catalog quick-add needs a gym to tag machines to — only offer it when
+    // a session location is known (footer stays two-button either way).
+    const catalogRow = locName ? `
+        <div class="js-row" onclick="awSharedOpenCatalogQuickAdd()">
+            <div class="js-row__icon js-row__icon--equip"><i class="fas fa-plus"></i></div>
+            <div class="js-row__info">
+                <div class="js-row__name">Add from catalog</div>
+                <div class="js-row__meta">Search machines · adds to ${escapeHtml(locName)}</div>
+            </div>
+        </div>
+    ` : '';
+
     const body = `
         <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
@@ -1911,6 +1953,7 @@ function renderSharedEquipmentSheet() {
             ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, `No equipment saved at ${escapeHtml(locName)} yet`) : ''}
             ${renderSection('Other equipment', otherEquipment, 'No other equipment saved')}
             ${noneRow}
+            ${catalogRow}
         </div>
     `;
 
@@ -1972,6 +2015,32 @@ export function awSharedCancelEquipment() {
     if (ctx?.onCancel) {
         try { ctx.onCancel(); } catch (e) { console.error('Shared equipment onCancel threw:', e); }
     }
+}
+
+/**
+ * Shared-sheet variant of awOpenCatalogQuickAdd: quick-add a catalog machine
+ * at the session gym, then deliver it through the caller's onSelect just as
+ * if it had been tapped in the list. Zero-or-many adds reopen the sheet.
+ */
+export function awSharedOpenCatalogQuickAdd() {
+    const ctx = _sharedEquipmentContext;
+    if (!ctx) return;
+    const sessionLoc = AppState.savedData?.location;
+    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+    if (!locName || typeof window.openQuickAddSheet !== 'function') return;
+    awCloseSheet();
+    window.openQuickAddSheet(locName, {
+        onDone: async (added) => {
+            if (added.length === 1) {
+                const cb = ctx.onSelect;
+                _sharedEquipmentContext = null;
+                try { await cb(added[0].name); } catch (e) { console.error('Shared equipment onSelect threw:', e); }
+            } else {
+                _sharedEquipmentContext = ctx;
+                renderSharedEquipmentSheet();
+            }
+        },
+    });
 }
 
 /**
@@ -3194,3 +3263,8 @@ function cleanup() {
 // Export current index for external use
 export function getCurrentExerciseIdx() { return currentExerciseIdx; }
 export function setCurrentExerciseIdx(idx) { currentExerciseIdx = idx; }
+
+// Same-file window wiring for handlers rendered only by this module's own
+// template strings — immune to main.js version skew (prod caches JS 1 year).
+window.awOpenCatalogQuickAdd = awOpenCatalogQuickAdd;
+window.awSharedOpenCatalogQuickAdd = awSharedOpenCatalogQuickAdd;

@@ -18,6 +18,7 @@ import { getSessionLocation } from '../features/location-service.js';
 import { reverseGeocode } from '../features/geocoding.js';
 import { getExercisePRs } from '../features/pr-tracker.js';
 import { findBestMatch } from '../data/fuzzy-match.js';
+import { suggestExercisesForMachine } from '../features/machine-exercise-matcher.js';
 
 let workoutManager = null;
 let allEquipment = [];
@@ -1270,6 +1271,17 @@ function catalogDisplayName(brand, line, machineName) {
 }
 
 /**
+ * Suggest exerciseTypes for a machine name from the in-memory exercise
+ * library. Conservative by design — see machine-exercise-matcher.js.
+ */
+function suggestMachineExercises(machineName) {
+    const names = (AppState.exerciseDatabase || [])
+        .map((ex) => ex.name || ex.machine)
+        .filter(Boolean);
+    return suggestExercisesForMachine(machineName, names);
+}
+
+/**
  * Find-or-create a legacy equipment record (users/{uid}/equipment) that
  * represents a catalog machine. This is the unification point: the rest of
  * the app — active-workout equipment picker, exercise assignment, form
@@ -1303,6 +1315,11 @@ async function promoteCatalogToEquipment(catalogRef, gymName = null, { refresh =
                 baseWeight,
                 baseWeightUnit: 'lbs',
                 catalogRef,
+                // Catalog entries carry no exercise mapping — infer it from the
+                // machine name so the promoted doc shows up under "For <exercise>"
+                // in the workout picker and counts toward planner compatibility.
+                // Only applies on create; existing docs keep their exerciseTypes.
+                exerciseTypes: suggestMachineExercises(machine.name),
             },
             null,
         );
@@ -1674,9 +1691,24 @@ let quickAddState = null;
 /**
  * Open the Quick-add sheet for `gymName`. If a location doc exists for the
  * gym, prefill alreadyTagged from its `equipment[]` array.
+ *
+ * `onDone(addedEquipment)` — optional callback fired after a successful
+ * commit with the promoted equipment docs, instead of re-rendering the
+ * library. Lets the active-workout picker open this sheet inline and select
+ * the machine the user just added.
  */
-export async function openQuickAddSheet(gymName) {
+export async function openQuickAddSheet(gymName, { onDone = null } = {}) {
     if (!gymName) return;
+
+    // Mid-workout callers reach this before the library has ever rendered.
+    // Fetch locations so we find the existing gym doc — commitQuickAdd would
+    // otherwise create a duplicate location for a gym that already exists.
+    if (allLocations.length === 0) {
+        try {
+            const locs = await getManager().getUserLocations();
+            if (Array.isArray(locs)) allLocations = locs;
+        } catch { /* proceed; commitQuickAdd creates the doc if truly missing */ }
+    }
 
     const loc = allLocations.find((l) => l.name === gymName);
     const alreadyTagged = new Set(
@@ -1694,6 +1726,7 @@ export async function openQuickAddSheet(gymName) {
         customOpen: false,
         customName: '',
         customType: 'Plate-Loaded',
+        onDone: typeof onDone === 'function' ? onDone : null,
     };
 
     renderQuickAddSheet();
@@ -1986,7 +2019,7 @@ export async function commitQuickAddCustom() {
     const type = quickAddState.customType || 'Other';
 
     try {
-        const { gymName } = quickAddState;
+        const { gymName, onDone } = quickAddState;
         let { gymId } = quickAddState;
         if (!gymId) {
             const newLoc = await getManager().saveLocation({ name: gymName });
@@ -1995,13 +2028,22 @@ export async function commitQuickAddCustom() {
         }
         // Standalone equipment doc tagged to the gym via locations[] — the gym
         // detail merges these with catalog refs, so it shows there right away.
-        await getManager().saveEquipment({ name, equipmentType: type, locations: [gymName] });
-        allEquipment = await getManager().getUserEquipment();
-        AppState._cachedEquipment = allEquipment;
+        const equipmentId = await getManager().saveEquipment({
+            name,
+            equipmentType: type,
+            locations: [gymName],
+            exerciseTypes: suggestMachineExercises(name),
+        });
+        await refreshEquipmentCaches();
 
         closeQuickAddSheet();
         showNotification(`${name} added to ${gymName}`, 'success');
-        renderEquipmentLibrary();
+        if (onDone) {
+            const created = allEquipment.find((e) => e.id === equipmentId) || { id: equipmentId, name };
+            try { await onDone([created]); } catch (e) { console.error('Quick-add onDone threw:', e); }
+        } else {
+            renderEquipmentLibrary();
+        }
     } catch (err) {
         console.error('❌ Custom equipment add failed:', err);
         showNotification(`Couldn't save — try again`, 'error');
@@ -2069,9 +2111,11 @@ export async function commitQuickAdd() {
         // next gym-view render. This is what makes quick-added machines show
         // up in the active-workout picker immediately — the whole point of
         // adding equipment at a new gym.
-        const gymName = quickAddState.gymName;
+        const { gymName, onDone } = quickAddState;
+        const promoted = [];
         for (const catalogRef of selected) {
-            await promoteCatalogToEquipment(catalogRef, gymName, { refresh: false });
+            const eq = await promoteCatalogToEquipment(catalogRef, gymName, { refresh: false });
+            if (eq) promoted.push(eq);
         }
         await refreshEquipmentCaches();
 
@@ -2081,7 +2125,13 @@ export async function commitQuickAdd() {
 
         closeQuickAddSheet();
         showNotification(`Added ${added.length} machine${added.length !== 1 ? 's' : ''} to ${gymName}`, 'success');
-        renderEquipmentLibrary();
+        if (onDone) {
+            // Opened from another surface (active workout) — hand the promoted
+            // docs back instead of re-rendering the hidden library section.
+            try { await onDone(promoted); } catch (e) { console.error('Quick-add onDone threw:', e); }
+        } else {
+            renderEquipmentLibrary();
+        }
     } catch (err) {
         console.error('❌ Quick-add commit failed:', err);
         showNotification(`Couldn't save — try again`, 'error');
