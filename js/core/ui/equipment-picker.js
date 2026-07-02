@@ -57,9 +57,7 @@ export async function populateEquipmentPicker({
         const usedIds = new Set(usedBefore.map((e) => e.id));
         const atThisGym = activeLocation
             ? allEquipment.filter(
-                  (eq) =>
-                      !usedIds.has(eq.id) &&
-                      ((eq.locations || []).includes(activeLocation) || eq.location === activeLocation)
+                  (eq) => !usedIds.has(eq.id) && (eq.locations || []).includes(activeLocation)
               )
             : [];
 
@@ -120,8 +118,7 @@ export async function populateEquipmentPicker({
                 .join('');
         }
         if (locationDatalist) {
-            const fromEquipment = allEquipment.flatMap((eq) => eq.locations || [])
-                .concat(allEquipment.map((eq) => eq.location).filter(Boolean));
+            const fromEquipment = allEquipment.flatMap((eq) => eq.locations || []);
             let savedGymLocations = [];
             try {
                 savedGymLocations = (await workoutManager.getUserLocations()).map((l) => l.name);
@@ -149,7 +146,7 @@ function buildOption(eq, preSelectedId) {
     option.className = 'equipment-option eq-picker__option' + (eq.id === preSelectedId ? ' selected' : '');
     option.dataset.equipmentId = eq.id;
     option.dataset.equipmentName = eq.name;
-    option.dataset.equipmentLocation = (eq.locations && eq.locations[0]) || eq.location || '';
+    option.dataset.equipmentLocation = (eq.locations && eq.locations[0]) || '';
 
     const radio = document.createElement('div');
     radio.className = 'equipment-option-radio';
@@ -167,7 +164,7 @@ function buildOption(eq, preSelectedId) {
     const subtitleParts = [
         eq.brand && eq.brand !== 'Unknown' ? eq.brand : null,
         eq.line || null,
-        (eq.locations && eq.locations.join(', ')) || eq.location || null,
+        (eq.locations && eq.locations.join(', ')) || null,
     ].filter(Boolean);
     if (subtitleParts.length > 0) {
         const sub = document.createElement('div');

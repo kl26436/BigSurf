@@ -587,11 +587,11 @@ export async function addEquipmentFromPicker() {
                 <div class="equipment-option ${eq.name === equipmentName ? 'selected' : ''}"
                      data-equipment-id="${escapeAttr(eq.id)}"
                      data-equipment-name="${escapeAttr(eq.name)}"
-                     data-equipment-location="${escapeAttr(eq.location || '')}">
+                     data-equipment-location="${escapeAttr((eq.locations && eq.locations[0]) || '')}">
                     <div class="equipment-option-radio"></div>
                     <div class="equipment-option-details">
                         <div class="equipment-option-name">${escapeHtml(eq.name)}</div>
-                        ${eq.location ? `<div class="equipment-option-location">${escapeHtml(eq.location)}</div>` : ''}
+                        ${eq.locations?.length ? `<div class="equipment-option-location">${escapeHtml(eq.locations.join(', '))}</div>` : ''}
                     </div>
                 </div>
             `

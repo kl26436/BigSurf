@@ -720,7 +720,6 @@ async function populateLocationDatalist() {
         const allEquipment = await workoutManager.getUserEquipment();
         const equipmentLocations = new Set();
         allEquipment.forEach((eq) => {
-            if (eq.location) equipmentLocations.add(eq.location);
             if (eq.locations && Array.isArray(eq.locations)) {
                 eq.locations.forEach((loc) => equipmentLocations.add(loc));
             }
@@ -776,16 +775,9 @@ async function populateEquipmentListForSection(
             return;
         }
 
-        // Render equipment items - support both single location and locations array
         listEl.innerHTML = exerciseEquipment
             .map((eq) => {
-                // Get locations from either array or single field
-                let locationsList = [];
-                if (eq.locations && Array.isArray(eq.locations)) {
-                    locationsList = eq.locations;
-                } else if (eq.location) {
-                    locationsList = [eq.location];
-                }
+                const locationsList = Array.isArray(eq.locations) ? eq.locations : [];
                 const locationDisplay = locationsList.length > 0 ? locationsList.join(', ') : '';
 
                 return `
@@ -1389,13 +1381,7 @@ export async function openEquipmentEditor(equipment) {
 
     editingEquipmentData = equipment;
 
-    // Build locations array from either locations array or single location field
-    editingEquipmentLocations = [];
-    if (equipment.locations && Array.isArray(equipment.locations)) {
-        editingEquipmentLocations = [...equipment.locations];
-    } else if (equipment.location) {
-        editingEquipmentLocations = [equipment.location];
-    }
+    editingEquipmentLocations = Array.isArray(equipment.locations) ? [...equipment.locations] : [];
 
     // Populate form fields
     const nameInput = document.getElementById('equipment-editor-name');
@@ -1436,7 +1422,6 @@ async function populateEquipmentEditorLocationDatalist() {
         const allEquipment = await workoutManager.getUserEquipment();
         const equipmentLocations = new Set();
         allEquipment.forEach((eq) => {
-            if (eq.location) equipmentLocations.add(eq.location);
             if (eq.locations && Array.isArray(eq.locations)) {
                 eq.locations.forEach((loc) => equipmentLocations.add(loc));
             }

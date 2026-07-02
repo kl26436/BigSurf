@@ -8,12 +8,14 @@ import {
     getDoc,
     updateDoc,
     deleteDoc,
+    deleteField,
     collection,
     query,
     getDocs,
     getDocsFromServer,
     orderBy,
     runTransaction,
+    writeBatch,
 } from './firebase-config.js';
 import { showNotification } from '../ui/ui-helpers.js';
 import {
@@ -24,6 +26,11 @@ import {
     validateWorkoutData,
 } from '../utils/validation.js';
 import { Config, debugLog } from '../utils/config.js';
+
+// One-shot guard for the legacy `location` → `locations[]` write sweep in
+// getUserEquipment. Module-scoped (not per-instance) because the manager is
+// instantiated fresh at most call sites.
+let legacyLocationSweepStarted = false;
 
 /**
  * Wrap a promise with a timeout — rejects if it doesn't resolve within ms
@@ -1046,7 +1053,12 @@ export class FirebaseWorkoutManager {
     }
 
     /**
-     * Get all user's saved equipment
+     * Get all user's saved equipment.
+     *
+     * Normalizes the legacy singular `location` field into `locations[]` so
+     * consumers only ever see one format — the dual-format read branches this
+     * used to require dropped equipment whenever new code forgot the legacy
+     * field. Docs still carrying it get a one-time background write sweep.
      */
     async getUserEquipment() {
         if (!this.appState.currentUser) {
@@ -1059,15 +1071,52 @@ export class FirebaseWorkoutManager {
             const querySnapshot = await withTimeout(getDocs(q));
 
             const equipment = [];
+            const legacyDocs = [];
             querySnapshot.forEach((doc) => {
-                equipment.push({ id: doc.id, ...doc.data() });
+                const data = { id: doc.id, ...doc.data() };
+                if (data.location) {
+                    const locations = Array.isArray(data.locations) ? [...data.locations] : [];
+                    if (!locations.includes(data.location)) locations.push(data.location);
+                    data.locations = locations;
+                    data.location = null;
+                    legacyDocs.push({ id: doc.id, locations });
+                }
+                equipment.push(data);
             });
 
+            this._sweepLegacyLocationFields(legacyDocs);
             return equipment;
         } catch (error) {
             console.error('❌ Error loading user equipment:', error);
             return [];
         }
+    }
+
+    /**
+     * One-time background migration: rewrite equipment docs that still carry
+     * the legacy singular `location` field to `locations[]` only. Fire-and-
+     * forget — readers already see normalized data via getUserEquipment.
+     */
+    _sweepLegacyLocationFields(legacyDocs) {
+        if (legacyLocationSweepStarted || legacyDocs.length === 0 || !this.appState.currentUser) return;
+        legacyLocationSweepStarted = true;
+        const userId = this.appState.currentUser.uid;
+        (async () => {
+            try {
+                const batch = writeBatch(this.db);
+                for (const d of legacyDocs) {
+                    batch.update(doc(this.db, 'users', userId, 'equipment', d.id), {
+                        locations: d.locations,
+                        location: deleteField(),
+                    });
+                }
+                await batch.commit();
+                debugLog(`Migrated ${legacyDocs.length} equipment doc(s) off legacy location field`);
+            } catch (error) {
+                legacyLocationSweepStarted = false; // retry on a later read
+                console.error('❌ Legacy location sweep failed:', error);
+            }
+        })();
     }
 
     /**
@@ -1417,6 +1466,14 @@ export class FirebaseWorkoutManager {
 
             if (docSnap.exists()) {
                 const data = docSnap.data();
+                // Renaming a gym must cascade to equipment docs BEFORE the
+                // location doc changes — equipment↔gym links are by name, so
+                // a rename without the cascade silently empties the gym's
+                // equipment view. Cascade-first: if it throws, the rename
+                // doesn't happen and the two stay consistent.
+                if (updates.name && data.name && updates.name !== data.name) {
+                    await this.renameLocationOnEquipment(data.name, updates.name);
+                }
                 await setDoc(docRef, {
                     ...data,
                     ...updates,
@@ -1429,6 +1486,37 @@ export class FirebaseWorkoutManager {
             console.error('Error updating location:', error);
             throw error;
         }
+    }
+
+    /**
+     * Swap a gym name inside every equipment doc's `locations[]`.
+     * Case-insensitive match, since auto-associate and manual tags may not
+     * agree on casing. Returns the number of docs updated.
+     */
+    async renameLocationOnEquipment(oldName, newName) {
+        if (!this.appState.currentUser || !oldName || !newName || oldName === newName) return 0;
+
+        const oldLC = oldName.toLowerCase();
+        const equipment = await this.getUserEquipment();
+        const affected = equipment.filter((eq) =>
+            (eq.locations || []).some((l) => (l || '').toLowerCase() === oldLC)
+        );
+        if (affected.length === 0) return 0;
+
+        const batch = writeBatch(this.db);
+        for (const eq of affected) {
+            const locations = (eq.locations || []).map((l) =>
+                (l || '').toLowerCase() === oldLC ? newName : l
+            );
+            batch.update(
+                doc(this.db, 'users', this.appState.currentUser.uid, 'equipment', eq.id),
+                { locations }
+            );
+        }
+        await batch.commit();
+        // Equipment↔gym tags changed — force every consumer to refetch.
+        this.appState._cachedEquipment = null;
+        return affected.length;
     }
 
     /**

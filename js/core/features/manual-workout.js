@@ -895,8 +895,7 @@ export async function openEquipmentPickerForManual(exerciseIndex) {
             } else {
                 listContainer.innerHTML = equipmentList
                     .map((eq) => {
-                        // Get location from locations array or single location field
-                        const location = eq.locations?.length > 0 ? eq.locations[0] : eq.location || '';
+                        const location = eq.locations?.length > 0 ? eq.locations[0] : '';
                         return `
                     <div class="equipment-picker-item" data-action="selectEquipment" data-eq-id="${escapeAttr(eq.id)}" data-eq-name="${escapeAttr(eq.name || '')}" data-eq-location="${escapeAttr(location || '')}">
                         <i class="fas fa-cog"></i>

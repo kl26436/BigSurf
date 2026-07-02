@@ -435,9 +435,32 @@ export async function addNewLocationFromManagement() {
         return;
     }
 
+    const coords = window.currentGPSCoords;
+
+    // A saved gym already covering this spot is almost always the same place
+    // under a different name — a second doc here silently splits equipment
+    // and history between the two.
+    const nearby = findNearbyLocation(cachedLocations, coords);
+    if (nearby) {
+        const useExisting = await confirmSheet({
+            title: `Use ${nearby.name} instead?`,
+            message: `You're inside ${nearby.name}'s match area — a second gym here splits equipment and history.`,
+            confirmLabel: `Use ${nearby.name}`,
+            cancelLabel: 'Create new gym',
+        });
+        if (useExisting) {
+            setSessionLocation(nearby.name);
+            currentLocationName = nearby.name;
+            input.value = '';
+            showNotification(`Using ${nearby.name}`, 'success');
+            renderLocationManagementList();
+            updateCurrentLocationDisplay();
+            return;
+        }
+    }
+
     try {
         const manager = getWorkoutManager();
-        const coords = window.currentGPSCoords;
 
         // Save to Firebase with GPS coords if available
         await manager.saveLocation({
@@ -766,6 +789,23 @@ export async function saveNewLocationFromModal() {
         coords = await getCurrentPosition();
     }
 
+    // Same-spot guard as addNewLocationFromManagement: creating a second gym
+    // inside an existing gym's radius splits equipment and history.
+    const nearby = findNearbyLocation(cachedLocations, coords);
+    if (nearby) {
+        const useExisting = await confirmSheet({
+            title: `Use ${nearby.name} instead?`,
+            message: `These coordinates are inside ${nearby.name}'s match area — a second gym here splits equipment and history.`,
+            confirmLabel: `Use ${nearby.name}`,
+            cancelLabel: 'Create new gym',
+        });
+        if (useExisting) {
+            closeAddLocationModal();
+            showNotification(`Using ${nearby.name}`, 'success');
+            return;
+        }
+    }
+
     try {
         // Save location with or without GPS
         const manager = getWorkoutManager();
@@ -827,8 +867,7 @@ export function showLocationDetail(locationId) {
     // Find equipment at this location
     const allEquip = AppState._cachedEquipment || [];
     const locationEquip = allEquip.filter(e =>
-        (e.locations || []).some(l => l.toLowerCase() === location.name.toLowerCase()) ||
-        (e.location && e.location.toLowerCase() === location.name.toLowerCase())
+        (e.locations || []).some(l => l.toLowerCase() === location.name.toLowerCase())
     );
 
     container.innerHTML = `

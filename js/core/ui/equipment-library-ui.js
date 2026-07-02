@@ -499,34 +499,54 @@ export async function linkOrphanToSuggestion(orphanName, equipmentId) {
             return Object.keys(exs).some((k) => exs[k]?.equipment === orphanName);
         });
 
-        // Firestore batch limit is 500; chunk safely
+        // Firestore batch limit is 500; chunk safely. Track how many commits
+        // actually landed — a mid-sequence failure used to leave history
+        // half-migrated behind a success-looking toast. The operation is
+        // re-runnable: rewritten workouts drop out of the `affected` filter,
+        // so running the link again finishes only the remainder.
         const CHUNK = 400;
-        for (let i = 0; i < affected.length; i += CHUNK) {
-            const batch = writeBatch(db);
-            for (const w of affected.slice(i, i + CHUNK)) {
-                const exs = { ...(w.exercises || {}) };
-                let touched = false;
-                for (const k of Object.keys(exs)) {
-                    if (exs[k]?.equipment === orphanName) {
-                        exs[k] = { ...exs[k], equipment: canonicalName };
-                        touched = true;
+        let rewritten = 0;
+        let batchError = null;
+        try {
+            for (let i = 0; i < affected.length; i += CHUNK) {
+                const chunk = affected.slice(i, i + CHUNK);
+                const batch = writeBatch(db);
+                for (const w of chunk) {
+                    const exs = { ...(w.exercises || {}) };
+                    let touched = false;
+                    for (const k of Object.keys(exs)) {
+                        if (exs[k]?.equipment === orphanName) {
+                            exs[k] = { ...exs[k], equipment: canonicalName };
+                            touched = true;
+                        }
+                    }
+                    if (touched) {
+                        batch.set(doc(db, 'users', userId, 'workouts', w.id), { ...w, exercises: exs, lastUpdated: new Date().toISOString() });
                     }
                 }
-                if (touched) {
-                    batch.set(doc(db, 'users', userId, 'workouts', w.id), { ...w, exercises: exs, lastUpdated: new Date().toISOString() });
-                }
+                await batch.commit();
+                rewritten += chunk.length;
             }
-            await batch.commit();
+        } catch (err) {
+            batchError = err;
+            console.error('❌ Orphan-link batch failed mid-sequence:', err);
         }
         // Rewrote workout docs — downstream loadAllWorkouts consumers (dashboard,
         // history) must not serve the pre-rewrite cache for the next 5 minutes.
-        if (affected.length > 0) clearAllWorkoutsCache();
+        if (rewritten > 0) clearAllWorkoutsCache();
 
         // 3. Refresh state
         allEquipment = await getManager().getUserEquipment();
         AppState._cachedEquipment = allEquipment;
-        if (unlinkedEquipment) unlinkedEquipment.delete(orphanName);
-        showNotification(`Linked "${orphanName}" to ${canonicalName} · ${affected.length} session${affected.length !== 1 ? 's' : ''} updated`, 'success');
+        if (batchError) {
+            showNotification(
+                `Linked "${orphanName}" — updated ${rewritten} of ${affected.length} sessions. Link again to finish the rest`,
+                'warning'
+            );
+        } else {
+            if (unlinkedEquipment) unlinkedEquipment.delete(orphanName);
+            showNotification(`Linked "${orphanName}" to ${canonicalName} · ${affected.length} session${affected.length !== 1 ? 's' : ''} updated`, 'success');
+        }
         renderEquipmentLibrary();
     } catch (err) {
         console.error('❌ Link failed:', err);
@@ -2696,7 +2716,6 @@ function renderLibraryTab() {
     const locationSet = new Set();
     allEquipment.forEach((eq) => {
         (eq.locations || []).forEach((l) => locationSet.add(l));
-        if (eq.location) locationSet.add(eq.location);
     });
     const locations = Array.from(locationSet).sort();
 
@@ -2715,8 +2734,7 @@ function renderLibraryTab() {
     }
     if (currentLocationFilter) {
         filtered = filtered.filter((eq) =>
-            (eq.locations || []).includes(currentLocationFilter) ||
-            eq.location === currentLocationFilter
+            (eq.locations || []).includes(currentLocationFilter)
         );
     }
 
@@ -3059,8 +3077,7 @@ function renderEquipmentLibraryList() {
     }
     if (currentLocationFilter) {
         filtered = filtered.filter(eq =>
-            (eq.locations || []).includes(currentLocationFilter) ||
-            eq.location === currentLocationFilter
+            (eq.locations || []).includes(currentLocationFilter)
         );
     }
 
@@ -3399,7 +3416,7 @@ export async function openEquipmentDetail(equipmentId) {
             effectiveUrl: override || inherited || null,
         };
     });
-    const locations = equipment.locations || (equipment.location ? [equipment.location] : []);
+    const locations = equipment.locations || [];
     const notes = equipment.notes || '';
 
     const container = document.getElementById('equipment-library-content');
@@ -3847,6 +3864,22 @@ export async function deleteEquipmentFromLibrary(equipmentId) {
     try {
         await getManager().deleteEquipment(equipmentId);
         allEquipment = allEquipment.filter(e => e.id !== equipmentId);
+
+        // Quick-added equipment also lives as a catalogRef on each gym's
+        // location.equipment[] — leaving those behind makes a deleted machine
+        // reappear in gym views and lets a re-add duplicate it.
+        if (equipment?.catalogRef && (equipment.locations || []).length > 0) {
+            if (allLocations.length === 0) {
+                try {
+                    const locs = await getManager().getUserLocations();
+                    if (Array.isArray(locs)) allLocations = locs;
+                } catch { /* stale refs heal on the next gym-view render */ }
+            }
+            for (const locName of equipment.locations) {
+                await syncCatalogRefOnLocation(equipment.catalogRef, locName, false);
+            }
+        }
+
         showNotification('Equipment deleted', 'success', 1500);
         backToEquipmentList();
     } catch (error) {

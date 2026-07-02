@@ -35,19 +35,19 @@ Compounding issues in the same area:
 These silently corrupt the equipment↔gym mapping. A user who hits one concludes "the gym feature is buggy" without knowing why.
 
 ### 1.1 Location rename doesn't cascade
-`updateLocation()` (firebase-workout-manager.js:1418) renames the location doc but equipment docs keep the old name in `locations[]`. Rename "Gold's Gym" → "Gold's Downtown" and every machine at that gym vanishes from the gym's equipment view. **Fix:** batch-update all equipment docs whose `locations[]` contains the old name, inside the rename flow. Consider migrating to location IDs instead of names long-term.
+✅ *Shipped 2026-07-02.* `updateLocation()` now cascades name changes via `renameLocationOnEquipment` — batch-updates every equipment doc's `locations[]` (case-insensitive match), cascade-first so a failure leaves both sides consistent, and nulls `AppState._cachedEquipment`. Migrating to location IDs instead of names remains the long-term direction.
 
 ### 1.2 Dual location formats (legacy `location` string vs `locations[]` array)
-Every consumer must check both (e.g., equipment-picker.js:62, equipment-planner.js:17-21). Any new code that forgets the legacy field drops equipment. **Fix:** one-time migration sweep (copy `location` → `locations[]`, delete legacy field), then remove all dual-format branches.
+✅ *Shipped 2026-07-02.* `getUserEquipment()` normalizes the legacy field in-memory on every read and fires a one-time background write sweep (`location: deleteField()`). All read-time dual-format branches removed (equipment-picker, equipment-planner, exercise-manager-ui, manual-workout, location-ui, equipment-library-ui, workout-management-ui). Write-time folding in `saveEquipment`/`addLocationToEquipment` kept as input normalization.
 
 ### 1.3 No duplicate-location guard
-Saving a location (location-ui.js:432) never checks for an existing gym with the same name / nearby coordinates. Two "Planet Fitness" entries split equipment and history silently. **Fix:** on save, warn if name matches or coords are within an existing gym's radius — "Looks like Planet Fitness already exists — use it instead?"
+✅ *Shipped 2026-07-02.* Both add flows already had case-insensitive name checks; they now also run `findNearbyLocation` against saved-gym radii and offer "Use \<gym\> instead?" via confirmSheet before creating a same-spot duplicate. (Auto-save paths on workout start already matched by radius before saving.)
 
 ### 1.4 Stale `equipmentCatalog` refs on location docs
-Deleting an equipment doc added via quick-add leaves its catalogRef on the location doc; re-adding can duplicate. **Fix:** clean the location's catalogRef array in `deleteEquipmentFromLibrary()`.
+✅ *Shipped 2026-07-02.* `deleteEquipmentFromLibrary()` now strips the deleted doc's catalogRef from every tagged gym's `location.equipment[]` via `syncCatalogRefOnLocation`.
 
 ### 1.5 Orphan-link batch writes have no failure recovery
-`linkOrphanToSuggestion()` (equipment-library-ui.js:502) commits up to 400 rewrites per batch; a mid-sequence failure leaves history half-migrated with a success-looking notification. **Fix:** track per-batch success, report partial completion, make the operation re-runnable (it's idempotent if it skips already-linked docs).
+✅ *Shipped 2026-07-02.* `linkOrphanToSuggestion()` tracks per-batch commits; a mid-sequence failure reports "updated X of Y sessions — link again to finish" instead of a false success. Re-running is safe: rewritten workouts drop out of the affected filter, so a retry finishes only the remainder.
 
 ## Tier 2 — UX friction (the "clunky" you're feeling)
 

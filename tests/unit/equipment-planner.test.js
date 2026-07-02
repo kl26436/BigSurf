@@ -34,10 +34,9 @@ const mockEquipment = [
         exerciseTypes: ['Squat', 'Overhead Press'],
     },
     {
-        // Legacy format — single location field
         id: 'eq4',
         name: 'Cable Machine',
-        location: 'Downtown Gym',
+        locations: ['Downtown Gym'],
         exerciseTypes: ['Cable Curl', 'Tricep Pushdown'],
     },
     {
@@ -83,10 +82,11 @@ describe('getEquipmentAtLocation', () => {
         expect(names).toContain('Foam Roller');
     });
 
-    it('handles legacy location field', () => {
-        const result = getEquipmentAtLocation(mockEquipment, 'Downtown Gym');
-        const names = result.map(eq => eq.name);
-        expect(names).toContain('Cable Machine');
+    it('ignores the retired legacy location field (normalized upstream by getUserEquipment)', () => {
+        const legacyOnly = [
+            { id: 'x', name: 'Old Machine', location: 'Downtown Gym', exerciseTypes: ['Cable Curl'] },
+        ];
+        expect(getEquipmentAtLocation(legacyOnly, 'Downtown Gym')).toEqual([]);
     });
 
     it('filters to correct location', () => {

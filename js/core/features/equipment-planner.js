@@ -4,7 +4,9 @@
 
 /**
  * Get all equipment available at a specific location.
- * Handles both the current `locations` array and legacy `location` string field.
+ * Equipment docs are normalized to `locations[]` at the read layer
+ * (getUserEquipment folds the retired singular `location` field), so this
+ * only consults the array.
  *
  * @param {Array} allEquipment - All user equipment documents
  * @param {string} locationName - Name of the gym/location
@@ -13,15 +15,9 @@
 export function getEquipmentAtLocation(allEquipment, locationName) {
     if (!allEquipment || !locationName) return [];
 
-    return allEquipment.filter(eq => {
-        if (eq.locations && Array.isArray(eq.locations)) {
-            return eq.locations.includes(locationName);
-        }
-        if (eq.location) {
-            return eq.location === locationName;
-        }
-        return false;
-    });
+    return allEquipment.filter(eq =>
+        Array.isArray(eq.locations) && eq.locations.includes(locationName)
+    );
 }
 
 /**
