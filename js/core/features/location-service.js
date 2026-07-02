@@ -81,6 +81,12 @@ function toRadians(degrees) {
 export function findNearbyLocation(savedLocations, coords, minRadius = null) {
     if (!savedLocations || !coords) return null;
 
+    // Nearest match wins, not first match — adjacent gyms (think Bellagio vs
+    // Cosmopolitan on the Strip) sit within each other's 500m radius, and GPS
+    // is noisy indoors, so array order must not decide which gym gets tagged.
+    let nearest = null;
+    let nearestDistance = Infinity;
+
     for (const location of savedLocations) {
         if (!location.latitude || !location.longitude) continue;
 
@@ -95,12 +101,13 @@ export function findNearbyLocation(savedLocations, coords, minRadius = null) {
             `📍 ${location.name}: ${Math.round(distance)}m away (radius: ${radius}m) - ${isMatch ? 'MATCH' : 'too far'}`
         );
 
-        if (isMatch) {
-            return location;
+        if (isMatch && distance < nearestDistance) {
+            nearest = location;
+            nearestDistance = distance;
         }
     }
 
-    return null;
+    return nearest;
 }
 
 /**

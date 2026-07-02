@@ -80,14 +80,25 @@ describe('findNearbyLocation', () => {
         expect(findNearbyLocation([wideGym], coordsAtDistance(800), 500)?.name).toBe('Wide Gym');
     });
 
-    it('returns the first match in array order, not the nearest', () => {
-        // Documents current behavior: with overlapping gyms the saved-list order
-        // decides, even when a later entry is closer to the user.
+    it('returns the nearest match when radii overlap, regardless of array order', () => {
+        // Adjacent gyms (e.g. Bellagio vs Cosmopolitan, ~350m apart) sit inside
+        // each other's 500m radius — the closer one must win, not the first saved.
         const fartherFirst = { name: 'Farther Gym', ...coordsAtDistance(400) };
         const closerSecond = { name: 'Closer Gym', ...coordsAtDistance(50) };
         const user = coordsAtDistance(0);
 
-        const match = findNearbyLocation([fartherFirst, closerSecond], user);
-        expect(match?.name).toBe('Farther Gym');
+        expect(findNearbyLocation([fartherFirst, closerSecond], user)?.name).toBe('Closer Gym');
+        expect(findNearbyLocation([closerSecond, fartherFirst], user)?.name).toBe('Closer Gym');
+    });
+
+    it('picks the right casino gym on the Strip', () => {
+        // Real coordinates: standing in the Cosmopolitan fitness center must not
+        // tag the workout to Bellagio, whichever was saved first.
+        const bellagio = { name: 'Bellagio Spa & Fitness', latitude: 36.1126, longitude: -115.1767 };
+        const cosmopolitan = { name: 'Cosmopolitan Fitness Center', latitude: 36.1096, longitude: -115.1743 };
+        const userAtCosmo = { latitude: 36.1097, longitude: -115.1744 };
+
+        const match = findNearbyLocation([bellagio, cosmopolitan], userAtCosmo);
+        expect(match?.name).toBe('Cosmopolitan Fitness Center');
     });
 });
