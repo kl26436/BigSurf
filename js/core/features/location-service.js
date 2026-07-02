@@ -78,14 +78,15 @@ function toRadians(degrees) {
  * @param {{latitude: number, longitude: number}} coords - Current coordinates
  * @returns {Object | null} Matching location or null
  */
-export function findNearbyLocation(savedLocations, coords, minRadius = null) {
-    if (!savedLocations || !coords) return null;
+/**
+ * Find ALL saved locations within radius of the given coordinates, sorted
+ * nearest-first. Each match carries a `distance` field (meters). Callers can
+ * detect ambiguity (adjacent gyms whose radii overlap) via matches.length > 1.
+ */
+export function findNearbyLocations(savedLocations, coords, minRadius = null) {
+    if (!savedLocations || !coords) return [];
 
-    // Nearest match wins, not first match — adjacent gyms (think Bellagio vs
-    // Cosmopolitan on the Strip) sit within each other's 500m radius, and GPS
-    // is noisy indoors, so array order must not decide which gym gets tagged.
-    let nearest = null;
-    let nearestDistance = Infinity;
+    const matches = [];
 
     for (const location of savedLocations) {
         if (!location.latitude || !location.longitude) continue;
@@ -101,13 +102,18 @@ export function findNearbyLocation(savedLocations, coords, minRadius = null) {
             `📍 ${location.name}: ${Math.round(distance)}m away (radius: ${radius}m) - ${isMatch ? 'MATCH' : 'too far'}`
         );
 
-        if (isMatch && distance < nearestDistance) {
-            nearest = location;
-            nearestDistance = distance;
-        }
+        if (isMatch) matches.push({ ...location, distance });
     }
 
-    return nearest;
+    matches.sort((a, b) => a.distance - b.distance);
+    return matches;
+}
+
+export function findNearbyLocation(savedLocations, coords, minRadius = null) {
+    // Nearest match wins, not first match — adjacent gyms (think Bellagio vs
+    // Cosmopolitan on the Strip) sit within each other's 500m radius, and GPS
+    // is noisy indoors, so array order must not decide which gym gets tagged.
+    return findNearbyLocations(savedLocations, coords, minRadius)[0] || null;
 }
 
 /**
@@ -120,17 +126,18 @@ export async function detectLocation(savedLocations) {
     const coords = await getCurrentPosition();
 
     if (!coords) {
-        return { location: null, isNew: false, coords: null };
+        return { location: null, isNew: false, coords: null, nearbyMatches: [] };
     }
 
-    const matchedLocation = findNearbyLocation(savedLocations, coords);
+    const nearbyMatches = findNearbyLocations(savedLocations, coords);
 
-    if (matchedLocation) {
-        currentLocationName = matchedLocation.name;
+    if (nearbyMatches.length > 0) {
+        currentLocationName = nearbyMatches[0].name;
         return {
-            location: matchedLocation,
+            location: nearbyMatches[0],
             isNew: false,
             coords,
+            nearbyMatches,
         };
     }
 
@@ -139,6 +146,7 @@ export async function detectLocation(savedLocations) {
         location: null,
         isNew: true,
         coords,
+        nearbyMatches: [],
     };
 }
 
@@ -295,6 +303,7 @@ export default {
     getCurrentPosition,
     calculateDistance,
     findNearbyLocation,
+    findNearbyLocations,
     detectLocation,
     setSessionLocation,
     getSessionLocation,

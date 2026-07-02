@@ -1573,10 +1573,17 @@ async function initializeWorkoutLocation() {
         const result = await detectLocation(savedLocations);
 
         if (result.location) {
-            // Matched a known location
+            // Matched a known location — nearest is preselected so logging
+            // is never blocked on a location decision.
             setSessionLocation(result.location.name);
-            // Update visit count
-            await workoutManager.updateLocationVisit(result.location.id);
+
+            if ((result.nearbyMatches || []).length > 1) {
+                // More than one saved gym in radius (adjacent gyms with
+                // overlapping radii) — let the user confirm which one.
+                showGymChooserSheet(result.nearbyMatches, workoutManager);
+            } else {
+                await workoutManager.updateLocationVisit(result.location.id);
+            }
         } else if (result.isNew && result.coords) {
             // At a new location - prompt user to name it
             await promptForNewLocation(result.coords, workoutManager, savedLocations);
@@ -1588,6 +1595,86 @@ async function initializeWorkoutLocation() {
         console.error('\u274C Error initializing workout location:', error);
         // Don't block workout start on location errors
     }
+}
+
+/**
+ * Bottom sheet shown when GPS matches MORE THAN ONE saved gym (overlapping
+ * radii). The nearest gym is already set as the session location, so this is
+ * a confirm-or-correct affordance, not a blocker — dismissing keeps nearest.
+ * Self-contained DOM (mirrors the manual-link sheet pattern); the tap handler
+ * hangs off window directly so no new main.js export wiring is needed.
+ */
+function showGymChooserSheet(matches, workoutManager) {
+    document.getElementById('gym-chooser-backdrop')?.remove();
+    document.getElementById('gym-chooser-sheet')?.remove();
+
+    const fmtDistance = (d) => (d < 1000 ? `${Math.round(d)} m away` : `${(d / 1000).toFixed(1)} km away`);
+
+    const close = () => {
+        document.getElementById('gym-chooser-backdrop')?.remove();
+        document.getElementById('gym-chooser-sheet')?.remove();
+        delete window._bsPickDetectedGym;
+    };
+
+    window._bsPickDetectedGym = async (index) => {
+        const match = matches[index];
+        close();
+        if (!match) return;
+
+        setSessionLocation(match.name);
+        if (AppState.savedData) {
+            AppState.savedData.location = match.name;
+            await saveWorkoutData(AppState);
+        }
+        if (AppState.currentWorkout) renderActiveWorkout();
+
+        try {
+            if (match.id) await workoutManager.updateLocationVisit(match.id);
+        } catch (err) {
+            console.error('❌ Error updating location visit:', err);
+        }
+    };
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'gym-chooser-backdrop';
+    backdrop.onclick = () => window._bsPickDetectedGym(0);
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'gym-chooser-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Choose your gym');
+
+    const rows = matches.map((m, i) => `
+        <div class="js-row ${i === 0 ? 'current' : ''}" onclick="_bsPickDetectedGym(${i})">
+            <div class="js-row__icon js-row__icon--equip"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="js-row__info">
+                <div class="js-row__name">${escapeHtml(m.name)}${i === 0 ? ' ✓' : ''}</div>
+                <div class="js-row__meta">${fmtDistance(m.distance)}${m.visitCount ? ` · ${m.visitCount} visits` : ''}</div>
+            </div>
+        </div>
+    `).join('');
+
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">Which gym?</div>
+            <div class="aw-sheet__subtitle">More than one saved gym is nearby</div>
+        </div>
+        <div class="aw-sheet__body">${rows}</div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action" onclick="_bsPickDetectedGym(0)">Keep ${escapeHtml(matches[0].name)}</button>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => {
+        backdrop.classList.add('visible');
+        sheet.classList.add('visible');
+    });
 }
 
 /**

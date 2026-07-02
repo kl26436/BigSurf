@@ -10,7 +10,7 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({
     closeModal: vi.fn(),
 }));
 
-import { calculateDistance, findNearbyLocation } from '../../js/core/features/location-service.js';
+import { calculateDistance, findNearbyLocation, findNearbyLocations } from '../../js/core/features/location-service.js';
 
 // ~111,195 m per degree of latitude (2πR/360 with R = 6,371,000 m)
 const METERS_PER_DEG_LAT = (Math.PI * 6371000) / 180;
@@ -89,6 +89,25 @@ describe('findNearbyLocation', () => {
 
         expect(findNearbyLocation([fartherFirst, closerSecond], user)?.name).toBe('Closer Gym');
         expect(findNearbyLocation([closerSecond, fartherFirst], user)?.name).toBe('Closer Gym');
+    });
+
+    it('exposes ambiguity via findNearbyLocations — all overlapping gyms, nearest first, with distances', () => {
+        const bellagio = { name: 'Bellagio Spa & Fitness', latitude: 36.1126, longitude: -115.1767 };
+        const cosmopolitan = { name: 'Cosmopolitan Fitness Center', latitude: 36.1096, longitude: -115.1743 };
+        const farAway = { name: 'Home Gym', latitude: 41.0, longitude: -80.0 };
+        const userAtCosmo = { latitude: 36.1097, longitude: -115.1744 };
+
+        const matches = findNearbyLocations([farAway, bellagio, cosmopolitan], userAtCosmo);
+
+        expect(matches.map((m) => m.name)).toEqual(['Cosmopolitan Fitness Center', 'Bellagio Spa & Fitness']);
+        expect(matches[0].distance).toBeLessThan(matches[1].distance);
+        expect(matches.every((m) => typeof m.distance === 'number')).toBe(true);
+    });
+
+    it('findNearbyLocations returns empty for missing inputs and no matches', () => {
+        expect(findNearbyLocations(null, coordsAtDistance(0))).toEqual([]);
+        expect(findNearbyLocations([{ name: 'Gym', ...GYM }], null)).toEqual([]);
+        expect(findNearbyLocations([{ name: 'Gym', ...GYM }], coordsAtDistance(5000))).toEqual([]);
     });
 
     it('picks the right casino gym on the Strip', () => {
