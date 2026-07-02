@@ -19,6 +19,7 @@ import {
 } from '../features/location-service.js';
 import { renderActiveWorkout, loadAutofillForAllExercises } from './active-workout-ui.js';
 import { haptic } from '../utils/haptics.js';
+import { Config } from '../utils/config.js';
 import { cancelRestNotification } from '../utils/push-notification-manager.js';
 
 // ===================================================================
@@ -1577,12 +1578,20 @@ async function initializeWorkoutLocation() {
             // is never blocked on a location decision.
             setSessionLocation(result.location.name);
 
-            if ((result.nearbyMatches || []).length > 1) {
-                // More than one saved gym in radius (adjacent gyms with
-                // overlapping radii) — let the user confirm which one.
-                showGymChooserSheet(result.nearbyMatches, workoutManager);
-            } else {
+            // Trust the match silently only when GPS puts us close to exactly
+            // one saved gym. A single FAR match (150–500m) may really be an
+            // unsaved gym next door to a saved one — first workout at the
+            // Cosmopolitan with only Bellagio saved — so confirm instead of
+            // silently mis-tagging. Multiple close matches also confirm.
+            const matches = result.nearbyMatches || [];
+            const confident =
+                matches[0].distance <= Config.GPS_CONFIDENT_MATCH_METERS &&
+                (matches.length === 1 || matches[1].distance > Config.GPS_CONFIDENT_MATCH_METERS);
+
+            if (confident) {
                 await workoutManager.updateLocationVisit(result.location.id);
+            } else {
+                showGymChooserSheet(matches, workoutManager);
             }
         } else if (result.isNew && result.coords) {
             // At a new location - prompt user to name it
@@ -1614,6 +1623,15 @@ function showGymChooserSheet(matches, workoutManager) {
         document.getElementById('gym-chooser-backdrop')?.remove();
         document.getElementById('gym-chooser-sheet')?.remove();
         delete window._bsPickDetectedGym;
+        delete window._bsGymSomewhereElse;
+    };
+
+    // "None of these" — first time at a gym that neighbors a saved one.
+    // Opens the location selector, which has the new-gym name input; the
+    // nearest saved gym stays as the fallback if the user bails out.
+    window._bsGymSomewhereElse = () => {
+        close();
+        changeWorkoutLocation();
     };
 
     window._bsPickDetectedGym = async (index) => {
@@ -1657,15 +1675,20 @@ function showGymChooserSheet(matches, workoutManager) {
         </div>
     `).join('');
 
+    const subtitle = matches.length > 1
+        ? 'More than one saved gym is nearby'
+        : `${escapeHtml(matches[0].name)} is ${fmtDistance(matches[0].distance)} — right one?`;
+
     sheet.innerHTML = `
         <div class="aw-sheet__handle"></div>
         <div class="aw-sheet__header">
             <div class="aw-sheet__title">Which gym?</div>
-            <div class="aw-sheet__subtitle">More than one saved gym is nearby</div>
+            <div class="aw-sheet__subtitle">${subtitle}</div>
         </div>
         <div class="aw-sheet__body">${rows}</div>
         <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="_bsPickDetectedGym(0)">Keep ${escapeHtml(matches[0].name)}</button>
+            <button class="aw-sheet__action" onclick="_bsGymSomewhereElse()">Somewhere else</button>
+            <button class="aw-sheet__action primary" onclick="_bsPickDetectedGym(0)">Keep ${escapeHtml(matches[0].name)}</button>
         </div>
     `;
 

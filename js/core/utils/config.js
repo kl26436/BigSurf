@@ -15,6 +15,10 @@ export const Config = {
 
     // Location
     GPS_MATCH_RADIUS_METERS: 500,
+    // A single gym match within this distance is trusted silently. Farther
+    // out (up to the match radius) the user is asked to confirm — the "match"
+    // could be a saved gym near an unsaved one (adjacent hotel gyms).
+    GPS_CONFIDENT_MATCH_METERS: 150,
 
     // PR tracking
     PR_CUTOFF_DATE: '2025-07-01',

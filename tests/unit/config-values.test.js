@@ -20,6 +20,11 @@ describe('Config constants', () => {
         expect(Config.GPS_MATCH_RADIUS_METERS).toBe(500);
     });
 
+    it('has a confident-match distance inside the match radius', () => {
+        expect(Config.GPS_CONFIDENT_MATCH_METERS).toBe(150);
+        expect(Config.GPS_CONFIDENT_MATCH_METERS).toBeLessThan(Config.GPS_MATCH_RADIUS_METERS);
+    });
+
     it('has valid PR cutoff date in YYYY-MM-DD format', () => {
         expect(Config.PR_CUTOFF_DATE).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
