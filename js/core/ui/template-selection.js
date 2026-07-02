@@ -2191,3 +2191,11 @@ window.removeBasicExercise = function (index) {
         showBasicTemplateEditor(modal.templateData);
     }
 };
+
+// These handlers render in this module's template strings (preview modal +
+// basic editor); assign window here rather than main.js so the handlers ship
+// in the same file as their templates — prod caches JS for a year, and a
+// same-file assignment can't be version-skewed away.
+window.closeWorkoutPreviewModal = closeWorkoutPreviewModal;
+window.closeBasicTemplateEditor = closeBasicTemplateEditor;
+window.saveBasicTemplate = saveBasicTemplate;

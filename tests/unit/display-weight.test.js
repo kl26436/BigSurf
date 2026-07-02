@@ -1,26 +1,11 @@
 // Tests for displayWeight from ui-helpers.js
 // 1 decimal everywhere so dashboard and detail pages agree on displayed values.
+// Imports the REAL function — ui-helpers has no import-time DOM/Firebase
+// dependencies, so it loads cleanly in node (same pattern as config-values.test.js).
 
 import { describe, it, expect } from 'vitest';
 
-/**
- * Re-implementation of displayWeight from ui-helpers.js
- * Converts a stored weight to the user's preferred display unit, always
- * rounded to 1 decimal place.
- */
-function displayWeight(weight, storedUnit, displayUnit) {
-    if (!weight || isNaN(weight)) return { value: 0, label: displayUnit || 'lbs' };
-    const unit = displayUnit || 'lbs';
-    const stored = storedUnit || 'lbs';
-    if (stored === unit) return { value: Math.round(weight * 10) / 10, label: unit };
-    if (stored === 'lbs' && unit === 'kg') {
-        return { value: Math.round(weight * 0.453592 * 10) / 10, label: 'kg' };
-    }
-    if (stored === 'kg' && unit === 'lbs') {
-        return { value: Math.round(weight * 2.20462 * 10) / 10, label: 'lbs' };
-    }
-    return { value: Math.round(weight * 10) / 10, label: unit };
-}
+import { displayWeight } from '../../js/core/ui/ui-helpers.js';
 
 describe('displayWeight', () => {
     describe('same unit passthrough', () => {

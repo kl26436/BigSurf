@@ -1,22 +1,10 @@
 // Tests for convertWeight from ui-helpers.js
-// Since ui-helpers.js has no external dependencies for convertWeight,
-// we re-implement the function here to test the logic in isolation
+// Imports the REAL function — ui-helpers has no import-time DOM/Firebase
+// dependencies, so it loads cleanly in node (same pattern as config-values.test.js).
 
 import { describe, it, expect } from 'vitest';
 
-// Extracted pure function (same logic as ui-helpers.js). 1 decimal everywhere
-// so dashboard and detail pages agree on displayed values for the same weight.
-function convertWeight(weight, fromUnit, toUnit) {
-    if (!weight || isNaN(weight) || weight <= 0) return 0;
-    if (weight > 1000) return 0;
-    if (fromUnit === toUnit) return Math.round(weight * 10) / 10;
-    if (fromUnit === 'lbs' && toUnit === 'kg') {
-        return Math.round(weight * 0.453592 * 10) / 10;
-    } else if (fromUnit === 'kg' && toUnit === 'lbs') {
-        return Math.round(weight * 2.20462 * 10) / 10;
-    }
-    return Math.round(weight * 10) / 10;
-}
+import { convertWeight } from '../../js/core/ui/ui-helpers.js';
 
 describe('convertWeight', () => {
     it('converts lbs to kg correctly', () => {

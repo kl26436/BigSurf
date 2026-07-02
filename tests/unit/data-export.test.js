@@ -1,59 +1,29 @@
 // Tests for CSV/JSON data export (Phase 13.3)
-// Verifies CSV generation, escaping, and import validation
+// Imports the REAL functions from data-export-import.js. That module statically
+// imports firebase-config (CDN URLs) and ui-helpers (DOM at import time), so
+// both are mocked — the functions under test are pure.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
-/**
- * Escape a string for CSV: wrap in quotes if it contains commas, quotes, or newlines.
- */
-function escapeCSV(str) {
-    if (!str) return '';
-    str = String(str);
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
-}
+vi.mock('../../js/core/data/firebase-config.js', () => ({
+    db: {},
+    doc: vi.fn(),
+    setDoc: vi.fn(),
+    getDoc: vi.fn(),
+    getDocs: vi.fn(),
+    collection: vi.fn(),
+    query: vi.fn(),
+    orderBy: vi.fn(),
+}));
 
-/**
- * Generate CSV from workout data. One row per set.
- */
-function generateCSV(workouts) {
-    const headers = ['Date', 'Workout Name', 'Exercise', 'Equipment', 'Set #', 'Set Type', 'Reps', 'Weight', 'Unit', 'Notes', 'Duration (min)'];
-    const rows = [headers.join(',')];
+vi.mock('../../js/core/ui/ui-helpers.js', () => ({
+    showNotification: vi.fn(),
+    escapeHtml: (s) => s,
+    openModal: vi.fn(),
+    closeModal: vi.fn(),
+}));
 
-    for (const workout of workouts) {
-        for (const [key, exercise] of Object.entries(workout.exercises || {})) {
-            for (let i = 0; i < (exercise.sets || []).length; i++) {
-                const set = exercise.sets[i];
-                rows.push([
-                    workout.date,
-                    escapeCSV(workout.workoutType),
-                    escapeCSV(exercise.name || exercise.machine || ''),
-                    escapeCSV(exercise.equipment || ''),
-                    i + 1,
-                    set.type || 'working',
-                    set.reps || '',
-                    set.weight || '',
-                    set.originalUnit || 'lbs',
-                    escapeCSV(exercise.notes || ''),
-                    workout.totalDuration ? Math.round(workout.totalDuration / 60) : '',
-                ].join(','));
-            }
-        }
-    }
-    return rows.join('\n');
-}
-
-/**
- * Validate JSON import structure.
- */
-function validateImportJSON(data) {
-    if (!data || typeof data !== 'object') return { valid: false, error: 'Invalid data format' };
-    if (!data.version) return { valid: false, error: 'Missing version field' };
-    if (!data.workouts || !Array.isArray(data.workouts)) return { valid: false, error: 'Missing or invalid workouts array' };
-    return { valid: true, error: null };
-}
+import { escapeCSV, generateCSV, validateImportJSON } from '../../js/core/data/data-export-import.js';
 
 // ===================================================================
 // TESTS

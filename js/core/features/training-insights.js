@@ -50,7 +50,7 @@ function currentDisplayUnit() {
  * Map exercise name to body part using the exercise database.
  * Falls back to keyword matching if not found in database.
  */
-function getBodyPartForExercise(exerciseName, exerciseDatabase) {
+export function getBodyPartForExercise(exerciseName, exerciseDatabase) {
     if (!exerciseName) return null;
 
     // Check database first
@@ -244,7 +244,7 @@ export function checkDeloadNeeded(workouts) {
 /**
  * Get ISO week key (YYYY-WXX) for a date string.
  */
-function getISOWeekKey(dateStr) {
+export function getISOWeekKey(dateStr) {
     const parts = dateStr.split('-');
     const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
     // ISO week calculation

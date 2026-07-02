@@ -1,9 +1,14 @@
 // Tests for pruneUnloggedSets (workout-session.js) — the fix for finishing a
 // workout early persisting autofill placeholders as if they'd been logged.
-// Pure mutation of the exercises map; re-implemented here for isolation.
+// Pure mutation of the exercises map; re-implemented here for isolation:
+// importing workout-session.js in node would require mocking its whole import
+// graph (ui-helpers, navigation, data-manager/firebase, active-workout-ui,
+// haptics, push-notification-manager) — a mock tower not worth two functions.
 
 import { describe, it, expect } from 'vitest';
 
+// MIRRORS: js/core/workout/workout-session.js#pruneUnloggedSets (lines 261-273)
+// — keep in sync manually.
 function pruneUnloggedSets(savedData) {
     const exMap = savedData?.exercises;
     if (!exMap) return;

@@ -9,6 +9,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --coverage.include=js/core/**",
     "lint": "eslint js/ --max-warnings 24",
     "lint:fix": "eslint js/ --fix",
     "format": "prettier --write \"js/**/*.js\" \"*.css\" \"*.html\"",
@@ -30,6 +31,7 @@
   "homepage": "https://github.com/kl26436/BigSurf#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@vitest/coverage-v8": "^4.1.4",
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
     "firebase": "^12.12.0",

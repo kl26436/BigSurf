@@ -1,11 +1,21 @@
 // Tests for workout completion summary calculations (Phase 6.1)
-// Verifies stats computed when showing the workout summary modal
+// Verifies stats computed when showing the workout summary modal.
+// The source logic is inline inside showWorkoutSummary (a DOM render function)
+// and hydratePriorComparison — not exportable without refactoring the render
+// path, so these stay re-implemented.
+//
+// NOTE (divergences from current source, predating this test's conversion
+// attempt): the source's totalSets tally counts only sets with reps && weight;
+// countCompletedSets below counts all sets. The source formats duration as
+// "42m" / "1h 5m" (lines 507-511), not the "m:ss" format below. Treat these
+// helpers as spec-level mirrors of the original Phase 6.1 logic.
 
 import { describe, it, expect } from 'vitest';
 
 /**
  * Count total completed sets across all exercises in a workout.
- * Mirrors logic from workout-session.js showWorkoutSummary().
+ * MIRRORS: js/core/workout/workout-session.js#showWorkoutSummary stats block
+ * (lines 488-504) — keep in sync manually.
  */
 function countCompletedSets(workoutData) {
     if (!workoutData || !workoutData.exercises) return 0;
@@ -21,6 +31,8 @@ function countCompletedSets(workoutData) {
 
 /**
  * Calculate total volume (weight × reps) across all exercises.
+ * MIRRORS: js/core/workout/workout-session.js#showWorkoutSummary stats block
+ * (lines 488-504) — keep in sync manually.
  */
 function calculateTotalVolume(workoutData) {
     if (!workoutData || !workoutData.exercises) return 0;
@@ -39,6 +51,8 @@ function calculateTotalVolume(workoutData) {
 
 /**
  * Count distinct exercises in a workout.
+ * MIRRORS: js/core/workout/workout-session.js#showWorkoutSummary (line 493)
+ * — keep in sync manually.
  */
 function countExercises(workoutData) {
     if (!workoutData || !workoutData.exercises) return 0;
@@ -46,7 +60,10 @@ function countExercises(workoutData) {
 }
 
 /**
- * Format a duration in seconds to a display string.
+ * Format a duration in seconds to a display string (h:mm:ss / m:ss).
+ * No current source equivalent — showWorkoutSummary now renders "42m" /
+ * "1h 5m" (workout-session.js lines 507-511). Kept as the historical
+ * Phase 6.1 spec.
  */
 function formatDuration(seconds) {
     if (!seconds || seconds <= 0) return '0:00';
@@ -59,6 +76,8 @@ function formatDuration(seconds) {
 
 /**
  * Calculate volume change percentage between two sessions.
+ * MIRRORS: js/core/workout/workout-session.js#hydratePriorComparison
+ * (line 457; source additionally rounds) — keep in sync manually.
  */
 function calculateVolumeChange(currentVolume, previousVolume) {
     if (!previousVolume || previousVolume === 0) return null;

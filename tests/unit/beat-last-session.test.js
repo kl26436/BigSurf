@@ -3,10 +3,19 @@
 //  - countLastWeekTrainingDaysThroughToday: dashboard week-over-week pace
 // Both are pure functions re-implemented here for isolation (no DOM/Firebase),
 // mirroring the shipped logic.
+//
+// NOT converted to real-source imports: the mirrored functions live un-exported
+// in active-workout-ui.js and dashboard-ui.js — both deliberately self-contained
+// (prod pins JS for a year; no new cross-module exports) and with import graphs
+// (data-manager, navigation, exercise-ui, push-notification-manager, …) that
+// would need a fragile mock tower. Per-function MIRRORS notes below — keep in
+// sync manually when the source changes.
 
 import { describe, it, expect } from 'vitest';
 
-// --- mirror of convertWeight (ui-helpers.js) for lbs<->kg ---
+// MIRRORS: js/core/ui/ui-helpers.js#convertWeight (lines 67-86) — simplified:
+// exact math with no 1-decimal rounding, no >1000 guard. The source functions
+// mirrored below call the real (rounding) convertWeight.
 const LB_PER_KG = 2.20462;
 function convertWeight(w, from, to) {
     if (from === to) return w;
@@ -15,7 +24,8 @@ function convertWeight(w, from, to) {
     return w;
 }
 
-// --- mirror of beatBadgeFor (active-workout-ui.js) ---
+// MIRRORS: js/core/workout/active-workout-ui.js#beatBadgeFor (lines 852-871)
+// — keep in sync manually
 function beatBadgeFor(set, lastSet, displayUnit) {
     if (!set || !lastSet) return null;
     const curW = set.weight, curR = set.reps;
@@ -80,7 +90,8 @@ describe('beatBadgeFor', () => {
     });
 });
 
-// --- mirror of nextTargetFor (active-workout-ui.js) — B2 overload nudge ---
+// MIRRORS: js/core/workout/active-workout-ui.js#nextTargetFor (lines 595-609)
+// — B2 overload nudge; keep in sync manually
 function nextTargetFor(lastSets, displayUnit) {
     if (!Array.isArray(lastSets) || lastSets.length === 0) return null;
     let topLbs = 0, topSet = null;
@@ -123,7 +134,8 @@ describe('nextTargetFor (overload nudge)', () => {
     });
 });
 
-// --- mirror of computeOverloadNudge (active-workout-ui.js) — smart B2 coach ---
+// MIRRORS: js/core/workout/active-workout-ui.js#computeOverloadNudge (lines
+// 658-689) — smart B2 coach; keep in sync manually
 function computeOverloadNudge(sessions, displayUnit, repTarget) {
     if (!Array.isArray(sessions) || sessions.length === 0) return null;
     const cur = sessions[0];
@@ -196,7 +208,8 @@ describe('computeOverloadNudge (smart coach)', () => {
     });
 });
 
-// --- mirror of buildExerciseSessions (active-workout-ui.js) ---
+// MIRRORS: js/core/workout/active-workout-ui.js#buildExerciseSessions (lines
+// 618-646) — keep in sync manually
 function buildExerciseSessions(allWorkouts, exName, displayUnit) {
     if (!Array.isArray(allWorkouts) || !exName) return [];
     const sessions = [];
@@ -259,8 +272,9 @@ describe('buildExerciseSessions', () => {
     });
 });
 
-// --- mirror of countLastWeekTrainingDaysThroughToday (dashboard-ui.js) ---
-// with an injectable `now` so the window math is deterministic in tests.
+// MIRRORS: js/core/ui/dashboard-ui.js#computeWeekPace (lines 330-367) — the
+// lastWeekDays day-counting portion only, with an injectable `now` (the source
+// reads new Date() and also accumulates volume). Keep in sync manually.
 function getDateString(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

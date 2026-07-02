@@ -2,7 +2,7 @@
 // Dashboard widget, weight entry modal, Stats chart, body measurements modal
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification, openModal, closeModal, formatHeight, parseHeightToCm } from '../ui/ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, formatHeight, parseHeightToCm } from '../ui/ui-helpers.js';
 import { formatRelativeDate, getDateString } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import {
@@ -14,7 +14,6 @@ import {
     calculate7DayAverage,
     calculateWeightTrend,
     convertMeasurementUnit,
-    MEASUREMENT_TYPES,
 } from './body-measurements.js';
 
 // ===================================================================
@@ -103,11 +102,17 @@ export async function renderBodyWeightCard() {
  * Spec: page-header + hero bm-weight-card + bm-row family + segmented unit
  * toggle + import-sources group + sticky footer primary CTA.
  */
-export function showWeightEntryModal() {
+// Per-entry unit override — the segmented lb/kg toggle on the entry page only
+// affects the entry being logged, not the app-wide unit setting. Reset on
+// every fresh open so the page starts at the user's global default.
+let entryUnitOverride = null;
+
+export function showWeightEntryModal({ keepUnitOverride = false } = {}) {
     const section = document.getElementById('body-measurements-entry-section');
     if (!section) return;
 
-    const unit = AppState.globalUnit || 'lbs';
+    if (!keepUnitOverride) entryUnitOverride = null;
+    const unit = entryUnitOverride || AppState.globalUnit || 'lbs';
     const unitLabel = unit === 'kg' ? 'kg' : 'lb';
     const circumUnit = unit === 'kg' ? 'cm' : 'in';
     const today = AppState.getTodayDateString?.() || getDateString(new Date());
@@ -292,6 +297,30 @@ function renderHeightRow(currentCm) {
 }
 
 /**
+ * Switch the entry page between lb and kg for the entry being logged.
+ * Re-renders the page with the new unit, preserving anything already typed.
+ */
+export function setBodyWeightUnit(unit) {
+    if (unit !== 'lbs' && unit !== 'kg') return;
+    if ((entryUnitOverride || AppState.globalUnit || 'lbs') === unit) return;
+
+    const typed = {};
+    for (const id of ['body-weight-input', 'body-fat-input', 'muscle-mass-input', 'bm-entry-date',
+        'bm-height-input', 'measure-chest', 'measure-waist', 'measure-bicepLeft']) {
+        const el = document.getElementById(id);
+        if (el && el.value !== '') typed[id] = el.value;
+    }
+
+    entryUnitOverride = unit;
+    showWeightEntryModal({ keepUnitOverride: true });
+
+    for (const [id, value] of Object.entries(typed)) {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    }
+}
+
+/**
  * Close the measurements entry page (navigate back to dashboard/previous).
  */
 export function closeWeightEntryModal() {
@@ -314,7 +343,7 @@ export async function saveBodyWeightEntry() {
 
     const bodyFat = fatInput?.value ? parseFloat(fatInput.value) : null;
     const muscleMass = muscleInput?.value ? parseFloat(muscleInput.value) : null;
-    const unit = AppState.globalUnit || 'lbs';
+    const unit = entryUnitOverride || AppState.globalUnit || 'lbs';
 
     // Circumference fields
     const circumKeys = ['chest', 'waist', 'bicepLeft'];
@@ -347,96 +376,6 @@ export async function saveBodyWeightEntry() {
     const result = await saveBodyWeight(weight, unit, extra);
     if (result) {
         closeWeightEntryModal();
-    }
-}
-
-// ===================================================================
-// BODY MEASUREMENTS MODAL (Phase 12.4)
-// ===================================================================
-
-/**
- * Show the body measurements modal for tracking circumference measurements.
- */
-export function showMeasurementsModal() {
-    const modal = document.getElementById('measurements-modal');
-    if (!modal) return;
-
-    const unit = AppState.globalUnit === 'kg' ? 'cm' : 'in';
-
-    const measurementFields = Object.entries(MEASUREMENT_TYPES).map(([key, label]) => `
-        <div class="measurement-row">
-            <label class="measurement-label">${label}</label>
-            <div class="measurement-input-wrap">
-                <input type="number" id="measure-${key}" class="form-input measurement-input"
-                       placeholder="—" step="0.1" min="0" max="200" inputmode="decimal">
-                <span class="measurement-unit">${unit}</span>
-            </div>
-        </div>
-    `).join('');
-
-    modal.querySelector('.modal-content').innerHTML = `
-        <div class="modal-header">
-            <h3>Body Measurements</h3>
-            <button class="modal-close-btn" onclick="closeMeasurementsModal()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <p class="measurements-hint">All measurements in ${unit}. Leave blank to skip.</p>
-            <div class="measurements-form">
-                ${measurementFields}
-            </div>
-            <button class="btn btn-primary btn-block measurements-save-btn" onclick="saveMeasurementsEntry()">
-                <i class="fas fa-check"></i> Save Measurements
-            </button>
-        </div>
-    `;
-
-    openModal(modal);
-}
-
-/**
- * Close measurements modal.
- */
-export function closeMeasurementsModal() {
-    const modal = document.getElementById('measurements-modal');
-    if (modal) closeModal(modal);
-}
-
-/**
- * Save body measurements from the modal.
- */
-export async function saveMeasurementsEntry() {
-    const measurements = {};
-    let hasAny = false;
-
-    for (const key of Object.keys(MEASUREMENT_TYPES)) {
-        const input = document.getElementById(`measure-${key}`);
-        const val = input ? parseFloat(input.value) : null;
-        if (val && val > 0) {
-            measurements[key] = val;
-            hasAny = true;
-        }
-    }
-
-    if (!hasAny) {
-        showNotification('Enter at least one measurement', 'warning');
-        return;
-    }
-
-    const unit = AppState.globalUnit || 'lbs';
-    const measureUnit = unit === 'kg' ? 'cm' : 'in';
-
-    // Save as a body weight entry with measurements attached
-    // Use 0 for weight since this is measurements-only
-    const result = await saveBodyWeight(0, unit, {
-        notes: 'Body measurements',
-        measurements: { ...measurements, unit: measureUnit },
-    });
-
-    if (result) {
-        closeMeasurementsModal();
-        showNotification('Measurements saved', 'success', 1500);
     }
 }
 
@@ -521,40 +460,6 @@ export async function deleteWeightEntry(docId) {
 // ===================================================================
 
 let bodyWeightChart = null;
-
-/**
- * Render the body weight chart section for the Stats page.
- * @returns {string} HTML string for the chart section
- */
-export function renderBodyWeightChartSection() {
-    return `
-        <div class="stats-section" id="bodyweight-chart-section">
-            <div class="section-header-row" onclick="toggleStatsSection('bodyweight-chart-content')">
-                <h3 class="section-title"><i class="fas fa-weight-scale"></i> Body Weight</h3>
-                <i class="fas fa-chevron-down section-toggle"></i>
-            </div>
-            <div id="bodyweight-chart-content" class="section-collapsible">
-                <div class="chart-time-range-pills">
-                    <button class="pill-btn active" onclick="setBodyWeightTimeRange('3M')">3M</button>
-                    <button class="pill-btn" onclick="setBodyWeightTimeRange('6M')">6M</button>
-                    <button class="pill-btn" onclick="setBodyWeightTimeRange('1Y')">1Y</button>
-                    <button class="pill-btn" onclick="setBodyWeightTimeRange('ALL')">All</button>
-                </div>
-                <div class="chart-container" id="bodyweight-chart-container">
-                    <canvas id="bodyweight-chart"></canvas>
-                </div>
-                <div class="bodyweight-chart-actions">
-                    <button class="btn btn-sm btn-outline" onclick="showWeightEntryModal()">
-                        <i class="fas fa-plus"></i> Log Weight
-                    </button>
-                    <button class="btn btn-sm btn-outline" onclick="showWeightHistory()">
-                        <i class="fas fa-list"></i> History
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-}
 
 let currentBodyWeightTimeRange = '3M';
 
@@ -718,4 +623,9 @@ export function destroyBodyWeightChart() {
         bodyWeightChart = null;
     }
 }
+
+// The entry page's unit toggle renders in this module's template strings, so
+// the handler is assigned here (not main.js) — prod caches JS for a year, and
+// a same-file assignment can't be version-skewed away from its template.
+window.setBodyWeightUnit = setBodyWeightUnit;
 

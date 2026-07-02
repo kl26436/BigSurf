@@ -1,59 +1,28 @@
 // Tests for body weight & measurements tracking (Phase 12.5)
 // Verifies 7-day moving average, unit conversion, and duplicate handling
+// Imports the REAL body-measurements module — firebase-config is mocked because
+// the module's Firestore CRUD imports it, but the functions under test are pure.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
-// Re-implement pure functions for test isolation (no Firebase/DOM dependencies)
+vi.mock('../../js/core/data/firebase-config.js', () => ({
+    db: {},
+    doc: vi.fn(),
+    setDoc: vi.fn(),
+    getDocs: vi.fn(),
+    deleteDoc: vi.fn(),
+    collection: vi.fn(),
+    query: vi.fn(),
+    orderBy: vi.fn(),
+    where: vi.fn(),
+    limit: vi.fn(),
+}));
 
-/**
- * Calculate 7-day moving average for body weight entries.
- * @param {Array<{date: string, weight: number}>} entries - Sorted by date ascending
- * @returns {Array<{date: string, weight: number}>} Moving average at each point
- */
-function calculate7DayAverage(entries) {
-    if (!entries || entries.length === 0) return [];
-    return entries.map((entry, i) => {
-        const window = entries.slice(Math.max(0, i - 6), i + 1);
-        const avg = window.reduce((sum, e) => sum + e.weight, 0) / window.length;
-        return { date: entry.date, weight: Math.round(avg * 10) / 10 };
-    });
-}
-
-/**
- * Convert a measurement entry to a different unit without mutating original.
- * @param {{weight: number, unit: string}} entry
- * @param {string} targetUnit - 'lbs' or 'kg'
- * @returns {{weight: number, unit: string}}
- */
-function convertMeasurementUnit(entry, targetUnit) {
-    if (!entry || !entry.weight) return { weight: 0, unit: targetUnit };
-    if (entry.unit === targetUnit) return { ...entry };
-
-    if (entry.unit === 'lbs' && targetUnit === 'kg') {
-        return { ...entry, weight: Math.round(entry.weight * 0.453592 * 10) / 10, unit: 'kg' };
-    }
-    if (entry.unit === 'kg' && targetUnit === 'lbs') {
-        return { ...entry, weight: Math.round(entry.weight * 2.20462 * 10) / 10, unit: 'lbs' };
-    }
-    return { ...entry };
-}
-
-/**
- * Deduplicate entries by date, keeping the latest entry for each date.
- * @param {Array<{date: string, weight: number, timestamp: string}>} entries
- * @returns {Array} Deduplicated entries sorted by date
- */
-function deduplicateByDate(entries) {
-    if (!entries || entries.length === 0) return [];
-    const byDate = new Map();
-    for (const entry of entries) {
-        const existing = byDate.get(entry.date);
-        if (!existing || (entry.timestamp && (!existing.timestamp || entry.timestamp > existing.timestamp))) {
-            byDate.set(entry.date, entry);
-        }
-    }
-    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-}
+import {
+    calculate7DayAverage,
+    convertMeasurementUnit,
+    deduplicateByDate,
+} from '../../js/core/features/body-measurements.js';
 
 // ===================================================================
 // TESTS

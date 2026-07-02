@@ -126,7 +126,13 @@ styles/
 
 ### Test Structure
 
-Tests use Vitest and re-implement pure functions for isolation (no Firebase/DOM dependencies):
+Tests use Vitest and IMPORT THE REAL SOURCE MODULES — do not re-implement logic in tests. Conventions (2026-07 conversion):
+- Pure modules (config.js, streak-tracker, training-insights, ui-helpers math) import directly.
+- Modules whose import graph pulls Firebase use `vi.mock('../../js/core/data/firebase-config.js', ...)` backed by the shared in-memory factory in [tests/fixtures/firestore-mock.js](tests/fixtures/firestore-mock.js) (supports doc/collection/getDocs/setDoc/query/where/orderBy). Mock `ui-helpers.js` when the graph touches the DOM at import time.
+- A few tests still mirror logic that only exists inline in render functions (or in deliberately-unexported active-workout functions). Those carry a `// MIRRORS: <file>#<function> (lines N-M)` header — keep them in sync when touching the source, or better, extract+export the function and convert the test.
+- Adding `export` to an existing internal function purely for testability is allowed (zero runtime impact — nothing in the app imports it).
+- [window-wiring.test.js](tests/unit/window-wiring.test.js) statically verifies every inline `onclick` handler (index.html + JS template strings) resolves to a `window.*` assignment — it will fail your PR if you render a handler without wiring it.
+- `npm run test:coverage` reports real coverage over js/core/** (baseline 2026-07: ~5% statements — UI render code dominates the denominator; data/feature modules are the tested surface).
 
 ```
 tests/
@@ -170,6 +176,8 @@ When adding new UI functions that are called from HTML:
 1. Export the function from its module
 2. Import it in [main.js](js/main.js)
 3. Assign it to `window` object
+
+Exception: handlers referenced only from a module's OWN template strings should be window-assigned at the bottom of that module instead (`window.myHandler = myHandler;`) — prod caches JS for a year, and a same-file assignment can't be version-skewed away from its template the way main.js wiring can. Either way, [window-wiring.test.js](tests/unit/window-wiring.test.js) fails if a rendered handler resolves to nothing.
 
 ## Firebase Data Model
 

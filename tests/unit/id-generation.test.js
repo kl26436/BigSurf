@@ -1,26 +1,35 @@
-// Tests for generateWorkoutId and isOldSchemaDoc from data-manager.js
-// These are internal (non-exported) functions, so we re-implement them here
-// to test the logic in isolation (same pattern as weight-conversion.test.js)
+// Tests for generateWorkoutId (data-manager.js) and isOldSchemaDoc
+// (schema-migration.js). Imports the REAL functions — both modules statically
+// import firebase-config (CDN URLs), and data-manager also imports ui-helpers
+// (DOM at import time), so those two are mocked. The functions under test are
+// pure.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
-// Node 24+ already has globalThis.crypto (Web Crypto API) — no polyfill needed
+vi.mock('../../js/core/data/firebase-config.js', () => ({
+    db: {},
+    doc: vi.fn(),
+    setDoc: vi.fn(),
+    getDoc: vi.fn(),
+    collection: vi.fn(),
+    query: vi.fn(),
+    orderBy: vi.fn(),
+    limit: vi.fn(),
+    getDocs: vi.fn(),
+    where: vi.fn(),
+    deleteDoc: vi.fn(),
+    writeBatch: vi.fn(),
+    updateDoc: vi.fn(),
+}));
 
-// Re-implemented from data-manager.js
-function generateWorkoutId(date) {
-    const timestamp = Date.now();
-    const arr = new Uint8Array(12);
-    crypto.getRandomValues(arr);
-    const random = Array.from(arr, (b) => b.toString(36).padStart(2, '0'))
-        .join('')
-        .substring(0, 12);
-    return `${date}_${timestamp}_${random}`;
-}
+vi.mock('../../js/core/ui/ui-helpers.js', () => ({
+    showNotification: vi.fn(),
+    convertWeight: vi.fn(),
+    escapeHtml: (s) => s,
+}));
 
-// Re-implemented from data-manager.js
-function isOldSchemaDoc(docId) {
-    return /^\d{4}-\d{2}-\d{2}$/.test(docId);
-}
+import { generateWorkoutId } from '../../js/core/data/data-manager.js';
+import { isOldSchemaDoc } from '../../js/core/data/schema-migration.js';
 
 describe('generateWorkoutId', () => {
     it('produces ID matching expected pattern', () => {

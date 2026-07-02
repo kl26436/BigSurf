@@ -1,11 +1,18 @@
 // Tests for weekly goal progress calculation (Phase 1.3, 5.2)
-// Verifies progress ring percentage and day-of-week dot logic
+// Verifies progress ring percentage and day-of-week dot logic.
+//
+// NOTE: dashboard-ui.js's renderWeeklyGoalSection (the original source of
+// these mirrors) was retired in the dashboard redesign — the weekly goal now
+// renders as a hero chip (renderHeroChipRow) with no ring/percentage math.
+// These helpers are kept as spec-level mirrors of the surviving analogs noted
+// per function; there is no longer a 1:1 exportable source.
 
 import { describe, it, expect } from 'vitest';
 
 /**
  * Calculate weekly goal percentage for progress ring.
- * Mirrors logic from dashboard-ui.js renderWeeklyGoalSection().
+ * No current source equivalent (ex-renderWeeklyGoalSection); kept as the
+ * historical Phase 1.3/5.2 spec.
  */
 function calculateGoalPercentage(weekCount, weeklyGoal) {
     return weeklyGoal > 0 ? Math.min((weekCount / weeklyGoal) * 100, 100) : 0;
@@ -13,6 +20,8 @@ function calculateGoalPercentage(weekCount, weeklyGoal) {
 
 /**
  * Calculate SVG stroke-dashoffset for a progress ring.
+ * MIRRORS: js/core/workout/exercise-ui.js exercise mini-ring math
+ * (lines 584-585, inline in the card render) — keep in sync manually.
  * @param {number} percentage - 0-100
  * @param {number} radius - Circle radius
  * @returns {number} stroke-dashoffset value
@@ -24,6 +33,9 @@ function calculateStrokeDashoffset(percentage, radius) {
 
 /**
  * Determine which days of the week have workouts.
+ * No exported source equivalent — nearest analog is the local-date day
+ * counting inside dashboard-ui.js#computeWeekPace (lines ~331-360). Kept as
+ * the historical day-dot spec.
  * @param {Array<{date: string}>} workouts - Workouts with YYYY-MM-DD date strings
  * @returns {Set<number>} Set of day-of-week indices (0=Sun, 6=Sat)
  */

@@ -1,11 +1,18 @@
 // Tests for exercise completion and reorder logic (Phase 2.2, 2.8)
-// Verifies per-set completion, exercise completion detection, and sort order
+// Verifies per-set completion, exercise completion detection, and sort order.
+//
+// The source implementations are DOM-bound: toggleSetComplete (exercise-ui.js
+// line 1802) works on AppState + card elements with a different signature, and
+// completed-last ordering is done by physically moving card elements
+// (reorderExercisesByCompletion, exercise-ui.js lines 371-395). These helpers
+// are data-level mirrors of that behavior and stay re-implemented.
 
 import { describe, it, expect } from 'vitest';
 
 /**
  * Check if all sets in an exercise are completed.
- * Mirrors logic used in exercise-ui.js to determine exercise completion.
+ * MIRRORS: the completion checks inline in js/core/workout/exercise-ui.js
+ * (card render + toggleSetComplete) — keep in sync manually.
  */
 function isExerciseComplete(exercise) {
     if (!exercise || !exercise.sets || exercise.sets.length === 0) return false;
@@ -14,6 +21,9 @@ function isExerciseComplete(exercise) {
 
 /**
  * Toggle a set's completion status and return whether the exercise is now fully complete.
+ * MIRRORS: js/core/workout/exercise-ui.js#toggleSetComplete (lines 1802-1880;
+ * DOM/AppState version with (exerciseIndex, setIndex) signature) — keep in
+ * sync manually.
  * @returns {{ setCompleted: boolean, exerciseComplete: boolean }}
  */
 function toggleSetComplete(exercise, setIndex) {
@@ -31,6 +41,9 @@ function toggleSetComplete(exercise, setIndex) {
 /**
  * Sort exercises into two groups: incomplete first, completed last.
  * Returns indices in display order (visual only, does not mutate data).
+ * MIRRORS: js/core/workout/exercise-ui.js#reorderExercisesByCompletion
+ * (lines 371-395; DOM version that moves card elements) — keep in sync
+ * manually.
  */
 function getExerciseDisplayOrder(exercises) {
     if (!exercises || typeof exercises !== 'object') return [];

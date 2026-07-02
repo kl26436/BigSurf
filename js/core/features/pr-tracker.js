@@ -227,8 +227,9 @@ export function suggestLocation() {
 
 /**
  * Calculate volume for a set (reps × weight)
+ * Exported for unit tests only — nothing in the app imports it.
  */
-function calculateVolume(reps, weight) {
+export function calculateVolume(reps, weight) {
     return reps * weight;
 }
 

@@ -19,7 +19,7 @@ function generateMigrationId(date, index = 0) {
 /**
  * Check if a document ID uses the old schema (date as ID)
  */
-function isOldSchemaDoc(docId) {
+export function isOldSchemaDoc(docId) {
     return /^\d{4}-\d{2}-\d{2}$/.test(docId);
 }
 

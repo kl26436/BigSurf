@@ -1,12 +1,22 @@
 // Tests for progress calculation functions: 1RM estimation, volume, trend detection, body-part aggregation
-// These are pure functions extracted for testability
+// These are pure functions extracted for testability.
+//
+// NOT converted to real-source imports: none of these exist as importable
+// functions. The Epley/volume/body-part logic is inlined (with different
+// signatures and no input guards) across js/core/features/metrics/aggregators.js
+// and js/core/ui/dashboard-ui.js; calculateTrend has no source counterpart at
+// all. See the per-function MIRRORS notes below and keep them in sync manually.
 
 import { describe, it, expect } from 'vitest';
 
 // ===================================================================
-// PURE FUNCTION RE-IMPLEMENTATIONS (mirrors logic from exercise-progress.js)
+// PURE FUNCTION RE-IMPLEMENTATIONS (mirrors of inlined source logic)
 // ===================================================================
 
+// MIRRORS: js/core/features/metrics/aggregators.js — inline Epley formula
+// `weight * (1 + reps/30)` in aggregate1RMSeries (line 182) and other 1RM sites
+// (lines 236, 259, 681, 692); the guards and 1-decimal rounding here are
+// test-local. Keep in sync manually.
 /**
  * Estimate 1RM using Epley formula: 1RM = weight * (1 + reps/30)
  * @param {number} weight - Weight lifted
@@ -20,6 +30,10 @@ function estimate1RM(weight, reps) {
     return Math.round(weight * (1 + reps / 30) * 10) / 10;
 }
 
+// MIRRORS: js/core/features/metrics/aggregators.js#aggregateVolume (lines
+// 90-102) — same sum-of-(reps×weight) core, but the source variant is
+// date-range-filtered and uses withResolvedNames; this copy takes a bare
+// exercises object. Keep in sync manually.
 /**
  * Calculate total session volume from exercises
  * Volume = sum of (weight * reps) for each set across all exercises
@@ -45,6 +59,10 @@ function calculateSessionVolume(exercises) {
     return totalVolume;
 }
 
+// MIRRORS: no direct source counterpart — the halves-comparison trend heuristic
+// exists only here (the app's trend surfaces use calculateWeightTrend in
+// body-measurements.js and detectPositiveTrends in training-insights.js, both
+// different algorithms). Keep in sync manually if a source version is added.
 /**
  * Detect trend from a series of data points
  * Compares average of last N/2 points to average of first N/2 points
@@ -71,6 +89,10 @@ function calculateTrend(dataPoints) {
     return 'flat';
 }
 
+// MIRRORS: js/core/features/metrics/aggregators.js#aggregateVolumeByBodyPart
+// (lines 108-124) — same per-body-part volume accumulation, but the source
+// takes a {start, end} range and classifies via classifyBodyPart; this copy
+// takes an explicit name→bodyPart map. Keep in sync manually.
 /**
  * Aggregate volume by body part from a set of workouts
  * @param {Array} workouts - Array of workout objects with exercises

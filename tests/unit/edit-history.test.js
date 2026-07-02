@@ -1,47 +1,51 @@
 // Tests for the inline historical-edit pure helpers (edit-history-inline.js).
-// Following the project convention: re-implement the pure logic here so tests
-// don't transitively import firebase from CDN URLs.
+// Imports the REAL exported helpers. The module's import graph touches
+// firebase-config (CDN URLs), ui-helpers (DOM at import time), and
+// active-workout-ui (heavy DOM module) — those three are mocked; the helpers
+// under test are pure.
 //
 // Spec: docs/edit-history-redesign.md
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
-// -----------------------------------------------------------------------------
-// Re-implementations (kept in lockstep with edit-history-inline.js)
-// -----------------------------------------------------------------------------
+vi.mock('../../js/core/data/firebase-config.js', () => ({
+    db: {},
+    doc: vi.fn(),
+    setDoc: vi.fn(),
+    getDoc: vi.fn(),
+    collection: vi.fn(),
+    query: vi.fn(),
+    orderBy: vi.fn(),
+    limit: vi.fn(),
+    getDocs: vi.fn(),
+    where: vi.fn(),
+    deleteDoc: vi.fn(),
+    writeBatch: vi.fn(),
+    updateDoc: vi.fn(),
+}));
 
-function deriveExerciseNames(state) {
-    const names = {};
-    Object.keys(state.exercises).forEach((key) => {
-        names[key] = state.exercises[key].name;
-    });
-    return names;
-}
+vi.mock('../../js/core/ui/ui-helpers.js', () => ({
+    showNotification: vi.fn(),
+    convertWeight: vi.fn(),
+    displayWeight: vi.fn(),
+    escapeHtml: (s) => s,
+    escapeAttr: (s) => s,
+}));
 
-function rekeyExercisesContiguous(state) {
-    const keys = Object.keys(state.exercises).sort((a, b) => {
-        const ai = parseInt(a.split('_')[1], 10);
-        const bi = parseInt(b.split('_')[1], 10);
-        return (isNaN(ai) ? 0 : ai) - (isNaN(bi) ? 0 : bi);
-    });
-    const rebuilt = {};
-    const originalWorkoutExercises = state.originalWorkout ? [] : null;
-    keys.forEach((oldKey, i) => {
-        const newKey = `exercise_${i}`;
-        rebuilt[newKey] = state.exercises[oldKey];
-        if (originalWorkoutExercises && state.originalWorkout?.exercises) {
-            const oldIdx = parseInt(oldKey.split('_')[1], 10);
-            const src = state.originalWorkout.exercises[oldIdx];
-            if (src) originalWorkoutExercises.push(src);
-        }
-    });
-    state.exercises = rebuilt;
-    if (state.originalWorkout && originalWorkoutExercises) {
-        state.originalWorkout.exercises = originalWorkoutExercises;
-    }
-    return state;
-}
+vi.mock('../../js/core/workout/active-workout-ui.js', () => ({
+    openSharedAddExerciseSheet: vi.fn(),
+    openSharedEquipmentSheet: vi.fn(),
+}));
 
+import {
+    deriveExerciseNames,
+    rekeyExercisesContiguous,
+} from '../../js/core/workout/edit-history-inline.js';
+
+// MIRRORS: js/core/workout/edit-history-inline.js#wehCommitSet (lines 504-534)
+// — keep in sync manually. The real function reads module-level `editingSet`
+// draft state and re-renders the DOM, so the commit logic is extracted here
+// as a pure function of (set, drafts, displayUnit).
 function commitSetEdit(set, draftReps, draftWeightInDisplayUnit, displayUnit) {
     const reps = parseInt(draftReps, 10);
     const weight = parseFloat(draftWeightInDisplayUnit);
