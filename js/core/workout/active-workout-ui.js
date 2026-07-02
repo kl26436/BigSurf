@@ -31,6 +31,10 @@ let restTimerRemaining = 0;
 let restTimerDuration = 0;
 let restTimerEndsAt = 0;
 let restTimerActive = false;
+// After the countdown hits zero the banner stays in a "Ready" state instead of
+// vanishing — from across the rack the old 600ms flash-then-hide was easy to
+// miss. It clears when the next set is logged (startRestTimer) or dismissed.
+let restTimerDone = false;
 
 // When the app comes back from the lock screen / another app, setInterval
 // will resume but the next tick may not fire for up to a second. Force an
@@ -252,8 +256,16 @@ function renderProgressPills() {
 
 function shortName(name) {
     if (!name) return '?';
-    // Truncate to ~12 chars for pill display
-    return name.length > 14 ? name.substring(0, 12) + '…' : name;
+    // The pill row scrolls horizontally, so we can afford readable labels.
+    // A hard 12-char cut turned "Hammer Strength Flat" into "Hammer Str…",
+    // which tells you nothing. Prefer cutting on a word boundary so the label
+    // stays legible at a glance between sets.
+    const MAX = 18;
+    if (name.length <= MAX) return name;
+    const clipped = name.slice(0, MAX);
+    const lastSpace = clipped.lastIndexOf(' ');
+    if (lastSpace >= 10) return clipped.slice(0, lastSpace) + '…';
+    return clipped.trimEnd() + '…';
 }
 
 // ===================================================================
@@ -261,9 +273,12 @@ function shortName(name) {
 // ===================================================================
 
 function renderRestTimerBanner() {
+    if (restTimerDone) {
+        return `<div class="aw-rest-timer aw-rest-timer--done" id="aw-rest-banner">${restBannerDoneInner()}</div>`;
+    }
     const pct = restTimerDuration > 0 ? ((restTimerDuration - restTimerRemaining) / restTimerDuration * 100) : 0;
     return `
-        <div class="aw-rest-timer ${restTimerActive ? '' : 'hidden'}" id="aw-rest-banner" onclick="awEditRestDuration()">
+        <div class="aw-rest-timer ${restTimerActive ? '' : 'hidden'}" id="aw-rest-banner">
             <div class="aw-rest-timer__icon"><i class="fas fa-clock"></i></div>
             <div class="aw-rest-timer__info">
                 <span class="aw-rest-timer__label">Rest</span>
@@ -280,12 +295,27 @@ function renderRestTimerBanner() {
     `;
 }
 
+// The "Ready" banner shown once the countdown ends. Stays put (no auto-hide) so
+// a lifter who looks up from the rack still sees it; tapping anywhere dismisses.
+function restBannerDoneInner() {
+    return `
+            <div class="aw-rest-timer__icon"><i class="fas fa-check"></i></div>
+            <div class="aw-rest-timer__info">
+                <span class="aw-rest-timer__label">Rest done</span>
+                <span class="aw-rest-timer__time">Ready for your next set</span>
+            </div>
+            <div class="aw-rest-timer__controls">
+                <button class="aw-rest-timer__btn" onclick="awRestDismiss()" aria-label="Dismiss">Dismiss</button>
+            </div>`;
+}
+
 function startRestTimer(duration) {
     clearRestTimer();
     restTimerDuration = duration || Config.DEFAULT_REST_TIMER_SECONDS;
     restTimerEndsAt = Date.now() + restTimerDuration * 1000;
     restTimerRemaining = restTimerDuration;
     restTimerActive = true;
+    restTimerDone = false;
 
     // Schedule server-side push so the user gets a lock-screen notification
     // when rest ends. The local JS timer only runs while the app is open;
@@ -298,7 +328,7 @@ function startRestTimer(duration) {
 
     // Show banner
     const banner = document.getElementById('aw-rest-banner');
-    if (banner) banner.classList.remove('hidden');
+    if (banner) banner.classList.remove('hidden', 'aw-rest-timer--done');
     updateRestTimerDisplay();
 
     // Each tick recomputes from restTimerEndsAt so a paused setInterval
@@ -326,12 +356,17 @@ function updateRestTimerDisplay() {
 function onRestTimerComplete() {
     clearRestTimer();
     restTimerActive = false;
+    restTimerDone = true;
     haptic('complete');
 
+    // Swap the banner into its persistent "Ready" state in place. This fires
+    // from a timer tick (no renderAll around it), so we update the DOM directly;
+    // the state flag keeps any later re-render consistent.
     const banner = document.getElementById('aw-rest-banner');
     if (banner) {
-        banner.classList.add('flash');
-        setTimeout(() => banner.classList.add('hidden'), 600);
+        banner.classList.remove('hidden');
+        banner.classList.add('aw-rest-timer--done', 'flash');
+        banner.innerHTML = restBannerDoneInner();
     }
 }
 
@@ -362,6 +397,7 @@ export function awRestAdd30() {
 export function awRestSkip() {
     clearRestTimer();
     restTimerActive = false;
+    restTimerDone = false;
     restTimerRemaining = 0;
     restTimerEndsAt = 0;
     const banner = document.getElementById('aw-rest-banner');
@@ -371,8 +407,16 @@ export function awRestSkip() {
     cancelRestNotification().catch(() => {});
 }
 
-export function awEditRestDuration() {
-    // Tap timer body — no-op for now (could open duration picker)
+// Dismiss the "Ready" banner once the user has seen it (or is moving on without
+// logging another set). Replaces the old awEditRestDuration no-op.
+export function awRestDismiss() {
+    restTimerDone = false;
+    restTimerActive = false;
+    const banner = document.getElementById('aw-rest-banner');
+    if (banner) {
+        banner.classList.remove('aw-rest-timer--done', 'flash');
+        banner.classList.add('hidden');
+    }
 }
 
 // ===================================================================
@@ -413,11 +457,14 @@ function renderExerciseView(exercise, idx, savedEx) {
     // Same set table for ALL exercise types — always Reps | Weight | ✓
     const sets = buildSetRows(exercise, idx, savedEx, unit);
 
-    // Autofill hint: show only the first time it appears per workout session.
-    // After the user sees the explanation once, subsequent exercises with autofill
-    // don't repeat it (the dashed styling is enough of a cue after first exposure).
-    const showAutofillHint = sets.hasAutofill && !AppState._autofillHintShown;
-    if (showAutofillHint) AppState._autofillHintShown = true;
+    // Autofill hint: show the first time each exercise appears with pre-filled
+    // values. Tracked per exercise name (not once per session) — otherwise the
+    // second exercise shows dashed numbers with no explanation and reads like
+    // the app invented them. Once you've seen the hint for a given lift, the
+    // dashed styling alone is enough on later visits.
+    const hintSeen = AppState._autofillHintSeen || (AppState._autofillHintSeen = new Set());
+    const showAutofillHint = sets.hasAutofill && !hintSeen.has(exName);
+    if (showAutofillHint) hintSeen.add(exName);
 
     // Weight column label
     let weightLabel = unit;

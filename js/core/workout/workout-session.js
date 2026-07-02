@@ -5,7 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml, openModal, closeModal } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, navigateTo, setWorkoutActiveState } from '../ui/navigation.js';
-import { saveWorkoutData, debouncedSaveWorkoutData, clearLastSessionCache, clearAllWorkoutsCache } from '../data/data-manager.js';
+import { saveWorkoutData, debouncedSaveWorkoutData, clearLastSessionCache, clearAllWorkoutsCache, loadAllWorkouts } from '../data/data-manager.js';
 import {
     detectLocation,
     setSessionLocation,
@@ -420,6 +420,58 @@ export async function completeWorkout() {
     }
 }
 
+// Sum reps×weight across a saved workout's exercises. Mirrors the summary's own
+// (unit-naive) summation so a current-vs-prior delta compares like with like.
+function computeWorkoutVolume(workout) {
+    let vol = 0;
+    const exs = workout?.exercises;
+    if (!exs) return 0;
+    Object.values(exs).forEach(ex => {
+        (ex.sets || []).forEach(s => {
+            if (s.reps && s.weight) vol += s.reps * s.weight;
+        });
+    });
+    return vol;
+}
+
+// Progressive enhancement for the completion modal: find the previous workout of
+// the same type and fill in a volume delta. Async + best-effort — if history
+// can't load or there's no prior session, the line just stays hidden.
+async function hydratePriorComparison(workoutData, currentVolume) {
+    try {
+        const el = document.getElementById('completion-compare');
+        if (!el || !currentVolume) return;
+
+        const type = workoutData.workoutType;
+        if (!type) return;
+
+        const all = await loadAllWorkouts(AppState);
+        const prior = all
+            .filter(w => w.workoutType === type && w.id !== workoutData.workoutId)
+            .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))[0];
+        if (!prior) return;
+
+        const priorVol = computeWorkoutVolume(prior);
+        if (!priorVol) return;
+
+        const unit = AppState.globalUnit || 'lbs';
+        const priorStr = priorVol >= 1000 ? `${(priorVol / 1000).toFixed(1)}k` : `${priorVol}`;
+        const pct = Math.round(((currentVolume - priorVol) / priorVol) * 100);
+        const dir = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+        const icon = dir === 'up' ? 'fa-arrow-trend-up' : dir === 'down' ? 'fa-arrow-trend-down' : 'fa-equals';
+        const label = pct === 0
+            ? `Same volume as last ${escapeHtml(type)} — ${priorStr} ${unit}`
+            : `${pct > 0 ? '+' : ''}${pct}% volume vs. last ${escapeHtml(type)} · ${priorStr} ${unit}`;
+
+        el.innerHTML = `<i class="fas ${icon}"></i> ${label}`;
+        el.classList.add(`completion-compare--${dir}`);
+        el.classList.remove('hidden');
+    } catch (err) {
+        // Never let a missing comparison break the recap.
+        console.error('Prior-session comparison failed:', err);
+    }
+}
+
 /**
  * Show workout completion summary modal with stats, PRs, and notes
  */
@@ -460,18 +512,23 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
         ? `${Math.floor(dMin / 60)}h ${dMin % 60}m`
         : `${dMin}m`;
 
-    // Format volume
+    // Format volume — the summary sums raw reps×weight, so label it with the
+    // user's working unit rather than leaving a bare number (18,420 — of what?).
+    const volumeUnit = AppState.globalUnit || 'lbs';
     const volumeStr = totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : `${totalVolume}`;
 
-    // PR section
+    // PR section — this is the earned-hype moment, so it leads the recap (above
+    // the stats grid) with gold emphasis. Kept as "New PRs" per copy rules
+    // (no exclamation; the PR itself is the celebration).
     let prsHtml = '';
     if (newPRs && newPRs.length > 0) {
         prsHtml = `
-            <div class="completion-prs">
-                <h3><i class="fas fa-trophy completion-prs__trophy"></i> New Personal Records!</h3>
+            <div class="completion-prs completion-prs--hero">
+                <h3><i class="fas fa-trophy completion-prs__trophy"></i> ${newPRs.length === 1 ? 'New PR' : `${newPRs.length} new PRs`}</h3>
                 ${newPRs.map(pr => `
                     <div class="completion-pr-item">
-                        <strong>${escapeHtml(pr.exercise)}</strong>: ${pr.weight} ${pr.unit} &times; ${pr.reps}
+                        <strong>${escapeHtml(pr.exercise)}</strong>
+                        <span class="completion-pr-item__value">${pr.weight} ${pr.unit} &times; ${pr.reps}</span>
                     </div>
                 `).join('')}
             </div>
@@ -482,9 +539,11 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
         <div class="completion-summary">
             <div class="completion-header">
                 <i class="fas fa-check-circle completion-header__icon"></i>
-                <h2>Workout Complete!</h2>
+                <h2>Workout complete</h2>
                 <p class="completion-workout-name">${escapeHtml(workoutData.workoutType || 'Workout')}</p>
             </div>
+
+            ${prsHtml}
 
             <div class="completion-stats-grid">
                 <div class="completion-stat">
@@ -497,7 +556,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                 </div>
                 <div class="completion-stat">
                     <span class="completion-stat-value">${volumeStr}</span>
-                    <span class="completion-stat-label">Volume</span>
+                    <span class="completion-stat-label">Volume · ${volumeUnit}</span>
                 </div>
                 <div class="completion-stat">
                     <span class="completion-stat-value">${exerciseCount}</span>
@@ -505,7 +564,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                 </div>
             </div>
 
-            ${prsHtml}
+            <div class="completion-compare hidden" id="completion-compare"></div>
 
             ${templateChanges?.hasChanges && workoutData.templateId ? `
             <div class="completion-template-changes" id="template-changes-banner">
@@ -523,7 +582,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
 
             <div class="completion-notes-section">
                 <label for="workout-notes">How did it feel?</label>
-                <textarea id="workout-notes" placeholder="Great session, felt strong…" rows="2"></textarea>
+                <textarea id="workout-notes" placeholder="Add notes…" rows="2"></textarea>
             </div>
 
             <div class="completion-actions">
@@ -534,6 +593,10 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
 
     // Open modal
     openModal('workout-completion-modal');
+
+    // Async-hydrate a "vs. last {type}" volume delta once prior history loads.
+    // Best-effort progressive enhancement — the modal is already usable without it.
+    hydratePriorComparison(workoutData, totalVolume);
 
     // Done button handler
     document.getElementById('completion-done-btn')?.addEventListener('click', async () => {

@@ -205,6 +205,15 @@
     0% { transform: scale(1.03); }
     100% { transform: scale(1); }
 }
+/* Persistent "Ready" state — countdown finished, stays until dismissed or the
+   next set is logged. Green so it reads as "go" from across the rack. */
+.aw-rest-timer--done {
+    background: linear-gradient(135deg, var(--success), var(--success-strong, var(--success)));
+    cursor: default;
+}
+.aw-rest-timer--done .aw-rest-timer__time {
+    font-size: var(--font-md);
+}
 
 /* === EXERCISE HERO === */
 .aw-hero { padding: 14px 16px 8px; }

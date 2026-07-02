@@ -134,7 +134,7 @@ import {
     awCloseSheet,
     awRestAdd30,
     awRestSkip,
-    awEditRestDuration,
+    awRestDismiss,
     awToggleUnit,
     awToggleReorder,
     awMoveExercise,
@@ -626,7 +626,7 @@ window.awCreateAndInsertExercise = awCreateAndInsertExercise;
 window.awCloseSheet = awCloseSheet;
 window.awRestAdd30 = awRestAdd30;
 window.awRestSkip = awRestSkip;
-window.awEditRestDuration = awEditRestDuration;
+window.awRestDismiss = awRestDismiss;
 window.awToggleUnit = awToggleUnit;
 window.awToggleReorder = awToggleReorder;
 window.awMoveExercise = awMoveExercise;
