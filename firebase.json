@@ -14,11 +14,7 @@
         "tests/**",
         "scripts/**",
         "mockups/**",
-        "specs/**",
-        "pockethandoff/**",
-        "equipment-editor.html",
-        "equipment-migration-preview.html",
-        "debug-equipment-migration.js"
+        "specs/**"
       ],
       "rewrites": [
         {
@@ -65,11 +61,7 @@
         "tests/**",
         "scripts/**",
         "mockups/**",
-        "specs/**",
-        "pockethandoff/**",
-        "equipment-editor.html",
-        "equipment-migration-preview.html",
-        "debug-equipment-migration.js"
+        "specs/**"
       ],
       "rewrites": [
         {

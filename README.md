@@ -118,15 +118,12 @@ BigSurf/
 │   ├── components/                  # cards, buttons, modals, nav, chips, fields, etc.
 │   ├── pages/                       # Per-page styles (dashboard, workout, templates, history, …)
 │   └── utilities.css                # .hidden, .text-primary, layout helpers
-├── docs/
-│   ├── DEPLOYMENT.md                # Firebase deployment guide
-│   ├── MOBILE_TESTING.md            # Mobile & PWA testing guide
-│   └── edit-history-redesign.md     # Spec for inline history editing
-├── specs/                           # Active design specs + briefs
+├── docs/                            # Reference docs (deployment guide, mobile QA checklist)
+├── specs/                           # Design specs + briefs (reference)
 │   ├── equipment-system-v2.md       # Equipment system architecture (data model, migration)
 │   └── equipment-library-redesign-brief.md  # UX design brief for mockups
 ├── functions/                       # Firebase Cloud Functions (push notifications, geocoding, Withings)
-├── mockups/                         # Reference HTML mockups still in use
+├── mockups/                         # Reference HTML mockups (design reference)
 ├── scripts/                         # Tooling (design-audit, copy-lint, pre-commit hook, archive of one-offs)
 ├── tests/
 │   ├── fixtures/                    # Mock workouts/PRs for tests
