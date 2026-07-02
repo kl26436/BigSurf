@@ -39,8 +39,8 @@
     color: var(--text-secondary);
 }
 .dash-greeting__avatar {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--cat-push-bg), var(--cat-pull-bg));
     color: var(--text-strong);
@@ -90,7 +90,7 @@
     margin-left: 2px;
 }
 .hero-chip__label {
-    font-size: var(--font-2xs);
+    font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -98,7 +98,7 @@
     margin-top: 3px;
 }
 .hero-chip__delta {
-    font-size: var(--font-2xs);
+    font-size: var(--font-xs);
     font-weight: 600;
     margin-top: 2px;
 }
@@ -385,9 +385,12 @@
 .dash-insight-text strong { color: var(--text-strong); }
 .dash-insight__close {
     flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    margin: -8px -8px -8px 0;
+    width: 44px;
+    height: 44px;
+    margin: -12px -12px -12px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: transparent;
     border: none;
     color: var(--text-muted);
@@ -459,6 +462,42 @@
     align-items: center;
     gap: 10px;
     margin-bottom: 6px;
+    cursor: pointer;
+    transition: transform var(--anim-fast);
+}
+.pr-row:active { transform: scale(0.98); }
+
+/* Today's-PR hype banner — sits above the chip row on the day of a new PR. */
+.dash-pr-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background: var(--badge-gold-bg);
+    border: 1px solid var(--badge-gold);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: transform var(--anim-fast);
+}
+.dash-pr-banner:active { transform: scale(0.98); }
+.dash-pr-banner__badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--badge-gold);
+    color: var(--bg-app);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm);
+    flex-shrink: 0;
+}
+.dash-pr-banner__text {
+    flex: 1;
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-strong);
 }
 .pr-badge {
     width: 30px;

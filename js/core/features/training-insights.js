@@ -438,7 +438,7 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
             type: 'plateau',
             severity: 'info',
             icon: 'fa-equals',
-            message: `${top.exercise} has been flat at ${top.weight} ${currentDisplayUnit()} for ${top.sessions} sessions. ${top.suggestion}`,
+            message: `Add weight to ${top.exercise} — stuck at ${top.weight} ${currentDisplayUnit()} for ${top.sessions} sessions.`,
             exerciseName: top.exercise,
         });
     }
@@ -451,7 +451,7 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
             type: 'trend',
             severity: 'success',
             icon: 'fa-arrow-trend-up',
-            message: `${top.exercise} is up ${top.gain} lbs over your last ${top.sessions} sessions. Keep it up!`,
+            message: `${top.exercise} up ${top.gain} lbs over your last ${top.sessions} sessions.`,
         });
     }
 

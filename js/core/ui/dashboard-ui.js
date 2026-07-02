@@ -154,6 +154,7 @@ async function renderDashboard() {
             container.innerHTML = `
                 ${renderGreetingHeader()}
                 ${renderActiveWorkoutPill()}
+                ${renderTodayPRBanner(recentPRs)}
                 ${renderHeroChipRow(streakDays, weekCount, weeklyGoal, bwData, weekPace, detectDeloadWeek(allWorkouts))}
                 ${showInsight ? renderDashboardInsight(topInsight) : ''}
                 ${renderForToday(allWorkouts)}
@@ -311,7 +312,7 @@ function startPillTimer() {
             ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
             : 0;
         pill.textContent = `${done}/${total} · ${formatPillElapsed(elapsedSeconds)}`;
-    }, 30000);
+    }, 1000);
 }
 function stopPillTimer() {
     if (pillTimerInterval) { clearInterval(pillTimerInterval); pillTimerInterval = null; }
@@ -614,6 +615,13 @@ function renderBodyPartCard(s) {
     const hv = s.heaviest;
     const heroShort = s.heroLift ? s.heroLift.split(' ')[0] : '';
     const sparkColor = bodyPartColor(s.bodyPart);
+    const unit = AppState.globalUnit || 'lbs';
+    // Peak-weight delta vs last period — the number a lifter actually chases.
+    // Only render when there's a real change (0 is noise).
+    const pd = s.heaviestDeltaWeight;
+    const peakDeltaHtml = (pd != null && pd !== 0)
+        ? `<div class="bp-cell__sub ${pd < 0 ? 'down' : ''}">${pd > 0 ? '↑' : '↓'} ${Math.abs(pd)} ${unit}</div>`
+        : '';
 
     return `
         <div class="bp-card ${s.isStale ? 'stale' : ''}" onclick="showMuscleGroupDetail('${s.bodyPart}')">
@@ -628,10 +636,11 @@ function renderBodyPartCard(s) {
                 <div class="bp-cell">
                     <div class="bp-cell__label"><i class="fas fa-trophy bp-cell__icon--gold"></i> ${heroShort} Max</div>
                     <div class="bp-cell__val">${hv ? `${hv.reps}<span class="bp-cell__unit">×${hv.weight}</span>` : '—'}</div>
+                    ${peakDeltaHtml}
                 </div>
                 <div class="bp-cell">
                     <div class="bp-cell__label">Volume · wk</div>
-                    <div class="bp-cell__val">${formatVolume(s.volume)}<span class="bp-cell__unit"> lb</span></div>
+                    <div class="bp-cell__val">${formatVolume(s.volume)}<span class="bp-cell__unit"> ${unit}</span></div>
                     ${s.volumeDeltaPct != null ? `<div class="bp-cell__sub ${s.volumeDeltaPct < 0 ? 'down' : ''}">${s.volumeDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(s.volumeDeltaPct).toFixed(0)}%</div>` : ''}
                 </div>
             </div>
@@ -781,6 +790,29 @@ function renderConnectPrompt() {
 // RECENT PRs
 // ===================================================================
 
+// Hype moment: if any PR landed today, surface it up top rather than leaving
+// it buried in the quiet list at the bottom. Exclamation is allowed here — a
+// PR is one of the few genuinely exciting moments (copy rule 4).
+function renderTodayPRBanner(recentPRs) {
+    if (!recentPRs || recentPRs.length === 0) return '';
+    const today = AppState.getTodayDateString();
+    const todays = recentPRs.filter(pr => pr.date === today);
+    if (todays.length === 0) return '';
+
+    const first = todays[0];
+    const label = todays.length === 1
+        ? `New PR — ${escapeHtml(first.exercise)} · ${first.reps}×${convertWeight(first.weight, first.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}`
+        : `${todays.length} new PRs today!`;
+
+    return `
+        <div class="dash-pr-banner" onclick="showExerciseDetail('${escapeAttr(first.exercise)}')">
+            <div class="dash-pr-banner__badge"><i class="fas fa-trophy"></i></div>
+            <div class="dash-pr-banner__text">${label}</div>
+            <i class="fas fa-chevron-right dash-chev"></i>
+        </div>
+    `;
+}
+
 function renderRecentPRs(recentPRs) {
     if (!recentPRs || recentPRs.length === 0) return '';
     return `
@@ -788,7 +820,7 @@ function renderRecentPRs(recentPRs) {
             <h3>Recent PRs</h3>
         </div>
         ${recentPRs.slice(0, 3).map(pr => `
-            <div class="pr-row">
+            <div class="pr-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')">
                 <div class="pr-badge"><i class="fas fa-trophy"></i></div>
                 <div class="pr-info">
                     <div class="pr-name">${escapeHtml(pr.exercise)}</div>

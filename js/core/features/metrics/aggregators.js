@@ -521,12 +521,22 @@ export function aggregateBodyPartStats(workouts, bodyPart, range = 'W') {
     // within the current bounds first so a new PR this week shows, but fall
     // back to all-time so the card isn't blank just because the user didn't
     // train this body part this week.
-    let heaviest = heroLift ? aggregateHeaviestSet(workouts, heroLift, bounds) : null;
+    const inBoundsHeaviest = heroLift ? aggregateHeaviestSet(workouts, heroLift, bounds) : null;
+    let heaviest = inBoundsHeaviest;
     if (!heaviest && heroLift) {
         heaviest = aggregateHeaviestSet(workouts, heroLift, {
             start: new Date(0),
             end: new Date(8640000000000000),
         });
+    }
+
+    // Peak-weight delta vs the previous period — only meaningful when the hero
+    // lift was actually trained this period (otherwise `heaviest` is an all-time
+    // fallback, not a "this week" number, so a delta would mislead).
+    let heaviestDeltaWeight = null;
+    if (inBoundsHeaviest && heroLift && prevBounds) {
+        const prevPeak = aggregateHeaviestSet(workouts, heroLift, prevBounds);
+        if (prevPeak) heaviestDeltaWeight = inBoundsHeaviest.weight - prevPeak.weight;
     }
 
     const sessions = countSessions(workouts, bodyPart, bounds);
@@ -535,7 +545,7 @@ export function aggregateBodyPartStats(workouts, bodyPart, range = 'W') {
 
     const volumeTrend = aggregateVolumeTrend(workouts, bodyPart, bounds);
 
-    const result = { bodyPart, heroLift, heaviest, volume, volumeDeltaPct, sessions, lastTrained, isStale, volumeTrend };
+    const result = { bodyPart, heroLift, heaviest, heaviestDeltaWeight, volume, volumeDeltaPct, sessions, lastTrained, isStale, volumeTrend };
     perWorkoutsCache.set(cacheKey, result);
     return result;
 }
