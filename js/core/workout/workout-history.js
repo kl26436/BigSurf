@@ -3,6 +3,7 @@ import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displa
 import { getDateString } from '../utils/date-helpers.js';
 import { getExerciseName, formatStatus, formatCategory, CATEGORY_LABELS } from '../utils/workout-helpers.js';
 import { debugLog, CATEGORY_ICONS } from '../utils/config.js';
+import { classifyBodyPart } from '../features/metrics/aggregators.js';
 
 export function getWorkoutHistory(appState) {
     const currentHistory = [];
@@ -529,15 +530,28 @@ export function getWorkoutHistory(appState) {
                     if (parts.length !== 3) return false;
                     if (!isFiltering && (parseInt(parts[0]) !== year || parseInt(parts[1]) - 1 !== month)) return false;
 
-                    // Category filter
-                    if (catFilter && w.workoutType !== catFilter) return false;
+                    // Muscle-group filter — workout must contain at least one
+                    // exercise classified into the selected group.
+                    if (catFilter) {
+                        const hasGroup = Object.entries(w.exercises || {}).some(([key, ex]) => {
+                            const name = ex?.name || ex?.machine || w.exerciseNames?.[key] || '';
+                            return classifyBodyPart(name) === catFilter;
+                        });
+                        if (!hasGroup) return false;
+                    }
 
-                    // Search filter — match workout type or exercise names
+                    // Search filter — match workout type or exercise names.
+                    // Names live inline (ex.name / ex.machine, newer saves) OR in
+                    // a parallel exerciseNames map keyed by "exercise_N" (older
+                    // saves), so check both — mirrors the row's own name resolution
+                    // below. Checking only ex.name silently misses older workouts.
                     if (searchTerm) {
                         const typeMatch = (w.workoutType || '').toLowerCase().includes(searchTerm);
                         if (typeMatch) return true;
-                        const exercises = Object.values(w.exercises || {});
-                        return exercises.some(ex => (ex.name || '').toLowerCase().includes(searchTerm));
+                        return Object.entries(w.exercises || {}).some(([key, ex]) => {
+                            const name = ex?.name || ex?.machine || w.exerciseNames?.[key] || '';
+                            return name.toLowerCase().includes(searchTerm);
+                        });
                     }
 
                     return true;
@@ -559,8 +573,12 @@ export function getWorkoutHistory(appState) {
             const visibleWorkouts = monthWorkouts.slice(0, visibleCount);
             const hasMore = monthWorkouts.length > visibleCount;
 
-            let html =
-                `<h3 class="recent-workouts-heading">${isFiltering ? `Search results (${monthWorkouts.length})` : 'Workouts This Month'}</h3>`;
+            const heading = searchTerm
+                ? `Search results (${monthWorkouts.length})`
+                : catFilter
+                    ? `${catFilter.charAt(0).toUpperCase() + catFilter.slice(1)} workouts (${monthWorkouts.length})`
+                    : 'Workouts This Month';
+            let html = `<h3 class="recent-workouts-heading">${escapeHtml(heading)}</h3>`;
             html += '<div class="recent-workouts-items">';
 
             visibleWorkouts.forEach((workout) => {
@@ -676,25 +694,35 @@ export function getWorkoutHistory(appState) {
             }
         },
 
-        /** Populate the category dropdown from actual workout types.
-         *  Hides the select entirely when no workout types exist so the
-         *  search input sits alone instead of next to an empty dropdown. */
+        /** Populate the filter dropdown with the MUSCLE GROUPS that actually
+         *  appear in the user's history (chest, back, legs…) — not raw workout
+         *  names. "Show me chest sessions" is what people want to filter by, and
+         *  raw workoutType values (often internal slugs) read as noise. Hides the
+         *  select when nothing classifiable exists. */
         populateCategoryFilter() {
             const select = document.getElementById('history-category-filter');
             if (!select) return;
 
-            const types = new Set();
+            const present = new Set();
             this.currentHistory.forEach(w => {
-                if (w.workoutType) types.add(w.workoutType);
+                Object.entries(w.exercises || {}).forEach(([key, ex]) => {
+                    const name = ex?.name || ex?.machine || w.exerciseNames?.[key] || '';
+                    const bp = classifyBodyPart(name);
+                    if (bp && bp !== 'other') present.add(bp);
+                });
             });
 
-            const sorted = [...types].sort();
-            let html = '<option value="">All Types</option>';
-            sorted.forEach(t => {
-                html += `<option value="${escapeAttr(t)}">${escapeHtml(t)}</option>`;
+            // Canonical display order (matches the dashboard's body-part cards).
+            const ORDER = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
+            const groups = ORDER.filter(bp => present.has(bp));
+
+            let html = '<option value="">All muscle groups</option>';
+            groups.forEach(bp => {
+                const label = bp.charAt(0).toUpperCase() + bp.slice(1);
+                html += `<option value="${escapeAttr(bp)}">${escapeHtml(label)}</option>`;
             });
             select.innerHTML = html;
-            select.classList.toggle('hidden', sorted.length === 0);
+            select.classList.toggle('hidden', groups.length === 0);
         },
 
         getWorkoutIcon(workouts) {
