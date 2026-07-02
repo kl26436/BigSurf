@@ -2270,6 +2270,9 @@ async function commitCatalogAdd(catalogRef, machineName, gymName) {
             showNotification("Couldn't save — try again", 'error');
             return;
         }
+        // Mirror onto location.equipment[] so the catalog detail page's
+        // "At this gym" state and quick-add's already-tagged set stay truthful.
+        await syncCatalogRefOnLocation(catalogRef, gymName, true);
         if (existingForGym) {
             showNotification(`${machineName} is already at ${gymName}`, 'info');
             return;
