@@ -1044,6 +1044,9 @@ export class FirebaseWorkoutManager {
             };
 
             await setDoc(docRef, equipmentToSave);
+            // The shared equipment cache no longer matches Firestore — null it so
+            // every consumer's lazy-load path refetches instead of serving stale data.
+            this.appState._cachedEquipment = null;
             return equipmentId;
         } catch (error) {
             console.error('❌ Error saving equipment:', error);
@@ -1138,6 +1141,7 @@ export class FirebaseWorkoutManager {
         try {
             const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'equipment', equipmentId);
             await deleteDoc(docRef);
+            this.appState._cachedEquipment = null;
             return true;
         } catch (error) {
             console.error('❌ Error deleting equipment:', error);
@@ -1173,6 +1177,7 @@ export class FirebaseWorkoutManager {
             };
 
             await setDoc(docRef, updatedData);
+            this.appState._cachedEquipment = null;
             return true;
         } catch (error) {
             console.error('❌ Error updating equipment:', error);

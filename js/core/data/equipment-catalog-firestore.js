@@ -54,9 +54,11 @@ export async function loadEquipmentCatalog({ forceReload = false } = {}) {
             cachedCatalog = brands;
             return cachedCatalog;
         } catch (err) {
+            // Serve the static fallback but DON'T cache it — a transient network
+            // error shouldn't pin degraded catalog data for the whole session.
+            // The next loadEquipmentCatalog() call retries Firestore.
             console.error('❌ Failed to load equipmentCatalog from Firestore, using static fallback:', err);
-            cachedCatalog = augmentStaticCatalog(STATIC_CATALOG);
-            return cachedCatalog;
+            return augmentStaticCatalog(STATIC_CATALOG);
         } finally {
             inflight = null;
         }
@@ -66,15 +68,9 @@ export async function loadEquipmentCatalog({ forceReload = false } = {}) {
 }
 
 /**
- * Synchronous accessor for code paths that already have the catalog loaded.
- * Returns null if not yet loaded — callers should `await loadEquipmentCatalog()` first.
- */
-export function getCachedCatalog() {
-    return cachedCatalog;
-}
-
-/**
- * Clear cache — test hook and force-reload after admin updates.
+ * Clear cache — test hook only. Deliberately not wired to any runtime path:
+ * the catalog is a global admin-seeded collection that clients never write,
+ * so the cache lives for the page session and a reload picks up admin changes.
  */
 export function clearCatalogCache() {
     cachedCatalog = null;

@@ -2156,12 +2156,11 @@ export async function awSaveNewEquipment(exerciseIdx) {
             exerciseVideos: {},
         };
 
-        const docRef = await workoutManager.saveEquipment(eqData);
+        await workoutManager.saveEquipment(eqData);
 
-        // Add to local cache
-        const newEq = { id: docRef?.id || `eq_${Date.now()}`, ...eqData };
-        if (!AppState._cachedEquipment) AppState._cachedEquipment = [];
-        AppState._cachedEquipment.push(newEq);
+        // saveEquipment invalidated the shared cache; reload so the equipment
+        // line and sheet render the new item under its real doc id.
+        AppState._cachedEquipment = await workoutManager.getUserEquipment();
 
         // Select it for this exercise
         awSelectEquipment(exerciseIdx, name);
