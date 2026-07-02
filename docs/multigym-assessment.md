@@ -52,22 +52,19 @@ These silently corrupt the equipment↔gym mapping. A user who hits one conclude
 ## Tier 2 — UX friction (the "clunky" you're feeling)
 
 ### 2.1 New gym = blank slate ← biggest single UX win
-Add a gym, tap into it: empty grid, a quick-add button, zero guidance. This is the make-or-break moment for the whole feature. **Fix, in order of effort:**
-1. Real empty state: "No equipment yet — add machines as you use them, or start from another gym."
-2. **"Copy from another gym"** — one tap clones another location's equipment list (adds the new gym to each equipment doc's `locations[]`). Cheap to build, huge payoff for the hotel-gym/multi-gym user.
-3. Starter packs: "Typical commercial gym" preset seeded from the catalog (barbell, dumbbells, cable stack, common selectorized machines).
+✅ *Shipped 2026-07-02 (empty state + copy-from-gym).* The gym-detail blank slate now reads "No equipment yet — add machines as you use them, or start from another gym" with two starting points: **Add from catalog** (quick-add sheet) and **Copy from another gym** (`openCopyFromGymSheet` → one tap batch-clones the source gym's equipment onto this gym's `locations[]` and mirrors catalogRefs onto the location doc). Still open: starter packs ("Typical commercial gym" preset) — needs curated catalog picks.
 
 ### 2.2 Off-gym equipment selection has no cue
-Mid-workout picker shows "All equipment" including machines at other gyms; picking one gives no signal. User wonders later why the leg press "moved." **Fix:** subtle tag on off-gym rows ("At Gold's Downtown") + on select, offer "Also at [current gym]? Add it here" — that's how equipment lists should grow organically.
+✅ *Shipped 2026-07-02.* Picker rows for equipment not at the session gym now read "At Gold's Downtown" (`equipLocationCue` in all four picker renderers). Selection already auto-adds the machine to the current gym with an "Added X to Y" toast — kept that over an extra confirm tap.
 
 ### 2.3 Location lock is a ghost
-Locking logic runs (location-service.js:183) but the lock icon is explicitly hidden (`:298`) and changes are allowed anyway. Dead concept. **Fix:** delete the lock state entirely; keep "location editable all workout." Less code, less confusion.
+✅ *Shipped 2026-07-02.* Lock state, calls, and icon handling deleted; location stays editable all workout. `lockLocation`/`isLocationLocked` remain as exported no-op stubs purely for prod cache-skew safety (a stale cached importer would crash on a missing export). The first-set `locationLockedAt` stamp survives as the once-per-workout guard for equipment↔gym auto-association.
 
 ### 2.4 GPS failure paths dead-end
-Denied permission or >5km accuracy silently falls into "new location" flow; reverse-geocode failures leave `cityState` blank forever (location-ui.js:303). **Fix:** explicit fallback UI — "Couldn't find you — pick your gym" with the saved-gym list one tap away. That list should arguably always be one tap from the workout header anyway.
+✅ *Shipped 2026-07-02.* A fix worse than `GPS_UNUSABLE_ACCURACY_METERS` (5 km) is now treated as no-GPS in `detectLocation`, and the no-GPS path with saved gyms shows a "Couldn't find you — pick your gym" bottom sheet (tap-to-pick, sorted by last visit, Skip / New gym escape hatches) instead of the type-a-name modal. cityState reverse-geocode already retries on later renders (it only skips when populated).
 
 ### 2.5 Bulk equipment management missing
-Moving several machines between gyms = one-at-a-time edits (equipment-library-ui.js:4417). **Fix:** multi-select in gym detail view with "Add to gym / Remove from gym" actions. (Largely subsumed by 2.1's copy-from-gym.)
+**Subsumed by 2.1's copy-from-gym** for the dominant case (stocking a gym from another). Revisit multi-select in gym detail only if one-at-a-time moves still hurt after living with copy-from-gym.
 
 ## Tier 3 — Opportunities (the "crush it" list)
 

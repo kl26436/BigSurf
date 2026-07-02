@@ -13,12 +13,7 @@ import {
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import { saveWorkoutData, debouncedSaveWorkoutData, loadExerciseHistory, getLastSessionDefaults } from '../data/data-manager.js';
-import {
-    getSessionLocation,
-    lockLocation,
-    isLocationLocked,
-    updateLocationIndicator,
-} from '../features/location-service.js';
+import { getSessionLocation } from '../features/location-service.js';
 import {
     restoreTimerFromAppState,
     saveActiveTimerState,
@@ -1365,10 +1360,6 @@ export async function updateBodyweightSet(exerciseIndex, setIndex, repsValue) {
         const totalWeight = bwLbs + addedLbs;
         await checkSetForPR(exerciseIndex, setIndex);
 
-        if (!isLocationLocked()) {
-            lockLocation();
-            updateLocationIndicator(getSessionLocation(), true);
-        }
         autoStartRestTimer(exerciseIndex, setIndex);
     }
 }
@@ -1772,17 +1763,12 @@ export async function updateSet(exerciseIndex, setIndex, field, value) {
     const setData = AppState.savedData.exercises[exerciseKey].sets[setIndex];
 
     if (setData.reps && setData.weight) {
-        // Lock location on first completed set (can't change location after logging sets)
-        if (!isLocationLocked()) {
-            lockLocation();
-            updateLocationIndicator(getSessionLocation(), true);
-
-            // Record when location was locked
-            if (AppState.savedData) {
-                AppState.savedData.locationLockedAt = new Date().toISOString();
-            }
-
-            // Associate current workout location with any equipment used in this workout
+        // First completed set: stamp the session gym onto the workout's
+        // equipment, once per workout. (The old location "lock" was deleted —
+        // location stays editable all workout — but its timestamp doubles as
+        // the once-only guard for this association.)
+        if (AppState.savedData && !AppState.savedData.locationLockedAt) {
+            AppState.savedData.locationLockedAt = new Date().toISOString();
             const sessionLocation = getSessionLocation();
             if (sessionLocation && AppState.currentWorkout?.exercises) {
                 associateLocationWithWorkoutEquipment(sessionLocation);

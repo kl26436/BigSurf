@@ -19,6 +19,10 @@ export const Config = {
     // out (up to the match radius) the user is asked to confirm — the "match"
     // could be a saved gym near an unsaved one (adjacent hotel gyms).
     GPS_CONFIDENT_MATCH_METERS: 150,
+    // A fix this inaccurate can't distinguish gyms (or even neighborhoods) —
+    // treat it as no GPS and fall back to the pick-your-gym sheet instead of
+    // silently offering to save garbage coordinates on a new location.
+    GPS_UNUSABLE_ACCURACY_METERS: 5000,
 
     // PR tracking
     PR_CUTOFF_DATE: '2025-07-01',

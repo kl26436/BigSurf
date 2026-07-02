@@ -11,7 +11,6 @@ const DEFAULT_LOCATION_RADIUS = Config.GPS_MATCH_RADIUS_METERS;
 // Current session location state
 let currentLocation = null;
 let currentLocationName = null;
-let locationLocked = false;
 
 /**
  * Get current GPS coordinates
@@ -128,6 +127,14 @@ export async function detectLocation(savedLocations) {
         return { location: null, isNew: false, coords: null, nearbyMatches: [] };
     }
 
+    // A wildly inaccurate fix (cell-tower triangulation indoors) can't tell
+    // gyms apart — treat it as no GPS so the caller falls back to the
+    // pick-your-gym flow instead of saving garbage coordinates.
+    if (coords.accuracy && coords.accuracy > Config.GPS_UNUSABLE_ACCURACY_METERS) {
+        debugLog(`📍 GPS accuracy ${Math.round(coords.accuracy)}m — too coarse to use`);
+        return { location: null, isNew: false, coords: null, nearbyMatches: [] };
+    }
+
     const nearbyMatches = findNearbyLocations(savedLocations, coords);
 
     if (nearbyMatches.length > 0) {
@@ -174,21 +181,15 @@ export function getCurrentCoords() {
 }
 
 /**
- * Lock the location (called when first set is logged).
- * Marks that work has been done at the current location. This no longer
- * blocks a user-initiated change — GPS matching can pick the wrong gym when
- * saved gyms overlap, so corrections are allowed for the whole workout.
+ * DEPRECATED (Tier 2.3): the location "lock" never blocked anything — the
+ * icon was hidden and changes stayed allowed all workout — so the state was
+ * deleted. These stubs remain exported ONLY because prod caches JS for a
+ * year: a stale cached module importing them from a fresh copy of this file
+ * would otherwise crash. Don't call them from new code.
  */
-export function lockLocation() {
-    locationLocked = true;
-}
-
-/**
- * Check if location is locked
- * @returns {boolean}
- */
+export function lockLocation() {}
 export function isLocationLocked() {
-    return locationLocked;
+    return false;
 }
 
 /**
@@ -197,7 +198,6 @@ export function isLocationLocked() {
 export function resetLocationState() {
     currentLocation = null;
     currentLocationName = null;
-    locationLocked = false;
 }
 
 /**
@@ -276,12 +276,10 @@ export function closeLocationPrompt() {
 /**
  * Update the location indicator in the workout header
  * @param {string | null} locationName
- * @param {boolean} locked
  */
-export function updateLocationIndicator(locationName, _locked = false) {
+export function updateLocationIndicator(locationName) {
     const indicator = document.getElementById('workout-location-indicator');
     const nameSpan = document.getElementById('workout-location-name');
-    const lockIcon = document.getElementById('workout-location-lock');
 
     if (!indicator) return;
 
@@ -293,8 +291,6 @@ export function updateLocationIndicator(locationName, _locked = false) {
     } else {
         if (nameSpan) nameSpan.textContent = 'Tap to set location';
     }
-    // Hide lock icon — adds visual noise without value
-    if (lockIcon) lockIcon.style.display = 'none';
 }
 
 // Export for use in other modules

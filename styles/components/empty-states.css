@@ -52,6 +52,15 @@
     text-align: center;
     flex-shrink: 0;
 }
+/* Starting-point buttons under an empty state (e.g. new-gym blank slate:
+   "Add from catalog" / "Copy from another gym"). */
+.empty-state-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-8);
+    margin-top: var(--space-16);
+}
 
 /* ===========================================
    SKELETON LOADING STATES

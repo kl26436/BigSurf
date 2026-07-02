@@ -1632,6 +1632,19 @@ let equipSearchQuery = '';
 // hasn't been gym-tagged yet). State lives per-sheet open, reset on close.
 let equipSheetShowAll = false;
 
+/**
+ * Location line for a picker row. Off-gym equipment gets an explicit
+ * "At <gym>" prefix so picking a machine that lives at another gym is a
+ * visible choice, not a surprise when it later "moves" (selection
+ * auto-associates it with the session gym).
+ */
+function equipLocationCue(eq, locName) {
+    const locs = eq.locations || [];
+    if (locs.length === 0) return '';
+    const offGym = locName && !locs.some(l => (l || '').toLowerCase() === locName.toLowerCase());
+    return `${offGym ? 'At ' : ''}${locs.join(', ')}`;
+}
+
 export async function awOpenEquipmentSheet(exerciseIdx) {
     exerciseMenuOpen = false;
     equipSearchQuery = '';
@@ -1690,8 +1703,7 @@ function renderEquipmentSheet(exerciseIdx) {
     const renderRow = (eq) => {
         const isCurrent = eq.name === currentEquip;
         const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
-        const locs = (eq.locations || []);
-        const locStr = locs.length > 0 ? locs.join(', ') : '';
+        const locStr = equipLocationCue(eq, locName);
         return `
             <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}')">
                 <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
@@ -1897,8 +1909,7 @@ function renderSharedEquipmentSheet() {
     const renderRow = (eq) => {
         const isCurrent = eq.name === currentEquip;
         const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
-        const locs = (eq.locations || []);
-        const locStr = locs.length > 0 ? locs.join(', ') : '';
+        const locStr = equipLocationCue(eq, locName);
         return `
             <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSharedSelectEquipment('${escapeAttr(eq.name)}')">
                 <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
@@ -1974,6 +1985,8 @@ export function awSharedEquipSearch(query) {
     if (!listEl || !_sharedEquipmentContext) return;
 
     const ctx = _sharedEquipmentContext;
+    const sessionLoc = AppState.savedData?.location;
+    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
     const allEquipment = AppState._cachedEquipment || [];
     const q = query.toLowerCase();
     const matches = allEquipment.filter(eq =>
@@ -1982,8 +1995,7 @@ export function awSharedEquipSearch(query) {
     const renderRow = (eq) => {
         const isCurrent = eq.name === ctx.currentEquipment;
         const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
-        const locs = (eq.locations || []);
-        const locStr = locs.length > 0 ? locs.join(', ') : '';
+        const locStr = equipLocationCue(eq, locName);
         return `
             <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSharedSelectEquipment('${escapeAttr(eq.name)}')">
                 <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
@@ -2060,6 +2072,8 @@ export function awEquipSearch(exerciseIdx, query) {
 
     const exercise = AppState.currentWorkout.exercises[exerciseIdx];
     const currentEquip = AppState.savedData?.exercises?.[`exercise_${exerciseIdx}`]?.equipment || exercise.equipment;
+    const sessionLoc = AppState.savedData?.location;
+    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
     const allEquipment = AppState._cachedEquipment || [];
     const q = query.toLowerCase();
 
@@ -2071,8 +2085,7 @@ export function awEquipSearch(exerciseIdx, query) {
     const renderRow = (eq) => {
         const isCurrent = eq.name === currentEquip;
         const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
-        const locs = (eq.locations || []);
-        const locStr = locs.length > 0 ? locs.join(', ') : '';
+        const locStr = equipLocationCue(eq, locName);
         return `
             <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}')">
                 <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>

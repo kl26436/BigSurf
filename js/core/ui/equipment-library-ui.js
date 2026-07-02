@@ -991,13 +991,29 @@ function renderGymDetail(container) {
         ? items
         : items.filter((it) => (it.bodyPart || 'Multi-Use') === currentBpFilter);
 
-    // Empty state when filter yields nothing
+    // Empty state when filter yields nothing. The all-filter blank slate is
+    // the make-or-break moment for a new gym — give it real starting points
+    // (catalog quick-add, clone another gym) instead of a bare hint.
     if (filtered.length === 0) {
+        const isAllEmpty = currentBpFilter === 'All';
+        const sourceGyms = isAllEmpty ? gymsWithEquipment(name) : [];
         container.innerHTML = chipStripHTML + `
             <div class="empty-state-compact">
                 <i class="fas fa-wrench"></i>
-                <p>${currentBpFilter === 'All' ? 'No equipment at this gym yet' : `No equipment for ${currentBpFilter} yet`}</p>
-                <p class="empty-state-hint">${currentBpFilter === 'All' ? 'Tap Add to inventory this gym' : 'Try another body part or add more equipment'}</p>
+                <p>${isAllEmpty ? 'No equipment yet' : `No equipment for ${currentBpFilter} yet`}</p>
+                <p class="empty-state-hint">${isAllEmpty ? 'Add machines as you use them, or start from another gym.' : 'Try another body part or add more equipment'}</p>
+                ${isAllEmpty ? `
+                    <div class="empty-state-actions">
+                        <button class="btn btn-primary btn-small" onclick="openQuickAddSheet('${escapeAttr(name)}')">
+                            <i class="fas fa-plus"></i> Add from catalog
+                        </button>
+                        ${sourceGyms.length > 0 ? `
+                            <button class="btn btn-secondary btn-small" onclick="openCopyFromGymSheet('${escapeAttr(name)}')">
+                                <i class="fas fa-copy"></i> Copy from another gym
+                            </button>
+                        ` : ''}
+                    </div>
+                ` : ''}
             </div>
         `;
         return;
@@ -2379,6 +2395,96 @@ let gymPickerOnSelect = null;
  * Args: { title, subtitle, gyms: string[], currentGym: string|null,
  *         onSelect: (gymName) => void }
  */
+/**
+ * Names of gyms (other than `excludeGym`) that have at least one equipment
+ * doc — the candidate sources for copy-from-gym.
+ */
+function gymsWithEquipment(excludeGym) {
+    const exclude = (excludeGym || '').toLowerCase();
+    const names = new Set();
+    for (const eq of allEquipment) {
+        for (const l of (eq.locations || [])) {
+            if (l && l.toLowerCase() !== exclude) names.add(l);
+        }
+    }
+    return [...names].sort();
+}
+
+/**
+ * "Copy from another gym" (Tier 2.1): pick a source gym, then clone its
+ * equipment list onto `targetGym` — one tap instead of re-adding machine by
+ * machine at a hotel/second gym.
+ */
+export function openCopyFromGymSheet(targetGym) {
+    if (!targetGym) return;
+    const sources = gymsWithEquipment(targetGym);
+    if (sources.length === 0) {
+        showNotification('No other gym has equipment to copy', 'info');
+        return;
+    }
+    openGymPickerSheet({
+        title: 'Copy equipment',
+        subtitle: `Every machine at the gym you pick is added to ${targetGym}`,
+        gyms: sources,
+        currentGym: null,
+        onSelect: (sourceGym) => commitCopyFromGym(sourceGym, targetGym),
+    });
+}
+
+async function commitCopyFromGym(sourceGym, targetGym) {
+    try {
+        const srcLC = sourceGym.toLowerCase();
+        const tgtLC = targetGym.toLowerCase();
+        const source = allEquipment.filter((eq) =>
+            (eq.locations || []).some((l) => (l || '').toLowerCase() === srcLC)
+        );
+        const toAdd = source.filter((eq) =>
+            !(eq.locations || []).some((l) => (l || '').toLowerCase() === tgtLC)
+        );
+        if (toAdd.length === 0) {
+            showNotification(`Everything at ${sourceGym} is already at ${targetGym}`, 'info');
+            return;
+        }
+
+        const userId = AppState.currentUser.uid;
+        const batch = writeBatch(db);
+        for (const eq of toAdd) {
+            batch.update(doc(db, 'users', userId, 'equipment', eq.id), {
+                locations: [...(eq.locations || []), targetGym],
+            });
+        }
+        await batch.commit();
+
+        // Mirror catalogRefs onto the target gym's location doc so quick-add's
+        // already-tagged state and the catalog detail page stay truthful.
+        const refs = toAdd
+            .filter((eq) => eq.catalogRef)
+            .map((eq) => ({ catalogRef: eq.catalogRef }));
+        if (refs.length > 0) {
+            let loc = allLocations.find((l) => l.name === targetGym);
+            if (!loc) {
+                loc = await getManager().saveLocation({ name: targetGym });
+                allLocations.push(loc);
+            }
+            try {
+                await getManager().addLocationEquipment(loc.id, refs);
+            } catch (e) {
+                // Non-fatal: docs are the source of truth; arrays heal on render.
+                console.error('Copy-from-gym catalogRef mirror failed:', e);
+            }
+            const refreshedLocs = await getManager().getUserLocations();
+            if (Array.isArray(refreshedLocs)) allLocations = refreshedLocs;
+        }
+
+        await refreshEquipmentCaches();
+        showNotification(`Copied ${toAdd.length} machine${toAdd.length !== 1 ? 's' : ''} from ${sourceGym}`, 'success');
+        renderEquipmentLibrary();
+    } catch (err) {
+        console.error('❌ Copy from gym failed:', err);
+        showNotification("Couldn't copy — try again", 'error');
+    }
+}
+
 export function openGymPickerSheet({ title, subtitle, gyms, currentGym, onSelect }) {
     gymPickerOnSelect = onSelect;
     closeGymPickerSheetImmediate();
@@ -4750,3 +4856,7 @@ export async function setEquipmentBaseWeightUnit(equipmentId, unit, btn) {
 // no callers, so calling it would have crashed with ReferenceError.
 // Re-add with a real KNOWN_BRANDS table if equipment-name parsing
 // becomes a feature.
+
+// Same-file window wiring for handlers rendered only by this module's own
+// template strings — immune to main.js version skew (prod caches JS 1 year).
+window.openCopyFromGymSheet = openCopyFromGymSheet;

@@ -9,8 +9,6 @@ import {
     detectLocation,
     setSessionLocation,
     getSessionLocation,
-    lockLocation,
-    isLocationLocked,
     resetLocationState,
     showLocationPrompt,
     updateLocationIndicator,
@@ -1156,14 +1154,7 @@ export function continueInProgressWorkout() {
     // Restore location from saved data
     if (window.inProgressWorkout.location) {
         setSessionLocation(window.inProgressWorkout.location);
-        // If workout has logged sets, location should be locked
-        const hasLoggedSets = Object.values(window.inProgressWorkout.exercises || {}).some(
-            (ex) => ex.sets && ex.sets.some((set) => set.reps || set.weight)
-        );
-        if (hasLoggedSets) {
-            lockLocation();
-        }
-        updateLocationIndicator(window.inProgressWorkout.location, hasLoggedSets);
+        updateLocationIndicator(window.inProgressWorkout.location);
     }
 
     // Clear in-progress state
@@ -1616,8 +1607,14 @@ async function initializeWorkoutLocation() {
             // At a new location - prompt user to name it
             await promptForNewLocation(result.coords, workoutManager, savedLocations);
         } else if (!result.coords) {
-            // No GPS available - prompt user to select/enter location
-            await promptForLocationSelection(workoutManager, savedLocations);
+            // No usable GPS (denied, timed out, or hopelessly inaccurate).
+            // Saved gyms get a tap-to-pick sheet — typing a name into a modal
+            // was a dead-end when the answer is almost always "one of these".
+            if (savedLocations.length > 0) {
+                showGymFallbackSheet(savedLocations, workoutManager);
+            } else {
+                await promptForLocationSelection(workoutManager, savedLocations);
+            }
         }
     } catch (error) {
         console.error('\u274C Error initializing workout location:', error);
@@ -1708,6 +1705,98 @@ function showGymChooserSheet(matches, workoutManager) {
         <div class="aw-sheet__actions">
             <button class="aw-sheet__action" onclick="_bsGymSomewhereElse()">Somewhere else</button>
             <button class="aw-sheet__action primary" onclick="_bsPickDetectedGym(0)">Keep ${escapeHtml(matches[0].name)}</button>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => {
+        backdrop.classList.add('visible');
+        sheet.classList.add('visible');
+    });
+}
+
+/**
+ * Bottom sheet shown when GPS is unavailable (denied / timed out / too
+ * inaccurate) but the user has saved gyms: "Couldn't find you — pick your
+ * gym." Tap-first, non-blocking — dismissing starts the workout with no
+ * location, and "New gym" falls through to the name prompt.
+ * Self-contained DOM like showGymChooserSheet; handlers hang off window so
+ * no main.js export wiring is needed.
+ */
+function showGymFallbackSheet(savedLocations, workoutManager) {
+    document.getElementById('gym-fallback-backdrop')?.remove();
+    document.getElementById('gym-fallback-sheet')?.remove();
+
+    const close = () => {
+        document.getElementById('gym-fallback-backdrop')?.remove();
+        document.getElementById('gym-fallback-sheet')?.remove();
+        delete window._bsPickFallbackGym;
+        delete window._bsFallbackNewGym;
+        delete window._bsFallbackSkip;
+    };
+
+    window._bsFallbackSkip = () => close();
+
+    window._bsFallbackNewGym = () => {
+        close();
+        promptForLocationSelection(workoutManager, savedLocations);
+    };
+
+    window._bsPickFallbackGym = async (index) => {
+        const loc = savedLocations[index];
+        close();
+        if (!loc) return;
+
+        setSessionLocation(loc.name);
+        if (AppState.savedData) {
+            AppState.savedData.location = loc.name;
+            await saveWorkoutData(AppState);
+        }
+        if (AppState.currentWorkout) renderActiveWorkout();
+        updateLocationIndicator(loc.name);
+
+        try {
+            if (loc.id) await workoutManager.updateLocationVisit(loc.id);
+        } catch (err) {
+            console.error('❌ Error updating location visit:', err);
+        }
+    };
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'gym-fallback-backdrop';
+    backdrop.onclick = () => window._bsFallbackSkip();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'gym-fallback-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Pick your gym');
+
+    // savedLocations arrive sorted by last visit (getUserLocations orderBy),
+    // so the most likely gym is already on top.
+    const rows = savedLocations.map((loc, i) => `
+        <div class="js-row" onclick="_bsPickFallbackGym(${i})">
+            <div class="js-row__icon js-row__icon--equip"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="js-row__info">
+                <div class="js-row__name">${escapeHtml(loc.name)}</div>
+                ${loc.cityState ? `<div class="js-row__meta">${escapeHtml(loc.cityState)}</div>` : ''}
+            </div>
+        </div>
+    `).join('');
+
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">Couldn't find you</div>
+            <div class="aw-sheet__subtitle">Pick your gym — GPS isn't available</div>
+        </div>
+        <div class="aw-sheet__body">${rows}</div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action" onclick="_bsFallbackSkip()">Skip</button>
+            <button class="aw-sheet__action" onclick="_bsFallbackNewGym()">New gym</button>
         </div>
     `;
 
@@ -1963,7 +2052,7 @@ export async function confirmWorkoutLocationChange() {
 
     if (locationName) {
         setSessionLocation(locationName);
-        updateLocationIndicator(locationName, isLocationLocked());
+        updateLocationIndicator(locationName);
 
         // Update saved workout data
         if (AppState.savedData) {
