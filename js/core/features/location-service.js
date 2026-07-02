@@ -167,7 +167,10 @@ export function getCurrentCoords() {
 }
 
 /**
- * Lock the location (called when first set is logged)
+ * Lock the location (called when first set is logged).
+ * Marks that work has been done at the current location. This no longer
+ * blocks a user-initiated change — GPS matching can pick the wrong gym when
+ * saved gyms overlap, so corrections are allowed for the whole workout.
  */
 export function lockLocation() {
     locationLocked = true;

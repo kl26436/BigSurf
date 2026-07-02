@@ -209,6 +209,9 @@ function renderWorkoutMenu() {
             <button class="aw-ex-menu__item" onclick="saveActiveWorkoutAsTemplate(); awCloseMenus();">
                 <i class="fas fa-bookmark"></i> Save as template
             </button>
+            <button class="aw-ex-menu__item" onclick="changeWorkoutLocation(); awCloseMenus();">
+                <i class="fas fa-map-marker-alt"></i> Change location
+            </button>
             <div class="aw-ex-menu__divider"></div>
             <button class="aw-ex-menu__item" onclick="showMidWorkoutSummary(); awCloseMenus();">
                 <i class="fas fa-chart-bar"></i> Session summary

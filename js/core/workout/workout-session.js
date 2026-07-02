@@ -15,6 +15,7 @@ import {
     showLocationPrompt,
     updateLocationIndicator,
     getCurrentCoords,
+    calculateDistance,
 } from '../features/location-service.js';
 import { renderActiveWorkout, loadAutofillForAllExercises } from './active-workout-ui.js';
 import { haptic } from '../utils/haptics.js';
@@ -1684,15 +1685,12 @@ function promptForLocationSelection(workoutManager, savedLocations) {
 // ===================================================================
 
 /**
- * Change workout location (called when user clicks location indicator)
+ * Change workout location (called when user clicks location indicator).
+ * Allowed even after sets are logged — GPS matching can pick the wrong gym
+ * when saved gyms sit within each other's radius (adjacent casino gyms on
+ * the Strip), and the user must be able to correct it mid-workout.
  */
 export async function changeWorkoutLocation() {
-    // Don't allow changing if location is locked (first set already logged)
-    if (isLocationLocked()) {
-        showNotification('Location is locked after logging sets', 'warning');
-        return;
-    }
-
     const modal = document.getElementById('workout-location-selector-modal');
     const listContainer = document.getElementById('workout-saved-locations-list');
     const newNameInput = document.getElementById('workout-location-new-name');
@@ -1708,13 +1706,24 @@ export async function changeWorkoutLocation() {
         // Store for later use
         window._locationSelectorData = { savedLocations, workoutManager };
 
-        // Populate location list
+        // Populate location list — nearest first when GPS is available, so
+        // overlapping gyms (two casinos on the same block) are easy to tell apart.
         if (savedLocations.length === 0) {
             listContainer.innerHTML = '<div class="location-list-empty">No saved locations yet</div>';
         } else {
+            const coords = getCurrentCoords();
+            const sorted = savedLocations
+                .map((loc) => ({
+                    ...loc,
+                    _distance: coords && loc.latitude && loc.longitude
+                        ? calculateDistance(coords.latitude, coords.longitude, loc.latitude, loc.longitude)
+                        : null,
+                }))
+                .sort((a, b) => (a._distance ?? Infinity) - (b._distance ?? Infinity));
+
             const currentLocation = getSessionLocation();
             listContainer.textContent = '';
-            savedLocations.forEach((loc) => {
+            sorted.forEach((loc) => {
                 const option = document.createElement('div');
                 option.className = 'location-option' + (loc.name === currentLocation ? ' selected' : '');
                 option.dataset.locationId = loc.id;
@@ -1730,10 +1739,16 @@ export async function changeWorkoutLocation() {
                 nameSpan.textContent = loc.name;
                 option.appendChild(nameSpan);
 
-                const visitsSpan = document.createElement('span');
-                visitsSpan.className = 'location-option-visits';
-                visitsSpan.textContent = `${loc.visitCount || 0} visits`;
-                option.appendChild(visitsSpan);
+                const metaSpan = document.createElement('span');
+                metaSpan.className = 'location-option-visits';
+                if (loc._distance !== null) {
+                    metaSpan.textContent = loc._distance < 1000
+                        ? `${Math.round(loc._distance)} m away`
+                        : `${(loc._distance / 1000).toFixed(1)} km away`;
+                } else {
+                    metaSpan.textContent = `${loc.visitCount || 0} visits`;
+                }
+                option.appendChild(metaSpan);
 
                 listContainer.appendChild(option);
             });
@@ -1827,7 +1842,34 @@ export async function confirmWorkoutLocationChange() {
             await saveWorkoutData(AppState);
         }
 
-        // Removed notification - location indicator already shows
+        // Re-render the V2 wizard so the header shows the corrected gym
+        if (AppState.currentWorkout) renderActiveWorkout();
+
+        // Equipment already used this session was associated with the old gym.
+        // Add the corrected gym to those equipment docs (idempotent). The old
+        // association is left alone — it may be a real one from past sessions;
+        // the equipment library is the place to prune it.
+        try {
+            const { workoutManager } = window._locationSelectorData || {};
+            const exercises = AppState.savedData?.exercises || {};
+            const usedNames = new Set();
+            for (const key of Object.keys(exercises)) {
+                const ex = exercises[key];
+                if (ex?.equipment && (ex.sets || []).some((s) => s.completed)) {
+                    usedNames.add(ex.equipment.toLowerCase());
+                }
+            }
+            if (workoutManager && usedNames.size > 0) {
+                const allEquipment = await workoutManager.getUserEquipment();
+                for (const eq of allEquipment) {
+                    if (eq.name && usedNames.has(eq.name.toLowerCase())) {
+                        await workoutManager.addLocationToEquipment(eq.id, locationName);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('❌ Error re-associating equipment with corrected location:', err);
+        }
     }
 
     closeWorkoutLocationSelector();
