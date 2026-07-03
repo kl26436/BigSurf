@@ -833,7 +833,12 @@ function renderVolumeChip(volumeByPart, bodyPart) {
 
 /** Weekly working sets per lowercase body part, over the last 7 days (UX-2). */
 function weeklyVolumeByBodyPart(allWorkouts) {
-    const weekStart = new Date(getDateString());
+    // `new Date(getDateString())` with no arg returns Invalid Date — getDateString('')
+    // yields '' → `new Date('')` is invalid → setDate on it stays invalid → the
+    // second getDateString call blew up on toISOString(). That crashed the whole
+    // Progress page render (7/3 unhandledrejection cluster). Use a valid Date
+    // directly and only stringify at the end.
+    const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - 7);
     const weekStartStr = getDateString(weekStart);
     const weekWorkouts = (allWorkouts || []).filter(w => w.date >= weekStartStr && w.completedAt);

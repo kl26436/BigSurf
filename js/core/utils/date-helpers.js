@@ -2,6 +2,26 @@
 // Unified date string extraction to prevent timezone bugs
 
 /**
+ * Safe replacement for `new Date(x).toISOString()`. Native toISOString throws
+ * RangeError: Invalid time value when the constructor produced an Invalid Date
+ * (e.g., NaN input, malformed string). We were seeing this class of error
+ * bubble up as unhandledrejection because AI Coach + a few other paths
+ * called toISOString on arithmetic that could NaN-out silently.
+ *
+ * Returns the ISO string when valid, otherwise the fallback (null by default).
+ */
+export function safeToISOString(input, fallback = null) {
+    try {
+        const d = input instanceof Date ? input : new Date(input);
+        const ms = d.getTime();
+        if (!Number.isFinite(ms)) return fallback;
+        return d.toISOString();
+    } catch {
+        return fallback;
+    }
+}
+
+/**
  * Extract a YYYY-MM-DD date string from any date-like value.
  * Handles ISO strings, Date objects, and plain YYYY-MM-DD strings.
  */
@@ -16,13 +36,23 @@ export function getDateString(value) {
         return value;
     }
 
+    // Guard against Invalid Date. Callers that construct with a garbage
+    // input (e.g., `new Date('')`, `new Date(NaN)`) used to explode here on
+    // toISOString, throwing RangeError up through their caller chain and
+    // producing unhandled-rejection log spam. Returning '' matches the
+    // "no value" branch above and keeps failures local.
     if (value instanceof Date) {
+        if (!Number.isFinite(value.getTime())) return '';
         return value.toISOString().split('T')[0];
     }
 
     // Firestore Timestamp
     if (value.toDate) {
-        return value.toDate().toISOString().split('T')[0];
+        try {
+            const d = value.toDate();
+            if (!Number.isFinite(d.getTime())) return '';
+            return d.toISOString().split('T')[0];
+        } catch { return ''; }
     }
 
     return String(value);

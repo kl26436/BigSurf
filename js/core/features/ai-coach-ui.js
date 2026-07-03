@@ -539,10 +539,18 @@ async function buildHealthSummary(unit) {
             out += `\n`;
 
             // Change vs the earliest entry within each look-back window.
+            // Guard the arithmetic: a malformed newest.date makes newestMs NaN
+            // and then new Date(NaN).toISOString() throws RangeError, which
+            // used to bubble up as an unhandled rejection and crash the whole
+            // context build. Skip cleanly on invalid input.
             const newestMs = new Date(newest.date).getTime();
             const changeOver = (days) => {
-                const cutoff = new Date(newestMs - days * 86400000).toISOString().slice(0, 10);
-                const past = hist.find(e => e.date >= cutoff);
+                if (!Number.isFinite(newestMs)) return null;
+                const cutoffMs = newestMs - days * 86400000;
+                const cutoff = new Date(cutoffMs);
+                if (!Number.isFinite(cutoff.getTime())) return null;
+                const cutoffStr = cutoff.toISOString().slice(0, 10);
+                const past = hist.find(e => e.date >= cutoffStr);
                 return (!past || past.date === newest.date) ? null : { from: toUnit(past), date: past.date };
             };
             for (const days of [30, 90, 365]) {

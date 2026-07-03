@@ -92,7 +92,19 @@ function getAppContext() {
     // Workout in progress?
     if (AppState.currentWorkout) {
         ctx.workoutType = AppState.currentWorkout.day || AppState.currentWorkout.name || null;
-        ctx.workoutStarted = AppState.workoutStartTime ? new Date(AppState.workoutStartTime).toISOString() : null;
+        // Defend against a garbage workoutStartTime: toISOString on Invalid
+        // Date would throw INSIDE our error handler, which would then re-fire
+        // the error handler in a nightmare loop. safeToISOString is defined
+        // in date-helpers; can't import it here without a circular dep so
+        // do it inline.
+        let started = null;
+        try {
+            if (AppState.workoutStartTime) {
+                const d = new Date(AppState.workoutStartTime);
+                if (Number.isFinite(d.getTime())) started = d.toISOString();
+            }
+        } catch { /* leave started null */ }
+        ctx.workoutStarted = started;
 
         // How many exercises / sets completed?
         const exercises = AppState.savedData?.exercises;
