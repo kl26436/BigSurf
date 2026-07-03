@@ -2133,6 +2133,7 @@ export function awOpenCatalogQuickAdd(exerciseIdx) {
     awCloseSheet();
     window.openQuickAddSheet(locName, {
         onDone: (added) => {
+            added.forEach(eq => AppState._sessionMappedEquipment?.add(eq.name));
             if (added.length === 1) {
                 awSelectEquipment(exerciseIdx, added[0].name);
             } else {
@@ -2466,6 +2467,9 @@ export async function awSelectEquipment(exerciseIdx, equipName) {
             if (locName && !(eq.locations || []).some(l => l.toLowerCase() === locName.toLowerCase())) {
                 eq.locations = [...(eq.locations || []), locName];
                 needsUpdate = true;
+                // F4: gym-tagged during this session → counts toward the
+                // completion "you mapped N machines" payoff.
+                AppState._sessionMappedEquipment?.add(eq.name);
             }
             // Add exercise type if not present
             if (exName && !(eq.exerciseTypes || []).some(n => n.toLowerCase() === exName.toLowerCase())) {
@@ -2606,6 +2610,7 @@ export async function awSaveNewEquipment(exerciseIdx) {
         };
 
         await workoutManager.saveEquipment(eqData);
+        if (locName) AppState._sessionMappedEquipment?.add(name);
 
         // saveEquipment invalidated the shared cache; reload so the equipment
         // line and sheet render the new item under its real doc id.

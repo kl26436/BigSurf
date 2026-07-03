@@ -155,6 +155,11 @@ export async function startWorkout(workoutType) {
         return;
     }
 
+    // F4: count equipment mapped (created / gym-tagged) during this session
+    // for the completion payoff line. Reset before the substitution sheet —
+    // its Machine links count too.
+    AppState._sessionMappedEquipment = new Set();
+
     // Tier 3 Phase 4: partially-mapped workout at a known gym → offer
     // Keep / Machine / Swap / Skip per missing exercise before starting.
     // Never blocks: resolves keep-all on dismiss, and only fires for
@@ -483,6 +488,36 @@ async function hydratePriorComparison(workoutData, currentVolume) {
 /**
  * Show workout completion summary modal with stats, PRs, and notes
  */
+/**
+ * F4 completion payoff (Tier 3 Phase 5): the user just did invisible mapping
+ * work — tell them what it bought. One card, only when count > 0 (D0).
+ */
+function renderMappedEquipmentCard(workoutData) {
+    const mapped = AppState._sessionMappedEquipment;
+    const count = mapped ? mapped.size : 0;
+    const loc = workoutData.location;
+    const gymName = typeof loc === 'object' ? loc?.name : loc;
+    if (!count || !gymName) return '';
+
+    const totalAtGym = (AppState._cachedEquipment || []).filter(eq =>
+        (eq.locations || []).some(l => (l || '').toLowerCase() === gymName.toLowerCase())
+    ).length;
+
+    const line = totalAtGym > count
+        ? `You mapped ${count} more machine${count !== 1 ? 's' : ''} at ${gymName} — ${totalAtGym} total.`
+        : `You mapped ${count} machine${count !== 1 ? 's' : ''} at ${gymName} — next time you'll see what's possible before you start.`;
+
+    // One-shot: don't re-show if the summary re-renders.
+    AppState._sessionMappedEquipment = null;
+
+    return `
+        <div class="completion-mapped">
+            <i class="fas fa-map-marked-alt completion-mapped__icon"></i>
+            <span>${escapeHtml(line)}</span>
+        </div>
+    `;
+}
+
 export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = null) {
     const modal = document.getElementById('workout-completion-modal');
     const content = document.getElementById('workout-completion-content');
@@ -571,6 +606,8 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                     <span class="completion-stat-label">Exercises</span>
                 </div>
             </div>
+
+            ${renderMappedEquipmentCard(workoutData)}
 
             <div class="completion-compare hidden" id="completion-compare"></div>
 
@@ -1905,6 +1942,7 @@ window._bsSubPickMachine = (i) => {
             }
             row.choice = 'machine';
             row.machine = equipName;
+            AppState._sessionMappedEquipment?.add(equipName);
             rerenderSubstitutionRows();
         },
     });

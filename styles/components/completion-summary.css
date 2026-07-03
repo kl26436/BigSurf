@@ -94,6 +94,25 @@
 }
 .completion-compare--up { color: var(--success); }
 .completion-compare--down { color: var(--text-muted); }
+/* F4 payoff card — "You mapped 5 machines at Marriott Austin…" */
+.completion-mapped {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-8);
+    text-align: left;
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    background: var(--success-bg-subtle);
+    border: 1px solid var(--success-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-12);
+    margin-bottom: var(--space-20);
+}
+.completion-mapped__icon {
+    color: var(--success);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
 .completion-notes-section {
     margin-bottom: var(--space-20);
     text-align: left;
