@@ -70,19 +70,7 @@
     gap: var(--space-8);
 }
 
-/* ── Equipment-here rows (empty + view-all footer) ── */
-.loc-equip-view-all-row {
-    text-align: center;
-    margin-top: var(--space-4);
-}
-.loc-equip-view-all-btn {
-    background: transparent;
-    border: none;
-    color: var(--primary);
-    font-size: var(--font-sm);
-    font-weight: 600;
-    cursor: pointer;
-}
+/* ── Equipment-here rows ── */
 .loc-equip-empty {
     font-size: var(--font-sm);
     color: var(--text-muted);

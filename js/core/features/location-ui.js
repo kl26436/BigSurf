@@ -905,14 +905,13 @@ export function showLocationDetail(locationId) {
 
         <!-- Equipment at this location -->
         <div class="sec-head"><h4>Equipment here <span class="count">${locationEquip.length} items</span></h4></div>
-        ${locationEquip.slice(0, 5).map(eq => `
+        ${locationEquip.map(eq => `
             <div class="link-row">
                 <div class="srow-icon ic-muted"><i class="fas fa-dumbbell"></i></div>
                 <div class="link-row-info">${escapeHtml(eq.name)}</div>
                 <button class="link-row-action" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">View</button>
             </div>
         `).join('')}
-        ${locationEquip.length > 5 ? `<div class="loc-equip-view-all-row"><button class="loc-equip-view-all-btn">View all ${locationEquip.length} →</button></div>` : ''}
         ${locationEquip.length === 0 ? '<div class="loc-equip-empty">No equipment linked to this location</div>' : ''}
 
         <!-- Delete -->

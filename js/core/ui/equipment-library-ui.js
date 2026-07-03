@@ -2844,11 +2844,15 @@ function renderLibraryTab() {
         );
     }
 
-    const filterHTML = locations.length > 0 ? `
+    // The search toggle must always be present — someone with no saved gyms
+    // still needs to search their equipment. Only the location filter pills
+    // are gated on having locations.
+    const filterHTML = `
         <div class="equip-filter-row">
             <button class="btn-icon-sm" onclick="toggleEquipmentSearch()" aria-label="Search">
                 <i class="fas fa-search"></i>
             </button>
+            ${locations.length > 0 ? `
             <div class="equip-location-pills">
                 <button class="filter-pill ${!currentLocationFilter ? 'active' : ''}"
                         onclick="filterEquipmentByLocation(null)">All gyms</button>
@@ -2856,9 +2860,9 @@ function renderLibraryTab() {
                     <button class="filter-pill ${currentLocationFilter === loc ? 'active' : ''}"
                             onclick="filterEquipmentByLocation('${escapeAttr(loc)}')">${escapeHtml(loc)}</button>
                 `).join('')}
-            </div>
+            </div>` : ''}
         </div>
-    ` : '';
+    `;
 
     const searchHTML = `
         <div class="equip-search-bar ${currentSearchTerm ? '' : 'hidden'}" id="equip-search-bar">
