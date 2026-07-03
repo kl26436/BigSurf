@@ -43,6 +43,11 @@ const DEFAULT_SETTINGS = {
     profileBirthday: null,   // YYYY-MM-DD
     profileExperience: null, // 'beginner' | 'intermediate' | 'advanced'
 
+    // Dashboard / drill-down time range (W/M/3M/6M/Y/All). One canonical range
+    // shared by the dashboard hero and every drill-down; persisted so the pick
+    // survives reloads. Matches DEFAULT_RANGE in range-filter.js.
+    dashboardRange: 'M',
+
     // Meta
     hasCompletedOnboarding: false,
     seenTips: [],
@@ -94,6 +99,9 @@ function applySettingsToConfig() {
     if (s.restTimerDuration) Config.DEFAULT_REST_TIMER_SECONDS = s.restTimerDuration;
     if (s.weightUnit) AppState.globalUnit = s.weightUnit;
     if (s.weeklyGoal) Config.WEEKLY_GOAL = s.weeklyGoal;
+    // Seed the shared range from the persisted pick so dashboard + drill-downs
+    // open on the user's last-used range instead of the cold-start default.
+    if (s.dashboardRange) AppState.dashboardRange = s.dashboardRange;
 }
 
 /**

@@ -4,11 +4,25 @@
 import { AppState } from '../../utils/app-state.js';
 import { setRangeFunctions } from './aggregators.js';
 
-export const RANGES = ['W', 'M', '3M', 'Y', 'All'];
+// One canonical option set + default for every drill-down (exercise, muscle
+// group, metric detail). 6M is included so the exercise-detail long-trend view
+// keeps its range; W stays for the shorter-window surfaces.
+export const RANGES = ['W', 'M', '3M', '6M', 'Y', 'All'];
+export const DEFAULT_RANGE = 'M';
 
 const RANGE_DAYS = {
     W: 7, M: 30, '3M': 90, '6M': 180, Y: 365, All: Infinity,
 };
+
+/**
+ * Persist the drill-down range pick to user settings so it survives reloads.
+ * Dynamic import avoids a static cycle with settings-ui. Fire-and-forget.
+ */
+export function persistRange(range) {
+    import('../../ui/settings-ui.js')
+        .then(m => m.updateSetting('dashboardRange', range))
+        .catch(() => { /* non-critical */ });
+}
 
 /**
  * Get the start/end Date pair for the current range.

@@ -6,7 +6,7 @@ import {
     aggregateBodyPartStats, getExercisesForBodyPart, getPRsForBodyPart,
     formatVolume, capitalize,
 } from '../features/metrics/aggregators.js';
-import { rangeLabel } from '../features/metrics/range-filter.js';
+import { rangeLabel, RANGES, DEFAULT_RANGE, persistRange } from '../features/metrics/range-filter.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
 import { chartComboBarsLine } from '../features/charts/chart-combo-bars-line.js';
 
@@ -34,13 +34,11 @@ function mgShortDate(dateStr) {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-const DETAIL_RANGES = ['W', 'M', '3M', 'Y', 'All'];
-
 export function renderMuscleGroupDetail(bodyPart) {
     const container = document.getElementById('muscle-group-detail-content');
     if (!container || !bodyPart) return;
 
-    const range = AppState.muscleDetailRange || 'M';
+    const range = AppState.dashboardRange || DEFAULT_RANGE;
     const workouts = AppState.workouts || [];
     const stats = aggregateBodyPartStats(workouts, bodyPart, range);
     const exercises = getExercisesForBodyPart(workouts, bodyPart, range);
@@ -62,6 +60,7 @@ export function renderMuscleGroupDetail(bodyPart) {
         <div class="d-content">
             ${renderRangePills(range)}
 
+            ${stats.sessions === 0 ? renderEmptyRange(range) : `
             <div class="d-hero-stats">
                 <div class="d-stat">
                     <div class="d-stat__label"><i class="fas fa-trophy text-badge-gold"></i> Heaviest · ${heroShort}</div>
@@ -97,6 +96,7 @@ export function renderMuscleGroupDetail(bodyPart) {
                 <div class="d-sec-head">Exercises · ${rangeLabel(range)}</div>
                 ${exercises.map(ex => renderExerciseRow(ex, bodyPart)).join('')}
             ` : ''}
+            `}
 
             ${prs.length > 0 ? `
                 <div class="d-sec-head">${capitalize(bodyPart)} PRs</div>
@@ -106,10 +106,30 @@ export function renderMuscleGroupDetail(bodyPart) {
     `;
 }
 
+// Shown when the picked range has zero sessions — a clear "why it's empty" +
+// a one-tap widen instead of a page of dashes.
+function renderEmptyRange(range) {
+    const longer = range !== 'All';
+    const title = longer ? `No sessions in the last ${rangeLabel(range)}` : 'No sessions yet';
+    const desc = longer
+        ? 'Try a longer range to see your history.'
+        : "Complete a workout and it'll show up here.";
+    return `
+        <div class="empty-state">
+            <div class="empty-state-icon"><i class="fas fa-calendar-xmark"></i></div>
+            <div class="empty-state-title">${title}</div>
+            <div class="empty-state-description">${desc}</div>
+            ${longer ? `<div class="empty-state-actions">
+                <button class="btn btn-secondary" onclick="setMuscleRange('All')">View all time</button>
+            </div>` : ''}
+        </div>
+    `;
+}
+
 function renderRangePills(activeRange) {
     return `
         <div class="range-pills">
-            ${DETAIL_RANGES.map(r => `
+            ${RANGES.map(r => `
                 <button class="${r === activeRange ? 'active' : ''}" onclick="setMuscleRange('${r}')">${r}</button>
             `).join('')}
         </div>
@@ -148,6 +168,7 @@ function renderPRRow(pr) {
 
 // Window-bound range setter
 export function setMuscleRange(range) {
-    AppState.muscleDetailRange = range;
+    AppState.dashboardRange = range;
+    persistRange(range);
     renderMuscleGroupDetail(AppState.activeMuscleGroup);
 }

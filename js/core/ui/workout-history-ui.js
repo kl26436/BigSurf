@@ -2,10 +2,9 @@
 // Handles workout history UI interactions with FULL CALENDAR VIEW
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { showNotification, setHeaderMode } from './ui-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
-import { formatStatus } from '../utils/workout-helpers.js';
 
 // ===================================================================
 // MAIN HISTORY DISPLAY FUNCTION
@@ -87,19 +86,27 @@ export function nextMonth() {
 // ===================================================================
 
 export function viewWorkout(workoutId) {
-    if (!window.workoutHistory) {
+    const wh = window.workoutHistory;
+    if (!wh) {
         console.error(' workoutHistory not available');
         return;
     }
 
-    const workout = window.workoutHistory.getWorkoutDetails(workoutId);
+    // Consolidated on the rich detail modal (showFixedWorkoutModal: Edit /
+    // Repeat / Save as workout / Delete) so every entry point — dashboard
+    // last-session card, recent list, and calendar — shows the SAME detail
+    // view. Resolve the full workout doc: prefer the loaded history row, else
+    // the raw doc embedded in the calendar object. Both are the same shape.
+    const workout =
+        (wh.currentHistory || []).find((w) => w.id === workoutId || w.docId === workoutId) ||
+        wh.getWorkoutDetails(workoutId)?.rawData;
+
     if (!workout) {
         showNotification('Workout not found', 'error');
         return;
     }
 
-    // Show workout details
-    showWorkoutDetailModal(workout);
+    wh.showFixedWorkoutModal(workout, 0);
 }
 
 // Schema v3.0: Alias for resumeWorkout that accepts docId
@@ -250,108 +257,8 @@ export function retryWorkout(workoutId) {
 // ===================================================================
 // WORKOUT DETAIL MODAL
 // ===================================================================
-
-function showWorkoutDetailModal(workout) {
-    const modal = document.getElementById('workout-detail-section');
-    const title = document.getElementById('workout-detail-title');
-    const content = document.getElementById('workout-detail-content');
-
-    if (!modal || !title || !content) {
-        console.error(' Workout detail modal elements not found');
-        return;
-    }
-
-    // Set modal title
-    title.textContent = `${workout.workoutType} - ${new Date(workout.date).toLocaleDateString()}`;
-
-    // Build modal content
-    let exerciseHTML = '';
-    if (workout.exercises && workout.exercises.length > 0) {
-        exerciseHTML = workout.exercises
-            .map(
-                (exercise) => `
-            <div class="exercise-summary">
-                <button class="exercise-summary__name" onclick="showExerciseDetail('${escapeAttr(exercise.name)}')" aria-label="View ${escapeAttr(exercise.name)} progress">
-                    <span>${escapeHtml(exercise.name)}</span>
-                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                </button>
-                <div class="exercise-sets">
-                    ${exercise.sets
-                        .map(
-                            (set, index) => `
-                        <span class="set-summary">Set ${index + 1}: ${set.reps} reps @ ${set.weight}lbs</span>
-                    `
-                        )
-                        .join('')}
-                </div>
-            </div>
-        `
-            )
-            .join('');
-    } else {
-        exerciseHTML = '<p>No exercise details available</p>';
-    }
-
-    // Build action buttons using data attributes for event delegation
-    const escapedId = escapeAttr(workout.id);
-    const actionButtons = `
-        <div class="modal-actions modal-actions--end">
-            ${
-                workout.status !== 'completed'
-                    ? `
-                <button class="btn btn-primary" data-action="resumeWorkout" data-workout-id="${escapedId}">
-                    <i class="fas fa-play"></i> Resume
-                </button>
-            `
-                    : ''
-            }
-            <button class="btn btn-secondary" data-action="repeatWorkout" data-workout-id="${escapedId}">
-                <i class="fas fa-redo"></i> Repeat
-            </button>
-            <button class="btn btn-danger" data-action="deleteWorkout" data-workout-id="${escapedId}">
-                <i class="fas fa-trash"></i> Delete
-            </button>
-        </div>
-    `;
-
-    // Set modal content
-    content.innerHTML = `
-        <div class="workout-detail-summary">
-            <div class="workout-meta">
-                <div class="meta-item">
-                    <strong>Status:</strong> ${escapeHtml(formatStatus(workout.status) || 'Unknown')}
-                </div>
-                <div class="meta-item">
-                    <strong>Duration:</strong> ${escapeHtml(String(workout.duration || 'Unknown'))}m
-                </div>
-                <div class="meta-item">
-                    <strong>Progress:</strong> ${parseInt(workout.progress) || 0}%
-                </div>
-            </div>
-        </div>
-        
-        <div class="workout-exercises">
-            <h3>Exercises & Sets</h3>
-            ${exerciseHTML}
-        </div>
-        
-        ${actionButtons}
-    `;
-
-    // Show as full-page section
-    modal.classList.remove('hidden');
-
-    // Event delegation for action buttons
-    content.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-action]');
-        if (!btn) return;
-        const action = btn.dataset.action;
-        const workoutId = btn.dataset.workoutId;
-        if (action === 'resumeWorkout' && window.resumeWorkout) window.resumeWorkout(workoutId);
-        else if (action === 'repeatWorkout' && window.repeatWorkout) window.repeatWorkout(workoutId);
-        else if (action === 'deleteWorkout' && window.deleteWorkout) window.deleteWorkout(workoutId);
-    });
-}
+// The detail renderer lives in workout-history.js (showFixedWorkoutModal) —
+// viewWorkout() above routes every tap path through it so there's one modal.
 
 export function closeWorkoutDetailModal() {
     const modal = document.getElementById('workout-detail-section');

@@ -466,13 +466,6 @@ window.nextMonth = function () {
     }
 };
 
-// Workout detail functions
-window.viewWorkout = function (workoutId) {
-    if (window.workoutHistory && typeof window.workoutHistory.showWorkoutDetail === 'function') {
-        window.workoutHistory.showWorkoutDetail(workoutId);
-    }
-};
-
 // Add workout function
 window.addWorkout = function () {
     if (typeof window.showAddManualWorkoutModal === 'function') {

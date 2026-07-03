@@ -5,7 +5,7 @@ import { escapeHtml } from './ui-helpers.js';
 import { navigateTo } from './navigation.js';
 import { formatRelativeDate as formatRelativeDateShared } from '../utils/date-helpers.js';
 
-import { renderRangeFilter, getRangeBounds, getPreviousRangeBounds, rangeLabel } from '../features/metrics/range-filter.js';
+import { renderRangeFilter, getRangeBounds, getPreviousRangeBounds, rangeLabel, DEFAULT_RANGE, persistRange } from '../features/metrics/range-filter.js';
 import {
     aggregateVolumeByBodyPart, aggregateVolumeTimeseries,
     aggregate1RMSeries, countSessionsAndSets, bodyPartTrendPoints,
@@ -43,7 +43,7 @@ export function openMetricDetail(id) {
     // Render content after navigation
     const container = document.getElementById('metric-detail-content');
     if (container) {
-        const range = AppState.dashboardRange || 'W';
+        const range = AppState.dashboardRange || DEFAULT_RANGE;
         const renderer = DETAIL_RENDERERS[id];
         if (renderer) {
             renderer(container, range);
@@ -67,6 +67,7 @@ export function closeMetricDetail() {
  */
 export function setDetailRange(range) {
     AppState.dashboardRange = range;
+    persistRange(range);
     const id = AppState.activeMetricDetail;
     if (!id) return;
     const container = document.getElementById('metric-detail-content');
@@ -91,7 +92,7 @@ export async function deleteBodyWeightEntry(entryId) {
     }
 
     // Re-render at the current range so hero/chart/breakdown all refresh.
-    const range = AppState.dashboardRange || 'W';
+    const range = AppState.dashboardRange || DEFAULT_RANGE;
     const container = document.getElementById('metric-detail-content');
     const renderer = DETAIL_RENDERERS[AppState.activeMetricDetail];
     if (container && renderer) renderer(container, range);

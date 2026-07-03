@@ -119,7 +119,7 @@ Design review verdict: REVAMP. The inline editor-in-list is the wrong container:
 - [ ] Collapsed-row information scent: surface already-computed category label, estimated duration, and "Usually Thu" (from `estimateDurationMinutes` / `deriveUsuallyDays` / `renderTemplateSummary`) on the row instead of hiding them in the accordion.
 - [ ] Delete ~40% dead code in template-selection.js: `createTemplateCard`/`renderTemplateCards`, `createWorkoutCard`/`renderWorkoutCards`, the basic-template-editor modal, category-tab switchers — all target DOM ids that no longer exist (`#template-selection-modal`, `#template-cards-container`, `#default-templates`, `#basic-template-editor-modal`).
 - [ ] `.template-search-bar` → `.field-search` (index.html:235-239).
-- [ ] Mockup first: `mockups/workout-library-v2.html` (list + detail page), approve before code.
+- [x] Mockup first: `mockups/workout-library-v2.html` (list + detail page) — **built + APPROVED by Kevin 2026-07-03. Cleared to implement.** Key decisions in it: suggested-for-today becomes a highlighted row (banner component merges away); day chips + category move from the accordion onto the detail page; Start is a sticky footer; exercise rows show sets×reps·weight summary + last-session meta collapsed.
 - [ ] Preserve through restructure: `schedulePendingTemplateEdit` autosave, optimistic `AppState.workoutPlans` patch, Phase 3 ergonomics.
 
 **Exercise library — verdict REFRESH, no structural rebuild.** Folded into Phase 5:
@@ -149,7 +149,7 @@ Audit §5-§6 + supplemental sweep findings.
 - [x] 🟡 Body measurements: height write-through moved to after the entry saves — no more half-committed height on a failed save. **(1f90953)**
 - [x] 🟡 AI Coach Regenerate now confirms before discarding an edited preview. **(dbe9f9b)**
 - [x] 🟡 Error log empty bug-report submit now shows "Add a description". **(26710c4)**
-- [~] 🟡 History: calendar cells 38→44px + month-nav 36→44px, empty days now open add-workout prefilled. **(1f90953)** *(Consolidating the two workout-detail modals is the remaining sub-item — a refactor left for the drill-down/modal pass.)*
+- [x] 🟡 History: calendar cells 38→44px + month-nav 36→44px, empty days now open add-workout prefilled. **(1f90953)** Two workout-detail modals consolidated onto the richer `showFixedWorkoutModal` — `viewWorkout` (dashboard last-session / recent list) now routes there instead of the simpler Resume/Repeat/Delete-only modal, which was deleted. *(drill-down/modal pass)*
 - [x] 🟡 Settings: added Manage group (Locations + Equipment rows); Rebuild PRs moved out of Danger zone. **(a8e98b1)** *(Two export actions left as-is — they're genuinely distinct: raw CSV/JSON vs AI-formatted JSON.)*
 - [x] 🟡 Add "Progress" to the More menu (Tracking group) — shipped with the quick-win batch. **(b82683e)**
 
@@ -157,15 +157,16 @@ Audit §5-§6 + supplemental sweep findings.
 - [x] Sentence-cased CTAs/titles/labels (exercise-manager, DEXA labels, body-measurements, manual-workout, error-log), terminology fixes (template→workout in AI Coach/history/selector), proper `…` ellipses, dropped success-toast exclamation. **(04c8026)** *(Left AI Coach split buttons — coupled to logic keys, read as named categories.)*
 
 **Exercise library refresh (design review 2026-07)**
-- [ ] 🔴 Unify the two exercise pickers — library page (exercise-manager-ui.js) and `openSharedAddExerciseSheet` (active-workout-ui.js:3024) render the same concept with different taxonomies (Chest/Back/Biceps/Triceps vs Push/Pull/Arms), markup, and CSS. Extract one shared list renderer; align on one category taxonomy. *(OPEN — needs a taxonomy decision + touches the active-workout add sheet; see status note.)*
+- [ ] 🔴 Unify the two exercise pickers — library page (exercise-manager-ui.js) and `openSharedAddExerciseSheet` (active-workout-ui.js:3024) render the same concept with different taxonomies (Chest/Back/Biceps/Triceps vs Push/Pull/Arms), markup, and CSS. Extract one shared list renderer.
+  **Taxonomy decision (APPROVED by Kevin 2026-07-03):** exercises browse by BODY PART — Chest / Back / Legs / Shoulders / Arms / Core / Cardio, matching `BODY_PARTS` in aggregators.js and `classifyBodyPart`; merge the library's Biceps/Triceps into Arms. Push/Pull stays a WORKOUT-category concept (template categories) only — it's a programming taxonomy, ambiguous for individual machines. Rationale: picking an exercise is an anatomical question; the dashboard drill-downs already use these six. *(OPEN — needs a taxonomy decision + touches the active-workout add sheet; see status note.)*
 - [x] 🟡 Default / Custom / Edited badge on exercise rows. **(10f4305)**
 - [x] 🟡 Card tap and Edit button were the identical action — dropped the button; whole card opens the editor, chevron affordance. **(10f4305)**
 - [x] 🟡 Reset scroll on filter/search re-render. **(10f4305)**
 - [x] 🟢 Removed vestigial `window.selectExerciseCallback` branch. **(10f4305)**
 
 **Consistency**
-- [ ] Unify range-state defaults/options across drill-down levels; persist pick. *(OPEN — drill-down consistency pass.)*
-- [ ] Empty-range messaging in drill-downs ("No data in this range — try All time"). *(OPEN — drill-down consistency pass.)*
+- [x] Unify range-state defaults/options across drill-down levels; persist pick. One `RANGES = [W,M,3M,6M,Y,All]` + `DEFAULT_RANGE = 'M'` in range-filter.js; exercise/muscle/metric drill-downs all read/write the shared `AppState.dashboardRange` (dropped `exerciseDetailRange`/`muscleDetailRange`); pick persists to `settings.dashboardRange` and reloads on login.
+- [x] Empty-range messaging in drill-downs ("No data in this range — try All time"). Exercise + muscle-group drill-downs show a `.empty-state` with a "View all time" CTA when the range has zero sessions; metric-detail already labels per-section empties "…in this range."
 - [~] Back-button tap targets: `.d-back` 32→44 and `.detail-page-header__back` 36→44 (var(--tap)). **(837194a)** Full consolidation to one `.page-header__back` class is folded into Phase 2b.
 - [x] Range pills → var(--tap-sm), `.btn-icon-sm` 40→44px. **(604060d)** chips.css tokenization deferred (14px/5px/0.85rem have no exact tokens; snapping risks tiny shifts on a ubiquitous component for zero audit pressure).
 - [x] Delete dead code: `renderBodyWeightCard` (26710c4), manual-workout no-op stubs (837194a), brand-view path (f054fc6).

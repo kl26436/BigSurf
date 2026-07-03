@@ -6,6 +6,7 @@ import {
     aggregateExerciseStats, exerciseEquipmentCounts, classifyBodyPart, capitalize, formatVolume,
 } from '../features/metrics/aggregators.js';
 import { chartTrend } from '../features/charts/chart-trend.js';
+import { RANGES, DEFAULT_RANGE, persistRange, rangeLabel } from '../features/metrics/range-filter.js';
 
 const BP_ICONS = {
     chest: 'fa-hand-paper', back: 'fa-fist-raised', legs: 'fa-walking',
@@ -23,7 +24,6 @@ function bodyPartColor(bp) {
     return map[bp] || 'var(--text-muted)';
 }
 
-const DETAIL_RANGES = ['M', '3M', '6M', 'Y', 'All'];
 const SESSIONS_COLLAPSED_LIMIT = 5;
 
 // Module state: which exercise is currently expanded to "show all sessions".
@@ -47,7 +47,7 @@ export function renderExerciseDetail(exerciseName) {
         _equipmentFilter = null;
     }
 
-    const range = AppState.exerciseDetailRange || '6M';
+    const range = AppState.dashboardRange || DEFAULT_RANGE;
     const workouts = AppState.workouts || [];
     const equipCounts = exerciseEquipmentCounts(workouts, exerciseName, range);
     // Drop a stale filter if the selected machine has no sessions in this range.
@@ -95,6 +95,7 @@ export function renderExerciseDetail(exerciseName) {
             ${renderMachinePills(equipCounts)}
             ${renderRangePills(range)}
 
+            ${s.sessions.length === 0 ? renderEmptyRange(range) : `
             <div class="d-hero-stats">
                 <div class="d-stat">
                     <div class="d-stat__label"><i class="fas fa-trophy text-badge-gold"></i> Max weight</div>
@@ -153,6 +154,27 @@ export function renderExerciseDetail(exerciseName) {
                     ${overflowBtn}
                 `;
             })() : ''}
+            `}
+        </div>
+    `;
+}
+
+// Shown when the picked range has zero sessions for this exercise — a clear
+// reason + one-tap widen instead of a screen of zeros and dashes.
+function renderEmptyRange(range) {
+    const longer = range !== 'All';
+    const title = longer ? `No sets in the last ${rangeLabel(range)}` : 'No sets logged yet';
+    const desc = longer
+        ? 'Try a longer range to see your history.'
+        : "Log a set and it'll show up here.";
+    return `
+        <div class="empty-state">
+            <div class="empty-state-icon"><i class="fas fa-calendar-xmark"></i></div>
+            <div class="empty-state-title">${title}</div>
+            <div class="empty-state-description">${desc}</div>
+            ${longer ? `<div class="empty-state-actions">
+                <button class="btn btn-secondary" onclick="setExerciseRange('All')">View all time</button>
+            </div>` : ''}
         </div>
     `;
 }
@@ -160,7 +182,7 @@ export function renderExerciseDetail(exerciseName) {
 function renderRangePills(activeRange) {
     return `
         <div class="range-pills">
-            ${DETAIL_RANGES.map(r => `
+            ${RANGES.map(r => `
                 <button class="${r === activeRange ? 'active' : ''}" onclick="setExerciseRange('${r}')">${r}</button>
             `).join('')}
         </div>
@@ -256,7 +278,8 @@ function formatSessionDate(dateStr) {
 
 // Window-bound range setter
 export function setExerciseRange(range) {
-    AppState.exerciseDetailRange = range;
+    AppState.dashboardRange = range;
+    persistRange(range);
     renderExerciseDetail(AppState.activeExercise);
 }
 
