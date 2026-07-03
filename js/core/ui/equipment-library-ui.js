@@ -200,7 +200,24 @@ function getCatalogSync() {
 async function scanForUnlinkedEquipment() {
     const norm = (s) => (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
 
-    const knownNorm = new Set((allEquipment || []).map((e) => norm(e.name)));
+    // Build the "known" set from EVERY identity string an equipment record
+    // exposes: display name, function alone (catalog-promoted equipment's
+    // canonical link value is often just the function), and every alias
+    // the user has attached via prior link operations. Without alias +
+    // function awareness, successfully-linked orphans re-appeared on the
+    // next scan because linkOrphanToSuggestion rewrites workout equipment
+    // to `equipment.function || equipment.name` — which didn't match the
+    // scan's name-only lookup for records where those differ (e.g., Pec
+    // Deck with name "Hammer Strength Select — Pec Deck" and function
+    // "Pec Deck"). The user was stuck in a link-then-reappear loop.
+    const knownNorm = new Set();
+    for (const e of allEquipment || []) {
+        if (e.name) knownNorm.add(norm(e.name));
+        if (e.function) knownNorm.add(norm(e.function));
+        for (const alias of e.aliases || []) {
+            if (alias) knownNorm.add(norm(alias));
+        }
+    }
     const workouts = await getManager().getUserWorkouts();
     const found = new Map();
 
