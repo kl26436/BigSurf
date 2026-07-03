@@ -759,6 +759,22 @@ export function showPastCoachSession(sessionId) {
 let _pendingTemplate = null;
 
 /**
+ * Regenerate throws away the whole preview — including any exercises the user
+ * removed or alternatives they swapped in — so confirm before discarding it.
+ * Wired at the bottom of this file (not main.js) so the button template and
+ * its handler can't version-skew apart under prod's year-long JS cache.
+ */
+export async function confirmRegenerateWorkout() {
+    const { confirmSheet } = await import('../ui/confirm-sheet.js');
+    const ok = await confirmSheet({
+        title: 'Regenerate workout?',
+        message: 'This replaces the preview below with a fresh one.',
+        confirmLabel: 'Regenerate',
+    });
+    if (ok) showWorkoutBuilder();
+}
+
+/**
  * Show the workout focus picker inside a bot chat bubble.
  */
 export function showWorkoutBuilder() {
@@ -933,7 +949,7 @@ function renderTemplatePreview(container) {
                     <h3 class="preview-template-name">${escapeHtml(t.name)}</h3>
                     <span class="preview-exercise-count">${t.exercises.length} exercises</span>
                 </div>
-                <button class="btn btn-secondary btn-small" onclick="showWorkoutBuilder()">
+                <button class="btn btn-secondary btn-small" onclick="confirmRegenerateWorkout()">
                     <i class="fas fa-redo"></i> Regenerate
                 </button>
             </div>
@@ -1063,4 +1079,9 @@ function truncate(str, len) {
     if (!str) return '';
     return str.length > len ? str.slice(0, len) + '…' : str;
 }
+
+// Self-wire handlers referenced only from this module's own template strings,
+// so template + handler ship together and can't version-skew under prod's
+// year-long JS cache. (Most of this file's handlers are wired via main.js.)
+window.confirmRegenerateWorkout = confirmRegenerateWorkout;
 

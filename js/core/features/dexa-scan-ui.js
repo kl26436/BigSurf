@@ -2,7 +2,7 @@
 // Upload modal, AI review form, dashboard card, history, detail views
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification } from '../ui/ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, convertWeight } from '../ui/ui-helpers.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
 import { formatRelativeDate } from '../utils/date-helpers.js';
 import {
@@ -206,7 +206,27 @@ export function showDexaUploadModal() {
  */
 export function selectDexaUnit(unit) {
     const hiddenInput = document.getElementById('dexa-unit');
+    const prevUnit = hiddenInput?.value || 'lbs';
     if (hiddenInput) hiddenInput.value = unit;
+
+    // Convert already-entered mass values so a switch re-scales the numbers
+    // (180 lb → 81.6 kg) instead of silently relabeling them. Body-fat %,
+    // bone density (g/cm²) and BMC (g) are unit-independent, so they're left
+    // out. Skips empty/invalid fields.
+    if (prevUnit !== unit) {
+        const regionKeys = ['leftArm', 'rightArm', 'leftLeg', 'rightLeg', 'trunk'];
+        const massFieldIds = [
+            'dexa-total-weight', 'dexa-total-lean', 'dexa-total-fat', 'dexa-bone-mass',
+            ...regionKeys.flatMap(k => [`dexa-leanMass-${k}`, `dexa-fatMass-${k}`]),
+        ];
+        for (const id of massFieldIds) {
+            const el = document.getElementById(id);
+            if (!el || el.value === '') continue;
+            const n = parseFloat(el.value);
+            if (!isFinite(n) || n <= 0) continue;
+            el.value = convertWeight(n, prevUnit, unit);
+        }
+    }
 
     const lbsChip = document.getElementById('dexa-unit-lbs');
     const kgChip = document.getElementById('dexa-unit-kg');
