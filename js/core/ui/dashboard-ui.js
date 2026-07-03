@@ -1093,6 +1093,15 @@ export function showTodaysPRs() {
     requestAnimationFrame(() => overlay.classList.add('dash-todays-prs-overlay--show'));
 }
 
+// Equipment is stored as "Brand [Line] — Function". On a PR row the function
+// duplicates the exercise name shown right above it (e.g. equipment "MegaMass —
+// 45 Degree Linear Row" under the exercise *45 Degree Linear Row*), so keep
+// just the brand/line prefix before the em dash.
+function equipShortName(name) {
+    if (!name) return '';
+    return name.split(' — ')[0].trim() || name;
+}
+
 /**
  * PR meta line: "3d ago · 6 reps · Hammer Strength". The machine is named
  * (PRTracker segments PRs per equipment, so a PR belongs to a specific
@@ -1101,7 +1110,7 @@ export function showTodaysPRs() {
 function prMetaLine(pr) {
     const parts = [formatRelativeDate(pr.date, { daysAgo: true }), `${pr.reps} reps`];
     if (pr.equipment && pr.equipment !== 'Unknown Equipment') {
-        parts.push(escapeHtml(pr.equipment));
+        parts.push(escapeHtml(equipShortName(pr.equipment)));
     }
     return parts.join(' · ');
 }
