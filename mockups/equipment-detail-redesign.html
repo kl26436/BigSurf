@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Equipment detail redesign — 13 flat sections → 6 groups (UX-AUDIT-2026-07 §3)</title>
+<title>Equipment detail redesign v2 — real data + derived name (UX-AUDIT-2026-07 §3)</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
   :root {
@@ -31,27 +31,30 @@
 
   .pg-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
   .pg-back{width:44px;height:44px;border-radius:50%;background:var(--bg-card);display:flex;align-items:center;justify-content:center;color:var(--text-main);font-size:0.8rem;flex-shrink:0;}
-  .pg-title{color:var(--text-strong);font-size:1rem;font-weight:700;flex:1;}
+  .pg-title{color:var(--text-strong);font-size:1rem;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
   .sec-head{color:var(--text-strong);font-size:0.78rem;font-weight:700;margin:16px 2px 8px;display:flex;justify-content:space-between;align-items:baseline;}
   .sec-head .m{color:var(--text-muted);font-size:0.64rem;font-weight:500;}
+  .sec-head .act{color:var(--primary);font-size:0.68rem;font-weight:600;}
 
-  /* 1. Hero card — tap to edit identity */
+  /* 1. Hero card — tap to edit identity; name is DERIVED, shown once */
   .hero-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;display:flex;align-items:center;gap:12px;}
   .hc-icon{width:46px;height:46px;border-radius:13px;background:rgba(74,144,217,0.14);color:var(--cat-push);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0;}
   .hc-info{flex:1;min-width:0;}
   .hc-name{color:var(--text-strong);font-size:0.95rem;font-weight:700;}
   .hc-sub{color:var(--text-secondary);font-size:0.68rem;margin-top:2px;}
-  .hc-chip{display:inline-block;font-size:0.56rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;background:var(--primary-bg);color:var(--primary);border-radius:var(--radius-pill);padding:2px 8px;margin-top:5px;}
+  .hc-chips{display:flex;gap:5px;margin-top:6px;}
+  .hc-chip{display:inline-block;font-size:0.56rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;background:var(--primary-bg);color:var(--primary);border-radius:var(--radius-pill);padding:2px 8px;}
+  .hc-chip.cat{background:rgba(74,144,217,0.12);color:var(--cat-push);}
   .hc-edit{color:var(--text-muted);font-size:0.72rem;}
 
-  /* 2. Stat strip (kept from current design) */
+  /* 2. Stat strip — PR now carries units */
   .stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px;}
   .stat{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;padding:9px;text-align:center;}
   .stat .v{color:var(--text-strong);font-size:0.95rem;font-weight:800;font-variant-numeric:tabular-nums;}
+  .stat .v small{font-size:0.6rem;color:var(--text-muted);font-weight:500;}
   .stat .l{color:var(--text-muted);font-size:0.56rem;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-top:2px;}
 
-  /* Row-card (shared shape for Setup + Used for) */
   .row-card{display:flex;align-items:center;gap:10px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:11px 12px;margin-bottom:6px;min-height:44px;}
   .rc-icon{width:30px;height:30px;border-radius:9px;background:var(--bg-card-hi);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:0.72rem;flex-shrink:0;}
   .rc-info{flex:1;min-width:0;}
@@ -61,32 +64,35 @@
   .rc-chev{color:var(--text-muted);font-size:0.66rem;}
   .rc-video{color:var(--primary);font-size:0.74rem;}
 
-  /* 4. Location chips */
   .chips{display:flex;flex-wrap:wrap;gap:6px;}
   .chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-pill);padding:9px 14px;font-size:0.72rem;color:var(--text-main);font-weight:600;min-height:36px;}
+  .chip.on{background:var(--primary-bg);border-color:var(--primary-border);color:var(--primary);}
   .chip.add{border-style:dashed;color:var(--primary);border-color:var(--primary-border);background:transparent;}
   .chip .x{color:var(--text-muted);font-size:0.62rem;}
 
-  /* 6. Notes */
-  .notes{width:100%;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:11px 12px;color:var(--text-secondary);font-size:0.74rem;line-height:1.5;min-height:56px;}
+  .notes{width:100%;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:11px 12px;color:var(--text-muted);font-size:0.74rem;line-height:1.5;min-height:56px;}
 
-  /* 7. Danger zone — its own bordered card */
   .danger-card{background:rgba(227,93,106,0.05);border:1px solid rgba(227,93,106,0.2);border-radius:var(--radius-md);padding:12px;margin-top:18px;}
   .danger-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;background:transparent;border:none;color:var(--danger);font-size:0.78rem;font-weight:700;}
   .danger-sub{color:var(--text-muted);font-size:0.6rem;text-align:center;margin-top:4px;}
 
-  /* ═══ Phone B: identity sheet open ═══ */
-  .dim{position:absolute;inset:0;background:rgba(0,0,0,0.55);z-index:5;}
+  /* Phone B: identity sheet w/ blur backdrop */
+  .dim{position:absolute;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:5;}
   .sheet{position:absolute;bottom:0;left:0;right:0;background:var(--bg-surface);border-radius:20px 20px 0 0;padding:10px 16px 24px;z-index:6;box-shadow:0 -10px 30px rgba(0,0,0,0.6);}
   .sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--border-light);margin:0 auto 12px;}
   .sheet-title{color:var(--text-strong);font-size:0.92rem;font-weight:700;margin-bottom:2px;}
   .sheet-sub{color:var(--text-muted);font-size:0.66rem;margin-bottom:14px;}
   .field-label{color:var(--text-muted);font-size:0.6rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin:12px 0 6px;}
-  .field-input{width:100%;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:12px;color:var(--text-strong);font-size:0.82rem;font-weight:600;min-height:44px;}
+  .field-input{width:100%;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:12px;color:var(--text-muted);font-size:0.8rem;min-height:44px;}
+  .field-hint{color:var(--text-muted);font-size:0.6rem;margin-top:5px;line-height:1.4;}
   .picker-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:12px;margin-bottom:6px;min-height:44px;}
   .picker-row .k{color:var(--text-muted);font-size:0.7rem;font-weight:600;}
   .picker-row .v{color:var(--text-main);font-size:0.76rem;font-weight:600;display:flex;align-items:center;gap:8px;}
   .picker-row .v i{color:var(--text-muted);font-size:0.6rem;}
+  .name-preview{display:flex;align-items:center;gap:8px;background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:var(--radius-sm);padding:10px 12px;margin-top:4px;}
+  .name-preview i{color:var(--primary);font-size:0.7rem;}
+  .name-preview .np-t{color:var(--text-main);font-size:0.72rem;line-height:1.4;}
+  .name-preview .np-t b{color:var(--text-strong);}
   .sheet-actions{display:flex;gap:8px;margin-top:16px;}
   .sheet-btn{flex:1;min-height:46px;border-radius:var(--radius-sm);border:1px solid var(--border-light);background:var(--bg-card);color:var(--text-main);font-size:0.8rem;font-weight:700;}
   .sheet-btn.primary{background:var(--primary);border-color:var(--primary);color:#04201a;}
@@ -97,140 +103,135 @@
 </head>
 <body>
 
-<h1 class="sec">Equipment detail — 13 flat sections → 6 groups</h1>
-<p class="desc">UX-AUDIT-2026-07 §3. Today the page is one undifferentiated scroll of 9 always-open editors in five interaction idioms, with type shown three times. Redesign: everything reads first, edits second — tap a card, get a sheet, only that section re-renders (no more scroll-to-top).</p>
+<h1 class="sec">Equipment detail v2 — one identity, shown once</h1>
+<p class="desc">Real data from the live app (Arsenal Strength Reloaded ISO Incline Press). Root problem the screenshots exposed: <b style="color:#f6f9ff;">Name is derived data</b> — "Brand Line — Function" concatenated, then displayed 4× (header, name field, hero, type ×3) and editable 5 ways. v2 shows identity exactly once and derives the name automatically; the Name input is gone.</p>
 
 <div class="row">
 
-  <!-- ═══ PHONE A: redesigned detail page ═══ -->
+  <!-- ═══ PHONE A: redesigned detail page, real data ═══ -->
   <div class="wrap">
     <div class="phone">
       <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div>
       <div class="content">
         <div class="pg-head">
           <div class="pg-back"><i class="fas fa-arrow-left"></i></div>
-          <div class="pg-title">Equipment</div>
+          <div class="pg-title">ISO Incline Press</div>
         </div>
 
-        <!-- 1. HERO — one card replaces 5 always-open identity editors -->
+        <!-- 1. HERO — the ONLY place identity appears -->
         <div class="hero-card">
           <div class="hc-icon"><i class="fas fa-dumbbell"></i></div>
           <div class="hc-info">
-            <div class="hc-name">Flat bench press</div>
-            <div class="hc-sub">Hammer Strength · Plate-loaded</div>
-            <span class="hc-chip">Machine</span>
+            <div class="hc-name">ISO Incline Press</div>
+            <div class="hc-sub">Arsenal Strength · Reloaded</div>
+            <div class="hc-chips">
+              <span class="hc-chip">Plate-loaded</span>
+              <span class="hc-chip cat">Chest</span>
+            </div>
           </div>
           <i class="fas fa-pen hc-edit"></i>
         </div>
 
-        <!-- 2. STAT STRIP (unchanged — best part of current page) -->
+        <!-- 2. STAT STRIP — PR gets its unit -->
         <div class="stat-grid">
-          <div class="stat"><div class="v">37</div><div class="l">Sessions</div></div>
-          <div class="stat"><div class="v">230×4</div><div class="l">PR</div></div>
-          <div class="stat"><div class="v">3d ago</div><div class="l">Last</div></div>
+          <div class="stat"><div class="v">36</div><div class="l">Sessions</div></div>
+          <div class="stat"><div class="v">160<small> lb</small> × 6</div><div class="l">PR</div></div>
+          <div class="stat"><div class="v">2 mo</div><div class="l">Last</div></div>
         </div>
 
         <!-- 3. SETUP -->
         <div class="sec-head">Setup</div>
         <div class="row-card">
           <div class="rc-icon"><i class="fas fa-weight-hanging"></i></div>
-          <div class="rc-info"><div class="rc-t">Base weight</div><div class="rc-s">Empty machine / bar</div></div>
-          <div class="rc-val">45 lb</div>
+          <div class="rc-info"><div class="rc-t">Base weight</div><div class="rc-s">Added to plate weight in sets &amp; plate calculator</div></div>
+          <div class="rc-val">Not set</div>
           <i class="fas fa-chevron-right rc-chev"></i>
         </div>
 
         <!-- 4. LOCATIONS -->
-        <div class="sec-head">Locations <span class="m">2 gyms</span></div>
+        <div class="sec-head">Locations <span class="act">+ Add</span></div>
         <div class="chips">
-          <span class="chip">Downtown Gym <i class="fas fa-xmark x"></i></span>
-          <span class="chip">Anytime West <i class="fas fa-xmark x"></i></span>
-          <span class="chip add"><i class="fas fa-plus"></i> Add</span>
+          <span class="chip on"><i class="fas fa-location-dot"></i> Absolute Recomp <i class="fas fa-xmark x"></i></span>
         </div>
 
-        <!-- 5. USED FOR — compact rows, video editing moves into per-row sheet -->
-        <div class="sec-head">Used for <span class="m">3 exercises</span></div>
+        <!-- 5. USED FOR -->
+        <div class="sec-head">Used for <span class="act">+ Assign</span></div>
         <div class="row-card">
           <div class="rc-icon" style="background:rgba(74,144,217,0.14);color:var(--cat-push);"><i class="fas fa-dumbbell"></i></div>
-          <div class="rc-info"><div class="rc-t">Bench Press</div><div class="rc-s">Custom form video</div></div>
+          <div class="rc-info"><div class="rc-t">Incline Chest Press</div><div class="rc-s">Video: inherits exercise default</div></div>
           <i class="fas fa-circle-play rc-video"></i>
-          <i class="fas fa-chevron-right rc-chev"></i>
-        </div>
-        <div class="row-card">
-          <div class="rc-icon" style="background:rgba(74,144,217,0.14);color:var(--cat-push);"><i class="fas fa-dumbbell"></i></div>
-          <div class="rc-info"><div class="rc-t">Close-Grip Bench</div><div class="rc-s">Inherits exercise default</div></div>
-          <i class="fas fa-chevron-right rc-chev"></i>
-        </div>
-        <div class="row-card">
-          <div class="rc-icon" style="background:rgba(74,144,217,0.14);color:var(--cat-push);"><i class="fas fa-dumbbell"></i></div>
-          <div class="rc-info"><div class="rc-t">Paused Bench</div><div class="rc-s">Inherits exercise default</div></div>
           <i class="fas fa-chevron-right rc-chev"></i>
         </div>
 
         <!-- 6. NOTES -->
         <div class="sec-head">Notes</div>
-        <div class="notes">Seat pin at 4. Left grip squeaks — use the right-side station.</div>
+        <div class="notes">e.g., Seat setting, handle position, which station…</div>
 
-        <!-- 7. DANGER ZONE — bordered card, not a bare row after Notes -->
+        <!-- 7. DANGER ZONE -->
         <div class="danger-card">
           <button class="danger-btn"><i class="fas fa-trash"></i> Delete equipment</button>
           <div class="danger-sub">Workout history keeps its records — they'll show as unlinked</div>
         </div>
       </div>
     </div>
-    <div class="wrap-label">A — Detail page, grouped</div>
-    <div class="wrap-sub">2 always-open editors (location chips, notes) instead of 9. Type shown once. "Used for" rows are compact row-cards — the per-exercise video URL input moves into the row's sheet. Delete gets a visually separated danger card with honest consequence copy.</div>
+    <div class="wrap-label">A — Same machine, one identity</div>
+    <div class="wrap-sub">Header shows the short function name, not the full concatenation. Identity appears once, in the hero — no Name input, no duplicate tag row, no always-open type chips (they overflowed off-screen in the live app). PR reads "160 lb × 6" instead of a bare "160". Everything below the stats is a tap-to-edit row.</div>
   </div>
 
-  <!-- ═══ PHONE B: identity edit sheet ═══ -->
+  <!-- ═══ PHONE B: identity sheet with derived-name preview ═══ -->
   <div class="wrap">
     <div class="phone">
       <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div>
-      <div class="content" style="filter:blur(1px);">
+      <div class="content">
         <div class="pg-head">
           <div class="pg-back"><i class="fas fa-arrow-left"></i></div>
-          <div class="pg-title">Equipment</div>
+          <div class="pg-title">ISO Incline Press</div>
         </div>
         <div class="hero-card">
           <div class="hc-icon"><i class="fas fa-dumbbell"></i></div>
           <div class="hc-info">
-            <div class="hc-name">Flat bench press</div>
-            <div class="hc-sub">Hammer Strength · Plate-loaded</div>
-            <span class="hc-chip">Machine</span>
+            <div class="hc-name">ISO Incline Press</div>
+            <div class="hc-sub">Arsenal Strength · Reloaded</div>
+            <div class="hc-chips"><span class="hc-chip">Plate-loaded</span><span class="hc-chip cat">Chest</span></div>
           </div>
           <i class="fas fa-pen hc-edit"></i>
         </div>
         <div class="stat-grid">
-          <div class="stat"><div class="v">37</div><div class="l">Sessions</div></div>
-          <div class="stat"><div class="v">230×4</div><div class="l">PR</div></div>
-          <div class="stat"><div class="v">3d ago</div><div class="l">Last</div></div>
+          <div class="stat"><div class="v">36</div><div class="l">Sessions</div></div>
+          <div class="stat"><div class="v">160<small> lb</small> × 6</div><div class="l">PR</div></div>
+          <div class="stat"><div class="v">2 mo</div><div class="l">Last</div></div>
         </div>
       </div>
       <div class="dim"></div>
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title">Edit equipment</div>
-        <div class="sheet-sub">Identity — everything else stays on the page</div>
-        <div class="field-label">Name</div>
-        <input class="field-input" value="Flat bench press">
-        <div class="field-label">Details</div>
-        <div class="picker-row"><span class="k">Brand</span><span class="v">Hammer Strength <i class="fas fa-chevron-right"></i></span></div>
-        <div class="picker-row"><span class="k">Line</span><span class="v">Plate-loaded <i class="fas fa-chevron-right"></i></span></div>
-        <div class="picker-row"><span class="k">Function</span><span class="v">Flat bench press <i class="fas fa-chevron-right"></i></span></div>
-        <div class="picker-row"><span class="k">Type</span><span class="v">Machine <i class="fas fa-chevron-right"></i></span></div>
+        <div class="sheet-sub">Name builds itself from these — no separate name field</div>
+        <div class="picker-row"><span class="k">Brand</span><span class="v">Arsenal Strength <i class="fas fa-chevron-right"></i></span></div>
+        <div class="picker-row"><span class="k">Line</span><span class="v">Reloaded <i class="fas fa-chevron-right"></i></span></div>
+        <div class="picker-row"><span class="k">Function</span><span class="v">ISO Incline Press <i class="fas fa-chevron-right"></i></span></div>
+        <div class="picker-row"><span class="k">Type</span><span class="v">Plate-loaded <i class="fas fa-chevron-right"></i></span></div>
+        <div class="name-preview">
+          <i class="fas fa-wand-magic-sparkles"></i>
+          <div class="np-t">Shown as <b>ISO Incline Press</b> · full name <b>Arsenal Strength Reloaded — ISO Incline Press</b></div>
+        </div>
+        <div class="field-label">Nickname <span style="text-transform:none;font-weight:500;">(optional)</span></div>
+        <input class="field-input" placeholder="e.g., The good incline machine">
+        <div class="field-hint">Overrides the display name everywhere. Leave blank to keep the auto name.</div>
         <div class="sheet-actions">
           <button class="sheet-btn">Cancel</button>
           <button class="sheet-btn primary">Save changes</button>
         </div>
       </div>
     </div>
-    <div class="wrap-label">B — Identity sheet</div>
-    <div class="wrap-sub">One interaction model everywhere: tap card → sheet → save → only that card re-renders. Type joins Brand/Line/Function as a picker row (today it's an always-open 11-chip grid — the third place type appears). Uses the existing aw-sheet pattern + openFieldPicker.</div>
+    <div class="wrap-label">B — Identity sheet, derived name</div>
+    <div class="wrap-sub">Brand/Line/Function/Type are the source of truth; the display name composes itself (short form for headers, full form for search/matching). Optional nickname replaces the redundant Name input. Backdrop uses the Phase 0 blur. Save patches only the hero — no scroll-to-top.</div>
   </div>
 
 </div>
 
 <div class="callout">
-  <b>Interaction contract:</b> read-first page, one edit idiom. Hero → identity sheet; Base weight row → number+unit sheet; Location chips stay inline (they already work); Used-for row → sheet with Remove / Edit form video / open video; Notes stays inline. Every save patches its own section in place — fixing the current full-page <code>innerHTML</code> re-render that throws you back to the top after any row action. Also route BOTH legacy <code>equipment.locations[]</code> and catalog <code>location.equipment[]</code> writes through one shared path.
+  <b>Migration note:</b> existing equipment already stores name + brand + line + function separately, and most names are the concatenation — so on load, if <code>name === autoName(brand, line, function)</code> (or fuzzy-matches it), treat nickname as unset; otherwise the existing custom name becomes the nickname. Zero data loss, no schema change required (nickname can live in the existing <code>name</code> field; "derived" is a render-time rule). The header/title truncation problem ("Arsenal Strength Reloaded — ISO In… + Done") disappears because headers use the short function name.
 </div>
 
 </body>

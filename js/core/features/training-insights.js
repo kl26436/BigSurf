@@ -113,7 +113,7 @@ export function analyzeWeeklyVolume(workouts, exerciseDatabase) {
         weeklySets: sets,
         status: sets < Config.VOLUME_MEV ? 'low' : sets > Config.VOLUME_MRV ? 'high' : 'good',
         recommendation: sets < Config.VOLUME_MEV
-            ? `Add ${Config.VOLUME_MEV - sets} more sets of ${part} this week`
+            ? `Add ${Config.VOLUME_MEV - sets} more this week`
             : sets > Config.VOLUME_MRV
                 ? `Consider reducing ${part} volume to aid recovery`
                 : null,
@@ -425,7 +425,7 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
             type: 'volume-low',
             severity: 'info',
             icon: 'fa-chart-bar',
-            message: `${formatBodyPart(top.bodyPart)} volume is low this week (${top.weeklySets} sets). ${top.recommendation}`,
+            message: `${formatBodyPart(top.bodyPart)} volume is low — ${top.weeklySets} set${top.weeklySets === 1 ? '' : 's'}. ${top.recommendation}`,
         });
     }
 

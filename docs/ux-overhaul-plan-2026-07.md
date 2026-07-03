@@ -8,6 +8,16 @@ Legend: `[ ]` open · sizes S (<½ day), M (~1 day), L (multi-day)
 
 ---
 
+## Do next — quick-win batch (one Claude Code session, S)
+
+Three independent, low-risk fixes pulled forward from Phases 2/5. Gate: `npm test` + `npm run lint` + dev deploy.
+
+- [ ] **Fix "Last done NaNd ago"** — `formatLastDoneMeta` (dashboard-ui.js:641-650): add `if (!Number.isFinite(days)) return '';` after the `days` computation; parse `rec.date` with the date-helpers parser instead of raw `new Date()` (CLAUDE.md date-handling rules); `debugLog` the offending `rec.date` value so the bad workout docs can be identified. Same guard applies to `renderLastSessionLine`'s `formatRelativeDate` path (dashboard-ui.js:668) if it shares the raw-Date parse.
+- [ ] **Kill the duplicate insight** — `renderProgressLinkRow(allWorkouts, topInsight)` (dashboard-ui.js:699-725): add a `showInsight` param from the caller (dashboard-ui.js:173/176); when the insight card is already rendered, skip the `topInsight.message` fallback at :710-711 and use the generic headline. While in there: fix headline copy to sentence case ("Back volume is low — 4 sets. Add 4 more this week.").
+- [ ] **Add Progress to the More menu** — index.html More menu, Tracking group (near "Body measurements", ~:1336): new item with `fa-chart-line`, label `Progress`, onclick `showProgressPage()` (already window-bound for the dashboard link row — verify via window-wiring test). Keep the dashboard link row too.
+
+---
+
 ## The consistency contract
 
 Explicit goal: **one system, not a hodgepodge of add-on fixes.** Every phase below must conform to these canonical patterns — and when a phase touches a screen, it migrates that screen's legacy variants to the canonical pattern as part of the same PR (the CLAUDE.md Rule 9 "rename when doing neighboring work" clause, made mandatory for this overhaul). No phase introduces a new one-off.
@@ -69,6 +79,23 @@ Audit §1b. Mockup: `dashboard-v3.html`.
 - [ ] De-dupe: today's-PR banner excludes PRs already in Recent PRs; align body-weight sparkline window with its "30 days" caption.
 - [ ] Tests: `weekly-goal.test.js` untouched; add fixture test for PR-proximity threshold logic (export it pure).
 
+### Phase 2 follow-ups (from the live build, screenshots 2026-07-03)
+
+- [ ] 🔴 "Last done NaNd ago" on For Today rows — `formatLastDoneMeta` (dashboard-ui.js:641-650) computes `days` from `new Date(rec.date)` with no finite guard; an unparseable stored date renders literal `NaN`. Add `if (!Number.isFinite(days)) return '';`, parse via date-helpers instead of raw `new Date`, and `debugLog` the offending value to find the bad docs.
+- [ ] 🟡 Same insight rendered twice on one screen — insight card shows `topInsight.message` AND `renderProgressLinkRow` (dashboard-ui.js:710-711) falls back to the same `topInsight.message` when no low body part is found locally. Pass `showInsight` in and use the generic headline when the card is already visible.
+- [ ] 🟡 PR rows show the full derived equipment name ("MegaMass — 45 Degree Linear Row" under the exercise *45 Degree Linear Row*) — apply the equipment-v2 short-name rule (brand, or brand·line) in dense rows; the function name is redundant with the exercise name above it.
+- [ ] 🟡 Insight copy: "Back volume is low this week (4 sets). Add 4 more sets of Back this week" — capital "Back" mid-sentence (copy rule 1) and "this week" twice. → "Back volume is low — 4 sets. Add 4 more this week."
+- [ ] 🟡 Header logo block costs ~130px before the greeting — consider shrinking to a small mark beside the greeting so For Today rises above the fold (the whole point of the reorder).
+
+## Phase 2b — Navigation: back means back (S/M)
+
+User-reported: back buttons sometimes land on the dashboard instead of the prior page. Root causes in navigation.js: `navigateBack()` pops a 5-entry `navStack` and falls back to dashboard when empty (navigation.js:41-51) — but the stack only gets entries when pages are shown via `navigateTo`; several surfaces show sections by toggling `.hidden` directly or use fixed-destination back handlers (`backToEquipmentList`, `_libraryReturnContext.returnTo`, `closeProfile`, etc.), so the stack is empty or stale exactly when deep-linked flows need it.
+
+- [ ] Route every full-page section show through `navigateTo` (no direct `.hidden` toggles for sections in SECTION_IDS).
+- [ ] Every back button calls `navigateBack()` — retire fixed-destination backs and the `_libraryReturnContext` callback pattern.
+- [ ] Raise MAX_STACK_SIZE (5 → 10) and skip pushing a view onto the stack when it equals the top (dedupe re-renders).
+- [ ] Add to the consistency contract: one back system. Test: from dashboard → Progress → muscle group → exercise → equipment detail → back ×4 lands you exactly where you came from.
+
 ## Phase 3 — Day chips + editor ergonomics (S)
 
 Audit §4. Mockup: `workout-editor-ergonomics.html`. Smallest diff, highest daily-annoyance relief — can ship before Phases 1-2 if preferred.
@@ -81,6 +108,19 @@ Audit §4. Mockup: `workout-editor-ergonomics.html`. Smallest diff, highest dail
 - [ ] Notes textarea: reuse `awAutoGrowNotes` pattern.
 - [ ] "Suggested for [day]" banner on the selector via `getTemplatesForDayOfWeek` (already built for the dashboard).
 - [ ] Tests: `window-wiring.test.js` will catch handler wiring; add tap-target lint note to DESIGN-BACKLOG.
+
+## Phase 3b — Workout library revamp (L)
+
+Design review verdict: REVAMP. The inline editor-in-list is the wrong container: a 7-exercise template's expanded editor is ~550-615px inside a ~650px usable viewport, living inside a scrolling sibling list with no scroll-into-view. Editor internals (steppers, debounced autosave, reorder, last-session hydration) are good — they move, unchanged, to a new container.
+
+- [ ] Move the expanded-template editor off the list flow: tap row → dedicated workout detail page (or full-height sheet), consistent with the equipment-detail direction. Collapsed list stays as the read-first browsing surface with stable scroll.
+- [ ] Collapsed-row information scent: surface already-computed category label, estimated duration, and "Usually Thu" (from `estimateDurationMinutes` / `deriveUsuallyDays` / `renderTemplateSummary`) on the row instead of hiding them in the accordion.
+- [ ] Delete ~40% dead code in template-selection.js: `createTemplateCard`/`renderTemplateCards`, `createWorkoutCard`/`renderWorkoutCards`, the basic-template-editor modal, category-tab switchers — all target DOM ids that no longer exist (`#template-selection-modal`, `#template-cards-container`, `#default-templates`, `#basic-template-editor-modal`).
+- [ ] `.template-search-bar` → `.field-search` (index.html:235-239).
+- [ ] Mockup first: `mockups/workout-library-v2.html` (list + detail page), approve before code.
+- [ ] Preserve through restructure: `schedulePendingTemplateEdit` autosave, optimistic `AppState.workoutPlans` patch, Phase 3 ergonomics.
+
+**Exercise library — verdict REFRESH, no structural rebuild.** Folded into Phase 5:
 
 ## Phase 4 — Equipment detail restructure (L) — SHIPPED 2026-07-03
 
@@ -108,10 +148,18 @@ Audit §5-§6 + supplemental sweep findings.
 - [x] 🟡 AI Coach Regenerate now confirms before discarding an edited preview. **(dbe9f9b)**
 - [x] 🟡 Error log empty bug-report submit now shows "Add a description". **(26710c4)**
 - [ ] 🟡 History: consolidate the two workout-detail modals; empty calendar days open add-workout prefilled; calendar cells 38→44px. *(Remaining.)*
-- [ ] 🟡 Settings: add Locations + Equipment rows; merge/clarify the two export actions; Rebuild PRs out of Danger zone. *(Remaining.)*
+- [ ] 🟡 Settings: add Locations + Equipment rows; merge/clarify the two export actions; Rebuild PRs out of Danger zone.
+- [ ] 🟡 Add "Progress" to the More menu (Tracking group) — the page currently has no nav entry at all; the dashboard link row is its only door. Keep both. *(Remaining.)*
 
 **Copy sweep (one PR, run the CLAUDE.md §11 lint greps)**
 - [x] Sentence-cased CTAs/titles/labels (exercise-manager, DEXA labels, body-measurements, manual-workout, error-log), terminology fixes (template→workout in AI Coach/history/selector), proper `…` ellipses, dropped success-toast exclamation. **(04c8026)** *(Left AI Coach split buttons — coupled to logic keys, read as named categories.)*
+
+**Exercise library refresh (design review 2026-07)**
+- [ ] 🔴 Unify the two exercise pickers — library page (exercise-manager-ui.js) and `openSharedAddExerciseSheet` (active-workout-ui.js:3024) render the same concept with different taxonomies (Chest/Back/Biceps/Triceps vs Push/Pull/Arms), markup, and CSS. Extract one shared list renderer; align on one category taxonomy.
+- [ ] 🟡 Default / Custom / Edited badge on exercise rows — distinction currently only visible in delete-confirm copy.
+- [ ] 🟡 Card tap and Edit button are the identical action — drop the button or give row-tap a distinct job (quick view / PR peek).
+- [ ] 🟡 Reset scroll on filter/search re-render (no scrollTop handling in the file).
+- [ ] 🟢 Remove vestigial `window.selectExerciseCallback` branch (exercise-manager-ui.js:403).
 
 **Consistency**
 - [ ] Unify range-state defaults/options across drill-down levels; persist pick.
@@ -131,6 +179,6 @@ Audit §5-§6 + supplemental sweep findings.
 
 ## Suggested order
 
-**3 → 0 → 1 → 2 → 4 → 5 → 6.** Phase 3 first: smallest diff, felt every day. Phase 0 next: pure CSS, instantly makes the whole app feel like the mockups. Then the two data/dashboard phases that fix "why do I care" (1 before 2 — the dashboard's PR-proximity card depends on nothing from Phase 1, but equipment-aware numbers make every surface more trustworthy first). Equipment detail (4) is the biggest lift; the fit-and-finish sweep (5) can be interleaved anytime as filler work.
+**3 → 0 → 1 → 2 → 4 → 3b → 5 → 6.** Phase 3 first: smallest diff, felt every day (and its ergonomics survive the 3b restructure — same components, new container). Phase 0 next: pure CSS, instantly makes the whole app feel like the mockups. Then the two data/dashboard phases that fix "why do I care" (1 before 2). Equipment detail (4) before workout library (3b) — 4 establishes the tap-row→sheet detail-page pattern that 3b then reuses. The fit-and-finish sweep (5) can be interleaved anytime as filler work.
 
 Every phase: dev deploy first, on-device check (375px), then prod — per the deployment rules in CLAUDE.md.

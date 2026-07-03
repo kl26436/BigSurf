@@ -9,7 +9,7 @@ import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
 import { getDateString, getDayName, formatRelativeDate } from '../utils/date-helpers.js';
-import { Config, getCategoryIcon } from '../utils/config.js';
+import { Config, getCategoryIcon, debugLog } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { loadAllWorkouts } from '../data/data-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
@@ -173,7 +173,7 @@ async function renderDashboard() {
                 ${showInsight ? renderDashboardInsight(topInsight) : ''}
                 ${await renderCompositionCard(bwData)}
                 ${renderRecentPRs(recentPRs, todaysPRKeys)}
-                ${renderProgressLinkRow(allWorkouts, topInsight)}
+                ${renderProgressLinkRow(allWorkouts, topInsight, showInsight)}
             `;
 
             if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();
@@ -643,6 +643,12 @@ function formatLastDoneMeta(rec) {
     const today = new Date(getDateString());
     const then = new Date(rec.date);
     const days = Math.round((today - then) / 86400000);
+    // An unparseable stored date makes `days` NaN, which rendered a literal
+    // "Last done NaNd ago". Bail (and surface the bad doc under ?debug).
+    if (!Number.isFinite(days)) {
+        debugLog('formatLastDoneMeta: unparseable rec.date →', rec.date);
+        return '';
+    }
     const when = days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days}d ago`;
     const mins = Math.round((rec.duration || 0) / 60);
     const durPart = mins > 0 ? ` · ~${mins} min` : '';
@@ -696,7 +702,7 @@ function renderLastSessionLine(allWorkouts) {
  * body-part volume vs its weekly target (from analyzeWeeklyVolume), else the
  * top training insight. The cards themselves live on the Progress page now.
  */
-function renderProgressLinkRow(allWorkouts, topInsight) {
+function renderProgressLinkRow(allWorkouts, topInsight, showInsight = false) {
     let headline = 'Volume balance, trends, and all your PRs';
     try {
         const weekStart = new Date(getDateString());
@@ -707,7 +713,9 @@ function renderProgressLinkRow(allWorkouts, topInsight) {
         const low = vol.filter(v => v.status === 'low').sort((a, b) => a.weeklySets - b.weeklySets)[0];
         if (low) {
             headline = `${capitalize(low.bodyPart)} is low this week — ${low.weeklySets} set${low.weeklySets === 1 ? '' : 's'}`;
-        } else if (topInsight?.message) {
+        } else if (!showInsight && topInsight?.message) {
+            // Only borrow the insight message when the insight card above isn't
+            // already showing it — otherwise the same line renders twice.
             headline = topInsight.message;
         }
     } catch { /* fall back to the generic headline */ }
