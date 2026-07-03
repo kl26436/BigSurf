@@ -119,6 +119,38 @@ export function categorizeTemplates(templates, availableExerciseNames) {
 }
 
 /**
+ * Badge state for a workout card at a gym (traveler-flow.md D6: evidence per
+ * workout, never a hard negative).
+ *
+ * - `full`     → every exercise has positive evidence: "Possible here"
+ * - `partial`  → some do: "4 of 6 here"
+ * - `unmapped` → zero positive evidence. NOT "not possible" — the gym just
+ *                hasn't encountered these exercises yet: "Not mapped here yet"
+ * - `null`     → no badge at all: no compatibility data, an empty template,
+ *                or a gym with zero mapped equipment (F1 banner territory).
+ *
+ * @param {{available:number, missing:number, total:number}|null} compatibility
+ *        Result of checkTemplateCompatibility
+ * @param {number} gymEquipmentCount - Equipment docs tagged to this gym
+ * @returns {{state:'full'|'partial'|'unmapped', label:string}|null}
+ */
+export function badgeForTemplate(compatibility, gymEquipmentCount) {
+    if (!compatibility || compatibility.total === 0 || !gymEquipmentCount) {
+        return null;
+    }
+    if (compatibility.available === 0) {
+        return { state: 'unmapped', label: 'Not mapped here yet' };
+    }
+    if (compatibility.missing === 0) {
+        return { state: 'full', label: 'Possible here' };
+    }
+    return {
+        state: 'partial',
+        label: `${compatibility.available} of ${compatibility.total} here`,
+    };
+}
+
+/**
  * Rank exercises available at a location for the "Suggested for this gym" section.
  * Previously-used exercises appear first, then remaining available exercises alphabetically.
  *

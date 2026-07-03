@@ -52,7 +52,7 @@ One queue across [ux-overhaul-plan-2026-07.md](ux-overhaul-plan-2026-07.md) and 
 
 1. ✅ UX-0 backdrop unification (S) — shipped 2026-07-02; bare-backdrop check added to design audit
 2. ✅ UX-3 day chips + editor ergonomics (S) — shipped 2026-07-02
-3. ☐ T3-1 gym chip + badges + F1 (M)
+3. ✅ T3-1 gym chip + badges + F1 (M) — shipped 2026-07-02
 4. ☐ T3-2 picker fast paths + reverse matcher (M)
 5. ☐ T3-3 gym-aware replace + availability rows (M)
 6. ☐ T3-4 substitution sheet (M) — decided: rows preselect **Keep** (never silently drop an exercise; D3)

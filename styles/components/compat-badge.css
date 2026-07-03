@@ -1,0 +1,35 @@
+/* ============================================================================
+   COMPATIBILITY BADGES — workout-card availability at the session gym
+   (Tier 3 Phase 1, traveler-flow.md D6: positive evidence only, never a
+   hard negative. Unmapped is neutral — an invitation, not a verdict.)
+   ============================================================================ */
+
+.compat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    margin-top: var(--space-4);
+    white-space: nowrap;
+}
+.compat-badge i {
+    font-size: var(--font-2xs);
+}
+.compat-badge--full {
+    background: var(--success-bg);
+    border: 1px solid var(--success-border);
+    color: var(--success);
+}
+.compat-badge--partial {
+    background: var(--highlight-warm-bg);
+    border: 1px solid var(--highlight-warm-border);
+    color: var(--highlight-warm);
+}
+.compat-badge--unmapped {
+    background: var(--muted-bg);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+}

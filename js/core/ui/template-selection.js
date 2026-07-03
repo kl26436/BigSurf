@@ -8,6 +8,9 @@ import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { getEquipmentAtLocation, getExercisesAtLocation, checkTemplateCompatibility, categorizeTemplates } from '../features/equipment-planner.js';
+// Namespace import so a stale prod-cached equipment-planner.js (1-year JS
+// cache) degrades to "no badges" instead of a missing-named-export crash.
+import * as equipmentPlanner from '../features/equipment-planner.js';
 import { getTemplatesForDayOfWeek } from '../features/metrics/aggregators.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 
@@ -19,6 +22,14 @@ let selectedWorkoutCategory = null;
 let currentTemplateCategory = 'default';
 let equipmentFilterActive = false;
 let cachedAvailableExercises = null; // Set<string> of exercises at current location
+
+// ── Gym context for compatibility badges (Tier 3 Phase 1 / traveler-flow) ──
+// { gym: string|null, equipmentCount: number, available: Set<string> } or
+// null when the user has zero equipment docs (D0: system stays invisible).
+let gymContext = null;
+let possibleHereFilter = false;
+// Per-render badge map (templateId → badge|null); D2 suppression flag.
+let renderedBadges = new Map();
 
 // Track which containers already have delegation listeners
 const delegatedContainers = new WeakSet();
@@ -318,10 +329,93 @@ let loadedTemplates = [];
  * Main render function for the workout selector page.
  * Loads all templates (default + custom), renders filter pills and flat rows.
  */
+/**
+ * Load the gym context for badges. Rebuilt on every selector render so
+ * badges reflect equipment added mid-session (the caches make this cheap;
+ * gym RESOLUTION is cached inside gym-session-context). D0 guard lives
+ * here: a user with zero equipment docs gets `null` and every availability
+ * surface stays invisible — no chip, no badges, no banner.
+ */
+async function loadGymContext() {
+    try {
+        let equipment = AppState._cachedEquipment;
+        if (!equipment) {
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            equipment = await new FirebaseWorkoutManager(AppState).getUserEquipment();
+            AppState._cachedEquipment = equipment;
+        }
+        if (!Array.isArray(equipment) || equipment.length === 0) {
+            gymContext = null; // D0: nothing renders
+            return null;
+        }
+        const { resolveSessionGym } = await import('../features/gym-session-context.js');
+        const gym = await resolveSessionGym();
+        const atGym = gym ? getEquipmentAtLocation(equipment, gym) : [];
+        gymContext = {
+            gym: gym || null,
+            equipmentCount: atGym.length,
+            available: getExercisesAtLocation(atGym),
+        };
+    } catch (err) {
+        console.error('Gym context load failed:', err);
+        gymContext = null;
+    }
+    return gymContext;
+}
+
+/**
+ * Gym chip tap → pick a gym (or clear) for the availability context. Reuses
+ * the shared gym-picker sheet via window (existing wiring, no import skew).
+ */
+async function openGymContextSwitcher() {
+    if (typeof window.openGymPickerSheet !== 'function') return;
+
+    const gymNames = new Set();
+    (AppState._cachedEquipment || []).forEach(eq =>
+        (eq.locations || []).forEach(l => l && gymNames.add(l))
+    );
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        (await new FirebaseWorkoutManager(AppState).getUserLocations())
+            .forEach(l => l?.name && gymNames.add(l.name));
+    } catch { /* equipment-derived list is enough */ }
+
+    const gyms = [...gymNames].sort();
+    if (gymContext?.gym) gyms.push('Clear gym');
+
+    window.openGymPickerSheet({
+        title: 'Which gym?',
+        subtitle: 'Availability badges use this gym',
+        gyms,
+        currentGym: gymContext?.gym || null,
+        onSelect: async (name) => {
+            try {
+                const { setSessionGym } = await import('../features/gym-session-context.js');
+                setSessionGym(name === 'Clear gym' ? null : name);
+            } catch { /* context module unavailable — leave as-is */ }
+            possibleHereFilter = false;
+            renderWorkoutSelectorUI();
+        },
+    });
+}
+
+/** Badge for one template at the current gym context (null = no badge). */
+function computeBadge(template) {
+    if (!gymContext?.gym || gymContext.equipmentCount === 0) return null;
+    if (typeof equipmentPlanner.badgeForTemplate !== 'function') return null;
+    const compatibility = checkTemplateCompatibility(
+        { exercises: normalizeExercisesToArray(template.exercises) },
+        gymContext.available
+    );
+    return equipmentPlanner.badgeForTemplate(compatibility, gymContext.equipmentCount);
+}
+
 async function renderWorkoutSelectorUI() {
     const pillsContainer = document.getElementById('category-pills');
     const listContainer = document.getElementById('template-list');
     if (!pillsContainer || !listContainer) return;
+
+    await loadGymContext();
 
     // Use AppState.workoutPlans as the single source of truth (already deduped)
     const allTemplates = (AppState.workoutPlans || []).map(t => ({
@@ -355,6 +449,15 @@ async function renderWorkoutSelectorUI() {
     let filtered = allTemplates;
     if (activeSelectorCategory) {
         filtered = allTemplates.filter(t => effectiveTemplateCategory(t) === activeSelectorCategory);
+    }
+
+    // "Possible here" pill: keep workouts with positive evidence at this gym
+    // (full or partial — partial starts fine with substitutions; D3).
+    if (possibleHereFilter && gymContext?.gym && gymContext.equipmentCount > 0) {
+        filtered = filtered.filter(t => {
+            const b = computeBadge(t);
+            return b && (b.state === 'full' || b.state === 'partial');
+        });
     }
 
     // Sort: most recently used first, then alphabetical
@@ -418,8 +521,17 @@ function renderCategoryPills(container, categories) {
         `;
     }).join('');
 
+    // "Possible here" filter pill — only when badges are live at a gym.
+    const possiblePill = (gymContext?.gym && gymContext.equipmentCount > 0)
+        ? `<button class="category-pill category-pill--possible ${possibleHereFilter ? 'active' : ''}"
+                   data-category="__possible-here__" aria-pressed="${possibleHereFilter}">
+               <i class="fas fa-check-circle"></i> Possible here
+           </button>`
+        : '';
+
     container.innerHTML = `
         <button class="category-pill ${!activeSelectorCategory ? 'active' : ''}" data-category="all">All</button>
+        ${possiblePill}
         ${pills}
     `;
 
@@ -430,6 +542,11 @@ function renderCategoryPills(container, categories) {
             const pill = e.target.closest('.category-pill');
             if (!pill) return;
             const cat = pill.dataset.category;
+            if (cat === '__possible-here__') {
+                possibleHereFilter = !possibleHereFilter;
+                renderWorkoutSelectorUI();
+                return;
+            }
             activeSelectorCategory = cat === 'all' ? null : cat;
             renderWorkoutSelectorUI();
         });
@@ -493,7 +610,20 @@ function renderTemplateRows(container, templates, isFiltered) {
         return;
     }
 
-    container.innerHTML = renderSuggestedForToday(templates, isFiltered)
+    // Compute badges for this render. D2: when every visible workout is fully
+    // compatible, badges carry no information — suppress them all. F1: a gym
+    // with zero mapped equipment gets one banner instead of per-card badges.
+    renderedBadges = new Map();
+    if (gymContext?.gym && gymContext.equipmentCount > 0) {
+        templates.forEach(t => renderedBadges.set(t._id, computeBadge(t)));
+        const badges = [...renderedBadges.values()].filter(Boolean);
+        if (badges.length > 0 && badges.every(b => b.state === 'full')) {
+            renderedBadges = new Map(); // D2 suppression
+        }
+    }
+
+    container.innerHTML = renderGymContextHeader()
+        + renderSuggestedForToday(templates, isFiltered)
         + templates.map(t => renderSingleTemplateRow(t)).join('');
 
     // Pre-filled notes textareas start at their content height, not one row.
@@ -501,6 +631,47 @@ function renderTemplateRows(container, templates, isFiltered) {
         container.querySelectorAll('.te-row__notes-field textarea')
             .forEach((t) => window.awAutoGrowNotes(t));
     }
+}
+
+/**
+ * Gym context chip + F1 banner above the list (Tier 3 Phase 1).
+ * D0: renders nothing when the user has no equipment docs (gymContext null).
+ */
+function renderGymContextHeader() {
+    if (!gymContext) return '';
+    const gym = gymContext.gym;
+
+    const chip = `
+        <button type="button" class="gym-context-chip" data-stop-propagation
+                data-action="switchGymContext"
+                aria-label="${gym ? `At ${escapeAttr(gym)} — change gym` : 'Set gym for availability'}">
+            <i class="fas fa-map-marker-alt"></i>
+            <span class="gym-context-chip__name">${gym ? `At ${escapeHtml(gym)}` : 'Set gym for availability'}</span>
+            <i class="fas fa-chevron-down gym-context-chip__caret"></i>
+        </button>
+    `;
+
+    // F1: a known gym with zero mapped equipment gets one neutral banner —
+    // never a page of hard negatives. Dismissible once per gym.
+    let banner = '';
+    if (gym && gymContext.equipmentCount === 0) {
+        const dismissed = (AppState.settings?.dismissedGymBanners || []).includes(gym);
+        if (!dismissed) {
+            banner = `
+                <div class="gym-new-banner" data-stop-propagation>
+                    <i class="fas fa-compass gym-new-banner__icon"></i>
+                    <div class="gym-new-banner__text">New gym — start a workout and it'll get mapped as you go</div>
+                    <button type="button" class="gym-new-banner__dismiss"
+                            data-action="dismissGymBanner" data-gym="${escapeAttr(gym)}"
+                            aria-label="Dismiss">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    return `<div class="gym-context-row" data-stop-propagation>${chip}</div>${banner}`;
 }
 
 /**
@@ -531,6 +702,16 @@ function renderSuggestedForToday(templates, isFiltered) {
             <span class="tpl-suggested__go"><i class="fas fa-play"></i></span>
         </div>
     `;
+}
+
+/** Badge chip for a workout row — reads the per-render map (D2-suppressed). */
+function renderCompatBadge(templateId) {
+    const badge = renderedBadges.get(templateId);
+    if (!badge) return '';
+    const icon = badge.state === 'full' ? '<i class="fas fa-check"></i>'
+        : badge.state === 'partial' ? '<i class="fas fa-adjust"></i>'
+        : '<i class="far fa-circle"></i>';
+    return `<span class="compat-badge compat-badge--${badge.state}">${icon}${escapeHtml(badge.label)}</span>`;
 }
 
 function renderSingleTemplateRow(template) {
@@ -604,6 +785,7 @@ function renderSingleTemplateRow(template) {
                     : `<div class="row-card__title">${escapeHtml(templateName)}</div>`
                 }
                 <div class="row-card__subtitle">${exerciseCount} exercises${timeInfo}</div>
+                ${renderCompatBadge(templateId)}
             </div>
             <i class="fas fa-chevron-down template-row__chev ${isExpanded ? 'template-row__chev--open' : ''}" aria-hidden="true"></i>
             <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
@@ -1190,6 +1372,15 @@ function setupSelectorDelegation(container) {
                     saveTemplateInline(t, normalizeExercisesToArray(t.exercises))
                         .then(() => renderWorkoutSelectorUI());
                 }
+            } else if (action === 'switchGymContext') {
+                openGymContextSwitcher();
+            } else if (action === 'dismissGymBanner') {
+                const gym = actionEl.dataset.gym;
+                const cur = AppState.settings?.dismissedGymBanners || [];
+                if (gym && !cur.includes(gym) && typeof window.updateSetting === 'function') {
+                    window.updateSetting('dismissedGymBanners', [...cur, gym]);
+                }
+                renderWorkoutSelectorUI();
             } else if (action === 'stepExerciseField') {
                 const field = actionEl.dataset.field;
                 const delta = parseFloat(actionEl.dataset.delta);

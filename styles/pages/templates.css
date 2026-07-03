@@ -746,24 +746,8 @@
     align-items: center;
     padding-right: var(--space-6);
 }
-/* Equipment compatibility badges on template cards (Phase 16.1) */
-.compat-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-4);
-    font-size: var(--font-xs);
-    padding: var(--space-2) var(--space-8);
-    border-radius: var(--radius-xs);
-    margin-top: var(--space-4);
-}
-.compat-badge--full {
-    background: var(--success-bg);
-    color: var(--success);
-}
-.compat-badge--partial {
-    background: var(--warning-bg-subtle);
-    color: var(--warning);
-}
+/* Compat badges moved to components/compat-badge.css (Tier 3 Phase 1) —
+   one definition, three states, D6 semantics. */
 #equipment-filter-btn {
     font-size: var(--font-xs);
     padding: var(--space-4) var(--space-10);
@@ -821,6 +805,79 @@
 }
 .template-row__chev--open {
     transform: rotate(180deg);
+}
+
+/* Gym context chip above the selector list (Tier 3 Phase 1) — which gym the
+   availability badges are computed against. Tap to switch or clear. */
+.gym-context-row {
+    display: flex;
+    margin-bottom: var(--space-8);
+}
+.gym-context-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    min-height: var(--tap-sm);
+    padding: 0 var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    color: var(--text-main);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+.gym-context-chip:active {
+    background: var(--bg-card-hi);
+}
+.gym-context-chip i {
+    color: var(--primary);
+    font-size: var(--font-2xs);
+}
+.gym-context-chip__caret {
+    color: var(--text-muted);
+}
+.gym-context-chip__name {
+    max-width: 60vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* F1 banner — unmapped gym, one neutral line instead of per-card negatives. */
+.gym-new-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-8) var(--space-12);
+    margin-bottom: var(--space-12);
+}
+.gym-new-banner__icon {
+    color: var(--primary);
+    flex-shrink: 0;
+}
+.gym-new-banner__text {
+    flex: 1;
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    min-width: 0;
+}
+.gym-new-banner__dismiss {
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
 }
 
 /* "Suggested for [day]" banner above the selector list (UX-3) — ranked by
