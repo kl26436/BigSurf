@@ -47,12 +47,9 @@ let currentBrandCatalog = null;
 // across renders so toggling tabs doesn't drop the user's query.
 let catalogSearchTerm = '';
 
-// Library sub-view (within the 'library' tab). Per the redesign brief the
-// Library tab is body-part grouped by default — `currentView` is retained for
-// the legacy "By Brand" toggle which is no longer surfaced in the UI but kept
-// in case we want to reintroduce it.
-let currentView = 'bodypart'; // 'brand' | 'bodypart'
-const expandedBrands = new Set();
+// The Library tab is body-part grouped. (A legacy "By Brand" sub-view existed
+// but was never surfaced in the redesigned UI; its dead render/toggle path was
+// removed rather than carried forward.)
 
 // Phase 6: scan-history state. unlinkedEquipment is populated lazily on the
 // first library open (background scan); the review view rebuilds from it.
@@ -112,52 +109,6 @@ function classifyExerciseBodyPart(exerciseName) {
     if (/ab|crunch|plank|sit.?up|core|oblique|wood.?chop|cable twist|russian twist|hanging leg/.test(name)) return 'Core';
     if (/treadmill|bike|elliptical|rower|run|sprint|stair|jump rope|cardio/.test(name)) return 'Cardio';
     return 'Multi-Use';
-}
-
-/**
- * Build Brand → Line → Equipment[] hierarchy for the "By Brand" view.
- *
- * Brands are sorted alphabetically. "Unknown" (or missing brand) is pushed to
- * the bottom so users see identified brands first. Lines within a brand are
- * alphabetical; equipment within a line is sorted by function (falling back
- * to name) so the same physical machine appears in the same place regardless
- * of how it was originally named.
- *
- * Returns Map<brandName, Map<lineName, equipment[]>>.
- */
-function buildBrandHierarchy(equipment) {
-    const brands = new Map();
-
-    for (const eq of equipment) {
-        const brand = eq.brand && eq.brand !== 'Unknown' ? eq.brand : 'Unknown';
-        if (!brands.has(brand)) brands.set(brand, new Map());
-        const lines = brands.get(brand);
-
-        const line = eq.line || '(No line)';
-        if (!lines.has(line)) lines.set(line, []);
-        lines.get(line).push(eq);
-    }
-
-    // Sort: identified brands alphabetically, then "Unknown" at the bottom.
-    const sorted = new Map(
-        [...brands.entries()].sort((a, b) => {
-            if (a[0] === 'Unknown') return 1;
-            if (b[0] === 'Unknown') return -1;
-            return a[0].localeCompare(b[0]);
-        })
-    );
-
-    for (const [brand, lines] of sorted) {
-        const sortedLines = new Map([...lines.entries()].sort((a, b) => a[0].localeCompare(b[0])));
-        for (const equips of sortedLines.values()) {
-            equips.sort((a, b) =>
-                (a.function || a.name || '').localeCompare(b.function || b.name || '')
-            );
-        }
-        sorted.set(brand, sortedLines);
-    }
-
-    return sorted;
 }
 
 /**
@@ -2892,8 +2843,6 @@ function renderLibraryTab() {
                 <p class="empty-state-hint">Equipment gets saved as you use it in workouts — or add it from the Catalog tab.</p>
             </div>
         `;
-    } else if (currentView === 'brand') {
-        listHTML = renderBrandView(filtered);
     } else {
         listHTML = renderBodyPartView(filtered);
     }
@@ -3200,8 +3149,6 @@ function renderEquipmentLibraryList() {
                 <p class="empty-state-hint">Equipment is auto-saved when you use it in a workout</p>
             </div>
         `;
-    } else if (currentView === 'brand') {
-        html = renderBrandView(filtered);
     } else {
         html = renderBodyPartView(filtered);
     }
@@ -3210,98 +3157,8 @@ function renderEquipmentLibraryList() {
 }
 
 /**
- * Render the "By Brand" view: Brand → Line → Machine.
- *
- * - Brand header is collapsible. First render expands every brand so the user
- *   sees everything at once; `expandedBrands` tracks manual state across renders.
- * - Line sub-header is hidden when the brand has only one line AND that line is
- *   "(No line)" — avoids a noisy "Other" row for simple brands.
- * - Equipment row shows: colored type icon, function name (or name fallback),
- *   type badge pill + base weight + location list.
- */
-function renderBrandView(filtered) {
-    const hierarchy = buildBrandHierarchy(filtered);
-    let html = '';
-
-    for (const [brand, lines] of hierarchy) {
-        const totalMachines = [...lines.values()].reduce((sum, arr) => sum + arr.length, 0);
-        const brandId = brand.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase() || 'unknown';
-        // Default: expanded. `expandedBrands` tracks explicit collapse — presence = collapsed.
-        const isCollapsed = expandedBrands.has(brandId);
-
-        html += `
-            <div class="brand-header" onclick="toggleBrandSection('${escapeAttr(brandId)}')">
-                <div class="brand-header__name">
-                    ${escapeHtml(brand)}
-                    <span class="brand-header__count">${totalMachines} machine${totalMachines !== 1 ? 's' : ''}</span>
-                </div>
-                <i class="fas fa-chevron-down brand-header__chevron ${isCollapsed ? 'is-collapsed' : ''}" id="brand-chevron-${escapeAttr(brandId)}"></i>
-            </div>
-            <div class="brand-section ${isCollapsed ? 'hidden' : ''}" id="brand-section-${escapeAttr(brandId)}">
-        `;
-
-        const multipleLines = lines.size > 1;
-
-        for (const [line, equips] of lines) {
-            // Skip the line sub-header when the brand has exactly one "(No line)" group.
-            const showLineHeader = multipleLines || line !== '(No line)';
-            if (showLineHeader) {
-                const lineDisplay = line === '(No line)' ? 'Other' : line;
-                html += `
-                    <div class="line-header">
-                        <div class="line-header__name">
-                            <i class="fas fa-layer-group"></i>
-                            ${escapeHtml(lineDisplay)}
-                        </div>
-                        <div class="line-header__count">${equips.length} machine${equips.length !== 1 ? 's' : ''}</div>
-                    </div>
-                `;
-            }
-
-            for (const equip of equips) {
-                const typeInfo = EQUIPMENT_TYPE_ICONS[equip.equipmentType] || EQUIPMENT_TYPE_ICONS.Other;
-                const typeColorClass = `equip-row__icon--${(equip.equipmentType || 'Other').toLowerCase()}`;
-                const locationStr = (equip.locations || []).join(', ');
-                const baseStr = equip.baseWeight
-                    ? `${equip.baseWeight} ${equip.baseWeightUnit || 'lbs'} base`
-                    : '';
-                const metaParts = [baseStr, locationStr].filter(Boolean).join(' · ');
-                const displayName = equip.function || equip.name || '—';
-
-                html += `
-                    <div class="equip-row" onclick="openEquipmentDetail('${escapeAttr(equip.id)}')">
-                        <div class="equip-row__icon ${typeColorClass}">
-                            <i class="fas ${typeInfo.icon}"></i>
-                        </div>
-                        <div class="equip-row__info">
-                            <div class="equip-row__name">${escapeHtml(displayName)}</div>
-                            <div class="equip-row__meta">
-                                <span class="equip-row__type-pill ${typeColorClass}">${escapeHtml(equip.equipmentType || 'Other')}</span>
-                                ${metaParts ? `<span class="equip-row__meta-text">${escapeHtml(metaParts)}</span>` : ''}
-                            </div>
-                        </div>
-                        <button class="equip-row__more"
-                                onclick="event.stopPropagation(); deleteEquipmentFromLibrary('${escapeAttr(equip.id)}')"
-                                aria-label="Delete ${escapeAttr(displayName)}"
-                                title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                        <i class="fas fa-chevron-right equip-row__chevron"></i>
-                    </div>
-                `;
-            }
-        }
-
-        html += `</div>`; // close brand-section
-    }
-
-    return html;
-}
-
-/**
- * Render the legacy "By Body Part" view — groups by exercise body part, then
- * by exercise name, then lists equipment. Preserved as-is so users who prefer
- * this grouping can still reach it via the view toggle.
+ * Render the "By Body Part" view — the equipment library's only grouping.
+ * Groups by exercise body part, then by exercise name, then lists equipment.
  */
 function renderBodyPartView(filtered) {
     const hierarchy = buildEquipmentHierarchy(filtered);
@@ -3402,36 +3259,6 @@ function renderBodyPartView(filtered) {
     }
 
     return html;
-}
-
-/**
- * View toggle callback (wired via window.setEquipmentView).
- */
-export function setEquipmentView(view) {
-    if (view !== 'brand' && view !== 'bodypart') return;
-    if (view === currentView) return;
-    currentView = view;
-    renderEquipmentLibrary();
-}
-
-/**
- * Expand/collapse a brand section in the Brand view. Collapse state is stored
- * in the `expandedBrands` Set — presence means collapsed (default is expanded).
- */
-export function toggleBrandSection(brandId) {
-    const section = document.getElementById(`brand-section-${brandId}`);
-    const chevron = document.getElementById(`brand-chevron-${brandId}`);
-    if (!section || !chevron) return;
-
-    if (expandedBrands.has(brandId)) {
-        expandedBrands.delete(brandId);
-        section.classList.remove('hidden');
-        chevron.classList.remove('is-collapsed');
-    } else {
-        expandedBrands.add(brandId);
-        section.classList.add('hidden');
-        chevron.classList.add('is-collapsed');
-    }
 }
 
 /**

@@ -19,7 +19,6 @@ import {
     saveEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
     saveEquipmentNotes, showAddEquipmentFlow, confirmAddEquipment,
     saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField, removeEquipmentLocation, addEquipmentLocation,
-    setEquipmentView, toggleBrandSection,
     setEquipmentTab, openGymDetail, openBrandCatalog,
     closeGymDetail, setGymBpFilter, openCatalogMachine, toggleCatalogMachineAtGym, openQuickAddSheet,
     toggleQuickAddRow, setQuickAddSearch, setQuickAddBp, commitQuickAdd, closeQuickAddSheet,
@@ -1052,8 +1051,6 @@ window.showAddEquipmentFlow = showAddEquipmentFlow;
 window.confirmAddEquipment = confirmAddEquipment;
 window.removeEquipmentLocation = removeEquipmentLocation;
 window.addEquipmentLocation = addEquipmentLocation;
-window.setEquipmentView = setEquipmentView;
-window.toggleBrandSection = toggleBrandSection;
 
 // Equipment library — Pocket Inventory 3-tab IA (My gyms / Library / Catalog)
 window.setEquipmentTab = setEquipmentTab;

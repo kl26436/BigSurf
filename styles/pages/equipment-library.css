@@ -10,63 +10,19 @@
    Phase 2 — Brand view, view toggle, detail hero
    -------------------------------------------------------------------------- */
 
-/* Brand header — collapsible section header for a brand's machines */
-.brand-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-12);
-    padding: var(--space-12) var(--pad-page);
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    user-select: none;
-    position: sticky;
-    top: 0;
-    z-index: var(--z-sticky);
-}
-/* (Removed: a .brand-header::before that extended the bg upward to cover the
-   parent's padding-top while sticky. It also covered the filter pills row
-   directly above brand-header in normal flow, hiding the gym selector.) */
-
-/* Real fix for the sticky-header scroll gap: zero out the body's padding-top
-   for the equipment library only, so brand-header (and other sticky elements
-   inside this list) sticks flush at the top of the scroll container. The
-   visual padding moves to the first in-flow element via margin-top so the
+/* Zero out the body's padding-top for the equipment library so sticky
+   elements inside the list stick flush at the top of the scroll container.
+   The visual padding moves to the first in-flow element via margin-top so the
    page still breathes at the top. */
 #equipment-library-content.content-section-body {
     padding-top: 0;
 }
-#equipment-library-content.content-section-body > *:first-child:not(.brand-header) {
+#equipment-library-content.content-section-body > *:first-child {
     margin-top: var(--pad-page);
 }
-.brand-header__name {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    font-size: var(--font-md);
-    font-weight: 700;
-    color: var(--text-strong);
-}
-.brand-header__count {
-    font-size: var(--font-xs);
-    font-weight: 500;
-    color: var(--text-muted);
-}
-.brand-header__chevron {
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-    transition: transform var(--anim-normal);
-}
-.brand-header__chevron.is-collapsed {
-    transform: rotate(-90deg);
-}
-.brand-section {
-    display: flex;
-    flex-direction: column;
-}
 
-/* Line header — sub-header within a brand (e.g. "Fit Evo" under "Panatta") */
+/* Line header — sub-header grouping machines under a brand line.
+   Used by the Catalog tab's brand view (renderBrandCatalog). */
 .line-header {
     display: flex;
     align-items: center;
@@ -92,7 +48,7 @@
     color: var(--text-secondary);
 }
 
-/* Equipment row — single machine line under a brand/line */
+/* Equipment row — single machine line in the body-part list */
 .equip-row {
     display: flex;
     align-items: center;
