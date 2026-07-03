@@ -549,7 +549,146 @@ function renderEquipLine(equipmentName, idx) {
             <span class="aw-equip-line__name">${equipmentName ? escapeHtml(equipmentName) + baseWeightStr : 'Choose equipment'}</span>
             <button class="aw-equip-line__change" onclick="awOpenEquipmentSheet(${idx})" aria-label="Change equipment"><i class="fas fa-exchange-alt"></i> Change</button>
         </div>
+        ${renderSettingsChips(eq, idx)}
     `;
+}
+
+/**
+ * Machine settings chips under the equipment line (Tier 3 3.2 / D4):
+ * "Seat 4 · Pin 13" read-only at set time, pencil to edit, ghost
+ * "+ Note settings" when empty. Zero prompts — the ghost chip is the only
+ * affordance (D0), and it only appears once equipment is chosen.
+ */
+function renderSettingsChips(eq, idx) {
+    if (!eq) return '';
+    const exercise = AppState.currentWorkout?.exercises?.[idx];
+    if (!exercise) return '';
+    const exName = getExerciseName(exercise);
+    const pairs = eq.exerciseSettings?.[exName] || [];
+
+    if (pairs.length === 0) {
+        return `
+            <div class="settings-chips">
+                <button type="button" class="settings-chip settings-chip--ghost" onclick="awOpenSettingsSheet(${idx})">
+                    <i class="fas fa-sliders-h"></i> Note settings
+                </button>
+            </div>
+        `;
+    }
+    return `
+        <div class="settings-chips">
+            ${pairs.map(p => `<span class="settings-chip">${escapeHtml(p.label)} ${escapeHtml(p.value)}</span>`).join('')}
+            <button type="button" class="settings-chip settings-chip--edit" onclick="awOpenSettingsSheet(${idx})" aria-label="Edit settings">
+                <i class="fas fa-pencil-alt"></i>
+            </button>
+        </div>
+    `;
+}
+
+// ── Machine settings edit sheet (Tier 3 3.2) ──
+let _settingsSheetState = null; // { idx, exName, equipmentId, equipmentName, pairs }
+
+export function awOpenSettingsSheet(idx) {
+    const exercise = AppState.currentWorkout?.exercises?.[idx];
+    if (!exercise) return;
+    const exName = getExerciseName(exercise);
+    const equipName = AppState.savedData?.exercises?.[`exercise_${idx}`]?.equipment || exercise.equipment;
+    const eq = getEquipmentDoc(equipName);
+    if (!eq?.id) return;
+    _settingsSheetState = {
+        idx,
+        exName,
+        equipmentId: eq.id,
+        equipmentName: eq.name,
+        pairs: (eq.exerciseSettings?.[exName] || []).map(p => ({ ...p })),
+    };
+    renderSettingsSheet();
+}
+
+function renderSettingsSheet() {
+    const st = _settingsSheetState;
+    if (!st) return;
+
+    const rows = st.pairs.map((p, i) => `
+        <div class="settings-edit-row">
+            <input class="settings-edit-row__label" value="${escapeAttr(p.label)}" placeholder="Label"
+                   oninput="awSettingsField(${i}, 'label', this.value)">
+            <input class="settings-edit-row__value" value="${escapeAttr(p.value)}" placeholder="Value"
+                   oninput="awSettingsField(${i}, 'value', this.value)">
+            <button type="button" class="settings-edit-row__remove" onclick="awSettingsRemove(${i})" aria-label="Remove">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
+
+    const suggested = ['Seat', 'Pad', 'Pin', 'Grip', 'Handles'];
+    const body = `
+        <div id="settings-sheet-rows">
+            ${rows || '<div class="settings-edit-empty">How is this machine set up for you? Add a setting below.</div>'}
+        </div>
+        <div class="settings-suggest-chips">
+            ${suggested.map(s => `<button type="button" class="aw-fastpath-chip" onclick="awSettingsAdd('${s}')">${s}</button>`).join('')}
+            <button type="button" class="aw-fastpath-chip" onclick="awSettingsAdd('')">Custom…</button>
+        </div>
+    `;
+
+    openSheet({
+        title: 'Machine settings',
+        subtitle: `${st.equipmentName} · ${st.exName}`,
+        body,
+        actions: [
+            { label: 'Cancel', onClick: 'awCloseSheet()' },
+            { label: 'Save settings', onClick: 'awSaveSettingsSheet()', primary: true },
+        ],
+    });
+}
+
+export function awSettingsField(i, key, value) {
+    const p = _settingsSheetState?.pairs?.[i];
+    if (p) p[key] = value;
+}
+
+export function awSettingsAdd(label) {
+    const st = _settingsSheetState;
+    if (!st) return;
+    st.pairs.push({ label: label || '', value: '' });
+    renderSettingsSheet();
+    // Focus the fresh row's first empty field.
+    setTimeout(() => {
+        const rows = document.querySelectorAll('#settings-sheet-rows .settings-edit-row');
+        const last = rows[rows.length - 1];
+        (label ? last?.querySelector('.settings-edit-row__value')
+               : last?.querySelector('.settings-edit-row__label'))?.focus();
+    }, 100);
+}
+
+export function awSettingsRemove(i) {
+    const st = _settingsSheetState;
+    if (!st) return;
+    st.pairs.splice(i, 1);
+    renderSettingsSheet();
+}
+
+export async function awSaveSettingsSheet() {
+    const st = _settingsSheetState;
+    if (!st) { awCloseSheet(); return; }
+    _settingsSheetState = null;
+    awCloseSheet();
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        const ok = await mgr.saveEquipmentExerciseSettings(st.equipmentId, st.exName, st.pairs);
+        if (ok) {
+            AppState._cachedEquipment = await mgr.getUserEquipment();
+            renderAll();
+            showNotification('Settings saved', 'success');
+        } else {
+            showNotification("Couldn't save — try again", 'error');
+        }
+    } catch (e) {
+        console.error('Settings save failed:', e);
+        showNotification("Couldn't save — try again", 'error');
+    }
 }
 
 function renderBWBanner() {
@@ -1998,12 +2137,17 @@ function renderEquipmentSheet(exerciseIdx) {
         const isCurrent = eq.name === currentEquip;
         const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
         const locStr = equipLocationCue(eq, locName);
+        // Saved machine settings for THIS exercise ("Seat 4 · Pin 13") —
+        // cheap reminder of which machine you dialed in (Tier 3 3.2).
+        const settingsStr = (eq.exerciseSettings?.[exName] || [])
+            .map(p => `${p.label} ${p.value}`).join(' · ');
         return `
             <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}')">
                 <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
                 <div class="js-row__info">
                     <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
                     <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__loc-icon"></i> ${escapeHtml(locStr)}` : ''}</div>
+                    ${settingsStr ? `<div class="js-row__meta js-row__meta--settings">${escapeHtml(settingsStr)}</div>` : ''}
                 </div>
             </div>
         `;
@@ -3646,3 +3790,8 @@ window.awEquipFastPath = awEquipFastPath;
 window.awSharedEquipFreeWeights = awSharedEquipFreeWeights;
 window.awSharedEquipFastPath = awSharedEquipFastPath;
 window.awPickSuggestedMachine = awPickSuggestedMachine;
+window.awOpenSettingsSheet = awOpenSettingsSheet;
+window.awSettingsField = awSettingsField;
+window.awSettingsAdd = awSettingsAdd;
+window.awSettingsRemove = awSettingsRemove;
+window.awSaveSettingsSheet = awSaveSettingsSheet;

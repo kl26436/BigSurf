@@ -1,0 +1,101 @@
+/* ============================================================================
+   MACHINE SETTINGS CHIPS — per equipment + exercise memory (Tier 3 3.2)
+   "Seat 4 · Pin 13 · Handles narrow" under the active-workout equipment
+   line. Read-only at set time; pencil chip opens the edit sheet; ghost
+   "+ Note settings" is the only affordance when empty (traveler D0).
+   ============================================================================ */
+
+.settings-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+}
+.settings-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--muted-bg);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+.settings-chip--ghost,
+.settings-chip--edit {
+    background: transparent;
+    color: var(--text-muted);
+    border-style: dashed;
+    font-family: inherit;
+    cursor: pointer;
+    min-height: 24px;
+}
+.settings-chip--ghost i,
+.settings-chip--edit i {
+    font-size: var(--font-2xs);
+}
+.settings-chip--ghost:active,
+.settings-chip--edit:active {
+    background: var(--bg-card-hi);
+}
+
+/* Edit sheet rows: label + value + remove */
+.settings-edit-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    margin-bottom: var(--space-6);
+}
+.settings-edit-row__label,
+.settings-edit-row__value {
+    min-width: 0;
+    min-height: var(--tap-sm);
+    box-sizing: border-box;
+    background: var(--bg-app);
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-xs);
+    padding: 6px 10px;
+    color: var(--text-strong);
+    font-size: var(--font-sm);
+    outline: none;
+}
+.settings-edit-row__label { flex: 1; }
+.settings-edit-row__value { flex: 1.4; }
+.settings-edit-row__label:focus,
+.settings-edit-row__value:focus {
+    border-color: var(--primary);
+}
+.settings-edit-row__remove {
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.settings-edit-empty {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    padding: var(--space-8) 0 var(--space-12);
+}
+.settings-suggest-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+}
+
+/* Compact settings sub-line inside equipment picker rows */
+.js-row__meta--settings {
+    color: var(--primary);
+    font-size: var(--font-2xs);
+}

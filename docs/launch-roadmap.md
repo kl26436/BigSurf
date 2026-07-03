@@ -57,7 +57,7 @@ One queue across [ux-overhaul-plan-2026-07.md](ux-overhaul-plan-2026-07.md) and 
 5. ✅ T3-3 gym-aware replace + availability rows (M) — shipped 2026-07-02
 6. ✅ T3-4 substitution sheet (M) — shipped 2026-07-02; rows preselect **Keep** per decision
 7. ✅ T3-5 completion payoff (S) — shipped 2026-07-02
-8. ☐ T3-6 machine settings memory (M)
+8. ✅ T3-6 machine settings memory (M) — shipped 2026-07-02
 9. ☐ UX-1 equipment-aware trends + chart axes (M)
 10. ☐ UX-2 dashboard reorder (M)
 11. ☐ UX-4 equipment detail restructure (L)

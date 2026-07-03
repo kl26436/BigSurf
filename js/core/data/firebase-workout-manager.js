@@ -1035,6 +1035,9 @@ export class FirebaseWorkoutManager {
                 locations,
                 exerciseTypes: equipmentData.exerciseTypes || [],
                 exerciseVideos,
+                // Per-exercise machine settings (Tier 3 3.2 / traveler D4):
+                // { [exerciseName]: [{label, value}] } — "Seat 4", "Pin 13".
+                exerciseSettings: equipmentData.exerciseSettings || {},
                 notes: equipmentData.notes || '',
                 createdAt: equipmentData.createdAt || new Date().toISOString(),
                 lastUsed: new Date().toISOString(),
@@ -1222,6 +1225,35 @@ export class FirebaseWorkoutManager {
         } catch (error) {
             console.error('❌ Error updating equipment:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Save the per-exercise settings list for one equipment doc (Tier 3 3.2).
+     * `pairs` = [{label, value}]; empty/omitted removes the exercise's entry.
+     * Read-modify-write on the whole map — exercise names can contain
+     * characters that break Firestore field-path updates.
+     */
+    async saveEquipmentExerciseSettings(equipmentId, exerciseName, pairs) {
+        if (!this.appState.currentUser || !equipmentId || !exerciseName) return false;
+        try {
+            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'equipment', equipmentId);
+            const snap = await getDoc(docRef);
+            if (!snap.exists()) return false;
+
+            const exerciseSettings = { ...(snap.data().exerciseSettings || {}) };
+            const clean = (Array.isArray(pairs) ? pairs : [])
+                .map(p => ({ label: String(p.label || '').trim(), value: String(p.value || '').trim() }))
+                .filter(p => p.label && p.value);
+            if (clean.length > 0) exerciseSettings[exerciseName] = clean;
+            else delete exerciseSettings[exerciseName];
+
+            await updateDoc(docRef, { exerciseSettings });
+            this.appState._cachedEquipment = null;
+            return true;
+        } catch (error) {
+            console.error('❌ Error saving equipment settings:', error);
+            return false;
         }
     }
 

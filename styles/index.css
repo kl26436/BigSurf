@@ -33,6 +33,7 @@
 @import url('components/quick-add-sheet.css');
 @import url('components/confirm-sheet.css');
 @import url('components/compat-badge.css');
+@import url('components/settings-chips.css');
 
 /* 4. Page-specific layouts */
 @import url('pages/app-shell.css');
