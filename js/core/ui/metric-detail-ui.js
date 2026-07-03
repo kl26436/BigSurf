@@ -152,6 +152,16 @@ function renderUnknownMetric(id) {
     `;
 }
 
+// Range-scoped empty with a one-tap "widen" — matches the exercise/muscle-group
+// drill-down empty states so every "nothing in this range" surface behaves the
+// same. Omits the button when already on All time.
+function mdEmptyRange(message, range) {
+    const cta = range !== 'All'
+        ? `<button class="btn btn-secondary md-empty-cta" onclick="setDetailRange('All')">View all time</button>`
+        : '';
+    return `<div class="md-empty-range"><div class="md-empty-line">${message}</div>${cta}</div>`;
+}
+
 // ===================================================================
 // VOLUME BY BODY PART DETAIL
 // ===================================================================
@@ -220,7 +230,7 @@ async function renderVolumeBodyPartDetail(container, range) {
             `,
             chart: chartAreaStacked({ series, width: 300, height: 140 }),
             insight,
-            breakdown: breakdownItems,
+            breakdown: total > 0 ? breakdownItems : mdEmptyRange('No volume logged in this range.', range),
         });
     } catch (error) {
         console.error('❌ Error rendering volume detail:', error);
@@ -279,7 +289,7 @@ async function renderStrengthDetail(container, range) {
             `,
             chart: '<div class="md-chart-placeholder">Per-lift trends below</div>',
             insight: totalCurrent > 0 ? `Your combined estimated 1RM across the big 4 lifts is <strong>${formatNumber(totalCurrent)} lb</strong>.` : '',
-            breakdown: liftRows || '<div class="md-empty-line">No compound lift data in this range.</div>',
+            breakdown: liftRows || mdEmptyRange('No compound lift data in this range.', range),
         });
     } catch (error) {
         console.error('❌ Error rendering strength detail:', error);

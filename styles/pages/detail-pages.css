@@ -69,12 +69,16 @@
 }
 .range-pills button {
     flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap-sm);
     background: transparent;
     border: none;
     color: var(--text-muted);
-    font-size: var(--font-2xs);
+    font-size: var(--font-xs);
     font-weight: 600;
-    padding: 5px 0;
+    padding: 0 var(--space-4);
     border-radius: var(--radius-pill);
     cursor: pointer;
 }
@@ -607,6 +611,9 @@
 }
 .md-empty { color: var(--text-muted); }
 .md-empty-line { color: var(--text-muted); font-size: var(--font-sm); }
+/* Range-scoped empty with a "View all time" widen (mdEmptyRange). */
+.md-empty-range { text-align: center; padding: var(--space-16) var(--space-12); }
+.md-empty-cta { margin-top: var(--space-12); }
 .md-goal-strong { color: var(--primary); }
 
 /* BMI value + category label — tints follow CDC/WHO adult ranges.
