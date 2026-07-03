@@ -2795,6 +2795,26 @@ export async function awSaveNewEquipment(exerciseIdx) {
 let addExerciseFilter = 'All';
 let addExerciseSearch = '';
 
+// Exercise-picker taxonomy — browse by BODY PART, matching the exercise library
+// and the dashboard drill-downs. Push/Pull is a workout-programming concept, not
+// an exercise attribute, and library exercises carry `bodyPart` (never a
+// `category`), so we filter + label on body part and fold sub-parts into the
+// seven canonical buckets. Both add-exercise sheets in this file share this.
+const AW_EX_CATEGORIES = ['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'];
+function awExerciseBucket(ex) {
+    const bp = (ex.bodyPart || ex.category || '').toLowerCase();
+    if (bp.includes('chest') || bp.includes('pec')) return 'Chest';
+    if (bp.includes('back') || bp.includes('lat') || bp.includes('trap')) return 'Back';
+    if (bp.includes('leg') || bp.includes('glute') || bp.includes('quad') ||
+        bp.includes('hamstring') || bp.includes('calf') || bp.includes('calve')) return 'Legs';
+    if (bp.includes('shoulder') || bp.includes('delt')) return 'Shoulders';
+    if (bp.includes('arm') || bp.includes('bicep') || bp.includes('tricep') ||
+        bp.includes('forearm')) return 'Arms';
+    if (bp.includes('core') || bp.startsWith('ab') || bp.includes('oblique')) return 'Core';
+    if (bp.includes('cardio')) return 'Cardio';
+    return 'Other';
+}
+
 export function awAddExercise() {
     awCloseMenus();
     addExerciseFilter = 'All';
@@ -2807,10 +2827,7 @@ function renderAddExerciseSheet() {
     let filtered = library;
 
     if (addExerciseFilter !== 'All') {
-        filtered = filtered.filter(ex => {
-            const cat = (ex.category || '').toLowerCase();
-            return cat === addExerciseFilter.toLowerCase();
-        });
+        filtered = filtered.filter(ex => awExerciseBucket(ex) === addExerciseFilter);
     }
     if (addExerciseSearch) {
         const q = addExerciseSearch.toLowerCase();
@@ -2819,8 +2836,7 @@ function renderAddExerciseSheet() {
         );
     }
 
-    const categories = ['All', 'Push', 'Pull', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'];
-    const chips = categories.map(c =>
+    const chips = AW_EX_CATEGORIES.map(c =>
         `<button class="aw-sheet__chip ${c === addExerciseFilter ? 'active' : ''}" onclick="awSetAddFilter('${c}')">${c}</button>`
     ).join('');
 
@@ -2854,7 +2870,7 @@ function renderAddExerciseSheet() {
             ${createRowHTML}
             ${filtered.slice(0, 50).map(ex => {
                 const name = ex.name || ex.machine || 'Unknown';
-                const cat = ex.category || '';
+                const cat = ex.bodyPart || '';
                 return `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeAttr(name)}')">
                     <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
                     <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
@@ -2894,7 +2910,7 @@ function updateAddExerciseList() {
     const library = AppState.exerciseDatabase || [];
     let filtered = library;
     if (addExerciseFilter !== 'All') {
-        filtered = filtered.filter(ex => (ex.category || '').toLowerCase() === addExerciseFilter.toLowerCase());
+        filtered = filtered.filter(ex => awExerciseBucket(ex) === addExerciseFilter);
     }
     if (addExerciseSearch) {
         const q = addExerciseSearch.toLowerCase();
@@ -2915,7 +2931,7 @@ function updateAddExerciseList() {
 
     const rowsHTML = filtered.slice(0, 50).map(ex => {
         const name = ex.name || ex.machine || 'Unknown';
-        const cat = ex.category || '';
+        const cat = ex.bodyPart || '';
         return `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeAttr(name)}')">
             <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
             <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
@@ -2972,9 +2988,9 @@ export async function awCreateAndInsertExercise(rawName) {
         return;
     }
 
-    // Use the current category filter as the default — falls back to Push
-    // when "All" is selected so we have a non-empty body part.
-    const category = addExerciseFilter && addExerciseFilter !== 'All' ? addExerciseFilter : 'Push';
+    // Default the new exercise's body part to the active filter — falls back to
+    // 'Chest' when "All" is selected so it lands in a real bucket.
+    const bodyPart = addExerciseFilter && addExerciseFilter !== 'All' ? addExerciseFilter : 'Chest';
 
     try {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
@@ -2982,13 +2998,12 @@ export async function awCreateAndInsertExercise(rawName) {
         await mgr.saveCustomExercise({
             name,
             machine: name,
-            bodyPart: category,
+            bodyPart,
             equipmentType: 'Machine',
             sets: 3,
             reps: 10,
             weight: 0,
             video: '',
-            category,
         });
 
         // Refresh the in-memory exercise database so future renders + the
@@ -3045,8 +3060,7 @@ function renderSharedAddExerciseSheet() {
     const ctx = _sharedAddExerciseContext;
     if (!ctx) return;
 
-    const categories = ['All', 'Push', 'Pull', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'];
-    const chips = categories.map(c =>
+    const chips = AW_EX_CATEGORIES.map(c =>
         `<button class="aw-sheet__chip ${c === _sharedAddFilter ? 'active' : ''}" onclick="awSharedAddSetFilter('${c}')">${c}</button>`
     ).join('');
 
@@ -3075,7 +3089,7 @@ function getFilteredSharedAddExercises() {
     const library = AppState.exerciseDatabase || [];
     let filtered = library;
     if (_sharedAddFilter !== 'All') {
-        filtered = filtered.filter(ex => (ex.category || '').toLowerCase() === _sharedAddFilter.toLowerCase());
+        filtered = filtered.filter(ex => awExerciseBucket(ex) === _sharedAddFilter);
     }
     if (_sharedAddSearch) {
         const q = _sharedAddSearch.toLowerCase();
@@ -3093,7 +3107,7 @@ function renderSharedAddListBody() {
 
     const renderRow = (ex) => {
         const name = ex.name || ex.machine || 'Unknown';
-        const cat = ex.category || '';
+        const cat = ex.bodyPart || '';
         const isAdded = ctx.alreadyAdded.has(name.toLowerCase());
         if (isAdded) {
             return `<div class="aw-add-ex-row aw-add-ex-row--added">
