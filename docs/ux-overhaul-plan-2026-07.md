@@ -8,13 +8,13 @@ Legend: `[ ]` open · sizes S (<½ day), M (~1 day), L (multi-day)
 
 ---
 
-## Do next — quick-win batch (one Claude Code session, S)
+## Do next — quick-win batch — SHIPPED 2026-07-03
 
-Three independent, low-risk fixes pulled forward from Phases 2/5. Gate: `npm test` + `npm run lint` + dev deploy.
+Three independent, low-risk fixes pulled forward from Phases 2/5.
 
-- [ ] **Fix "Last done NaNd ago"** — `formatLastDoneMeta` (dashboard-ui.js:641-650): add `if (!Number.isFinite(days)) return '';` after the `days` computation; parse `rec.date` with the date-helpers parser instead of raw `new Date()` (CLAUDE.md date-handling rules); `debugLog` the offending `rec.date` value so the bad workout docs can be identified. Same guard applies to `renderLastSessionLine`'s `formatRelativeDate` path (dashboard-ui.js:668) if it shares the raw-Date parse.
-- [ ] **Kill the duplicate insight** — `renderProgressLinkRow(allWorkouts, topInsight)` (dashboard-ui.js:699-725): add a `showInsight` param from the caller (dashboard-ui.js:173/176); when the insight card is already rendered, skip the `topInsight.message` fallback at :710-711 and use the generic headline. While in there: fix headline copy to sentence case ("Back volume is low — 4 sets. Add 4 more this week.").
-- [ ] **Add Progress to the More menu** — index.html More menu, Tracking group (near "Body measurements", ~:1336): new item with `fa-chart-line`, label `Progress`, onclick `showProgressPage()` (already window-bound for the dashboard link row — verify via window-wiring test). Keep the dashboard link row too.
+- [x] **Fix "Last done NaNd ago"** — `formatLastDoneMeta`: `if (!Number.isFinite(days)) return ''` + `debugLog` the bad `rec.date`. (`renderLastSessionLine` already parses via `formatRelativeDate`, so it needed no guard.) **(994b73e)**
+- [x] **Kill the duplicate insight** — `renderProgressLinkRow` takes `showInsight`; skips the `topInsight.message` fallback when the insight card is already visible. Copy fix landed in `training-insights.js` (where the string is generated). **(994b73e)**
+- [x] **Add Progress to the More menu** — Tracking group, `fa-chart-line` → `showProgressPage()`; dashboard link row kept. **(b82683e)**
 
 ---
 
@@ -79,13 +79,13 @@ Audit §1b. Mockup: `dashboard-v3.html`.
 - [ ] De-dupe: today's-PR banner excludes PRs already in Recent PRs; align body-weight sparkline window with its "30 days" caption.
 - [ ] Tests: `weekly-goal.test.js` untouched; add fixture test for PR-proximity threshold logic (export it pure).
 
-### Phase 2 follow-ups (from the live build, screenshots 2026-07-03)
+### Phase 2 follow-ups (from the live build, screenshots 2026-07-03) — SHIPPED
 
-- [ ] 🔴 "Last done NaNd ago" on For Today rows — `formatLastDoneMeta` (dashboard-ui.js:641-650) computes `days` from `new Date(rec.date)` with no finite guard; an unparseable stored date renders literal `NaN`. Add `if (!Number.isFinite(days)) return '';`, parse via date-helpers instead of raw `new Date`, and `debugLog` the offending value to find the bad docs.
-- [ ] 🟡 Same insight rendered twice on one screen — insight card shows `topInsight.message` AND `renderProgressLinkRow` (dashboard-ui.js:710-711) falls back to the same `topInsight.message` when no low body part is found locally. Pass `showInsight` in and use the generic headline when the card is already visible.
-- [ ] 🟡 PR rows show the full derived equipment name ("MegaMass — 45 Degree Linear Row" under the exercise *45 Degree Linear Row*) — apply the equipment-v2 short-name rule (brand, or brand·line) in dense rows; the function name is redundant with the exercise name above it.
-- [ ] 🟡 Insight copy: "Back volume is low this week (4 sets). Add 4 more sets of Back this week" — capital "Back" mid-sentence (copy rule 1) and "this week" twice. → "Back volume is low — 4 sets. Add 4 more this week."
-- [ ] 🟡 Header logo block costs ~130px before the greeting — consider shrinking to a small mark beside the greeting so For Today rises above the fold (the whole point of the reorder).
+- [x] 🔴 "Last done NaNd ago" — finite guard + debugLog in `formatLastDoneMeta`. **(994b73e)**
+- [x] 🟡 Same insight rendered twice — `showInsight` threaded into `renderProgressLinkRow`. **(994b73e)**
+- [x] 🟡 PR rows show the full derived equipment name — `equipShortName` keeps just the brand/line prefix before the em dash (dashboard + Progress via shared `prMetaLine`). **(f498c9c)**
+- [x] 🟡 Insight copy "this week" twice — fixed in `training-insights.js` → "Back volume is low — 4 sets. Add 4 more this week." (Capital "Back" kept: it's a proper-noun category per CLAUDE.md §1.) **(994b73e)**
+- [x] 🟡 Header logo block ~113px — logo 80→48px + tighter padding (~69px) so For Today clears the fold. **(52e1676)**
 
 ## Phase 2b — Navigation: back means back (S/M)
 
@@ -149,7 +149,7 @@ Audit §5-§6 + supplemental sweep findings.
 - [x] 🟡 Error log empty bug-report submit now shows "Add a description". **(26710c4)**
 - [ ] 🟡 History: consolidate the two workout-detail modals; empty calendar days open add-workout prefilled; calendar cells 38→44px. *(Remaining.)*
 - [ ] 🟡 Settings: add Locations + Equipment rows; merge/clarify the two export actions; Rebuild PRs out of Danger zone.
-- [ ] 🟡 Add "Progress" to the More menu (Tracking group) — the page currently has no nav entry at all; the dashboard link row is its only door. Keep both. *(Remaining.)*
+- [x] 🟡 Add "Progress" to the More menu (Tracking group) — shipped with the quick-win batch. **(b82683e)**
 
 **Copy sweep (one PR, run the CLAUDE.md §11 lint greps)**
 - [x] Sentence-cased CTAs/titles/labels (exercise-manager, DEXA labels, body-measurements, manual-workout, error-log), terminology fixes (template→workout in AI Coach/history/selector), proper `…` ellipses, dropped success-toast exclamation. **(04c8026)** *(Left AI Coach split buttons — coupled to logic keys, read as named categories.)*
