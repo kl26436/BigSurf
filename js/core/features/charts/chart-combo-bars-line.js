@@ -10,8 +10,10 @@
  * @param {string} opts.barColor — CSS color
  * @param {string} opts.lineColor — CSS color
  * @param {number} [opts.padding=8]
+ * @param {string} [opts.ariaLabel] — accessible description of the chart
+ * @param {Object} [opts.axes] — {yMin,yMax,xStart,xEnd} crisp HTML labels
  */
-export function chartComboBarsLine({ bars, line, width = 300, height = 140, barColor, lineColor, padding = 8 }) {
+export function chartComboBarsLine({ bars, line, width = 300, height = 140, barColor, lineColor, padding = 8, ariaLabel, axes }) {
     if (!bars || bars.length === 0) return '<svg></svg>';
     const allY = [...bars.map(b => b.y), ...(line || []).map(p => p.y)];
     const yMax = Math.max(...allY) || 1;
@@ -53,11 +55,24 @@ export function chartComboBarsLine({ bars, line, width = 300, height = 140, barC
         `<line x1="0" y1="${(height / 4) * i}" x2="${width}" y2="${(height / 4) * i}" stroke="var(--border-light)" stroke-dasharray="2,4"/>`
     ).join('');
 
-    return `
-        <svg width="100%" height="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+    const a11y = `role="img" aria-label="${ariaLabel || 'Bar and line chart'}"`;
+    const svg = `
+        <svg width="100%" height="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" ${a11y}>
             ${gridLines}
             ${barEls}
             ${lineHtml}
         </svg>
+    `;
+
+    if (!axes) return svg;
+    // Crisp HTML axis labels (SVG <text> would distort under the non-uniform
+    // scaling). Same wrapper markup as chart-line's wrapWithAxes.
+    const axYMax = axes.yMax, axYMin = axes.yMin, axXStart = axes.xStart, axXEnd = axes.xEnd;
+    return `
+        <div class="chart-axes">
+            <div class="chart-axes__y"><span>${axYMax != null ? axYMax : ''}</span><span>${axYMin != null ? axYMin : ''}</span></div>
+            <div class="chart-axes__plot">${svg}</div>
+            <div class="chart-axes__x"><span>${axXStart != null ? axXStart : ''}</span><span>${axXEnd != null ? axXEnd : ''}</span></div>
+        </div>
     `;
 }

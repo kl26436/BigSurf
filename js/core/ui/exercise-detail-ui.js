@@ -3,9 +3,9 @@
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr } from './ui-helpers.js';
 import {
-    aggregateExerciseStats, classifyBodyPart, capitalize, formatVolume,
+    aggregateExerciseStats, exerciseEquipmentCounts, classifyBodyPart, capitalize, formatVolume,
 } from '../features/metrics/aggregators.js';
-import { chartSparkline } from '../features/charts/chart-sparkline.js';
+import { chartTrend } from '../features/charts/chart-trend.js';
 
 const BP_ICONS = {
     chest: 'fa-hand-paper', back: 'fa-fist-raised', legs: 'fa-walking',
@@ -29,21 +29,42 @@ const SESSIONS_COLLAPSED_LIMIT = 5;
 // Module state: which exercise is currently expanded to "show all sessions".
 // Tracked per exercise so switching exercises resets the toggle naturally.
 let _expandedSessionsFor = null;
+// Which machine the trend is filtered to (UX-1). null = all machines. A
+// sentinel '' means "no equipment" (bodyweight/unassigned). Reset on switch.
+let _equipmentFilterFor = null;   // the exercise name the filter belongs to
+let _equipmentFilter = null;      // null | '' | machine name
 
 export function renderExerciseDetail(exerciseName) {
     const container = document.getElementById('exercise-detail-content');
     if (!container || !exerciseName) return;
 
-    // Reset the expanded state when we switch to a different exercise.
+    // Reset per-exercise state when we switch to a different exercise.
     if (_expandedSessionsFor && _expandedSessionsFor !== exerciseName) {
         _expandedSessionsFor = null;
+    }
+    if (_equipmentFilterFor !== exerciseName) {
+        _equipmentFilterFor = exerciseName;
+        _equipmentFilter = null;
     }
 
     const range = AppState.exerciseDetailRange || '6M';
     const workouts = AppState.workouts || [];
-    const s = aggregateExerciseStats(workouts, exerciseName, range);
+    const equipCounts = exerciseEquipmentCounts(workouts, exerciseName, range);
+    // Drop a stale filter if the selected machine has no sessions in this range.
+    if (_equipmentFilter !== null &&
+        !equipCounts.byEquipment.some(e => (e.equipment || '') === _equipmentFilter)) {
+        _equipmentFilter = null;
+    }
+    const s = aggregateExerciseStats(workouts, exerciseName, range, _equipmentFilter);
     const bodyPart = classifyBodyPart(exerciseName);
     const color = bodyPartColor(bodyPart);
+
+    // Subtitle names the selected machine when filtered.
+    const activeMachine = _equipmentFilter === null ? null
+        : _equipmentFilter === '' ? 'No machine' : _equipmentFilter;
+    const subtitleParts = [capitalize(bodyPart)];
+    if (activeMachine) subtitleParts.push(escapeHtml(activeMachine));
+    subtitleParts.push(`${s.sessions.length} sessions`);
 
     // Estimated-1RM trend over the range (Epley), so the headline number reads
     // as "climbing" not just a static peak. Date-sorted so it's correct
@@ -66,11 +87,12 @@ export function renderExerciseDetail(exerciseName) {
                 <div class="d-header-icon ${BP_TINTS[bodyPart] || ''}"><i class="fas ${BP_ICONS[bodyPart] || 'fa-dumbbell'}"></i></div>
                 <div>
                     <div class="d-title">${escapeHtml(exerciseName)}</div>
-                    <div class="d-subtitle">${capitalize(bodyPart)} · ${s.sessions.length} sessions</div>
+                    <div class="d-subtitle">${subtitleParts.join(' · ')}</div>
                 </div>
             </div>
         </div>
         <div class="d-content">
+            ${renderMachinePills(equipCounts)}
             ${renderRangePills(range)}
 
             <div class="d-hero-stats">
@@ -89,27 +111,29 @@ export function renderExerciseDetail(exerciseName) {
                 <div class="d-pill">Volume <strong>${formatVolume(s.totalVolume)} ${s.displayUnit || 'lb'}</strong></div>
             </div>
 
-            ${s.trend.length > 1 ? `
-                <div class="d-chart-card">
-                    <div class="d-chart-head">
-                        <div class="d-chart-title">Heaviest weight per session</div>
-                        <div class="d-chart-legend">${s.trend.length >= 2 ? `${s.trend[s.trend.length - 1].y - s.trend[0].y >= 0 ? '↑' : '↓'} ${Math.round(Math.abs(s.trend[s.trend.length - 1].y - s.trend[0].y))} ${s.displayUnit || 'lb'}` : ''}</div>
-                    </div>
-                    ${chartSparkline({ points: s.trend.map((t, i) => ({ x: i, y: t.y })), color, width: 280, height: 100 })}
-                </div>
-            ` : ''}
+            ${renderTrendCard(s, color, activeMachine, equipCounts)}
 
             ${s.topSets.length > 0 ? `
-                <div class="d-sec-head">Best sets ever</div>
+                <div class="d-sec-head">Best sets${activeMachine ? ` — ${escapeHtml(activeMachine)}` : ''}</div>
                 <div class="d-best-table">
-                    ${s.topSets.map((set, i) => `
+                    ${s.topSets.map((set, i) => {
+                        // Meta line: date + gym + machine (only what we have).
+                        const meta = [
+                            formatSessionDate(set.date),
+                            set.location ? escapeHtml(set.location) : null,
+                            !activeMachine && set.equipment ? escapeHtml(set.equipment) : null,
+                        ].filter(Boolean).join(' · ');
+                        return `
                         <div class="d-best-row">
                             <div class="d-best-rank">${i + 1}</div>
-                            <div class="d-best-weight">${Math.round(set.totalWeight)} ${s.displayUnit || 'lb'}</div>
-                            <div class="d-best-reps">${set.reps} reps</div>
+                            <div class="d-best-info">
+                                <div class="d-best-weight">${Math.round(set.totalWeight)} ${s.displayUnit || 'lb'} × ${set.reps}</div>
+                                ${meta ? `<div class="d-best-meta">${meta}</div>` : ''}
+                            </div>
                             <div class="d-best-1rm">~${Math.round(set.est1RM)} 1RM</div>
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             ` : ''}
 
@@ -124,8 +148,8 @@ export function renderExerciseDetail(exerciseName) {
                     }</button>`
                     : '';
                 return `
-                    <div class="d-sec-head">${expanded ? 'All' : 'Recent'} sessions</div>
-                    ${shown.map(renderSessionRow).join('')}
+                    <div class="d-sec-head">${expanded ? 'All' : 'Recent'} sessions ${activeMachine ? '' : '<span class="d-sec-head__meta">equipment shown</span>'}</div>
+                    ${shown.map(sess => renderSessionRow(sess, activeMachine)).join('')}
                     ${overflowBtn}
                 `;
             })() : ''}
@@ -143,16 +167,79 @@ function renderRangePills(activeRange) {
     `;
 }
 
-function renderSessionRow(session) {
+/**
+ * Machine picker (UX-1): "All machines" + one pill per machine, with session
+ * counts. Only renders when the exercise has been logged on more than one
+ * machine — a single-machine history has nothing to pick. `''` equipment
+ * (logged with no machine) shows as "No machine".
+ */
+function renderMachinePills(equipCounts) {
+    const machines = equipCounts.byEquipment;
+    if (machines.length <= 1) return '';
+    const pill = (key, label, count) => {
+        const on = _equipmentFilter === key;
+        return `<button class="m-pill ${on ? 'on' : ''}" aria-pressed="${on}"
+                    onclick="setExerciseEquipment(${key === null ? 'null' : `'${escapeAttr(key)}'`})">
+                ${escapeHtml(label)} <span class="m-pill__n">${count}</span>
+            </button>`;
+    };
+    return `
+        <div class="machine-pills">
+            ${pill(null, 'All machines', equipCounts.total)}
+            ${machines.map(m => pill(m.equipment || '', m.equipment || 'No machine', m.count)).join('')}
+        </div>
+    `;
+}
+
+/**
+ * Trend card: labeled chart + "Mixed equipment" / "Same machine" badge.
+ * Mixed badge shows when viewing All machines and the range spans >1 machine
+ * (a machine swap can masquerade as a PR/regression); Same-machine badge when
+ * filtered. Chart points are sorted chronologically for a left→right trend.
+ */
+function renderTrendCard(s, color, activeMachine, equipCounts) {
+    if (s.trend.length <= 1) return '';
+    const chrono = [...s.trend].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const multiMachine = equipCounts.byEquipment.length > 1;
+
+    let badge = '';
+    if (activeMachine) {
+        badge = `<span class="cc-badge cc-badge--clean"><i class="fas fa-check"></i> Same machine</span>`;
+    } else if (multiMachine) {
+        badge = `<span class="cc-badge cc-badge--mixed"><i class="fas fa-exclamation-triangle"></i> Mixed equipment</span>`;
+    }
+
+    const footer = !activeMachine && multiMachine
+        ? `<div class="cc-foot">Warm dots mark a different machine than the session before. Machines start at different resistance — pick one above for a true trend.</div>`
+        : '';
+
+    return `
+        <div class="d-chart-card">
+            <div class="cc-head">
+                <span class="cc-title">Heaviest per session</span>
+                ${badge}
+            </div>
+            ${chartTrend({ points: chrono, width: 300, height: 120, color, unit: s.displayUnit || 'lb', markChanges: !activeMachine })}
+            ${footer}
+        </div>
+    `;
+}
+
+function renderSessionRow(session, activeMachine) {
     const dateStr = formatSessionDate(session.date);
     const chips = session.sets.map(s => {
         return `<span class="set-chip">${s.reps}×${s.weight}${s.rpe ? `<span class="set-chip__rpe">@${s.rpe}</span>` : ''}</span>`;
     }).join(' ');
+    // Name the session's machine when viewing All machines (the honesty cue).
+    const equipStr = (!activeMachine && session.equipment)
+        ? `<span class="d-session-row__equip"><i class="fas fa-dumbbell"></i> ${escapeHtml(session.equipment)}</span>`
+        : '';
 
     return `
         <div class="d-session-row">
             <div class="d-session-row__head">
                 <div class="d-session-row__date">${dateStr}</div>
+                ${equipStr}
             </div>
             <div class="d-session-row__chips">${chips}</div>
         </div>
@@ -170,6 +257,16 @@ function formatSessionDate(dateStr) {
 // Window-bound range setter
 export function setExerciseRange(range) {
     AppState.exerciseDetailRange = range;
+    renderExerciseDetail(AppState.activeExercise);
+}
+
+/**
+ * Machine-picker setter (UX-1). `null` = all machines; `''` = the "no machine"
+ * bucket; otherwise a machine name. Re-renders the detail with the filter.
+ */
+export function setExerciseEquipment(equipment) {
+    _equipmentFilterFor = AppState.activeExercise;
+    _equipmentFilter = equipment;
     renderExerciseDetail(AppState.activeExercise);
 }
 

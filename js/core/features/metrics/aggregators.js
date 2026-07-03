@@ -315,7 +315,7 @@ export function bodyPartTrendPoints(workouts, bodyPart, { start, end }) {
     }
     return [...dateMap.entries()]
         .sort((a, b) => a[0].localeCompare(b[0]))
-        .map((entry, i) => ({ x: i, y: entry[1] }));
+        .map((entry, i) => ({ x: i, y: entry[1], date: entry[0] }));
 }
 
 // ===================================================================
@@ -638,7 +638,7 @@ export function getPRsForBodyPart(workouts, bodyPart) {
 /**
  * For the Level 3 exercise detail page.
  */
-export function aggregateExerciseStats(workouts, exerciseName, range = 'All') {
+export function aggregateExerciseStats(workouts, exerciseName, range = 'All', equipment = null) {
     const { getRangeBounds } = _rangeFns;
     const bounds = getRangeBounds(range);
     // Normalize every set to the user's display unit BEFORE any math. Without
@@ -649,22 +649,37 @@ export function aggregateExerciseStats(workouts, exerciseName, range = 'All') {
     const displayUnit = AppState.globalUnit || 'lbs';
     const toDisplay = (weight, originalUnit) =>
         convertWeight(weight, originalUnit || displayUnit, displayUnit);
+    // UX-1: an explicit equipment filter (a machine picker pill) narrows the
+    // trend to one machine. `''`/null means "all machines". Machines have
+    // different starting resistance, so a combined trend can read a machine
+    // swap as a PR or a regression — filtering restores an honest line.
+    const equipFilter = equipment == null ? null : equipment;
     const sessions = [];
     const allSets = [];
 
     for (const w of workouts) {
         if (!isInRange(w.date, bounds.start, bounds.end)) continue;
         if (w.cancelledAt) continue;
-        const matching = withResolvedNames(w).filter(e => e.name === exerciseName);
+        let matching = withResolvedNames(w).filter(e => e.name === exerciseName);
         if (matching.length === 0) continue;
+        if (equipFilter !== null) {
+            matching = matching.filter(e => (e.equipment || '') === equipFilter);
+            if (matching.length === 0) continue;
+        }
 
+        const wLocation = typeof w.location === 'object' ? w.location?.name : w.location;
         const sessionSets = matching
-            .flatMap(e => e.sets || [])
+            .flatMap(e => (e.sets || []).map(s => ({ ...s, equipment: e.equipment || null })))
             .filter(s => s.weight && s.reps)
-            .map(s => ({ ...s, weight: toDisplay(s.weight, s.originalUnit) }));
+            .map(s => ({ ...s, weight: toDisplay(s.weight, s.originalUnit), date: w.date, location: wLocation || null }));
         if (sessionSets.length === 0) continue;
 
-        sessions.push({ date: w.date, sets: sessionSets });
+        // Name the session's equipment when it's unambiguous (one machine
+        // across all sets); `null` when a session mixed machines (rare).
+        const sessionEquips = [...new Set(sessionSets.map(s => s.equipment).filter(Boolean))];
+        const sessionEquip = sessionEquips.length === 1 ? sessionEquips[0] : null;
+
+        sessions.push({ date: w.date, sets: sessionSets, equipment: sessionEquip, location: wLocation || null });
         allSets.push(...sessionSets);
     }
 
@@ -681,19 +696,63 @@ export function aggregateExerciseStats(workouts, exerciseName, range = 'All') {
     const est1RM = Math.max(...allSets.map(s => s.weight * (1 + s.reps / 30)));
     const totalVolume = allSets.reduce((sum, s) => sum + s.weight * s.reps, 0);
 
-    // Heaviest weight per session — for the trend chart
-    const trend = sessions.map(({ date, sets }) => ({
+    // Heaviest weight per session — for the trend chart. Each point carries
+    // its session equipment so the chart can flag machine-change points.
+    const trend = sessions.map(({ date, sets, equipment: eq }) => ({
         date,
         y: Math.max(...sets.map(s => s.weight)),
+        equipment: eq,
     }));
 
-    // Top 4 best sets ever by estimated 1RM
+    // Top 4 best sets ever by estimated 1RM — sets already carry date,
+    // location, and equipment for the best-set rows.
     const topSets = [...allSets]
         .map(s => ({ ...s, totalWeight: s.weight, est1RM: s.weight * (1 + s.reps / 30) }))
         .sort((a, b) => b.est1RM - a.est1RM)
         .slice(0, 4);
 
     return { maxWeight, heaviestSet, est1RM, totalVolume, sessions, topSets, trend, displayUnit };
+}
+
+/**
+ * Per-equipment session counts for the exercise-detail machine picker (UX-1).
+ * Counts distinct sessions (workouts) that logged real sets of the exercise,
+ * grouped by the equipment used. A session counts once per distinct machine
+ * it used. Returns `{ total, byEquipment: [{equipment, count}] }` sorted by
+ * count desc; `equipment` is `null` for sets logged with no machine.
+ */
+export function exerciseEquipmentCounts(workouts, exerciseName, range = 'All') {
+    const { getRangeBounds } = _rangeFns;
+    const bounds = getRangeBounds(range);
+    const counts = new Map(); // equipment name (or '' for none) -> session count
+    let total = 0;
+
+    for (const w of workouts) {
+        if (!isInRange(w.date, bounds.start, bounds.end)) continue;
+        if (w.cancelledAt) continue;
+        const matching = withResolvedNames(w).filter(e => e.name === exerciseName);
+        if (matching.length === 0) continue;
+
+        // Distinct machines this session logged a real set on.
+        const equips = new Set();
+        let hasRealSet = false;
+        for (const e of matching) {
+            const real = (e.sets || []).some(s => s.weight && s.reps);
+            if (!real) continue;
+            hasRealSet = true;
+            equips.add(e.equipment || '');
+        }
+        if (!hasRealSet) continue;
+
+        total++;
+        for (const eq of equips) counts.set(eq, (counts.get(eq) || 0) + 1);
+    }
+
+    const byEquipment = [...counts.entries()]
+        .map(([eq, count]) => ({ equipment: eq || null, count }))
+        .sort((a, b) => b.count - a.count);
+
+    return { total, byEquipment };
 }
 
 /** Export classifyBodyPart for use by other modules. */

@@ -24,6 +24,16 @@ function bodyPartColor(bp) {
     return map[bp] || 'var(--text-muted)';
 }
 
+/** "2026-06-29" → "Jun 29" for chart x-axis labels. Safe on empty input. */
+function mgShortDate(dateStr) {
+    if (!dateStr) return '';
+    const parts = String(dateStr).split('-');
+    if (parts.length < 3) return dateStr;
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 const DETAIL_RANGES = ['W', 'M', '3M', 'Y', 'All'];
 
 export function renderMuscleGroupDetail(bodyPart) {
@@ -70,7 +80,16 @@ export function renderMuscleGroupDetail(bodyPart) {
                         <div class="d-chart-title">Volume trend</div>
                         ${stats.volumeDeltaPct != null ? `<div class="d-chart-legend">${stats.volumeDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(stats.volumeDeltaPct).toFixed(0)}% vs prev</div>` : ''}
                     </div>
-                    ${chartComboBarsLine({ bars: stats.volumeTrend, line: stats.volumeTrend, width: 300, height: 140, barColor: bodyPartColor(bodyPart), lineColor: 'var(--badge-gold)' })}
+                    ${chartComboBarsLine({
+                        bars: stats.volumeTrend, line: stats.volumeTrend, width: 300, height: 140,
+                        barColor: bodyPartColor(bodyPart), lineColor: 'var(--badge-gold)',
+                        ariaLabel: `${capitalize(bodyPart)} volume trend over ${rangeLabel(range)}`,
+                        axes: {
+                            yMax: formatVolume(Math.max(...stats.volumeTrend.map(p => p.y))), yMin: '0',
+                            xStart: mgShortDate(stats.volumeTrend[0]?.date),
+                            xEnd: mgShortDate(stats.volumeTrend[stats.volumeTrend.length - 1]?.date),
+                        },
+                    })}
                 </div>
             ` : ''}
 

@@ -2,6 +2,37 @@
    CHART COMPONENTS — SVG chart styles
    =========================================== */
 
+/* Labeled-axis wrapper (UX-1): crisp HTML y-min/max + x-start/end labels
+   around a stretched chart SVG (inline <text> would distort). The plot cell
+   keeps the SVG's existing height; the label cells auto-size. */
+.chart-axes {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr auto;
+    column-gap: var(--space-6);
+}
+.chart-axes__y {
+    grid-row: 1;
+    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    padding: 2px 0;
+}
+.chart-axes__plot { grid-row: 1; grid-column: 2; min-width: 0; }
+.chart-axes__x {
+    grid-row: 2;
+    grid-column: 2;
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
 /* Body composition donut row */
 .dash-bc-legend { display: flex; flex-direction: column; gap: var(--space-6); font-size: var(--font-xs); flex: 1; }
 .dash-bc-leg { display: flex; align-items: center; gap: var(--space-6); }

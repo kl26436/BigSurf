@@ -14,8 +14,11 @@
  * @param {Array<{x:*,y:number}>} [opts.overlay.points]
  * @param {string} [opts.overlay.color]
  * @param {number} [opts.padding=8]
+ * @param {string} [opts.ariaLabel] — accessible description of the chart
+ * @param {Object} [opts.axes] — {yMin,yMax,xStart,xEnd} labels rendered as
+ *        crisp HTML around the (stretched) SVG. Omit for a bare chart.
  */
-export function chartLine({ points, width, height, color, fill = false, goalY, goalLabel, overlay, padding = 8 }) {
+export function chartLine({ points, width, height, color, fill = false, goalY, goalLabel, overlay, padding = 8, ariaLabel, axes }) {
     if (!points || points.length === 0) return '<svg></svg>';
     const ys = points.map(p => p.y);
     const overlayYs = overlay?.points?.map(p => p.y) || [];
@@ -59,8 +62,11 @@ export function chartLine({ points, width, height, color, fill = false, goalY, g
         `<line x1="0" y1="${(height / 4) * i}" x2="${width}" y2="${(height / 4) * i}" stroke="var(--border-light)" stroke-dasharray="2,4"/>`
     ).join('');
 
-    return `
-        <svg width="100%" height="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+    // role="img" + aria-label so screen readers announce the trend instead of
+    // an unlabeled graphic. Falls back to a generic label.
+    const a11y = `role="img" aria-label="${ariaLabel || 'Line chart'}"`;
+    const svg = `
+        <svg width="100%" height="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" ${a11y}>
             ${gridLines}
             ${goalEl}
             ${fill ? `<defs>
@@ -73,5 +79,29 @@ export function chartLine({ points, width, height, color, fill = false, goalY, g
             <path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             ${overlayPath}
         </svg>
+    `;
+
+    return axes ? wrapWithAxes(svg, axes) : svg;
+}
+
+/**
+ * Wrap a stretched (preserveAspectRatio="none") chart SVG with HTML axis
+ * labels. HTML text stays crisp where inline SVG <text> would be distorted by
+ * the non-uniform scaling. `axes` = {yMin, yMax, xStart, xEnd} (pre-formatted).
+ */
+export function wrapWithAxes(svg, axes) {
+    const { yMin, yMax, xStart, xEnd } = axes;
+    return `
+        <div class="chart-axes">
+            <div class="chart-axes__y">
+                <span>${yMax != null ? yMax : ''}</span>
+                <span>${yMin != null ? yMin : ''}</span>
+            </div>
+            <div class="chart-axes__plot">${svg}</div>
+            <div class="chart-axes__x">
+                <span>${xStart != null ? xStart : ''}</span>
+                <span>${xEnd != null ? xEnd : ''}</span>
+            </div>
+        </div>
     `;
 }

@@ -884,6 +884,19 @@ export function showTodaysPRs() {
     requestAnimationFrame(() => overlay.classList.add('dash-todays-prs-overlay--show'));
 }
 
+/**
+ * PR meta line: "3d ago · 6 reps · Hammer Strength". The machine is named
+ * (PRTracker segments PRs per equipment, so a PR belongs to a specific
+ * machine) unless it's the "Unknown Equipment" fallback (UX-1).
+ */
+function prMetaLine(pr) {
+    const parts = [formatRelativeDate(pr.date, { daysAgo: true }), `${pr.reps} reps`];
+    if (pr.equipment && pr.equipment !== 'Unknown Equipment') {
+        parts.push(escapeHtml(pr.equipment));
+    }
+    return parts.join(' · ');
+}
+
 function renderRecentPRs(recentPRs) {
     if (!recentPRs || recentPRs.length === 0) return '';
     return `
@@ -895,7 +908,7 @@ function renderRecentPRs(recentPRs) {
                 <div class="pr-badge"><i class="fas fa-trophy"></i></div>
                 <div class="pr-info">
                     <div class="pr-name">${escapeHtml(pr.exercise)}</div>
-                    <div class="pr-meta">${formatRelativeDate(pr.date, { daysAgo: true })} · ${pr.reps} reps</div>
+                    <div class="pr-meta">${prMetaLine(pr)}</div>
                 </div>
                 <div class="pr-val">${convertWeight(pr.weight, pr.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}</div>
             </div>
@@ -973,7 +986,7 @@ function renderPRTable(prs) {
                 <div class="pr-badge"><i class="fas fa-trophy"></i></div>
                 <div class="pr-info">
                     <div class="pr-name">${escapeHtml(pr.exercise)}</div>
-                    <div class="pr-meta">${formatRelativeDate(pr.date, { daysAgo: true })} · ${pr.reps} reps</div>
+                    <div class="pr-meta">${prMetaLine(pr)}</div>
                 </div>
                 <div class="pr-val">${convertWeight(pr.weight, pr.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}</div>
             </div>

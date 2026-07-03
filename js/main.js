@@ -798,6 +798,10 @@ window.toggleAllSessions = async function (exerciseName) {
     const { toggleAllSessions } = await import('./core/ui/exercise-detail-ui.js');
     toggleAllSessions(exerciseName);
 };
+window.setExerciseEquipment = async function (equipment) {
+    const { setExerciseEquipment } = await import('./core/ui/exercise-detail-ui.js');
+    setExerciseEquipment(equipment);
+};
 
 // Metric Detail Functions
 window.openMetricDetail = openMetricDetail;

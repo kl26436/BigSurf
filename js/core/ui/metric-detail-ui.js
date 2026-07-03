@@ -418,6 +418,11 @@ async function renderBodyWeightDetail(container, range) {
                 overlay: series.length >= 14
                     ? { points: maPoints, color: 'var(--text-strong)' }
                     : null,
+                ariaLabel: `Body weight trend, ${min.toFixed(1)} to ${max.toFixed(1)} ${unitLabel}`,
+                axes: {
+                    yMax: max.toFixed(1), yMin: min.toFixed(1),
+                    xStart: shortAxisDate(first?.date), xEnd: shortAxisDate(latest?.date),
+                },
             }),
             insight,
             breakdown: recentEntries || '<div class="md-empty-line">No recent entries.</div>',
@@ -522,4 +527,14 @@ async function renderBodyCompositionDetail(container, range) {
 
 function formatRelativeDate(dateStr) {
     return formatRelativeDateShared(dateStr, { daysAgo: true, weeksAgo: true });
+}
+
+/** "2026-06-29" → "Jun 29" for chart x-axis labels. Safe on empty input. */
+function shortAxisDate(dateStr) {
+    if (!dateStr) return '';
+    const parts = String(dateStr).split('-');
+    if (parts.length < 3) return dateStr;
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
