@@ -554,7 +554,7 @@ async function detectGPSForModal() {
     if (!statusBox) return;
 
     statusBox.className = 'gps-status-box';
-    statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Detecting your location...</span>';
+    statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Detecting your location…</span>';
 
     try {
         const coords = await getCurrentPosition();
@@ -589,7 +589,7 @@ export async function searchLocationAddress() {
     }
 
     resultsContainer.innerHTML =
-        '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+        '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Searching…</div>';
 
     try {
         // Use Firebase Cloud Function to bypass CORS restrictions
@@ -717,7 +717,7 @@ export function applyManualCoords() {
     if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
         selectedLocationCoords = { latitude: lat, longitude: lon };
         updateSelectedCoordsDisplay();
-        showNotification('Coordinates set!', 'success');
+        showNotification('Coordinates set', 'success');
     } else {
         showNotification('Invalid coordinates', 'warning');
     }

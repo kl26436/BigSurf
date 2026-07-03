@@ -97,7 +97,7 @@ export async function renderDexaCard() {
                 ${imbalanceHint}
                 <div class="dexa-card-actions">
                     <button class="btn btn-primary btn-sm" onclick="showDexaUploadModal()">
-                        <i class="fas fa-upload"></i> New Scan
+                        <i class="fas fa-upload"></i> New scan
                     </button>
                     <button class="btn btn-sm btn-outline" onclick="showDexaHistory()">
                         <i class="fas fa-list"></i> History
@@ -309,7 +309,7 @@ export async function handleDexaUpload() {
     body.innerHTML = `
         <div class="dexa-analyzing">
             <div class="dexa-analyzing-spinner"></div>
-            <p class="dexa-analyzing-status" id="dexa-status">Uploading file...</p>
+            <p class="dexa-analyzing-status" id="dexa-status">Uploading file…</p>
             <p class="dexa-analyzing-hint">This may take 15-30 seconds</p>
         </div>
     `;
@@ -341,7 +341,7 @@ export async function handleDexaUpload() {
                 <i class="fas fa-exclamation-circle"></i>
                 <p>${isRateLimit ? 'Daily extraction limit reached. You can still enter data manually.' : 'Could not extract data from this PDF. Try entering manually.'}</p>
                 <button class="btn btn-primary btn-block" onclick="showDexaManualEntry()">
-                    <i class="fas fa-keyboard"></i> Enter Manually
+                    <i class="fas fa-keyboard"></i> Enter manually
                 </button>
             </div>
         `;
@@ -395,7 +395,7 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
             ${!isManual ? '<p class="dexa-review-hint">AI extracted these values. Review and correct any highlighted fields.</p>' : ''}
 
             <div class="form-group ${lowConf('totalBodyFat')}">
-                <label>Total Body Fat % ${reviewBadge('totalBodyFat')}</label>
+                <label>Total body fat % ${reviewBadge('totalBodyFat')}</label>
                 <input type="number" id="dexa-total-bf" class="form-input"
                        placeholder="e.g. 18.5" step="0.1" min="0" max="100" inputmode="decimal"
                        value="${data.totalBodyFat ?? ''}">
@@ -403,13 +403,13 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
 
             <div class="dexa-form-row">
                 <div class="form-group ${lowConf('totalWeight')}">
-                    <label>Total Weight (${unit}) ${reviewBadge('totalWeight')}</label>
+                    <label>Total weight (${unit}) ${reviewBadge('totalWeight')}</label>
                     <input type="number" id="dexa-total-weight" class="form-input"
                            placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
                            value="${data.totalWeight ?? ''}">
                 </div>
                 <div class="form-group">
-                    <label>Lean Mass (${unit})</label>
+                    <label>Lean mass (${unit})</label>
                     <input type="number" id="dexa-total-lean" class="form-input"
                            placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
                            value="${data.totalLeanMass ?? ''}">
@@ -418,13 +418,13 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
 
             <div class="dexa-form-row">
                 <div class="form-group">
-                    <label>Fat Mass (${unit})</label>
+                    <label>Fat mass (${unit})</label>
                     <input type="number" id="dexa-total-fat" class="form-input"
                            placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
                            value="${data.totalFatMass ?? ''}">
                 </div>
                 <div class="form-group">
-                    <label>Bone Mass (${unit})</label>
+                    <label>Bone mass (${unit})</label>
                     <input type="number" id="dexa-bone-mass" class="form-input"
                            placeholder="0" step="0.1" min="0" max="99" inputmode="decimal"
                            value="${data.boneMass ?? ''}">
@@ -434,20 +434,20 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
             <!-- Regional Data (collapsible) -->
             <div class="dexa-field-group">
                 <button class="dexa-field-group-toggle" onclick="toggleDexaSection('dexa-regional')">
-                    <span>Regional Breakdown</span>
+                    <span>Regional breakdown</span>
                     <i class="fas fa-chevron-down" id="dexa-regional-chevron"></i>
                 </button>
                 <div id="dexa-regional" class="dexa-field-group-content hidden">
-                    ${renderRegionalFields('leanMass', 'Lean Mass', data.leanMass, lowConf('leanMass'))}
-                    ${renderRegionalFields('fatMass', 'Fat Mass', data.fatMass, lowConf('fatMass'))}
-                    ${renderRegionalFields('regionFat', 'Body Fat %', data.regionFat, lowConf('regionFat'))}
+                    ${renderRegionalFields('leanMass', 'Lean mass', data.leanMass, lowConf('leanMass'))}
+                    ${renderRegionalFields('fatMass', 'Fat mass', data.fatMass, lowConf('fatMass'))}
+                    ${renderRegionalFields('regionFat', 'Body fat %', data.regionFat, lowConf('regionFat'))}
                 </div>
             </div>
 
             <!-- Bone Density (collapsible) -->
             <div class="dexa-field-group">
                 <button class="dexa-field-group-toggle" onclick="toggleDexaSection('dexa-bone')">
-                    <span>Bone Density</span>
+                    <span>Bone density</span>
                     <i class="fas fa-chevron-down" id="dexa-bone-chevron"></i>
                 </button>
                 <div id="dexa-bone" class="dexa-field-group-content hidden">

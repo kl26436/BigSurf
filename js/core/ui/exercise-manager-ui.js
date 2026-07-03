@@ -140,7 +140,7 @@ export function selectBodyPartCategory(bodyPart) {
     // Update title
     const title = document.getElementById('exercise-list-title');
     if (title) {
-        title.textContent = bodyPart ? `${formatBodyPart(bodyPart)} Exercises` : 'All Exercises';
+        title.textContent = bodyPart ? `${formatBodyPart(bodyPart)} exercises` : 'All exercises';
     }
 
     // Reset equipment filter pills
@@ -344,7 +344,7 @@ function renderExercises() {
                 <i class="fas fa-dumbbell"></i>
                 <p>No exercises found</p>
                 <button class="btn-add-exercise" onclick="showAddExerciseModal()">
-                    <i class="fas fa-plus"></i> Add Exercise
+                    <i class="fas fa-plus"></i> Add exercise
                 </button>
             </div>
         `;
@@ -386,7 +386,7 @@ function renderExercises() {
                 </div>
                 ${usageBadge}
                 <button class="exercise-card-edit" data-action="editExercise" data-exercise-id="${eid}" title="Edit">
-                    EDIT
+                    Edit
                 </button>
             </div>
         `;
@@ -457,12 +457,12 @@ export function openEditExerciseSection(exercise) {
     const isEdit = !!exercise;
     currentEditingExercise = isEdit ? exercise : null;
 
-    let title = 'New Exercise';
+    let title = 'New exercise';
     if (isEdit) {
-        if (exercise.isTemplateExercise) title = 'Edit Workout Exercise';
-        else if (exercise.isOverride) title = 'Edit Your Version';
-        else if (exercise.isDefault) title = 'Customize Exercise';
-        else title = 'Edit Exercise';
+        if (exercise.isTemplateExercise) title = 'Edit workout exercise';
+        else if (exercise.isOverride) title = 'Edit your version';
+        else if (exercise.isDefault) title = 'Customize exercise';
+        else title = 'Edit exercise';
     }
 
     const initial = {

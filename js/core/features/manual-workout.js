@@ -148,7 +148,7 @@ async function loadLocationsForManual() {
         const locations = await workoutManager.getUserLocations();
 
         // Clear existing options except first placeholder
-        locationSelect.innerHTML = '<option value="">Select gym location...</option>';
+        locationSelect.innerHTML = '<option value="">Select gym location…</option>';
 
         // Add locations
         locations.forEach((loc) => {
@@ -192,7 +192,7 @@ async function loadWorkoutLibraryForManual() {
     const container = document.getElementById('manual-library-list');
     if (!container) return;
 
-    container.innerHTML = '<div class="library-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    container.innerHTML = '<div class="library-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
 
     try {
         // Get all workout templates
@@ -371,7 +371,7 @@ function renderManualExercises() {
             <div class="empty-state">
                 <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
                 <div class="empty-state-title">No exercises yet</div>
-                <div class="empty-state-description">${manualWorkoutState.isCustom ? 'Tap a recent exercise above or use Add Exercise.' : 'Click "Add Exercise" to get started.'}</div>
+                <div class="empty-state-description">${manualWorkoutState.isCustom ? 'Tap a recent exercise above, or use Add exercise.' : 'Tap "Add exercise" to get started.'}</div>
             </div>
         `;
         return;
@@ -437,7 +437,7 @@ function renderManualExercises() {
                 }).join('')}
             </div>
             <button class="manual-add-set-btn" onclick="addManualSet(${exIndex})">
-                <i class="fas fa-plus"></i> Add Set
+                <i class="fas fa-plus"></i> Add set
             </button>
         </div>
     `;

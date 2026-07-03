@@ -182,7 +182,7 @@ export async function showBugReport() {
 
     list.innerHTML = `
         <div class="bug-report-form">
-            <h3 class="bug-report-title"><i class="fas fa-bug"></i> Report a Bug</h3>
+            <h3 class="bug-report-title"><i class="fas fa-bug"></i> Report a bug</h3>
             <p class="bug-report-desc">Describe what happened and what you expected. App context and recent errors will be attached automatically.</p>
 
             <textarea id="bug-report-text" class="bug-report-textarea" rows="4"

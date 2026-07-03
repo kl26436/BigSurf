@@ -2280,7 +2280,7 @@ function createBasicTemplateEditorModal() {
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" onclick="closeBasicTemplateEditor()">Cancel</button>
-                    <button class="btn btn-primary" onclick="saveBasicTemplate()">Save Template</button>
+                    <button class="btn btn-primary" onclick="saveBasicTemplate()">Save workout</button>
                 </div>
             </div>
         </div>

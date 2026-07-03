@@ -708,7 +708,7 @@ async function loadCoachHistory() {
         historySection.innerHTML = `
             <div class="coach-history-header">
                 <i class="fas fa-history"></i>
-                <span>Past Reviews</span>
+                <span>Past reviews</span>
             </div>
             ${sessions.map(s => `
                 <div class="coach-history-item" onclick="showPastCoachSession('${escapeHtml(s.id)}')">
@@ -826,7 +826,7 @@ export async function generateWorkoutTemplate(focus) {
     const loadingBubble = addChatBubble('bot', `
         <div class="coach-loading">
             <i class="fas fa-spinner fa-spin"></i>
-            <span>Building your ${escapeHtml(focus)} workout...</span>
+            <span>Building your ${escapeHtml(focus)} workout…</span>
         </div>
     `);
 
@@ -944,7 +944,7 @@ function renderTemplatePreview(container) {
 
             <div class="preview-actions">
                 <button class="btn btn-primary" onclick="saveGeneratedTemplate()">
-                    <i class="fas fa-save"></i> Save as Template
+                    <i class="fas fa-save"></i> Save as workout
                 </button>
                 <button class="btn btn-secondary" onclick="resetCoachUI()">Cancel</button>
             </div>

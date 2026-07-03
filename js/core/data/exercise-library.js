@@ -62,7 +62,7 @@ export function getExerciseLibrary(appState) {
             const modalTitle = document.querySelector('#exercise-library-section .modal-title');
 
             if (modalTitle) {
-                modalTitle.textContent = 'Add Exercise to Manual Workout';
+                modalTitle.textContent = 'Add exercise to manual workout';
             }
 
             await this.loadAndShow();
@@ -76,7 +76,7 @@ export function getExerciseLibrary(appState) {
             const modalTitle = document.querySelector('#exercise-library-section .modal-title');
 
             if (modalTitle) {
-                modalTitle.textContent = 'Add Exercise to Template';
+                modalTitle.textContent = 'Add exercise to workout';
             }
 
             await this.loadAndShow();
@@ -93,7 +93,7 @@ export function getExerciseLibrary(appState) {
             const modalTitle = document.querySelector('#exercise-library-section .modal-title');
 
             if (modalTitle) {
-                modalTitle.textContent = 'Add Exercise to Workout';
+                modalTitle.textContent = 'Add exercise to workout';
             }
 
             await this.loadAndShow();
@@ -268,7 +268,7 @@ export function getExerciseLibrary(appState) {
                 case 'manual-workout':
                     actionButton = `
                         <button class="btn btn-primary btn-small exercise-add-btn" data-index="${index}">
-                            <i class="fas fa-plus"></i> Add Exercise
+                            <i class="fas fa-plus"></i> Add exercise
                         </button>
                     `;
                     break;

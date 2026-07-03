@@ -930,7 +930,7 @@ export function getWorkoutHistory(appState) {
                         <i class="fas fa-redo"></i> Repeat
                     </button>
                     <button class="btn btn-secondary" data-action="saveAsTemplate" data-doc-id="${escapedDocId}">
-                        <i class="fas fa-bookmark"></i> Save as Template
+                        <i class="fas fa-bookmark"></i> Save as workout
                     </button>
                     <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-trash"></i> Delete
@@ -1298,7 +1298,7 @@ export function getWorkoutHistory(appState) {
                 <i class="fas fa-redo"></i> Repeat
             </button>
             <button class="btn btn-secondary" data-action="saveAsTemplate" data-doc-id="${escapedDocId}">
-                <i class="fas fa-bookmark"></i> Save as Template
+                <i class="fas fa-bookmark"></i> Save as workout
             </button>
             <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-trash"></i> Delete

@@ -315,7 +315,7 @@ export function renderExercises() {
             <div class="empty-state">
                 <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
                 <div class="empty-state-title">No exercises in this workout</div>
-                <div class="empty-state-description">Use the "Add Exercise" button above to get started!</div>
+                <div class="empty-state-description">Tap "Add exercise" above to get started.</div>
             </div>
         `);
     }
@@ -1091,7 +1091,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
                 <i class="fas fa-minus"></i> Remove
             </button>
             <button class="btn-set-control btn-set-control--add" onclick="addSetToExercise(${exerciseIndex})" title="Add new set">
-                <i class="fas fa-plus"></i> Add Set
+                <i class="fas fa-plus"></i> Add set
             </button>
         </div>
 
@@ -1285,7 +1285,7 @@ async function generateBodyweightExerciseTable(exercise, exerciseIndex, unit) {
                 <i class="fas fa-minus"></i> Remove
             </button>
             <button class="btn-set-control btn-set-control--add" onclick="addSetToExercise(${exerciseIndex})" title="Add new set">
-                <i class="fas fa-plus"></i> Add Set
+                <i class="fas fa-plus"></i> Add set
             </button>
         </div>
 

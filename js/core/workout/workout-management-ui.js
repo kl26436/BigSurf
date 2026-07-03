@@ -803,7 +803,7 @@ export function showCreateExerciseForm() {
         <div class="page-header">
             <div class="page-header__left">
                 <button class="page-header__back" aria-label="Back" onclick="closeCreateExerciseModal()"><i class="fas fa-chevron-left"></i></button>
-                <div class="page-header__title">New Exercise</div>
+                <div class="page-header__title">New exercise</div>
             </div>
             <button class="page-header__save" id="create-ex-header-save" disabled onclick="createNewExercise(event)">Save</button>
         </div>

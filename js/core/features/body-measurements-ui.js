@@ -58,7 +58,7 @@ export function showWeightEntryModal({ keepUnitOverride = false } = {}) {
         <div class="page-header">
             <div class="page-header__left">
                 <button class="page-header__back" onclick="closeWeightEntryModal()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
-                <div class="page-header__title">Log Measurements</div>
+                <div class="page-header__title">Log measurements</div>
             </div>
             <button class="page-header__save" onclick="saveBodyWeightEntry()">Save</button>
         </div>
@@ -126,7 +126,7 @@ export function showWeightEntryModal({ keepUnitOverride = false } = {}) {
 
         <div class="page-footer">
             <button class="btn-primary" onclick="saveBodyWeightEntry()">
-                <i class="fas fa-check"></i> Save Entry
+                <i class="fas fa-check"></i> Save entry
             </button>
         </div>
     `;
