@@ -1352,7 +1352,7 @@
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xs);
     color: var(--text-main);
-    font-size: var(--font-xs);
+    font-size: var(--font-sm);
     resize: none;
     outline: none;
     font-family: inherit;

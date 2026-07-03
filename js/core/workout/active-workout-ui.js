@@ -289,8 +289,8 @@ function renderRestTimerBanner() {
                 <span class="aw-rest-timer__time" id="aw-rest-time">${formatTimer(restTimerRemaining)}</span>
             </div>
             <div class="aw-rest-timer__controls">
-                <button class="aw-rest-timer__btn" onclick="event.stopPropagation(); awRestAdd30()" aria-label="Add 30 seconds">+30s</button>
-                <button class="aw-rest-timer__btn" onclick="event.stopPropagation(); awRestSkip()" aria-label="Skip rest">Skip</button>
+                <button class="aw-rest-timer__btn" onclick="event.stopPropagation(); awRestAdd30()" aria-label="Add 30 seconds" title="Add 30 seconds">+30s</button>
+                <button class="aw-rest-timer__btn" onclick="event.stopPropagation(); awRestSkip()" aria-label="Skip rest" title="Skip rest">Skip</button>
             </div>
             <div class="aw-rest-timer__bar">
                 <div class="aw-rest-timer__bar-fill" id="aw-rest-fill" style="--rest-pct: ${pct}%"></div>
@@ -305,11 +305,10 @@ function restBannerDoneInner() {
     return `
             <div class="aw-rest-timer__icon"><i class="fas fa-check"></i></div>
             <div class="aw-rest-timer__info">
-                <span class="aw-rest-timer__label">Rest done</span>
-                <span class="aw-rest-timer__time">Ready for your next set</span>
+                <span class="aw-rest-timer__label">Ready for your next set</span>
             </div>
             <div class="aw-rest-timer__controls">
-                <button class="aw-rest-timer__btn" onclick="awRestDismiss()" aria-label="Dismiss">Dismiss</button>
+                <button class="aw-rest-timer__btn" onclick="awRestDismiss()" aria-label="Dismiss" title="Dismiss">Dismiss</button>
             </div>`;
 }
 

@@ -1,5 +1,7 @@
 # Design & Cleanup Backlog
 
+> **Successor plan (2026-07):** active UX work now tracked in [docs/ux-overhaul-plan-2026-07.md](docs/ux-overhaul-plan-2026-07.md) (Phases 0–6, sequenced with [docs/launch-roadmap.md §4](docs/launch-roadmap.md)). That plan supersedes the overlapping design-system/tap-target/copy items below — several were shipped through it (backdrop blur, chart axes, dashboard reorder, equipment-detail restructure, 44px tap targets, copy sweep). Treat this file as the historical Sprint 0–7 backlog; new UX items go in the successor plan.
+
 **Single source of truth.** Every design / cleanup / implementation item from the source docs below is captured here. Once all items are closed, the source docs can be archived (see Phase E).
 
 ## Source coverage map
