@@ -737,6 +737,14 @@ function renderSingleTemplateRow(template) {
             renderTemplateExerciseRow(ex, i, exercisesArray.length, templateId, expandedExerciseInTemplate === `${templateId}_${i}`)
         ).join('');
 
+        // Status-only availability footer (traveler-flow Step 3): shown only
+        // for a partial workout at a mapped gym. No buttons — resolution
+        // happens in the start sheet and the mid-workout picker.
+        const unmappedCount = exercisesArray.filter(ex => isExerciseUnmappedAtGym(ex)).length;
+        const unmappedNote = (unmappedCount > 0 && unmappedCount < exercisesArray.length)
+            ? `<div class="template-editor__unmapped-note">${unmappedCount} not mapped — pick machines or swaps when you start. Asked once, remembered.</div>`
+            : '';
+
         editorHtml = `
             <div class="template-editor" data-stop-propagation>
                 ${renderTemplateDetailsAccordion(template)}
@@ -753,6 +761,7 @@ function renderSingleTemplateRow(template) {
                 <div class="template-editor__exercise-list">
                     ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet — tap + above to add one</div>'}
                 </div>
+                ${unmappedNote}
                 <button class="template-editor__add-btn" data-action="addTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
                     <i class="fas fa-plus"></i> Add exercise
                 </button>
@@ -936,10 +945,23 @@ function renderTemplateDetailsAccordion(template) {
     `;
 }
 
+/**
+ * Per-exercise availability at the session gym — STATUS ONLY (traveler-flow
+ * Step 3: the card informs, it never solicits; resolution lives in the start
+ * sheet and the mid-workout picker). Equipment-less exercises (including
+ * D10-skipped ones) count as available. Returns false when no gym context.
+ */
+function isExerciseUnmappedAtGym(ex) {
+    if (!gymContext?.gym || gymContext.equipmentCount === 0) return false;
+    if (!ex.equipment) return false;
+    return !gymContext.available.has(getExerciseName(ex));
+}
+
 function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
     const exName = getExerciseName(ex);
     const category = (ex.category || ex.bodyPart || 'other').toLowerCase();
     const tintCat = ['push', 'pull', 'legs', 'core', 'cardio'].includes(category) ? category : 'other';
+    const unmapped = isExerciseUnmappedAtGym(ex);
     const sets = ex.sets || 3;
     const reps = ex.reps || 10;
     const weight = ex.weight || 0;
@@ -1003,7 +1025,7 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
     ` : '';
 
     return `
-        <div class="te-row ${isExpanded ? 'te-row--expanded' : ''}"
+        <div class="te-row ${isExpanded ? 'te-row--expanded' : ''} ${unmapped ? 'te-row--unmapped' : ''}"
              data-action="toggleExerciseExpand"
              data-template-id="${escapeAttr(templateId)}"
              data-index="${idx}"
@@ -1031,6 +1053,7 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
                     <div class="te-row__meta">${summary}</div>
                     <div class="te-row__last" data-pending data-exercise="${escapeAttr(exName)}" data-equipment="${escapeAttr(equipment || '')}"></div>
                 </div>
+                ${unmapped ? '<span class="te-row__unmapped" aria-label="Not mapped at this gym">Not mapped</span>' : ''}
                 <button class="te-row__remove" data-stop-propagation
                         data-action="removeTemplateExercise"
                         data-template-id="${escapeAttr(templateId)}"

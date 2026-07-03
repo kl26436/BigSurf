@@ -15,6 +15,7 @@ import { convertYouTubeUrl } from './exercise-ui.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
 import { suggestMachinesForExercise } from '../features/exercise-machine-matcher.js';
+import { getEquipmentAtLocation, getExercisesAtLocation } from '../features/equipment-planner.js';
 
 // ===================================================================
 // STATE
@@ -1431,13 +1432,86 @@ export async function awDeleteExercise(idx) {
     renderAll();
 }
 
-export function awReplaceExercise(idx) {
+/**
+ * Replace an exercise mid-workout (Tier 3 Phase 3 / F3). Gym-aware: when a
+ * session gym is set, the shared add-exercise sheet leads with a "Possible at
+ * [gym]" section (same body part first) fed by the planner's mapped-exercise
+ * data — the most useful moment for that data. D8: same sheet, one extra
+ * section, not a new picker. Falls back to the plain sheet with no gym.
+ * (The legacy exercise-ui replaceExercise flow is untouched.)
+ */
+export async function awReplaceExercise(idx) {
     exerciseMenuOpen = false;
     awCloseMenus();
-    // Delegate to existing replace exercise logic
-    if (window.replaceExercise) {
-        window.replaceExercise(idx);
+
+    const current = AppState.currentWorkout?.exercises?.[idx];
+    if (!current) return;
+    const currentName = getExerciseName(current);
+    const currentCategory = (current.category || '').toLowerCase();
+
+    let gymSection = null;
+    try {
+        const sessionLoc = AppState.savedData?.location;
+        const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+        if (locName) {
+            if (!AppState._cachedEquipment) {
+                const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+                AppState._cachedEquipment = await new FirebaseWorkoutManager(AppState).getUserEquipment();
+            }
+            const atGym = getEquipmentAtLocation(AppState._cachedEquipment || [], locName);
+            const available = getExercisesAtLocation(atGym);
+            available.delete(currentName);
+            if (available.size > 0) {
+                const library = AppState.exerciseDatabase || [];
+                const entries = [...available].map(n =>
+                    library.find(ex => (ex.name || ex.machine) === n) || { name: n }
+                );
+                entries.sort((a, b) => {
+                    const aCat = (a.category || '').toLowerCase() === currentCategory ? 0 : 1;
+                    const bCat = (b.category || '').toLowerCase() === currentCategory ? 0 : 1;
+                    return aCat - bCat
+                        || (a.name || a.machine || '').localeCompare(b.name || b.machine || '');
+                });
+                gymSection = { gym: locName, exercises: entries.slice(0, 8) };
+            }
+        }
+    } catch (e) {
+        debugLog('Gym-aware replace section failed:', e);
     }
+
+    openSharedAddExerciseSheet({
+        title: 'Replace exercise',
+        targetWorkoutLabel: `Replacing ${currentName}`,
+        alreadyAdded: (AppState.currentWorkout.exercises || []).map(getExerciseName),
+        gymSection,
+        onSelect: (exerciseRecord) => commitReplaceExercise(idx, exerciseRecord),
+    });
+}
+
+/** Swap the exercise at `idx` — same semantics as the legacy confirmExerciseReplace. */
+function commitReplaceExercise(idx, exercise) {
+    const exerciseName = getExerciseName(exercise);
+    AppState.currentWorkout.exercises[idx] = {
+        machine: exerciseName,
+        sets: exercise.sets || 3,
+        reps: exercise.reps || 10,
+        weight: exercise.weight || 0,
+        video: exercise.video || '',
+        equipment: exercise.equipment || null,
+        equipmentLocation: exercise.equipmentLocation || null,
+        category: exercise.category || null,
+    };
+
+    // New exercise = fresh start for logged data at this slot
+    const exerciseKey = `exercise_${idx}`;
+    if (AppState.savedData.exercises?.[exerciseKey]) {
+        delete AppState.savedData.exercises[exerciseKey];
+    }
+
+    saveWorkoutData(AppState);
+    renderAll();
+    loadAutofillForExercise(idx);
+    showNotification(`Replaced with ${exerciseName}`, 'success');
 }
 
 export async function awConfirmExit() {
@@ -2778,7 +2852,7 @@ let _sharedAddExerciseContext = null;
 let _sharedAddSearch = '';
 let _sharedAddFilter = 'All';
 
-export function openSharedAddExerciseSheet({ targetWorkoutLabel, alreadyAdded, onSelect, onCreateRequested }) {
+export function openSharedAddExerciseSheet({ targetWorkoutLabel, alreadyAdded, onSelect, onCreateRequested, title, gymSection }) {
     if (typeof onSelect !== 'function') {
         console.error('openSharedAddExerciseSheet: onSelect is required');
         return;
@@ -2788,10 +2862,13 @@ export function openSharedAddExerciseSheet({ targetWorkoutLabel, alreadyAdded, o
     _sharedAddFilter = 'All';
     const addedSet = new Set((alreadyAdded || []).map(n => (n || '').toLowerCase()).filter(Boolean));
     _sharedAddExerciseContext = {
+        title: title || 'Add exercise',
         targetWorkoutLabel: targetWorkoutLabel || '',
         alreadyAdded: addedSet,
         onSelect,
         onCreateRequested: typeof onCreateRequested === 'function' ? onCreateRequested : null,
+        // F3: optional leading "Possible at [gym]" group — {gym, exercises[]}
+        gymSection: gymSection || null,
     };
     renderSharedAddExerciseSheet();
 }
@@ -2817,7 +2894,7 @@ function renderSharedAddExerciseSheet() {
     `;
 
     openSheet({
-        title: 'Add exercise',
+        title: ctx.title || 'Add exercise',
         subtitle: ctx.targetWorkoutLabel,
         body,
         actions: [
@@ -2862,7 +2939,19 @@ function renderSharedAddListBody() {
         </div>`;
     };
 
-    const rowsHtml = slice.map(renderRow).join('');
+    // F3: leading "Possible at [gym]" group (same rows, one extra section —
+    // D8). Hidden while searching/filtering so results stay tight.
+    let gymHtml = '';
+    if (ctx.gymSection && !_sharedAddSearch && _sharedAddFilter === 'All'
+        && ctx.gymSection.exercises?.length > 0) {
+        gymHtml = `
+            <div class="aw-add-ex-group-title">Possible at ${escapeHtml(ctx.gymSection.gym)}</div>
+            ${ctx.gymSection.exercises.map(renderRow).join('')}
+            <div class="aw-add-ex-group-title">All exercises</div>
+        `;
+    }
+
+    const rowsHtml = gymHtml + slice.map(renderRow).join('');
     const truncated = filtered.length > 50
         ? `<div class="aw-add-ex-truncated">Showing 50 of ${filtered.length} — refine your search</div>`
         : '';

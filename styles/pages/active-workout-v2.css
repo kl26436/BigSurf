@@ -931,6 +931,17 @@
 .aw-equip-section {
     margin-bottom: 8px;
 }
+/* Section title inside the add-exercise sheet (F3 "Possible at [gym]"). */
+.aw-add-ex-group-title {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 10px 4px 4px;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 2px;
+}
 .aw-equip-section__title {
     font-size: var(--font-2xs);
     font-weight: 700;

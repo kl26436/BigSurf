@@ -794,6 +794,28 @@
     color: var(--text-on-accent);
 }
 
+/* Status-only availability treatment on expanded-card exercise rows
+   (Tier 3 Phase 3): unmapped rows dim slightly with a quiet trailing label.
+   No handlers — the card informs, it never solicits. */
+.te-row--unmapped .te-row__info {
+    opacity: 0.65;
+}
+.te-row__unmapped {
+    flex-shrink: 0;
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--muted-bg);
+    border-radius: var(--radius-pill);
+    padding: 2px 8px;
+    align-self: center;
+}
+.template-editor__unmapped-note {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    padding: var(--space-4) var(--space-4) var(--space-8);
+}
+
 /* Collapsed-row expand cue (UX-3): separates "open the editor" from the
    adjacent play button. Rotates when the row is expanded. */
 .template-row__chev {

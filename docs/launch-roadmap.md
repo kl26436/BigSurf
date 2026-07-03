@@ -54,7 +54,7 @@ One queue across [ux-overhaul-plan-2026-07.md](ux-overhaul-plan-2026-07.md) and 
 2. ✅ UX-3 day chips + editor ergonomics (S) — shipped 2026-07-02
 3. ✅ T3-1 gym chip + badges + F1 (M) — shipped 2026-07-02
 4. ✅ T3-2 picker fast paths + reverse matcher (M) — shipped 2026-07-02
-5. ☐ T3-3 gym-aware replace + availability rows (M)
+5. ✅ T3-3 gym-aware replace + availability rows (M) — shipped 2026-07-02
 6. ☐ T3-4 substitution sheet (M) — decided: rows preselect **Keep** (never silently drop an exercise; D3)
 7. ☐ T3-5 completion payoff (S — may ride with #6)
 8. ☐ T3-6 machine settings memory (M)
