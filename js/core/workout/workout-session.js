@@ -15,7 +15,8 @@ import {
     getCurrentCoords,
     calculateDistance,
 } from '../features/location-service.js';
-import { renderActiveWorkout, loadAutofillForAllExercises } from './active-workout-ui.js';
+import { renderActiveWorkout, loadAutofillForAllExercises, openSharedEquipmentSheet, openSharedAddExerciseSheet } from './active-workout-ui.js';
+import { getEquipmentAtLocation, getExercisesAtLocation, checkTemplateCompatibility } from '../features/equipment-planner.js';
 import { haptic } from '../utils/haptics.js';
 import { Config } from '../utils/config.js';
 import { cancelRestNotification } from '../utils/push-notification-manager.js';
@@ -154,6 +155,12 @@ export async function startWorkout(workoutType) {
         return;
     }
 
+    // Tier 3 Phase 4: partially-mapped workout at a known gym → offer
+    // Keep / Machine / Swap / Skip per missing exercise before starting.
+    // Never blocks: resolves keep-all on dismiss, and only fires for
+    // `partial` compatibility (D3).
+    const substitutions = await maybeCollectSubstitutions(workout);
+
     // Clear last-session cache so autofill freshly queries Firestore for this
     // workout's exercises. Without this, a previous workout's null hits stay
     // cached and the new workout gets blank placeholders.
@@ -161,6 +168,7 @@ export async function startWorkout(workoutType) {
 
     // Set up workout state - DEEP CLONE to avoid modifying the template
     AppState.currentWorkout = JSON.parse(JSON.stringify(workout));
+    applySessionSubstitutions(substitutions);
     AppState.workoutStartTime = new Date();
     // Normalize display name: callers may pass a Firestore id (e.g. "chest___push")
     // rather than the pretty name. Resolve via the found plan.
@@ -1714,6 +1722,283 @@ function showGymChooserSheet(matches, workoutManager) {
         backdrop.classList.add('visible');
         sheet.classList.add('visible');
     });
+}
+
+// ===================================================================
+// SUBSTITUTION SHEET ON START (Tier 3 Phase 4 / traveler-flow Step 4)
+// ===================================================================
+
+// Active sheet state: { gym, templateKey, available, rows, resolve }
+// rows: [{ name, equipment, choice: 'keep'|'machine'|'swap'|'skip', swapTo, machine }]
+let _subSheetState = null;
+
+/**
+ * Decide whether the substitution sheet applies to this start, show it, and
+ * resolve with the user's choices. Returns null when it doesn't apply
+ * (no gym, D0 no equipment, F1 unmapped gym, full compatibility) or when
+ * every row is Keep.
+ */
+async function maybeCollectSubstitutions(workout) {
+    try {
+        const gym = getSessionLocation();
+        if (!gym) return null;
+
+        let equipment = AppState._cachedEquipment;
+        if (!equipment) {
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            equipment = await new FirebaseWorkoutManager(AppState).getUserEquipment();
+            AppState._cachedEquipment = equipment;
+        }
+        if (!Array.isArray(equipment) || equipment.length === 0) return null; // D0
+
+        const atGym = getEquipmentAtLocation(equipment, gym);
+        if (atGym.length === 0) return null; // F1 territory — no interrogation
+
+        const available = getExercisesAtLocation(atGym);
+        const exercises = Array.isArray(workout.exercises)
+            ? workout.exercises
+            : Object.values(workout.exercises || {});
+        const compat = checkTemplateCompatibility({ exercises }, available);
+        // D3: only `partial` raises the sheet — full and unmapped-only don't.
+        if (compat.missing === 0 || compat.available === 0) return null;
+
+        const templateKey = workout.id || workout.day || workout.name;
+        const memory = AppState.settings?.gymSubstitutions?.[gym] || {};
+
+        const rows = compat.exercises
+            .filter(e => !e.available)
+            .map(e => {
+                const remembered = memory[`${templateKey}::${e.name}`];
+                return {
+                    name: e.name,
+                    equipment: e.equipment,
+                    // Preselect Keep (Kevin's call) unless a remembered choice
+                    // exists — D10: never ask twice, pre-fill last time's answer.
+                    choice: remembered?.choice === 'skip' ? 'skip'
+                        : remembered?.choice === 'swap' ? 'swap'
+                        : 'keep',
+                    swapTo: remembered?.choice === 'swap' && remembered.swapTo
+                        ? { name: remembered.swapTo }
+                        : null,
+                    machine: null,
+                };
+            });
+
+        return await new Promise((resolve) => {
+            _subSheetState = { gym, templateKey, available, rows, resolve };
+            renderSubstitutionSheet();
+        });
+    } catch (e) {
+        console.error('❌ Substitution sheet failed — starting unmodified:', e);
+        return null;
+    }
+}
+
+function renderSubstitutionSheet() {
+    const state = _subSheetState;
+    if (!state) return;
+    closeSubstitutionSheetImmediate();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop visible';
+    backdrop.id = 'sub-sheet-backdrop';
+    // Dismiss = start with current selections. Never block a workout (D3).
+    backdrop.onclick = () => window._bsSubStart();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet visible';
+    sheet.id = 'sub-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Exercises not mapped at this gym');
+
+    const n = state.rows.length;
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">${n} exercise${n !== 1 ? "s aren't" : " isn't"} mapped at ${escapeHtml(state.gym)}</div>
+            <div class="aw-sheet__subtitle">Point at a machine to fix the map, or adjust today's session</div>
+        </div>
+        <div class="aw-sheet__body" id="sub-sheet-body">${renderSubstitutionRows()}</div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action primary" onclick="_bsSubStart()">Start workout</button>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+}
+
+function renderSubstitutionRows() {
+    const state = _subSheetState;
+    if (!state) return '';
+    return state.rows.map((row, i) => {
+        const detail = row.choice === 'machine' && row.machine ? `Linked to ${escapeHtml(row.machine)}`
+            : row.choice === 'swap' && row.swapTo ? `→ ${escapeHtml(row.swapTo.name)}`
+            : row.choice === 'skip' ? 'Skipped today'
+            : (row.equipment ? `Uses ${escapeHtml(row.equipment)}` : '');
+        // Machine-resolved rows collapse to a done state (the link persists).
+        if (row.choice === 'machine') {
+            return `
+                <div class="bs-sub-row bs-sub-row--done">
+                    <div class="bs-sub-row__info">
+                        <div class="bs-sub-row__name">${escapeHtml(row.name)}</div>
+                        <div class="bs-sub-row__detail"><i class="fas fa-check"></i> ${detail}</div>
+                    </div>
+                </div>
+            `;
+        }
+        return `
+            <div class="bs-sub-row">
+                <div class="bs-sub-row__info">
+                    <div class="bs-sub-row__name">${escapeHtml(row.name)}</div>
+                    ${detail ? `<div class="bs-sub-row__detail">${detail}</div>` : ''}
+                </div>
+                <div class="bs-sub-row__choices">
+                    <button type="button" class="bs-sub-chip ${row.choice === 'keep' ? 'active' : ''}" onclick="_bsSubSetChoice(${i}, 'keep')">Keep</button>
+                    <button type="button" class="bs-sub-chip" onclick="_bsSubPickMachine(${i})">Machine</button>
+                    <button type="button" class="bs-sub-chip ${row.choice === 'swap' ? 'active' : ''}" onclick="_bsSubPickSwap(${i})">Swap</button>
+                    <button type="button" class="bs-sub-chip ${row.choice === 'skip' ? 'active' : ''}" onclick="_bsSubSetChoice(${i}, 'skip')">Skip</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function rerenderSubstitutionRows() {
+    const body = document.getElementById('sub-sheet-body');
+    if (body) body.innerHTML = renderSubstitutionRows();
+}
+
+function closeSubstitutionSheetImmediate() {
+    document.getElementById('sub-sheet-backdrop')?.remove();
+    document.getElementById('sub-sheet')?.remove();
+}
+
+window._bsSubSetChoice = (i, choice) => {
+    const row = _subSheetState?.rows?.[i];
+    if (!row) return;
+    row.choice = choice;
+    if (choice !== 'swap') row.swapTo = null;
+    rerenderSubstitutionRows();
+};
+
+// "Machine" — point at equipment here (D9: fix the map before changing the
+// plan). Opens the shared equipment sheet on top; the selection links
+// gym + exercise onto the doc permanently, and the row collapses to done.
+window._bsSubPickMachine = (i) => {
+    const state = _subSheetState;
+    const row = state?.rows?.[i];
+    if (!row) return;
+    openSharedEquipmentSheet({
+        exerciseName: row.name,
+        currentEquipment: null,
+        onSelect: async (equipName) => {
+            if (!equipName) { rerenderSubstitutionRows(); return; }
+            try {
+                const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+                const mgr = new FirebaseWorkoutManager(AppState);
+                await mgr.getOrCreateEquipment(equipName, state.gym, row.name);
+                AppState._cachedEquipment = await mgr.getUserEquipment();
+            } catch (e) {
+                console.error('❌ Machine link failed:', e);
+            }
+            row.choice = 'machine';
+            row.machine = equipName;
+            rerenderSubstitutionRows();
+        },
+    });
+};
+
+// "Swap" — session-only replacement (D5), gym-filtered picker first (D8/D9).
+window._bsSubPickSwap = (i) => {
+    const state = _subSheetState;
+    const row = state?.rows?.[i];
+    if (!row) return;
+
+    const library = AppState.exerciseDatabase || [];
+    const entries = [...state.available]
+        .filter(name => name !== row.name)
+        .map(name => library.find(ex => (ex.name || ex.machine) === name) || { name });
+    const gymSection = entries.length > 0
+        ? { gym: state.gym, exercises: entries.slice(0, 8) }
+        : null;
+
+    openSharedAddExerciseSheet({
+        title: 'Swap exercise',
+        targetWorkoutLabel: `Replacing ${row.name} today`,
+        alreadyAdded: state.rows.map(r => r.name),
+        gymSection,
+        onSelect: (exerciseRecord) => {
+            row.choice = 'swap';
+            row.swapTo = exerciseRecord;
+            rerenderSubstitutionRows();
+        },
+    });
+};
+
+window._bsSubStart = () => {
+    const state = _subSheetState;
+    if (!state) return;
+    _subSheetState = null;
+    closeSubstitutionSheetImmediate();
+
+    // D10 memory: remember swap/skip per gym+template+exercise so the next
+    // visit pre-fills instead of re-asking. Keep/machine clear the memory
+    // (machine links persist on the equipment doc itself).
+    try {
+        const mem = { ...(AppState.settings?.gymSubstitutions || {}) };
+        const gymMem = { ...(mem[state.gym] || {}) };
+        for (const row of state.rows) {
+            const key = `${state.templateKey}::${row.name}`;
+            if (row.choice === 'skip') gymMem[key] = { choice: 'skip' };
+            else if (row.choice === 'swap' && row.swapTo) gymMem[key] = { choice: 'swap', swapTo: row.swapTo.name || row.swapTo.machine };
+            else delete gymMem[key];
+        }
+        mem[state.gym] = gymMem;
+        if (typeof window.updateSetting === 'function') {
+            window.updateSetting('gymSubstitutions', mem);
+        }
+    } catch (e) {
+        console.error('❌ Substitution memory save failed:', e);
+    }
+
+    const skips = new Set(state.rows.filter(r => r.choice === 'skip').map(r => r.name));
+    const swaps = new Map(state.rows
+        .filter(r => r.choice === 'swap' && r.swapTo)
+        .map(r => [r.name, r.swapTo]));
+    state.resolve(skips.size === 0 && swaps.size === 0 ? null : { skips, swaps });
+};
+
+/**
+ * Apply session-only choices to the CLONED workout (D5: the template doc is
+ * never touched). Swapped-in exercises inherit the slot's set count.
+ */
+function applySessionSubstitutions(subs) {
+    if (!subs || !AppState.currentWorkout?.exercises) return;
+    const library = AppState.exerciseDatabase || [];
+
+    let exercises = AppState.currentWorkout.exercises
+        .filter(ex => !subs.skips.has(ex.name || ex.machine));
+
+    exercises = exercises.map(ex => {
+        const swapTo = subs.swaps.get(ex.name || ex.machine);
+        if (!swapTo) return ex;
+        const record = library.find(e => (e.name || e.machine) === (swapTo.name || swapTo.machine)) || swapTo;
+        const newName = record.name || record.machine;
+        return {
+            machine: newName,
+            name: newName,
+            sets: ex.sets || 3,
+            reps: record.reps || ex.reps || 10,
+            weight: record.weight || 0,
+            video: record.video || '',
+            equipment: record.equipment || null,
+            category: record.category || null,
+        };
+    });
+
+    AppState.currentWorkout.exercises = exercises;
 }
 
 /**

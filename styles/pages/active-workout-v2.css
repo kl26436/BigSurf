@@ -762,6 +762,62 @@
 }
 .aw-footer__finish:active { transform: scale(0.96); }
 
+/* Substitution sheet on start (Tier 3 Phase 4): per-exercise
+   Keep / Machine / Swap / Skip rows for unmapped exercises. */
+.bs-sub-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    padding: var(--space-10) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+}
+.bs-sub-row__info {
+    min-width: 0;
+    flex: 1;
+}
+.bs-sub-row__name {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.bs-sub-row__detail {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.bs-sub-row--done .bs-sub-row__detail {
+    color: var(--success);
+}
+.bs-sub-row__choices {
+    display: flex;
+    gap: var(--space-4);
+    flex-shrink: 0;
+}
+.bs-sub-chip {
+    min-height: var(--tap-sm);
+    padding: 0 var(--space-10);
+    background: var(--bg-app);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    color: var(--text-secondary);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+.bs-sub-chip.active {
+    background: var(--primary-bg);
+    border-color: var(--primary-border);
+    color: var(--primary);
+}
+.bs-sub-chip:active {
+    transform: scale(0.95);
+}
+
 /* Fast-path chips at the top of the equipment sheets (Tier 3 Phase 2 / F2):
    Skip equipment · Free weights (→ Dumbbells/Barbell) · Cable machine. */
 .aw-equip-fastpaths {
