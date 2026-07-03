@@ -443,6 +443,15 @@
    =========================================== */
 .location-management-content {
     padding: var(--space-16);
+    /* Location page uses .content-section.pinned-header (flex-column,
+       fills viewport). Its scroll body has to opt into flex:1 + overflow
+       explicitly — without this the content just sits at natural height,
+       and once the saved-locations list grows past the map + a couple of
+       rows, everything below the fold becomes unreachable. */
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .location-map-container {
     background: var(--bg-card);
