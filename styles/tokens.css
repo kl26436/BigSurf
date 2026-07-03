@@ -91,6 +91,12 @@
     --overlay-light: rgba(0, 0, 0, 0.25);
     --overlay-medium: rgba(0, 0, 0, 0.5);
     --overlay-heavy: rgba(0, 0, 0, 0.7);
+    /* Focus-blur system (UX overhaul Phase 0): every BLOCKING backdrop —
+       sheets and dialogs over a page — uses --overlay-heavy + this blur, so
+       the surface is the only readable thing on screen. Transient popovers
+       (non-blocking scrims) stay --overlay-medium, no blur. Transition
+       opacity only; never animate the blur itself (jank on older Android). */
+    --backdrop-blur: blur(4px);
 
     /* Dark overlay tint for the rest-timer teal gradient (darker than --bg-app
        so buttons/bars show up against the primary gradient). */

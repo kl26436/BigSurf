@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard v3 — For Today first + PR proximity (UX-AUDIT-2026-07 §1b)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --warning:#f0c24b; --danger:#e35d6a; --highlight-warm:#f7a865;
+    --cat-push:#4A90D9; --cat-pull:#D94A7A; --cat-legs:#7B4AD9; --cat-core:#4AD9A7;
+    --cat-cardio:#D9A74A; --cat-arms:#D96A4A; --cat-shoulders:#56B6C2;
+    --badge-gold:#ffd700;
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+    --shadow-md:0 8px 14px rgba(0,0,0,0.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:24px 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;text-align:center;max-width:900px;margin-left:auto;margin-right:auto;line-height:1.5;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:28px;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .wrap-label{color:var(--text-strong);font-size:0.95rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.74rem;text-align:center;max-width:320px;line-height:1.5;}
+  .phone{width:340px;height:760px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .status{height:28px;background:var(--bg-app);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:0.7rem;color:var(--text-main);flex-shrink:0;}
+  .content{flex:1;overflow-y:auto;padding:12px 14px 80px;}
+  .content::-webkit-scrollbar{display:none;}
+
+  .greeting{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .greeting h2{color:var(--text-strong);font-size:1.25rem;font-weight:700;}
+  .greeting span{color:var(--text-secondary);font-size:0.76rem;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--cat-push),var(--cat-pull));display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.8rem;font-weight:700;}
+
+  .sec-head{display:flex;justify-content:space-between;align-items:baseline;margin:14px 2px 8px;}
+  .sec-head .t{color:var(--text-strong);font-size:0.88rem;font-weight:700;}
+  .sec-head .m{color:var(--text-muted);font-size:0.68rem;}
+  .sec-head .link{color:var(--primary);font-size:0.72rem;font-weight:600;}
+
+  /* ── 1. FOR TODAY — now the first block ── */
+  .today-hero{background:linear-gradient(160deg,rgba(74,144,217,0.16),var(--bg-card) 55%);border:1px solid rgba(74,144,217,0.3);border-radius:var(--radius-md);padding:14px;margin-bottom:8px;}
+  .th-top{display:flex;align-items:center;gap:12px;}
+  .th-icon{width:42px;height:42px;border-radius:12px;background:rgba(74,144,217,0.18);color:var(--cat-push);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+  .th-info{flex:1;min-width:0;}
+  .th-name{color:var(--text-strong);font-size:1rem;font-weight:700;}
+  .th-meta{color:var(--text-secondary);font-size:0.7rem;margin-top:2px;}
+  .th-start{width:44px;height:44px;border-radius:50%;background:var(--primary);color:#04201a;border:none;display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 4px 12px rgba(29,211,176,0.3);}
+  /* PR proximity hook inside the hero */
+  .th-pr{display:flex;align-items:center;gap:8px;margin-top:12px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.22);border-radius:10px;padding:8px 10px;}
+  .th-pr i{color:var(--badge-gold);font-size:0.8rem;}
+  .th-pr .txt{font-size:0.72rem;color:var(--text-main);line-height:1.35;}
+  .th-pr .txt b{color:var(--text-strong);}
+
+  .today-alt{display:flex;align-items:center;gap:10px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:6px;}
+  .ta-icon{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;flex-shrink:0;}
+  .ta-name{flex:1;color:var(--text-main);font-size:0.8rem;font-weight:600;}
+  .ta-meta{color:var(--text-muted);font-size:0.64rem;}
+  .ta-play{color:var(--text-muted);font-size:0.75rem;}
+
+  /* ── 2. LAST SESSION one-liner ── */
+  .last-session{display:flex;align-items:center;gap:10px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:10px 12px;margin:10px 0 4px;}
+  .ls-check{width:26px;height:26px;border-radius:50%;background:rgba(54,196,107,0.12);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:0.68rem;flex-shrink:0;}
+  .ls-txt{flex:1;font-size:0.72rem;color:var(--text-secondary);line-height:1.4;}
+  .ls-txt b{color:var(--text-main);font-weight:600;}
+  .ls-chev{color:var(--text-muted);font-size:0.7rem;}
+
+  /* ── 3. HERO CHIPS (demoted below the fold content) ── */
+  .hero-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:12px 0;}
+  .hero-chip{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;padding:10px;text-align:center;}
+  .hero-chip__icon{font-size:0.9rem;margin-bottom:4px;}
+  .hero-chip__val{font-size:1.25rem;font-weight:800;color:var(--text-strong);line-height:1;font-variant-numeric:tabular-nums;}
+  .hero-chip__unit{font-size:0.6rem;color:var(--text-muted);font-weight:500;margin-left:2px;}
+  .hero-chip__label{font-size:0.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-top:3px;}
+  .hero-chip__delta{font-size:0.58rem;font-weight:600;margin-top:2px;color:var(--text-muted);}
+  .hero-chip.streak{background:linear-gradient(135deg,rgba(247,168,101,0.15),rgba(247,168,101,0.04));border-color:rgba(247,168,101,0.25);}
+  .hero-chip.streak .hero-chip__icon{color:var(--highlight-warm);}
+  .hero-chip.week .hero-chip__icon{color:var(--primary);}
+  .hero-chip.bw .hero-chip__icon{color:var(--cat-shoulders);}
+
+  /* ── 4. Composition compact ── */
+  .bw-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px;display:flex;align-items:center;gap:12px;}
+  .bw-info{flex:1;}
+  .bw-val{color:var(--text-strong);font-size:1.15rem;font-weight:800;}
+  .bw-val small{font-size:0.65rem;color:var(--text-muted);font-weight:500;}
+  .bw-delta{font-size:0.64rem;color:var(--text-muted);margin-top:2px;}
+  .bw-spark{width:110px;height:30px;}
+  .bw-caption{font-size:0.56rem;color:var(--text-muted);text-align:right;margin-top:2px;}
+
+  /* ── 5. Recent PRs w/ equipment shown ── */
+  .pr-row{display:flex;align-items:center;gap:10px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:6px;}
+  .pr-ico{width:28px;height:28px;border-radius:9px;background:rgba(255,215,0,0.1);color:var(--badge-gold);display:flex;align-items:center;justify-content:center;font-size:0.7rem;flex-shrink:0;}
+  .pr-info{flex:1;min-width:0;}
+  .pr-name{color:var(--text-main);font-size:0.78rem;font-weight:600;}
+  .pr-meta{color:var(--text-muted);font-size:0.62rem;margin-top:1px;}
+  .pr-val{color:var(--text-strong);font-size:0.8rem;font-weight:700;font-variant-numeric:tabular-nums;}
+
+  /* Progress link row (replaces 6 body-part cards on dashboard) */
+  .progress-link{display:flex;align-items:center;gap:10px;background:var(--bg-card-hi);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:11px 12px;margin-top:10px;}
+  .pl-ico{width:30px;height:30px;border-radius:9px;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:0.75rem;}
+  .pl-txt{flex:1;}
+  .pl-t{color:var(--text-main);font-size:0.78rem;font-weight:600;}
+  .pl-s{color:var(--text-muted);font-size:0.62rem;margin-top:1px;}
+
+  /* bottom nav */
+  .nav{position:absolute;bottom:0;left:0;right:0;height:62px;background:var(--bg-surface);border-top:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-around;padding-bottom:6px;}
+  .nav i{color:var(--text-muted);font-size:1rem;}
+  .nav .on i{color:var(--primary);}
+  .nav-fab{width:46px;height:46px;border-radius:50%;background:var(--primary);color:#04201a;display:flex;align-items:center;justify-content:center;font-size:1rem;margin-top:-18px;box-shadow:0 4px 14px rgba(29,211,176,0.35);}
+
+  /* ═══ PROGRESS PAGE (phone B) ═══ */
+  .pg-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .pg-back{width:44px;height:44px;border-radius:50%;background:var(--bg-card);display:flex;align-items:center;justify-content:center;color:var(--text-main);font-size:0.8rem;}
+  .pg-title{color:var(--text-strong);font-size:1.05rem;font-weight:700;}
+  .range-pills{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--bg-card);border-radius:var(--radius-pill);padding:3px;margin-bottom:12px;}
+  .range-pills button{min-height:34px;border:none;background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:600;border-radius:var(--radius-pill);}
+  .range-pills button.on{background:var(--primary-bg);color:var(--primary);}
+  .chart-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px;margin-bottom:12px;}
+  .cc-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .cc-t{color:var(--text-strong);font-size:0.8rem;font-weight:700;}
+  .cc-delta{color:var(--success);font-size:0.66rem;font-weight:600;}
+  .axis{font-size:7.5px;fill:#6b7785;}
+  .bp-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:11px 12px;margin-bottom:7px;display:flex;align-items:center;gap:11px;}
+  .bp-ico{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;}
+  .bp-info{flex:1;min-width:0;}
+  .bp-name{color:var(--text-strong);font-size:0.8rem;font-weight:700;display:flex;align-items:center;gap:6px;}
+  .bp-meta{color:var(--text-muted);font-size:0.62rem;margin-top:2px;}
+  .vol-chip{font-size:0.54rem;font-weight:700;padding:2px 7px;border-radius:var(--radius-pill);text-transform:uppercase;letter-spacing:0.04em;}
+  .vol-chip.low{background:rgba(240,194,75,0.12);color:var(--warning);border:1px solid rgba(240,194,75,0.25);}
+  .vol-chip.good{background:rgba(54,196,107,0.1);color:var(--success);border:1px solid rgba(54,196,107,0.22);}
+  .vol-chip.high{background:rgba(227,93,106,0.1);color:var(--danger);border:1px solid rgba(227,93,106,0.22);}
+  .bp-spark{width:60px;height:24px;flex-shrink:0;}
+  .bp-chev{color:var(--text-muted);font-size:0.66rem;}
+
+  .callout{max-width:900px;margin:0 auto 26px;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:16px 20px;font-size:0.8rem;line-height:1.6;color:var(--text-secondary);}
+  .callout b{color:var(--text-strong);}
+</style>
+</head>
+<body>
+
+<h1 class="sec">Dashboard v3 — lead with today, not last week</h1>
+<p class="desc">UX-AUDIT-2026-07 §1b. The question you have when opening the app is "what am I doing today?" — so For Today is now the first block, with a PR-proximity hook that makes the number forward-looking. Body-part cards move to Progress (right), which finally gets a distinct job: volume balance vs MEV/MRV over a training block, with labeled axes.</p>
+
+<div class="row">
+
+  <!-- ═══ PHONE A: New dashboard ═══ -->
+  <div class="wrap">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div>
+      <div class="content">
+        <div class="greeting">
+          <div><h2>Good morning</h2><span>Thursday, July 2</span></div>
+          <div class="avatar">K</div>
+        </div>
+
+        <!-- 1. FOR TODAY — first block -->
+        <div class="sec-head"><span class="t">For Thursday</span><span class="link">All →</span></div>
+        <div class="today-hero">
+          <div class="th-top">
+            <div class="th-icon"><i class="fas fa-dumbbell"></i></div>
+            <div class="th-info">
+              <div class="th-name">Push day</div>
+              <div class="th-meta">Usually Thu · Last done 3d ago · ~55 min</div>
+            </div>
+            <button class="th-start"><i class="fas fa-play"></i></button>
+          </div>
+          <div class="th-pr">
+            <i class="fas fa-trophy"></i>
+            <div class="txt"><b>2.5 lb off your Bench Press PR</b> (Hammer Strength) — today's the day</div>
+          </div>
+        </div>
+        <div class="today-alt">
+          <div class="ta-icon" style="background:rgba(217,74,122,0.14);color:var(--cat-pull);"><i class="fas fa-hand-fist"></i></div>
+          <div class="ta-name">Pull day</div>
+          <div class="ta-meta">Last done 5d ago</div>
+          <i class="fas fa-play ta-play"></i>
+        </div>
+
+        <!-- 2. LAST SESSION -->
+        <div class="last-session">
+          <div class="ls-check"><i class="fas fa-check"></i></div>
+          <div class="ls-txt"><b>Pull day</b> · Tue · 48 min · 5,240 lb volume · 1 PR</div>
+          <i class="fas fa-chevron-right ls-chev"></i>
+        </div>
+
+        <!-- 3. HERO CHIPS -->
+        <div class="hero-row">
+          <div class="hero-chip streak"><div class="hero-chip__icon"><i class="fas fa-fire"></i></div><div class="hero-chip__val">8</div><div class="hero-chip__label">Wk streak</div></div>
+          <div class="hero-chip week"><div class="hero-chip__icon"><i class="fas fa-calendar-check"></i></div><div class="hero-chip__val">2<span class="hero-chip__unit">/4</span></div><div class="hero-chip__label">This week</div></div>
+          <div class="hero-chip bw"><div class="hero-chip__icon"><i class="fas fa-weight-scale"></i></div><div class="hero-chip__val">183<span class="hero-chip__unit">lb</span></div><div class="hero-chip__label">Body wt</div><div class="hero-chip__delta">−1.2 · 30d</div></div>
+        </div>
+
+        <!-- 4. Composition -->
+        <div class="sec-head"><span class="t">Composition</span></div>
+        <div class="bw-card">
+          <div class="bw-info">
+            <div class="bw-val">183.4 <small>lb</small></div>
+            <div class="bw-delta"><i class="fas fa-arrow-down"></i> 1.2 lb · 30 days</div>
+          </div>
+          <div>
+            <svg class="bw-spark" viewBox="0 0 110 30"><path d="M2,10 L18,12 L34,9 L50,14 L66,13 L82,17 L98,16 L108,19" fill="none" stroke="#56B6C2" stroke-width="1.5"/></svg>
+            <div class="bw-caption">Last 30 days</div>
+          </div>
+        </div>
+
+        <!-- 5. Recent PRs with equipment -->
+        <div class="sec-head"><span class="t">Recent PRs</span><span class="link">All →</span></div>
+        <div class="pr-row">
+          <div class="pr-ico"><i class="fas fa-trophy"></i></div>
+          <div class="pr-info"><div class="pr-name">Barbell Row</div><div class="pr-meta">Barbell · 2d ago</div></div>
+          <div class="pr-val">185 × 8</div>
+        </div>
+        <div class="pr-row">
+          <div class="pr-ico"><i class="fas fa-trophy"></i></div>
+          <div class="pr-info"><div class="pr-name">Leg Press</div><div class="pr-meta">Cybex sled · 6d ago</div></div>
+          <div class="pr-val">410 × 10</div>
+        </div>
+
+        <!-- 6. Link out to Progress (body-part cards moved there) -->
+        <div class="progress-link">
+          <div class="pl-ico"><i class="fas fa-chart-line"></i></div>
+          <div class="pl-txt">
+            <div class="pl-t">Progress</div>
+            <div class="pl-s">Volume balance, trends, all PRs — shoulders are low this week</div>
+          </div>
+          <i class="fas fa-chevron-right bp-chev"></i>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="on"><i class="fas fa-house"></i></div>
+        <div><i class="fas fa-robot"></i></div>
+        <div class="nav-fab"><i class="fas fa-plus"></i></div>
+        <div><i class="fas fa-calendar-days"></i></div>
+        <div><i class="fas fa-ellipsis"></i></div>
+      </div>
+    </div>
+    <div class="wrap-label">A — Dashboard, reordered</div>
+    <div class="wrap-sub">For Today is block #1 with a one-tap start and a PR-proximity hook (equipment-aware). Last-session line gives closure. Hero chips demoted. Body-part cards are gone — replaced by one Progress link that carries the single most useful headline ("shoulders are low").</div>
+  </div>
+
+  <!-- ═══ PHONE B: Progress page with a real job ═══ -->
+  <div class="wrap">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div>
+      <div class="content">
+        <div class="pg-head">
+          <div class="pg-back"><i class="fas fa-arrow-left"></i></div>
+          <div class="pg-title">Progress</div>
+        </div>
+        <div class="range-pills">
+          <button>W</button><button class="on">M</button><button>3M</button><button>Y</button><button>All</button>
+        </div>
+
+        <!-- Weekly volume chart WITH AXES -->
+        <div class="chart-card">
+          <div class="cc-head"><span class="cc-t">Weekly volume</span><span class="cc-delta">↑ 9% vs prev month</span></div>
+          <svg viewBox="0 0 300 110" style="width:100%;">
+            <text class="axis" x="2" y="12">24k</text>
+            <text class="axis" x="2" y="98">12k</text>
+            <line x1="24" y1="8" x2="298" y2="8" stroke="rgba(255,255,255,0.05)"/>
+            <line x1="24" y1="50" x2="298" y2="50" stroke="rgba(255,255,255,0.05)"/>
+            <line x1="24" y1="92" x2="298" y2="92" stroke="rgba(255,255,255,0.05)"/>
+            <path d="M28,70 L94,62 L160,74 L226,44 L292,36" fill="none" stroke="#1dd3b0" stroke-width="2"/>
+            <path d="M28,70 L94,62 L160,74 L226,44 L292,36 L292,92 L28,92 Z" fill="rgba(29,211,176,0.08)"/>
+            <circle cx="292" cy="36" r="3" fill="#1dd3b0"/>
+            <text class="axis" x="28" y="106">Jun 2</text>
+            <text class="axis" x="270" y="106">Jun 30</text>
+          </svg>
+        </div>
+
+        <!-- Body-part cards, now WITH MEV/MRV volume chips -->
+        <div class="sec-head"><span class="t">Training balance</span><span class="m">sets/wk vs target</span></div>
+        <div class="bp-card">
+          <div class="bp-ico" style="background:rgba(74,144,217,0.14);color:var(--cat-push);"><i class="fas fa-dumbbell"></i></div>
+          <div class="bp-info"><div class="bp-name">Chest <span class="vol-chip good">On target</span></div><div class="bp-meta">14 sets · Bench 225×5 best</div></div>
+          <svg class="bp-spark" viewBox="0 0 60 24"><path d="M2,16 L16,13 L30,15 L44,9 L58,7" fill="none" stroke="#4A90D9" stroke-width="1.5"/></svg>
+          <i class="fas fa-chevron-right bp-chev"></i>
+        </div>
+        <div class="bp-card">
+          <div class="bp-ico" style="background:rgba(86,182,194,0.14);color:var(--cat-shoulders);"><i class="fas fa-person"></i></div>
+          <div class="bp-info"><div class="bp-name">Shoulders <span class="vol-chip low">Low · 5 sets</span></div><div class="bp-meta">Target 8+ · OHP 115×6 best</div></div>
+          <svg class="bp-spark" viewBox="0 0 60 24"><path d="M2,10 L16,12 L30,14 L44,16 L58,17" fill="none" stroke="#56B6C2" stroke-width="1.5"/></svg>
+          <i class="fas fa-chevron-right bp-chev"></i>
+        </div>
+        <div class="bp-card">
+          <div class="bp-ico" style="background:rgba(217,74,122,0.14);color:var(--cat-pull);"><i class="fas fa-hand-fist"></i></div>
+          <div class="bp-info"><div class="bp-name">Back <span class="vol-chip good">On target</span></div><div class="bp-meta">16 sets · Row 185×8 best</div></div>
+          <svg class="bp-spark" viewBox="0 0 60 24"><path d="M2,14 L16,12 L30,10 L44,11 L58,6" fill="none" stroke="#D94A7A" stroke-width="1.5"/></svg>
+          <i class="fas fa-chevron-right bp-chev"></i>
+        </div>
+        <div class="bp-card">
+          <div class="bp-ico" style="background:rgba(123,74,217,0.14);color:var(--cat-legs);"><i class="fas fa-person-walking"></i></div>
+          <div class="bp-info"><div class="bp-name">Legs <span class="vol-chip high">High · 24 sets</span></div><div class="bp-meta">MRV ~22 · consider a lighter week</div></div>
+          <svg class="bp-spark" viewBox="0 0 60 24"><path d="M2,18 L16,14 L30,9 L44,6 L58,4" fill="none" stroke="#7B4AD9" stroke-width="1.5"/></svg>
+          <i class="fas fa-chevron-right bp-chev"></i>
+        </div>
+        <div class="bp-card">
+          <div class="bp-ico" style="background:rgba(217,106,74,0.14);color:var(--cat-arms);"><i class="fas fa-hand-back-fist"></i></div>
+          <div class="bp-info"><div class="bp-name">Arms <span class="vol-chip good">On target</span></div><div class="bp-meta">10 sets · Curl 45×10 best</div></div>
+          <svg class="bp-spark" viewBox="0 0 60 24"><path d="M2,12 L16,13 L30,11 L44,12 L58,10" fill="none" stroke="#D96A4A" stroke-width="1.5"/></svg>
+          <i class="fas fa-chevron-right bp-chev"></i>
+        </div>
+        <div class="bp-card">
+          <div class="bp-ico" style="background:rgba(74,217,167,0.14);color:var(--cat-core);"><i class="fas fa-circle-dot"></i></div>
+          <div class="bp-info"><div class="bp-name">Core <span class="vol-chip low">Stale · 8d</span></div><div class="bp-meta">Last trained Jun 24</div></div>
+          <svg class="bp-spark" viewBox="0 0 60 24"><path d="M2,8 L16,10 L30,12 L44,14 L58,15" fill="none" stroke="#4AD9A7" stroke-width="1.5" opacity="0.5"/></svg>
+          <i class="fas fa-chevron-right bp-chev"></i>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="on"><i class="fas fa-house"></i></div>
+        <div><i class="fas fa-robot"></i></div>
+        <div class="nav-fab"><i class="fas fa-plus"></i></div>
+        <div><i class="fas fa-calendar-days"></i></div>
+        <div><i class="fas fa-ellipsis"></i></div>
+      </div>
+    </div>
+    <div class="wrap-label">B — Progress page, distinct job</div>
+    <div class="wrap-sub">Body-part cards live here only, and now answer "should I care?" directly: a Low/On target/High sets-per-week chip (from the existing analyzeWeeklyVolume MEV/MRV logic) replaces the ambiguous hero-lift framing. Volume chart gets Y min/max + date labels. 44px back button.</div>
+  </div>
+
+</div>
+
+<div class="callout">
+  <b>What changed vs today:</b> For Today moves from 4th–6th block to 1st, and gains the PR-proximity hook (PRTracker already knows the target number, per-equipment). New last-session one-liner. The 6 body-part cards (~900px of scroll) leave the dashboard for Progress, replaced by one summary link that surfaces the single most actionable headline. On Progress, the "Bench Max under a Chest header" ambiguity is fixed by leading with sets/week vs MEV/MRV target and naming the lift in the meta line. Both PR rows now show equipment.
+</div>
+
+</body>
+</html>

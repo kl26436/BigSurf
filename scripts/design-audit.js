@@ -32,6 +32,7 @@ const BUDGETS = {
     rawRgbaInComponents: 0,
     rawHexNamedInComponents: 0,
     duplicateClassDefs: 5,
+    bareBackdrops: 0,
 };
 
 const STRICT = process.argv.includes('--strict');
@@ -92,6 +93,30 @@ const metrics = {
         countMatches(compAndUtilCss, /^\s*[-a-z]+[-a-z ]*:\s*white\b/gim),
 };
 
+// --- Bare blocking backdrops (UX overhaul Phase 0 contract) -------------------
+// A blocking backdrop = position:fixed + inset:0 + overlay-token background
+// (or a ::backdrop pseudo). Every one must carry the focus blur
+// (backdrop-filter: var(--backdrop-blur)). Non-blocking scrims aren't
+// fixed+inset:0 backdrops and are exempt by construction.
+const bareBackdrops = [];
+for (const file of allCss) {
+    const text = fs.readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const rel = path.relative(ROOT, file);
+    const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+    let m;
+    while ((m = blockRe.exec(text)) !== null) {
+        const selector = m[1].trim().split('\n').pop().trim();
+        const body = m[2];
+        const isBackdropShape =
+            (/position:\s*fixed/.test(body) && /inset:\s*0/.test(body) && /background:[^;]*var\(--overlay-/.test(body)) ||
+            (/::backdrop/.test(selector) && /background:[^;]*var\(--overlay-/.test(body));
+        if (isBackdropShape && !/backdrop-filter/.test(body)) {
+            bareBackdrops.push(`${rel} → ${selector}`);
+        }
+    }
+}
+metrics.bareBackdrops = bareBackdrops.length;
+
 // --- Duplicate class definitions --------------------------------------------
 // A class is "duplicate" when the same `.foo {` top-level rule appears in two+ files.
 const classByFile = new Map();
@@ -130,11 +155,18 @@ const rows = [
     row('Raw rgba() in components/+util',    metrics.rawRgbaInComponents,  BUDGETS.rawRgbaInComponents),
     row('Raw hex/named in components/+util', metrics.rawHexNamedInComponents, BUDGETS.rawHexNamedInComponents),
     row('Duplicate class defs (cross-file)', metrics.duplicateClassDefs,   BUDGETS.duplicateClassDefs),
+    row('Blocking backdrops missing blur',   metrics.bareBackdrops,        BUDGETS.bareBackdrops),
 ];
 
 console.log('\n  ── Big Surf design-system audit ───────────────────────────');
 rows.forEach((r) => console.log(r.line));
 console.log('  ───────────────────────────────────────────────────────────\n');
+
+if (bareBackdrops.length > 0) {
+    console.log('  Blocking backdrops missing backdrop-filter:');
+    bareBackdrops.forEach((b) => console.log(`    ${b}`));
+    console.log('');
+}
 
 if (duplicates.length > 0 && duplicates.length <= 30) {
     console.log('  Duplicate class definitions:');

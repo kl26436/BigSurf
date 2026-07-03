@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exercise detail v2 — machine picker + labeled axes (UX-AUDIT-2026-07 §1a/§2)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --warning:#f0c24b; --danger:#e35d6a; --highlight-warm:#f7a865;
+    --cat-push:#4A90D9; --badge-gold:#ffd700;
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:24px 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;text-align:center;max-width:900px;margin-left:auto;margin-right:auto;line-height:1.5;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:28px;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .wrap-label{color:var(--text-strong);font-size:0.95rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.74rem;text-align:center;max-width:320px;line-height:1.5;}
+  .phone{width:340px;height:760px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .status{height:28px;background:var(--bg-app);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:0.7rem;color:var(--text-main);flex-shrink:0;}
+  .content{flex:1;overflow-y:auto;padding:12px 14px 30px;}
+  .content::-webkit-scrollbar{display:none;}
+
+  .pg-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .pg-back{width:44px;height:44px;border-radius:50%;background:var(--bg-card);display:flex;align-items:center;justify-content:center;color:var(--text-main);font-size:0.8rem;flex-shrink:0;}
+  .pg-title{flex:1;}
+  .pg-title .t{color:var(--text-strong);font-size:1rem;font-weight:700;}
+  .pg-title .s{color:var(--text-muted);font-size:0.64rem;margin-top:1px;}
+
+  /* Machine picker — the §1a fix */
+  .machine-pills{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;}
+  .machine-pills::-webkit-scrollbar{display:none;}
+  .m-pill{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 14px;border-radius:var(--radius-pill);border:1px solid var(--border-light);background:var(--bg-card);color:var(--text-secondary);font-size:0.7rem;font-weight:600;}
+  .m-pill.on{background:var(--primary-bg);border-color:var(--primary-border);color:var(--primary);}
+  .m-pill .n{font-size:0.56rem;color:var(--text-muted);font-weight:500;}
+
+  .range-pills{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--bg-card);border-radius:var(--radius-pill);padding:3px;margin-bottom:12px;}
+  .range-pills button{min-height:34px;border:none;background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:600;border-radius:var(--radius-pill);}
+  .range-pills button.on{background:var(--primary-bg);color:var(--primary);}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;}
+  .stat{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;padding:9px;text-align:center;}
+  .stat .v{color:var(--text-strong);font-size:0.95rem;font-weight:800;font-variant-numeric:tabular-nums;}
+  .stat .v small{font-size:0.6rem;color:var(--text-muted);font-weight:500;}
+  .stat .l{color:var(--text-muted);font-size:0.56rem;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-top:2px;}
+
+  .chart-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px;margin-bottom:12px;}
+  .cc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .cc-t{color:var(--text-strong);font-size:0.8rem;font-weight:700;}
+  .mix-badge{display:inline-flex;align-items:center;gap:5px;font-size:0.56rem;font-weight:700;padding:3px 8px;border-radius:var(--radius-pill);background:rgba(240,194,75,0.12);color:var(--warning);border:1px solid rgba(240,194,75,0.25);}
+  .clean-badge{display:inline-flex;align-items:center;gap:5px;font-size:0.56rem;font-weight:700;padding:3px 8px;border-radius:var(--radius-pill);background:rgba(54,196,107,0.1);color:var(--success);border:1px solid rgba(54,196,107,0.22);}
+  .axis{font-size:7.5px;fill:#6b7785;}
+  .cc-foot{color:var(--text-muted);font-size:0.6rem;margin-top:6px;line-height:1.4;}
+
+  .sec-head{color:var(--text-strong);font-size:0.78rem;font-weight:700;margin:14px 2px 8px;display:flex;justify-content:space-between;align-items:baseline;}
+  .sec-head .m{color:var(--text-muted);font-size:0.62rem;font-weight:500;}
+
+  /* Session rows — now with equipment */
+  .sess{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px;}
+  .sess-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .sess-date{color:var(--text-main);font-size:0.72rem;font-weight:600;}
+  .sess-equip{color:var(--text-muted);font-size:0.6rem;display:flex;align-items:center;gap:5px;}
+  .sess-equip .beat{color:var(--success);}
+  .set-chips{display:flex;flex-wrap:wrap;gap:5px;}
+  .set-chip{background:var(--bg-card-hi);border-radius:var(--radius-pill);padding:3px 9px;font-size:0.64rem;color:var(--text-secondary);font-variant-numeric:tabular-nums;}
+  .set-chip.pr{background:rgba(255,215,0,0.1);color:var(--badge-gold);border:1px solid rgba(255,215,0,0.22);}
+
+  /* Best sets table w/ equipment column */
+  .best{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden;}
+  .best-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-subtle);}
+  .best-row:last-child{border-bottom:none;}
+  .best-rank{width:20px;color:var(--badge-gold);font-size:0.68rem;font-weight:800;}
+  .best-info{flex:1;}
+  .best-v{color:var(--text-strong);font-size:0.78rem;font-weight:700;font-variant-numeric:tabular-nums;}
+  .best-m{color:var(--text-muted);font-size:0.6rem;margin-top:1px;}
+  .best-1rm{color:var(--text-secondary);font-size:0.64rem;font-variant-numeric:tabular-nums;}
+
+  .callout{max-width:900px;margin:0 auto 26px;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:16px 20px;font-size:0.8rem;line-height:1.6;color:var(--text-secondary);}
+  .callout b{color:var(--text-strong);}
+</style>
+</head>
+<body>
+
+<h1 class="sec">Exercise detail v2 — honest trends per machine</h1>
+<p class="desc">UX-AUDIT-2026-07 §1a + §2. Today all machines for one exercise feed a single trend — a "PR" can just be a machine swap. Fix: a machine picker (mirrors the existing per-equipment PRTracker model), a "Mixed equipment" badge on the combined view, equipment on every session row, and axes on the chart.</p>
+
+<div class="row">
+
+  <!-- ═══ PHONE A: All machines (mixed) ═══ -->
+  <div class="wrap">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div>
+      <div class="content">
+        <div class="pg-head">
+          <div class="pg-back"><i class="fas fa-arrow-left"></i></div>
+          <div class="pg-title"><div class="t">Leg Press</div><div class="s">Legs · 31 sessions</div></div>
+        </div>
+
+        <div class="machine-pills">
+          <span class="m-pill on">All machines <span class="n">31</span></span>
+          <span class="m-pill">Cybex sled <span class="n">19</span></span>
+          <span class="m-pill">Hammer Strength <span class="n">12</span></span>
+        </div>
+
+        <div class="range-pills">
+          <button>W</button><button>M</button><button class="on">3M</button><button>Y</button><button>All</button>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><div class="v">410<small> lb</small></div><div class="l">Max</div></div>
+          <div class="stat"><div class="v">493<small> lb</small></div><div class="l">Est. 1RM</div></div>
+          <div class="stat"><div class="v">3d</div><div class="l">Last done</div></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="cc-head">
+            <span class="cc-t">Heaviest set</span>
+            <span class="mix-badge"><i class="fas fa-triangle-exclamation"></i> Mixed equipment</span>
+          </div>
+          <svg viewBox="0 0 300 110" style="width:100%;">
+            <text class="axis" x="2" y="12">420</text>
+            <text class="axis" x="2" y="98">300</text>
+            <line x1="26" y1="8" x2="298" y2="8" stroke="rgba(255,255,255,0.05)"/>
+            <line x1="26" y1="50" x2="298" y2="50" stroke="rgba(255,255,255,0.05)"/>
+            <line x1="26" y1="92" x2="298" y2="92" stroke="rgba(255,255,255,0.05)"/>
+            <!-- jagged: machine swaps create false dips/spikes -->
+            <path d="M30,72 L66,66 L102,40 L138,74 L174,64 L210,34 L246,68 L288,26" fill="none" stroke="#1dd3b0" stroke-width="2"/>
+            <circle cx="102" cy="40" r="3" fill="#f0c24b"/>
+            <circle cx="210" cy="34" r="3" fill="#f0c24b"/>
+            <circle cx="288" cy="26" r="3.5" fill="#ffd700"/>
+            <text class="axis" x="30" y="106">Apr 3</text>
+            <text class="axis" x="266" y="106">Jun 29</text>
+          </svg>
+          <div class="cc-foot">Yellow points = different machine than the previous session. Machines have different starting resistance — compare within one machine for a true trend.</div>
+        </div>
+
+        <div class="sec-head">Sessions <span class="m">equipment shown</span></div>
+        <div class="sess">
+          <div class="sess-top"><span class="sess-date">Jun 29</span><span class="sess-equip"><i class="fas fa-dumbbell"></i> Hammer Strength <span class="beat">· beat last <i class="fas fa-check"></i></span></span></div>
+          <div class="set-chips"><span class="set-chip">10×370</span><span class="set-chip">8×390</span><span class="set-chip pr">6×410 PR</span></div>
+        </div>
+        <div class="sess">
+          <div class="sess-top"><span class="sess-date">Jun 25</span><span class="sess-equip"><i class="fas fa-dumbbell"></i> Cybex sled</span></div>
+          <div class="set-chips"><span class="set-chip">10×320</span><span class="set-chip">10×340</span><span class="set-chip">8×350</span></div>
+        </div>
+        <div class="sess">
+          <div class="sess-top"><span class="sess-date">Jun 22</span><span class="sess-equip"><i class="fas fa-dumbbell"></i> Hammer Strength</span></div>
+          <div class="set-chips"><span class="set-chip">10×360</span><span class="set-chip">8×380</span><span class="set-chip">6×390</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap-label">A — All machines (honest about mixing)</div>
+    <div class="wrap-sub">Combined view still exists, but it stops pretending: "Mixed equipment" badge, machine-change markers on the line, equipment named on every session row, and a footnote explaining why the dips aren't real regressions.</div>
+  </div>
+
+  <!-- ═══ PHONE B: single machine selected ═══ -->
+  <div class="wrap">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div>
+      <div class="content">
+        <div class="pg-head">
+          <div class="pg-back"><i class="fas fa-arrow-left"></i></div>
+          <div class="pg-title"><div class="t">Leg Press</div><div class="s">Legs · Hammer Strength · 12 sessions</div></div>
+        </div>
+
+        <div class="machine-pills">
+          <span class="m-pill">All machines <span class="n">31</span></span>
+          <span class="m-pill">Cybex sled <span class="n">19</span></span>
+          <span class="m-pill on">Hammer Strength <span class="n">12</span></span>
+        </div>
+
+        <div class="range-pills">
+          <button>W</button><button>M</button><button class="on">3M</button><button>Y</button><button>All</button>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><div class="v">410<small> lb</small></div><div class="l">Max here</div></div>
+          <div class="stat"><div class="v">493<small> lb</small></div><div class="l">Est. 1RM</div></div>
+          <div class="stat"><div class="v">+40<small> lb</small></div><div class="l">3-mo gain</div></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="cc-head">
+            <span class="cc-t">Heaviest set</span>
+            <span class="clean-badge"><i class="fas fa-check"></i> Same machine</span>
+          </div>
+          <svg viewBox="0 0 300 110" style="width:100%;">
+            <text class="axis" x="2" y="12">420</text>
+            <text class="axis" x="2" y="98">360</text>
+            <line x1="26" y1="8" x2="298" y2="8" stroke="rgba(255,255,255,0.05)"/>
+            <line x1="26" y1="50" x2="298" y2="50" stroke="rgba(255,255,255,0.05)"/>
+            <line x1="26" y1="92" x2="298" y2="92" stroke="rgba(255,255,255,0.05)"/>
+            <!-- clean monotonic-ish trend within one machine -->
+            <path d="M30,84 L74,78 L118,72 L162,62 L206,52 L250,44 L288,26" fill="none" stroke="#1dd3b0" stroke-width="2"/>
+            <path d="M30,84 L74,78 L118,72 L162,62 L206,52 L250,44 L288,26 L288,92 L30,92 Z" fill="rgba(29,211,176,0.08)"/>
+            <circle cx="288" cy="26" r="3.5" fill="#ffd700"/>
+            <text class="axis" x="30" y="106">Apr 6</text>
+            <text class="axis" x="266" y="106">Jun 29</text>
+          </svg>
+          <div class="cc-foot">Steady +40 lb over 3 months on this machine. Next target: 415 × 6 beats your PR.</div>
+        </div>
+
+        <div class="sec-head">Best sets — Hammer Strength</div>
+        <div class="best">
+          <div class="best-row">
+            <span class="best-rank">1</span>
+            <div class="best-info"><div class="best-v">410 lb × 6</div><div class="best-m">Jun 29 · Downtown Gym</div></div>
+            <span class="best-1rm">1RM ~493</span>
+          </div>
+          <div class="best-row">
+            <span class="best-rank">2</span>
+            <div class="best-info"><div class="best-v">390 lb × 8</div><div class="best-m">Jun 22 · Downtown Gym</div></div>
+            <span class="best-1rm">1RM ~486</span>
+          </div>
+          <div class="best-row">
+            <span class="best-rank">3</span>
+            <div class="best-info"><div class="best-v">390 lb × 6</div><div class="best-m">Jun 15 · Downtown Gym</div></div>
+            <span class="best-1rm">1RM ~469</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap-label">B — One machine: a trend you can trust</div>
+    <div class="wrap-sub">Same data, filtered to (exercise, equipment) like PRTracker already stores it. The jagged combined line becomes a clean progression, the 3-mo gain stat becomes meaningful, and the footer turns the PR into a forward target. Best sets show gym — same machine, same gym, same truth.</div>
+  </div>
+
+</div>
+
+<div class="callout">
+  <b>Implementation notes:</b> extend <code>aggregateExerciseStats(workouts, name, range)</code> with an optional <code>equipment</code> arg (one extra <code>.filter()</code> on the already-resolved exercises); pill counts come from a cheap group-by pass. Keep the display-unit conversion at aggregators.js:644-651 untouched. Machine-change markers on the combined chart need each point to carry its session's equipment — the data is already in the workout docs. Axis labels are four <code>&lt;text&gt;</code> elements in the SVG primitives, reused by every chart in the app.
+</div>
+
+</body>
+</html>

@@ -26,8 +26,8 @@ dialog.confirm-sheet::backdrop {
     background: var(--overlay-heavy);
     /* Blur the app behind the sheet — dimmed-but-sharp content still competes
        for attention; blurred, the sheet is the only readable thing on screen. */
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
 }
 
 .confirm-sheet__header {

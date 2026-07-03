@@ -4,7 +4,9 @@
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: var(--overlay-medium);
+    background: var(--overlay-heavy);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
     z-index: 500;
     display: flex;
     align-items: flex-end;
@@ -277,6 +279,8 @@
     position: fixed;
     inset: 0;
     background: var(--overlay-heavy);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
     z-index: 500;
     display: flex;
     align-items: flex-end;
@@ -314,7 +318,9 @@ dialog.modal {
     justify-content: center;
 }
 dialog.modal::backdrop {
-    background: var(--overlay-medium);
+    background: var(--overlay-heavy);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
 }
 dialog.modal:not([open]) {
     display: none;

@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Backend**: Firebase (Firestore for data, Firebase Auth for authentication)
 - **Testing**: Vitest (`npm test` to run, `npm run test:watch` for watch mode)
 - **No build process**: Direct ES6 module imports in browser
-- **CDN**: Firebase SDK 10.7.1, Font Awesome 6.0.0, Chart.js 4.4.1, Leaflet 1.9.4
+- **CDN**: Firebase SDK 10.7.1, Font Awesome 6.0.0, Chart.js 4.4.1 (used ONLY by the body-weight chart in body-measurements-ui.js — all other charts are hand-rolled inline SVG in `js/core/features/charts/`), Leaflet 1.9.4
 
 ## Application Architecture
 
@@ -47,31 +47,54 @@ js/
     │   ├── data-manager.js         # Workout save/load, export, equipment reassignment
     │   ├── data-export-import.js   # CSV export, JSON export/import
     │   ├── exercise-library.js     # Exercise database with favorites
+    │   ├── equipment-catalog.js    # Equipment catalog seed data
+    │   ├── equipment-catalog-firestore.js  # Catalog Firestore reads/writes
+    │   ├── equipment-catalog-helpers.js    # Catalog lookup/normalization helpers
+    │   ├── equipment-migration.js  # Legacy equipment → catalog migration
+    │   ├── fuzzy-match.js          # Fuzzy string matching (catalog/exercise matching)
     │   └── schema-migration.js     # v2 to v3 migration
     ├── features/               # Feature modules
     │   ├── ai-coach-ui.js          # AI Coach modal, prompt cards, history
     │   ├── body-measurements.js    # Body weight/measurements data layer
-    │   ├── body-measurements-ui.js # Dashboard widget, weight chart, measurements modal
+    │   ├── body-measurements-ui.js # Weight entry page, Chart.js weight chart (the ONLY Chart.js usage)
+    │   ├── bodyweight-prompt.js    # Prompt for bodyweight on BW exercises
+    │   ├── charts/                 # Hand-rolled inline-SVG chart primitives (no library)
+    │   │   ├── chart-line.js           # Line chart w/ optional goal line + gradient fill
+    │   │   ├── chart-sparkline.js      # Mini line for metric cards
+    │   │   ├── chart-combo-bars-line.js # Bars + line overlay for drill-down pages
+    │   │   ├── chart-donut.js          # Multi-arc donut for body composition
+    │   │   └── chart-area-stacked.js   # Stacked area, body-part volume over time
+    │   ├── metrics/                # Aggregation layer for dashboard/drill-downs
+    │   │   ├── aggregators.js          # Pure functions: volume, 1RM, body-part stats, hero lift
+    │   │   ├── metric-card-base.js     # Shared render template for tappable metric cards
+    │   │   └── range-filter.js         # Shared time-range state (W/M/3M/Y/All)
     │   ├── dexa-scan.js            # DEXA scan data import/analysis
-    │   ├── dexa-scan-ui.js         # DEXA upload modal, history, detail views
+    │   ├── dexa-scan-ui.js         # DEXA upload page, history, detail views
     │   ├── equipment-planner.js    # Equipment-based workout planning (Phase 16)
-    │   ├── exercise-progress.js    # Exercise progress charts
+    │   ├── first-use-tips.js       # One-time feature tips
+    │   ├── geocoding.js            # Reverse geocoding for locations
     │   ├── location-service.js     # GPS detection, location matching
     │   ├── location-ui.js          # Location management UI
+    │   ├── machine-exercise-matcher.js # Machine → exercise fuzzy matcher
     │   ├── manual-workout.js       # Manual workout entry
     │   ├── plate-calculator.js     # Plate breakdown algorithm + standalone page
-    │   ├── pr-tracker.js           # Personal record detection
+    │   ├── pr-tracker.js           # Personal record detection (segmented per exercise+equipment)
     │   ├── stats-tracker.js        # Weekly stats (delegates streaks to streak-tracker)
     │   ├── streak-tracker.js       # Canonical streak calculation
     │   ├── superset-manager.js     # Exercise grouping for supersets/circuits
-    │   └── training-insights.js    # Rules engine for dashboard insights (no API)
+    │   ├── training-insights.js    # Rules engine for dashboard insights (no API)
+    │   └── withings-integration.js # Withings OAuth + weight sync
     ├── ui/                     # UI components
-    │   ├── dashboard-ui.js         # Dashboard rendering — body-part cards, recent PRs, insights
-    │   ├── equipment-library-ui.js # Equipment library page
+    │   ├── dashboard-ui.js         # Dashboard render + renderProgressPage (#progress-section)
+    │   ├── muscle-group-detail-ui.js # Level-2 drill-down from dashboard body-part cards
+    │   ├── exercise-detail-ui.js   # Level-3 drill-down from muscle-group exercise list
+    │   ├── metric-detail-ui.js     # Drill-down for tappable metric cards (body weight, volume, strength)
+    │   ├── composition-detail-ui.js # Drill-down from composition card
+    │   ├── equipment-library-ui.js # Equipment library (My gyms / Library / Catalog tabs) + equipment detail
     │   ├── exercise-manager-ui.js  # Exercise library modal
-    │   ├── navigation.js           # Bottom nav, routing
-    │   ├── settings-ui.js          # Settings page, onboarding flow
-    │   ├── stats-ui.js             # Stats page
+    │   ├── error-log-ui.js         # Error log page (More menu)
+    │   ├── navigation.js           # Bottom nav, routing, navStack for drill-downs
+    │   ├── settings-ui.js          # Settings page, onboarding flow, profile detail
     │   ├── confirm-sheet.js        # confirmSheet()/promptSheet() — promise-based replacement for native confirm/prompt
     │   ├── equipment-picker.js     # Equipment picker render helper (categorized: For exercise / At gym / Other)
     │   ├── template-selection.js   # Workouts page — unified library + inline editor (Phases 1-7)
@@ -80,18 +103,38 @@ js/
     ├── utils/                  # Utilities
     │   ├── app-state.js            # Global state object
     │   ├── config.js               # Config constants, CATEGORY_ICONS/COLORS, debugLog
+    │   ├── date-helpers.js         # Date parsing/formatting, getDayName()
     │   ├── debug-utilities.js      # Debug functions
     │   ├── error-handler.js        # Error handling with severity levels
+    │   ├── haptics.js              # Haptic feedback wrapper
+    │   ├── capacitor-push.js       # Capacitor push bridge
+    │   ├── push-notification-manager.js # Push notification scheduling
+    │   ├── rest-display-manager.js # Rest timer display state
+    │   ├── template-helpers.js     # Template normalization helpers
+    │   ├── validation.js           # Input validation
+    │   ├── weight-calculations.js  # Weight/1RM math helpers
+    │   ├── workout-helpers.js      # Exercise/workout name helpers
     │   └── notification-helper.js  # UI notifications
     └── workout/                # Workout logic
         ├── exercise-ui.js          # Legacy v1 exercise cards (still used by some flows)
         ├── active-workout-ui.js    # V2 wizard-style active workout + bottom sheets (awAddExercise, awOpenEquipmentSheet, openSharedAddExerciseSheet, openSharedEquipmentSheet)
+        ├── edit-history-inline.js  # Inline editing of historical workouts
         ├── rest-timer.js           # Rest timer (modal + header)
         ├── workout-core.js         # Top-level lifecycle re-exports
         ├── workout-history.js      # Calendar, history data
         ├── workout-management-ui.js # Equipment picker + create-exercise modal (template editor was retired in Phase 9; editTemplate / createNewTemplate now route to the workout-selector)
         └── workout-session.js      # Workout completion, summary modal
 ```
+
+### Stats / drill-down architecture (Dashboard V2)
+
+There is no Stats tab — `stats-ui.js`, `exercise-progress.js`, and `styles/pages/stats.css` were **deleted** in the Dashboard V2 rewrite (the bottom-nav slot became AI Coach). Stats live in a 3-level drill-down instead:
+
+1. **Dashboard** (`dashboard-ui.js`) — body-part cards, metric chips, composition → tap through to
+2. **Muscle group detail** (`muscle-group-detail-ui.js`) → tap an exercise to
+3. **Exercise detail** (`exercise-detail-ui.js`)
+
+Plus `metric-detail-ui.js` / `composition-detail-ui.js` for metric-card drill-downs and `renderProgressPage()` (in dashboard-ui.js, `#progress-section`) as a consolidated view. All math comes from `js/core/features/metrics/aggregators.js`; all charts are the SVG primitives in `js/core/features/charts/` — NOT Chart.js (only the body-weight chart in body-measurements-ui.js uses Chart.js). Back navigation uses the navStack in navigation.js.
 
 ### CSS Architecture
 
@@ -102,28 +145,52 @@ styles/
 ├── index.css              # @import all modules (load order matters)
 ├── tokens.css             # :root design tokens (colors, fonts, radius, z-index, animations)
 ├── reset.css              # Reset & base styles
-├── components/
+├── components/            # See styles/components/README.md for "when you need X, use Y"
 │   ├── cards.css          # .hero-card, .row-card base patterns
 │   ├── buttons.css        # .btn-* system
+│   ├── chips.css          # .chip / .chip--sm / category variants
+│   ├── fields.css         # .field-search, .field-label, form fields
 │   ├── forms.css          # Inputs, selects, toggles
 │   ├── modals.css         # Modal overlay, content, animations
 │   ├── nav.css            # Bottom nav (5-tab), More menu (bottom sheet with grouped sections)
-│   └── empty-states.css   # Empty state patterns
+│   ├── page-header.css    # .section-header-row, .page-header__*, .sec-head
+│   ├── empty-states.css   # Empty state patterns
+│   ├── charts.css         # Chart container/legend chrome for the SVG chart primitives
+│   ├── metric-card.css    # Tappable dashboard metric cards
+│   ├── range-filter.css   # W/M/3M/Y/All range pills
+│   ├── segmented-control.css # Segmented toggles
+│   ├── grouped-rows.css   # Settings-style grouped row lists
+│   ├── gym-card.css       # Gym cards, stat grid/tag row (also used on equipment detail)
+│   ├── library-tabs.css   # Equipment library compact tabs
+│   ├── completion-summary.css # Workout completion modal
+│   ├── confirm-sheet.css  # confirmSheet()/promptSheet() bottom sheets
+│   ├── quick-add-sheet.css # Quick-add bottom sheet
+│   ├── active-pill.css    # Floating workout-in-progress pill
+│   ├── bodyweight.css     # BW banner + base-weight rows
+│   └── toast.css          # Toast notifications
 ├── pages/
 │   ├── app-shell.css      # App container, full-page overlay sections
-│   ├── dashboard.css      # Dashboard widgets, streaks, PRs
-│   ├── workout.css        # Active workout, exercise cards, rest timer
-│   ├── templates.css      # Template selection, workout selector
-│   ├── stats.css          # Stats page, progress charts
+│   ├── dashboard-v2.css   # Dashboard widgets, hero chips, body-part cards, PRs
+│   ├── detail-pages.css   # Muscle-group / exercise / progress drill-down pages
+│   ├── metric-detail.css  # Metric-card drill-down pages
+│   ├── active-workout-v2.css # Active workout, set rows, rest timer, aw-sheet chrome
+│   ├── templates.css      # Template selection, workout selector, inline editor (.te-row)
 │   ├── history.css        # Calendar, workout history
-│   ├── exercise-lib.css   # Exercise library, equipment editor
-│   ├── settings.css       # Settings page, onboarding
+│   ├── edit-history.css   # Historical workout inline editing
+│   ├── exercise-lib.css   # Exercise library
+│   ├── equipment-library.css # Equipment library + equipment detail
+│   ├── locations.css      # Location management + detail
+│   ├── settings.css       # Settings page, onboarding, profile
+│   ├── manual-workout.css # Manual workout entry
 │   ├── plate-calculator.css # Plate calculator page + popover
-│   ├── body-measurements.css # Body weight widget, chart, measurements modal
-│   ├── ai-coach.css       # AI Coach modal, prompt cards, response display
-│   └── dexa.css           # DEXA scan upload, history, detail views
+│   ├── body-measurements.css # Body weight entry page, chart, measurements
+│   ├── ai-coach.css       # AI Coach chat, prompt cards
+│   ├── dexa.css           # DEXA scan upload, history, detail views
+│   └── error-log.css      # Error log page
 └── utilities.css          # .hidden, animations, responsive, misc utilities
 ```
+
+(`dashboard.css`, `workout.css`, and `stats.css` no longer exist — deleted during the V2 cleanups. Don't recreate them.)
 
 ### Test Structure
 

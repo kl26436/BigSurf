@@ -241,6 +241,11 @@
 /* ============================================
    IN-MODAL POPOVER
    ============================================ */
+/* Backdrop layers just under the popover (which sits above the add-exercise
+   tier); visuals come from the shared .aw-sheet-backdrop class. */
+.plate-calc-backdrop {
+    z-index: calc(var(--z-add-exercise) - 1);
+}
 .plate-calc-popover {
     position: fixed;
     bottom: var(--kb-inset, 0px);

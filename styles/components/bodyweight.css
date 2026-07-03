@@ -13,6 +13,8 @@
     inset: 0;
     z-index: var(--z-modal, 500);
     background: var(--overlay-heavy);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
     display: flex;
     align-items: center;
     justify-content: center;

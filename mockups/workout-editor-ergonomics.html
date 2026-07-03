@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workout editor ergonomics — day chips + steppers (UX-AUDIT-2026-07 §4)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --warning:#f0c24b; --danger:#e35d6a;
+    --cat-push:#4A90D9; --cat-pull:#D94A7A;
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+    --tap:44px; --tap-sm:36px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:24px 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;text-align:center;max-width:900px;margin-left:auto;margin-right:auto;line-height:1.5;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:28px;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .wrap-label{color:var(--text-strong);font-size:0.95rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.74rem;text-align:center;max-width:320px;line-height:1.5;}
+  .phone{width:340px;height:760px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .status{height:28px;background:var(--bg-app);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:0.7rem;color:var(--text-main);flex-shrink:0;}
+  .content{flex:1;overflow-y:auto;padding:12px 14px 30px;}
+  .content::-webkit-scrollbar{display:none;}
+
+  .pg-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .pg-back{width:44px;height:44px;border-radius:50%;background:var(--bg-card);display:flex;align-items:center;justify-content:center;color:var(--text-main);font-size:0.8rem;}
+  .pg-title{color:var(--text-strong);font-size:1rem;font-weight:700;flex:1;}
+
+  /* Suggested-for-today banner (new) */
+  .suggest{display:flex;align-items:center;gap:8px;background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:0.7rem;color:var(--primary);font-weight:600;}
+
+  /* Template row — collapsed, now with chevron */
+  .t-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);margin-bottom:8px;overflow:hidden;}
+  .t-row.expanded{border-color:var(--primary-border);}
+  .t-head{display:flex;align-items:center;gap:10px;padding:12px;min-height:52px;}
+  .t-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;}
+  .t-info{flex:1;min-width:0;}
+  .t-name{color:var(--text-strong);font-size:0.84rem;font-weight:700;}
+  .t-meta{color:var(--text-muted);font-size:0.62rem;margin-top:1px;}
+  .t-chev{color:var(--text-muted);font-size:0.68rem;transition:transform 0.15s;}
+  .t-row.expanded .t-chev{transform:rotate(90deg);color:var(--primary);}
+  .t-play{width:36px;height:36px;border-radius:50%;background:var(--primary-bg);color:var(--primary);border:1px solid var(--primary-border);display:flex;align-items:center;justify-content:center;font-size:0.7rem;flex-shrink:0;}
+
+  .t-body{padding:0 12px 12px;border-top:1px solid var(--border-subtle);}
+  .lbl{color:var(--text-muted);font-size:0.58rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin:12px 0 7px;}
+
+  /* ── BEFORE day chips: glyph-sized spans ── */
+  .day-old{display:flex;gap:6px;}
+  .day-old span{aspect-ratio:1;border:1.5px solid var(--border-subtle);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:600;color:var(--text-secondary);padding:2px;}
+  .day-old span.on{background:var(--primary);border-color:var(--primary);color:#04201a;}
+  .bad-note{color:var(--danger);font-size:0.6rem;margin-top:5px;display:flex;align-items:center;gap:5px;}
+
+  /* ── AFTER day chips: 44px buttons ── */
+  .day-new{display:flex;gap:5px;justify-content:space-between;}
+  .day-new button{width:var(--tap);height:var(--tap);border-radius:50%;border:1.5px solid var(--border-light);background:var(--bg-card-hi);color:var(--text-secondary);font-size:0.76rem;font-weight:700;transition:transform 0.08s;}
+  .day-new button:active{transform:scale(0.9);}
+  .day-new button.on{background:var(--primary);border-color:var(--primary);color:#04201a;}
+  .good-note{color:var(--success);font-size:0.6rem;margin-top:5px;display:flex;align-items:center;gap:5px;}
+
+  /* ── BEFORE exercise row: bare inputs, tiny arrows ── */
+  .ex-old{background:var(--bg-card-hi);border:0.5px solid var(--border-subtle);border-radius:var(--radius-sm);padding:10px;margin-bottom:6px;}
+  .ex-old-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .old-arrows{display:flex;flex-direction:column;gap:2px;}
+  .old-arrows i{width:24px;height:20px;display:flex;align-items:center;justify-content:center;background:var(--bg-card);border-radius:5px;color:var(--text-muted);font-size:0.55rem;}
+  .ex-name{flex:1;color:var(--text-main);font-size:0.78rem;font-weight:600;}
+  .old-x{width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:0.7rem;}
+  .old-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .old-grid input{background:var(--bg-card);border:0.5px solid var(--border-subtle);border-radius:8px;padding:6px 8px;color:var(--text-main);font-size:0.78rem;text-align:center;width:100%;}
+  .old-grid .g-lbl{color:var(--text-muted);font-size:0.54rem;text-align:center;margin-bottom:3px;text-transform:uppercase;}
+
+  /* ── AFTER exercise row: steppers + drag handle ── */
+  .ex-new{background:var(--bg-card-hi);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:10px;margin-bottom:6px;}
+  .ex-new-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-height:36px;}
+  .drag{width:var(--tap-sm);height:var(--tap-sm);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:0.8rem;}
+  .new-x{width:var(--tap-sm);height:var(--tap-sm);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:0.74rem;border-radius:9px;}
+  .stepper-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .stepper .g-lbl{color:var(--text-muted);font-size:0.54rem;text-align:center;margin-bottom:3px;text-transform:uppercase;}
+  .step{display:flex;align-items:center;background:var(--bg-card);border:1px solid var(--border-light);border-radius:10px;overflow:hidden;min-height:var(--tap-sm);}
+  .step button{width:30px;align-self:stretch;background:transparent;border:none;color:var(--primary);font-size:0.72rem;}
+  .step .val{flex:1;text-align:center;color:var(--text-strong);font-size:0.8rem;font-weight:700;font-variant-numeric:tabular-nums;}
+  .equip-pill{display:flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border-light);border-radius:10px;padding:0 12px;min-height:var(--tap-sm);margin-top:6px;font-size:0.7rem;color:var(--text-secondary);}
+  .equip-pill i.chev{margin-left:auto;font-size:0.6rem;color:var(--text-muted);}
+  .notes-grow{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:9px 12px;margin-top:6px;font-size:0.7rem;color:var(--text-secondary);line-height:1.5;}
+
+  .callout{max-width:900px;margin:0 auto 26px;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:16px 20px;font-size:0.8rem;line-height:1.6;color:var(--text-secondary);}
+  .callout b{color:var(--text-strong);}
+</style>
+</head>
+<body>
+
+<h1 class="sec">Workout editor — day chips &amp; row ergonomics</h1>
+<p class="desc">UX-AUDIT-2026-07 §4. Before/after of the expanded workout row. Left: today's ~20px glyph-sized day spans, 24×20px reorder arrows 2px apart, bare number inputs with spinners disabled. Right: 44px day buttons with press feedback, real +/− steppers, drag handle, chevron affordance, auto-grow notes.</p>
+
+<div class="row">
+
+  <!-- ═══ PHONE A: BEFORE ═══ -->
+  <div class="wrap">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div>
+      <div class="content">
+        <div class="pg-head">
+          <div class="pg-back"><i class="fas fa-arrow-left"></i></div>
+          <div class="pg-title">Workouts</div>
+        </div>
+
+        <!-- collapsed row, no chevron -->
+        <div class="t-row">
+          <div class="t-head">
+            <div class="t-icon" style="background:rgba(217,74,122,0.14);color:var(--cat-pull);"><i class="fas fa-hand-fist"></i></div>
+            <div class="t-info"><div class="t-name">Pull day</div><div class="t-meta">6 exercises · Last done 5d ago</div></div>
+            <div class="t-play"><i class="fas fa-play"></i></div>
+          </div>
+        </div>
+
+        <!-- expanded row, BEFORE -->
+        <div class="t-row expanded">
+          <div class="t-head">
+            <div class="t-icon" style="background:rgba(74,144,217,0.14);color:var(--cat-push);"><i class="fas fa-dumbbell"></i></div>
+            <div class="t-info"><div class="t-name">Push day</div><div class="t-meta">7 exercises · ~55 min</div></div>
+            <div class="t-play"><i class="fas fa-play"></i></div>
+          </div>
+          <div class="t-body">
+            <div class="lbl">Days</div>
+            <div class="day-old">
+              <span>M</span><span>T</span><span class="on">W</span><span>T</span><span>F</span><span class="on">S</span><span>S</span>
+            </div>
+            <div class="bad-note"><i class="fas fa-triangle-exclamation"></i> ~20px targets, &lt;span&gt;s, no press feedback</div>
+
+            <div class="lbl">Exercises</div>
+            <div class="ex-old">
+              <div class="ex-old-head">
+                <div class="old-arrows"><i class="fas fa-chevron-up"></i><i class="fas fa-chevron-down"></i></div>
+                <div class="ex-name">Bench Press</div>
+                <div class="old-x"><i class="fas fa-xmark"></i></div>
+              </div>
+              <div class="old-grid">
+                <div><div class="g-lbl">Sets</div><input value="4"></div>
+                <div><div class="g-lbl">Reps</div><input value="8"></div>
+                <div><div class="g-lbl">Weight</div><input value="185"></div>
+              </div>
+            </div>
+            <div class="bad-note"><i class="fas fa-triangle-exclamation"></i> 24×20px arrows, 2px apart · inputs = keyboard only</div>
+
+            <div class="ex-old">
+              <div class="ex-old-head">
+                <div class="old-arrows"><i class="fas fa-chevron-up"></i><i class="fas fa-chevron-down"></i></div>
+                <div class="ex-name">Incline DB Press</div>
+                <div class="old-x"><i class="fas fa-xmark"></i></div>
+              </div>
+              <div class="old-grid">
+                <div><div class="g-lbl">Sets</div><input value="3"></div>
+                <div><div class="g-lbl">Reps</div><input value="10"></div>
+                <div><div class="g-lbl">Weight</div><input value="65"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap-label">A — Current</div>
+    <div class="wrap-sub">Day spans collapse to their glyph (~20px — under even WCAG's reduced 24px minimum). No chevron on collapsed rows, so expansion is undiscoverable next to the play button. Number inputs have native spinners disabled: no tap-to-increment at all.</div>
+  </div>
+
+  <!-- ═══ PHONE B: AFTER ═══ -->
+  <div class="wrap">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div>
+      <div class="content">
+        <div class="pg-head">
+          <div class="pg-back"><i class="fas fa-arrow-left"></i></div>
+          <div class="pg-title">Workouts</div>
+        </div>
+
+        <div class="suggest"><i class="fas fa-calendar-day"></i> Suggested for Thursday: Push day</div>
+
+        <!-- collapsed row, WITH chevron -->
+        <div class="t-row">
+          <div class="t-head">
+            <div class="t-icon" style="background:rgba(217,74,122,0.14);color:var(--cat-pull);"><i class="fas fa-hand-fist"></i></div>
+            <div class="t-info"><div class="t-name">Pull day</div><div class="t-meta">6 exercises · Last done 5d ago</div></div>
+            <i class="fas fa-chevron-right t-chev"></i>
+            <div class="t-play"><i class="fas fa-play"></i></div>
+          </div>
+        </div>
+
+        <!-- expanded row, AFTER -->
+        <div class="t-row expanded">
+          <div class="t-head">
+            <div class="t-icon" style="background:rgba(74,144,217,0.14);color:var(--cat-push);"><i class="fas fa-dumbbell"></i></div>
+            <div class="t-info"><div class="t-name">Push day</div><div class="t-meta">7 exercises · ~55 min</div></div>
+            <i class="fas fa-chevron-right t-chev"></i>
+            <div class="t-play"><i class="fas fa-play"></i></div>
+          </div>
+          <div class="t-body">
+            <div class="lbl">Days</div>
+            <div class="day-new">
+              <button>M</button><button>T</button><button class="on">W</button><button>T</button><button>F</button><button class="on">S</button><button>S</button>
+            </div>
+            <div class="good-note"><i class="fas fa-check"></i> 44px &lt;button&gt;s · aria-pressed · scale on press</div>
+
+            <div class="lbl">Exercises</div>
+            <div class="ex-new">
+              <div class="ex-new-head">
+                <div class="drag"><i class="fas fa-grip-lines"></i></div>
+                <div class="ex-name">Bench Press</div>
+                <div class="new-x"><i class="fas fa-xmark"></i></div>
+              </div>
+              <div class="stepper-grid">
+                <div class="stepper"><div class="g-lbl">Sets</div><div class="step"><button>−</button><span class="val">4</span><button>+</button></div></div>
+                <div class="stepper"><div class="g-lbl">Reps</div><div class="step"><button>−</button><span class="val">8</span><button>+</button></div></div>
+                <div class="stepper"><div class="g-lbl">Weight</div><div class="step"><button>−</button><span class="val">185</span><button>+</button></div></div>
+              </div>
+              <div class="equip-pill"><i class="fas fa-dumbbell"></i> Hammer Strength Flat <i class="fas fa-chevron-right chev"></i></div>
+              <div class="notes-grow">Pause first rep. Warm up shoulders first — band pull-aparts ×20, then two lighter sets.</div>
+            </div>
+            <div class="good-note"><i class="fas fa-check"></i> Drag handle · 36px steppers (tap or hold) · notes auto-grow</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap-label">B — Fixed</div>
+    <div class="wrap-sub">Seven 44px day buttons fit 340px exactly (7×44 + 6×5px gap = 338px). Chevron rotates on expand, separating "open" from "play". Steppers replace bare inputs (tap ± to increment, tap the value for keyboard). Reorder via drag handle instead of stacked 20px arrows.</div>
+  </div>
+
+</div>
+
+<div class="callout">
+  <b>Smallest-diff version</b> if drag-reorder feels heavy: keep the ↑/↓ arrows but at 36×36px with 6px gap, and ship only the day-button fix + chevron + steppers. The day fix alone is ~10 lines of CSS + swapping &lt;span&gt; → &lt;button&gt; in <code>renderSingleTemplateRow</code>'s details accordion (template-selection.js:675-680) — and it's the thing you hit every time you assign a workout to a day.
+</div>
+
+</body>
+</html>

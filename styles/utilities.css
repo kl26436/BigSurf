@@ -55,7 +55,9 @@
     to { transform: translateY(0); opacity: 1; }
 }
 dialog[open]::backdrop {
-    background: var(--overlay-medium);
+    background: var(--overlay-heavy);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
 }
 dialog[open] > .modal-content {
     animation: modal-slide-up var(--anim-slow) ease forwards;

@@ -362,6 +362,15 @@ export async function openPlateCalcPopover(exerciseIndex) {
     // Build popover content
     const existing = document.getElementById('plate-calc-popover');
     if (existing) existing.remove();
+    document.getElementById('plate-calc-backdrop')?.remove();
+
+    // Standard blocking backdrop (UX Phase 0): dim + blur behind the popover,
+    // tap outside to dismiss — this was the only overlay without one.
+    const backdrop = document.createElement('div');
+    backdrop.id = 'plate-calc-backdrop';
+    backdrop.className = 'aw-sheet-backdrop plate-calc-backdrop visible';
+    backdrop.onclick = () => closePlateCalcPopover();
+    document.body.appendChild(backdrop);
 
     const popover = document.createElement('div');
     popover.id = 'plate-calc-popover';
@@ -495,4 +504,5 @@ export async function openPlateCalcPopover(exerciseIndex) {
 export function closePlateCalcPopover() {
     const popover = document.getElementById('plate-calc-popover');
     if (popover) popover.remove();
+    document.getElementById('plate-calc-backdrop')?.remove();
 }

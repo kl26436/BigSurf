@@ -281,6 +281,8 @@
     position: fixed;
     inset: 0;
     background: var(--overlay-heavy);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
     z-index: var(--z-modal);
     display: flex;
     align-items: center;
@@ -765,6 +767,8 @@
     position: fixed;
     inset: 0;
     background: var(--overlay-heavy);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
     z-index: calc(var(--z-modal) - 1);
     opacity: 0;
     transition: opacity var(--anim-normal);

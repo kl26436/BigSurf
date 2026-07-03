@@ -71,6 +71,8 @@
     position: fixed;
     inset: 0;
     background: var(--overlay-heavy);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
     z-index: 500;
     display: none; /* Hidden by default */
     align-items: flex-end;
@@ -196,7 +198,9 @@
 .more-menu-overlay {
     position: fixed;
     inset: 0;
-    background: var(--overlay-medium);
+    background: var(--overlay-heavy);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
     z-index: 740;
     opacity: 0;
     pointer-events: none;
