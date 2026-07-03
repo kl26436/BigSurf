@@ -113,6 +113,21 @@
     overflow-y: auto;
 }
 
+/* Bail-out for a stranger's first run — always reachable, never the loud path */
+.onb-skip {
+    position: absolute;
+    top: calc(var(--space-12) + env(safe-area-inset-top, 0px));
+    right: var(--space-16);
+    z-index: var(--z-sticky);
+    padding: var(--space-6) var(--space-8);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    cursor: pointer;
+}
+
 /* Progress dots */
 .onb-progress {
     display: flex;

@@ -905,7 +905,7 @@ export function getWorkoutHistory(appState) {
             // Create action buttons based on workout status
             // Schema v3.0: Use docId for operations, pass date for display context
             const escapedDocId = escapeAttr(docId);
-            let actionButtons = '';
+            let actionButtons;
             if (workout.status === 'cancelled' || workout.status === 'partial') {
                 actionButtons = `
                 <div class="wh-detail-actions">
@@ -1262,7 +1262,7 @@ export function getWorkoutHistory(appState) {
             // Create action buttons based on workout status
             // Schema v3.0: Use docId for all operations instead of date
             const workoutStatus = workout.status || this.getWorkoutStatus(workout);
-            let actionButtons = '';
+            let actionButtons;
 
             const escapedDocId = escapeAttr(docId);
             if (workoutStatus === 'incomplete') {

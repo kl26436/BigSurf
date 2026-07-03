@@ -1,7 +1,7 @@
 // Error Log UI - core/ui/error-log-ui.js
 // In-app error log viewer for debugging at the gym
 
-import { escapeHtml } from './ui-helpers.js';
+import { escapeHtml, showNotification } from './ui-helpers.js';
 import {
     getErrorLog,
     getUnreadErrorCount,
@@ -209,6 +209,7 @@ export async function showBugReport() {
     document.getElementById('bug-report-submit-btn')?.addEventListener('click', async () => {
         const text = document.getElementById('bug-report-text')?.value?.trim();
         if (!text) {
+            showNotification('Add a description', 'warn');
             document.getElementById('bug-report-text')?.focus();
             return;
         }

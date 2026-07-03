@@ -948,9 +948,10 @@ export function closeDexaDetail() {
 export async function deleteDexaEntry(scanId) {
     await deleteDexaScan(scanId);
     closeDexaDetail();
-    // Refresh history if it's open
+    // Refresh history if it's showing. It's a <section> toggled via .hidden,
+    // not a <dialog>, so `.open` is always undefined — check the class instead.
     const historyModal = document.getElementById('dexa-history-section');
-    if (historyModal?.open) await showDexaHistory();
+    if (historyModal && !historyModal.classList.contains('hidden')) await showDexaHistory();
 }
 
 // ===================================================================

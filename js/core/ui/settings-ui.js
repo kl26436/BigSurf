@@ -540,6 +540,7 @@ function renderOnboardingStep() {
     const step = steps[onboardingStep] || steps[0];
 
     overlay.innerHTML = `
+        <button class="onb-skip" onclick="completeOnboarding()">Skip for now</button>
         <div class="onb-content">
             <div class="onb-progress">${dots}</div>
             ${step.body}
