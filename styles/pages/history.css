@@ -327,8 +327,8 @@
 
 /* 8c: Collapsible search bar */
 .btn-icon-sm {
-    width: 40px;
-    height: 40px;
+    width: var(--tap);
+    height: var(--tap);
     border-radius: var(--radius-pill);
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
