@@ -146,36 +146,36 @@ Audit §5-§6 + supplemental sweep findings.
 - [x] 🔴 Body-weight trend color — the up=red/down=green hardcode lived only inside dead `renderBodyWeightCard`; deleted the function + its `.bodyweight-*` CSS at the source. **(26710c4)**
 - [x] 🔴 DEXA stale history after delete — `historyModal?.open` was always undefined (it's a `<section>`); check `.hidden` instead. App-wide `.open` audit found the exercise-manager sites were already hardened. **(26710c4)**
 - [x] 🟡 DEXA unit switch now converts entered mass values through `convertWeight` (%, BMC, bone density left unit-independent). **(dbe9f9b)**
-- [ ] 🟡 Body measurements: height writes to profile before the form validates/saves — half-submitted form commits one field. *(Remaining — plan's line refs were stale; needs re-locating the height-save flow.)*
+- [x] 🟡 Body measurements: height write-through moved to after the entry saves — no more half-committed height on a failed save. **(1f90953)**
 - [x] 🟡 AI Coach Regenerate now confirms before discarding an edited preview. **(dbe9f9b)**
 - [x] 🟡 Error log empty bug-report submit now shows "Add a description". **(26710c4)**
-- [ ] 🟡 History: consolidate the two workout-detail modals; empty calendar days open add-workout prefilled; calendar cells 38→44px. *(Remaining.)*
-- [ ] 🟡 Settings: add Locations + Equipment rows; merge/clarify the two export actions; Rebuild PRs out of Danger zone.
+- [~] 🟡 History: calendar cells 38→44px + month-nav 36→44px, empty days now open add-workout prefilled. **(1f90953)** *(Consolidating the two workout-detail modals is the remaining sub-item — a refactor left for the drill-down/modal pass.)*
+- [x] 🟡 Settings: added Manage group (Locations + Equipment rows); Rebuild PRs moved out of Danger zone. **(a8e98b1)** *(Two export actions left as-is — they're genuinely distinct: raw CSV/JSON vs AI-formatted JSON.)*
 - [x] 🟡 Add "Progress" to the More menu (Tracking group) — shipped with the quick-win batch. **(b82683e)**
 
 **Copy sweep (one PR, run the CLAUDE.md §11 lint greps)**
 - [x] Sentence-cased CTAs/titles/labels (exercise-manager, DEXA labels, body-measurements, manual-workout, error-log), terminology fixes (template→workout in AI Coach/history/selector), proper `…` ellipses, dropped success-toast exclamation. **(04c8026)** *(Left AI Coach split buttons — coupled to logic keys, read as named categories.)*
 
 **Exercise library refresh (design review 2026-07)**
-- [ ] 🔴 Unify the two exercise pickers — library page (exercise-manager-ui.js) and `openSharedAddExerciseSheet` (active-workout-ui.js:3024) render the same concept with different taxonomies (Chest/Back/Biceps/Triceps vs Push/Pull/Arms), markup, and CSS. Extract one shared list renderer; align on one category taxonomy.
-- [ ] 🟡 Default / Custom / Edited badge on exercise rows — distinction currently only visible in delete-confirm copy.
-- [ ] 🟡 Card tap and Edit button are the identical action — drop the button or give row-tap a distinct job (quick view / PR peek).
-- [ ] 🟡 Reset scroll on filter/search re-render (no scrollTop handling in the file).
-- [ ] 🟢 Remove vestigial `window.selectExerciseCallback` branch (exercise-manager-ui.js:403).
+- [ ] 🔴 Unify the two exercise pickers — library page (exercise-manager-ui.js) and `openSharedAddExerciseSheet` (active-workout-ui.js:3024) render the same concept with different taxonomies (Chest/Back/Biceps/Triceps vs Push/Pull/Arms), markup, and CSS. Extract one shared list renderer; align on one category taxonomy. *(OPEN — needs a taxonomy decision + touches the active-workout add sheet; see status note.)*
+- [x] 🟡 Default / Custom / Edited badge on exercise rows. **(10f4305)**
+- [x] 🟡 Card tap and Edit button were the identical action — dropped the button; whole card opens the editor, chevron affordance. **(10f4305)**
+- [x] 🟡 Reset scroll on filter/search re-render. **(10f4305)**
+- [x] 🟢 Removed vestigial `window.selectExerciseCallback` branch. **(10f4305)**
 
 **Consistency**
-- [ ] Unify range-state defaults/options across drill-down levels; persist pick.
-- [ ] Empty-range messaging in drill-downs ("No data in this range — try All time").
-- [ ] One 44px back-button component (`.d-back` 32px / `.detail-page-header__back` 36px today).
-- [ ] Range pills + `.btn-icon-sm` to 44px; chips.css tokenization.
-- [ ] Delete dead code: `renderBodyWeightCard`, manual-workout no-op exports, brand-view render path.
-- [ ] Consolidate the two deload detectors; insights end in an instruction.
+- [ ] Unify range-state defaults/options across drill-down levels; persist pick. *(OPEN — drill-down consistency pass.)*
+- [ ] Empty-range messaging in drill-downs ("No data in this range — try All time"). *(OPEN — drill-down consistency pass.)*
+- [~] Back-button tap targets: `.d-back` 32→44 and `.detail-page-header__back` 36→44 (var(--tap)). **(837194a)** Full consolidation to one `.page-header__back` class is folded into Phase 2b.
+- [x] Range pills → var(--tap-sm), `.btn-icon-sm` 40→44px. **(604060d)** chips.css tokenization deferred (14px/5px/0.85rem have no exact tokens; snapping risks tiny shifts on a ubiquitous component for zero audit pressure).
+- [x] Delete dead code: `renderBodyWeightCard` (26710c4), manual-workout no-op stubs (837194a), brand-view path (f054fc6).
+- [ ] Consolidate the two deload detectors — **won't-do**: they answer different questions (`detectDeloadWeek` = "am I deloading now?" rolling windows; `checkDeloadNeeded` = "should I deload?" ISO weeks). Merging would lose meaning. Insights already end in an instruction.
 
-## Phase 6 — Docs + active-workout micro-polish (S)
+## Phase 6 — Docs + active-workout micro-polish (S) — ✅ SHIPPED 2026-07-03
 
-- [ ] README: remove deleted-file references (~lines 147, 162, 218), match the updated CLAUDE.md.
-- [ ] Active workout (minor only): merge "Rest done / Ready for your next set" to one line; `title` on +30s/Skip; consider `--font-sm` notes textarea.
-- [ ] Update DESIGN-BACKLOG.md: link this plan as the successor backlog; mark superseded items.
+- [x] README: removed deleted-file references (exercise-progress.js, stats-ui.js, sheet.js, add-exercise-sheet.js). **(65605aa)**
+- [x] Active workout: rest-done banner to one line; `title` on +30s/Skip/Dismiss; notes textarea → --font-sm. **(40f54d2)**
+- [x] DESIGN-BACKLOG.md points to this plan as the successor; overlapping items marked superseded. **(40f54d2)**
 
 ---
 
