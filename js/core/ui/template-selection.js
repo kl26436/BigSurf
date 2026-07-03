@@ -8,6 +8,7 @@ import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { getEquipmentAtLocation, getExercisesAtLocation, checkTemplateCompatibility, categorizeTemplates } from '../features/equipment-planner.js';
+import { getTemplatesForDayOfWeek } from '../features/metrics/aggregators.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 
 // ===================================================================
@@ -492,7 +493,44 @@ function renderTemplateRows(container, templates, isFiltered) {
         return;
     }
 
-    container.innerHTML = templates.map(t => renderSingleTemplateRow(t)).join('');
+    container.innerHTML = renderSuggestedForToday(templates, isFiltered)
+        + templates.map(t => renderSingleTemplateRow(t)).join('');
+
+    // Pre-filled notes textareas start at their content height, not one row.
+    if (typeof window.awAutoGrowNotes === 'function') {
+        container.querySelectorAll('.te-row__notes-field textarea')
+            .forEach((t) => window.awAutoGrowNotes(t));
+    }
+}
+
+/**
+ * "Suggested for [day]" banner — ranks templates by how often they're done on
+ * today's weekday (getTemplatesForDayOfWeek, same source as the dashboard).
+ * Renders nothing when filtering, when history is thin, or when the top pick
+ * was already done today.
+ */
+function renderSuggestedForToday(templates, isFiltered) {
+    if (isFiltered || !cachedWorkoutHistory || cachedWorkoutHistory.length === 0) return '';
+    const dow = new Date().getDay();
+    const ranked = getTemplatesForDayOfWeek(
+        templates.map(t => ({ ...t, name: t._name })),
+        cachedWorkoutHistory,
+        dow
+    );
+    const top = ranked[0];
+    if (!top || top.count < 2) return '';
+    const name = top.template._name;
+    const doneToday = getLastWorkoutDate(name) === AppState.getTodayDateString?.();
+    if (doneToday) return '';
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dow];
+    return `
+        <div class="tpl-suggested" data-stop-propagation
+             data-action="startTemplateRow" data-workout="${escapeAttr(name)}" role="button">
+            <i class="fas fa-calendar-check tpl-suggested__icon"></i>
+            <div class="tpl-suggested__text">Suggested for ${dayName}: <strong>${escapeHtml(name)}</strong></div>
+            <span class="tpl-suggested__go"><i class="fas fa-play"></i></span>
+        </div>
+    `;
 }
 
 function renderSingleTemplateRow(template) {
@@ -567,6 +605,7 @@ function renderSingleTemplateRow(template) {
                 }
                 <div class="row-card__subtitle">${exerciseCount} exercises${timeInfo}</div>
             </div>
+            <i class="fas fa-chevron-down template-row__chev ${isExpanded ? 'template-row__chev--open' : ''}" aria-hidden="true"></i>
             <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
                 <i class="fas fa-play"></i>
             </button>
@@ -666,18 +705,24 @@ function renderTemplateDetailsBody(template) {
     const templateId = template._id;
 
     const catChips = TEMPLATE_CATEGORIES.map(c => `
-        <span class="chip cat-${c.value} ${cat === c.value ? 'active' : ''}"
-              data-action="setTemplateCategory"
-              data-template-id="${escapeAttr(templateId)}"
-              data-cat="${c.value}">${c.label}</span>
+        <button type="button" class="chip cat-${c.value} ${cat === c.value ? 'active' : ''}"
+                aria-pressed="${cat === c.value}"
+                data-action="setTemplateCategory"
+                data-template-id="${escapeAttr(templateId)}"
+                data-cat="${c.value}">${c.label}</button>
     `).join('');
 
-    const dayChipsHtml = DAY_SHORT_LABELS.map((short, i) => `
-        <span class="day-chip ${days.includes(DAY_VALUES[i]) ? 'active' : ''}"
-              data-action="toggleTemplateDay"
-              data-template-id="${escapeAttr(templateId)}"
-              data-day="${DAY_VALUES[i]}">${short}</span>
-    `).join('');
+    const dayChipsHtml = DAY_SHORT_LABELS.map((short, i) => {
+        const active = days.includes(DAY_VALUES[i]);
+        return `
+        <button type="button" class="day-chip ${active ? 'active' : ''}"
+                aria-pressed="${active}"
+                data-action="toggleTemplateDay"
+                data-template-id="${escapeAttr(templateId)}"
+                data-day="${DAY_VALUES[i]}"
+                aria-label="${DAY_VALUES[i].charAt(0).toUpperCase() + DAY_VALUES[i].slice(1)}">${short}</button>
+    `;
+    }).join('');
 
     return `
         <div class="te-details__body">
@@ -727,33 +772,38 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
         ? `${sets} × ${reps} · ${escapeHtml(equipment)}`
         : `${sets} × ${reps}${weight ? ` · ${weight} ${unit}` : ''}`;
 
+    // Real tap targets around each value (mockup: workout-editor-ergonomics).
+    // Tap the value itself for keyboard entry; +/− for one-handed adjustment.
+    const weightStep = unit === 'kg' ? 2.5 : 5;
+    const stepper = (label, field, value, inputAttrs, delta) => `
+        <div class="te-stepper">
+            <div class="te-stepper__label">${label}</div>
+            <div class="te-stepper__controls">
+                <button type="button" class="te-stepper__btn"
+                        data-action="stepExerciseField"
+                        data-template-id="${escapeAttr(templateId)}"
+                        data-index="${idx}" data-field="${field}" data-delta="-${delta}"
+                        aria-label="Decrease ${field}">−</button>
+                <input type="number" ${inputAttrs}
+                       value="${value}"
+                       data-action="updateExerciseField"
+                       data-template-id="${escapeAttr(templateId)}"
+                       data-index="${idx}" data-field="${field}">
+                <button type="button" class="te-stepper__btn"
+                        data-action="stepExerciseField"
+                        data-template-id="${escapeAttr(templateId)}"
+                        data-index="${idx}" data-field="${field}" data-delta="${delta}"
+                        aria-label="Increase ${field}">+</button>
+            </div>
+        </div>
+    `;
+
     const expandedBody = isExpanded ? `
         <div class="te-row__edit" data-stop-propagation>
             <div class="te-row__steppers">
-                <div class="te-stepper">
-                    <div class="te-stepper__label">Sets</div>
-                    <input type="number" inputmode="numeric" min="1" max="20"
-                           value="${sets}"
-                           data-action="updateExerciseField"
-                           data-template-id="${escapeAttr(templateId)}"
-                           data-index="${idx}" data-field="sets">
-                </div>
-                <div class="te-stepper">
-                    <div class="te-stepper__label">Reps</div>
-                    <input type="number" inputmode="numeric" min="1" max="100"
-                           value="${reps}"
-                           data-action="updateExerciseField"
-                           data-template-id="${escapeAttr(templateId)}"
-                           data-index="${idx}" data-field="reps">
-                </div>
-                <div class="te-stepper">
-                    <div class="te-stepper__label">Weight</div>
-                    <input type="number" inputmode="decimal" step="0.5"
-                           value="${weight}"
-                           data-action="updateExerciseField"
-                           data-template-id="${escapeAttr(templateId)}"
-                           data-index="${idx}" data-field="weight">
-                </div>
+                ${stepper('Sets', 'sets', sets, 'inputmode="numeric" min="1" max="20"', 1)}
+                ${stepper('Reps', 'reps', reps, 'inputmode="numeric" min="1" max="100"', 1)}
+                ${stepper('Weight', 'weight', weight, 'inputmode="decimal" step="0.5" min="0"', weightStep)}
             </div>
             <div class="te-row__equip" data-action="openEquipmentForExercise"
                  data-template-id="${escapeAttr(templateId)}" data-index="${idx}">
@@ -1140,6 +1190,28 @@ function setupSelectorDelegation(container) {
                     saveTemplateInline(t, normalizeExercisesToArray(t.exercises))
                         .then(() => renderWorkoutSelectorUI());
                 }
+            } else if (action === 'stepExerciseField') {
+                const field = actionEl.dataset.field;
+                const delta = parseFloat(actionEl.dataset.delta);
+                const input = actionEl.parentElement?.querySelector('input');
+                if (input && Number.isFinite(delta)) {
+                    const cur = parseFloat(input.value) || 0;
+                    let next = cur + delta;
+                    const min = parseFloat(input.min);
+                    const max = parseFloat(input.max);
+                    if (Number.isFinite(min)) next = Math.max(min, next);
+                    if (Number.isFinite(max)) next = Math.min(max, next);
+                    input.value = next;
+                    // Same debounced path as typing — rapid taps coalesce into
+                    // one save, and no mid-tap re-render steals the row.
+                    schedulePendingTemplateEdit({
+                        kind: 'field',
+                        templateId,
+                        index,
+                        field,
+                        value: next,
+                    });
+                }
             } else if (action === 'toggleExerciseExpand') {
                 // .te-row sits inside .template-editor's data-stop-propagation
                 // zone, so this action lands here (not the unreachable check
@@ -1184,6 +1256,12 @@ function setupSelectorDelegation(container) {
         }
         const fieldEl = e.target.closest('[data-action="updateExerciseField"]');
         if (fieldEl) {
+            // Notes textarea grows with content (same pattern as the active
+            // workout's awAutoGrowNotes — reached via window to avoid a new
+            // cross-module import).
+            if (fieldEl.tagName === 'TEXTAREA' && typeof window.awAutoGrowNotes === 'function') {
+                window.awAutoGrowNotes(fieldEl);
+            }
             schedulePendingTemplateEdit({
                 kind: 'field',
                 templateId: fieldEl.dataset.templateId,

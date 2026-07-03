@@ -51,7 +51,7 @@ The product roadmap is the other doc; the launch-blocking subset is:
 One queue across [ux-overhaul-plan-2026-07.md](ux-overhaul-plan-2026-07.md) and [tier3-implementation-plan.md](tier3-implementation-plan.md) — one phase per PR, dev-deploy gate each. Rationale: editor reaches canonical shape before badges land on it (UX-3 before T3-1); equipment-detail restructure and quick-edit sheet are adjacent (UX-4 → T3-7).
 
 1. ✅ UX-0 backdrop unification (S) — shipped 2026-07-02; bare-backdrop check added to design audit
-2. ☐ UX-3 day chips + editor ergonomics (S)
+2. ✅ UX-3 day chips + editor ergonomics (S) — shipped 2026-07-02
 3. ☐ T3-1 gym chip + badges + F1 (M)
 4. ☐ T3-2 picker fast paths + reverse matcher (M)
 5. ☐ T3-3 gym-aware replace + availability rows (M)

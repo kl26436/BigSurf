@@ -351,7 +351,7 @@
 }
 .te-details__day-chips {
     display: flex;
-    gap: var(--space-6);
+    gap: var(--space-4);
 }
 .te-details__hint {
     font-size: var(--font-2xs);
@@ -392,11 +392,13 @@
 .te-row__reorder {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-6);
 }
 .te-row__arrow {
-    width: 24px;
-    height: 20px;
+    /* --tap-sm targets (UX-3) — the old 24×20px arrows were the editor's
+       worst mis-tap source. */
+    width: var(--tap-sm);
+    height: var(--tap-sm);
     border-radius: var(--radius-xs);
     background: transparent;
     border: 0.5px solid var(--border-light);
@@ -405,7 +407,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: var(--font-2xs);
+    font-size: var(--font-xs);
 }
 .te-row__arrow:disabled {
     opacity: 0.3;
@@ -493,13 +495,41 @@
     letter-spacing: 0.05em;
     margin-bottom: 3px;
 }
+.te-stepper__controls {
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-4);
+}
+.te-stepper__btn {
+    width: var(--tap-sm);
+    min-height: var(--tap-sm);
+    flex-shrink: 0;
+    padding: 0;
+    background: var(--bg-app);
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-xs);
+    color: var(--text-main);
+    font-size: var(--font-md);
+    font-family: inherit;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.te-stepper__btn:active {
+    background: var(--bg-card-hi);
+    transform: scale(0.94);
+}
 .te-stepper input {
     width: 100%;
+    min-width: 0;
+    min-height: var(--tap-sm);
     box-sizing: border-box;
     background: var(--bg-app);
     border: 0.5px solid var(--border-light);
     border-radius: var(--radius-xs);
-    padding: 6px 8px;
+    padding: 6px 4px;
     color: var(--text-strong);
     font-size: var(--font-base);
     font-weight: 600;
@@ -753,7 +783,11 @@
 
 /* Day-of-week chip row (7-col grid of uniform circles) */
 .day-chip {
-    aspect-ratio: 1;
+    /* Full 44px tap targets (UX-3): 7 × 44px + 6 × 4px gap = 332px, fits the
+       340px content column. */
+    width: var(--tap);
+    height: var(--tap);
+    padding: 0;
     background: var(--bg-card);
     border: 1.5px solid var(--border-subtle);
     border-radius: 50%;
@@ -762,14 +796,69 @@
     justify-content: center;
     font-size: var(--font-sm);
     font-weight: 600;
+    font-family: inherit;
     color: var(--text-secondary);
     cursor: pointer;
-    transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
+    transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast), transform var(--anim-fast);
+}
+.day-chip:active {
+    transform: scale(0.9);
 }
 .day-chip.active {
     background: var(--primary);
     border-color: var(--primary);
     color: var(--text-on-accent);
+}
+
+/* Collapsed-row expand cue (UX-3): separates "open the editor" from the
+   adjacent play button. Rotates when the row is expanded. */
+.template-row__chev {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    margin-right: var(--space-4);
+    flex-shrink: 0;
+    transition: transform var(--anim-fast);
+}
+.template-row__chev--open {
+    transform: rotate(180deg);
+}
+
+/* "Suggested for [day]" banner above the selector list (UX-3) — ranked by
+   how often each workout is done on today's weekday. Tap starts it. */
+.tpl-suggested {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-12);
+    margin-bottom: var(--space-12);
+    cursor: pointer;
+}
+.tpl-suggested:active {
+    background: var(--bg-card-hi);
+}
+.tpl-suggested__icon {
+    color: var(--primary);
+}
+.tpl-suggested__text {
+    flex: 1;
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    min-width: 0;
+}
+.tpl-suggested__go {
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--text-on-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: var(--font-xs);
 }
 
 /* Phase 9 cleanup: deleted .superset-badge, .ex-row / .ex-info / .ex-name /
