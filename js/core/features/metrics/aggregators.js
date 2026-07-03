@@ -755,6 +755,28 @@ export function exerciseEquipmentCounts(workouts, exerciseName, range = 'All') {
     return { total, byEquipment };
 }
 
+/**
+ * PR-proximity nudge (UX-2): from a list of candidates, pick the exercise a
+ * lifter is closest to PR-ing today — recent best is BELOW the PR but within
+ * `thresholdPct`. Pure: caller normalizes weights to one unit first. Returns
+ * the closest candidate augmented with `gap`/`pct`, or null when none qualify.
+ *
+ * @param {Array<{exercise:string, equipment?:string, unit?:string, prWeight:number, recentBest:number}>} candidates
+ * @param {{thresholdPct?:number}} [opts]
+ */
+export function findPRProximity(candidates, { thresholdPct = 5 } = {}) {
+    let best = null;
+    for (const c of candidates || []) {
+        if (!c || !(c.prWeight > 0) || !(c.recentBest > 0)) continue;
+        if (c.recentBest >= c.prWeight) continue;          // already at/over PR
+        const gap = c.prWeight - c.recentBest;
+        const pct = (gap / c.prWeight) * 100;
+        if (pct > thresholdPct) continue;                  // not close enough
+        if (!best || gap < best.gap) best = { ...c, gap, pct };
+    }
+    return best;
+}
+
 /** Export classifyBodyPart for use by other modules. */
 export { classifyBodyPart };
 

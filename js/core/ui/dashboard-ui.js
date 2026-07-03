@@ -18,9 +18,10 @@ import { showFirstUseTip } from '../features/first-use-tips.js';
 import { updateSetting } from './settings-ui.js';
 
 import {
-    aggregateBodyPartStats, getTemplatesForDayOfWeek,
-    formatVolume, capitalize,
+    aggregateBodyPartStats, getTemplatesForDayOfWeek, aggregateExerciseStats,
+    findPRProximity, formatVolume, capitalize,
 } from '../features/metrics/aggregators.js';
+import { analyzeWeeklyVolume } from '../features/training-insights.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
 import { chartDonut } from '../features/charts/chart-donut.js';
 import { chartLine } from '../features/charts/chart-line.js';
@@ -151,17 +152,28 @@ async function renderDashboard() {
             // Body weight data
             const bwData = await loadBodyWeightData();
 
-            // Build V2 layout
+            // De-dup: today's PRs surface in the banner, so exclude them from
+            // the Recent PRs list below to avoid the same win twice on screen.
+            const todayStr = AppState.getTodayDateString();
+            const todaysPRKeys = new Set(
+                recentPRs.filter(pr => pr.date === todayStr).map(prKey)
+            );
+
+            // Build V2 layout — lead with "what am I doing today?" (UX-2 /
+            // dashboard-v3): For Today first, then a last-session closer, then
+            // the demoted stat chips, composition, PRs, and a Progress link
+            // (the 6 body-part cards moved to the Progress page).
             container.innerHTML = `
                 ${renderGreetingHeader()}
                 ${renderActiveWorkoutPill()}
+                ${renderForToday(allWorkouts)}
+                ${renderLastSessionLine(allWorkouts)}
                 ${renderTodayPRBanner(recentPRs)}
                 ${renderHeroChipRow(streakDays, weekCount, weeklyGoal, bwData, weekPace, detectDeloadWeek(allWorkouts))}
                 ${showInsight ? renderDashboardInsight(topInsight) : ''}
-                ${renderForToday(allWorkouts)}
-                ${renderTrainingSection(allWorkouts)}
                 ${await renderCompositionCard(bwData)}
-                ${renderRecentPRs(recentPRs)}
+                ${renderRecentPRs(recentPRs, todaysPRKeys)}
+                ${renderProgressLinkRow(allWorkouts, topInsight)}
             `;
 
             if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();
@@ -526,12 +538,102 @@ function renderForToday(allWorkouts) {
         lastDoneByType[type] = { date: w.date, duration: w.totalDuration || 0 };
     }
 
+    // The top pick renders as a hero with a one-tap start and a PR-proximity
+    // hook (UX-2). The rest render as compact rows.
+    const [hero, ...rest] = visible;
+    const proximity = findPRProximity(
+        buildProximityCandidates(hero.template, allWorkouts)
+    );
+
     return `
         <div class="dash-section-head">
             <h3>For ${dayName}</h3>
             <a onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">All →</a>
         </div>
-        ${visible.map((r, i) => renderForTodayRow(r, i === 0, dayName, lastDoneByType)).join('')}
+        ${renderForTodayHero(hero, dayName, lastDoneByType, proximity)}
+        ${rest.map(r => renderForTodayRow(r, false, dayName, lastDoneByType)).join('')}
+    `;
+}
+
+/**
+ * Build PR-proximity candidates for a template's exercises (UX-2). Uses the
+ * unit-safe aggregateExerciseStats for recent bests and PRTracker for the
+ * per-exercise PR (max across equipment), both normalized to the display
+ * unit. Returns the array findPRProximity consumes.
+ */
+function buildProximityCandidates(template, allWorkouts) {
+    const unit = AppState.globalUnit || 'lbs';
+    const exercises = Array.isArray(template.exercises)
+        ? template.exercises
+        : Object.values(template.exercises || {});
+    if (exercises.length === 0) return [];
+
+    // Best PR weight per exercise (across equipment), in the display unit.
+    const prByExercise = new Map();
+    for (const pr of PRTracker.getRecentPRs(200)) {
+        const w = convertWeight(pr.weight, pr.unit || 'lbs', unit);
+        const cur = prByExercise.get(pr.exercise);
+        if (!cur || w > cur.prWeight) {
+            prByExercise.set(pr.exercise, { prWeight: w, equipment: pr.equipment });
+        }
+    }
+
+    const candidates = [];
+    for (const ex of exercises) {
+        const name = ex.name || ex.machine;
+        if (!name) continue;
+        const pr = prByExercise.get(name);
+        if (!pr) continue;
+        // Recent best over the exercise's last 2 sessions (sessions are
+        // date-desc since allWorkouts is), already in the display unit.
+        const s = aggregateExerciseStats(allWorkouts, name, 'M');
+        if (!s.sessions.length) continue;
+        const recentBest = Math.max(
+            ...s.sessions.slice(0, 2).flatMap(sess => sess.sets.map(x => x.weight))
+        );
+        candidates.push({ exercise: name, equipment: pr.equipment, unit, prWeight: pr.prWeight, recentBest });
+    }
+    return candidates;
+}
+
+function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByType, proximity) {
+    const category = template.category || getWorkoutCategory(template.name || template.day) || 'other';
+    const icon = getCategoryIcon(category);
+    const exCount = template.exercises ? template.exercises.length : 0;
+    const startArg = escapeAttr(template.day || template.name || template.id);
+
+    const usageText = scheduled ? `Usually ${dayName}` : (count > 0 ? `${count}× on ${dayName}s` : '');
+    const lastDoneText = formatLastDoneMeta(lastDoneByType[template.name || template.day]);
+    const meta = [usageText, lastDoneText].filter(Boolean).join(' · ');
+
+    // PR-proximity hook — forward-looking "you're close, go for it".
+    let prHook = '';
+    if (proximity) {
+        const gap = Math.round(proximity.gap * 10) / 10;
+        const equip = proximity.equipment && proximity.equipment !== 'Unknown Equipment'
+            ? ` (${escapeHtml(proximity.equipment)})` : '';
+        prHook = `
+            <div class="dash-today-hero__pr">
+                <i class="fas fa-trophy"></i>
+                <div class="dash-today-hero__pr-txt"><b>${gap} ${proximity.unit} off your ${escapeHtml(proximity.exercise)} PR</b>${equip} — today's the day</div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="dash-today-hero cat-border-${category.toLowerCase()}" onclick="startWorkout('${startArg}')">
+            <div class="dash-today-hero__top">
+                <div class="dash-today-hero__icon cat-bg-${category.toLowerCase()}"><i class="${icon}"></i></div>
+                <div class="dash-today-hero__info">
+                    <div class="dash-today-hero__name">${escapeHtml(template.name || template.day)}</div>
+                    ${meta ? `<div class="dash-today-hero__meta">${meta} · ${exCount} exercises</div>` : `<div class="dash-today-hero__meta">${exCount} exercises</div>`}
+                </div>
+                <button class="dash-today-hero__start" onclick="event.stopPropagation(); startWorkout('${startArg}')" aria-label="Start ${escapeAttr(template.name || template.day)}">
+                    <i class="fas fa-play"></i>
+                </button>
+            </div>
+            ${prHook}
+        </div>
     `;
 }
 
@@ -552,6 +654,74 @@ function formatLastDoneMeta(rec) {
 export function openWorkoutSelectorForDay(dayName) {
     AppState._workoutSelectorDayFilter = dayName;
     window.bottomNavTo?.('workout');
+}
+
+/**
+ * Last-session one-liner (UX-2): a closing "here's what you did last time" cue
+ * under For Today. Built from the already-loaded workouts — no extra query.
+ * Tapping opens that workout in history.
+ */
+function renderLastSessionLine(allWorkouts) {
+    const last = (allWorkouts || []).find(w => w.completedAt && !w.cancelledAt);
+    if (!last) return '';
+
+    const when = formatRelativeDate(last.date, { daysAgo: true, weeksAgo: true });
+    const mins = Math.round((last.totalDuration || 0) / 60);
+    let volume = 0;
+    for (const ex of Object.values(last.exercises || {})) {
+        for (const s of ex.sets || []) {
+            if (s.reps && s.weight) volume += s.reps * s.weight;
+        }
+    }
+    const unit = AppState.globalUnit || 'lbs';
+    const parts = [
+        `<b>${escapeHtml(last.workoutType || 'Workout')}</b>`,
+        when,
+        mins > 0 ? `${mins} min` : null,
+        volume > 0 ? `${formatVolume(volume)} ${unit} volume` : null,
+    ].filter(Boolean).join(' · ');
+
+    return `
+        <div class="dash-last-session" onclick="viewWorkout('${escapeAttr(last.id)}')">
+            <div class="dash-last-session__check"><i class="fas fa-check"></i></div>
+            <div class="dash-last-session__txt">${parts}</div>
+            <i class="fas fa-chevron-right dash-chev"></i>
+        </div>
+    `;
+}
+
+/**
+ * Progress link row (UX-2): replaces the 6 body-part cards on the dashboard
+ * with one row carrying the single most actionable headline — the lowest
+ * body-part volume vs its weekly target (from analyzeWeeklyVolume), else the
+ * top training insight. The cards themselves live on the Progress page now.
+ */
+function renderProgressLinkRow(allWorkouts, topInsight) {
+    let headline = 'Volume balance, trends, and all your PRs';
+    try {
+        const weekStart = new Date(getDateString());
+        weekStart.setDate(weekStart.getDate() - 7);
+        const weekStartStr = getDateString(weekStart);
+        const weekWorkouts = (allWorkouts || []).filter(w => w.date >= weekStartStr && w.completedAt);
+        const vol = analyzeWeeklyVolume(weekWorkouts, AppState.exerciseDatabase || []);
+        const low = vol.filter(v => v.status === 'low').sort((a, b) => a.weeklySets - b.weeklySets)[0];
+        if (low) {
+            headline = `${capitalize(low.bodyPart)} is low this week — ${low.weeklySets} set${low.weeklySets === 1 ? '' : 's'}`;
+        } else if (topInsight?.message) {
+            headline = topInsight.message;
+        }
+    } catch { /* fall back to the generic headline */ }
+
+    return `
+        <div class="dash-progress-link" onclick="showProgressPage()">
+            <div class="dash-progress-link__icon"><i class="fas fa-chart-line"></i></div>
+            <div class="dash-progress-link__txt">
+                <div class="dash-progress-link__title">Progress</div>
+                <div class="dash-progress-link__sub">${escapeHtml(headline)}</div>
+            </div>
+            <i class="fas fa-chevron-right dash-chev"></i>
+        </div>
+    `;
 }
 
 function renderForTodayRow({ template, count, scheduled }, isMostUsed, dayName, lastDoneByType = {}) {
@@ -595,24 +765,10 @@ function renderForTodayRow({ template, count, scheduled }, isMostUsed, dayName, 
 // TRAINING SECTION — 6 muscle group cards
 // ===================================================================
 
-function renderTrainingSection(allWorkouts) {
-    const stats = BODY_PARTS.map(bp => aggregateBodyPartStats(allWorkouts, bp, 'W'));
-    // Sort: recently trained first, stale at bottom
-    stats.sort((a, b) => {
-        if (a.isStale !== b.isStale) return a.isStale ? 1 : -1;
-        return (a.lastTrained?.daysAgo || 999) - (b.lastTrained?.daysAgo || 999);
-    });
+// (renderTrainingSection removed in UX-2 — the 6 body-part cards live on the
+// Progress page now; the dashboard links out via renderProgressLinkRow.)
 
-    return `
-        <div class="dash-section-head">
-            <h3>Training</h3>
-            <a onclick="showProgressPage()">All →</a>
-        </div>
-        ${stats.map(renderBodyPartCard).join('')}
-    `;
-}
-
-function renderBodyPartCard(s) {
+function renderBodyPartCard(s, volumeByPart) {
     const hv = s.heaviest;
     const heroShort = s.heroLift ? s.heroLift.split(' ')[0] : '';
     const sparkColor = bodyPartColor(s.bodyPart);
@@ -624,12 +780,17 @@ function renderBodyPartCard(s) {
         ? `<div class="bp-cell__sub ${pd < 0 ? 'down' : ''}">${pd > 0 ? '↑' : '↓'} ${Math.abs(pd)} ${unit}</div>`
         : '';
 
+    // Sets/week vs MEV/MRV target (UX-2) — answers "should I care?" directly.
+    // Fed from analyzeWeeklyVolume; absent bodyparts read 0 sets (Low).
+    const chipHtml = renderVolumeChip(volumeByPart, s.bodyPart);
+
     return `
         <div class="bp-card ${s.isStale ? 'stale' : ''}" onclick="showMuscleGroupDetail('${s.bodyPart}')">
             <div class="bp-card__head">
                 <div class="bp-card__label">
                     <div class="bp-card__icon ${BP_TINTS[s.bodyPart]}"><i class="fas ${BP_ICONS[s.bodyPart]}"></i></div>
                     ${capitalize(s.bodyPart)}
+                    ${chipHtml}
                 </div>
                 <i class="fas fa-chevron-right dash-chev"></i>
             </div>
@@ -651,6 +812,35 @@ function renderBodyPartCard(s) {
             }
         </div>
     `;
+}
+
+/**
+ * Sets/week volume chip for a body-part card (UX-2): Low / On target / High
+ * vs the MEV/MRV band (Config.VOLUME_MEV..MRV). `volumeByPart` is a Map of
+ * lowercase body part → weekly working sets. Renders nothing without the map.
+ */
+function renderVolumeChip(volumeByPart, bodyPart) {
+    if (!volumeByPart) return '';
+    const sets = volumeByPart.get(bodyPart) || 0;
+    if (sets < Config.VOLUME_MEV) {
+        return `<span class="vol-chip vol-chip--low">Low · ${sets} set${sets === 1 ? '' : 's'}</span>`;
+    }
+    if (sets > Config.VOLUME_MRV) {
+        return `<span class="vol-chip vol-chip--high">High · ${sets} sets</span>`;
+    }
+    return `<span class="vol-chip vol-chip--good">On target</span>`;
+}
+
+/** Weekly working sets per lowercase body part, over the last 7 days (UX-2). */
+function weeklyVolumeByBodyPart(allWorkouts) {
+    const weekStart = new Date(getDateString());
+    weekStart.setDate(weekStart.getDate() - 7);
+    const weekStartStr = getDateString(weekStart);
+    const weekWorkouts = (allWorkouts || []).filter(w => w.date >= weekStartStr && w.completedAt);
+    const analysis = analyzeWeeklyVolume(weekWorkouts, AppState.exerciseDatabase || []);
+    const map = new Map();
+    for (const v of analysis) map.set((v.bodyPart || '').toLowerCase(), v.weeklySets);
+    return map;
 }
 
 // ===================================================================
@@ -693,10 +883,16 @@ async function renderCompositionCard(bwData) {
             ? `<div class="bw-delta">${bwData.delta < 0 ? '↓' : '↑'} ${Math.abs(bwData.delta).toFixed(1)} ${bwData.unit} · 30 days</div>`
             : '';
 
-        // Build sparkline from entries if available
+        // Build sparkline from the last 30 days only, so it matches the
+        // "· 30 days" delta caption (UX-2 — the window was 90d before).
         let sparkHtml = '';
         if (bwData.entries && bwData.entries.length > 2) {
-            const points = bwData.entries.map((e, i) => ({ x: i, y: e.displayWeight }));
+            const thirtyAgo = new Date();
+            thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+            const thirtyStr = getDateString(thirtyAgo);
+            let recent = bwData.entries.filter(e => e.date >= thirtyStr);
+            if (recent.length < 2) recent = bwData.entries.slice(-8); // fallback: last few
+            const points = recent.map((e, i) => ({ x: i, y: e.displayWeight }));
             sparkHtml = `<div class="bw-spark">${chartSparkline({ points, color: 'var(--primary)', width: 280, height: 32 })}</div>`;
         }
 
@@ -897,13 +1093,22 @@ function prMetaLine(pr) {
     return parts.join(' · ');
 }
 
-function renderRecentPRs(recentPRs) {
-    if (!recentPRs || recentPRs.length === 0) return '';
+/** Stable key for a PR (exercise + equipment) — used to de-dup surfaces. */
+function prKey(pr) {
+    return `${pr.exercise}|${pr.equipment || ''}`;
+}
+
+function renderRecentPRs(recentPRs, excludeKeys = null) {
+    let list = recentPRs || [];
+    if (excludeKeys && excludeKeys.size > 0) {
+        list = list.filter(pr => !excludeKeys.has(prKey(pr)));
+    }
+    if (list.length === 0) return '';
     return `
         <div class="dash-section-head dash-section-head--tight">
             <h3>Recent PRs</h3>
         </div>
-        ${recentPRs.slice(0, 3).map(pr => `
+        ${list.slice(0, 3).map(pr => `
             <div class="pr-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')">
                 <div class="pr-badge"><i class="fas fa-trophy"></i></div>
                 <div class="pr-info">
@@ -961,13 +1166,18 @@ function renderProgressSummary(streak, sessions, prCount) {
 
 function renderVolumeTrend(series) {
     if (!series.some(p => p.y > 0)) return '';
+    const maxY = Math.max(...series.map(p => p.y));
     return `
         <div class="dash-section-head dash-section-head--tight">
             <h3>Weekly volume</h3>
             <span class="dash-section-head__meta">Last ${series.length} weeks</span>
         </div>
         <div class="progress-card">
-            <div class="progress-chart">${chartLine({ points: series, width: 320, height: 120, color: 'var(--primary)', fill: true })}</div>
+            <div class="progress-chart">${chartLine({
+                points: series, width: 320, height: 120, color: 'var(--primary)', fill: true,
+                ariaLabel: `Weekly training volume over the last ${series.length} weeks`,
+                axes: { yMax: formatVolume(maxY), yMin: '0', xStart: `${series.length}w ago`, xEnd: 'Now' },
+            })}</div>
         </div>
     `;
 }
@@ -1019,6 +1229,7 @@ export async function renderProgressPage() {
         if (a.isStale !== b.isStale) return a.isStale ? 1 : -1;
         return (a.lastTrained?.daysAgo || 999) - (b.lastTrained?.daysAgo || 999);
     });
+    const volumeByPart = weeklyVolumeByBodyPart(allWorkouts);
 
     container.innerHTML = `
         <div class="d-header">
@@ -1035,10 +1246,10 @@ export async function renderProgressPage() {
                 ${renderProgressSummary(streakDays, totalSessions, prs.length)}
                 ${renderVolumeTrend(series)}
                 <div class="dash-section-head dash-section-head--tight">
-                    <h3>Training</h3>
-                    <span class="dash-section-head__meta">This week</span>
+                    <h3>Training balance</h3>
+                    <span class="dash-section-head__meta">sets/wk vs target</span>
                 </div>
-                ${stats.map(renderBodyPartCard).join('')}
+                ${stats.map(s => renderBodyPartCard(s, volumeByPart)).join('')}
                 ${renderPRTable(prs)}
             </div>
         </div>

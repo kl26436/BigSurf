@@ -431,6 +431,147 @@
     cursor: pointer;
 }
 
+/* Category tint utilities for template/hero icons (UX-2). Keyed by workout
+   category, distinct from the body-part .ic-* tints. */
+.cat-bg-push      { background: var(--cat-push-bg);      color: var(--cat-push); }
+.cat-bg-pull      { background: var(--cat-pull-bg);      color: var(--cat-pull); }
+.cat-bg-legs      { background: var(--cat-legs-bg);      color: var(--cat-legs); }
+.cat-bg-core      { background: var(--cat-core-bg);      color: var(--cat-core); }
+.cat-bg-cardio    { background: var(--cat-cardio-bg);    color: var(--cat-cardio); }
+.cat-bg-arms      { background: var(--cat-arms-bg);      color: var(--cat-arms); }
+.cat-bg-shoulders { background: var(--cat-shoulders-bg); color: var(--cat-shoulders); }
+.cat-bg-other     { background: var(--muted-bg);         color: var(--text-secondary); }
+
+/* ── For Today hero (UX-2 / dashboard-v3): the first block, one-tap start,
+   PR-proximity hook. ── */
+.dash-today-hero {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: var(--space-8);
+    cursor: pointer;
+}
+.dash-today-hero.cat-border-push      { border-color: var(--cat-push-border); }
+.dash-today-hero.cat-border-pull      { border-color: var(--cat-pull-border); }
+.dash-today-hero.cat-border-legs      { border-color: var(--cat-legs-border); }
+.dash-today-hero.cat-border-core      { border-color: var(--cat-core-border); }
+.dash-today-hero.cat-border-cardio    { border-color: var(--cat-cardio-border); }
+.dash-today-hero.cat-border-arms      { border-color: var(--cat-arms-border); }
+.dash-today-hero.cat-border-shoulders { border-color: var(--cat-shoulders-border); }
+.dash-today-hero__top { display: flex; align-items: center; gap: 12px; }
+.dash-today-hero__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-lg);
+    flex-shrink: 0;
+}
+.dash-today-hero__info { flex: 1; min-width: 0; }
+.dash-today-hero__name { color: var(--text-strong); font-size: var(--font-md); font-weight: 700; }
+.dash-today-hero__meta { color: var(--text-secondary); font-size: var(--font-2xs); margin-top: 2px; }
+.dash-today-hero__start {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--text-on-accent);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-base);
+    flex-shrink: 0;
+    cursor: pointer;
+    box-shadow: 0 4px 12px var(--success-glow);
+}
+.dash-today-hero__start:active { transform: scale(0.94); }
+.dash-today-hero__pr {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin-top: 12px;
+    background: var(--badge-gold-bg);
+    border: 1px solid var(--badge-gold-border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+}
+.dash-today-hero__pr i { color: var(--badge-gold); font-size: var(--font-xs); }
+.dash-today-hero__pr-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
+.dash-today-hero__pr-txt b { color: var(--text-strong); }
+
+/* ── Last-session one-liner ── */
+.dash-last-session {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin: 10px 0 4px;
+    cursor: pointer;
+}
+.dash-last-session__check {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--success-bg);
+    color: var(--success);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-2xs);
+    flex-shrink: 0;
+}
+.dash-last-session__txt { flex: 1; font-size: var(--font-2xs); color: var(--text-secondary); line-height: 1.4; min-width: 0; }
+.dash-last-session__txt b { color: var(--text-main); font-weight: 600; }
+
+/* ── Progress link row (replaces the 6 body-part cards on the dashboard) ── */
+.dash-progress-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 11px 12px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+.dash-progress-link__icon {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-xs);
+    background: var(--primary-bg);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+}
+.dash-progress-link__txt { flex: 1; min-width: 0; }
+.dash-progress-link__title { color: var(--text-main); font-size: var(--font-xs); font-weight: 600; }
+.dash-progress-link__sub { color: var(--text-muted); font-size: var(--font-2xs); margin-top: 1px; }
+
+/* ── Body-part volume chip (Low / On target / High vs MEV/MRV) ── */
+.vol-chip {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-left: 6px;
+}
+.vol-chip--low  { background: var(--warning-bg-subtle); color: var(--warning-moderate); border: 1px solid var(--warning-border); }
+.vol-chip--good { background: var(--success-bg-subtle); color: var(--success); border: 1px solid var(--success-border); }
+.vol-chip--high { background: var(--danger-moderate-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+
 /* ===== RECENT PR ROW ===== */
 .pr-row {
     background: var(--bg-card);
