@@ -221,12 +221,14 @@ dialog[open] > .modal-content {
     margin-bottom: var(--space-12);
 }
 
-/* Header */
+/* Header — compact centered logo. Kept small (was 80px + 16px padding ≈ 113px)
+   so For Today clears the fold on the dashboard, which is the whole point of
+   the UX-2 reorder. Shown on dashboard + history. */
 .header {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--space-16);
+    padding: var(--space-10) var(--space-16);
     background: var(--bg-app);
     border-bottom: 1px solid var(--border);
     position: relative;
@@ -238,16 +240,16 @@ dialog[open] > .modal-content {
     display: none !important;
 }
 .logo-img {
-    height: 80px;
+    height: 48px;
 }
 .logo-fallback {
-    width: 80px;
-    height: 80px;
+    width: 48px;
+    height: 48px;
     background: var(--primary);
     color: var(--bg-app);
     border-radius: var(--radius-sm);
     font-weight: 700;
-    font-size: var(--font-xl);
+    font-size: var(--font-md);
     display: flex;
     align-items: center;
     justify-content: center;
