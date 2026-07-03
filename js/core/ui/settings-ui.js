@@ -307,6 +307,35 @@ export function renderSettings() {
                 </div>
             </div>
 
+            <!-- Manage -->
+            <div class="group-label">Manage</div>
+            <div class="group">
+                <div class="srow srow--clickable" onclick="navigateTo('location')">
+                    <div class="srow-icon ic-muted"><i class="fas fa-map-marker-alt"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Locations</div>
+                        <div class="srow-desc">Your gyms</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
+                <div class="srow srow--clickable" onclick="navigateTo('equipment-library')">
+                    <div class="srow-icon ic-muted"><i class="fas fa-dumbbell"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Equipment</div>
+                        <div class="srow-desc">Machines &amp; gear</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
+                <div class="srow srow--clickable" onclick="rebuildPRsFromSettings()">
+                    <div class="srow-icon ic-muted"><i class="fas fa-sync-alt"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Rebuild PRs</div>
+                        <div class="srow-desc">Recalculate from workout history</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
+            </div>
+
             <!-- Data -->
             <div class="group-label">Data</div>
             <div class="group">
@@ -340,13 +369,6 @@ export function renderSettings() {
                 <div class="srow srow--clickable" onclick="signOutUser()">
                     <div class="srow-icon ic-danger"><i class="fas fa-sign-out-alt"></i></div>
                     <div class="srow-info"><div class="srow-name srow-name--danger">Sign out</div></div>
-                </div>
-                <div class="srow srow--clickable" onclick="rebuildPRsFromSettings()">
-                    <div class="srow-icon ic-muted"><i class="fas fa-sync-alt"></i></div>
-                    <div class="srow-info">
-                        <div class="srow-name">Rebuild PRs</div>
-                        <div class="srow-desc">Recalculate from workout history</div>
-                    </div>
                 </div>
             </div>
 
