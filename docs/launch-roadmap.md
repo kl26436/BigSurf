@@ -61,7 +61,7 @@ One queue across [ux-overhaul-plan-2026-07.md](ux-overhaul-plan-2026-07.md) and 
 9. ☐ UX-1 equipment-aware trends + chart axes (M)
 10. ☐ UX-2 dashboard reorder (M)
 11. ☐ UX-4 equipment detail restructure (L)
-12. ☐ T3-7 equipment quick-edit sheet (M)
+12. ✅ T3-7 equipment quick-edit sheet (M) — shipped 2026-07-02 (pulled ahead of UX-4; it's a standalone sheet, so the detail-page restructure doesn't rework it)
 13. ☐ UX-5 + UX-6 fit-and-finish + docs (interleave as filler)
 
 - ☐ **Offline support** — Firestore offline persistence. Gyms have bad signal; this is table stakes before charging **[CC]**

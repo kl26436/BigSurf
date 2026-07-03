@@ -547,10 +547,27 @@ function renderEquipLine(equipmentName, idx) {
         <div class="aw-equip-line">
             <i class="fas fa-cog"></i>
             <span class="aw-equip-line__name">${equipmentName ? escapeHtml(equipmentName) + baseWeightStr : 'Choose equipment'}</span>
+            ${equipmentName ? `<button class="aw-equip-line__more" onclick="awQuickEditEquipment(${idx}, '${escapeAttr(equipmentName)}')" aria-label="Edit ${escapeAttr(equipmentName)}"><i class="fas fa-ellipsis-h"></i></button>` : ''}
             <button class="aw-equip-line__change" onclick="awOpenEquipmentSheet(${idx})" aria-label="Change equipment"><i class="fas fa-exchange-alt"></i> Change</button>
         </div>
         ${renderSettingsChips(eq, idx)}
     `;
+}
+
+/**
+ * Open the equipment quick-edit sheet (Tier 3 Phase 7 / F5) with the current
+ * exercise offered as a suggested link. Dynamic import — the module is new,
+ * so it can never be version-skewed against a stale cached copy.
+ */
+export async function awQuickEditEquipment(exerciseIdx, equipName) {
+    const exercise = AppState.currentWorkout?.exercises?.[exerciseIdx];
+    const exName = exercise ? getExerciseName(exercise) : null;
+    try {
+        const { openEquipmentQuickEdit } = await import('../ui/equipment-quick-edit.js');
+        openEquipmentQuickEdit(equipName, { contextExercise: exName });
+    } catch (e) {
+        console.error('Quick edit failed to open:', e);
+    }
 }
 
 /**
@@ -2149,6 +2166,9 @@ function renderEquipmentSheet(exerciseIdx) {
                     <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__loc-icon"></i> ${escapeHtml(locStr)}` : ''}</div>
                     ${settingsStr ? `<div class="js-row__meta js-row__meta--settings">${escapeHtml(settingsStr)}</div>` : ''}
                 </div>
+                <button class="js-row__more" onclick="event.stopPropagation(); awQuickEditEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}')" aria-label="Edit ${escapeAttr(eq.name)}">
+                    <i class="fas fa-ellipsis-h"></i>
+                </button>
             </div>
         `;
     };
@@ -3790,6 +3810,7 @@ window.awEquipFastPath = awEquipFastPath;
 window.awSharedEquipFreeWeights = awSharedEquipFreeWeights;
 window.awSharedEquipFastPath = awSharedEquipFastPath;
 window.awPickSuggestedMachine = awPickSuggestedMachine;
+window.awQuickEditEquipment = awQuickEditEquipment;
 window.awOpenSettingsSheet = awOpenSettingsSheet;
 window.awSettingsField = awSettingsField;
 window.awSettingsAdd = awSettingsAdd;
