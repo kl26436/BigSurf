@@ -144,7 +144,6 @@ BigSurf/
         │   ├── body-measurements{,.ui}.js  # Weight tracking + dashboard widget + entry modal
         │   ├── dexa-scan{,-ui}.js          # DEXA scan import + history views
         │   ├── equipment-planner.js        # Equipment-aware exercise ranking ("at this gym")
-        │   ├── exercise-progress.js        # Per-exercise charts
         │   ├── location-{service,ui}.js    # GPS detection + locations UI
         │   ├── manual-workout.js           # Manual workout entry (full-page two-step)
         │   ├── plate-calculator.js         # Plate breakdown
@@ -159,9 +158,7 @@ BigSurf/
         │   ├── exercise-manager-ui.js      # Exercise library + create-exercise modal host
         │   ├── navigation.js               # Bottom nav + section routing
         │   ├── settings-ui.js              # Settings page + onboarding flow
-        │   ├── stats-ui.js                 # Stats page
-        │   ├── sheet.js                    # Bottom-sheet primitive (openSheet/awCloseSheet)
-        │   ├── add-exercise-sheet.js       # Shared add-exercise sheet (active workout + template editor)
+        │   ├── confirm-sheet.js            # confirmSheet()/promptSheet() — promise-based native-dialog replacement
         │   ├── equipment-picker.js         # Equipment picker render helper
         │   ├── template-selection.js       # Workouts page — unified library + inline editor
         │   ├── ui-helpers.js               # Notifications, conversions, modal helpers

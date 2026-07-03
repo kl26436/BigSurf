@@ -60,9 +60,22 @@ One queue across [ux-overhaul-plan-2026-07.md](ux-overhaul-plan-2026-07.md) and 
 8. ✅ T3-6 machine settings memory (M) — shipped 2026-07-02
 9. ✅ UX-1 equipment-aware trends + chart axes (M) — shipped 2026-07-02
 10. ✅ UX-2 dashboard reorder (M) — shipped 2026-07-02
-11. ☐ UX-4 equipment detail restructure (L)
+11. ✅ UX-4 equipment detail restructure (L) — shipped 2026-07-03 in slices:
+    4a small fixes (8467c0a: search-gating bug, sec-head dup, dead View-all),
+    4b dead "By Brand" view removal (f054fc6), 4c read-first restructure
+    (4de2c52: hero→identity sheet, base-weight sheet, used-for sheet,
+    scroll-preserve, danger card). Equipment↔gym write path was already unified
+    via syncCatalogRefOnLocation (Tier 0.1). Remaining bullet: "Edit form video"
+    entry point from the active-workout exercise menu — deferred as a new
+    active-workout feature needing on-device flow verification.
 12. ✅ T3-7 equipment quick-edit sheet (M) — shipped 2026-07-02 (pulled ahead of UX-4; it's a standalone sheet, so the detail-page restructure doesn't rework it)
-13. ☐ UX-5 + UX-6 fit-and-finish + docs (interleave as filler)
+13. ◐ UX-5 + UX-6 fit-and-finish + docs — in progress (2026-07-03):
+    Progress-page crash fix (08c3125); UX-5 batch A (26710c4: onboarding skip,
+    DEXA history refresh, error-log feedback, dead renderBodyWeightCard purge);
+    batch B copy sweep (04c8026); batch C (dbe9f9b: DEXA unit conversion, AI
+    regenerate confirm). Remaining 🟡: BW height validate-before-save, history
+    modal consolidation, settings Locations/Equipment rows, consistency sweep
+    (range-state, 44px back button), README/DESIGN-BACKLOG cleanup.
 
 - ☐ **Offline support** — Firestore offline persistence. Gyms have bad signal; this is table stakes before charging **[CC]**
 - ☐ Onboarding pass — a stranger's first 5 minutes, not yours. Test on someone who's never seen it **[You + CW critique]**

@@ -82,34 +82,36 @@ Audit §4. Mockup: `workout-editor-ergonomics.html`. Smallest diff, highest dail
 - [ ] "Suggested for [day]" banner on the selector via `getTemplatesForDayOfWeek` (already built for the dashboard).
 - [ ] Tests: `window-wiring.test.js` will catch handler wiring; add tap-target lint note to DESIGN-BACKLOG.
 
-## Phase 4 — Equipment detail restructure (L)
+## Phase 4 — Equipment detail restructure (L) — SHIPPED 2026-07-03
 
 Audit §3. Mockup: `equipment-detail-redesign.html`.
 
-- [ ] Restructure `openEquipmentDetail()` into 7 groups: hero card (tap → identity sheet: name/brand/line/function/type) · stat strip (keep) · Setup row-card (base weight → sheet) · Locations chips (keep inline) · Used-for compact row-cards (tap → sheet: Remove / Edit form video / open video) · Notes · danger card with honest consequence copy.
-- [ ] Section-scoped re-render (or scroll restore) — kill the full-page `innerHTML` reset that scrolls to top on every row action.
-- [ ] One shared write path for equipment↔gym links (legacy `equipment.locations[]` + catalog `location.equipment[]`).
-- [ ] Fix: dead "View all →" (location-ui.js:915); search gated behind `locations.length > 0`; duplicate `.sec-head` in page-header.css; `.equip-lib-search` → `.field-search`; `.filter-pill` → `.chip`; delete dead brand-view path.
-- [ ] "Edit form video" entry point from the workout-flow exercise menu.
-- [ ] Tests: extend `template-management.test.js`-style coverage for the shared location-write helper (pure part).
+- [x] Restructure `openEquipmentDetail()` into 7 groups: hero card (tap → identity sheet: name/brand/line/function/type) · stat strip (keep) · Setup row-card (base weight → sheet) · Locations chips (keep inline) · Used-for compact row-cards (tap → sheet: Remove / edit form video / open video) · Notes · danger card with honest consequence copy. **(4de2c52)**
+- [x] Scroll restore — capture/restore scrollTop across every in-place re-render, killing the full-page reset that scrolled to top on every row action. **(4de2c52)**
+- [x] One shared write path for equipment↔gym links — already unified via `syncCatalogRefOnLocation` (Tier 0.1); every mutation site (add/remove location, delete equipment, quick-add) routes through it.
+- [x] Fix: dead "View all →" (8467c0a); search no longer gated behind `locations.length > 0` (8467c0a); duplicate `.sec-head` in page-header.css (8467c0a); dead "By Brand" view path deleted (f054fc6). *(Deferred: `.equip-lib-search`→`.field-search` and `.filter-pill`→`.chip` — cosmetic list-view class renames, no behavior change.)*
+- [ ] "Edit form video" entry point from the workout-flow exercise menu — **deferred**: a new active-workout feature (highest-risk surface) needing a cross-module equipment-by-name→id lookup + on-device verification of change-equipment/replace/add/complete flows. Form-video editing already ships in the used-for sheet.
+- [ ] Tests: shared location-write helper coverage — deferred with the form-video entry.
+
+## Phase 4 remaining is optional polish; the substance shipped.
 
 ## Phase 5 — Fit & finish sweep (M, parallelizable)
 
 Audit §5-§6 + supplemental sweep findings.
 
 **Bugs/dead-ends**
-- [ ] 🔴 Onboarding has no skip/exit — full-screen, 5 steps, no X (settings-ui.js:390-549). Add "Skip for now" that sets `hasCompletedOnboarding`.
-- [ ] 🔴 Body-weight trend color hardcodes up=red/down=green (body-measurements.css:43-51), ignoring `weightGoal` — the exact trap `getBwDeltaDirectionClass` was built to avoid. Reuse it.
-- [ ] 🔴 DEXA: `historyModal?.open` never true (it's a `<section>`) → stale history after delete (dexa-scan-ui.js:953). Do an app-wide pass on `.open` checks against non-`<dialog>` elements (same smell in exercise-manager-ui.js:1137,1358).
-- [ ] 🟡 DEXA unit switch re-labels chips without converting entered values (dexa-scan-ui.js:207).
-- [ ] 🟡 Body measurements: height writes to profile before the form validates/saves — half-submitted form commits one field (body-measurements-ui.js:333-380).
-- [ ] 🟡 AI Coach: Regenerate discards an edited preview without confirm (ai-coach-ui.js:928).
-- [ ] 🟡 Error log: empty bug-report submit gives zero feedback (error-log-ui.js:209-214) — add the standard warning notification.
-- [ ] 🟡 History: consolidate the two workout-detail modals; make empty calendar days open add-workout prefilled; calendar cells 38→44px.
-- [ ] 🟡 Settings: add Locations + Equipment rows; merge/clarify the two export actions; Rebuild PRs out of Danger zone.
+- [x] 🔴 Onboarding "Skip for now" — reachable on every step, sets `hasCompletedOnboarding`. **(26710c4)**
+- [x] 🔴 Body-weight trend color — the up=red/down=green hardcode lived only inside dead `renderBodyWeightCard`; deleted the function + its `.bodyweight-*` CSS at the source. **(26710c4)**
+- [x] 🔴 DEXA stale history after delete — `historyModal?.open` was always undefined (it's a `<section>`); check `.hidden` instead. App-wide `.open` audit found the exercise-manager sites were already hardened. **(26710c4)**
+- [x] 🟡 DEXA unit switch now converts entered mass values through `convertWeight` (%, BMC, bone density left unit-independent). **(dbe9f9b)**
+- [ ] 🟡 Body measurements: height writes to profile before the form validates/saves — half-submitted form commits one field. *(Remaining — plan's line refs were stale; needs re-locating the height-save flow.)*
+- [x] 🟡 AI Coach Regenerate now confirms before discarding an edited preview. **(dbe9f9b)**
+- [x] 🟡 Error log empty bug-report submit now shows "Add a description". **(26710c4)**
+- [ ] 🟡 History: consolidate the two workout-detail modals; empty calendar days open add-workout prefilled; calendar cells 38→44px. *(Remaining.)*
+- [ ] 🟡 Settings: add Locations + Equipment rows; merge/clarify the two export actions; Rebuild PRs out of Danger zone. *(Remaining.)*
 
 **Copy sweep (one PR, run the CLAUDE.md §11 lint greps)**
-- [ ] Title-case worst offender: exercise-manager-ui.js (page title, every CTA, `EDIT` badge). Then plate-calculator.js field labels, body-measurements-ui.js (`Log Measurements`, `Save Entry`), DEXA (`New Scan`, `Enter Manually`), manual-workout (`Add Exercise`, `Add Set`, `...` ellipsis), AI Coach (`Save as Template` → `Save as workout` — terminology rule), locations (`Coordinates set!`), error log (`Report a Bug`, `submitted!`).
+- [x] Sentence-cased CTAs/titles/labels (exercise-manager, DEXA labels, body-measurements, manual-workout, error-log), terminology fixes (template→workout in AI Coach/history/selector), proper `…` ellipses, dropped success-toast exclamation. **(04c8026)** *(Left AI Coach split buttons — coupled to logic keys, read as named categories.)*
 
 **Consistency**
 - [ ] Unify range-state defaults/options across drill-down levels; persist pick.
