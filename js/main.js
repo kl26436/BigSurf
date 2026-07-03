@@ -256,9 +256,6 @@ import {
     proceedToExerciseSelection,
     backToBasicInfo,
     finishManualWorkout,
-    editManualExercise,
-    markManualExerciseComplete,
-    closeManualExerciseEntry,
 } from './core/features/manual-workout.js';
 
 // Exercise manager functionality
@@ -691,9 +688,6 @@ window.closeEquipmentPickerForManual = closeEquipmentPickerForManual;
 window.proceedToExerciseSelection = proceedToExerciseSelection;
 window.backToBasicInfo = backToBasicInfo;
 window.finishManualWorkout = finishManualWorkout;
-window.editManualExercise = editManualExercise;
-window.markManualExerciseComplete = markManualExerciseComplete;
-window.closeManualExerciseEntry = closeManualExerciseEntry;
 
 // Exercise Manager Functions
 window.openExerciseManager = openExerciseManager;

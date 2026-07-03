@@ -978,16 +978,3 @@ export function backToBasicInfo() {
 export function finishManualWorkout() {
     saveManualWorkout();
 }
-
-// Stubs for old functions
-export function editManualExercise(index) {
-    // Not needed in new design - inline editing
-}
-
-export function markManualExerciseComplete(index) {
-    // Not needed - all exercises assumed complete in manual entry
-}
-
-export function closeManualExerciseEntry() {
-    // Not needed in new design
-}
