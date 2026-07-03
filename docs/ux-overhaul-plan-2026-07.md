@@ -40,7 +40,9 @@ Enforcement: after Phase 0 and Phase 5, ratchet `scripts/design-audit.js` budget
 
 ---
 
-## Phase 0 — Backdrop unification: the "focus blur" system (S)
+## Phase 0 — Backdrop unification: the "focus blur" system (S) — ✅ SHIPPED as UX-0 (2026-07-02)
+
+`--backdrop-blur` token + `backdrop-filter` applied across all blocking backdrops; design-audit gate (0 missing) enforces it. Tracked in launch-roadmap.md §4.
 
 The blur treatment already exists in exactly one place — `confirm-sheet.css:25-31` (`backdrop-filter: blur(4px)`, with a comment explaining the rationale). Every other overlay is a plain dim, split inconsistently between `--overlay-medium` (0.5) and `--overlay-heavy` (0.7) with no rule for which gets which. Standardize.
 
@@ -57,7 +59,7 @@ The blur treatment already exists in exactly one place — `confirm-sheet.css:25
 - [ ] Perf guard: transition `opacity` only (never animate the blur), keep blur ≤4px. 🧪 Verify on-device that sheet open/close stays smooth — `backdrop-filter` is GPU-composited but can jank on older Android if animated.
 - [ ] Gate: `npm run audit:design` + visual pass over every sheet/modal on dev.
 
-## Phase 1 — Trust the numbers: equipment-aware trends + chart axes (M)
+## Phase 1 — Trust the numbers: equipment-aware trends + chart axes (M) — ✅ SHIPPED as UX-1 (4c6a41f)
 
 Audit §1a/§2. Mockup: `exercise-detail-v2.html`.
 
@@ -68,7 +70,7 @@ Audit §1a/§2. Mockup: `exercise-detail-v2.html`.
 - [ ] Chart primitives (`chart-line.js`, `chart-combo-bars-line.js`): Y min/max + X start/end date `<text>` labels; `aria-label` on the SVG. Sparklines stay bare.
 - [ ] Tests: extend `progress-calculations.test.js` — same-name/different-equipment fixtures assert filtered vs combined stats; axis-label output snapshot for chartLine.
 
-## Phase 2 — Dashboard reorder + Progress gets a job (M)
+## Phase 2 — Dashboard reorder + Progress gets a job (M) — ✅ SHIPPED as UX-2 (b222edc)
 
 Audit §1b. Mockup: `dashboard-v3.html`.
 
@@ -96,7 +98,7 @@ User-reported: back buttons sometimes land on the dashboard instead of the prior
 - [ ] Raise MAX_STACK_SIZE (5 → 10) and skip pushing a view onto the stack when it equals the top (dedupe re-renders).
 - [ ] Add to the consistency contract: one back system. Test: from dashboard → Progress → muscle group → exercise → equipment detail → back ×4 lands you exactly where you came from.
 
-## Phase 3 — Day chips + editor ergonomics (S)
+## Phase 3 — Day chips + editor ergonomics (S) — ✅ SHIPPED as UX-3 (2026-07-02)
 
 Audit §4. Mockup: `workout-editor-ergonomics.html`. Smallest diff, highest daily-annoyance relief — can ship before Phases 1-2 if preferred.
 

@@ -835,20 +835,29 @@
     text-overflow: ellipsis;
 }
 /* .exercise-card-meta consolidated below (§9a). Keep as a single declaration. */
-.exercise-card-edit {
-    width: var(--tap-sm);
-    height: var(--tap-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    color: var(--text-muted);
-    cursor: pointer;
+
+/* Origin badge (Custom / Edited) + tap-affordance chevron. The whole card
+   opens the editor now, so the standalone Edit button was removed. */
+.exercise-card-badge {
+    flex-shrink: 0;
+    padding: var(--space-2) var(--space-8);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    letter-spacing: 0.02em;
 }
-.exercise-card-edit:active {
-    background: var(--border-subtle);
+.exercise-card-badge--custom {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+.exercise-card-badge--edited {
+    background: var(--warning-bg);
+    color: var(--warning);
+}
+.exercise-card-chev {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
 }
 
 /* Quick Add Chips (recent exercises) */

@@ -245,6 +245,9 @@ function filterAndRenderExercises(searchTerm = '') {
     });
 
     renderExercises();
+    // A changed filter/search is a new result set — jump back to the top so
+    // the user isn't stranded mid-scroll over unrelated results.
+    document.getElementById('exercise-manager-grid')?.closest('.content-section-body')?.scrollTo?.(0, 0);
 }
 
 // Close exercise manager section
@@ -374,6 +377,14 @@ function renderExercises() {
             const usageBadge = usageCount > 0
                 ? `<span class="exercise-usage-badge">&times;${usageCount}</span>`
                 : '';
+            // Origin badge — surface the Custom/Edited distinction that was only
+            // visible in delete-confirm copy before. Defaults get no badge
+            // (they're the norm; a badge on every row would be noise).
+            const originBadge = exercise.isCustom
+                ? '<span class="exercise-card-badge exercise-card-badge--custom">Custom</span>'
+                : exercise.isOverride
+                    ? '<span class="exercise-card-badge exercise-card-badge--edited">Edited</span>'
+                    : '';
 
             return `
             <div class="exercise-card-new" data-action="exerciseCardClick" data-exercise-id="${eid}">
@@ -384,29 +395,20 @@ function renderExercises() {
                     <span class="exercise-card-name">${escapeHtml(exercise.name)}</span>
                     <span class="exercise-card-meta">${escapeHtml(exercise.bodyPart)}${exercise.equipmentType ? ' · ' + escapeHtml(exercise.equipmentType) : ''}</span>
                 </div>
+                ${originBadge}
                 ${usageBadge}
-                <button class="exercise-card-edit" data-action="editExercise" data-exercise-id="${eid}" title="Edit">
-                    Edit
-                </button>
+                <i class="fas fa-chevron-right exercise-card-chev" aria-hidden="true"></i>
             </div>
         `;
         })
         .join('');
 }
 
-// Handle exercise card click (for adding to workout)
+// The whole card opens the editor. (The redundant "Edit" button and a
+// never-set `window.selectExerciseCallback` add-to-workout branch were removed
+// — adding to a workout goes through openSharedAddExerciseSheet, not here.)
 export function handleExerciseCardClick(exerciseId) {
-    const exercise = allExercises.find((e) => e.id === exerciseId);
-    if (!exercise) return;
-
-    // Check if we're in "add to workout" context
-    if (window.selectExerciseCallback) {
-        // Call the callback with the exercise
-        window.selectExerciseCallback(exercise);
-    } else {
-        // Default behavior: open edit
-        editExercise(exerciseId);
-    }
+    editExercise(exerciseId);
 }
 
 // Filter exercises - used by both category view search and list view search
