@@ -1070,6 +1070,15 @@ export function getWorkoutHistory(appState) {
         setupCalendarClickEvents() {
             // Wait a bit for the calendar to render, then add click events
             setTimeout(() => {
+                // Empty current-month days → start a manual workout prefilled
+                // to that date. (Padding days from other months stay inert.)
+                document.querySelectorAll('.calendar-day:not(.has-workout):not(.other-month)').forEach((day) => {
+                    day.addEventListener('click', () => {
+                        const dateStr = day.getAttribute('data-date');
+                        if (dateStr) window.showAddManualWorkoutModal?.(dateStr);
+                    });
+                });
+
                 document.querySelectorAll('.calendar-day.has-workout').forEach((day) => {
                     if (day) {
                         day.addEventListener('click', (event) => {

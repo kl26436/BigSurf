@@ -407,7 +407,7 @@
    Keep has-workout with a subtle fill (restored from the §8e strip-to-transparent) so
    workout days read as controls, not decoration. Keep today's border for clarity. */
 .calendar-day {
-    min-height: 38px;
+    min-height: var(--tap);
     padding: var(--space-4) var(--space-2);
     border-radius: var(--radius-sm);
 }
@@ -427,8 +427,8 @@
     margin-bottom: var(--space-8);
 }
 .nav-button {
-    width: 36px;
-    height: 36px;
+    width: var(--tap);
+    height: var(--tap);
 }
 
 /* Workout list items — borderless rows */

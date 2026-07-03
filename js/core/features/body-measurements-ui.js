@@ -283,17 +283,10 @@ export async function saveBodyWeightEntry() {
     const dateEl = document.getElementById('bm-entry-date');
     const entryDate = dateEl?.value || null;
 
-    // Height — stored on the user profile, not the measurements record. Write-through
-    // only when the user actually typed something so a blank field doesn't clear it.
-    const heightEl = document.getElementById('bm-height-input');
-    const heightRaw = heightEl?.value?.trim() || '';
-    if (heightRaw) {
-        const cm = parseHeightToCm(heightRaw, unit);
-        if (cm != null) {
-            const { updateSetting } = await import('../ui/settings-ui.js');
-            updateSetting('profileHeightCm', cm);
-        }
-    }
+    // Height lives on the user profile, not the measurements record. Read it
+    // now but only write-through AFTER the entry itself saves — otherwise a
+    // failed save leaves a half-committed height behind. Blank leaves it as-is.
+    const heightRaw = document.getElementById('bm-height-input')?.value?.trim() || '';
 
     const extra = { bodyFat, muscleMass };
     if (Object.keys(measurements).length > 0) extra.measurements = measurements;
@@ -301,6 +294,13 @@ export async function saveBodyWeightEntry() {
 
     const result = await saveBodyWeight(weight, unit, extra);
     if (result) {
+        if (heightRaw) {
+            const cm = parseHeightToCm(heightRaw, unit);
+            if (cm != null) {
+                const { updateSetting } = await import('../ui/settings-ui.js');
+                updateSetting('profileHeightCm', cm);
+            }
+        }
         closeWeightEntryModal();
     }
 }

@@ -33,17 +33,17 @@ let manualWorkoutState = {
 // MODAL MANAGEMENT
 // ===================================================================
 
-export function showAddManualWorkoutModal() {
+export function showAddManualWorkoutModal(prefillDate = null) {
     const section = document.getElementById('manual-workout-section');
     if (!section) return;
 
     // Reset state
     resetManualWorkoutState();
 
-    // Set default date to today
+    // Default the date to the tapped calendar day (empty-day tap) or today.
     const dateInput = document.getElementById('manual-workout-date');
     if (dateInput) {
-        dateInput.value = AppState.getTodayDateString();
+        dateInput.value = (typeof prefillDate === 'string' && prefillDate) || AppState.getTodayDateString();
     }
 
     // Reset UI to step 1
