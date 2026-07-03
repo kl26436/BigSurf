@@ -370,12 +370,12 @@ On app load, checks for incomplete workouts:
 
 ### Editing a template / creating a new workout
 
-There is no longer a standalone template editor. Both flows route through the workout-selector:
-- `editTemplate(templateId)` → calls `expandTemplateInSelector(templateId)` from template-selection.js → navigates to `workout-selector` and pre-expands the row
-- `createNewTemplate()` → prompts for name → saves blank template to Firestore → expands the new row in the selector
-- `saveWorkoutAsTemplate(workoutData)` → prompts for name → converts workout to template via `normalizeWorkoutToTemplate` → saves → expands
+Phase 3b (2026-07): the editor lives on its **own page** (`#workout-editor-section`), not inline in the list. The workout-selector list is read-first — tapping a row opens the editor page. All flows route through `showWorkoutEditor(templateId)` (template-selection.js), which sets `activeEditorTemplateId` and `navigateTo('workout-editor')`; `renderActiveWorkoutEditor()` is self-sufficient (loads gym context + history + rebuilds `loadedTemplates`).
+- `editTemplate(templateId)` → `expandTemplateInSelector(templateId)` → `showWorkoutEditor(templateId)` (opens the editor page)
+- `createNewTemplate()` → prompts for name → saves blank template to Firestore → refreshes `AppState.workoutPlans` → opens the editor page on the new id
+- `saveWorkoutAsTemplate(workoutData)` → prompts for name → converts via `normalizeWorkoutToTemplate` → saves → opens the editor page
 
-The inline editor (in `template-selection.js`) handles rename, sets/reps/weight steppers, equipment picker, notes, reorder arrows, details accordion, last-session meta. Don't reintroduce a separate editor section.
+The editor page (in `template-selection.js`: `renderWorkoutEditorPage`) reuses the same machinery as before — rename, sets/reps/weight steppers, equipment picker, notes, reorder arrows, day/category chips, last-session meta, `schedulePendingTemplateEdit` autosave. Only the container moved; edit handlers re-render via `refreshEditorOrList()` (editor page if open, else the list). The old inline-accordion path (`.template-editor`, `renderTemplateDetailsAccordion`, `detailsOpenForTemplate`, `expandedTemplateId`) was removed. Back button = `closeWorkoutEditor()` (flushes pending edits, then `navigateBack`). Don't reintroduce inline-in-list expansion.
 
 ### Modifying Firebase schema
 

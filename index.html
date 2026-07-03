@@ -232,7 +232,7 @@
 
                     <div class="content-section-body">
                     <!-- Search bar -->
-                    <div class="template-search-bar">
+                    <div class="field-search">
                         <i class="fas fa-search"></i>
                         <input type="text" id="template-search-input"
                             placeholder="Search workouts & exercises"
@@ -249,6 +249,14 @@
                         <!-- Populated by renderWorkoutSelectorUI() -->
                     </div>
                     </div><!-- /.content-section-body -->
+                </section>
+
+                <!-- Workout Editor (Phase 3b) — the editor gets its own page,
+                     off the list. pinned-header = fixed full-height flex column
+                     so the header pins top, the body scrolls, and the Start bar
+                     pins bottom. Populated by template-selection.js. -->
+                <section id="workout-editor-section" class="content-section pinned-header hidden">
+                    <div id="workout-editor-content"><!-- rendered by renderActiveWorkoutEditor() --></div>
                 </section>
 
                 <!-- Active Workout -->

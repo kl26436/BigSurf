@@ -284,16 +284,14 @@ function effectiveTemplateCategory(t) {
 /** Cached recent workout history for template recency sorting */
 let cachedWorkoutHistory = null;
 
-/** Currently expanded template ID for inline editing (null = all collapsed) */
-let expandedTemplateId = null;
-
 /** Currently expanded exercise within a template (key = `${templateId}_${idx}`).
  *  Phase 3 — only one exercise expanded at a time across the whole list. */
 let expandedExerciseInTemplate = null;
 
-/** Phase 6 — which template's "Details" accordion (category + schedule) is open.
- *  Independent of which template-row itself is expanded. */
-let detailsOpenForTemplate = null;
+/** Phase 3b — which template the dedicated editor page is currently showing.
+ *  The list is now read-first: tapping a row opens this editor on its own page
+ *  (#workout-editor-section) instead of expanding in place. */
+let activeEditorTemplateId = null;
 
 /** Phase 7 — session-level cache for last-session lookups so re-renders of the
  *  selector don't re-hit Firestore. Key = `${exerciseName}__${equipment}`.
@@ -410,22 +408,16 @@ function computeBadge(template) {
     return equipmentPlanner.badgeForTemplate(compatibility, gymContext.equipmentCount);
 }
 
-async function renderWorkoutSelectorUI() {
-    const pillsContainer = document.getElementById('category-pills');
-    const listContainer = document.getElementById('template-list');
-    if (!pillsContainer || !listContainer) return;
-
+/**
+ * Load gym context + recent workout history, then rebuild the template working
+ * set (`loadedTemplates`) from AppState.workoutPlans. Shared by the list view
+ * and the Phase 3b editor page so both have their data regardless of which one
+ * the user reached first (e.g. a deep-link straight into the editor).
+ */
+async function ensureSelectorContext() {
     await loadGymContext();
 
-    // Use AppState.workoutPlans as the single source of truth (already deduped)
-    const allTemplates = (AppState.workoutPlans || []).map(t => ({
-        ...t,
-        _id: t.id || t.day,
-        _name: t.name || t.day,
-        _isDefault: !t.isCustom,
-    }));
-
-    // Load workout history for recency sorting (cached)
+    // Load workout history for recency sorting + "usually" derivation (cached).
     if (!cachedWorkoutHistory && AppState.currentUser) {
         try {
             const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
@@ -438,6 +430,24 @@ async function renderWorkoutSelectorUI() {
             cachedWorkoutHistory = [];
         }
     }
+
+    // Use AppState.workoutPlans as the single source of truth (already deduped)
+    const allTemplates = (AppState.workoutPlans || []).map(t => ({
+        ...t,
+        _id: t.id || t.day,
+        _name: t.name || t.day,
+        _isDefault: !t.isCustom,
+    }));
+    loadedTemplates = allTemplates;
+    return allTemplates;
+}
+
+async function renderWorkoutSelectorUI() {
+    const pillsContainer = document.getElementById('category-pills');
+    const listContainer = document.getElementById('template-list');
+    if (!pillsContainer || !listContainer) return;
+
+    const allTemplates = await ensureSelectorContext();
 
     // Collect unique categories
     const categories = [...new Set(allTemplates.map(effectiveTemplateCategory))];
@@ -462,9 +472,6 @@ async function renderWorkoutSelectorUI() {
 
     // Sort: most recently used first, then alphabetical
     filtered = sortTemplatesByRecency(filtered);
-
-    // Cache for inline editor access
-    loadedTemplates = allTemplates;
 
     // Render template rows
     renderTemplateRows(listContainer, filtered, activeSelectorCategory !== null);
@@ -717,96 +724,191 @@ function renderCompatBadge(templateId) {
 function renderSingleTemplateRow(template) {
     const category = effectiveTemplateCategory(template);
     const color = CATEGORY_COLORS[category] || CATEGORY_COLORS.Other;
-    const exercisesArray = normalizeExercisesToArray(template.exercises);
-    const exerciseCount = exercisesArray.length;
     const templateId = template._id;
     const templateName = template._name;
-    const isExpanded = expandedTemplateId === templateId;
 
-    // Build subtitle: exercise count + relative time
+    // Read-first row (Phase 3b): all the scent the editor used to hide in the
+    // accordion — category chip + "Usually [day]" + exercise count + ~duration
+    // (line 1, via renderTemplateSummary) and last-done (line 2). Tapping the
+    // row opens the editor page; the play button starts now.
     const lastWorkout = getLastWorkoutForTemplate(templateName);
-    let timeInfo = '';
-    if (lastWorkout?.date) {
-        timeInfo = ` · ${formatTimeAgo(lastWorkout.date)}`;
-    }
-
-    // Inline editor HTML (shown when expanded)
-    let editorHtml = '';
-    if (isExpanded) {
-        const exerciseListHtml = exercisesArray.map((ex, i) =>
-            renderTemplateExerciseRow(ex, i, exercisesArray.length, templateId, expandedExerciseInTemplate === `${templateId}_${i}`)
-        ).join('');
-
-        // Status-only availability footer (traveler-flow Step 3): shown only
-        // for a partial workout at a mapped gym. No buttons — resolution
-        // happens in the start sheet and the mid-workout picker.
-        const unmappedCount = exercisesArray.filter(ex => isExerciseUnmappedAtGym(ex)).length;
-        const unmappedNote = (unmappedCount > 0 && unmappedCount < exercisesArray.length)
-            ? `<div class="template-editor__unmapped-note">${unmappedCount} not mapped — pick machines or swaps when you start. Asked once, remembered.</div>`
-            : '';
-
-        editorHtml = `
-            <div class="template-editor" data-stop-propagation>
-                ${renderTemplateDetailsAccordion(template)}
-                <div class="template-editor__section-header">
-                    <span class="template-editor__section-label">Exercises</span>
-                    <button class="template-editor__section-add"
-                            data-action="addTemplateExercise"
-                            data-template-id="${escapeAttr(templateId)}"
-                            data-is-default="${template._isDefault}"
-                            aria-label="Add exercise">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                </div>
-                <div class="template-editor__exercise-list">
-                    ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet — tap + above to add one</div>'}
-                </div>
-                ${unmappedNote}
-                <button class="template-editor__add-btn" data-action="addTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
-                    <i class="fas fa-plus"></i> Add exercise
-                </button>
-                <div class="template-editor__actions">
-                    <button class="template-editor__action" data-action="duplicateTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
-                        <i class="fas fa-copy"></i> Duplicate
-                    </button>
-                    <button class="template-editor__action template-editor__action--danger" data-action="deleteTemplateInline" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </div>
-                <button class="template-editor__start-btn" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}">
-                    <i class="fas fa-play"></i> Start workout
-                </button>
-            </div>
-        `;
-    }
+    const lastDone = lastWorkout?.date
+        ? `Last done ${formatTimeAgo(lastWorkout.date).toLowerCase()}`
+        : 'Not done yet';
 
     return `
-        <div class="row-card template-row ${isExpanded ? 'expanded' : ''}" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}" data-action="toggleTemplateRow">
+        <div class="row-card template-row" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}" data-action="openWorkoutEditor">
             <div class="template-row__dot" style="--dot-color: ${color};"></div>
             <div class="row-card__content">
-                ${isExpanded
-                    ? `<input class="template-row__title-input"
-                              data-stop-propagation
-                              data-template-id="${escapeAttr(templateId)}"
-                              data-action="renameTemplate"
-                              value="${escapeAttr(templateName)}"
-                              aria-label="Workout name" />`
-                    : `<div class="row-card__title">${escapeHtml(templateName)}</div>`
-                }
-                <div class="row-card__subtitle">${exerciseCount} exercises${timeInfo}</div>
+                <div class="row-card__title">${escapeHtml(templateName)}</div>
+                <div class="row-card__subtitle template-row__summary">${renderTemplateSummary(template)}</div>
+                <div class="row-card__subtitle template-row__last">${escapeHtml(lastDone)}</div>
                 ${renderCompatBadge(templateId)}
             </div>
-            <i class="fas fa-chevron-down template-row__chev ${isExpanded ? 'template-row__chev--open' : ''}" aria-hidden="true"></i>
+            <i class="fas fa-chevron-right template-row__chev" aria-hidden="true"></i>
             <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
                 <i class="fas fa-play"></i>
             </button>
         </div>
-        ${editorHtml}
+    `;
+}
+
+// ===================================================================
+// PHASE 3b — the workout editor on its own page (#workout-editor-section)
+// The list stays read-first; tapping a row opens this. All the editor
+// machinery (steppers, autosave, reorder, add/equipment sheets, day/category
+// chips) is unchanged — only the container moved off the list.
+// ===================================================================
+
+/**
+ * Open the editor page for a template. Sets the active editor id, then routes
+ * through navigateTo so the section un-hides and back-nav is recorded.
+ */
+export function showWorkoutEditor(templateId) {
+    if (templateId) activeEditorTemplateId = templateId;
+    if (!activeEditorTemplateId) return;
+    expandedExerciseInTemplate = null;
+    if (typeof window.navigateTo === 'function') {
+        window.navigateTo('workout-editor');
+    } else {
+        renderActiveWorkoutEditor();
+    }
+}
+
+/**
+ * Leave the editor. Flush any pending debounced edit first so a value typed
+ * then immediately backed-out of isn't lost, then return to the list (Phase 2b
+ * back contract — navigateBack returns exactly where the user came from).
+ */
+export async function closeWorkoutEditor() {
+    await flushPendingTemplateEdits();
+    activeEditorTemplateId = null;
+    expandedExerciseInTemplate = null;
+    if (typeof window.navigateBack === 'function') {
+        window.navigateBack();
+    } else if (typeof window.navigateTo === 'function') {
+        window.navigateTo('workout-selector');
+    }
+}
+
+/**
+ * Render the editor page for `activeEditorTemplateId` into
+ * #workout-editor-content. Self-sufficient: loads gym context + history +
+ * rebuilds loadedTemplates, so it works whether reached via a list tap or a
+ * deep-link (editTemplate / createNewTemplate / AI-coach).
+ */
+export async function renderActiveWorkoutEditor() {
+    const container = document.getElementById('workout-editor-content');
+    if (!container) return;
+
+    const allTemplates = await ensureSelectorContext();
+    const template = allTemplates.find(t => t._id === activeEditorTemplateId);
+    if (!template) {
+        // Template gone (deleted while open) — bail back to the list.
+        container.innerHTML = '';
+        activeEditorTemplateId = null;
+        if (typeof window.navigateTo === 'function') window.navigateTo('workout-selector');
+        return;
+    }
+
+    // Per-render compat badge for this one template (reuses the list's map).
+    renderedBadges = new Map();
+    if (gymContext?.gym && gymContext.equipmentCount > 0) {
+        renderedBadges.set(template._id, computeBadge(template));
+    }
+
+    container.innerHTML = renderWorkoutEditorPage(template);
+    setupSelectorDelegation(container);
+    hydrateLastSession();
+    if (typeof window.awAutoGrowNotes === 'function') {
+        container.querySelectorAll('.te-row__notes-field textarea')
+            .forEach((t) => window.awAutoGrowNotes(t));
+    }
+}
+
+/** Re-render whichever surface is live after an edit — editor page if it's
+ *  open, otherwise the list. Edit handlers call this instead of hard-coding
+ *  the list re-render. */
+function refreshEditorOrList() {
+    const editorSection = document.getElementById('workout-editor-section');
+    const editorVisible = editorSection && !editorSection.classList.contains('hidden');
+    if (activeEditorTemplateId && editorVisible) {
+        renderActiveWorkoutEditor();
+    } else {
+        renderWorkoutSelectorUI();
+    }
+}
+
+function renderWorkoutEditorPage(template) {
+    const templateId = template._id;
+    const templateName = template._name;
+    const exercisesArray = normalizeExercisesToArray(template.exercises);
+
+    const exerciseListHtml = exercisesArray.map((ex, i) =>
+        renderTemplateExerciseRow(ex, i, exercisesArray.length, templateId,
+            expandedExerciseInTemplate === `${templateId}_${i}`)
+    ).join('');
+
+    const unmappedCount = exercisesArray.filter(ex => isExerciseUnmappedAtGym(ex)).length;
+    const unmappedNote = (unmappedCount > 0 && unmappedCount < exercisesArray.length)
+        ? `<div class="template-editor__unmapped-note">${unmappedCount} not mapped — pick machines or swaps when you start. Asked once, remembered.</div>`
+        : '';
+
+    return `
+        <div class="we-header">
+            <button class="d-back" onclick="closeWorkoutEditor()" aria-label="Back to workouts">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="we-header__info">
+                <input class="we-title-input" data-action="renameTemplate"
+                       data-template-id="${escapeAttr(templateId)}"
+                       value="${escapeAttr(templateName)}" aria-label="Workout name" />
+                <div class="we-subtitle">${renderTemplateSummary(template)}</div>
+            </div>
+        </div>
+
+        <div class="we-body" data-stop-propagation>
+            <div class="template-editor__details">
+                ${renderTemplateDetailsBody(template)}
+            </div>
+
+            <div class="template-editor__section-header">
+                <span class="template-editor__section-label">Exercises</span>
+                <button class="template-editor__section-add"
+                        data-action="addTemplateExercise"
+                        data-template-id="${escapeAttr(templateId)}"
+                        data-is-default="${template._isDefault}"
+                        aria-label="Add exercise">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="template-editor__exercise-list">
+                ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet — tap + above to add one</div>'}
+            </div>
+            ${unmappedNote}
+            <button class="template-editor__add-btn" data-action="addTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
+                <i class="fas fa-plus"></i> Add exercise
+            </button>
+            <div class="template-editor__actions">
+                <button class="template-editor__action" data-action="duplicateTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
+                    <i class="fas fa-copy"></i> Duplicate
+                </button>
+                <button class="template-editor__action template-editor__action--danger" data-action="deleteTemplateInline" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+
+        <div class="we-start-bar" data-stop-propagation>
+            <button class="we-start-btn" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}">
+                <i class="fas fa-play"></i> Start workout
+            </button>
+        </div>
     `;
 }
 
 /**
- * Render a single exercise row inside an expanded template.
+ * Render a single exercise row inside the workout editor.
  * Tap the head to expand → reveals sets/reps/weight steppers, equipment pill,
  * and notes. ↑/↓ arrows reorder; × removes.
  */
@@ -926,21 +1028,6 @@ function renderTemplateDetailsBody(template) {
                 <div class="te-details__day-chips">${dayChipsHtml}</div>
                 <div class="te-details__hint">Override the auto-detected schedule.</div>
             </div>
-        </div>
-    `;
-}
-
-function renderTemplateDetailsAccordion(template) {
-    const isOpen = detailsOpenForTemplate === template._id;
-    return `
-        <div class="te-details">
-            <div class="te-details__summary"
-                 data-action="toggleDetails"
-                 data-template-id="${escapeAttr(template._id)}">
-                <div class="te-details__summary-text">${renderTemplateSummary(template)}</div>
-                <i class="fas fa-chevron-${isOpen ? 'up' : 'down'} te-details__chev"></i>
-            </div>
-            ${isOpen ? renderTemplateDetailsBody(template) : ''}
         </div>
     `;
 }
@@ -1093,7 +1180,7 @@ async function updateExerciseField(templateId, index, field, value, reRender = t
 
     template.exercises = exercises;
     await saveTemplateInline(template, exercises);
-    if (reRender) renderWorkoutSelectorUI();
+    if (reRender) refreshEditorOrList();
 }
 
 // Pending inline edit — used by the input-event debounce path so we keep
@@ -1171,7 +1258,7 @@ async function openAddExerciseSheetForTemplate(templateId) {
             exercises.push(newExercise);
             template.exercises = exercises;
             await saveTemplateInline(template, exercises);
-            renderWorkoutSelectorUI();
+            refreshEditorOrList();
 
             // Chain straight into the equipment picker so the user can finish
             // binding the exercise to a piece of equipment without expanding
@@ -1209,7 +1296,7 @@ async function openEquipmentSheetForTemplate(templateId, index) {
             exercise.equipment = equipName || '';
             template.exercises = exercises;
             await saveTemplateInline(template, exercises);
-            renderWorkoutSelectorUI();
+            refreshEditorOrList();
         },
     });
 }
@@ -1229,22 +1316,14 @@ async function openEquipmentSheetForTemplate(templateId, index) {
  */
 export function expandTemplateInSelector(templateId) {
     if (!templateId) return;
-    expandedTemplateId = templateId;
-    expandedExerciseInTemplate = null;
-    detailsOpenForTemplate = null;
-    if (typeof window.navigateTo === 'function') {
-        window.navigateTo('workout-selector');
-    }
-    // navigateTo above will trigger renderWorkoutSelectorUI via showWorkoutSelector.
-    // Render again defensively in case navigation was a no-op (already on the page).
-    renderWorkoutSelectorUI();
+    // Phase 3b — "open this template for editing" now lands on the editor page.
+    showWorkoutEditor(templateId);
 }
 
 export function toggleTemplateEdit(templateId) {
-    expandedTemplateId = (expandedTemplateId === templateId) ? null : templateId;
-    // Collapsing the parent template should also reset which exercise is open
-    if (expandedTemplateId === null) expandedExerciseInTemplate = null;
-    renderWorkoutSelectorUI();
+    // Kept as a compatibility alias — the list no longer expands in place, so
+    // any lingering caller opens the editor page instead.
+    showWorkoutEditor(templateId);
 }
 
 /**
@@ -1316,7 +1395,7 @@ export async function moveTemplateExerciseInline(templateId, index, direction) {
     template.exercises = exercises;
 
     await saveTemplateInline(template, exercises);
-    renderWorkoutSelectorUI();
+    refreshEditorOrList();
 }
 
 /**
@@ -1340,7 +1419,7 @@ export async function removeTemplateExerciseInline(templateId, index) {
     template.exercises = exercises;
 
     await saveTemplateInline(template, exercises);
-    renderWorkoutSelectorUI();
+    refreshEditorOrList();
 }
 
 /** Set up event delegation on the template list container */
@@ -1375,16 +1454,13 @@ function setupSelectorDelegation(container) {
                 window.deleteTemplate(templateId, isDefault);
             } else if (action === 'openEquipmentForExercise') {
                 openEquipmentSheetForTemplate(templateId, index);
-            } else if (action === 'toggleDetails') {
-                detailsOpenForTemplate = (detailsOpenForTemplate === templateId) ? null : templateId;
-                renderWorkoutSelectorUI();
             } else if (action === 'setTemplateCategory') {
                 const cat = actionEl.dataset.cat;
                 const t = loadedTemplates.find(x => x._id === templateId);
                 if (t) {
                     t.category = cat;
                     saveTemplateInline(t, normalizeExercisesToArray(t.exercises))
-                        .then(() => renderWorkoutSelectorUI());
+                        .then(() => refreshEditorOrList());
                 }
             } else if (action === 'toggleTemplateDay') {
                 const day = actionEl.dataset.day;
@@ -1393,7 +1469,7 @@ function setupSelectorDelegation(container) {
                     const cur = Array.isArray(t.suggestedDays) ? t.suggestedDays : [];
                     t.suggestedDays = cur.includes(day) ? cur.filter(d => d !== day) : [...cur, day];
                     saveTemplateInline(t, normalizeExercisesToArray(t.exercises))
-                        .then(() => renderWorkoutSelectorUI());
+                        .then(() => refreshEditorOrList());
                 }
             } else if (action === 'switchGymContext') {
                 openGymContextSwitcher();
@@ -1432,7 +1508,7 @@ function setupSelectorDelegation(container) {
                 // below the if-block).
                 const rowKey = actionEl.dataset.rowKey;
                 expandedExerciseInTemplate = (expandedExerciseInTemplate === rowKey) ? null : rowKey;
-                renderWorkoutSelectorUI();
+                refreshEditorOrList();
             }
             return;
         }
@@ -1446,11 +1522,11 @@ function setupSelectorDelegation(container) {
             return;
         }
 
-        // Row tap = toggle inline editor
-        const row = e.target.closest('[data-action="toggleTemplateRow"]');
+        // Row tap = open the editor page (Phase 3b — read-first list)
+        const row = e.target.closest('[data-action="openWorkoutEditor"]');
         if (row) {
             const templateId = row.dataset.templateId;
-            if (templateId) toggleTemplateEdit(templateId);
+            if (templateId) showWorkoutEditor(templateId);
         }
     });
 
@@ -1513,7 +1589,7 @@ function setupSelectorDelegation(container) {
             template._name = newName;
             template.name = newName;
             await saveTemplateInline(template, normalizeExercisesToArray(template.exercises));
-            renderWorkoutSelectorUI();
+            refreshEditorOrList();
             return;
         }
 
@@ -1752,8 +1828,15 @@ export async function deleteCustomTemplate(templateId) {
     if (idx >= 0) {
         plans.splice(idx, 1);
         AppState.workoutPlans = [...plans];
-        if (expandedTemplateId === templateId) expandedTemplateId = null;
-        renderWorkoutSelectorUI();
+        // If the editor page was open on this template, it's gone now — return
+        // to the list. Otherwise just re-render the list in place.
+        if (activeEditorTemplateId === templateId) {
+            activeEditorTemplateId = null;
+            if (typeof window.navigateTo === 'function') window.navigateTo('workout-selector');
+            else renderWorkoutSelectorUI();
+        } else {
+            renderWorkoutSelectorUI();
+        }
     }
 
     try {
@@ -2511,3 +2594,7 @@ window.removeBasicExercise = async function (index) {
 window.closeWorkoutPreviewModal = closeWorkoutPreviewModal;
 window.closeBasicTemplateEditor = closeBasicTemplateEditor;
 window.saveBasicTemplate = saveBasicTemplate;
+// Phase 3b — editor page back button renders in this module's template string.
+window.closeWorkoutEditor = closeWorkoutEditor;
+// Deep-link entry (AI coach "open this workout", etc.) may reach us via window.
+window.showWorkoutEditor = showWorkoutEditor;

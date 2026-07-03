@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workout library v2 — editor off the list (Phase 3b, UX plan 2026-07)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --warning:#f0c24b; --danger:#e35d6a; --highlight-warm:#f7a865;
+    --cat-push:#4A90D9; --cat-pull:#D94A7A; --cat-legs:#7B4AD9; --cat-core:#4AD9A7;
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+    --tap:44px; --tap-sm:36px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:24px 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;text-align:center;max-width:900px;margin-left:auto;margin-right:auto;line-height:1.5;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:28px;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .wrap-label{color:var(--text-strong);font-size:0.95rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.74rem;text-align:center;max-width:320px;line-height:1.5;}
+  .phone{width:340px;height:760px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .status{height:28px;background:var(--bg-app);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:0.7rem;color:var(--text-main);flex-shrink:0;}
+  .content{flex:1;overflow-y:auto;padding:12px 14px 90px;}
+  .content::-webkit-scrollbar{display:none;}
+
+  .pg-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .pg-back{width:44px;height:44px;border-radius:50%;background:var(--bg-card);display:flex;align-items:center;justify-content:center;color:var(--text-main);font-size:0.8rem;flex-shrink:0;}
+  .pg-title{flex:1;}
+  .pg-title .t{color:var(--text-strong);font-size:1.05rem;font-weight:700;}
+  .pg-title .s{color:var(--text-muted);font-size:0.64rem;margin-top:1px;}
+  .pg-new{color:var(--primary);font-size:0.74rem;font-weight:700;background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:var(--radius-pill);padding:8px 14px;}
+
+  .field-search{display:flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:0 12px;min-height:40px;margin-bottom:10px;color:var(--text-muted);font-size:0.76rem;}
+  .cat-pills{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;}
+  .cat-pills::-webkit-scrollbar{display:none;}
+  .cat-pill{flex-shrink:0;min-height:34px;padding:0 14px;border-radius:var(--radius-pill);border:1px solid var(--border-light);background:var(--bg-card);color:var(--text-secondary);font-size:0.7rem;font-weight:600;display:inline-flex;align-items:center;}
+  .cat-pill.on{background:var(--primary-bg);border-color:var(--primary-border);color:var(--primary);}
+
+  .suggest{display:flex;align-items:center;gap:8px;background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:0.7rem;color:var(--primary);font-weight:600;}
+
+  /* Read-first workout rows with full info scent */
+  .w-row{display:flex;align-items:center;gap:11px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px;margin-bottom:8px;min-height:64px;}
+  .w-row.today{border-color:var(--primary-border);background:linear-gradient(160deg,rgba(29,211,176,0.07),var(--bg-card) 60%);}
+  .w-icon{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:0.85rem;flex-shrink:0;}
+  .w-info{flex:1;min-width:0;}
+  .w-name{color:var(--text-strong);font-size:0.84rem;font-weight:700;display:flex;align-items:center;gap:6px;}
+  .w-cat{font-size:0.52rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:2px 7px;border-radius:var(--radius-pill);}
+  .w-cat.pull{background:rgba(217,74,122,0.12);color:var(--cat-pull);}
+  .w-cat.push{background:rgba(74,144,217,0.12);color:var(--cat-push);}
+  .w-cat.legs{background:rgba(123,74,217,0.12);color:var(--cat-legs);}
+  .w-meta{color:var(--text-muted);font-size:0.62rem;margin-top:3px;}
+  .w-meta b{color:var(--text-secondary);font-weight:600;}
+  .w-chev{color:var(--text-muted);font-size:0.68rem;}
+  .w-play{width:40px;height:40px;border-radius:50%;background:var(--primary);color:#04201a;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;box-shadow:0 3px 10px rgba(29,211,176,0.25);}
+
+  /* ═══ Phone B: workout DETAIL page ═══ */
+  .d-daychips{display:flex;gap:5px;justify-content:space-between;margin-bottom:4px;}
+  .d-daychips button{width:var(--tap);height:var(--tap);border-radius:50%;border:1.5px solid var(--border-light);background:var(--bg-card-hi);color:var(--text-secondary);font-size:0.76rem;font-weight:700;}
+  .d-daychips button.on{background:var(--primary);border-color:var(--primary);color:#04201a;}
+  .sec-head{color:var(--text-strong);font-size:0.78rem;font-weight:700;margin:16px 2px 8px;display:flex;justify-content:space-between;align-items:baseline;}
+  .sec-head .m{color:var(--text-muted);font-size:0.62rem;font-weight:500;}
+  .sec-head .act{color:var(--primary);font-size:0.68rem;font-weight:600;}
+
+  .meta-chips{display:flex;gap:6px;margin-bottom:4px;}
+  .meta-chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-pill);padding:7px 12px;font-size:0.66rem;color:var(--text-secondary);font-weight:600;}
+  .meta-chip i{font-size:0.6rem;color:var(--text-muted);}
+
+  .ex-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:6px;overflow:hidden;}
+  .ex-head{display:flex;align-items:center;gap:9px;padding:10px 12px;min-height:48px;}
+  .drag{width:var(--tap-sm);height:var(--tap-sm);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:0.78rem;flex-shrink:0;}
+  .ex-name{flex:1;min-width:0;}
+  .ex-name .n{color:var(--text-main);font-size:0.78rem;font-weight:600;}
+  .ex-name .m{color:var(--text-muted);font-size:0.6rem;margin-top:1px;}
+  .ex-summary{color:var(--text-secondary);font-size:0.7rem;font-weight:600;font-variant-numeric:tabular-nums;}
+  .ex-chev{color:var(--text-muted);font-size:0.62rem;margin-left:8px;}
+
+  .ex-row.open{border-color:var(--primary-border);}
+  .ex-edit{padding:0 12px 12px;border-top:1px solid var(--border-subtle);}
+  .g-lbl{color:var(--text-muted);font-size:0.54rem;text-align:center;margin:10px 0 4px;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;}
+  .stepper-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .step{display:flex;align-items:center;background:var(--bg-card-hi);border:1px solid var(--border-light);border-radius:10px;overflow:hidden;min-height:var(--tap-sm);}
+  .step button{width:30px;align-self:stretch;background:transparent;border:none;color:var(--primary);font-size:0.72rem;}
+  .step .val{flex:1;text-align:center;color:var(--text-strong);font-size:0.8rem;font-weight:700;font-variant-numeric:tabular-nums;}
+  .equip-pill{display:flex;align-items:center;gap:8px;background:var(--bg-card-hi);border:1px solid var(--border-light);border-radius:10px;padding:0 12px;min-height:var(--tap-sm);margin-top:8px;font-size:0.68rem;color:var(--text-secondary);}
+  .equip-pill i.chev{margin-left:auto;font-size:0.58rem;color:var(--text-muted);}
+  .last-meta{color:var(--text-muted);font-size:0.6rem;margin-top:7px;}
+
+  .add-ex{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;border:1px dashed var(--primary-border);background:transparent;color:var(--primary);font-size:0.74rem;font-weight:700;border-radius:var(--radius-sm);margin-top:2px;}
+  .actions-row{display:flex;gap:8px;margin-top:14px;}
+  .action-btn{flex:1;min-height:42px;border-radius:var(--radius-sm);border:1px solid var(--border-light);background:var(--bg-card);color:var(--text-secondary);font-size:0.7rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .action-btn.danger{color:var(--danger);border-color:rgba(227,93,106,0.2);}
+
+  /* sticky start footer */
+  .start-bar{position:absolute;bottom:0;left:0;right:0;padding:10px 14px 18px;background:linear-gradient(transparent,var(--bg-app) 30%);}
+  .start-btn{width:100%;min-height:50px;border-radius:var(--radius-md);border:none;background:var(--primary);color:#04201a;font-size:0.88rem;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 6px 18px rgba(29,211,176,0.3);}
+
+  .callout{max-width:900px;margin:0 auto 26px;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:16px 20px;font-size:0.8rem;line-height:1.6;color:var(--text-secondary);}
+  .callout b{color:var(--text-strong);}
+</style>
+</head>
+<body>
+
+<h1 class="sec">Workout library v2 — the editor gets its own page</h1>
+<p class="desc">Phase 3b. Today a 7-exercise template's expanded editor is ~600px injected mid-list — it eats the viewport while sibling rows scroll around it. v2: the list stays a pure read-first browsing surface with full info scent; tapping a row opens a dedicated workout detail page (same pattern as equipment detail). Editor internals (steppers, autosave, reorder) carry over unchanged.</p>
+
+<div class="row">
+
+  <!-- ═══ PHONE A: the list, read-first ═══ -->
+  <div class="wrap">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div>
+      <div class="content" style="padding-bottom:30px;">
+        <div class="pg-head">
+          <div class="pg-title"><div class="t">Workouts</div><div class="s">7 saved</div></div>
+          <button class="pg-new">+ New</button>
+        </div>
+
+        <div class="field-search"><i class="fas fa-magnifying-glass"></i> Search workouts…</div>
+        <div class="cat-pills">
+          <span class="cat-pill on">All</span>
+          <span class="cat-pill">Push</span>
+          <span class="cat-pill">Pull</span>
+          <span class="cat-pill">Legs</span>
+          <span class="cat-pill"><i class="fas fa-location-dot" style="margin-right:5px;"></i>Possible here</span>
+        </div>
+
+        <!-- Suggested for today = a highlighted row, not a separate banner -->
+        <div class="w-row today">
+          <div class="w-icon" style="background:rgba(217,74,122,0.14);color:var(--cat-pull);"><i class="fas fa-hand-fist"></i></div>
+          <div class="w-info">
+            <div class="w-name">Pull Day <span class="w-cat pull">Pull</span></div>
+            <div class="w-meta"><b>Suggested for Friday</b> · 5 exercises · ~51 min</div>
+            <div class="w-meta">Last done yesterday</div>
+          </div>
+          <i class="fas fa-chevron-right w-chev"></i>
+          <div class="w-play"><i class="fas fa-play"></i></div>
+        </div>
+
+        <div class="w-row">
+          <div class="w-icon" style="background:rgba(123,74,217,0.14);color:var(--cat-legs);"><i class="fas fa-person-walking"></i></div>
+          <div class="w-info">
+            <div class="w-name">Lower Body + Core <span class="w-cat legs">Legs</span></div>
+            <div class="w-meta">Usually Fri · 4 exercises · ~64 min</div>
+            <div class="w-meta">Last done 6d ago</div>
+          </div>
+          <i class="fas fa-chevron-right w-chev"></i>
+          <div class="w-play"><i class="fas fa-play"></i></div>
+        </div>
+
+        <div class="w-row">
+          <div class="w-icon" style="background:rgba(74,144,217,0.14);color:var(--cat-push);"><i class="fas fa-hand"></i></div>
+          <div class="w-info">
+            <div class="w-name">Light Chest &amp; Arms <span class="w-cat push">Push</span></div>
+            <div class="w-meta">Usually Sat · 4 exercises · ~70 min</div>
+            <div class="w-meta">Last done 8d ago</div>
+          </div>
+          <i class="fas fa-chevron-right w-chev"></i>
+          <div class="w-play"><i class="fas fa-play"></i></div>
+        </div>
+
+        <div class="w-row">
+          <div class="w-icon" style="background:rgba(217,74,122,0.14);color:var(--cat-pull);"><i class="fas fa-hand-fist"></i></div>
+          <div class="w-info">
+            <div class="w-name">Upper Body Pull <span class="w-cat pull">Pull</span></div>
+            <div class="w-meta">Usually Thu · 5 exercises · ~36 min</div>
+            <div class="w-meta">Last done yesterday</div>
+          </div>
+          <i class="fas fa-chevron-right w-chev"></i>
+          <div class="w-play"><i class="fas fa-play"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap-label">A — List: browse, don't edit</div>
+    <div class="wrap-sub">Every row now carries what the module already computes but hid in the accordion: category chip, exercise count, ~duration, "Usually [day]", last done. Today's suggestion is a highlighted row at the top, not a separate banner component. Chevron = open detail; play = start now. Scroll position never gets disturbed by an expanding editor.</div>
+  </div>
+
+  <!-- ═══ PHONE B: workout detail page ═══ -->
+  <div class="wrap">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div>
+      <div class="content">
+        <div class="pg-head">
+          <div class="pg-back"><i class="fas fa-arrow-left"></i></div>
+          <div class="pg-title"><div class="t">Pull Day</div><div class="s">Pull · 5 exercises · ~51 min · Last done yesterday</div></div>
+          <i class="fas fa-pen" style="color:var(--text-muted);font-size:0.75rem;"></i>
+        </div>
+
+        <div class="meta-chips">
+          <span class="meta-chip"><i class="fas fa-tag"></i> Pull</span>
+          <span class="meta-chip"><i class="fas fa-clock"></i> ~51 min</span>
+        </div>
+
+        <div class="sec-head">Days</div>
+        <div class="d-daychips">
+          <button>M</button><button>T</button><button>W</button><button>T</button><button class="on">F</button><button>S</button><button>S</button>
+        </div>
+
+        <div class="sec-head">Exercises <span class="act">+ Add</span></div>
+
+        <div class="ex-row">
+          <div class="ex-head">
+            <div class="drag"><i class="fas fa-grip-lines"></i></div>
+            <div class="ex-name"><div class="n">45 Degree Linear Row</div><div class="m">MegaMass · Last: 6×180 · 1d ago</div></div>
+            <div class="ex-summary">3 × 6 · 180</div>
+            <i class="fas fa-chevron-down ex-chev"></i>
+          </div>
+        </div>
+
+        <!-- expanded exercise: full width of ITS OWN page, no list fighting -->
+        <div class="ex-row open">
+          <div class="ex-head">
+            <div class="drag"><i class="fas fa-grip-lines"></i></div>
+            <div class="ex-name"><div class="n">Cable Bicep Curl</div><div class="m">gym80 cable · Last: 12×55 · 1d ago</div></div>
+            <div class="ex-summary">3 × 12 · 55</div>
+            <i class="fas fa-chevron-up ex-chev" style="color:var(--primary);"></i>
+          </div>
+          <div class="ex-edit">
+            <div class="stepper-grid">
+              <div><div class="g-lbl">Sets</div><div class="step"><button>−</button><span class="val">3</span><button>+</button></div></div>
+              <div><div class="g-lbl">Reps</div><div class="step"><button>−</button><span class="val">12</span><button>+</button></div></div>
+              <div><div class="g-lbl">Weight</div><div class="step"><button>−</button><span class="val">55</span><button>+</button></div></div>
+            </div>
+            <div class="equip-pill"><i class="fas fa-dumbbell"></i> gym80 cable station <i class="fas fa-chevron-right chev"></i></div>
+            <div class="last-meta"><i class="fas fa-trophy" style="color:#ffd700;"></i> 1.8 lb off your PR on this cable — try 57.5</div>
+          </div>
+        </div>
+
+        <div class="ex-row">
+          <div class="ex-head">
+            <div class="drag"><i class="fas fa-grip-lines"></i></div>
+            <div class="ex-name"><div class="n">Lat Pulldown</div><div class="m">Panatta · Last: 10×140 · 1d ago</div></div>
+            <div class="ex-summary">3 × 10 · 140</div>
+            <i class="fas fa-chevron-down ex-chev"></i>
+          </div>
+        </div>
+
+        <div class="ex-row">
+          <div class="ex-head">
+            <div class="drag"><i class="fas fa-grip-lines"></i></div>
+            <div class="ex-name"><div class="n">Hanging Leg Raise</div><div class="m">Bodyweight · Last: 15 reps · 1d ago</div></div>
+            <div class="ex-summary">3 × 15</div>
+            <i class="fas fa-chevron-down ex-chev"></i>
+          </div>
+        </div>
+
+        <button class="add-ex"><i class="fas fa-plus"></i> Add exercise</button>
+
+        <div class="actions-row">
+          <button class="action-btn"><i class="fas fa-copy"></i> Duplicate</button>
+          <button class="action-btn danger"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+      </div>
+      <div class="start-bar">
+        <button class="start-btn"><i class="fas fa-play"></i> Start workout</button>
+      </div>
+    </div>
+    <div class="wrap-label">B — Detail: the editor owns the viewport</div>
+    <div class="wrap-sub">Same steppers/autosave/reorder as today, but on a dedicated page: collapsed exercise rows show a sets×reps·weight summary + last-session meta; one expands at a time with room to breathe. Start is a sticky footer — always reachable, never scrolled away. Back returns to the list exactly where you left it (Phase 2b contract). Rename via the pencil.</div>
+  </div>
+
+</div>
+
+<div class="callout">
+  <b>Migration notes:</b> `renderSingleTemplateRow` becomes the read-first list row (new meta lines reuse `estimateDurationMinutes` / `deriveUsuallyDays` — already computed, currently hidden in the accordion). The expanded-editor HTML (`renderTemplateExerciseRow`, steppers, `schedulePendingTemplateEdit` autosave, equipment/add-exercise shared sheets) moves into a new `#workout-detail-section` registered in navigation.js — content unchanged, container swapped. The suggested-banner component merges into the row treatment. Kill: `expandedTemplateId` re-render-in-list logic, the Details accordion (day chips + category promote to the detail page), and the ~40% dead code (`#template-selection-modal` era) in the same PR. The PR-proximity hint inside the expanded exercise (Phone B) is optional garnish — it reuses the dashboard's proximity helper.
+</div>
+
+</body>
+</html>

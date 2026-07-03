@@ -7,6 +7,7 @@
 
 const SECTION_IDS = [
     'workout-selector',
+    'workout-editor-section',
     'active-workout',
     'workout-history-section',
     'workout-detail-section',
@@ -160,6 +161,10 @@ function routeToView(view) {
             showWorkoutSelector();
             break;
 
+        case 'workout-editor':
+            showWorkoutEditorView();
+            break;
+
         case 'metric-detail':
             showMetricDetail();
             break;
@@ -305,6 +310,22 @@ function showWorkoutSelector() {
     } else {
         const section = document.getElementById('workout-selector');
         if (section) section.classList.remove('hidden');
+    }
+}
+
+// Phase 3b — the workout editor lives on its own page. The target template is
+// held in template-selection's module state (set by showWorkoutEditor before
+// navigating), so this just un-hides the section and re-renders it.
+async function showWorkoutEditorView() {
+    const section = document.getElementById('workout-editor-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('workout');
+    try {
+        const { renderActiveWorkoutEditor } = await import('./template-selection.js');
+        renderActiveWorkoutEditor();
+    } catch (err) {
+        console.error('Error rendering workout editor:', err);
     }
 }
 
