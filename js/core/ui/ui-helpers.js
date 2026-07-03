@@ -17,7 +17,7 @@ export function escapeAttr(text) {
 
 let lastErrorTime = 0;
 
-export function showNotification(message, type = 'info') {
+export function showNotification(message, type = 'info', _duration, action = null) {
     // Rate limit error notifications — max 1 per 10 seconds to prevent stacking
     if (type === 'error') {
         const now = Date.now();
@@ -33,12 +33,34 @@ export function showNotification(message, type = 'info') {
     const variantClass = type === 'success' ? 'app-toast--success'
         : isError ? 'app-toast--error'
         : 'app-toast--info';
-    const duration = isError ? 4000 : 1500;
+    // Action toasts (e.g. "… · Undo") stay up long enough to actually tap.
+    const duration = action ? 6000 : isError ? 4000 : 1500;
 
     const notification = document.createElement('div');
     notification.className = `app-toast ${variantClass}`;
     notification.setAttribute('role', 'alert');
-    notification.textContent = message;
+
+    // Optional inline action ({label, onClick}) — for undoable writes like
+    // "Won't ask about equipment for X again" + Undo (traveler-flow D10).
+    // Reuses the established .app-toast--undo layout from toast.css.
+    if (action && typeof action.onClick === 'function') {
+        notification.classList.add('app-toast--undo');
+        const msg = document.createElement('span');
+        msg.className = 'app-toast__msg';
+        msg.textContent = message;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'app-toast__undo';
+        btn.textContent = action.label || 'Undo';
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            notification.remove();
+            try { action.onClick(); } catch (err) { console.error('Toast action threw:', err); }
+        });
+        notification.append(msg, btn);
+    } else {
+        notification.textContent = message;
+    }
 
     document.body.appendChild(notification);
     requestAnimationFrame(() => { notification.classList.add('app-toast--show'); });

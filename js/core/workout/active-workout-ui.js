@@ -13,6 +13,8 @@ import { ensureFreshBodyWeight } from '../features/bodyweight-prompt.js';
 import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from '../utils/push-notification-manager.js';
 import { convertYouTubeUrl } from './exercise-ui.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
+import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
+import { suggestMachinesForExercise } from '../features/exercise-machine-matcher.js';
 
 // ===================================================================
 // STATE
@@ -1632,6 +1634,223 @@ let equipSearchQuery = '';
 // hasn't been gym-tagged yet). State lives per-sheet open, reset on close.
 let equipSheetShowAll = false;
 
+// ── F2 fast paths + reverse-matcher suggestions (Tier 3 Phase 2) ──
+// "Three levels of caring": skip / generic bucket / exact machine. The
+// lowest-friction options get the best real estate (traveler-flow D0).
+let equipFreeWeightsOpen = false;   // "Free weights" revealed Dumbbells/Barbell
+let awMachineSuggestions = [];      // last-rendered reverse-matcher results
+
+/**
+ * Fast-path chip row rendered at the top of the equipment sheets.
+ * `handlers` supplies the onclick strings per surface (workout vs shared).
+ */
+function renderEquipFastPathsHTML(handlers) {
+    return `
+        <div class="aw-equip-fastpaths">
+            ${handlers.skip ? `
+                <button type="button" class="aw-fastpath-chip" onclick="${handlers.skip}">
+                    <i class="fas fa-ban"></i> Skip equipment
+                </button>` : ''}
+            ${equipFreeWeightsOpen ? `
+                <button type="button" class="aw-fastpath-chip" onclick="${handlers.dumbbells}">
+                    <i class="fas fa-dumbbell"></i> Dumbbells
+                </button>
+                <button type="button" class="aw-fastpath-chip" onclick="${handlers.barbell}">
+                    <i class="fas fa-grip-lines"></i> Barbell
+                </button>` : `
+                <button type="button" class="aw-fastpath-chip" onclick="${handlers.freeWeights}">
+                    <i class="fas fa-dumbbell"></i> Free weights
+                </button>`}
+            <button type="button" class="aw-fastpath-chip" onclick="${handlers.cable}">
+                <i class="fas fa-stream"></i> Cable machine
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * Find-or-create a generic (brand-less, catalog-less) equipment doc of a
+ * type — the "Cable machine" / "Dumbbells" buckets. Reuses an existing
+ * generic doc at the session gym (or by exact name anywhere) so repeated
+ * fast-path taps never spawn duplicates.
+ */
+async function resolveGenericEquipment(type, name) {
+    const sessionLoc = AppState.savedData?.location;
+    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+    const all = AppState._cachedEquipment || [];
+    const isGeneric = (eq) => eq.equipmentType === type
+        && (!eq.brand || eq.brand === 'Unknown') && !eq.catalogRef;
+
+    let doc = null;
+    if (locName) {
+        doc = all.find(eq => isGeneric(eq)
+            && (eq.locations || []).some(l => (l || '').toLowerCase() === locName.toLowerCase()));
+    }
+    if (!doc) doc = all.find(eq => (eq.name || '').toLowerCase() === name.toLowerCase());
+    if (!doc) {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        doc = await mgr.getOrCreateEquipment(name, { equipmentType: type }, null);
+        AppState._cachedEquipment = await mgr.getUserEquipment();
+    }
+    return doc;
+}
+
+export function awEquipFreeWeights(exerciseIdx) {
+    equipFreeWeightsOpen = true;
+    renderEquipmentSheet(exerciseIdx);
+}
+
+export async function awEquipFastPath(exerciseIdx, type, name) {
+    try {
+        const doc = await resolveGenericEquipment(type, name);
+        if (!doc) { showNotification("Couldn't save — try again", 'error'); return; }
+        equipFreeWeightsOpen = false;
+        // awSelectEquipment gym-tags + exercise-links (auto-associate) + selects.
+        await awSelectEquipment(exerciseIdx, doc.name);
+    } catch (e) {
+        console.error('Fast-path equipment failed:', e);
+        showNotification("Couldn't save — try again", 'error');
+    }
+}
+
+export function awSharedEquipFreeWeights() {
+    equipFreeWeightsOpen = true;
+    renderSharedEquipmentSheet();
+}
+
+export async function awSharedEquipFastPath(type, name) {
+    if (!_sharedEquipmentContext) return;
+    try {
+        const doc = await resolveGenericEquipment(type, name);
+        if (!doc) return;
+        equipFreeWeightsOpen = false;
+        await awSharedSelectEquipment(doc.name);
+    } catch (e) {
+        console.error('Fast-path equipment failed:', e);
+    }
+}
+
+/**
+ * "Skip equipment" — permanent per exercise (traveler-flow D10). Clears the
+ * equipment expectation on the live workout AND the source template, so
+ * every availability surface (badges, sheets, pickers) goes quiet for this
+ * exercise everywhere, immediately. Undoable from the toast.
+ */
+export async function awSkipEquipment(exerciseIdx) {
+    const exercise = AppState.currentWorkout.exercises[exerciseIdx];
+    if (!exercise) return;
+    const exName = getExerciseName(exercise);
+    const key = `exercise_${exerciseIdx}`;
+    const prevLive = exercise.equipment || null;
+
+    exercise.equipment = null;
+    if (AppState.savedData?.exercises?.[key]) {
+        AppState.savedData.exercises[key].equipment = null;
+    }
+    const prevTemplate = await setTemplateEquipmentForExercise(exName, null);
+
+    debouncedSaveWorkoutData(AppState);
+    awCloseSheet();
+    renderAll();
+
+    showNotification(`Won't ask about equipment for ${exName} again`, 'info', 0, {
+        label: 'Undo',
+        onClick: async () => {
+            exercise.equipment = prevLive;
+            if (AppState.savedData?.exercises?.[key]) {
+                AppState.savedData.exercises[key].equipment = prevLive;
+            }
+            if (prevTemplate !== undefined) {
+                await setTemplateEquipmentForExercise(exName, prevTemplate);
+            }
+            debouncedSaveWorkoutData(AppState);
+            renderAll();
+        },
+    });
+}
+
+/**
+ * Set (or clear) the equipment expectation for an exercise on the current
+ * workout's source template. Returns the previous value, or undefined when
+ * the template/exercise couldn't be found (nothing was written).
+ */
+async function setTemplateEquipmentForExercise(exName, equipment) {
+    try {
+        const tplName = AppState.savedData?.workoutType;
+        if (!tplName) return undefined;
+        const tpl = (AppState.workoutPlans || []).find(p => (p.name || p.day) === tplName);
+        if (!tpl) return undefined;
+        const exercises = Array.isArray(tpl.exercises)
+            ? tpl.exercises
+            : Object.values(tpl.exercises || {});
+        const target = exercises.find(e => (e.name || e.machine) === exName);
+        if (!target) return undefined;
+
+        const prev = target.equipment || null;
+        target.equipment = equipment;
+        tpl.exercises = exercises;
+
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        const payload = {
+            id: tpl.id || tpl.day,
+            name: tpl.name || tpl.day,
+            exercises,
+            suggestedDays: Array.isArray(tpl.suggestedDays) ? tpl.suggestedDays : [],
+        };
+        if (tpl.category) payload.category = tpl.category;
+        if (!tpl.isCustom) payload.overridesDefault = payload.id;
+        await mgr.saveWorkoutTemplate(payload);
+        return prev;
+    } catch (e) {
+        console.error('Template equipment update failed:', e);
+        return undefined;
+    }
+}
+
+/**
+ * One-tap add for a reverse-matcher suggestion: find-or-create the catalog
+ * machine as an equipment doc, mirror the catalogRef onto the session gym's
+ * location doc (Tier 0.1 contract), then select it — created, gym-tagged,
+ * exercise-linked, selected.
+ */
+export async function awPickSuggestedMachine(exerciseIdx, suggestionIdx) {
+    const s = awMachineSuggestions[suggestionIdx];
+    if (!s) return;
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        const name = s.brandName && s.lineName ? `${s.brandName} ${s.lineName} — ${s.name}`
+            : s.brandName ? `${s.brandName} — ${s.name}`
+            : s.name;
+        const eq = await mgr.getOrCreateEquipment(name, {
+            brand: s.brandName,
+            line: s.lineName,
+            function: s.name,
+            equipmentType: s.type,
+            catalogRef: s.catalogRef,
+        }, null);
+        if (!eq) { showNotification("Couldn't save — try again", 'error'); return; }
+
+        const sessionLoc = AppState.savedData?.location;
+        const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+        if (locName && s.catalogRef) {
+            try {
+                const locs = await mgr.getUserLocations();
+                const loc = locs.find(l => l.name === locName);
+                if (loc?.id) await mgr.addLocationEquipment(loc.id, [{ catalogRef: s.catalogRef }]);
+            } catch { /* doc-side tag (auto-associate below) is the source of truth */ }
+        }
+
+        AppState._cachedEquipment = await mgr.getUserEquipment();
+        await awSelectEquipment(exerciseIdx, eq.name);
+    } catch (e) {
+        console.error('Suggested machine add failed:', e);
+        showNotification("Couldn't save — try again", 'error');
+    }
+}
+
 /**
  * Location line for a picker row. Off-gym equipment gets an explicit
  * "At <gym>" prefix so picking a machine that lives at another gym is a
@@ -1649,6 +1868,7 @@ export async function awOpenEquipmentSheet(exerciseIdx) {
     exerciseMenuOpen = false;
     equipSearchQuery = '';
     equipSheetShowAll = false;
+    equipFreeWeightsOpen = false;
 
     // Always refresh equipment from Firestore on open — the user may have
     // promoted catalog equipment via the library mid-workout. Without this
@@ -1755,13 +1975,49 @@ function renderEquipmentSheet(exerciseIdx) {
                 </div>`
             : '');
 
+    // Reverse-matcher suggestions (F2): when nothing is mapped to this
+    // exercise yet, suggest likely catalog machines as one-tap adds instead
+    // of shrugging. Machines already in the library are excluded.
+    let matchesSection = '';
+    if (forThisExercise.length === 0) {
+        const have = new Set(allEquipment.map(eq => eq.catalogRef).filter(Boolean));
+        awMachineSuggestions = suggestMachinesForExercise(exName, EQUIPMENT_CATALOG)
+            .filter(s => !have.has(s.catalogRef));
+        if (awMachineSuggestions.length > 0) {
+            matchesSection = `
+                <div class="aw-equip-section">
+                    <div class="aw-equip-section__title">Matches for ${escapeHtml(exName)}</div>
+                    ${awMachineSuggestions.map((s, i) => `
+                        <div class="js-row" onclick="awPickSuggestedMachine(${exerciseIdx}, ${i})">
+                            <div class="js-row__icon js-row__icon--equip"><i class="fas fa-plus"></i></div>
+                            <div class="js-row__info">
+                                <div class="js-row__name">${escapeHtml(s.name)}</div>
+                                <div class="js-row__meta">${escapeHtml(s.brandName)} · ${escapeHtml(s.type)} · from catalog</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+    } else {
+        awMachineSuggestions = [];
+    }
+
     const body = `
+        ${renderEquipFastPathsHTML({
+            skip: `awSkipEquipment(${exerciseIdx})`,
+            freeWeights: `awEquipFreeWeights(${exerciseIdx})`,
+            dumbbells: `awEquipFastPath(${exerciseIdx}, 'Dumbbell', 'Dumbbells')`,
+            barbell: `awEquipFastPath(${exerciseIdx}, 'Barbell', 'Barbell')`,
+            cable: `awEquipFastPath(${exerciseIdx}, 'Cable', 'Cable machine')`,
+        })}
         <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
             <input type="text" placeholder="Search equipment…" value="${escapeAttr(equipSearchQuery)}" oninput="awEquipSearch(${exerciseIdx}, this.value)">
         </div>
         <div id="aw-equip-list">
             ${renderSection(`For ${escapeHtml(exName)}`, forThisExercise, 'No equipment assigned to this exercise yet')}
+            ${matchesSection}
             ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, `No equipment saved at ${escapeHtml(locName)} yet`) : ''}
             ${otherSectionHTML}
             ${noneRow}
@@ -1853,6 +2109,7 @@ export async function openSharedEquipmentSheet({ exerciseName, currentEquipment,
     }
     awCloseMenus();
     equipSearchQuery = '';
+    equipFreeWeightsOpen = false;
 
     // Lazy-load equipment cache (same pattern as awOpenEquipmentSheet)
     if (!AppState._cachedEquipment || AppState._cachedEquipment.length === 0) {
@@ -1955,6 +2212,14 @@ function renderSharedEquipmentSheet() {
     ` : '';
 
     const body = `
+        ${renderEquipFastPathsHTML({
+            // No Skip here: the shared sheet's None row already clears the
+            // template's equipment field, which IS the skip semantic (D10).
+            freeWeights: `awSharedEquipFreeWeights()`,
+            dumbbells: `awSharedEquipFastPath('Dumbbell', 'Dumbbells')`,
+            barbell: `awSharedEquipFastPath('Barbell', 'Barbell')`,
+            cable: `awSharedEquipFastPath('Cable', 'Cable machine')`,
+        })}
         <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
             <input type="text" placeholder="Search equipment…" value="${escapeAttr(equipSearchQuery)}" oninput="awSharedEquipSearch(this.value)">
@@ -3281,3 +3546,9 @@ export function setCurrentExerciseIdx(idx) { currentExerciseIdx = idx; }
 // template strings — immune to main.js version skew (prod caches JS 1 year).
 window.awOpenCatalogQuickAdd = awOpenCatalogQuickAdd;
 window.awSharedOpenCatalogQuickAdd = awSharedOpenCatalogQuickAdd;
+window.awSkipEquipment = awSkipEquipment;
+window.awEquipFreeWeights = awEquipFreeWeights;
+window.awEquipFastPath = awEquipFastPath;
+window.awSharedEquipFreeWeights = awSharedEquipFreeWeights;
+window.awSharedEquipFastPath = awSharedEquipFastPath;
+window.awPickSuggestedMachine = awPickSuggestedMachine;

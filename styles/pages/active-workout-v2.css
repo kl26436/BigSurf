@@ -762,6 +762,38 @@
 }
 .aw-footer__finish:active { transform: scale(0.96); }
 
+/* Fast-path chips at the top of the equipment sheets (Tier 3 Phase 2 / F2):
+   Skip equipment · Free weights (→ Dumbbells/Barbell) · Cable machine. */
+.aw-equip-fastpaths {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
+}
+.aw-fastpath-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    min-height: var(--tap-sm);
+    padding: 0 var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    color: var(--text-main);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+.aw-fastpath-chip:active {
+    background: var(--bg-card-hi);
+    transform: scale(0.95);
+}
+.aw-fastpath-chip i {
+    color: var(--primary);
+    font-size: var(--font-2xs);
+}
+
 /* === BOTTOM SHEET === */
 .aw-sheet-backdrop {
     position: fixed;
