@@ -208,12 +208,28 @@
     color: var(--text-muted);
 }
 .equip-detail-hero__type-pill {
+    display: inline-block;
+    margin-top: var(--space-6);
     padding: var(--space-4) var(--space-10);
     border-radius: var(--radius-pill);
     font-size: var(--font-xs);
     font-weight: 600;
     white-space: nowrap;
     flex-shrink: 0;
+}
+
+/* Tappable hero (UX-4c) — the whole card opens the identity sheet. */
+.equip-detail-hero--tap {
+    cursor: pointer;
+}
+.equip-detail-hero--tap:active {
+    background: var(--bg-card-hi);
+}
+.equip-detail-hero__edit {
+    flex-shrink: 0;
+    margin-left: var(--space-8);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
 }
 
 /* --------------------------------------------------------------------------
@@ -831,48 +847,105 @@
     flex-direction: column;
     gap: var(--space-8);
 }
-.equip-detail-ex-row__head {
+/* Read-first detail row-card trailing cluster (UX-4c) — value/play + chevron
+   at the end of a .row-card in the Setup and Used-for sections. */
+.equip-rc-trail {
     display: flex;
     align-items: center;
     gap: var(--space-10);
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
 }
-.equip-detail-ex-row__play {
-    width: var(--tap);
-    height: var(--tap);
-    background: transparent;
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-pill);
+.equip-rc-trail__val {
+    color: var(--text-strong);
+    font-weight: 700;
+}
+.equip-rc-trail__video {
     color: var(--primary);
     font-size: var(--font-md);
+}
+
+/* Danger card (UX-4c) — bordered box, not a bare row after Notes. */
+.equip-danger-card {
+    margin-top: var(--space-20);
+    padding: var(--space-12);
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    border-radius: var(--radius-md);
+}
+.equip-danger-card__sub {
+    margin-top: var(--space-4);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+}
+
+/* Identity sheet key/value rows (UX-4c). */
+.equip-id-row {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: var(--tap);
+    margin-bottom: var(--space-6);
+    padding: var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    text-align: left;
     cursor: pointer;
-    flex-shrink: 0;
 }
-.equip-detail-ex-row__play:active { opacity: 0.7; }
-.equip-detail-ex-row__video {
+.equip-id-row:active {
+    background: var(--bg-card-hi);
+}
+.equip-id-row__k {
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: 600;
+}
+.equip-id-row__v {
     display: flex;
     align-items: center;
     gap: var(--space-8);
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    font-weight: 600;
 }
-.equip-detail-ex-row__video-icon {
+.equip-id-row__v i {
     color: var(--text-muted);
-    font-size: var(--font-sm);
-    flex-shrink: 0;
+    font-size: var(--font-xs);
 }
-.equip-detail-ex-row__video-input {
-    flex: 1;
+
+/* Sheet action rows (UX-4c) — Play / Remove inside the used-for sheet. */
+.equip-sheet-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    width: 100%;
+    min-height: var(--tap);
+    margin-bottom: var(--space-6);
+    padding: var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    text-align: left;
+    color: var(--text-main);
     font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
 }
-.equip-detail-ex-row__inherits {
+.equip-sheet-row:active {
+    background: var(--bg-card-hi);
+}
+.equip-sheet-row--danger {
+    color: var(--danger);
+}
+.equip-uf-inherits {
     display: flex;
     align-items: center;
     gap: var(--space-6);
+    margin-top: var(--space-6);
     color: var(--text-muted);
-    font-size: var(--font-2xs);
-    padding-left: var(--space-22);
-}
-.equip-detail-ex-row__inherits > i {
-    font-size: var(--font-2xs);
+    font-size: var(--font-xs);
 }

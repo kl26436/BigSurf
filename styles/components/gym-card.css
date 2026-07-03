@@ -327,13 +327,6 @@
     color: var(--text-very-muted);
 }
 
-.detail-tag-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-6);
-    padding: 0 var(--pad-page) var(--space-12);
-}
-
 /* Page-header subtitle (used in gym detail header) — slot below the title. */
 .page-header__title-block {
     display: flex;

@@ -3329,30 +3329,10 @@ export async function openEquipmentDetail(equipmentId) {
     }
 
     const typeInfo = EQUIPMENT_TYPE_ICONS[equipment.equipmentType] || EQUIPMENT_TYPE_ICONS.Other;
-    // Pull exercise-default videos out of the in-memory exercise library so
-    // the "Used for" rows can surface them as inherited values. Without this,
-    // users with videos saved on the exercise (most of them — 7 custom +
-    // every default in data/exercises.json) saw an empty URL field on the
-    // equipment detail and assumed videos had been lost.
-    const exerciseDb = AppState.exerciseDatabase || [];
-    const findExerciseDefault = (name) => {
-        const lc = (name || '').toLowerCase();
-        const match = exerciseDb.find(ex => (ex.name || ex.machine || '').toLowerCase() === lc);
-        return match?.video || null;
-    };
-    const exercises = (equipment.exerciseTypes || []).map(name => {
-        const override = equipment.exerciseVideos?.[name] || null;
-        const inherited = override ? null : findExerciseDefault(name);
-        return {
-            name,
-            videoUrl: override,
-            inheritedUrl: inherited,
-            // Effective URL is whatever play button should fire — override
-            // takes precedence; inherited is the fallback. Mirrors the
-            // 3-tier resolveFormVideo priority used during active workout.
-            effectiveUrl: override || inherited || null,
-        };
-    });
+    const exercises = (equipment.exerciseTypes || []).map(name => ({
+        name,
+        ...findEquipmentExerciseVideo(equipment, name),
+    }));
     const locations = equipment.locations || [];
     const notes = equipment.notes || '';
 
@@ -3385,13 +3365,30 @@ export async function openEquipmentDetail(equipmentId) {
     // Compute Pocket Inventory stat grid values (Sessions / PR / Last).
     const detailStats = computeEquipmentDetailStats(equipment);
     const sessionGym = getSessionLocation();
-    const inferredBp = inferBodyPartFromEquipment(equipment);
-    const bpConfig = BODY_PART_CONFIG[inferredBp] || BODY_PART_CONFIG['Multi-Use'];
+
+    // Preserve scroll across in-place re-renders so a sheet save doesn't fling
+    // the page back to the top — the old full-innerHTML reset's worst tic.
+    const prevScroll = container.scrollTop;
 
     container.innerHTML = `
         <div class="equipment-detail">
             <div class="equip-detail-body">
-                <!-- Stat grid — Sessions / PR / Last (Pocket Inventory redesign) -->
+                <!-- 1. HERO — one tap opens the identity sheet (name/brand/line/function/type) -->
+                <div class="equip-detail-hero equip-detail-hero--tap" role="button" tabindex="0"
+                     onclick="openEquipmentIdentitySheet('${escapeAttr(equipmentId)}')"
+                     aria-haspopup="dialog" aria-label="Edit equipment identity">
+                    <div class="equip-detail-hero__icon ${heroTypeClass}">
+                        <i class="fas ${typeInfo.icon}"></i>
+                    </div>
+                    <div class="equip-detail-hero__info">
+                        <div class="equip-detail-hero__name">${escapeHtml(heroFunction)}</div>
+                        ${heroSubtitle ? `<div class="equip-detail-hero__subtitle">${escapeHtml(heroSubtitle)}</div>` : ''}
+                        <span class="equip-detail-hero__type-pill ${heroTypeClass}">${escapeHtml(currentType)}</span>
+                    </div>
+                    <i class="fas fa-pen equip-detail-hero__edit" aria-hidden="true"></i>
+                </div>
+
+                <!-- 2. STAT STRIP — Sessions / PR / Last -->
                 <div class="detail-stat-grid">
                     <div class="detail-stat-grid__card">
                         <div class="detail-stat-grid__label">Sessions</div>
@@ -3408,106 +3405,23 @@ export async function openEquipmentDetail(equipmentId) {
                     </div>
                 </div>
 
-                <!-- Tag row — TypePill + bodypart chip + locations count chip -->
-                <div class="detail-tag-row">
-                    <span class="equip-row__type-pill ${heroTypeClass}">${escapeHtml(currentType)}</span>
-                    <span class="chip chip--sm">
-                        <i class="${bpConfig.icon}"></i> ${escapeHtml(inferredBp)}
-                    </span>
-                    <span class="chip chip--sm">
-                        <i class="fas fa-map-marker-alt"></i> ${locations.length} ${locations.length === 1 ? 'gym' : 'gyms'}
-                    </span>
-                </div>
-
-                <!-- Hero — icon + function + Brand · Line subtitle + type badge -->
-                <div class="equip-detail-hero">
-                    <div class="equip-detail-hero__icon ${heroTypeClass}">
-                        <i class="fas ${typeInfo.icon}"></i>
-                    </div>
-                    <div class="equip-detail-hero__info">
-                        <div class="equip-detail-hero__name">${escapeHtml(heroFunction)}</div>
-                        ${heroSubtitle ? `<div class="equip-detail-hero__subtitle">${escapeHtml(heroSubtitle)}</div>` : ''}
-                    </div>
-                    <span class="equip-detail-hero__type-pill ${heroTypeClass}">${escapeHtml(currentType)}</span>
-                </div>
-
-                <!-- Name (override — normally derived from Brand / Line / Function) -->
-                <div class="field">
-                    <div class="field-label">Name</div>
-                    <input class="field-input" value="${escapeAttr(equipment.name)}"
-                           onchange="saveEquipmentField('${escapeAttr(equipmentId)}', 'name', this.value)">
-                </div>
-
-                <!-- Brand — tappable picker row. Opens the generic field picker
-                     modal populated with catalog brands + user's existing brands. -->
-                <div class="field">
-                    <div class="field-label">Brand</div>
-                    <button class="field-picker-row" onclick="openBrandPicker('${escapeAttr(equipmentId)}')" aria-haspopup="dialog">
-                        <span class="field-picker-row__value ${!equipment.brand || equipment.brand === 'Unknown' ? 'field-picker-row__value--placeholder' : ''}">
-                            ${escapeHtml(equipment.brand && equipment.brand !== 'Unknown' ? equipment.brand : 'Select a brand…')}
-                        </span>
-                        <i class="fas fa-chevron-down field-picker-row__chevron"></i>
-                    </button>
-                </div>
-
-                <!-- Line — tappable picker row, scoped to the current brand. -->
-                <div class="field">
-                    <div class="field-label">Line</div>
-                    <button class="field-picker-row" onclick="openLinePicker('${escapeAttr(equipmentId)}')" aria-haspopup="dialog">
-                        <span class="field-picker-row__value ${!equipment.line ? 'field-picker-row__value--placeholder' : ''}">
-                            ${escapeHtml(equipment.line || (equipment.brand && equipment.brand !== 'Unknown' ? 'Select a line…' : 'Pick brand first'))}
-                        </span>
-                        <i class="fas fa-chevron-down field-picker-row__chevron"></i>
-                    </button>
-                </div>
-
-                <!-- Function — tappable picker row that opens a bottom-sheet selector.
-                     Replaces the previous text-input-with-datalist because datalists on
-                     mobile don't feel like a picker (no visible dropdown affordance). -->
-                <div class="field">
-                    <div class="field-label">Function</div>
-                    <button class="field-picker-row" onclick="openFunctionPicker('${escapeAttr(equipmentId)}')" aria-haspopup="dialog">
-                        <span class="field-picker-row__value ${!equipment.function ? 'field-picker-row__value--placeholder' : ''}">
-                            ${escapeHtml(equipment.function || 'Select a function…')}
-                        </span>
-                        <i class="fas fa-chevron-down field-picker-row__chevron"></i>
-                    </button>
-                </div>
-
-                <!-- Type chips -->
-                <div class="field">
-                    <div class="field-label">Type</div>
-                    <div class="chips">
-                        ${EQUIPMENT_TYPES_LIST.map(t => `
-                            <div class="chip ${currentType === t ? 'active' : ''}"
-                                 onclick="saveEquipmentField('${escapeAttr(equipmentId)}', 'equipmentType', '${t}'); openEquipmentDetail('${escapeAttr(equipmentId)}');">
-                                ${t}
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-
-                <!-- Base weight (conditional) -->
+                <!-- 3. SETUP — base weight (base-weight types only): read-first row → sheet -->
                 ${BASE_WEIGHT_TYPES.includes(currentType) ? `
-                <div class="field">
-                    <div class="field-label">Base weight <span class="field-label__hint">(empty machine / bar)</span></div>
-                    <div class="equip-base-weight-row">
-                        <input type="number" inputmode="decimal" step="0.5"
-                               class="equip-base-weight-input"
-                               value="${equipment.baseWeight || 0}"
-                               onchange="saveEquipmentBaseWeight('${escapeAttr(equipmentId)}', this.value)">
-                        <div class="equip-base-weight-unit-toggle">
-                            <button class="unit-chip ${(equipment.baseWeightUnit || 'lbs') === 'lbs' ? 'active' : ''}"
-                                    onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'lbs', this)">lb</button>
-                            <button class="unit-chip ${(equipment.baseWeightUnit || 'lbs') === 'kg' ? 'active' : ''}"
-                                    onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'kg', this)">kg</button>
-                        </div>
+                <div class="sec-head"><h4>Setup</h4></div>
+                <div class="row-card" role="button" tabindex="0"
+                     onclick="openEquipmentBaseWeightSheet('${escapeAttr(equipmentId)}')" aria-haspopup="dialog">
+                    <div class="row-card__icon"><i class="fas fa-weight-hanging"></i></div>
+                    <div class="row-card__content">
+                        <div class="row-card__title">Base weight</div>
+                        <div class="row-card__subtitle">Empty machine / bar</div>
                     </div>
-                    <div class="equip-base-weight-hint">Added to plate weight when logging sets and shown in the plate calculator.</div>
-                </div>
-                ` : ''}
+                    <div class="equip-rc-trail">
+                        <span class="equip-rc-trail__val">${equipment.baseWeight || 0} ${equipment.baseWeightUnit || 'lbs'}</span>
+                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                    </div>
+                </div>` : ''}
 
-                <!-- Locations -->
+                <!-- 4. LOCATIONS — inline chips -->
                 <div class="sec-head">
                     <h4>Locations <span class="count">${locations.length}</span></h4>
                     <button class="sec-head__action" onclick="addEquipmentLocation('${escapeAttr(equipmentId)}')">+ Add</button>
@@ -3526,52 +3440,259 @@ export async function openEquipmentDetail(equipmentId) {
                     ${locations.length === 0 ? '<span class="equip-locations-empty">No locations yet</span>' : ''}
                 </div>
 
-                <!-- Used for exercises -->
+                <!-- 5. USED FOR — compact row-cards → per-exercise sheet -->
                 <div class="sec-head">
                     <h4>Used for <span class="count">${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}</span></h4>
                     <button class="sec-head__action" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Assign</button>
                 </div>
                 ${exercises.map(ex => `
-                    <div class="equip-detail-ex-row">
-                        <div class="equip-detail-ex-row__head">
-                            <div class="srow-icon ic-blue"><i class="fas fa-dumbbell"></i></div>
-                            <div class="link-row-info">${escapeHtml(ex.name)}</div>
-                            ${ex.effectiveUrl ? `<button class="equip-detail-ex-row__play" onclick="awShowFormVideo('${escapeAttr(ex.effectiveUrl)}', '${escapeAttr(ex.name)}')" aria-label="Play form video" title="Play form video"><i class="fas fa-play-circle"></i></button>` : ''}
-                            <button class="link-row-action" onclick="unassignExercise('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')">Remove</button>
+                    <div class="row-card" role="button" tabindex="0"
+                         onclick="openEquipmentExerciseSheet('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')" aria-haspopup="dialog">
+                        <div class="row-card__icon"><i class="fas fa-dumbbell"></i></div>
+                        <div class="row-card__content">
+                            <div class="row-card__title">${escapeHtml(ex.name)}</div>
+                            <div class="row-card__subtitle">${ex.override ? 'Custom form video' : (ex.inherited ? 'Inherits exercise default' : 'No form video')}</div>
                         </div>
-                        <div class="equip-detail-ex-row__video">
-                            <i class="fas fa-video equip-detail-ex-row__video-icon"></i>
-                            <input type="url"
-                                   class="field-input equip-detail-ex-row__video-input"
-                                   placeholder="${ex.inheritedUrl ? 'Override — leave blank to inherit' : 'Form video URL (YouTube)'}"
-                                   value="${escapeAttr(ex.videoUrl || '')}"
-                                   onchange="saveEquipmentExerciseVideoFromLib('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}', this.value)">
+                        <div class="equip-rc-trail">
+                            ${ex.effective ? '<i class="fas fa-circle-play equip-rc-trail__video" aria-hidden="true"></i>' : ''}
+                            <i class="fas fa-chevron-right" aria-hidden="true"></i>
                         </div>
-                        ${ex.inheritedUrl ? `
-                        <div class="equip-detail-ex-row__inherits">
-                            <i class="fas fa-arrow-up-from-bracket"></i>
-                            <span>Inherits exercise default</span>
-                        </div>
-                        ` : ''}
                     </div>
                 `).join('')}
+                ${exercises.length === 0 ? '<div class="equip-locations-empty">No exercises yet — tap Assign to link one.</div>' : ''}
 
-                <!-- Notes -->
+                <!-- 6. NOTES — inline -->
                 <div class="sec-head"><h4>Notes</h4></div>
                 <textarea class="field-input equip-notes"
                           placeholder="e.g., Setting 5 for chest fly, setting 8 for pushdown"
                           oninput="saveEquipmentNotes('${escapeAttr(equipmentId)}', this.value)">${escapeHtml(notes)}</textarea>
 
-                <!-- Delete -->
-                <div class="danger-action-row">
+                <!-- 7. DANGER — bordered card, honest consequence copy -->
+                <div class="equip-danger-card">
                     <button class="danger-action-btn"
                             onclick="deleteEquipmentFromLibrary('${escapeAttr(equipmentId)}')">
                         <i class="fas fa-trash"></i> Delete equipment
                     </button>
+                    <div class="equip-danger-card__sub">Your workout history keeps its records — they'll just show as unlinked.</div>
                 </div>
             </div>
         </div>
     `;
+
+    if (prevScroll) container.scrollTop = prevScroll;
+}
+
+// Resolve an exercise's form-video state for this equipment: an explicit
+// per-equipment override, else the exercise-library default it inherits.
+// `effective` is what a play button fires (override wins) — mirrors the
+// 3-tier resolveFormVideo priority used during an active workout.
+function findEquipmentExerciseVideo(equipment, name) {
+    const override = equipment.exerciseVideos?.[name] || null;
+    let inherited = null;
+    if (!override) {
+        const lc = (name || '').toLowerCase();
+        const match = (AppState.exerciseDatabase || [])
+            .find(ex => (ex.name || ex.machine || '').toLowerCase() === lc);
+        inherited = match?.video || null;
+    }
+    return { override, inherited, effective: override || inherited || null };
+}
+
+// ── Identity sheet — name / brand / line / function / type behind one tap ──
+
+function renderIdentitySheetBody(equipment) {
+    const id = equipment.id;
+    const currentType = equipment.equipmentType || 'Other';
+    const hasBrand = equipment.brand && equipment.brand !== 'Unknown';
+    const brandLabel = hasBrand ? equipment.brand : 'Add';
+    const lineLabel = equipment.line || (hasBrand ? 'Add' : 'Pick brand first');
+    const funcLabel = equipment.function || 'Add';
+    return `
+        <div class="field">
+            <div class="field-label">Name</div>
+            <input class="field-input" value="${escapeAttr(equipment.name)}"
+                   onchange="saveEquipmentField('${escapeAttr(id)}', 'name', this.value)">
+        </div>
+        <div class="field-label">Details</div>
+        <button class="equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'brand')">
+            <span class="equip-id-row__k">Brand</span>
+            <span class="equip-id-row__v">${escapeHtml(brandLabel)} <i class="fas fa-chevron-right"></i></span>
+        </button>
+        <button class="equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'line')">
+            <span class="equip-id-row__k">Line</span>
+            <span class="equip-id-row__v">${escapeHtml(lineLabel)} <i class="fas fa-chevron-right"></i></span>
+        </button>
+        <button class="equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'function')">
+            <span class="equip-id-row__k">Function</span>
+            <span class="equip-id-row__v">${escapeHtml(funcLabel)} <i class="fas fa-chevron-right"></i></span>
+        </button>
+        <div class="field-label">Type</div>
+        <div class="chips">
+            ${EQUIPMENT_TYPES_LIST.map(t => `
+                <div class="chip ${currentType === t ? 'active' : ''}"
+                     onclick="identitySheetSetType('${escapeAttr(id)}', '${t}')">${t}</div>
+            `).join('')}
+        </div>
+    `;
+}
+
+export function openEquipmentIdentitySheet(equipmentId) {
+    const equipment = allEquipment.find(e => e.id === equipmentId);
+    if (!equipment) return;
+    mountEquipSheet('equip-identity', {
+        title: 'Edit equipment',
+        subtitle: 'Identity — everything else stays on the page',
+        body: `<div id="equip-identity-body">${renderIdentitySheetBody(equipment)}</div>`,
+        actions: `<button class="aw-sheet__action primary" onclick="closeEquipmentIdentitySheet(true, '${escapeAttr(equipmentId)}')">Done</button>`,
+        onBackdrop: () => closeEquipmentIdentitySheet(true, equipmentId),
+    });
+}
+
+export function identitySheetSetType(equipmentId, type) {
+    saveEquipmentField(equipmentId, 'equipmentType', type);
+    // saveEquipmentField updates the in-memory cache synchronously, so
+    // re-rendering the sheet body immediately reflects the new active chip.
+    const body = document.getElementById('equip-identity-body');
+    const eq = allEquipment.find(e => e.id === equipmentId);
+    if (body && eq) body.innerHTML = renderIdentitySheetBody(eq);
+}
+
+export function identitySheetPickField(equipmentId, field) {
+    // Close the identity sheet first — the field picker (a modal) reopens the
+    // detail page on save, so a still-mounted sheet would strand a stale copy
+    // over the fresh page.
+    closeEquipmentIdentitySheet(false, equipmentId);
+    if (field === 'brand') openBrandPicker(equipmentId);
+    else if (field === 'line') openLinePicker(equipmentId);
+    else openFunctionPicker(equipmentId);
+}
+
+export function closeEquipmentIdentitySheet(refresh, equipmentId) {
+    dismissEquipSheet('equip-identity');
+    if (refresh && equipmentId) openEquipmentDetail(equipmentId);
+}
+
+// ── Base-weight sheet ──
+
+export function openEquipmentBaseWeightSheet(equipmentId) {
+    const equipment = allEquipment.find(e => e.id === equipmentId);
+    if (!equipment) return;
+    const unit = equipment.baseWeightUnit || 'lbs';
+    mountEquipSheet('equip-bw', {
+        title: 'Base weight',
+        subtitle: 'Empty machine or bar — added to plate weight when logging sets',
+        body: `
+            <div class="equip-base-weight-row">
+                <input type="number" inputmode="decimal" step="0.5"
+                       class="equip-base-weight-input" id="equip-bw-input"
+                       value="${equipment.baseWeight || 0}"
+                       onchange="saveEquipmentBaseWeight('${escapeAttr(equipmentId)}', this.value)">
+                <div class="equip-base-weight-unit-toggle">
+                    <button class="unit-chip ${unit === 'lbs' ? 'active' : ''}"
+                            onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'lbs', this)">lb</button>
+                    <button class="unit-chip ${unit === 'kg' ? 'active' : ''}"
+                            onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'kg', this)">kg</button>
+                </div>
+            </div>
+            <div class="equip-base-weight-hint">Shown in the plate calculator and added on top of plate weight.</div>
+        `,
+        actions: `<button class="aw-sheet__action primary" onclick="closeEquipmentBaseWeightSheet('${escapeAttr(equipmentId)}')">Done</button>`,
+        onBackdrop: () => closeEquipmentBaseWeightSheet(equipmentId),
+    });
+}
+
+export function closeEquipmentBaseWeightSheet(equipmentId) {
+    dismissEquipSheet('equip-bw');
+    if (equipmentId) openEquipmentDetail(equipmentId);
+}
+
+// ── Used-for sheet — Remove / edit form video / open video ──
+
+export function openEquipmentExerciseSheet(equipmentId, exerciseName) {
+    const equipment = allEquipment.find(e => e.id === equipmentId);
+    if (!equipment) return;
+    const { override, inherited, effective } = findEquipmentExerciseVideo(equipment, exerciseName);
+    mountEquipSheet('equip-uf', {
+        title: exerciseName,
+        subtitle: 'Form video for this exercise on this equipment',
+        body: `
+            <div class="field">
+                <div class="field-label">Form video URL</div>
+                <input type="url" class="field-input" id="equip-uf-video"
+                       placeholder="${inherited ? 'Override — leave blank to inherit' : 'YouTube URL'}"
+                       value="${escapeAttr(override || '')}"
+                       onchange="saveEquipmentExerciseVideoFromLib('${escapeAttr(equipmentId)}', '${escapeAttr(exerciseName)}', this.value)">
+                ${inherited ? '<div class="equip-uf-inherits"><i class="fas fa-arrow-up-from-bracket"></i> Inherits exercise default</div>' : ''}
+            </div>
+            ${effective ? `<button class="equip-sheet-row" onclick="awShowFormVideo('${escapeAttr(effective)}', '${escapeAttr(exerciseName)}')"><i class="fas fa-circle-play"></i> Play form video</button>` : ''}
+            <button class="equip-sheet-row equip-sheet-row--danger" onclick="removeExerciseFromEquipSheet('${escapeAttr(equipmentId)}', '${escapeAttr(exerciseName)}')"><i class="fas fa-trash"></i> Remove from this equipment</button>
+        `,
+        actions: `<button class="aw-sheet__action primary" onclick="closeEquipmentExerciseSheet('${escapeAttr(equipmentId)}')">Done</button>`,
+        onBackdrop: () => closeEquipmentExerciseSheet(equipmentId),
+    });
+}
+
+export function removeExerciseFromEquipSheet(equipmentId, exerciseName) {
+    // Close the sheet first; unassignExercise runs its own confirm and then
+    // re-renders the detail page.
+    dismissEquipSheet('equip-uf');
+    unassignExercise(equipmentId, exerciseName);
+}
+
+export function closeEquipmentExerciseSheet(equipmentId) {
+    dismissEquipSheet('equip-uf');
+    if (equipmentId) openEquipmentDetail(equipmentId);
+}
+
+// ── Shared aw-sheet mount/dismiss for the equipment-detail sheets ──
+
+function mountEquipSheet(idBase, { title, subtitle, body, actions, onBackdrop }) {
+    // Never stack two detail sheets. Hard-remove any existing one synchronously
+    // (not the animated dismiss) so a re-open can't collide ids with a sheet
+    // still mid-exit — getElementById would otherwise target the wrong node.
+    ['equip-identity', 'equip-bw', 'equip-uf'].forEach(base => {
+        document.getElementById(`${base}-backdrop`)?.remove();
+        document.getElementById(`${base}-sheet`)?.remove();
+    });
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = `${idBase}-backdrop`;
+    backdrop.onclick = onBackdrop || (() => dismissEquipSheet(idBase));
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = `${idBase}-sheet`;
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">${escapeHtml(title)}</div>
+            ${subtitle ? `<div class="aw-sheet__subtitle">${escapeHtml(subtitle)}</div>` : ''}
+        </div>
+        <div class="aw-sheet__body">${body}</div>
+        <div class="aw-sheet__actions">${actions}</div>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => {
+        backdrop.classList.add('visible');
+        sheet.classList.add('visible');
+    });
+}
+
+function dismissEquipSheet(idBase) {
+    const backdrop = document.getElementById(`${idBase}-backdrop`);
+    const sheet = document.getElementById(`${idBase}-sheet`);
+    if (!backdrop && !sheet) return;
+    if (backdrop) backdrop.classList.remove('visible');
+    if (sheet) sheet.classList.remove('visible');
+    setTimeout(() => {
+        if (backdrop) backdrop.remove();
+        if (sheet) sheet.remove();
+    }, 300);
 }
 
 export function backToEquipmentList() {
@@ -4691,3 +4812,14 @@ export async function setEquipmentBaseWeightUnit(equipmentId, unit, btn) {
 // Same-file window wiring for handlers rendered only by this module's own
 // template strings — immune to main.js version skew (prod caches JS 1 year).
 window.openCopyFromGymSheet = openCopyFromGymSheet;
+
+// Equipment-detail read-first sheets (UX-4c).
+window.openEquipmentIdentitySheet = openEquipmentIdentitySheet;
+window.closeEquipmentIdentitySheet = closeEquipmentIdentitySheet;
+window.identitySheetPickField = identitySheetPickField;
+window.identitySheetSetType = identitySheetSetType;
+window.openEquipmentBaseWeightSheet = openEquipmentBaseWeightSheet;
+window.closeEquipmentBaseWeightSheet = closeEquipmentBaseWeightSheet;
+window.openEquipmentExerciseSheet = openEquipmentExerciseSheet;
+window.closeEquipmentExerciseSheet = closeEquipmentExerciseSheet;
+window.removeExerciseFromEquipSheet = removeExerciseFromEquipSheet;
