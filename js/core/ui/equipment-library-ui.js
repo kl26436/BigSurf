@@ -20,10 +20,24 @@ import { getExercisePRs } from '../features/pr-tracker.js';
 import { findBestMatch } from '../data/fuzzy-match.js';
 import { suggestExercisesForMachine } from '../features/machine-exercise-matcher.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
+import { resolveLocationId } from '../data/location-id-resolver.js';
 
 let workoutManager = null;
 let allEquipment = [];
 let allLocations = [];        // user's saved gym locations (cached on open)
+
+// Resolve gym NAME strings → stable location-doc ids from the cached locations
+// (Phase 8b step 4 dual-write). Names with no doc are skipped — the name stays in
+// locations[] as the fallback. Deduped.
+function deriveLocationIdsFromNames(names) {
+    if (!Array.isArray(names) || allLocations.length === 0) return [];
+    const ids = [];
+    for (const name of names) {
+        const r = resolveLocationId(name, allLocations);
+        if (r.id) ids.push(r.id);
+    }
+    return [...new Set(ids)];
+}
 let currentLocationFilter = null;
 let currentSearchTerm = '';
 
@@ -4784,8 +4798,13 @@ export async function removeEquipmentLocation(equipmentId, locationName) {
         if (!eq) return;
         const locations = (eq.locations || []).filter(l => l !== locationName);
         const userId = AppState.currentUser.uid;
-        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { locations });
+        const payload = { locations };
+        // Dual-write locationIds[] (Phase 8b step 4) — always set here (removal),
+        // resolving the remaining names to ids.
+        payload.locationIds = deriveLocationIdsFromNames(locations);
+        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), payload);
         eq.locations = locations;
+        eq.locationIds = payload.locationIds;
         AppState._cachedEquipment = allEquipment;
         // Mirror onto the gym's location.equipment[] so the gym view and
         // quick-add's "already at this gym" state stay truthful.
@@ -4844,8 +4863,12 @@ async function commitEquipmentLocation(equipmentId, gymName) {
         }
         const locations = [...(eq.locations || []), gymName];
         const userId = AppState.currentUser.uid;
-        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), { locations });
+        const payload = { locations };
+        const derivedIds = deriveLocationIdsFromNames(locations);
+        if (derivedIds.length) { payload.locationIds = derivedIds; }
+        await updateDoc(doc(db, 'users', userId, 'equipment', equipmentId), payload);
         eq.locations = locations;
+        if (derivedIds.length) eq.locationIds = derivedIds;
         AppState._cachedEquipment = allEquipment;
         if (eq.catalogRef) {
             await syncCatalogRefOnLocation(eq.catalogRef, gymName, true);

@@ -2672,7 +2672,16 @@ export async function awSelectEquipment(exerciseIdx, equipName) {
                 try {
                     const { doc, db, updateDoc } = await import('../data/firebase-config.js');
                     const eqRef = doc(db, 'users', AppState.currentUser.uid, 'equipment', eq.id);
-                    await updateDoc(eqRef, { locations: eq.locations, exerciseTypes: eq.exerciseTypes });
+                    const payload = { locations: eq.locations, exerciseTypes: eq.exerciseTypes };
+                    // Dual-write locationIds[] (Phase 8b step 4). Session gyms are
+                    // resolved/created at workout start, so _cachedLocations is warm;
+                    // only override when we resolved ids so a cold cache can't clobber.
+                    const { resolveLocationId } = await import('../data/location-id-resolver.js');
+                    const locDocs = AppState._cachedLocations || [];
+                    const ids = [...new Set((eq.locations || [])
+                        .map(n => resolveLocationId(n, locDocs).id).filter(Boolean))];
+                    if (ids.length) { payload.locationIds = ids; eq.locationIds = ids; }
+                    await updateDoc(eqRef, payload);
                     // Phase C: one-time toast so auto-associate isn't a silent write
                     if (locName) {
                         showNotification(`Added ${equipName} to ${locName}`, 'silent', 2500);

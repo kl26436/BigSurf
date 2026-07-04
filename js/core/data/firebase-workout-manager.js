@@ -27,6 +27,7 @@ import {
 } from '../utils/validation.js';
 import { Config, debugLog } from '../utils/config.js';
 import { confidentEquipmentId } from './equipment-id-resolver.js';
+import { resolveLocationId } from './location-id-resolver.js';
 
 // One-shot guard for the legacy `location` → `locations[]` write sweep in
 // getUserEquipment. Module-scoped (not per-instance) because the manager is
@@ -1232,6 +1233,15 @@ export class FirebaseWorkoutManager {
                 lastUsed: new Date().toISOString(),
             };
 
+            // Keep locationIds[] in sync when the caller changed the gym names
+            // (Phase 8b step 4). Only override when we resolved ids, so a cold
+            // cache doesn't wipe existing ids.
+            if (Array.isArray(updates.locations)) {
+                const derivedIds = this._deriveLocationIds(updates.locations);
+                if (derivedIds.length) updatedData.locationIds = derivedIds;
+                else if (updates.locations.length === 0) updatedData.locationIds = [];
+            }
+
             await setDoc(docRef, updatedData);
             this.appState._cachedEquipment = null;
             return true;
@@ -1333,6 +1343,9 @@ export class FirebaseWorkoutManager {
                 brand: parsed.brand,
                 function: parsed.function,
                 locations: location ? [location] : [],
+                // Dual-write locationIds[] (Phase 8b step 4) — empty when the gym
+                // has no doc yet; the name in locations[] stays the fallback.
+                locationIds: location ? this._deriveLocationIds([location]) : [],
                 exerciseTypes: exerciseName ? [exerciseName] : [],
                 ...extraFields,
             };
@@ -1376,12 +1389,18 @@ export class FirebaseWorkoutManager {
                     locations.push(locationName);
                 }
 
-                await setDoc(docRef, {
+                const writeData = {
                     ...data,
                     locations: locations,
                     location: null, // Clear old single location field
                     lastUsed: new Date().toISOString(),
-                });
+                };
+                // Dual-write locationIds[] (Phase 8b step 4). Only override when we
+                // actually resolved ids — a cold cache leaves the existing ids (from
+                // the spread) untouched rather than clobbering them with [].
+                const derivedIds = this._deriveLocationIds(locations);
+                if (derivedIds.length) writeData.locationIds = derivedIds;
+                await setDoc(docRef, writeData);
             }
         } catch (error) {
             console.error('❌ Error adding location to equipment:', error);
@@ -1447,11 +1466,33 @@ export class FirebaseWorkoutManager {
                 locations.push({ id: doc.id, ...doc.data() });
             });
 
+            // Warm a lightweight cache so the locationIds[] dual-write (Phase 8b
+            // step 4) can resolve gym name → stable location id without an extra
+            // read on every equipment write.
+            this.appState._cachedLocations = locations;
             return locations;
         } catch (error) {
             console.error('❌ Error loading user locations:', error);
             return [];
         }
+    }
+
+    /**
+     * Resolve gym NAME strings → stable location-doc ids using the cached
+     * locations (Phase 8b step 4). Names with no doc (orphan gyms) or ambiguous
+     * names are simply skipped — `locations[]` (names) stays the fallback until
+     * the id-collapse is complete, so nothing is lost. Returns a deduped id list.
+     * `extraLocations` lets a caller pass a fresher list than the cache.
+     */
+    _deriveLocationIds(names, extraLocations = null) {
+        const locs = extraLocations || this.appState._cachedLocations || [];
+        if (!locs.length || !Array.isArray(names)) return [];
+        const ids = [];
+        for (const name of names) {
+            const r = resolveLocationId(name, locs);
+            if (r.id) ids.push(r.id);
+        }
+        return [...new Set(ids)];
     }
 
     /**
