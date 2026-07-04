@@ -256,17 +256,16 @@ function getExerciseBodyPart(exerciseName) {
  * name→id transition. Prefers an existing id-keyed entry, then an existing
  * name-keyed entry, then falls back to the name for brand-new entries.
  *
- * Reads pass the equipmentId so they FIND an id-keyed entry if a future re-key
- * created one. Writes stay name-keyed for now (new entries → name): the store's
- * display code surfaces the key AS the equipment label, so introducing raw id
- * keys before the name-denormalization lands (identity-regeneration step) would
- * show ids in the UI. The plumbing is in place so that re-key is a contained,
- * separately-tested change, not a rewrite of every caller.
+ * Reads pass the equipmentId so they FIND an id-keyed entry whether or not the
+ * store has been re-keyed. For an existing entry we keep its current key (id or
+ * name — never split it); a brand-new entry goes to the stable id when we have
+ * one. The human name is denormalized onto each entry (`equipmentName`) so the
+ * PR list still shows a label when the key is a raw id.
  */
 function resolvePrEquipKey(exerciseData, equipmentId, equipmentName) {
     if (equipmentId && exerciseData && exerciseData[equipmentId]) return equipmentId;
     if (equipmentName && exerciseData && exerciseData[equipmentName]) return equipmentName;
-    return equipmentName || equipmentId || 'Unknown Equipment';
+    return equipmentId || equipmentName || 'Unknown Equipment';
 }
 
 /**
@@ -389,6 +388,12 @@ export async function recordPR(
     }
 
     const equipmentPRs = prData.exercisePRs[exerciseName][equipKey];
+
+    // Denormalize the human-readable equipment name onto the entry so the PR
+    // list can render a label even when the entry is keyed by a stable id.
+    if (equipment && equipment !== 'Unknown Equipment') {
+        equipmentPRs.equipmentName = equipment;
+    }
 
     // Update max weight PR. Capture `unit` so dashboard / history can render
     // the value in the unit it was actually typed in, instead of guessing.
@@ -523,7 +528,8 @@ export function getAllPRs() {
 
             prList.push({
                 exercise: exerciseName,
-                equipment: equipment,
+                // `equipment` may be a stable id key — show the denormalized name.
+                equipment: prs.equipmentName || equipment,
                 bodyPart: bodyPart,
                 prs: prs,
             });
@@ -556,7 +562,9 @@ export function getPRsByBodyPart() {
             // Skip the bodyPart property
             if (equipment === 'bodyPart') continue;
 
-            grouped[bodyPart][exerciseName][equipment] = exerciseData[equipment];
+            const prs = exerciseData[equipment];
+            // Key by the display name (entry may be keyed by a stable id).
+            grouped[bodyPart][exerciseName][prs.equipmentName || equipment] = prs;
         }
     }
 
@@ -583,7 +591,8 @@ export function getRecentPRs(count = 5) {
             if (prs.maxWeight && prs.maxWeight.reps >= 5) {
                 prsWithDates.push({
                     exercise: exerciseName,
-                    equipment: equipment,
+                    // `equipment` may be a stable id key — show the denormalized name.
+                    equipment: prs.equipmentName || equipment,
                     bodyPart: bodyPart,
                     type: 'maxWeight',
                     weight: prs.maxWeight.weight,

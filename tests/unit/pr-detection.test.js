@@ -198,11 +198,12 @@ describe('equipment id-aware PR keying', () => {
         expect(result.prType).toBeNull();
     });
 
-    it('recordPR keeps a brand-new entry under the NAME key (id keys deferred until re-key)', async () => {
+    it('recordPR keys a brand-new entry by the stable id, but the PR list shows the human name', async () => {
         await seedPRData(emptyPRData);
-        // Even though we pass an equipmentId, the new entry must land under the
-        // human name so the PR list never renders a raw id as the equipment label.
         await recordPR('Squat', 5, 315, 'Barbell', 'Gym A', '2026-06-01', 'Legs', 'lbs', 'eq_barbell_999');
+        // Internally keyed by the id — findable via the id even if the name changes.
+        expect(getExercisePRs('Squat', 'Renamed Barbell', 'eq_barbell_999')).not.toBeNull();
+        // But the display surfaces the denormalized name, never the raw id.
         const all = getAllPRs().filter((p) => p.exercise === 'Squat');
         expect(all).toHaveLength(1);
         expect(all[0].equipment).toBe('Barbell');
@@ -212,9 +213,17 @@ describe('equipment id-aware PR keying', () => {
         await seedPRData(mockPRData); // Bench Press / "Hammer Strength" name-keyed, max 200
         await recordPR('Bench Press', 3, 225, 'Hammer Strength', 'Gym A', '2026-06-01', 'Chest', 'lbs', 'eq_hammer_123');
         const benchEntries = getAllPRs().filter((p) => p.exercise === 'Bench Press');
-        // Still exactly one entry for this exercise+equipment, still under the name.
+        // Still exactly one entry for this exercise+equipment (no split), name shown.
         expect(benchEntries).toHaveLength(1);
         expect(benchEntries[0].equipment).toBe('Hammer Strength');
         expect(benchEntries[0].prs.maxWeight.weight).toBe(225);
+    });
+
+    it('getAllPRs renders the denormalized name for an id-keyed entry, not the raw id', async () => {
+        await seedPRData(emptyPRData);
+        await recordPR('Row', 8, 185, 'Cable Machine', 'Gym A', '2026-06-01', 'Back', 'lbs', 'eq_cable_42');
+        const row = getAllPRs().find((p) => p.exercise === 'Row');
+        expect(row.equipment).toBe('Cable Machine');
+        expect(row.equipment).not.toContain('eq_');
     });
 });
