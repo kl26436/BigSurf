@@ -290,31 +290,9 @@ async function qeSave() {
             locations: st.locations,
         });
 
-        // Tier 0.1 mirror: gym-tag changes on a catalog-promoted doc must
-        // reflect onto each gym's location.equipment[] array too.
-        if (original.catalogRef) {
-            const before = new Set(original.locations || []);
-            const after = new Set(st.locations);
-            const added = [...after].filter(g => !before.has(g));
-            const removed = [...before].filter(g => !after.has(g));
-            if (added.length || removed.length) {
-                try {
-                    const locs = await mgr.getUserLocations();
-                    const byName = new Map(locs.map(l => [l.name, l]));
-                    for (const gym of added) {
-                        const loc = byName.get(gym);
-                        if (loc?.id) await mgr.addLocationEquipment(loc.id, [{ catalogRef: original.catalogRef }]);
-                    }
-                    for (const gym of removed) {
-                        const loc = byName.get(gym);
-                        if (loc?.id) await mgr.removeLocationEquipment(loc.id, original.catalogRef);
-                    }
-                } catch (e) {
-                    // Non-fatal: docs are the source of truth; arrays heal on render.
-                    console.error('Quick-edit catalogRef mirror failed:', e);
-                }
-            }
-        }
+        // (Phase 8b step 4: the location.equipment[] catalogRef mirror was
+        // removed — the equipment doc's locations[]/locationIds[] written above
+        // is the single source of truth for where this machine lives.)
 
         AppState._cachedEquipment = await mgr.getUserEquipment();
         showNotification(`${newName} updated`, 'success');

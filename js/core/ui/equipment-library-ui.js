@@ -1073,13 +1073,10 @@ function renderGymDetailRow(item) {
 }
 
 /**
- * Build the unified item list for a gym (legacy equipment.locations[] + new
- * location.equipment[] catalog refs). Normalized to a single shape so the
- * renderer doesn't care about the source. Deduped across BOTH sources so a
- * machine that exists both as a legacy record and as a catalog ref only
- * appears once (legacy wins because it carries richer per-user data —
- * baseWeight, notes, exerciseTypes). Stale duplicate catalog refs (from
- * before the addLocationEquipment transaction landed) are also collapsed.
+ * Build the item list for a gym from the equipment collection — the single
+ * source of truth (Phase 8b step 4). A machine is included if it's tagged to
+ * this gym by stable id (locationIds[]) or name (locations[]), deduped by
+ * normalized function-name.
  */
 function gatherGymEquipment(gymName, locationId) {
     const items = [];
@@ -1238,10 +1235,10 @@ async function refreshEquipmentCaches() {
 }
 
 /**
- * Doc-side counterpart of removeLocationEquipment: when a catalog machine is
- * untagged from a gym, remove the gym from any promoted equipment doc that
- * represents that machine. Uses the same matcher as migrateLocationCatalogRefs
- * so pre-catalogRef promotions (name matches) are covered too.
+ * When a catalog machine is untagged from a gym (catalog-detail toggle),
+ * remove that gym from every equipment doc representing the machine (matched by
+ * catalogRef / name / function). This is the sole write for that action now —
+ * the equipment doc is the source of truth.
  */
 async function untagGymFromPromotedDocs(catalogRef, gymName) {
     const resolved = resolveCatalogRef(catalogRef, getCatalogSync());
@@ -1255,39 +1252,11 @@ async function untagGymFromPromotedDocs(catalogRef, gymName) {
     for (const eq of matches) {
         const locations = (eq.locations || []).filter((l) => l !== gymName);
         await getManager().updateEquipment(eq.id, { locations });
-        eq.locations = locations;
     }
+    // Re-read so both locations[] AND the dual-written locationIds[] are fresh
+    // in the caches the workout picker + gym views read.
     if (matches.length > 0) {
-        AppState._cachedEquipment = allEquipment;
-    }
-}
-
-/**
- * Location-array counterpart for doc-side edits: when a promoted equipment
- * doc gains/loses a gym from the equipment-detail page, mirror the change
- * onto that gym's location.equipment[] so the gym view and quick-add's
- * "already at this gym" state stay truthful.
- */
-async function syncCatalogRefOnLocation(catalogRef, gymName, shouldExist) {
-    if (!catalogRef || !gymName) return;
-    const loc = allLocations.find((l) => l.name === gymName);
-    if (!loc?.id) return;
-    try {
-        if (shouldExist) {
-            await getManager().addLocationEquipment(loc.id, [{ catalogRef }]);
-        } else {
-            await getManager().removeLocationEquipment(loc.id, catalogRef);
-        }
-        const items = Array.isArray(loc.equipment) ? loc.equipment : [];
-        loc.equipment = shouldExist
-            ? (items.some((e) => e.catalogRef === catalogRef)
-                ? items
-                : [...items, { catalogRef, nickname: '', notes: '', addedAt: new Date().toISOString() }])
-            : items.filter((e) => e.catalogRef !== catalogRef);
-    } catch (err) {
-        // Non-fatal: the doc is the source of truth; the gym-view merge heals
-        // stale arrays on next render.
-        console.error('syncCatalogRefOnLocation failed:', err);
+        await refreshEquipmentCaches();
     }
 }
 
@@ -1431,18 +1400,27 @@ function renderCatalogMachineDetail() {
     const typeInfo = EQUIPMENT_TYPE_ICONS[type] || EQUIPMENT_TYPE_ICONS.Other;
     const bodyPart = machine.bodyPart || 'Multi-Use';
 
-    // Determine which of the user's gyms already have this machine. We match
-    // BOTH the canonical catalog ref AND legacy name-only entries so older
-    // tags (set before catalogRef was stored) still count.
+    // Determine which of the user's gyms already have this machine — derived
+    // from the equipment collection alone (Phase 8b step 4; the separate
+    // location.equipment[] representation is gone). A gym "has it" if an
+    // equipment doc matching this machine (by catalogRef / name / function) is
+    // tagged there by stable id OR name.
     const machineNameLC = machine.name.toLowerCase();
-    const gymStates = allLocations.map((loc) => {
-        const items = Array.isArray(loc.equipment) ? loc.equipment : [];
-        const hasIt = items.some((e) =>
-            e.catalogRef === _catalogDetailRef
-            || (e.name && e.name.toLowerCase() === machineNameLC)
-        );
-        return { id: loc.id, name: loc.name, hasIt };
-    });
+    const ownedGymNames = new Set();
+    const ownedGymIds = new Set();
+    for (const eq of allEquipment) {
+        const isThisMachine = eq.catalogRef === _catalogDetailRef
+            || (eq.name || '').toLowerCase() === machineNameLC
+            || (eq.function || '').toLowerCase() === machineNameLC;
+        if (!isThisMachine) continue;
+        (eq.locations || []).forEach((n) => n && ownedGymNames.add(n));
+        (eq.locationIds || []).forEach((id) => id && ownedGymIds.add(id));
+    }
+    const gymStates = allLocations.map((loc) => ({
+        id: loc.id,
+        name: loc.name,
+        hasIt: ownedGymNames.has(loc.name) || ownedGymIds.has(loc.id),
+    }));
 
     const metaParts = [brand.name, line.name, type, bodyPart].filter(Boolean);
     const gymRowsHTML = gymStates.length === 0
@@ -1514,42 +1492,35 @@ export async function toggleCatalogMachineAtGym(locationId) {
     const loc = allLocations.find((l) => l.id === locationId);
     if (!loc) { _inFlightCatalogToggles.delete(key); return; }
 
-    const items = Array.isArray(loc.equipment) ? loc.equipment : [];
-    const hasIt = items.some((e) => e.catalogRef === _catalogDetailRef);
-
-    // Optimistic local update — paint the new state immediately so the
-    // user sees the checkmark / status flip on tap, not after the round-trip.
-    if (hasIt) {
-        loc.equipment = items.filter((e) => e.catalogRef !== _catalogDetailRef);
-    } else {
-        loc.equipment = [...items, { catalogRef: _catalogDetailRef, nickname: '', notes: '', addedAt: new Date().toISOString() }];
-    }
-    renderCatalogMachineDetail();
+    // Single source: is this catalog machine already an equipment doc at this
+    // gym? (Phase 8b step 4 — no more location.equipment[] mirror.)
+    const machine = resolveCatalogRef(_catalogDetailRef, getCatalogSync())?.machine;
+    const machineNameLC = (machine?.name || '').toLowerCase();
+    const hasIt = allEquipment.some((eq) =>
+        (eq.catalogRef === _catalogDetailRef
+            || (eq.name || '').toLowerCase() === machineNameLC
+            || (eq.function || '').toLowerCase() === machineNameLC)
+        && ((eq.locations || []).includes(loc.name)
+            || (Array.isArray(eq.locationIds) && eq.locationIds.includes(loc.id)))
+    );
 
     try {
         if (hasIt) {
-            await getManager().removeLocationEquipment(locationId, _catalogDetailRef);
-            // Mirror onto the promoted equipment doc so the workout picker
-            // stops offering this machine "At <gym>".
+            // Remove the gym from the equipment doc(s) for this machine.
             await untagGymFromPromotedDocs(_catalogDetailRef, loc.name);
             showNotification(`Removed from ${loc.name}`, 'success', 1200);
         } else {
-            await getManager().addLocationEquipment(locationId, [{ catalogRef: _catalogDetailRef }]);
-            // Promote so the machine exists as a real equipment doc tagged to
-            // this gym — visible to the workout picker immediately.
+            // Promote to a real equipment doc tagged to this gym — visible to
+            // the workout picker immediately.
             await promoteCatalogToEquipment(_catalogDetailRef, loc.name);
             showNotification(`Added to ${loc.name}`, 'success', 1200);
         }
-        // Reconcile with the server in case anything else changed.
-        const refreshed = await getManager().getUserLocations();
-        allLocations = refreshed;
+        // promote / untag both refresh the equipment cache; re-render reads it.
         renderCatalogMachineDetail();
     } catch (err) {
         console.error('Toggle catalog machine at gym failed:', err);
-        // Roll back the optimistic update.
-        loc.equipment = items;
-        renderCatalogMachineDetail();
         showNotification("Couldn't save — try again", 'error');
+        renderCatalogMachineDetail();
     } finally {
         _inFlightCatalogToggles.delete(key);
     }
@@ -1588,18 +1559,36 @@ export async function openQuickAddSheet(gymName, { onDone = null } = {}) {
     }
 
     const loc = allLocations.find((l) => l.name === gymName);
-    const alreadyTagged = new Set(
-        (loc?.equipment || []).map((e) => e.catalogRef).filter(Boolean)
+    const gymId = loc?.id || null;
+    const allMachines = flattenCatalogMachines();
+
+    // Which catalog machines are already owned at this gym — derived from the
+    // equipment collection alone (Phase 8b step 4; no more location.equipment[]).
+    // A catalog machine is "already tagged" if an equipment doc at this gym (by
+    // stable id OR name) matches it by catalogRef / name / function.
+    const atGym = allEquipment.filter((eq) =>
+        (eq.locations || []).includes(gymName)
+        || (gymId && Array.isArray(eq.locationIds) && eq.locationIds.includes(gymId))
     );
+    const alreadyTagged = new Set();
+    for (const m of allMachines) {
+        const mNameLC = (m.name || '').toLowerCase();
+        const owned = atGym.some((eq) =>
+            eq.catalogRef === m.catalogRef
+            || (eq.name || '').toLowerCase() === mNameLC
+            || (eq.function || '').toLowerCase() === mNameLC
+        );
+        if (owned) alreadyTagged.add(m.catalogRef);
+    }
 
     quickAddState = {
         gymName,
-        gymId: loc?.id || null,
+        gymId,
         selected: new Set(),
         search: '',
         bpFilter: 'All',
         alreadyTagged,
-        allMachines: flattenCatalogMachines(),
+        allMachines,
         customOpen: false,
         customName: '',
         customType: 'Plate-Loaded',
@@ -1972,22 +1961,18 @@ export async function commitQuickAdd() {
     if (btn) btn.disabled = true;
 
     try {
-        let { gymId } = quickAddState;
-        // If no doc exists yet, create one so we have a stable id.
-        if (!gymId) {
+        // Ensure a location doc exists for this gym so it's a first-class saved
+        // gym (stable id, resolvable for locationIds). Equipment is tagged by
+        // name/id below, so we don't need the id here beyond creating the doc.
+        if (!quickAddState.gymId) {
             const newLoc = await getManager().saveLocation({ name: quickAddState.gymName });
-            gymId = newLoc.id;
-            // Reflect the new location in the cached array so My gyms refresh works
             allLocations.push(newLoc);
         }
 
-        const items = selected.map((catalogRef) => ({ catalogRef }));
-        const added = await getManager().addLocationEquipment(gymId, items);
-
-        // Promote each machine to a real equipment doc NOW, not lazily on the
-        // next gym-view render. This is what makes quick-added machines show
-        // up in the active-workout picker immediately — the whole point of
-        // adding equipment at a new gym.
+        // Promote each machine to a real equipment doc tagged at this gym — the
+        // single source of truth (Phase 8b step 4; no more location.equipment[]).
+        // This is what makes quick-added machines show up in the active-workout
+        // picker immediately — the whole point of adding equipment at a new gym.
         const { gymName, onDone } = quickAddState;
         const promoted = [];
         for (const catalogRef of selected) {
@@ -2001,7 +1986,7 @@ export async function commitQuickAdd() {
         allLocations = refreshed;
 
         closeQuickAddSheet();
-        showNotification(`Added ${added.length} machine${added.length !== 1 ? 's' : ''} to ${gymName}`, 'success');
+        showNotification(`Added ${promoted.length} machine${promoted.length !== 1 ? 's' : ''} to ${gymName}`, 'success');
         if (onDone) {
             // Opened from another surface (active workout) — hand the promoted
             // docs back instead of re-rendering the hidden library section.
@@ -2234,9 +2219,6 @@ async function commitCatalogAdd(catalogRef, machineName, gymName) {
             showNotification("Couldn't save — try again", 'error');
             return;
         }
-        // Mirror onto location.equipment[] so the catalog detail page's
-        // "At this gym" state and quick-add's already-tagged set stay truthful.
-        await syncCatalogRefOnLocation(catalogRef, gymName, true);
         if (existingForGym) {
             showNotification(`${machineName} is already at ${gymName}`, 'info');
             return;
@@ -2311,35 +2293,25 @@ async function commitCopyFromGym(sourceGym, targetGym) {
             return;
         }
 
+        // Ensure the target gym is a first-class saved location (stable id)
+        // BEFORE the writes, so the copied equipment's locationIds[] resolve.
+        if (!allLocations.some((l) => l.name === targetGym)) {
+            const newLoc = await getManager().saveLocation({ name: targetGym });
+            allLocations.push(newLoc);
+        }
+
         const userId = AppState.currentUser.uid;
         const batch = writeBatch(db);
         for (const eq of toAdd) {
-            batch.update(doc(db, 'users', userId, 'equipment', eq.id), {
-                locations: [...(eq.locations || []), targetGym],
-            });
+            const newLocations = [...(eq.locations || []), targetGym];
+            const update = { locations: newLocations };
+            // Dual-write locationIds[] (Phase 8b step 4 — single source of truth;
+            // the old location.equipment[] catalogRef mirror is gone).
+            const ids = deriveLocationIdsFromNames(newLocations);
+            if (ids.length) update.locationIds = ids;
+            batch.update(doc(db, 'users', userId, 'equipment', eq.id), update);
         }
         await batch.commit();
-
-        // Mirror catalogRefs onto the target gym's location doc so quick-add's
-        // already-tagged state and the catalog detail page stay truthful.
-        const refs = toAdd
-            .filter((eq) => eq.catalogRef)
-            .map((eq) => ({ catalogRef: eq.catalogRef }));
-        if (refs.length > 0) {
-            let loc = allLocations.find((l) => l.name === targetGym);
-            if (!loc) {
-                loc = await getManager().saveLocation({ name: targetGym });
-                allLocations.push(loc);
-            }
-            try {
-                await getManager().addLocationEquipment(loc.id, refs);
-            } catch (e) {
-                // Non-fatal: docs are the source of truth; arrays heal on render.
-                console.error('Copy-from-gym catalogRef mirror failed:', e);
-            }
-            const refreshedLocs = await getManager().getUserLocations();
-            if (Array.isArray(refreshedLocs)) allLocations = refreshedLocs;
-        }
 
         await refreshEquipmentCaches();
         showNotification(`Copied ${toAdd.length} machine${toAdd.length !== 1 ? 's' : ''} from ${sourceGym}`, 'success');
@@ -3878,21 +3850,6 @@ export async function deleteEquipmentFromLibrary(equipmentId) {
         await getManager().deleteEquipment(equipmentId);
         allEquipment = allEquipment.filter(e => e.id !== equipmentId);
 
-        // Quick-added equipment also lives as a catalogRef on each gym's
-        // location.equipment[] — leaving those behind makes a deleted machine
-        // reappear in gym views and lets a re-add duplicate it.
-        if (equipment?.catalogRef && (equipment.locations || []).length > 0) {
-            if (allLocations.length === 0) {
-                try {
-                    const locs = await getManager().getUserLocations();
-                    if (Array.isArray(locs)) allLocations = locs;
-                } catch { /* stale refs heal on the next gym-view render */ }
-            }
-            for (const locName of equipment.locations) {
-                await syncCatalogRefOnLocation(equipment.catalogRef, locName, false);
-            }
-        }
-
         showNotification('Equipment deleted', 'success', 1500);
         backToEquipmentList();
     } catch (error) {
@@ -4644,11 +4601,6 @@ export async function removeEquipmentLocation(equipmentId, locationName) {
         eq.locations = locations;
         eq.locationIds = payload.locationIds;
         AppState._cachedEquipment = allEquipment;
-        // Mirror onto the gym's location.equipment[] so the gym view and
-        // quick-add's "already at this gym" state stay truthful.
-        if (eq.catalogRef) {
-            await syncCatalogRefOnLocation(eq.catalogRef, locationName, false);
-        }
         // Re-render detail page
         openEquipmentDetail(equipmentId);
     } catch (error) {
@@ -4708,9 +4660,6 @@ async function commitEquipmentLocation(equipmentId, gymName) {
         eq.locations = locations;
         if (derivedIds.length) eq.locationIds = derivedIds;
         AppState._cachedEquipment = allEquipment;
-        if (eq.catalogRef) {
-            await syncCatalogRefOnLocation(eq.catalogRef, gymName, true);
-        }
         showNotification(`Added to ${gymName}`, 'success', 1200);
         openEquipmentDetail(equipmentId);
     } catch (error) {

@@ -2091,16 +2091,9 @@ export async function awPickSuggestedMachine(exerciseIdx, suggestionIdx) {
         }, null);
         if (!eq) { showNotification("Couldn't save — try again", 'error'); return; }
 
-        const sessionLoc = AppState.savedData?.location;
-        const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
-        if (locName && s.catalogRef) {
-            try {
-                const locs = await mgr.getUserLocations();
-                const loc = locs.find(l => l.name === locName);
-                if (loc?.id) await mgr.addLocationEquipment(loc.id, [{ catalogRef: s.catalogRef }]);
-            } catch { /* doc-side tag (auto-associate below) is the source of truth */ }
-        }
-
+        // awSelectEquipment below auto-associates this machine with the session
+        // gym on the equipment doc (the single source of truth — Phase 8b step 4;
+        // the old location.equipment[] mirror was removed).
         AppState._cachedEquipment = await mgr.getUserEquipment();
         await awSelectEquipment(exerciseIdx, eq.name);
     } catch (e) {

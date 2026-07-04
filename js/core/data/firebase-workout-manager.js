@@ -14,7 +14,6 @@ import {
     getDocs,
     getDocsFromServer,
     orderBy,
-    runTransaction,
     writeBatch,
 } from './firebase-config.js';
 import { showNotification } from '../ui/ui-helpers.js';
@@ -1434,11 +1433,10 @@ export class FirebaseWorkoutManager {
                 lastVisit: new Date().toISOString(),
                 visitCount: (locationData.visitCount || 0) + 1,
             };
-            // Preserve optional fields when present so save-after-load doesn't
-            // strip them. Reverse-geocoded address + the Pocket Inventory
-            // equipment[] array of catalog refs both pass through here.
+            // Preserve the reverse-geocoded address on save-after-load. (The old
+            // location.equipment[] catalog-ref array is no longer written — Phase
+            // 8b step 4 made the equipment collection the single source of truth.)
             if (locationData.address) locationToSave.address = locationData.address;
-            if (Array.isArray(locationData.equipment)) locationToSave.equipment = locationData.equipment;
 
             await setDoc(docRef, locationToSave);
             return { id: locationId, ...locationToSave };
@@ -1529,8 +1527,34 @@ export class FirebaseWorkoutManager {
         }
 
         try {
-            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'locations', locationId);
-            await deleteDoc(docRef);
+            const uid = this.appState.currentUser.uid;
+            // Grab the gym name first so we can strip it from equipment too.
+            const locSnap = await getDoc(doc(this.db, 'users', uid, 'locations', locationId));
+            const gymName = locSnap.exists() ? locSnap.data().name : null;
+
+            await deleteDoc(doc(this.db, 'users', uid, 'locations', locationId));
+
+            // Cascade: remove this gym from every equipment doc, by stable id AND
+            // by name. Without this, the deleted gym "haunts" the app — gym views
+            // re-derive gyms from equipment.locations[] names, so it reappears as
+            // a name-only gym (the bug this fixes).
+            const equipment = await this.getUserEquipment();
+            const batch = writeBatch(this.db);
+            let n = 0;
+            for (const eq of equipment) {
+                const hasName = gymName && Array.isArray(eq.locations) && eq.locations.includes(gymName);
+                const hasId = Array.isArray(eq.locationIds) && eq.locationIds.includes(locationId);
+                if (!hasName && !hasId) continue;
+                const update = {};
+                if (hasName) update.locations = eq.locations.filter((l) => l !== gymName);
+                if (hasId) update.locationIds = eq.locationIds.filter((id) => id !== locationId);
+                batch.update(doc(this.db, 'users', uid, 'equipment', eq.id), update);
+                n++;
+            }
+            if (n > 0) {
+                await batch.commit();
+                this.appState._cachedEquipment = null;
+            }
             return true;
         } catch (error) {
             console.error('❌ Error deleting location:', error);
@@ -1603,125 +1627,6 @@ export class FirebaseWorkoutManager {
         // Equipment↔gym tags changed — force every consumer to refetch.
         this.appState._cachedEquipment = null;
         return affected.length;
-    }
-
-    /**
-     * Get the `equipment[]` array on a location doc (catalog refs).
-     * Empty array if the field is missing or doc doesn't exist.
-     *
-     * Item shape per equipment-system-v2 spec:
-     *   { catalogRef: "brand-slug/line-slug/machine-slug",
-     *     nickname?: string, notes?: string, addedAt: ISO string }
-     */
-    async getLocationEquipment(locationId) {
-        if (!this.appState.currentUser || !locationId) return [];
-
-        try {
-            const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'locations', locationId);
-            const snap = await getDoc(docRef);
-            if (!snap.exists()) return [];
-            return Array.isArray(snap.data().equipment) ? snap.data().equipment : [];
-        } catch (error) {
-            console.error('❌ Error loading location equipment:', error);
-            return [];
-        }
-    }
-
-    /**
-     * Batch-add catalog refs to a location's `equipment[]` array. Uses
-     * arrayUnion for atomicity — duplicate catalogRefs are deduped by
-     * Firestore at write time only if the full object matches; for ref-level
-     * dedup we read-modify-write.
-     *
-     * Items: array of { catalogRef, nickname?, notes? } — addedAt is stamped here.
-     * Returns the resolved items that were actually added (skips duplicates).
-     */
-    async addLocationEquipment(locationId, items) {
-        if (!this.appState.currentUser) {
-            throw new Error('Must be signed in to add equipment to a gym');
-        }
-        if (!locationId || !Array.isArray(items) || items.length === 0) return [];
-
-        const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'locations', locationId);
-
-        // Wrap read-modify-write in a transaction so two near-simultaneous
-        // add calls (e.g. user double-tapping during the network round-trip)
-        // can't both pass the existence check and both write. Without this
-        // the same catalogRef ended up in equipment[] twice with different
-        // addedAt timestamps — arrayUnion couldn't dedup since the objects
-        // weren't identical.
-        return await runTransaction(this.db, async (tx) => {
-            const snap = await tx.get(docRef);
-            if (!snap.exists()) {
-                throw new Error(`Location ${locationId} not found`);
-            }
-
-            const existing = Array.isArray(snap.data().equipment) ? snap.data().equipment : [];
-            const existingRefs = new Set(existing.map((e) => e.catalogRef));
-
-            const now = new Date().toISOString();
-            const fresh = items
-                .filter((it) => typeof it.catalogRef === 'string' && it.catalogRef.includes('/') && !existingRefs.has(it.catalogRef))
-                .map((it) => ({
-                    catalogRef: it.catalogRef,
-                    nickname: it.nickname || '',
-                    notes: it.notes || '',
-                    addedAt: it.addedAt || now,
-                }));
-
-            if (fresh.length === 0) return [];
-            tx.update(docRef, { equipment: [...existing, ...fresh] });
-            return fresh;
-        });
-    }
-
-    /**
-     * Remove a catalog ref from a location's `equipment[]` array. Read-modify-
-     * write because arrayRemove requires exact object match.
-     */
-    async removeLocationEquipment(locationId, catalogRef) {
-        if (!this.appState.currentUser) {
-            throw new Error('Must be signed in to remove equipment from a gym');
-        }
-        if (!locationId || !catalogRef) return false;
-
-        const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'locations', locationId);
-        const snap = await getDoc(docRef);
-        if (!snap.exists()) return false;
-
-        const existing = Array.isArray(snap.data().equipment) ? snap.data().equipment : [];
-        const next = existing.filter((e) => e.catalogRef !== catalogRef);
-        if (next.length === existing.length) return false;
-
-        await updateDoc(docRef, { equipment: next });
-        return true;
-    }
-
-    /**
-     * Patch a single item in a location's `equipment[]` (e.g. update nickname or
-     * notes). Identified by catalogRef. Returns true if a row was patched.
-     */
-    async updateLocationEquipmentItem(locationId, catalogRef, updates) {
-        if (!this.appState.currentUser) {
-            throw new Error('Must be signed in to update gym equipment');
-        }
-        if (!locationId || !catalogRef || !updates) return false;
-
-        const docRef = doc(this.db, 'users', this.appState.currentUser.uid, 'locations', locationId);
-        const snap = await getDoc(docRef);
-        if (!snap.exists()) return false;
-
-        const existing = Array.isArray(snap.data().equipment) ? snap.data().equipment : [];
-        let touched = false;
-        const next = existing.map((e) => {
-            if (e.catalogRef !== catalogRef) return e;
-            touched = true;
-            return { ...e, ...updates, catalogRef: e.catalogRef, addedAt: e.addedAt };
-        });
-        if (!touched) return false;
-
-        await updateDoc(docRef, { equipment: next });
-        return true;
     }
 
     /**
