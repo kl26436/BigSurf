@@ -216,15 +216,18 @@ function qeRemoveGym(i) {
     rerenderBody();
 }
 
-function qeOpenFullDetails() {
+async function qeOpenFullDetails() {
     const id = state?.equipmentId;
     closeEquipmentQuickEdit();
+    if (!id) return;
+    // Hand the library's own async paint a target so it renders THIS equipment's
+    // detail — no setTimeout guess racing the library's Firestore reads (the old
+    // 200ms guess lost whenever those reads ran long, painting the list over us).
+    try {
+        const m = await import('./equipment-library-ui.js');
+        m.setPendingEquipmentDetail(id);
+    } catch { /* fall through — navigateTo still lands on the library list */ }
     if (typeof window.navigateTo === 'function') window.navigateTo('equipment-library');
-    setTimeout(() => {
-        if (id && typeof window.openEquipmentDetail === 'function') {
-            window.openEquipmentDetail(id);
-        }
-    }, 200);
 }
 
 async function qeSave() {

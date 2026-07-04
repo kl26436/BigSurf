@@ -58,6 +58,16 @@ let catalogSearchTerm = '';
 let unlinkedEquipment = null;       // Map<name, {exercises, locations, count}> | null
 const dismissedUnlinked = new Set(); // names dismissed this session
 let scanReviewActive = false;       // when true, library shows the review list instead of the normal grid
+// When set, the next openEquipmentLibrary() paint renders THIS equipment's
+// detail instead of the list. Lets callers (e.g. quick-edit "Full details")
+// route to a detail page without racing the list's async Firestore reads.
+let _pendingDetailId = null;
+
+/** Ask the library's next paint to open a specific equipment's detail page
+ *  instead of the list. Race-free replacement for the old setTimeout guess. */
+export function setPendingEquipmentDetail(id) {
+    _pendingDetailId = id || null;
+}
 
 function getManager() {
     if (!workoutManager) workoutManager = new FirebaseWorkoutManager(AppState);
@@ -156,6 +166,16 @@ export async function openEquipmentLibrary() {
     allLocations = locations;
     // Cache for cross-module access (plate calculator, weight calculations)
     AppState._cachedEquipment = allEquipment;
+
+    // Routed here to open a specific equipment's detail (e.g. quick-edit "Full
+    // details")? Render it via this same async path so the list can never paint
+    // over it — the equipment cache is already warm above, so no extra read.
+    if (_pendingDetailId) {
+        const id = _pendingDetailId;
+        _pendingDetailId = null;
+        await openEquipmentDetail(id);
+        return;
+    }
 
     // Catalog: prefer AppState (populated by app-init) but kick off a load if
     // it isn't there yet. Render immediately with augmented-static fallback.
