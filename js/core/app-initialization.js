@@ -903,8 +903,16 @@ function showInProgressWorkoutPrompt(workoutData) {
     const timeElement = document.getElementById('resume-time-ago');
 
     if (card && nameElement) {
-        // Set workout name
-        nameElement.textContent = workoutData.workoutType;
+        // Set workout name. Fallback is required — assigning
+        // `textContent = undefined` renders the literal string "undefined"
+        // in the DOM (unlike escapeHtml which returns ''). Legacy workout
+        // docs (pre-schema-v3) can lack workoutType entirely and used to
+        // surface as "This page has a workout name 'undefined'" on the
+        // dashboard resume banner.
+        nameElement.textContent = workoutData.workoutType
+            || workoutData.day
+            || workoutData.name
+            || 'Workout in progress';
 
         // Calculate sets completed
         let completedSets = 0;

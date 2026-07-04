@@ -2242,7 +2242,9 @@ function showWorkoutPreviewModal(workout) {
     const content = document.getElementById('preview-workout-content');
 
     if (title) {
-        title.textContent = workout.day || workout.name;
+        // Guard against undefined coercion — textContent = undefined
+        // renders the literal string "undefined" in the DOM.
+        title.textContent = workout.day || workout.name || 'Workout';
     }
 
     if (content) {
