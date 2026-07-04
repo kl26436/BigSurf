@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import {
     planEquipmentIdBackfill,
     rekeyExercisePRsByEquipmentId,
+    mergePrEntries,
 } from '../../js/core/data/equipment-id-migration.js';
 
 const EQUIP = [
@@ -72,10 +73,10 @@ describe('rekeyExercisePRsByEquipmentId — never loses a PR', () => {
     const countPRs = (store) =>
         Object.values(store).reduce((n, byKey) => n + Object.keys(byKey).length, 0);
 
-    it('re-keys resolved names to ids and preserves the PR payload', () => {
+    it('re-keys resolved names to ids and preserves the PR payload (+ denormalized name)', () => {
         const prs = { 'Bench Press': { 'Flat Bench Press': { weight: 225, reps: 5 } } };
         const { rekeyed } = rekeyExercisePRsByEquipmentId(prs, EQUIP);
-        expect(rekeyed['Bench Press']).toEqual({ e_bench: { weight: 225, reps: 5 } });
+        expect(rekeyed['Bench Press']).toEqual({ e_bench: { weight: 225, reps: 5, equipmentName: 'Flat Bench Press' } });
     });
 
     it('keeps unresolved names under their original key (nothing dropped)', () => {
@@ -84,35 +85,58 @@ describe('rekeyExercisePRsByEquipmentId — never loses a PR', () => {
             'Mystery Machine': { weight: 100 },
         } };
         const { rekeyed, review, stats } = rekeyExercisePRsByEquipmentId(prs, EQUIP);
-        expect(rekeyed['Bench Press'].e_bench).toEqual({ weight: 225 });
-        expect(rekeyed['Bench Press']['Mystery Machine']).toEqual({ weight: 100 });
+        expect(rekeyed['Bench Press'].e_bench).toEqual({ weight: 225, equipmentName: 'Flat Bench Press' });
+        expect(rekeyed['Bench Press']['Mystery Machine']).toEqual({ weight: 100, equipmentName: 'Mystery Machine' });
         expect(countPRs(rekeyed)).toBe(countPRs(prs)); // conservation
         expect(stats.keptUnderName).toBe(1);
         expect(review).toHaveLength(1);
     });
 
-    it('merges two names that resolve to one id, keeping the heavier PR', () => {
-        const equip = [{ id: 'e_bench', name: 'Bench Press', aliases: ['Barbell Bench'] }];
-        const prs = { 'Bench': {
-            'Bench Press': { weight: 200, reps: 5 },
-            'Barbell Bench': { weight: 245, reps: 3 },  // alias → same id
+    it('preserves the bodyPart sibling label without counting it as a PR', () => {
+        const prs = { 'Bench Press': {
+            bodyPart: 'Chest',
+            'Flat Bench Press': { weight: 225 },
+        } };
+        const { rekeyed, stats } = rekeyExercisePRsByEquipmentId(prs, EQUIP);
+        expect(rekeyed['Bench Press'].bodyPart).toBe('Chest');
+        expect(rekeyed['Bench Press'].e_bench).toMatchObject({ weight: 225, equipmentName: 'Flat Bench Press' });
+        expect(stats.prCount).toBe(1); // bodyPart NOT counted
+    });
+
+    it('merges two names to one id FIELD-WISE — the heaviest single and the biggest volume can live on different names, and BOTH survive', () => {
+        // Mirrors a real collision the dry-run caught: maxWeight on one name,
+        // maxVolume on the other. A whole-entry pick would drop one PR.
+        const equip = [{ id: 'e_row', name: 'Seated Row', aliases: ['Linear Row'] }];
+        const prs = { 'Seated Row Machine': {
+            'Seated Row':  { maxWeight: { weight: 140, reps: 12 }, maxReps: { weight: 100, reps: 15 }, maxVolume: { weight: 140, reps: 12, volume: 1680 } },
+            'Linear Row':  { maxWeight: { weight: 220, reps: 6 },  maxReps: { weight: 90,  reps: 10 }, maxVolume: { weight: 200, reps: 5, volume: 1000 } },  // alias → same id
         } };
         const { rekeyed, stats } = rekeyExercisePRsByEquipmentId(prs, equip);
-        // One merged key, and it kept the heavier lift — the PR did NOT vanish.
-        expect(Object.keys(rekeyed['Bench'])).toEqual(['e_bench']);
-        expect(rekeyed['Bench'].e_bench.weight).toBe(245);
+        expect(Object.keys(rekeyed['Seated Row Machine'])).toEqual(['e_row']);
+        const merged = rekeyed['Seated Row Machine'].e_row;
+        expect(merged.maxWeight.weight).toBe(220);   // heavier single survives
+        expect(merged.maxVolume.volume).toBe(1680);  // bigger volume (from the OTHER name) survives
+        expect(merged.maxReps.reps).toBe(15);        // most reps survives
         expect(stats.merges).toBe(1);
     });
 
-    it('a custom betterPr comparator (e.g. e1RM) is honored on merge', () => {
+    it('mergePrEntries keeps each per-category max independently', () => {
+        const a = { maxWeight: { weight: 100 }, maxVolume: { volume: 900 } };
+        const b = { maxWeight: { weight: 120 }, maxVolume: { volume: 500 } };
+        const m = mergePrEntries(a, b);
+        expect(m.maxWeight.weight).toBe(120);
+        expect(m.maxVolume.volume).toBe(900);
+    });
+
+    it('a custom betterPr comparator is still honored on merge (injection point intact)', () => {
         const equip = [{ id: 'x', name: 'Row', aliases: ['Cable Row'] }];
         const prs = { 'Row': {
-            'Row': { weight: 100, e1rm: 130 },
-            'Cable Row': { weight: 120, e1rm: 125 },
+            'Row': { e1rm: 130 },
+            'Cable Row': { e1rm: 125 },
         } };
         const byE1rm = (a, b) => ((b?.e1rm || 0) > (a?.e1rm || 0) ? b : a);
         const { rekeyed } = rekeyExercisePRsByEquipmentId(prs, equip, { betterPr: byE1rm });
-        expect(rekeyed['Row'].x.e1rm).toBe(130); // kept the higher e1RM, not the heavier weight
+        expect(rekeyed['Row'].x.e1rm).toBe(130);
     });
 
     it('total PR count is conserved across every scenario', () => {

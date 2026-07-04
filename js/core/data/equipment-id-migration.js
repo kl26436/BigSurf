@@ -9,6 +9,29 @@
 import { resolveEquipmentId } from './equipment-id-resolver.js';
 
 /**
+ * Field-wise merge of two PR entries when two equipment names resolve to the
+ * same id. Keeps the best `maxWeight` (by weight), `maxReps` (by reps), and
+ * `maxVolume` (by volume) INDEPENDENTLY — because for one physical machine
+ * logged under two names, the heaviest single and the biggest volume can live on
+ * different names, so a whole-entry pick would silently drop one PR. Mirrors
+ * recordPR's per-category max semantics. Non-max fields take `b` then `a`.
+ */
+export function mergePrEntries(a, b) {
+    if (!a || typeof a !== 'object') return b;
+    if (!b || typeof b !== 'object') return a;
+    const higher = (x, y, field) => {
+        if (!x) return y;
+        if (!y) return x;
+        return (Number(y[field]) || 0) > (Number(x[field]) || 0) ? y : x;
+    };
+    const merged = { ...a, ...b };
+    if (a.maxWeight || b.maxWeight) merged.maxWeight = higher(a.maxWeight, b.maxWeight, 'weight');
+    if (a.maxReps || b.maxReps)     merged.maxReps   = higher(a.maxReps, b.maxReps, 'reps');
+    if (a.maxVolume || b.maxVolume) merged.maxVolume = higher(a.maxVolume, b.maxVolume, 'volume');
+    return merged;
+}
+
+/**
  * Plan the equipmentId backfill for workout / template docs. Nothing is
  * mutated — returns the writes to make and the entries needing review.
  *
@@ -73,7 +96,11 @@ export function planEquipmentIdBackfill(docs = [], equipment = [], opts = {}) {
  * @returns {{rekeyed:Object, review:Array, stats:Object}}
  */
 export function rekeyExercisePRsByEquipmentId(exercisePRs = {}, equipment = [], opts = {}) {
-    const betterPr = opts.betterPr || ((a, b) => ((b?.weight || 0) > (a?.weight || 0) ? b : a));
+    // Default merge is the FIELD-WISE PR merge (never drops a per-category max).
+    // Callers doing the live re-key should also pass opts.fuzzyThreshold high
+    // (e.g. 2) so ONLY exact/alias names merge — fuzzy could combine two
+    // genuinely-different machines' PRs.
+    const betterPr = opts.betterPr || mergePrEntries;
     const rekeyed = {};
     const review = [];
     let prCount = 0;
@@ -85,18 +112,24 @@ export function rekeyExercisePRsByEquipmentId(exercisePRs = {}, equipment = [], 
         if (!byEquip || typeof byEquip !== 'object') { rekeyed[exName] = byEquip; continue; }
         const out = {};
         for (const [equipName, pr] of Object.entries(byEquip)) {
+            // `bodyPart` is a sibling label on the exercise, not an equipment
+            // entry — preserve it untouched and don't count it as a PR.
+            if (equipName === 'bodyPart') { out[equipName] = pr; continue; }
             prCount++;
+            // Denormalize the human name onto the entry so the id-keyed store
+            // still renders a label (getAllPRs/getRecentPRs read equipmentName).
+            const stamped = (pr && typeof pr === 'object') ? { ...pr, equipmentName: equipName } : pr;
             const r = resolveEquipmentId(equipName, equipment, opts);
             if (r.needsReview || !r.id) {
-                out[equipName] = pr;               // preserve — nothing is ever lost
+                out[equipName] = stamped;          // preserve — nothing is ever lost
                 keptUnderName++;
                 review.push({ exercise: exName, equipmentName: equipName, method: r.method, candidates: r.candidates || [] });
             } else if (Object.prototype.hasOwnProperty.call(out, r.id)) {
-                out[r.id] = betterPr(out[r.id], pr); // collision → keep the better PR
+                out[r.id] = betterPr(out[r.id], stamped); // collision → keep the better PR
                 merges++;
                 resolved++;
             } else {
-                out[r.id] = pr;
+                out[r.id] = stamped;
                 resolved++;
             }
         }
