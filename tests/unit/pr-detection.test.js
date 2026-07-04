@@ -226,4 +226,35 @@ describe('equipment id-aware PR keying', () => {
         expect(row.equipment).toBe('Cable Machine');
         expect(row.equipment).not.toContain('eq_');
     });
+
+    it('getAllPRs resolves an id-keyed entry with NO equipmentName from the equipment cache', async () => {
+        // Simulates a rebuilt entry keyed by id but missing the denormalized name.
+        await seedPRData({
+            exercisePRs: {
+                'Leg Curl': {
+                    bodyPart: 'Legs',
+                    equipment_1776837432672_hc5l81am4: { maxWeight: { weight: 120, reps: 10 } },
+                },
+            },
+            locations: {}, currentLocation: null,
+        });
+        AppState._cachedEquipment = [
+            { id: 'equipment_1776837432672_hc5l81am4', name: 'Panatta Fit Evo — Leg Curl', function: 'Leg Curl' },
+        ];
+        const row = getAllPRs().find((p) => p.exercise === 'Leg Curl');
+        expect(row.equipment).toBe('Leg Curl'); // function label from the cache
+        expect(row.equipment).not.toContain('equipment_');
+        AppState._cachedEquipment = null;
+    });
+
+    it('getAllPRs falls back to the raw key only when the id is not in the cache (deleted gear)', async () => {
+        await seedPRData({
+            exercisePRs: { 'Row': { bodyPart: 'Back', equipment_deleted_999: { maxWeight: { weight: 100, reps: 8 } } } },
+            locations: {}, currentLocation: null,
+        });
+        AppState._cachedEquipment = [];
+        const row = getAllPRs().find((p) => p.exercise === 'Row');
+        expect(row.equipment).toBe('equipment_deleted_999');
+        AppState._cachedEquipment = null;
+    });
 });

@@ -511,6 +511,23 @@ export function getPRDisplayText(exerciseName, equipment = null) {
 }
 
 /**
+ * Display label for a PR entry. Prefers the denormalized `equipmentName`; if
+ * absent and the key is a stable equipment id, resolves the current name from
+ * the equipment cache; otherwise falls back to the key itself. This keeps
+ * id-keyed entries from ever rendering a raw `equipment_…` id — including
+ * older entries stamped before the name-denormalization, and gear whose name
+ * changed since.
+ */
+function prEquipLabel(key, prs) {
+    if (prs && prs.equipmentName) return prs.equipmentName;
+    if (typeof key === 'string' && key.startsWith('equipment_')) {
+        const eq = (AppState._cachedEquipment || []).find(e => e.id === key);
+        if (eq) return eq.function || eq.name || key;
+    }
+    return key;
+}
+
+/**
  * Get all PRs for display (grouped by exercise and equipment)
  */
 export function getAllPRs() {
@@ -528,8 +545,8 @@ export function getAllPRs() {
 
             prList.push({
                 exercise: exerciseName,
-                // `equipment` may be a stable id key — show the denormalized name.
-                equipment: prs.equipmentName || equipment,
+                // `equipment` may be a stable id key — show the resolved name.
+                equipment: prEquipLabel(equipment, prs),
                 bodyPart: bodyPart,
                 prs: prs,
             });
@@ -564,7 +581,7 @@ export function getPRsByBodyPart() {
 
             const prs = exerciseData[equipment];
             // Key by the display name (entry may be keyed by a stable id).
-            grouped[bodyPart][exerciseName][prs.equipmentName || equipment] = prs;
+            grouped[bodyPart][exerciseName][prEquipLabel(equipment, prs)] = prs;
         }
     }
 
@@ -591,8 +608,8 @@ export function getRecentPRs(count = 5) {
             if (prs.maxWeight && prs.maxWeight.reps >= 5) {
                 prsWithDates.push({
                     exercise: exerciseName,
-                    // `equipment` may be a stable id key — show the denormalized name.
-                    equipment: prs.equipmentName || equipment,
+                    // `equipment` may be a stable id key — show the resolved name.
+                    equipment: prEquipLabel(equipment, prs),
                     bodyPart: bodyPart,
                     type: 'maxWeight',
                     weight: prs.maxWeight.weight,
