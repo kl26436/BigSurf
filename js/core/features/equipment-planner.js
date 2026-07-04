@@ -4,20 +4,28 @@
 
 /**
  * Get all equipment available at a specific location.
- * Equipment docs are normalized to `locations[]` at the read layer
- * (getUserEquipment folds the retired singular `location` field), so this
- * only consults the array.
+ *
+ * Phase 8b step 4: matches id-first — an equipment doc is "at" this gym if its
+ * stable `locationIds[]` includes `locationId`, OR (fallback) its legacy
+ * `locations[]` names include `locationName`. The union means no equipment is
+ * missed while the id backfill is only partial: id-stamped docs match by id,
+ * not-yet-stamped docs still match by name. `locationId` is optional — a caller
+ * with only a name behaves exactly as before.
  *
  * @param {Array} allEquipment - All user equipment documents
  * @param {string} locationName - Name of the gym/location
+ * @param {string|null} [locationId] - Stable location doc id (preferred)
  * @returns {Array} Equipment items at this location
  */
-export function getEquipmentAtLocation(allEquipment, locationName) {
-    if (!allEquipment || !locationName) return [];
+export function getEquipmentAtLocation(allEquipment, locationName, locationId = null) {
+    if (!allEquipment || (!locationName && !locationId)) return [];
 
-    return allEquipment.filter(eq =>
-        Array.isArray(eq.locations) && eq.locations.includes(locationName)
-    );
+    return allEquipment.filter(eq => {
+        if (locationId && Array.isArray(eq.locationIds) && eq.locationIds.includes(locationId)) {
+            return true;
+        }
+        return !!locationName && Array.isArray(eq.locations) && eq.locations.includes(locationName);
+    });
 }
 
 /**

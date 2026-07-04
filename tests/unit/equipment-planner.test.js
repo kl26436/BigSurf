@@ -109,6 +109,31 @@ describe('getEquipmentAtLocation', () => {
         expect(getEquipmentAtLocation(mockEquipment, null)).toEqual([]);
         expect(getEquipmentAtLocation(null, null)).toEqual([]);
     });
+
+    // Phase 8b step 4 — id-first with name-fallback union.
+    it('matches by locationId when provided (survives a gym rename)', () => {
+        const idEquip = [
+            { id: 'a', name: 'Bench', locations: ['Old Name'], locationIds: ['loc_1'] },
+            { id: 'b', name: 'Rack', locations: ['Somewhere Else'], locationIds: ['loc_2'] },
+        ];
+        // The gym was renamed, so the passed NAME no longer matches — but the id does.
+        const result = getEquipmentAtLocation(idEquip, 'New Name', 'loc_1');
+        expect(result.map(e => e.id)).toEqual(['a']);
+    });
+
+    it('unions id and name so a partially-backfilled set misses nothing', () => {
+        const mixed = [
+            { id: 'a', name: 'Bench', locations: ['Downtown Gym'], locationIds: ['loc_dt'] }, // id-stamped
+            { id: 'b', name: 'Rack', locations: ['Downtown Gym'] },                            // name-only (not backfilled)
+        ];
+        const result = getEquipmentAtLocation(mixed, 'Downtown Gym', 'loc_dt');
+        expect(result.map(e => e.id).sort()).toEqual(['a', 'b']);
+    });
+
+    it('falls back to name-only matching when no id is passed (unchanged behavior)', () => {
+        const result = getEquipmentAtLocation(mockEquipment, 'Downtown Gym');
+        expect(result.length).toBeGreaterThan(0);
+    });
 });
 
 // ===================================================================
