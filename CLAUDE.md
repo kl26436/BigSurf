@@ -596,9 +596,9 @@ Address violations in the PR that introduces them; don't let them accumulate.
 The app has two Firebase Hosting targets:
 
 - `dev` → `bigsurf-dev` — no-cache headers, used for verification before prod
-- `prod` → `workout-tracker-b94b6` — 1-year `max-age` on JS/CSS, only `index.html` is no-cache
+- `prod` → `workout-tracker-b94b6` — **`no-cache` on JS/CSS + `index.html`** (changed 2026-07 from 1-year `max-age`). With no build step / content-hashed filenames, the old 1-year cache pinned stale modules on users' devices after every deploy (each module caches independently; only `index.html` was fresh), so a shipped fix could silently not reach users until a hard-refresh. `no-cache` means "revalidate before use" — the browser sends a conditional request and gets a cheap `304` when unchanged, so deploys propagate immediately at the cost of a small revalidation round-trip per file per cold load.
 
-**Always deploy to `dev` first, never directly to `prod`.** Prod is the safety net for users; if a bad build ships there, the 1-year cache pins it on their devices until they hard-refresh.
+**Always deploy to `dev` first, never directly to `prod`.** Note: switching to `no-cache` only affects *future* fetches — files a user already has under the old 1-year `max-age` stay pinned until that entry expires or they hard-refresh once.
 
 ```bash
 # Verify a change
