@@ -276,15 +276,6 @@ export function initializeWorkoutApp() {
     setupAuthenticationListener();
 }
 
-export function initializeEnhancedWorkoutSelector() {
-    setupWorkoutFilters();
-    setupWorkoutSearch();
-
-    if (AppState.workoutPlans && AppState.workoutPlans.length > 0) {
-        renderInitialWorkouts();
-    }
-}
-
 // ===================================================================
 // AUTHENTICATION
 // ===================================================================
@@ -1106,58 +1097,6 @@ export function setupKeyboardShortcuts() {
 }
 
 // ===================================================================
-// WORKOUT SELECTOR SETUP
-// ===================================================================
-
-function setupWorkoutFilters() {
-    const filterButtons = document.querySelectorAll('.workout-filter-btn');
-    filterButtons.forEach((btn) => {
-        btn.addEventListener('click', (e) => {
-            const category = e.target.dataset.category;
-            filterWorkoutsByCategory(category);
-        });
-    });
-}
-
-function setupWorkoutSearch() {
-    const searchInput = document.getElementById('workout-search');
-    if (searchInput) {
-        searchInput.addEventListener('input', debounceWorkoutSearch);
-    }
-}
-
-function filterWorkoutsByCategory(category) {
-    // Update active filter
-    document.querySelectorAll('.workout-filter-btn').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.category === category);
-    });
-
-    // Import and use template selection module
-    import('./ui/template-selection.js').then((module) => {
-        module.filterTemplates(category);
-    });
-}
-
-function debounceWorkoutSearch(event) {
-    clearTimeout(debounceWorkoutSearch.timeout);
-    debounceWorkoutSearch.timeout = setTimeout(() => {
-        const query = event.target.value;
-
-        // Import and use template selection module
-        import('./ui/template-selection.js').then((module) => {
-            module.searchTemplates(query);
-        });
-    }, 300);
-}
-
-function renderInitialWorkouts() {
-    // Import and use template selection module
-    import('./ui/template-selection.js').then((module) => {
-        module.loadTemplatesByCategory();
-    });
-}
-
-// ===================================================================
 // GLOBAL SETUP HELPERS
 // ===================================================================
 
@@ -1187,7 +1126,6 @@ export function startApplication() {
     setupEventListeners();
     setupKeyboardShortcuts();
     initializeModules();
-    initializeEnhancedWorkoutSelector();
 }
 
 // ===================================================================

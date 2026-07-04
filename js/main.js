@@ -156,15 +156,9 @@ import {
 
 // Template selection functionality
 import {
-    showTemplateSelection,
-    closeTemplateSelection,
     showWorkoutSelector,
-    useTemplate,
-    useTemplateFromManagement,
     copyTemplateToCustom,
     deleteCustomTemplate,
-    toggleEquipmentFilter,
-    clearEquipmentFilterCache,
     clearSelectorCache,
     toggleTemplateEdit,
     searchWorkoutTemplates,
@@ -514,27 +508,6 @@ window.toggleWorkoutOverflow = toggleWorkoutOverflow;
 window.closeWorkoutOverflow = closeWorkoutOverflow;
 window.updateWorkoutProgress = updateWorkoutProgress;
 window.showMidWorkoutSummary = showMidWorkoutSummary;
-window.startWorkoutFromModal = function (workoutName) {
-    // Close the modal (hide it, don't remove it from DOM)
-    const modal = document.getElementById('template-selection-modal');
-    if (modal) {
-        closeModal(modal);
-    }
-
-    // Try different ways to call startWorkout
-    if (window.startWorkout) {
-        window.startWorkout(workoutName);
-    } else if (typeof startWorkout === 'function') {
-        startWorkout(workoutName);
-    } else {
-        // Import and call the function dynamically
-        import('./core/workout/workout-core.js').then((module) => {
-            if (module.startWorkout) {
-                module.startWorkout(workoutName);
-            }
-        });
-    }
-};
 
 // Exercise Management
 window.toggleExerciseExpansion = toggleExerciseExpansion;
@@ -801,31 +774,14 @@ window.setDashboardRange = (r) => { setRange(r); showDashboard(); };
 // Stats tab removed — drill-downs now live in dashboard v2
 
 // Template Selection Functions
-window.showTemplateSelection = showTemplateSelection;
-window.closeTemplateSelection = closeTemplateSelection;
 window.showWorkoutSelector = showWorkoutSelector;
-window.useTemplate = useTemplate;
-window.useTemplateFromManagement = useTemplateFromManagement;
 window.copyTemplateToCustom = copyTemplateToCustom;
 window.deleteCustomTemplate = deleteCustomTemplate;
-window.toggleEquipmentFilter = toggleEquipmentFilter;
-window.clearEquipmentFilterCache = clearEquipmentFilterCache;
 window.clearSelectorCache = clearSelectorCache;
 window.toggleTemplateEdit = toggleTemplateEdit;
 window.searchWorkoutTemplates = searchWorkoutTemplates;
 window.moveTemplateExerciseInline = moveTemplateExerciseInline;
 window.removeTemplateExerciseInline = removeTemplateExerciseInline;
-
-window.closeTemplateModal = function () {
-    const modal = document.getElementById('template-selection-modal');
-    if (modal) {
-        closeModal(modal);
-    }
-};
-
-window.closeTemplateSelection = function () {
-    window.closeTemplateModal();
-};
 
 // Workout History Functions
 window.showWorkoutHistory = showWorkoutHistory;
