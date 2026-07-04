@@ -12,7 +12,6 @@ import {
     loadEquipmentCatalog,
     resolveCatalogRef,
     augmentStaticCatalog,
-    buildCatalogRef,
 } from '../data/equipment-catalog-firestore.js';
 import { getSessionLocation } from '../features/location-service.js';
 import { reverseGeocode } from '../features/geocoding.js';
@@ -1083,27 +1082,24 @@ function renderGymDetailRow(item) {
  * before the addLocationEquipment transaction landed) are also collapsed.
  */
 function gatherGymEquipment(gymName, locationId) {
-    const catalog = getCatalogSync();
     const items = [];
-    // Tracks identity keys we've already emitted so we don't double-render.
-    // Identity = catalogRef when known, otherwise normalized name.
+    // Tracks normalized function-names already emitted so we don't double-render.
     const seen = new Set();
     const norm = (s) => (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
 
-    // Legacy first — these carry per-user data (baseWeight, notes, etc.) so
-    // we want them to win when they overlap with a catalog ref.
+    // Single source of truth: the equipment collection. A machine is at this gym
+    // if its stable locationIds[] includes this gym's id, OR (fallback) its
+    // locations[] names include the gym name (Phase 8b step 4 — the old catalog-
+    // refs-on-the-location-doc half + its render-time healing were removed; every
+    // catalog machine is already an equipment doc, verified GAP=0 before deletion).
     for (const eq of allEquipment) {
-        if (!(eq.locations || []).includes(gymName)) continue;
+        const atGym = (eq.locations || []).includes(gymName)
+            || (locationId && Array.isArray(eq.locationIds) && eq.locationIds.includes(locationId));
+        if (!atGym) continue;
         const fnName = eq.function || eq.name || '—';
-        const key = `legacy:${norm(fnName)}`;
+        const key = norm(fnName);
         if (seen.has(key)) continue;
         seen.add(key);
-        // If the legacy record resolves to a known catalog ref, also reserve
-        // that slot so the catalog half of the union doesn't re-emit it.
-        if (eq.brand && eq.line && fnName) {
-            const ref = buildCatalogRef(eq.brand, eq.line, fnName);
-            if (ref) seen.add(`catalog:${ref}`);
-        }
         items.push({
             id: eq.id,
             name: fnName,
@@ -1116,94 +1112,6 @@ function gatherGymEquipment(gymName, locationId) {
         });
     }
 
-    // New: catalog refs on the location doc. Dedupe by catalogRef so stale
-    // pre-transaction-fix dupes collapse to a single row at render time.
-    const loc = locationId ? allLocations.find((l) => l.id === locationId) : null;
-    const catalogRefs = (loc && Array.isArray(loc.equipment)) ? loc.equipment : [];
-    for (const ref of catalogRefs) {
-        if (!ref || !ref.catalogRef) continue;
-        const key = `catalog:${ref.catalogRef}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const resolved = resolveCatalogRef(ref.catalogRef, catalog);
-        if (!resolved) continue;
-        const { brand, line, machine } = resolved;
-        // Also reserve the legacy slot so a future legacy entry with the same
-        // name doesn't double-render alongside this one.
-        seen.add(`legacy:${norm(machine.name)}`);
-        items.push({
-            id: ref.catalogRef,
-            name: ref.nickname || machine.name,
-            brand: brand.name,
-            line: line.name,
-            type: machine.type || line.type || 'Other',
-            bodyPart: machine.bodyPart || 'Multi-Use',
-            lastUsed: null, // catalog refs don't track use directly yet
-            source: 'catalog',
-        });
-    }
-
-    // If the location doc had stale duplicate catalogRefs, schedule a one-shot
-    // self-healing write — collapse the array on disk so the data eventually
-    // matches what the UI shows. Fire-and-forget; the read path already
-    // dedupes so the user doesn't have to wait.
-    if (loc && catalogRefs.length > 0) {
-        const uniqueRefs = [];
-        const seenRefs = new Set();
-        for (const r of catalogRefs) {
-            if (!r?.catalogRef || seenRefs.has(r.catalogRef)) continue;
-            seenRefs.add(r.catalogRef);
-            uniqueRefs.push(r);
-        }
-        if (uniqueRefs.length < catalogRefs.length) {
-            const dupeCount = catalogRefs.length - uniqueRefs.length;
-            healDuplicateLocationEquipment(loc.id, uniqueRefs);
-            // Silent self-report: healing kicks in — this is our chance to
-            // measure whether the write-side deduper is receding or still
-            // getting fed dupes. Same pattern as the more-menu detector:
-            // captureWarning → errorLogs → visible in bug log. Fire once
-            // per healing invocation (which is already gated by
-            // _healingLocations to one-per-location per lifecycle).
-            (async () => {
-                try {
-                    const { captureWarning } = await import('../utils/error-handler.js');
-                    // Count occurrences per catalogRef so we can see whether
-                    // it's "one ref repeated N times" or "N refs each dupe'd
-                    // once" — those hint at different write-side causes.
-                    const refCounts = {};
-                    for (const r of catalogRefs) {
-                        if (!r?.catalogRef) continue;
-                        refCounts[r.catalogRef] = (refCounts[r.catalogRef] || 0) + 1;
-                    }
-                    const worst = Object.entries(refCounts)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 5)
-                        .map(([ref, count]) => ({ ref, count }));
-                    captureWarning(
-                        `Gym equipment healing: ${dupeCount} duplicate catalogRef(s) at "${gymName}"`,
-                        'gatherGymEquipment',
-                        {
-                            gymName,
-                            locationId: loc.id,
-                            totalRefsBefore: catalogRefs.length,
-                            totalRefsAfter: uniqueRefs.length,
-                            duplicatesRemoved: dupeCount,
-                            uniqueCatalogRefs: uniqueRefs.length,
-                            worstOffenders: worst,
-                        }
-                    );
-                } catch { /* diagnostic must never break render */ }
-            })();
-        }
-
-        // Promote each catalog ref to a legacy equipment record so it shows
-        // up in the active-workout picker, search, and every other surface
-        // that reads from users/{uid}/equipment. Fire-and-forget — the gym
-        // view already shows them via the dedup, and once promoted the rest
-        // of the app picks them up on next read.
-        migrateLocationCatalogRefs(loc.id, gymName);
-    }
-
     // Sort within each body part: brand → name
     items.sort((a, b) => {
         const bpCmp = (a.bodyPart || '').localeCompare(b.bodyPart || '');
@@ -1214,76 +1122,6 @@ function gatherGymEquipment(gymName, locationId) {
     });
 
     return items;
-}
-
-// Track healing writes in-flight so we don't fire multiple times for the
-// same location during a rapid re-render cascade.
-const _healingLocations = new Set();
-
-async function healDuplicateLocationEquipment(locationId, deduped) {
-    if (_healingLocations.has(locationId)) return;
-    _healingLocations.add(locationId);
-    try {
-        const userId = AppState.currentUser?.uid;
-        if (!userId) return;
-        await updateDoc(doc(db, 'users', userId, 'locations', locationId), {
-            equipment: deduped,
-        });
-        // Refresh the cached locations so the next render reads the cleaned
-        // value (preserves the UI dedup either way, but avoids re-firing).
-        const loc = allLocations.find((l) => l.id === locationId);
-        if (loc) loc.equipment = deduped;
-    } catch (err) {
-        console.error('healDuplicateLocationEquipment failed:', err);
-    } finally {
-        _healingLocations.delete(locationId);
-    }
-}
-
-// Track migrations in-flight per location so we don't re-fire while one is
-// already running. Cleared after each finishes.
-const _migratingLocations = new Set();
-
-/**
- * Background pass: for every catalogRef on a location doc, promote it to a
- * legacy equipment record (tagged with this gym). One-shot per gym view
- * render — runs the first time we render a location whose catalog refs
- * haven't been promoted. After this lands, the equipment shows up in the
- * active-workout picker, search, and all other library views.
- */
-async function migrateLocationCatalogRefs(locationId, gymName) {
-    if (_migratingLocations.has(locationId)) return;
-    const loc = allLocations.find((l) => l.id === locationId);
-    const refs = Array.isArray(loc?.equipment) ? loc.equipment : [];
-    if (refs.length === 0) return;
-
-    // Only run if at least one ref isn't already represented by a legacy
-    // record at this gym — saves a round-trip when everything's migrated.
-    const needsMigration = refs.some((r) => {
-        if (!r?.catalogRef) return false;
-        const resolved = resolveCatalogRef(r.catalogRef, getCatalogSync());
-        if (!resolved) return false;
-        const nameLC = resolved.machine.name.toLowerCase();
-        return !allEquipment.some((eq) =>
-            (eq.catalogRef === r.catalogRef
-                || (eq.function || '').toLowerCase() === nameLC
-                || (eq.name || '').toLowerCase() === nameLC)
-            && (eq.locations || []).includes(gymName)
-        );
-    });
-    if (!needsMigration) return;
-
-    _migratingLocations.add(locationId);
-    try {
-        for (const ref of refs) {
-            if (!ref?.catalogRef) continue;
-            await promoteCatalogToEquipment(ref.catalogRef, gymName);
-        }
-    } catch (err) {
-        console.error('migrateLocationCatalogRefs failed:', err);
-    } finally {
-        _migratingLocations.delete(locationId);
-    }
 }
 
 /**
@@ -2759,7 +2597,6 @@ function backfillGymAddresses(stats) {
  */
 function computeGymStats() {
     const currentGym = getSessionLocation();
-    const catalog = getCatalogSync();
 
     // Union of all gym names: saved location docs + any gym name referenced
     // by an equipment record's `locations[]` (covers gyms that have equipment
@@ -2774,23 +2611,24 @@ function computeGymStats() {
     const stats = [];
     for (const name of gymNames) {
         const loc = locByName.get(name);
+        const gymId = loc?.id || null;
 
-        // Legacy: equipment docs tagged with this gym name
-        const legacyAtGym = allEquipment.filter((e) => (e.locations || []).includes(name));
-
-        // New: catalog refs on the location doc itself
-        const catalogRefs = (loc && Array.isArray(loc.equipment)) ? loc.equipment : [];
+        // Single source of truth: equipment docs at this gym, by stable id OR
+        // (fallback) name. The old separate `location.equipment[]` catalog-ref
+        // count was ADDED on top of this, double-counting any machine present in
+        // both — removed (Phase 8b step 4; every catalog machine is an equipment
+        // doc, so A alone is the true count).
+        const atGym = allEquipment.filter((e) =>
+            (e.locations || []).includes(name)
+            || (gymId && Array.isArray(e.locationIds) && e.locationIds.includes(gymId))
+        );
 
         const typeCounts = new Map();
         const bump = (type) => {
             const t = type || 'Other';
             typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
         };
-        legacyAtGym.forEach((e) => bump(e.equipmentType));
-        catalogRefs.forEach((item) => {
-            const resolved = resolveCatalogRef(item.catalogRef, catalog);
-            bump(resolved?.machine?.type || resolved?.line?.type);
-        });
+        atGym.forEach((e) => bump(e.equipmentType));
 
         const typeMix = [...typeCounts.entries()]
             .map(([type, count]) => ({ type, count }))
@@ -2810,10 +2648,10 @@ function computeGymStats() {
             name,
             locationStr,
             lastVisit: loc?.lastVisit || null,
-            count: legacyAtGym.length + catalogRefs.length,
+            count: atGym.length,
             typeMix,
             isCurrent: !!currentGym && currentGym === name,
-            id: loc?.id || null,
+            id: gymId,
         });
     }
 
