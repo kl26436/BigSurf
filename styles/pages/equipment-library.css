@@ -311,6 +311,26 @@
    Phase 6 — Scan history banner + review view
    -------------------------------------------------------------------------- */
 
+/* "+ Add a gym" (Phase 8a) — dashed accent CTA on the My-gyms tab. */
+.add-gym-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    width: calc(100% - 2 * var(--pad-page));
+    min-height: var(--tap);
+    margin: var(--space-12) var(--pad-page) var(--space-8);
+    padding: 0 var(--space-16);
+    background: var(--primary-bg);
+    border: 1px dashed var(--primary-border);
+    border-radius: var(--radius-md);
+    color: var(--primary);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+.add-gym-btn:active { transform: scale(0.99); }
+
 .scan-banner {
     display: flex;
     align-items: center;

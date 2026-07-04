@@ -3,7 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
-import { confirmSheet } from './confirm-sheet.js';
+import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, writeBatch } from '../data/firebase-config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { clearAllWorkoutsCache } from '../data/data-manager.js';
@@ -2642,12 +2642,19 @@ function renderMyGymsTab() {
         </div>
     ` : '';
 
+    const addGymBtn = `
+        <button class="add-gym-btn" onclick="addGymPrompt()">
+            <i class="fas fa-plus"></i> Add a gym
+        </button>
+    `;
+
     if (stats.length === 0) {
         return scanBannerHTML + `
             <div class="empty-state-compact">
                 <i class="fas fa-map-marker-alt"></i>
                 <p>No gyms saved yet</p>
-                <p class="empty-state-hint">Start a workout and your gym gets saved automatically.</p>
+                <p class="empty-state-hint">Add one now, or it saves automatically when you start a workout there.</p>
+                ${addGymBtn}
             </div>
         `;
     }
@@ -2660,7 +2667,37 @@ function renderMyGymsTab() {
     const cardsHTML = stats.map(renderGymCard).join('');
     return stripHTML + scanBannerHTML + `
         <div class="gym-card-list">${cardsHTML}</div>
+        ${addGymBtn}
     `;
+}
+
+/**
+ * Pre-create a gym by name (Phase 8a) — closes the chicken-and-egg where gyms
+ * only existed as a side effect of GPS-stamping a workout, so you couldn't set
+ * one up to tag equipment to it before training there. Name-only; GPS gets
+ * stamped naturally on the first workout at that gym.
+ */
+export async function addGymPrompt() {
+    const name = await promptSheet({
+        title: 'Add a gym',
+        placeholder: "e.g. Gold's Gym Downtown",
+        confirmLabel: 'Add gym',
+    });
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+    if (allLocations.some((l) => l.name?.toLowerCase() === trimmed.toLowerCase())) {
+        showNotification(`${trimmed} is already saved`, 'info');
+        return;
+    }
+    try {
+        const newLoc = await getManager().saveLocation({ name: trimmed });
+        if (newLoc) allLocations.push(newLoc);
+        showNotification(`${trimmed} added`, 'success');
+        openEquipmentLibrary(); // re-render My gyms with the new card
+    } catch (err) {
+        console.error('Add gym failed:', err);
+        showNotification("Couldn't add gym — try again", 'error');
+    }
 }
 
 /**
@@ -4884,3 +4921,4 @@ window.closeEquipmentBaseWeightSheet = closeEquipmentBaseWeightSheet;
 window.openEquipmentExerciseSheet = openEquipmentExerciseSheet;
 window.closeEquipmentExerciseSheet = closeEquipmentExerciseSheet;
 window.removeExerciseFromEquipSheet = removeExerciseFromEquipSheet;
+window.addGymPrompt = addGymPrompt;
