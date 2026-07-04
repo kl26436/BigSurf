@@ -163,14 +163,8 @@
     font-weight: 600;
     cursor: pointer;
 }
-.dash-section-head__links {
-    display: flex;
-    align-items: center;
-    gap: var(--space-16);
-}
-
-/* Quick start card (Phase 7 — the improviser's dashboard door: shown when For
-   Today has no plan, so the dashboard always has a "train now" affordance). */
+/* Quick start card (Phase 7 — the improviser's dashboard door: always in For
+   Today, alongside the recommendations or standing in for them on a rest day). */
 .dash-quickstart-card {
     display: flex;
     align-items: center;

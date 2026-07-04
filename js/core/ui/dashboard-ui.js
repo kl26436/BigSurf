@@ -551,35 +551,42 @@ function renderForToday(allWorkouts) {
         buildProximityCandidates(hero.template, allWorkouts)
     );
 
+    // Recommendations are capped low (hero + up to 2) so Quick start reads as a
+    // co-equal option, not a footnote — the improviser and the routine user get
+    // equal billing on the dashboard.
     return `
         <div class="dash-section-head">
             <h3>For ${dayName}</h3>
-            <div class="dash-section-head__links">
-                <a onclick="openQuickStartSheet()"><i class="fas fa-bolt"></i> Quick start</a>
-                <a onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">All →</a>
-            </div>
+            <a onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">All →</a>
         </div>
         ${renderForTodayHero(hero, dayName, lastDoneByType, proximity)}
         ${rest.map(r => renderForTodayRow(r, false, dayName, lastDoneByType)).join('')}
+        ${renderQuickStartCard('Or start fresh — add exercises as you go')}
     `;
 }
 
 /**
- * For Today with no plan (new user, or a rest day) — a Quick start card so the
- * dashboard always has a "train now" door, not just the routine user's
- * suggested-template rows. Reuses the freestyle sheet (Phase 7).
+ * Prominent Quick start card (Phase 7 — the improviser's dashboard door).
+ * Always present in For Today: alongside the recommendations when there's a
+ * plan, or standing in for them on a rest day / for a new user.
  */
-function renderForTodayEmpty(dayName) {
+function renderQuickStartCard(subtitle) {
     return `
-        <div class="dash-section-head"><h3>For ${dayName}</h3></div>
         <div class="dash-quickstart-card" onclick="openQuickStartSheet()" role="button" tabindex="0">
             <div class="dash-quickstart-card__icon"><i class="fas fa-bolt"></i></div>
             <div class="dash-quickstart-card__text">
                 <div class="dash-quickstart-card__title">Quick start</div>
-                <div class="dash-quickstart-card__sub">Nothing planned — start now, add exercises as you go</div>
+                <div class="dash-quickstart-card__sub">${subtitle}</div>
             </div>
             <i class="fas fa-chevron-right dash-quickstart-card__chev"></i>
         </div>
+    `;
+}
+
+function renderForTodayEmpty(dayName) {
+    return `
+        <div class="dash-section-head"><h3>For ${dayName}</h3></div>
+        ${renderQuickStartCard('Nothing planned — start now, add exercises as you go')}
     `;
 }
 
