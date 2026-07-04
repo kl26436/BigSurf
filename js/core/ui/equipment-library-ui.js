@@ -2247,9 +2247,13 @@ function renderBrandCatalog(container) {
             const typeInfo = EQUIPMENT_TYPE_ICONS[type] || EQUIPMENT_TYPE_ICONS.Other;
             const typeColorClass = `equip-row__icon--${slugType(type)}`;
             const owned = findOwnedForCatalogMachine(m);
+            // Owned → its editable detail directly. Unowned → openCatalogMachine,
+            // which adds it to your library AND opens the same editable detail
+            // (edit identity, add exercises, tag gyms optionally) — no more
+            // dead-ending at a gym picker.
             const onClick = owned
                 ? `openEquipmentDetail('${escapeAttr(owned.id)}')`
-                : `openCatalogMachineAddToGym('${escapeAttr(m.id)}')`;
+                : `openCatalogMachine('${escapeAttr(m.id)}')`;
             return `
                 <div class="equip-row equip-row--compact" onclick="${onClick}">
                     <div class="equip-row__icon ${typeColorClass}">
@@ -2260,7 +2264,7 @@ function renderBrandCatalog(container) {
                         <div class="equip-row__meta">${owned ? 'In your equipment' : escapeHtml(m.bodyPart || 'Multi-Use')}</div>
                     </div>
                     <span class="equip-row__type-pill ${typeColorClass}">${escapeHtml(type)}</span>
-                    <i class="fas ${owned ? 'fa-pen' : 'fa-plus'} equip-row__last" aria-hidden="true" title="${owned ? 'Owned — edit' : 'Add to a gym'}"></i>
+                    <i class="fas ${owned ? 'fa-pen' : 'fa-chevron-right'} equip-row__last" aria-hidden="true" title="${owned ? 'Owned — edit' : 'Open / add to library'}"></i>
                 </div>
             `;
         }).join('');
@@ -3042,7 +3046,7 @@ function renderCatalogSearchResults(catalog, term) {
                 const owned = findOwnedForCatalogMachine(m.machine);
                 const onClick = owned
                     ? `openEquipmentDetail('${escapeAttr(owned.id)}')`
-                    : `openCatalogMachineAddToGym('${escapeAttr(m.machine.id)}')`;
+                    : `openCatalogMachine('${escapeAttr(m.machine.id)}')`;
                 return `
                     <div class="equip-row equip-row--compact" onclick="${onClick}">
                         <div class="equip-row__icon ${typeColorClass}">
@@ -3053,7 +3057,7 @@ function renderCatalogSearchResults(catalog, term) {
                             <div class="equip-row__meta">${owned ? 'In your equipment' : `${escapeHtml(m.brand.name)} · ${escapeHtml(m.line.name)}`}</div>
                         </div>
                         <span class="equip-row__type-pill ${typeColorClass}">${escapeHtml(m.type)}</span>
-                        <i class="fas ${owned ? 'fa-pen' : 'fa-plus'} equip-row__last" aria-hidden="true" title="${owned ? 'Owned — edit' : 'Add to a gym'}"></i>
+                        <i class="fas ${owned ? 'fa-pen' : 'fa-chevron-right'} equip-row__last" aria-hidden="true" title="${owned ? 'Owned — edit' : 'Open / add to library'}"></i>
                     </div>
                 `;
             }).join('');
