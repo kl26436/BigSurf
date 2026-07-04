@@ -1073,6 +1073,9 @@ if (new URL(window.location).searchParams.has('debug')) {
         import('./core/data/firebase-workout-manager.js'),
         import('./core/utils/push-notification-manager.js'),
         import('./core/features/pr-tracker.js'),
+        // Phase 8b migration tools (runEquipmentIdBackfill / undo / snapshot) —
+        // self-register on window; console-only, gated behind ?debug.
+        import('./core/data/equipment-id-migration-runner.js'),
     ]).then(([debugMod, fwmMod, pushMod, prMod]) => {
         Object.keys(debugMod).forEach((key) => {
             window[key] = debugMod[key];
