@@ -117,7 +117,20 @@ export function renderAll() {
 
     const exercises = AppState.currentWorkout.exercises || [];
     const exerciseCount = exercises.length;
-    if (exerciseCount === 0) return;
+    // Freestyle / just-emptied workout: show a first-exercise prompt instead of
+    // a blank screen. The add-exercise sheet is usually already open on top.
+    if (exerciseCount === 0) {
+        container.innerHTML = `
+            ${renderWorkoutHeader()}
+            <div class="aw-empty">
+                <div class="aw-empty__icon"><i class="fas fa-dumbbell"></i></div>
+                <div class="aw-empty__title">No exercises yet</div>
+                <div class="aw-empty__sub">Add your first exercise to start logging.</div>
+                <button class="aw-empty__add" onclick="awAddExercise()"><i class="fas fa-plus"></i> Add exercise</button>
+            </div>
+        `;
+        return;
+    }
 
     // Clamp index
     if (currentExerciseIdx >= exerciseCount) currentExerciseIdx = exerciseCount - 1;
@@ -194,7 +207,7 @@ function renderWorkoutHeader() {
             <div class="aw-title">
                 <div class="aw-title__name">${escapeHtml(workoutName)}${locName ? ` <span class="aw-title__loc"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(locName)}</span>` : ''}</div>
                 <div class="aw-title__elapsed">${elapsed}</div>
-                <div class="aw-title__meta">Exercise ${currentExerciseIdx + 1}/${exerciseCount}</div>
+                ${exerciseCount > 0 ? `<div class="aw-title__meta">Exercise ${currentExerciseIdx + 1}/${exerciseCount}</div>` : ''}
             </div>
             <button class="aw-menu" onclick="awToggleWorkoutMenu()" aria-label="Workout options">
                 <i class="fas fa-ellipsis-v"></i>
@@ -255,7 +268,11 @@ function renderProgressPills() {
         return `<button class="${classes.join(' ')}" onclick="awJumpTo(${i})">${label} ${escapeHtml(name)}${check}</button>`;
     }).join('');
 
-    return `<div class="aw-pills">${pills}</div>`;
+    // Phase 7 — always-present "+" so mid-workout add-exercise isn't buried in
+    // the kebab menu. Additive; the menu item stays.
+    const addPill = `<button class="aw-pill aw-pill--add" onclick="awAddExercise()" aria-label="Add exercise" title="Add exercise"><i class="fas fa-plus"></i></button>`;
+
+    return `<div class="aw-pills">${pills}${addPill}</div>`;
 }
 
 function shortName(name) {

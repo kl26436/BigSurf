@@ -252,6 +252,103 @@ export async function startWorkout(workoutType) {
     // Removed annoying "workout started" notification
 }
 
+/**
+ * Phase 7 — start a workout with NO template (the improviser: "it's leg day,
+ * I'll pick machines as I go"). Opens the active-workout wizard with zero
+ * exercises and pops the add-exercise sheet immediately. Parallel to
+ * startWorkout (per the active-workout safety rule — no refactor of the
+ * template path); the today's-workout conflict guard is duplicated on purpose.
+ *
+ * @param {string|null} focus - optional focus label (e.g. 'Legs') → workoutType
+ *   becomes "Freestyle — Legs"; null → plain "Freestyle".
+ */
+export async function startFreestyleWorkout(focus = null) {
+    if (!AppState.currentUser) {
+        showNotification('Sign in to start a workout', 'warning');
+        return;
+    }
+
+    // Respect an existing workout today — same guard as startWorkout.
+    const { loadTodaysWorkout } = await import('../data/data-manager.js');
+    const todaysWorkout = await loadTodaysWorkout(AppState);
+    if (todaysWorkout && !todaysWorkout.cancelledAt) {
+        const name = todaysWorkout.workoutType || 'Unknown';
+        if (todaysWorkout.completedAt) {
+            const ok = await confirmSheet({
+                title: `Replace today's "${name}" workout?`,
+                message: 'You already completed a workout today. Starting a new one overwrites its progress, PRs, and stats.',
+                confirmLabel: 'Start new workout',
+                cancelLabel: 'Keep workout',
+                destructive: true,
+            });
+            if (!ok) { navigateTo('dashboard'); return; }
+        } else {
+            const ok = await confirmSheet({
+                title: `Cancel "${name}" and start a new workout?`,
+                message: "Your in-progress workout will be cancelled and you'll lose any unsaved progress.",
+                confirmLabel: 'Start new workout',
+                cancelLabel: 'Keep current workout',
+                destructive: true,
+            });
+            if (!ok) { navigateTo('dashboard'); return; }
+            AppState.savedData = { ...todaysWorkout, cancelledAt: new Date().toISOString() };
+            await saveWorkoutData(AppState);
+            window.inProgressWorkout = null;
+        }
+    }
+
+    await initializeWorkoutLocation();
+    clearLastSessionCache();
+
+    const displayName = focus ? `Freestyle — ${focus}` : 'Freestyle';
+    // Synthetic, template-less workout — no id, no substitutions, empty list.
+    AppState.currentWorkout = {
+        name: displayName,
+        category: (focus || '').toLowerCase() || 'other',
+        exercises: [],
+    };
+    AppState.workoutStartTime = new Date();
+    AppState.savedData = {
+        workoutType: displayName,
+        date: AppState.getTodayDateString(),
+        startedAt: new Date().toISOString(),
+        exercises: {},
+        version: '2.0',
+        location: getSessionLocation() || null,
+        templateId: null,
+        templateIsDefault: false,
+        isFreestyle: true,
+    };
+    // No template to diff against — empty snapshot so completion "changed?"
+    // detection treats every added exercise as freestyle (offers Save as workout).
+    AppState.savedData.initialTemplateSnapshot = { exercises: [] };
+    window._initialTemplateSnapshot = AppState.savedData.initialTemplateSnapshot;
+    AppState.exerciseUnits = {};
+
+    // Show the active-workout section (mirrors startWorkout).
+    document.getElementById('workout-selector')?.classList.add('hidden');
+    document.getElementById('exercise-manager-section')?.classList.add('hidden');
+    document.getElementById('workout-history-section')?.classList.add('hidden');
+    document.getElementById('dashboard')?.classList.add('hidden');
+    document.getElementById('active-workout')?.classList.remove('hidden');
+
+    setHeaderMode(false);
+    setBottomNavVisible(true);
+    setWorkoutActiveState(true);
+    document.getElementById('resume-workout-banner')?.classList.add('hidden');
+
+    startWorkoutTimer();
+    await loadAutofillForAllExercises();
+    renderActiveWorkout();
+
+    window.inProgressWorkout = { ...AppState.savedData, originalWorkout: AppState.currentWorkout };
+    await saveWorkoutData(AppState);
+
+    // Drop straight into picking the first exercise — the whole point of
+    // freestyle is "add as you go", so don't make them find a menu.
+    if (typeof window.awAddExercise === 'function') window.awAddExercise();
+}
+
 export function pauseWorkout() {
     if (!AppState.currentWorkout) return;
 
@@ -625,6 +722,19 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
             </div>
             ` : ''}
 
+            ${!workoutData.templateId && exerciseCount > 0 ? `
+            <div class="completion-template-changes" id="freestyle-save-banner">
+                <div class="template-changes-text">
+                    <i class="fas fa-bookmark"></i>
+                    <span>Liked this one? Save it to start again with one tap.</span>
+                </div>
+                <div class="template-changes-actions">
+                    <button class="btn btn-primary btn-small" id="save-freestyle-btn">Save as workout</button>
+                    <button class="btn-text" id="dismiss-freestyle-btn" aria-label="Dismiss"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            ` : ''}
+
             <div class="completion-notes-section">
                 <label for="workout-notes">How did it feel?</label>
                 <textarea id="workout-notes" placeholder="Add notes…" rows="2"></textarea>
@@ -764,6 +874,63 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
 
     document.getElementById('dismiss-template-changes-btn')?.addEventListener('click', () => {
         document.getElementById('template-changes-banner')?.remove();
+    });
+
+    // Graduation path (Phase 7): a freestyle workout has no source template, so
+    // offer to save it as a reusable one — an improviser organically becomes a
+    // routine user. Saves in place (stays in the completion modal), mirroring
+    // the save-as-new path; no navigation away to the editor.
+    document.getElementById('save-freestyle-btn')?.addEventListener('click', async () => {
+        const suggested = workoutData.workoutType && workoutData.workoutType !== 'Freestyle'
+            ? workoutData.workoutType.replace(/^Freestyle — /, '')
+            : '';
+        const newName = await promptSheet({
+            title: 'Name this workout',
+            initialValue: suggested,
+            placeholder: 'e.g. Leg day',
+            confirmLabel: 'Save workout',
+        });
+        if (!newName || !newName.trim()) return;
+
+        try {
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            const workoutManager = new FirebaseWorkoutManager(AppState);
+
+            const exercises = Object.keys(workoutData.exercises || {})
+                .sort()
+                .map(key => {
+                    const idx = key.replace('exercise_', '');
+                    const orig = workoutData.originalWorkout?.exercises?.[idx] || {};
+                    const savedEx = workoutData.exercises[key];
+                    return {
+                        ...orig,
+                        machine: workoutData.exerciseNames?.[key] || orig.machine || orig.name,
+                        name: workoutData.exerciseNames?.[key] || orig.name || orig.machine,
+                        equipment: savedEx.equipment || orig.equipment || '',
+                        sets: orig.sets || 3,
+                        reps: orig.reps || 10,
+                        weight: orig.weight || 0,
+                    };
+                });
+
+            await workoutManager.saveWorkoutTemplate({
+                name: newName.trim(),
+                exercises,
+            });
+            // Keep the selector in sync so the new workout is startable immediately.
+            AppState.workoutPlans = await workoutManager.getUserWorkoutTemplates();
+
+            const banner = document.getElementById('freestyle-save-banner');
+            if (banner) banner.innerHTML = `<i class="fas fa-check completion-template-saved"></i> Saved as "${escapeHtml(newName.trim())}"`;
+            showNotification(`Saved as "${newName.trim()}"`, 'success');
+        } catch (err) {
+            console.error('Error saving freestyle as workout:', err);
+            showNotification("Couldn't save workout", 'error');
+        }
+    });
+
+    document.getElementById('dismiss-freestyle-btn')?.addEventListener('click', () => {
+        document.getElementById('freestyle-save-banner')?.remove();
     });
 }
 

@@ -735,6 +735,65 @@
     font-weight: 600;
     cursor: pointer;
 }
+.template-empty-state__sub {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    max-width: 280px;
+    margin: 0 auto var(--space-20);
+    line-height: 1.5;
+}
+.template-empty-state__doors {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+/* ── Quick start CTA (Phase 7 — the improviser's door, top of the list) ── */
+.quick-start-cta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    width: 100%;
+    padding: var(--space-12) var(--space-16);
+    margin-bottom: var(--space-8);
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-align: left;
+}
+.quick-start-cta:active { transform: scale(0.99); }
+.quick-start-cta__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: var(--bg-app);
+    flex-shrink: 0;
+}
+.quick-start-cta__text { flex: 1; min-width: 0; }
+.quick-start-cta__title {
+    font-size: var(--font-base);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.quick-start-cta__sub {
+    font-size: var(--font-xs);
+    color: var(--primary);
+    margin-top: 1px;
+}
+.quick-start-cta__chev { color: var(--primary); font-size: var(--font-xs); }
+
+/* Focus chips inside the Quick start sheet. */
+.qs-focus-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+}
 
 /* ===========================================
    43. DAY SELECTOR

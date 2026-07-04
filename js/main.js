@@ -40,6 +40,7 @@ import { signIn, signOutUser, executeEquipmentMigration, dismissEquipmentMigrati
 // Workout core functionality
 import {
     startWorkout,
+    startFreestyleWorkout,
     completeWorkout,
     cancelWorkout,
     cancelCurrentWorkout,
@@ -479,6 +480,7 @@ window.addWorkout = function () {
 
 // Core Workout Functions
 window.startWorkout = startWorkout;
+window.startFreestyleWorkout = startFreestyleWorkout;
 window.completeWorkout = completeWorkout;
 window.cancelWorkout = cancelWorkout;
 window.cancelCurrentWorkout = cancelCurrentWorkout;

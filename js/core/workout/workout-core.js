@@ -5,6 +5,7 @@
 // === Workout Session Lifecycle ===
 export {
     startWorkout,
+    startFreestyleWorkout,
     pauseWorkout,
     completeWorkout,
     cancelWorkout,

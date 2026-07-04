@@ -118,6 +118,47 @@
     border-color: var(--highlight-warm);
     color: var(--bg-app);
 }
+/* Phase 7 — persistent "+" add-exercise pill at the end of the row (mid-workout
+   add is no longer buried in the kebab menu). Dashed accent = action, not step. */
+.aw-pill--add {
+    border-style: dashed;
+    border-color: var(--primary-border);
+    color: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--tap-sm);
+}
+
+/* === FREESTYLE / EMPTY ACTIVE WORKOUT === */
+/* Shown when the workout has zero exercises (freestyle start, or all removed) —
+   the add-exercise sheet is usually already open on top. */
+.aw-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--space-48) var(--space-24);
+    gap: var(--space-8);
+}
+.aw-empty__icon { font-size: var(--font-3xl); color: var(--text-muted); opacity: 0.4; }
+.aw-empty__title { font-size: var(--font-md); font-weight: 700; color: var(--text-strong); }
+.aw-empty__sub { font-size: var(--font-sm); color: var(--text-muted); margin-bottom: var(--space-16); }
+.aw-empty__add {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-height: var(--tap);
+    padding: 0 var(--space-20);
+    background: var(--primary);
+    color: var(--bg-app);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-md);
+    font-weight: 700;
+    cursor: pointer;
+}
 
 /* === REST TIMER BANNER === */
 .aw-rest-timer {

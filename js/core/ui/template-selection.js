@@ -604,13 +604,21 @@ function renderTemplateRows(container, templates, isFiltered) {
                 </div>
             `;
         } else {
+            // New user, zero workouts — offer both doors (Phase 7): jump in now,
+            // or plan a reusable workout.
             container.innerHTML = `
                 <div class="template-empty-state">
                     <div class="template-empty-state__icon"><i class="fas fa-dumbbell"></i></div>
-                    <div class="template-empty-state__text">Create your first workout to get started</div>
-                    <button class="template-empty-state__cta" onclick="createNewTemplate()">
-                        <i class="fas fa-plus"></i> Create workout
-                    </button>
+                    <div class="template-empty-state__text">No workouts yet</div>
+                    <div class="template-empty-state__sub">Jump in now, or plan a reusable workout you can start with one tap.</div>
+                    <div class="template-empty-state__doors">
+                        <button class="btn btn-primary" onclick="openQuickStartSheet()">
+                            <i class="fas fa-bolt"></i> Quick start
+                        </button>
+                        <button class="btn btn-secondary" onclick="createNewTemplate()">
+                            <i class="fas fa-plus"></i> Plan a workout
+                        </button>
+                    </div>
                 </div>
             `;
         }
@@ -629,7 +637,8 @@ function renderTemplateRows(container, templates, isFiltered) {
         }
     }
 
-    container.innerHTML = renderGymContextHeader()
+    container.innerHTML = renderQuickStartCta()
+        + renderGymContextHeader()
         + renderSuggestedForToday(templates, isFiltered)
         + templates.map(t => renderSingleTemplateRow(t)).join('');
 
@@ -637,6 +646,86 @@ function renderTemplateRows(container, templates, isFiltered) {
     if (typeof window.awAutoGrowNotes === 'function') {
         container.querySelectorAll('.te-row__notes-field textarea')
             .forEach((t) => window.awAutoGrowNotes(t));
+    }
+}
+
+// ===================================================================
+// PHASE 7 — Quick start (freestyle: start now, add exercises as you go)
+// ===================================================================
+
+/** Prominent CTA at the top of the list — the improviser's door. */
+function renderQuickStartCta() {
+    return `
+        <button class="quick-start-cta" onclick="openQuickStartSheet()">
+            <div class="quick-start-cta__icon"><i class="fas fa-bolt"></i></div>
+            <div class="quick-start-cta__text">
+                <div class="quick-start-cta__title">Quick start</div>
+                <div class="quick-start-cta__sub">Start now, add exercises as you go</div>
+            </div>
+            <i class="fas fa-chevron-right quick-start-cta__chev"></i>
+        </button>
+    `;
+}
+
+// Focus is optional — the workoutType label becomes "Freestyle — Legs" etc.
+// Options are the template/workout categories (a programming focus), styled with
+// the shared .chip (no new pill variant — Phase 7 consistency gate).
+let _quickStartFocus = null;
+const QUICK_START_FOCUSES = ['Push', 'Pull', 'Legs', 'Core', 'Cardio'];
+
+export function openQuickStartSheet() {
+    _quickStartFocus = null;
+    const chips = QUICK_START_FOCUSES.map(f =>
+        `<button class="chip chip--sm" data-qs-focus="${f}" onclick="qsSetFocus('${f}')">${escapeHtml(f)}</button>`
+    ).join('');
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'qs-sheet-backdrop';
+    backdrop.onclick = closeQuickStartSheet;
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'qs-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">Quick start</div>
+            <div class="aw-sheet__subtitle">Pick a focus (optional), then add exercises as you go</div>
+        </div>
+        <div class="aw-sheet__body">
+            <div class="qs-focus-chips">${chips}</div>
+        </div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action" onclick="closeQuickStartSheet()">Cancel</button>
+            <button class="aw-sheet__action primary" onclick="qsStart()">Start workout</button>
+        </div>
+    `;
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+}
+
+export function qsSetFocus(focus) {
+    // Toggle — tapping the active chip clears it (focus is optional).
+    _quickStartFocus = (_quickStartFocus === focus) ? null : focus;
+    document.querySelectorAll('#qs-sheet [data-qs-focus]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.qsFocus === _quickStartFocus);
+    });
+}
+
+export function closeQuickStartSheet() {
+    document.getElementById('qs-sheet')?.remove();
+    document.getElementById('qs-sheet-backdrop')?.remove();
+}
+
+export function qsStart() {
+    const focus = _quickStartFocus;
+    closeQuickStartSheet();
+    if (typeof window.startFreestyleWorkout === 'function') {
+        window.startFreestyleWorkout(focus);
     }
 }
 
@@ -2598,3 +2687,8 @@ window.saveBasicTemplate = saveBasicTemplate;
 window.closeWorkoutEditor = closeWorkoutEditor;
 // Deep-link entry (AI coach "open this workout", etc.) may reach us via window.
 window.showWorkoutEditor = showWorkoutEditor;
+// Phase 7 — Quick start (freestyle) handlers render in this module's strings.
+window.openQuickStartSheet = openQuickStartSheet;
+window.qsSetFocus = qsSetFocus;
+window.closeQuickStartSheet = closeQuickStartSheet;
+window.qsStart = qsStart;
