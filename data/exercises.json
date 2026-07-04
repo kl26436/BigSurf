@@ -1039,5 +1039,71 @@
   "reps": 12,
   "weight": 45,
   "video": "https://www.youtube.com/watch?v=ENXyYltB7CM"
+},
+{
+  "name": "Treadmill",
+  "machine": "Treadmill",
+  "bodyPart": "Cardio",
+  "equipmentType": "Cardio",
+  "tags": ["cardio", "conditioning", "running"],
+  "sets": 1,
+  "reps": 1,
+  "weight": 0,
+  "video": ""
+},
+{
+  "name": "Stationary Bike",
+  "machine": "Stationary Bike",
+  "bodyPart": "Cardio",
+  "equipmentType": "Cardio",
+  "tags": ["cardio", "conditioning", "cycling"],
+  "sets": 1,
+  "reps": 1,
+  "weight": 0,
+  "video": ""
+},
+{
+  "name": "Rowing Machine",
+  "machine": "Rowing Machine",
+  "bodyPart": "Cardio",
+  "equipmentType": "Cardio",
+  "tags": ["cardio", "conditioning", "rowing"],
+  "sets": 1,
+  "reps": 1,
+  "weight": 0,
+  "video": ""
+},
+{
+  "name": "Elliptical",
+  "machine": "Elliptical",
+  "bodyPart": "Cardio",
+  "equipmentType": "Cardio",
+  "tags": ["cardio", "conditioning"],
+  "sets": 1,
+  "reps": 1,
+  "weight": 0,
+  "video": ""
+},
+{
+  "name": "Stair Climber",
+  "machine": "Stair Climber",
+  "bodyPart": "Cardio",
+  "equipmentType": "Cardio",
+  "tags": ["cardio", "conditioning", "stairs"],
+  "sets": 1,
+  "reps": 1,
+  "weight": 0,
+  "video": ""
+},
+{
+  "name": "Jump Rope",
+  "machine": "Jump Rope",
+  "bodyPart": "Cardio",
+  "equipmentType": "Cardio",
+  "tags": ["cardio", "conditioning"],
+  "sets": 1,
+  "reps": 1,
+  "weight": 0,
+  "video": ""
 }
 ]

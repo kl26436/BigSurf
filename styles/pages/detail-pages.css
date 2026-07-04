@@ -57,34 +57,13 @@
     margin-top: 2px;
 }
 
-/* ===== RANGE PILLS ===== */
-.range-pills {
-    display: flex;
-    gap: 4px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-pill);
-    padding: 3px;
-    margin: 12px 14px;
-}
-.range-pills button {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: var(--tap-sm);
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    font-size: var(--font-xs);
-    font-weight: 600;
-    padding: 0 var(--space-4);
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-}
-.range-pills button.active {
-    background: var(--primary-bg);
-    color: var(--primary);
+/* ===== RANGE FILTER ===== */
+/* Detail pages use the shared .range-filter widget (components/range-filter.css)
+   — this only insets it to the 14px gutter, since .d-content has no horizontal
+   padding of its own. */
+.d-range {
+    padding: 0 14px;
+    margin-top: 12px;
 }
 
 /* ===== HERO STATS ===== */

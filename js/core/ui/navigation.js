@@ -704,7 +704,14 @@ export function setWorkoutActiveState(active) {
 
 export function showMuscleGroupDetail(bodyPart) {
     const { AppState } = window;
-    if (AppState) AppState.activeMuscleGroup = bodyPart;
+    if (AppState) {
+        AppState.activeMuscleGroup = bodyPart;
+        // Body-part cards are a weekly view ("Volume · wk", sets/wk vs target),
+        // so open the drill-down on the same week — otherwise the numbers visibly
+        // jump between the card you tapped and the page you land on. Not persisted:
+        // picking a range in the drill-down still sticks via setMuscleRange.
+        AppState.dashboardRange = 'W';
+    }
     navigateTo('muscle-group-detail');
 }
 

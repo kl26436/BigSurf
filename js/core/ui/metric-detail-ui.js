@@ -125,7 +125,7 @@ function renderDetailLayout({ title, tag, range, hero, chart, insight, breakdown
             ${tag ? `<div class="detail-page-header__tag">${escapeHtml(tag)}</div>` : ''}
         </div>
         <div class="md-body">
-            ${renderRangeFilter(range).replace(/setDashboardRange/g, 'setDetailRange')}
+            ${renderRangeFilter(range, 'setDetailRange')}
             <div class="detail-hero">${hero}</div>
             <div class="detail-chart">${chart}</div>
             ${insight ? `<div class="detail-insight"><i class="fas fa-lightbulb"></i><div>${insight}</div></div>` : ''}

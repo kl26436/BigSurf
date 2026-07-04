@@ -18,6 +18,21 @@ Three independent, low-risk fixes pulled forward from Phases 2/5.
 
 ---
 
+## Marcus re-review batch (from docs/marcus-review-2026-07.md, S/M — one session)
+
+Post-implementation review findings, 2026-07-03. Theme: the range plumbing got unified but not the widgets — the consistency contract applies to UI, not just state.
+
+- [x] **[P1] Point exercise-detail + muscle-group-detail at the shared `renderRangeFilter()`** — both now render `<div class="d-range">${renderRangeFilter(range, 'set{Exercise,Muscle}Range')}</div>`; local `renderRangePills` + the `.range-pills` CSS deleted. The shared widget is `min-height: var(--tap-sm)`; `.d-range` only insets it to the 14px gutter. **(this batch)**
+- [x] **[P1] Progress page range mismatch** — carried 'W' into the destination: `showMuscleGroupDetail()` sets `AppState.dashboardRange = 'W'` before navigating (body-part cards are a weekly view — "Volume · wk", sets/wk vs target — so the drill-down opens on the same week; not persisted, so an explicit range pick in the drill-down still sticks). Left the cards themselves weekly by design. **(this batch)**
+- [x] **[P2] Seed cardio exercises** — treadmill, stationary bike, rowing machine, elliptical, stair climber, jump rope added to `data/exercises.json` (`bodyPart: "Cardio"`). ⚠️ Signed-in users read defaults from the Firestore `exercises` collection, not this JSON, so the same 6 rows still need adding there for the Cardio chip to populate for real users — flagged, not done unprompted (prod data write). **(this batch)**
+- [x] **[P2] Port the empty-range CTA to metric-detail** — `renderVolumeBodyPartDetail` (0-total) / `renderStrengthDetail` now use a shared `mdEmptyRange()` with a "View all time" button. **(762c513)**
+- [ ] **[P2] Cardio's home on Progress — DECISION (recommended): no Cardio body-part card** (weight-volume is meaningless for cardio); instead a small "Conditioning" line on Progress: sessions + minutes this week. *(OPEN — depends on a duration-based cardio log model; the seeded cardio exercises still log as sets/reps/weight, so there are no "minutes" to sum yet. Real feature, not drift — deferred out of the consistency gate.)*
+- [x] **[P3] `.te-row__remove` 28px → `--tap-sm`** — now 36px, flex-centered. **(this batch)**
+- [x] **[P3] Replace the regex handler-rewire** — `renderRangeFilter(activeRange, handler = 'setDashboardRange')` takes a handler-name param; metric-detail passes `'setDetailRange'` directly, no more `.replace()`. **(this batch)**
+- [x] ~~Dead chevron CSS from Phase 3b~~ — already tracked under the dead-code follow-up.
+
+---
+
 ## The consistency contract
 
 Explicit goal: **one system, not a hodgepodge of add-on fixes.** Every phase below must conform to these canonical patterns — and when a phase touches a screen, it migrates that screen's legacy variants to the canonical pattern as part of the same PR (the CLAUDE.md Rule 9 "rename when doing neighboring work" clause, made mandatory for this overhaul). No phase introduces a new one-off.
@@ -173,6 +188,23 @@ Audit §5-§6 + supplemental sweep findings.
 - [x] Delete dead code: `renderBodyWeightCard` (26710c4), manual-workout no-op stubs (837194a), brand-view path (f054fc6).
 - [ ] Consolidate the two deload detectors — **won't-do**: they answer different questions (`detectDeloadWeek` = "am I deloading now?" rolling windows; `checkDeloadNeeded` = "should I deload?" ISO weeks). Merging would lose meaning. Insights already end in an instruction.
 
+## Phase 7 — Two user types: freestyle mode + template scale (M)
+
+User-test feedback (2026-07, first outside user): the app is built for the routine lifter (same day, same order, same machines — the owner). An improviser — knows it's leg day, picks machines as he feels — hit two walls, both code-verified:
+
+**Consistency gate for this phase (lesson from the Marcus re-review):** the range-unification session unified state but left hand-rolled widgets behind — don't repeat that here. Before starting Phase 7, clear the Marcus re-review batch (above) so no known shared-component drift is live. Then, for every UI this phase builds: Quick start's focus picker uses the shared body-part taxonomy + `.chip` (not a new pill variant); the visible add-exercise entry opens `openSharedAddExerciseSheet` / `awAddExercise` (no third picker); the "Save as workout" completion offer goes through `confirmSheet`/existing completion-summary patterns; the archive group in the list reuses Phase 3b's `.row-card` list markup (no new collapsed-group component). Definition of done for every item: the shared component is used AND any local variant it replaces is deleted in the same PR. Run `npm run audit:design -- --list` before and after — the duplicate-class and inline-style counts must not rise.
+
+**Freestyle path (the improviser)**
+- [ ] 🔴 There is no way to start a workout without a template — `startWorkout(workoutType)` (workout-session.js:69) requires one. Add **Quick start**: FAB/workout-selector option → optional focus pick (Legs/Push/… — the template categories) → active workout opens with zero exercises and the add-exercise sheet already open. Reuses existing infra: the shared add-exercise sheet, `workoutType: 'Freestyle — Legs'`, normal save path.
+- [ ] 🔴 "Add exercise" mid-workout is buried in the kebab menu (`renderWorkoutMenu`, active-workout-ui.js:207-212). Add a persistent visible entry — an always-present "+" pill at the end of the progress-pill row, or "+ Add" in the footer next to All. ADDITIVE only per the active-workout safety rule; the menu item stays.
+- [ ] 🟡 Graduation path: after completing a freestyle workout, the completion summary offers "Save as workout" (`saveWorkoutAsTemplate` already exists) — improvisers organically become routine users.
+- [ ] 🟡 Workouts-page empty state (new user, zero templates) offers both doors: "Quick start" and "Plan a workout".
+
+**Template scale (the routine user, years of accumulation)**
+- [ ] 🟡 Archive: `archived` flag on templates — hidden from selector list, For Today ranking, and dashboard; history untouched; "Archived (N)" collapsed group at the list bottom to restore. Surface an archive suggestion for templates unused 60+ days.
+- [ ] 🟡 For Today diet: hero + 2 compact rows max (currently hero + 3, dashboard-ui.js:527); anything further behind "All →". The busy feeling is the 4-row stack.
+- [ ] 🟢 Phase 3b list note: with archive shipped, the v2 list's read-first rows + category pills should comfortably handle 20-30 active templates; revisit grouping only if archive isn't enough.
+
 ## Phase 6 — Docs + active-workout micro-polish (S) — ✅ SHIPPED 2026-07-03
 
 - [x] README: removed deleted-file references (exercise-progress.js, stats-ui.js, sheet.js, add-exercise-sheet.js). **(65605aa)**
@@ -183,6 +215,6 @@ Audit §5-§6 + supplemental sweep findings.
 
 ## Suggested order
 
-**3 → 0 → 1 → 2 → 4 → 3b → 5 → 6.** Phase 3 first: smallest diff, felt every day (and its ergonomics survive the 3b restructure — same components, new container). Phase 0 next: pure CSS, instantly makes the whole app feel like the mockups. Then the two data/dashboard phases that fix "why do I care" (1 before 2). Equipment detail (4) before workout library (3b) — 4 establishes the tap-row→sheet detail-page pattern that 3b then reuses. The fit-and-finish sweep (5) can be interleaved anytime as filler work.
+**3 → 0 → 1 → 2 → 4 → 3b → 7 → 5 → 6.** (Phase 7's freestyle mode is also the most sensible thing to ship before showing the app to more outside users — it's the first wall every non-routine person hits.) Phase 3 first: smallest diff, felt every day (and its ergonomics survive the 3b restructure — same components, new container). Phase 0 next: pure CSS, instantly makes the whole app feel like the mockups. Then the two data/dashboard phases that fix "why do I care" (1 before 2). Equipment detail (4) before workout library (3b) — 4 establishes the tap-row→sheet detail-page pattern that 3b then reuses. The fit-and-finish sweep (5) can be interleaved anytime as filler work.
 
 Every phase: dev deploy first, on-device check (375px), then prod — per the deployment rules in CLAUDE.md.

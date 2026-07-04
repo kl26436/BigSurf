@@ -6,7 +6,7 @@ import {
     aggregateBodyPartStats, getExercisesForBodyPart, getPRsForBodyPart,
     formatVolume, capitalize,
 } from '../features/metrics/aggregators.js';
-import { rangeLabel, RANGES, DEFAULT_RANGE, persistRange } from '../features/metrics/range-filter.js';
+import { rangeLabel, renderRangeFilter, DEFAULT_RANGE, persistRange } from '../features/metrics/range-filter.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
 import { chartComboBarsLine } from '../features/charts/chart-combo-bars-line.js';
 
@@ -58,7 +58,7 @@ export function renderMuscleGroupDetail(bodyPart) {
             </div>
         </div>
         <div class="d-content">
-            ${renderRangePills(range)}
+            <div class="d-range">${renderRangeFilter(range, 'setMuscleRange')}</div>
 
             ${stats.sessions === 0 ? renderEmptyRange(range) : `
             <div class="d-hero-stats">
@@ -122,16 +122,6 @@ function renderEmptyRange(range) {
             ${longer ? `<div class="empty-state-actions">
                 <button class="btn btn-secondary" onclick="setMuscleRange('All')">View all time</button>
             </div>` : ''}
-        </div>
-    `;
-}
-
-function renderRangePills(activeRange) {
-    return `
-        <div class="range-pills">
-            ${RANGES.map(r => `
-                <button class="${r === activeRange ? 'active' : ''}" onclick="setMuscleRange('${r}')">${r}</button>
-            `).join('')}
         </div>
     `;
 }

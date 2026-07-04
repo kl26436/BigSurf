@@ -80,12 +80,16 @@ export function rangeLabel(range) {
 // Wire range functions into aggregators (avoids circular dependency)
 setRangeFunctions(getRangeBounds, getPreviousRangeBounds);
 
-export function renderRangeFilter(activeRange) {
+// `handler` is the window-level onclick function name for a pill tap — every
+// surface shares this one widget and just passes its own setter (setDashboardRange
+// / setDetailRange / setExerciseRange / setMuscleRange). No more regex-rewiring
+// the rendered HTML.
+export function renderRangeFilter(activeRange, handler = 'setDashboardRange') {
     return `
         <div class="range-filter" role="tablist" aria-label="Time range">
             ${RANGES.map(r => `
                 <button class="${r === activeRange ? 'active' : ''}"
-                        onclick="setDashboardRange('${r}')"
+                        onclick="${handler}('${r}')"
                         role="tab" aria-selected="${r === activeRange}">${r}</button>
             `).join('')}
         </div>

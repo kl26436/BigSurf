@@ -6,7 +6,7 @@ import {
     aggregateExerciseStats, exerciseEquipmentCounts, classifyBodyPart, capitalize, formatVolume,
 } from '../features/metrics/aggregators.js';
 import { chartTrend } from '../features/charts/chart-trend.js';
-import { RANGES, DEFAULT_RANGE, persistRange, rangeLabel } from '../features/metrics/range-filter.js';
+import { renderRangeFilter, DEFAULT_RANGE, persistRange, rangeLabel } from '../features/metrics/range-filter.js';
 
 const BP_ICONS = {
     chest: 'fa-hand-paper', back: 'fa-fist-raised', legs: 'fa-walking',
@@ -93,7 +93,7 @@ export function renderExerciseDetail(exerciseName) {
         </div>
         <div class="d-content">
             ${renderMachinePills(equipCounts)}
-            ${renderRangePills(range)}
+            <div class="d-range">${renderRangeFilter(range, 'setExerciseRange')}</div>
 
             ${s.sessions.length === 0 ? renderEmptyRange(range) : `
             <div class="d-hero-stats">
@@ -175,16 +175,6 @@ function renderEmptyRange(range) {
             ${longer ? `<div class="empty-state-actions">
                 <button class="btn btn-secondary" onclick="setExerciseRange('All')">View all time</button>
             </div>` : ''}
-        </div>
-    `;
-}
-
-function renderRangePills(activeRange) {
-    return `
-        <div class="range-pills">
-            ${RANGES.map(r => `
-                <button class="${r === activeRange ? 'active' : ''}" onclick="setExerciseRange('${r}')">${r}</button>
-            `).join('')}
         </div>
     `;
 }
