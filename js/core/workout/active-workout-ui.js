@@ -928,7 +928,16 @@ function renderLastSessionCard(exerciseName, idx) {
             </div>
             <div class="aw-last__info">
                 <div class="aw-last__label">Last session · ${daysLabel}</div>
-                <div class="aw-last__val">${summary} ${displayUnit}</div>
+                <div class="aw-last__val">
+                    <span>${summary}</span>
+                    <button type="button"
+                            class="aw-last__unit"
+                            onclick="event.stopPropagation(); awToggleUnit(${idx})"
+                            aria-label="Toggle display unit (currently ${displayUnit})"
+                            title="Tap to switch unit">
+                        ${displayUnit}
+                    </button>
+                </div>
                 ${nudgeHtml}
             </div>
             <button class="aw-last__progress" onclick="showExerciseDetail('${escapeAttr(exerciseName)}')" aria-label="View ${escapeAttr(exerciseName)} progress">

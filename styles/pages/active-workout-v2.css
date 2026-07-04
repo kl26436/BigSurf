@@ -455,7 +455,34 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
+.aw-last__val > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+/* Tappable unit pill on the last-session card — same intent as the header's
+   unit toggle so the user can convert the historical numbers into whatever
+   unit their machine reads at a glance. Keeps the "no idea if that's lb or
+   kg on this rack" 7/4 report from recurring. */
+.aw-last__unit {
+    flex-shrink: 0;
+    background: var(--bg-card);
+    color: var(--text-strong);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
+    padding: 1px 8px;
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    line-height: 1.4;
+}
+.aw-last__unit:active { opacity: 0.7; }
 /* Overload nudge — the "put the smarts where I lift" line. Primary-tinted so
    it reads as an actionable target, not just more history. */
 .aw-last__nudge {

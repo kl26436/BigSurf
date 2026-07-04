@@ -2,6 +2,7 @@
 // Handles workout history UI interactions with FULL CALENDAR VIEW
 
 import { AppState } from '../utils/app-state.js';
+import { db } from '../data/firebase-config.js';
 import { showNotification, setHeaderMode } from './ui-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
@@ -85,7 +86,7 @@ export function nextMonth() {
 // WORKOUT DETAIL FUNCTIONS
 // ===================================================================
 
-export function viewWorkout(workoutId) {
+export async function viewWorkout(workoutId) {
     const wh = window.workoutHistory;
     if (!wh) {
         console.error(' workoutHistory not available');
@@ -97,9 +98,26 @@ export function viewWorkout(workoutId) {
     // last-session card, recent list, and calendar — shows the SAME detail
     // view. Resolve the full workout doc: prefer the loaded history row, else
     // the raw doc embedded in the calendar object. Both are the same shape.
-    const workout =
+    let workout =
         (wh.currentHistory || []).find((w) => w.id === workoutId || w.docId === workoutId) ||
         wh.getWorkoutDetails(workoutId)?.rawData;
+
+    // Fallback: fetch straight from Firestore. Fresh freestyle workouts
+    // caused the 7/4 07:56 "workout not found" report — completeWorkout
+    // clears the dashboard's loadAllWorkouts cache but doesn't refresh
+    // wh.currentHistory or calendarWorkouts, so tapping the last-session
+    // card from the dashboard right after finishing a freestyle missed
+    // both local caches and dead-ended in a toast. Direct doc fetch by
+    // ID is the safety net.
+    if (!workout && AppState.currentUser) {
+        try {
+            const { doc: fsDoc, getDoc } = await import('../data/firebase-config.js');
+            const snap = await getDoc(fsDoc(db, 'users', AppState.currentUser.uid, 'workouts', workoutId));
+            if (snap.exists()) workout = { id: snap.id, ...snap.data() };
+        } catch (err) {
+            console.error('viewWorkout: firestore fallback failed', err);
+        }
+    }
 
     if (!workout) {
         showNotification('Workout not found', 'error');

@@ -210,6 +210,21 @@ function installKeyboardInsetTracker() {
     const update = () => {
         const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
         document.documentElement.style.setProperty('--kb-inset', `${Math.round(inset)}px`);
+        // If the currently-focused input is now behind the keyboard, re-scroll
+        // it into view. The initial scrollIntoView at focusin+300ms fires
+        // BEFORE the iOS keyboard finishes animating up — computed against a
+        // full-height viewport, then the keyboard arrives and the input is
+        // stranded 20-30px below the fold. This runs whenever visualViewport
+        // resizes (i.e., every keyboard transition) so a late-arriving
+        // keyboard triggers a follow-up scroll. The 7/4 mid-set 29px overhang
+        // on active-workout was the same class of bug that scrollIntoView
+        // alone couldn't fix.
+        const el = document.activeElement;
+        if (!el || !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+        const rect = el.getBoundingClientRect();
+        if (rect.bottom > vv.height - 8) {
+            try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { /* noop */ }
+        }
     };
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
