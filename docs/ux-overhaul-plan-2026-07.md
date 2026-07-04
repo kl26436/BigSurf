@@ -194,16 +194,16 @@ User-test feedback (2026-07, first outside user): the app is built for the routi
 
 **Consistency gate for this phase (lesson from the Marcus re-review):** the range-unification session unified state but left hand-rolled widgets behind — don't repeat that here. Before starting Phase 7, clear the Marcus re-review batch (above) so no known shared-component drift is live. Then, for every UI this phase builds: Quick start's focus picker uses the shared body-part taxonomy + `.chip` (not a new pill variant); the visible add-exercise entry opens `openSharedAddExerciseSheet` / `awAddExercise` (no third picker); the "Save as workout" completion offer goes through `confirmSheet`/existing completion-summary patterns; the archive group in the list reuses Phase 3b's `.row-card` list markup (no new collapsed-group component). Definition of done for every item: the shared component is used AND any local variant it replaces is deleted in the same PR. Run `npm run audit:design -- --list` before and after — the duplicate-class and inline-style counts must not rise.
 
-**Freestyle path (the improviser)**
-- [ ] 🔴 There is no way to start a workout without a template — `startWorkout(workoutType)` (workout-session.js:69) requires one. Add **Quick start**: FAB/workout-selector option → optional focus pick (Legs/Push/… — the template categories) → active workout opens with zero exercises and the add-exercise sheet already open. Reuses existing infra: the shared add-exercise sheet, `workoutType: 'Freestyle — Legs'`, normal save path.
-- [ ] 🔴 "Add exercise" mid-workout is buried in the kebab menu (`renderWorkoutMenu`, active-workout-ui.js:207-212). Add a persistent visible entry — an always-present "+" pill at the end of the progress-pill row, or "+ Add" in the footer next to All. ADDITIVE only per the active-workout safety rule; the menu item stays.
-- [ ] 🟡 Graduation path: after completing a freestyle workout, the completion summary offers "Save as workout" (`saveWorkoutAsTemplate` already exists) — improvisers organically become routine users.
-- [ ] 🟡 Workouts-page empty state (new user, zero templates) offers both doors: "Quick start" and "Plan a workout".
+**Freestyle path (the improviser)** — SHIPPED **(c773a35)**
+- [x] 🔴 Quick start — `startFreestyleWorkout(focus)` (workout-session.js, parallel to startWorkout per the safety rule; today's-workout guard duplicated). A "Quick start" CTA at the top of the workouts list + an optional focus picker sheet (Push/Pull/Legs/Core/Cardio, shared `.chip`) → active workout opens with zero exercises and the add-exercise sheet already open. `workoutType: 'Freestyle — Legs'`, `isFreestyle: true`, normal save path. renderAll() gained a 0-exercise empty state (was a blank screen).
+- [x] 🔴 Visible mid-workout add — persistent "+" pill at the end of the progress-pill row (`.aw-pill--add`). Additive; the kebab menu item stays.
+- [x] 🟡 Graduation path — a freestyle completion (no `templateId`) shows a "Save as workout" banner in the completion summary; names + saves a reusable template in place (no nav away).
+- [x] 🟡 Workouts-page empty state — new user (zero workouts) gets both doors: "Quick start" + "Plan a workout".
 
-**Template scale (the routine user, years of accumulation)**
-- [ ] 🟡 Archive: `archived` flag on templates — hidden from selector list, For Today ranking, and dashboard; history untouched; "Archived (N)" collapsed group at the list bottom to restore. Surface an archive suggestion for templates unused 60+ days.
-- [ ] 🟡 For Today diet: hero + 2 compact rows max (currently hero + 3, dashboard-ui.js:527); anything further behind "All →". The busy feeling is the 4-row stack.
-- [ ] 🟢 Phase 3b list note: with archive shipped, the v2 list's read-first rows + category pills should comfortably handle 20-30 active templates; revisit grouping only if archive isn't enough.
+**Template scale (the routine user, years of accumulation)** — SHIPPED **(archive/for-today chunk)**
+- [x] 🟡 Archive: `archived` flag round-trips via saveTemplateInline; archived workouts drop out of the selector list, For Today ranking (dashboard-ui.js), and the workout-selector's category pills. History untouched. "Archived (N)" collapsed group at the list bottom (reuses `.row-card`) with per-row Restore; archive/restore from the editor page actions. Archive suggestion on the editor page when a workout is 60+ days unused.
+- [x] 🟡 For Today diet: hero + 2 compact rows max (`.slice(0, 3)`); anything further behind "All →".
+- [x] 🟢 Phase 3b list note: with archive shipped, the v2 list's read-first rows + category pills handle 20-30 active templates; revisit grouping only if archive isn't enough. *(No code — validated.)*
 
 ## Phase 6 — Docs + active-workout micro-polish (S) — ✅ SHIPPED 2026-07-03
 

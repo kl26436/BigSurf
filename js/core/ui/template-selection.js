@@ -449,16 +449,22 @@ async function renderWorkoutSelectorUI() {
 
     const allTemplates = await ensureSelectorContext();
 
-    // Collect unique categories
-    const categories = [...new Set(allTemplates.map(effectiveTemplateCategory))];
+    // Phase 7 — archived workouts drop out of the main browsing surface (and
+    // For Today ranking + dashboard); they live in a collapsed group at the
+    // bottom of the list, restorable any time.
+    const activeTemplates = allTemplates.filter(t => !t.archived);
+    const archivedTemplates = allTemplates.filter(t => t.archived);
+
+    // Collect unique categories (from active workouts only)
+    const categories = [...new Set(activeTemplates.map(effectiveTemplateCategory))];
 
     // Render filter pills
     renderCategoryPills(pillsContainer, categories);
 
     // Filter by active category
-    let filtered = allTemplates;
+    let filtered = activeTemplates;
     if (activeSelectorCategory) {
-        filtered = allTemplates.filter(t => effectiveTemplateCategory(t) === activeSelectorCategory);
+        filtered = activeTemplates.filter(t => effectiveTemplateCategory(t) === activeSelectorCategory);
     }
 
     // "Possible here" pill: keep workouts with positive evidence at this gym
@@ -473,8 +479,8 @@ async function renderWorkoutSelectorUI() {
     // Sort: most recently used first, then alphabetical
     filtered = sortTemplatesByRecency(filtered);
 
-    // Render template rows
-    renderTemplateRows(listContainer, filtered, activeSelectorCategory !== null);
+    // Render template rows (archived group appended when not category-filtered)
+    renderTemplateRows(listContainer, filtered, activeSelectorCategory !== null, archivedTemplates);
 
     // Set up delegation for clicks
     setupSelectorDelegation(listContainer);
@@ -594,34 +600,36 @@ function formatTimeAgo(dateStr) {
     return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
 }
 
-function renderTemplateRows(container, templates, isFiltered) {
-    if (templates.length === 0) {
-        if (isFiltered) {
-            container.innerHTML = `
-                <div class="template-empty-state">
-                    <div class="template-empty-state__icon"><i class="fas fa-filter"></i></div>
-                    <div class="template-empty-state__text">No workouts in this category</div>
+function renderTemplateRows(container, templates, isFiltered, archivedTemplates = []) {
+    // Category filter with no matches — simple message (archived group not shown
+    // while a filter is active).
+    if (templates.length === 0 && isFiltered) {
+        container.innerHTML = `
+            <div class="template-empty-state">
+                <div class="template-empty-state__icon"><i class="fas fa-filter"></i></div>
+                <div class="template-empty-state__text">No workouts in this category</div>
+            </div>
+        `;
+        return;
+    }
+
+    // Truly empty — no active AND no archived workouts. New-user two-door state.
+    if (templates.length === 0 && archivedTemplates.length === 0) {
+        container.innerHTML = `
+            <div class="template-empty-state">
+                <div class="template-empty-state__icon"><i class="fas fa-dumbbell"></i></div>
+                <div class="template-empty-state__text">No workouts yet</div>
+                <div class="template-empty-state__sub">Jump in now, or plan a reusable workout you can start with one tap.</div>
+                <div class="template-empty-state__doors">
+                    <button class="btn btn-primary" onclick="openQuickStartSheet()">
+                        <i class="fas fa-bolt"></i> Quick start
+                    </button>
+                    <button class="btn btn-secondary" onclick="createNewTemplate()">
+                        <i class="fas fa-plus"></i> Plan a workout
+                    </button>
                 </div>
-            `;
-        } else {
-            // New user, zero workouts — offer both doors (Phase 7): jump in now,
-            // or plan a reusable workout.
-            container.innerHTML = `
-                <div class="template-empty-state">
-                    <div class="template-empty-state__icon"><i class="fas fa-dumbbell"></i></div>
-                    <div class="template-empty-state__text">No workouts yet</div>
-                    <div class="template-empty-state__sub">Jump in now, or plan a reusable workout you can start with one tap.</div>
-                    <div class="template-empty-state__doors">
-                        <button class="btn btn-primary" onclick="openQuickStartSheet()">
-                            <i class="fas fa-bolt"></i> Quick start
-                        </button>
-                        <button class="btn btn-secondary" onclick="createNewTemplate()">
-                            <i class="fas fa-plus"></i> Plan a workout
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
+            </div>
+        `;
         return;
     }
 
@@ -640,7 +648,8 @@ function renderTemplateRows(container, templates, isFiltered) {
     container.innerHTML = renderQuickStartCta()
         + renderGymContextHeader()
         + renderSuggestedForToday(templates, isFiltered)
-        + templates.map(t => renderSingleTemplateRow(t)).join('');
+        + templates.map(t => renderSingleTemplateRow(t)).join('')
+        + (isFiltered ? '' : renderArchivedGroup(archivedTemplates));
 
     // Pre-filled notes textareas start at their content height, not one row.
     if (typeof window.awAutoGrowNotes === 'function') {
@@ -727,6 +736,70 @@ export function qsStart() {
     if (typeof window.startFreestyleWorkout === 'function') {
         window.startFreestyleWorkout(focus);
     }
+}
+
+// ===================================================================
+// PHASE 7 — Archive (keep the list tight as workouts accumulate)
+// ===================================================================
+
+let _archivedGroupOpen = false;
+
+/** Collapsed "Archived (N)" group at the bottom of the list. Reuses .row-card
+ *  markup for restore rows (no new collapsed-group component — Phase 7 gate). */
+function renderArchivedGroup(archived) {
+    if (!archived || archived.length === 0) return '';
+    const rows = _archivedGroupOpen
+        ? archived.map(t => `
+            <div class="row-card archived-row" data-template-id="${escapeAttr(t._id)}" data-action="openWorkoutEditor">
+                <div class="row-card__content">
+                    <div class="row-card__title">${escapeHtml(t._name)}</div>
+                    <div class="row-card__subtitle">${normalizeExercisesToArray(t.exercises).length} exercises</div>
+                </div>
+                <button class="archived-row__restore" data-stop-propagation
+                        onclick="unarchiveTemplate('${escapeAttr(t._id)}')">Restore</button>
+            </div>`).join('')
+        : '';
+    return `
+        <div class="archived-group">
+            <button class="archived-group__header" onclick="toggleArchivedGroup()" aria-expanded="${_archivedGroupOpen}">
+                <span>Archived (${archived.length})</span>
+                <i class="fas fa-chevron-${_archivedGroupOpen ? 'up' : 'down'}"></i>
+            </button>
+            ${rows}
+        </div>
+    `;
+}
+
+export function toggleArchivedGroup() {
+    _archivedGroupOpen = !_archivedGroupOpen;
+    renderWorkoutSelectorUI();
+}
+
+async function setTemplateArchived(templateId, archived) {
+    const t = loadedTemplates.find(x => x._id === templateId);
+    if (!t) return;
+    t.archived = archived;
+    await saveTemplateInline(t, normalizeExercisesToArray(t.exercises));
+}
+
+export async function archiveTemplate(templateId) {
+    await setTemplateArchived(templateId, true);
+    showNotification('Workout archived', 'success', 1500);
+    // Archived from the editor page → the workout left the main list, so return
+    // to it; otherwise just re-render the list in place.
+    if (activeEditorTemplateId === templateId) {
+        activeEditorTemplateId = null;
+        if (typeof window.navigateTo === 'function') window.navigateTo('workout-selector');
+        else renderWorkoutSelectorUI();
+    } else {
+        renderWorkoutSelectorUI();
+    }
+}
+
+export async function unarchiveTemplate(templateId) {
+    await setTemplateArchived(templateId, false);
+    showNotification('Workout restored', 'success', 1500);
+    renderWorkoutSelectorUI();
 }
 
 /**
@@ -943,6 +1016,24 @@ function renderWorkoutEditorPage(template) {
         ? `<div class="template-editor__unmapped-note">${unmappedCount} not mapped — pick machines or swaps when you start. Asked once, remembered.</div>`
         : '';
 
+    const isArchived = !!template.archived;
+
+    // Archive suggestion (Phase 7): a workout untouched for 60+ days is clutter —
+    // offer to tuck it away. Only when it has been done at least once.
+    const lastW = getLastWorkoutForTemplate(templateName);
+    let archiveSuggestion = '';
+    if (!isArchived && lastW?.date) {
+        const days = Math.floor((Date.now() - new Date(lastW.date + 'T00:00:00').getTime()) / 86400000);
+        if (days >= 60) {
+            archiveSuggestion = `
+                <div class="editor-archive-hint">
+                    <i class="fas fa-box-archive"></i>
+                    <span>Not done in ${days} days — archive it to keep your list tidy?</span>
+                    <button data-action="archiveTemplate" data-template-id="${escapeAttr(templateId)}">Archive</button>
+                </div>`;
+        }
+    }
+
     return `
         <div class="we-header">
             <button class="d-back" onclick="closeWorkoutEditor()" aria-label="Back to workouts">
@@ -978,9 +1069,13 @@ function renderWorkoutEditorPage(template) {
             <button class="template-editor__add-btn" data-action="addTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
                 <i class="fas fa-plus"></i> Add exercise
             </button>
+            ${archiveSuggestion}
             <div class="template-editor__actions">
                 <button class="template-editor__action" data-action="duplicateTemplate" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
                     <i class="fas fa-copy"></i> Duplicate
+                </button>
+                <button class="template-editor__action" data-action="${isArchived ? 'unarchiveTemplate' : 'archiveTemplate'}" data-template-id="${escapeAttr(templateId)}">
+                    <i class="fas fa-box-archive"></i> ${isArchived ? 'Restore' : 'Archive'}
                 </button>
                 <button class="template-editor__action template-editor__action--danger" data-action="deleteTemplateInline" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">
                     <i class="fas fa-trash"></i> Delete
@@ -1432,6 +1527,9 @@ async function saveTemplateInline(template, exercises) {
             // so manual schedule overrides round-trip through Firestore.
             category: template.category || getWorkoutCategory(template._name),
             suggestedDays: Array.isArray(template.suggestedDays) ? template.suggestedDays : [],
+            // Phase 7 — archive flag round-trips so archived workouts stay out of
+            // the main list / For Today / dashboard until restored.
+            archived: !!template.archived,
         };
 
         // If editing a default template, mark it as an override so the
@@ -1539,6 +1637,10 @@ function setupSelectorDelegation(container) {
                 openAddExerciseSheetForTemplate(templateId);
             } else if (action === 'duplicateTemplate') {
                 window.copyTemplateToCustom(templateId);
+            } else if (action === 'archiveTemplate') {
+                archiveTemplate(templateId);
+            } else if (action === 'unarchiveTemplate') {
+                unarchiveTemplate(templateId);
             } else if (action === 'deleteTemplateInline') {
                 window.deleteTemplate(templateId, isDefault);
             } else if (action === 'openEquipmentForExercise') {
@@ -2692,3 +2794,7 @@ window.openQuickStartSheet = openQuickStartSheet;
 window.qsSetFocus = qsSetFocus;
 window.closeQuickStartSheet = closeQuickStartSheet;
 window.qsStart = qsStart;
+// Phase 7 — archive: group toggle + restore render in this module's strings.
+window.toggleArchivedGroup = toggleArchivedGroup;
+window.unarchiveTemplate = unarchiveTemplate;
+window.archiveTemplate = archiveTemplate;

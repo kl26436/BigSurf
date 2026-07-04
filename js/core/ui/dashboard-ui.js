@@ -508,7 +508,8 @@ function renderDashboardInsight(insight) {
 // ===================================================================
 
 function renderForToday(allWorkouts) {
-    const templates = AppState.templates || [];
+    // Phase 7 — archived workouts drop out of For Today ranking.
+    const templates = (AppState.templates || []).filter(t => !t.archived);
     if (templates.length === 0) return '';
 
     const dow = new Date().getDay();
@@ -524,7 +525,10 @@ function renderForToday(allWorkouts) {
             return b.count - a.count;
         });
 
-    const visible = ranked.filter(r => r.count > 0 || r.scheduled).slice(0, 4);
+    // Phase 7 — "For Today diet": hero + 2 compact rows max (was hero + 3). The
+    // busy 4-row stack pushed everything else below the fold; anything further
+    // lives behind "All →".
+    const visible = ranked.filter(r => r.count > 0 || r.scheduled).slice(0, 3);
     if (visible.length === 0) return '';
 
     // Most-recent completed session per workout type — lets each row show
