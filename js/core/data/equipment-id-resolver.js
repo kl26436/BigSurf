@@ -100,3 +100,13 @@ export function resolveEquipmentId(name, equipment = [], opts = {}) {
     }
     return { id: best.id, confidence: best.score, method: RESOLVE_METHOD.FUZZY, needsReview: false };
 }
+
+/**
+ * Dual-write convenience: the resolved equipment ID only when it's a confident
+ * (non-review) match, else null. Used at save time to stamp `equipmentId` next
+ * to the name — additive, and never writes an id it isn't sure about.
+ */
+export function confidentEquipmentId(name, equipment = [], opts = {}) {
+    const r = resolveEquipmentId(name, equipment, opts);
+    return (r.id && !r.needsReview) ? r.id : null;
+}

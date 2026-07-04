@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     resolveEquipmentId,
+    confidentEquipmentId,
     normalizeEquipName,
     RESOLVE_METHOD,
 } from '../../js/core/data/equipment-id-resolver.js';
@@ -95,6 +96,18 @@ describe('resolveEquipmentId — refuses to guess', () => {
         // Either resolves to the actual incline OR asks for review — but never
         // silently resolves to the flat bench.
         expect(r.id === 'e_flat' && r.needsReview === false).toBe(false);
+    });
+});
+
+describe('confidentEquipmentId (dual-write helper)', () => {
+    it('returns the id for a confident exact match', () => {
+        expect(confidentEquipmentId('Cybex Leg Press', EQUIP)).toBe('e_leg');
+    });
+    it('returns null for anything ambiguous — never stamps a guess', () => {
+        const dupes = [{ id: 'a', name: 'Machine' }, { id: 'b', name: 'Machine' }];
+        expect(confidentEquipmentId('Machine', dupes)).toBeNull();
+        expect(confidentEquipmentId('Totally Unknown Rig', EQUIP)).toBeNull();
+        expect(confidentEquipmentId('', EQUIP)).toBeNull();
     });
 });
 

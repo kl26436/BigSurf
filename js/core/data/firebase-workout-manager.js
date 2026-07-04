@@ -26,6 +26,7 @@ import {
     validateWorkoutData,
 } from '../utils/validation.js';
 import { Config, debugLog } from '../utils/config.js';
+import { confidentEquipmentId } from './equipment-id-resolver.js';
 
 // One-shot guard for the legacy `location` → `locations[]` write sweep in
 // getUserEquipment. Module-scoped (not per-instance) because the manager is
@@ -814,6 +815,18 @@ export class FirebaseWorkoutManager {
                 isCustom: true,
                 isDefault: false,
             };
+
+            // Phase 8b dual-write: stamp a stable equipmentId next to each
+            // exercise's equipment NAME so a template started later carries the id
+            // forward. Additive — confident (exact/alias) matches only.
+            if (Array.isArray(templateToSave.exercises)) {
+                const equipCache = this.appState._cachedEquipment || [];
+                templateToSave.exercises = templateToSave.exercises.map((ex) => {
+                    if (!ex || !ex.equipment) return ex;
+                    const eid = confidentEquipmentId(ex.equipment, equipCache);
+                    return eid ? { ...ex, equipmentId: eid } : ex;
+                });
+            }
 
             // Remove undefined fields (Firebase doesn't allow them)
             Object.keys(templateToSave).forEach((key) => {

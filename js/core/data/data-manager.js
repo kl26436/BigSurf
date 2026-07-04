@@ -20,6 +20,7 @@ import {
 import { showNotification, convertWeight, escapeHtml } from '../ui/ui-helpers.js';
 import { validateWorkoutData } from '../utils/validation.js';
 import { getDateString } from '../utils/date-helpers.js';
+import { confidentEquipmentId } from './equipment-id-resolver.js';
 import { AppState } from '../utils/app-state.js';
 import { Config } from '../utils/config.js';
 
@@ -109,10 +110,22 @@ export async function saveWorkoutData(state) {
     // Deep-clone so validation + normalization don't mutate AppState in-memory
     const normalizedData = JSON.parse(JSON.stringify(state.savedData));
     if (normalizedData.exercises) {
+        // Phase 8b dual-write: stamp a stable equipmentId next to the equipment
+        // NAME so the eventual identity migration has ground truth from new
+        // workouts onward. Additive — the name stays the source of truth; we only
+        // write the id when it resolves confidently (exact/alias) against the
+        // warm equipment cache, never on an ambiguous guess.
+        const equipCache = state._cachedEquipment || [];
         Object.keys(normalizedData.exercises).forEach((exerciseKey) => {
             const exerciseData = normalizedData.exercises[exerciseKey];
             const exerciseIndex = parseInt(exerciseKey.split('_')[1]);
             const currentUnit = state.exerciseUnits[exerciseIndex] || state.globalUnit;
+
+            if (exerciseData.equipment) {
+                const eid = confidentEquipmentId(exerciseData.equipment, equipCache);
+                if (eid) exerciseData.equipmentId = eid;
+                else delete exerciseData.equipmentId;   // clear any stale id on re-save
+            }
 
             if (exerciseData.sets) {
                 exerciseData.sets = exerciseData.sets.map((set) => {
