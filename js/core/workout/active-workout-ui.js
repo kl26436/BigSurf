@@ -453,8 +453,9 @@ function renderExerciseView(exercise, idx, savedEx) {
     const remaining = Math.max(0, targetSets - completedSets);
 
     const equipmentName = savedEx.equipment || exercise.equipment || exercise.machine || null;
+    const equipmentId = savedEx.equipmentId || exercise.equipmentId || null;
     const isBW = isBodyweightExercise(exercise);
-    const equipDoc = getEquipmentDoc(equipmentName);
+    const equipDoc = getEquipmentDoc(equipmentName, equipmentId);
     const hasBaseWeight = !isBW && equipDoc && equipDoc.baseWeight > 0;
     const unit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
     const lastSessionHtml = renderLastSessionCard(exName, idx);
@@ -469,9 +470,9 @@ function renderExerciseView(exercise, idx, savedEx) {
     let contextBanner;
     if (isBW) {
         contextBanner = renderBWBanner();
-        if (equipmentName) contextBanner += renderEquipLine(equipmentName, idx);
+        if (equipmentName) contextBanner += renderEquipLine(equipmentName, idx, equipmentId);
     } else {
-        contextBanner = renderEquipLine(equipmentName, idx);
+        contextBanner = renderEquipLine(equipmentName, idx, equipmentId);
     }
 
     // Same set table for ALL exercise types — always Reps | Weight | ✓
@@ -552,8 +553,8 @@ function renderExerciseView(exercise, idx, savedEx) {
     `;
 }
 
-function renderEquipLine(equipmentName, idx) {
-    const eq = getEquipmentDoc(equipmentName);
+function renderEquipLine(equipmentName, idx, equipmentId = null) {
+    const eq = getEquipmentDoc(equipmentName, equipmentId);
     let baseWeightStr = '';
     if (eq?.baseWeight) {
         const bwUnit = eq.baseWeightUnit || 'lb';
@@ -625,8 +626,10 @@ export function awOpenSettingsSheet(idx) {
     const exercise = AppState.currentWorkout?.exercises?.[idx];
     if (!exercise) return;
     const exName = getExerciseName(exercise);
-    const equipName = AppState.savedData?.exercises?.[`exercise_${idx}`]?.equipment || exercise.equipment;
-    const eq = getEquipmentDoc(equipName);
+    const savedExForSheet = AppState.savedData?.exercises?.[`exercise_${idx}`];
+    const equipName = savedExForSheet?.equipment || exercise.equipment;
+    const equipId = savedExForSheet?.equipmentId || exercise.equipmentId || null;
+    const eq = getEquipmentDoc(equipName, equipId);
     if (!eq?.id) return;
     _settingsSheetState = {
         idx,
@@ -755,9 +758,18 @@ function renderBWBanner() {
     `;
 }
 
-function getEquipmentDoc(equipmentName) {
-    if (!equipmentName || !AppState._cachedEquipment) return null;
-    return AppState._cachedEquipment.find(e => e.name?.toLowerCase() === equipmentName.toLowerCase()) || null;
+// Resolve an equipment doc id-first (survives equipment renames), then fall back
+// to name match. equipmentId comes from the backfilled `equipmentId` field on the
+// exercise/savedEx; when absent or unmatched we resolve by name exactly as before.
+function getEquipmentDoc(equipmentName, equipmentId = null) {
+    const list = AppState._cachedEquipment;
+    if (!list) return null;
+    if (equipmentId) {
+        const byId = list.find(e => e.id === equipmentId);
+        if (byId) return byId;
+    }
+    if (!equipmentName) return null;
+    return list.find(e => e.name?.toLowerCase() === equipmentName.toLowerCase()) || null;
 }
 
 /**
@@ -1368,7 +1380,7 @@ export function awToggleSet(exerciseIdx, setIdx) {
         const exercise = AppState.currentWorkout.exercises[exerciseIdx];
         const isBW = isBodyweightExercise(exercise);
         const equipName = savedEx.equipment || exercise.equipment || exercise.machine || null;
-        const equipDoc = getEquipmentDoc(equipName);
+        const equipDoc = getEquipmentDoc(equipName, savedEx.equipmentId || exercise.equipmentId || null);
 
         // Read current input values from DOM — always Reps (0), Weight (1)
         const allRows = document.querySelectorAll('.aw-sets .aw-set-row');
@@ -3259,7 +3271,7 @@ export function awToggleUnit(exerciseIdx) {
         // Update the weight column label (lbs / kg / Added lbs / Plates lbs)
         const exercise = AppState.currentWorkout.exercises[exerciseIdx];
         const isBW = isBodyweightExercise(exercise);
-        const equipDoc = getEquipmentDoc(savedEx?.equipment || exercise?.equipment || null);
+        const equipDoc = getEquipmentDoc(savedEx?.equipment || exercise?.equipment || null, savedEx?.equipmentId || exercise?.equipmentId || null);
         const hasBaseWeight = !isBW && equipDoc && equipDoc.baseWeight > 0;
         let weightLabel = newUnit;
         if (isBW) weightLabel = `Added ${newUnit}`;
@@ -3786,9 +3798,8 @@ function getCategory(exercise) {
 const BODYWEIGHT_PATTERNS = /pull.?up|chin.?up|dip(?!.*press)|push.?up|bodyweight|body weight|muscle.?up|inverted row|pistol squat|burpee|plank|l-sit|handstand|toes.?to.?bar|hanging/i;
 
 function isBodyweightExercise(exercise) {
-    if (exercise.equipment) {
-        const list = AppState._cachedEquipment || [];
-        const eq = list.find(e => e.name?.toLowerCase() === exercise.equipment.toLowerCase());
+    if (exercise.equipment || exercise.equipmentId) {
+        const eq = getEquipmentDoc(exercise.equipment, exercise.equipmentId);
         if (eq?.equipmentType === 'Bodyweight') return true;
     }
     const name = exercise.machine || exercise.name || '';

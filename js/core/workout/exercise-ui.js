@@ -39,10 +39,12 @@ const BODYWEIGHT_PATTERNS = /pull.?up|chin.?up|dip(?!.*press)|push.?up|bodyweigh
  * Checks: (1) equipment type on the cached equipment doc, (2) exercise name pattern.
  */
 function isBodyweightExercise(exercise) {
-    // Check equipment type from cached equipment list
-    if (exercise.equipment) {
+    // Check equipment type from cached equipment list — id-first (survives renames),
+    // then fall back to name match, then to the exercise-name pattern below.
+    if (exercise.equipment || exercise.equipmentId) {
         const list = AppState._cachedEquipment || [];
-        const eq = list.find(e => e.name?.toLowerCase() === exercise.equipment.toLowerCase());
+        const eq = (exercise.equipmentId && list.find(e => e.id === exercise.equipmentId))
+            || list.find(e => e.name?.toLowerCase() === (exercise.equipment || '').toLowerCase());
         if (eq?.equipmentType === 'Bodyweight') return true;
     }
     // Fallback: pattern match on exercise name

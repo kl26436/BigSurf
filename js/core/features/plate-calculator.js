@@ -9,9 +9,14 @@ import { AppState } from '../utils/app-state.js';
  * Populated by equipment-library-ui and also lazily loaded on first plate calc use.
  * Falls back to null if not found.
  */
-function resolveEquipmentDoc(equipmentName) {
-    if (!equipmentName) return null;
+function resolveEquipmentDoc(equipmentName, equipmentId = null) {
     const list = AppState._cachedEquipment || [];
+    // id-first (survives equipment renames), then fall back to name match.
+    if (equipmentId) {
+        const byId = list.find(e => e.id === equipmentId);
+        if (byId) return byId;
+    }
+    if (!equipmentName) return null;
     const lower = equipmentName.toLowerCase();
     return list.find(e => e.name?.toLowerCase() === lower) || null;
 }
@@ -314,7 +319,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
 
     // Try to resolve bar/base weight from the exercise's equipment record
     let barWeight;
-    const equipmentDoc = resolveEquipmentDoc(exercise.equipment);
+    const equipmentDoc = resolveEquipmentDoc(exercise.equipment, exercise.equipmentId);
     if (equipmentDoc && equipmentDoc.baseWeight > 0) {
         // Plate-math rounding intentionally snaps to 0.5 kg / 1 lb — these are
         // the real plate increments, so bar and target display as loadable
