@@ -19,6 +19,7 @@ import { reverseGeocode } from '../features/geocoding.js';
 import { getExercisePRs } from '../features/pr-tracker.js';
 import { findBestMatch } from '../data/fuzzy-match.js';
 import { suggestExercisesForMachine } from '../features/machine-exercise-matcher.js';
+import { composeEquipmentName } from '../utils/equipment-name.js';
 
 let workoutManager = null;
 let allEquipment = [];
@@ -4493,20 +4494,29 @@ export async function selectFieldValue(equipmentId, field, value) {
 
     // Edit mode — persist to Firestore + the local cache, then re-render the
     // detail page. Cascade clears are applied in a single update object.
+    const doc0 = allEquipment.find(e => e.id === equipmentId) || {};
     const update = { [field]: v };
     if (field === 'brand') { update.line = null; update.function = null; }
     if (field === 'line')  { update.function = null; }
     if (field === 'function') {
         // Catalog auto-fill — same logic as add mode but reads the existing doc
         // so we only fill fields the user hasn't already set.
-        const eq = allEquipment.find(e => e.id === equipmentId) || {};
-        const parents = findCatalogParentsForMachine(v, eq.brand, eq.line);
+        const parents = findCatalogParentsForMachine(v, doc0.brand, doc0.line);
         if (parents) {
-            if (!eq.brand || eq.brand === 'Unknown') update.brand = parents.brand;
-            if (!eq.line) update.line = parents.line;
-            if (parents.type && !eq.equipmentType) update.equipmentType = parents.type;
+            if (!doc0.brand || doc0.brand === 'Unknown') update.brand = parents.brand;
+            if (!doc0.line) update.line = parents.line;
+            if (parents.type && !doc0.equipmentType) update.equipmentType = parents.type;
         }
     }
+
+    // Regenerate the composed display name from the resulting identity fields so
+    // a brand/line/function edit never leaves a stale `name`. Guard on a non-empty
+    // result so clearing all identity fields doesn't blank a custom name.
+    const finalBrand = ('brand' in update) ? update.brand : doc0.brand;
+    const finalLine = ('line' in update) ? update.line : doc0.line;
+    const finalFunc = ('function' in update) ? update.function : doc0.function;
+    const composedName = composeEquipmentName({ brand: finalBrand, line: finalLine, function: finalFunc });
+    if (composedName) update.name = composedName;
 
     try {
         const userId = AppState.currentUser.uid;
@@ -4528,12 +4538,12 @@ export function closeFieldPicker() {
 }
 
 function addFlowGeneratedName() {
-    const { brand, line, func } = addFlowState;
-    if (brand && line && func) return `${brand} ${line} — ${func}`;
-    if (brand && func)         return `${brand} — ${func}`;
-    if (brand && line)         return `${brand} ${line}`;
-    if (func)                  return func;
-    return brand || '';
+    // addFlowState uses `func` for the function field.
+    return composeEquipmentName({
+        brand: addFlowState.brand,
+        line: addFlowState.line,
+        function: addFlowState.func,
+    });
 }
 
 // Optional return context — when set, confirmAddEquipment / backToEquipmentList

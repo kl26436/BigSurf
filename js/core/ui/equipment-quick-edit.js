@@ -13,10 +13,11 @@
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
+import { composeEquipmentName } from '../utils/equipment-name.js';
 
 let state = null;
-// Shape: { equipmentId, original, name, exerciseTypes: [], locations: [],
-//          contextExercise, addExerciseQuery }
+// Shape: { equipmentId, original, name, brand, line, function,
+//          exerciseTypes: [], locations: [], contextExercise, addExerciseQuery }
 
 /**
  * Open the quick-edit sheet for an equipment doc (by name or doc object).
@@ -43,6 +44,9 @@ export async function openEquipmentQuickEdit(equipmentName, { contextExercise = 
         equipmentId: equipment.id,
         original: equipment,
         name: equipment.name || '',
+        brand: equipment.brand && equipment.brand !== 'Unknown' ? equipment.brand : '',
+        line: equipment.line || '',
+        function: equipment.function || '',
         exerciseTypes: [...(equipment.exerciseTypes || [])],
         locations: [...(equipment.locations || [])],
         contextExercise: contextExercise || null,
@@ -141,6 +145,27 @@ function renderBody() {
             <div class="qe-field__label">Name</div>
             <input type="text" class="qe-field__input" id="qe-name-input"
                    value="${escapeAttr(state.name)}" oninput="qeSetName(this.value)">
+            <div class="qe-field__hint">Auto-fills from brand, line, and function below.</div>
+        </div>
+        <div class="qe-field-row">
+            <div class="qe-field qe-field--third">
+                <div class="qe-field__label">Brand</div>
+                <input type="text" class="qe-field__input" id="qe-brand-input"
+                       placeholder="e.g. Hammer Strength"
+                       value="${escapeAttr(state.brand)}" oninput="qeSetField('brand', this.value)">
+            </div>
+            <div class="qe-field qe-field--third">
+                <div class="qe-field__label">Line</div>
+                <input type="text" class="qe-field__input" id="qe-line-input"
+                       placeholder="e.g. Fit Evo"
+                       value="${escapeAttr(state.line)}" oninput="qeSetField('line', this.value)">
+            </div>
+            <div class="qe-field qe-field--third">
+                <div class="qe-field__label">Function</div>
+                <input type="text" class="qe-field__input" id="qe-function-input"
+                       placeholder="e.g. Chest press"
+                       value="${escapeAttr(state.function)}" oninput="qeSetField('function', this.value)">
+            </div>
         </div>
         <div class="qe-field">
             <div class="qe-field__label">Exercises</div>
@@ -184,6 +209,22 @@ export function closeEquipmentQuickEdit() {
 
 function qeSetName(v) { if (state) state.name = v; }
 function qeSetExerciseQuery(v) { if (state) state.addExerciseQuery = v; }
+
+// Editing brand/line/function regenerates the composed name and reflects it in
+// the Name input live. No full re-render (that would blur the field mid-type) —
+// just patch state and the Name input's value directly.
+function qeSetField(field, v) {
+    if (!state) return;
+    state[field] = v;
+    const composed = composeEquipmentName({
+        brand: state.brand, line: state.line, function: state.function,
+    });
+    if (composed) {
+        state.name = composed;
+        const nameInput = document.getElementById('qe-name-input');
+        if (nameInput) nameInput.value = composed;
+    }
+}
 
 function qeAddExercise(name) {
     if (!state || !name) return;
@@ -242,6 +283,9 @@ async function qeSave() {
 
         await mgr.updateEquipment(st.equipmentId, {
             name: newName,
+            brand: (st.brand || '').trim() || null,
+            line: (st.line || '').trim() || null,
+            function: (st.function || '').trim() || null,
             exerciseTypes: st.exerciseTypes,
             locations: st.locations,
         });
@@ -289,6 +333,7 @@ async function qeSave() {
 window.openEquipmentQuickEdit = openEquipmentQuickEdit;
 window.closeEquipmentQuickEdit = closeEquipmentQuickEdit;
 window.qeSetName = qeSetName;
+window.qeSetField = qeSetField;
 window.qeSetExerciseQuery = qeSetExerciseQuery;
 window.qeAddExercise = qeAddExercise;
 window.qeAddTypedExercise = qeAddTypedExercise;

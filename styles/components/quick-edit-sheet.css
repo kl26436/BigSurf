@@ -31,6 +31,22 @@
 .qe-field__input:focus {
     border-color: var(--primary);
 }
+.qe-field__hint {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    margin-top: var(--space-4);
+}
+/* Brand / Line / Function on one compact row. */
+.qe-field-row {
+    display: flex;
+    gap: var(--space-8);
+    margin-bottom: var(--space-16);
+}
+.qe-field--third {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
 .qe-chips {
     display: flex;
     flex-wrap: wrap;
