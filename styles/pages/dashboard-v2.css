@@ -163,6 +163,49 @@
     font-weight: 600;
     cursor: pointer;
 }
+.dash-section-head__links {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+}
+
+/* Quick start card (Phase 7 — the improviser's dashboard door: shown when For
+   Today has no plan, so the dashboard always has a "train now" affordance). */
+.dash-quickstart-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-12);
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: transform 100ms;
+}
+.dash-quickstart-card:active { transform: scale(0.99); }
+.dash-quickstart-card__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: var(--bg-app);
+    flex-shrink: 0;
+}
+.dash-quickstart-card__text { flex: 1; min-width: 0; }
+.dash-quickstart-card__title {
+    font-size: var(--font-base);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.dash-quickstart-card__sub {
+    font-size: var(--font-xs);
+    color: var(--primary);
+    margin-top: 1px;
+}
+.dash-quickstart-card__chev { color: var(--primary); font-size: var(--font-xs); }
 
 /* ===== BODY PART CARDS ===== */
 .bp-card {

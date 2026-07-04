@@ -508,12 +508,13 @@ function renderDashboardInsight(insight) {
 // ===================================================================
 
 function renderForToday(allWorkouts) {
+    const dayName = getDayName();
     // Phase 7 — archived workouts drop out of For Today ranking.
     const templates = (AppState.templates || []).filter(t => !t.archived);
-    if (templates.length === 0) return '';
+    // No workouts at all (new user) → still give the dashboard a start path.
+    if (templates.length === 0) return renderForTodayEmpty(dayName);
 
     const dow = new Date().getDay();
-    const dayName = getDayName();
     const dayKey = dayName.toLowerCase();
     const ranked = getTemplatesForDayOfWeek(templates, allWorkouts, dow)
         .map(r => ({
@@ -529,7 +530,8 @@ function renderForToday(allWorkouts) {
     // busy 4-row stack pushed everything else below the fold; anything further
     // lives behind "All →".
     const visible = ranked.filter(r => r.count > 0 || r.scheduled).slice(0, 3);
-    if (visible.length === 0) return '';
+    // Rest day (has workouts, none ranked for today) → offer to wing it.
+    if (visible.length === 0) return renderForTodayEmpty(dayName);
 
     // Most-recent completed session per workout type — lets each row show
     // "Last done 4d ago · ~52 min" so the user can tell if they're on schedule.
@@ -552,10 +554,32 @@ function renderForToday(allWorkouts) {
     return `
         <div class="dash-section-head">
             <h3>For ${dayName}</h3>
-            <a onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">All →</a>
+            <div class="dash-section-head__links">
+                <a onclick="openQuickStartSheet()"><i class="fas fa-bolt"></i> Quick start</a>
+                <a onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">All →</a>
+            </div>
         </div>
         ${renderForTodayHero(hero, dayName, lastDoneByType, proximity)}
         ${rest.map(r => renderForTodayRow(r, false, dayName, lastDoneByType)).join('')}
+    `;
+}
+
+/**
+ * For Today with no plan (new user, or a rest day) — a Quick start card so the
+ * dashboard always has a "train now" door, not just the routine user's
+ * suggested-template rows. Reuses the freestyle sheet (Phase 7).
+ */
+function renderForTodayEmpty(dayName) {
+    return `
+        <div class="dash-section-head"><h3>For ${dayName}</h3></div>
+        <div class="dash-quickstart-card" onclick="openQuickStartSheet()" role="button" tabindex="0">
+            <div class="dash-quickstart-card__icon"><i class="fas fa-bolt"></i></div>
+            <div class="dash-quickstart-card__text">
+                <div class="dash-quickstart-card__title">Quick start</div>
+                <div class="dash-quickstart-card__sub">Nothing planned — start now, add exercises as you go</div>
+            </div>
+            <i class="fas fa-chevron-right dash-quickstart-card__chev"></i>
+        </div>
     `;
 }
 

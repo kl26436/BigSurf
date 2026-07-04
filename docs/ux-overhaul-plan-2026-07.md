@@ -199,6 +199,7 @@ User-test feedback (2026-07, first outside user): the app is built for the routi
 - [x] 🔴 Visible mid-workout add — persistent "+" pill at the end of the progress-pill row (`.aw-pill--add`). Additive; the kebab menu item stays.
 - [x] 🟡 Graduation path — a freestyle completion (no `templateId`) shows a "Save as workout" banner in the completion summary; names + saves a reusable template in place (no nav away).
 - [x] 🟡 Workouts-page empty state — new user (zero workouts) gets both doors: "Quick start" + "Plan a workout".
+- [x] 🟢 Dashboard entry (follow-up): the routine user gets one-tap starts on the dashboard's "For Today", but the improviser had to detour to the Workouts tab. Added a "Quick start" link in the For Today header + a Quick start card that replaces the empty For Today (rest day / new user) so the dashboard always has a "train now" door. Both reuse `openQuickStartSheet()`.
 
 **Template scale (the routine user, years of accumulation)** — SHIPPED **(archive/for-today chunk)**
 - [x] 🟡 Archive: `archived` flag round-trips via saveTemplateInline; archived workouts drop out of the selector list, For Today ranking (dashboard-ui.js), and the workout-selector's category pills. History untouched. "Archived (N)" collapsed group at the list bottom (reuses `.row-card`) with per-row Restore; archive/restore from the editor page actions. Archive suggestion on the editor page when a workout is 60+ days unused.
