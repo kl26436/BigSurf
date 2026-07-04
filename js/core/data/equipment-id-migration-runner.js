@@ -18,6 +18,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { planEquipmentIdBackfill, rekeyExercisePRsByEquipmentId } from './equipment-id-migration.js';
+import { planLocationIdBackfill, planOrphanGymDocs } from './location-id-migration.js';
 
 async function loadContext() {
     const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
@@ -134,9 +135,83 @@ export async function undoEquipmentIdBackfill() {
     console.log(`%c✅ Reverted: cleared equipmentId on ${wCount} workouts + ${tCount} templates. Names untouched.`, 'color:#f0c24b');
 }
 
+// ===================================================================
+// Phase 8b step 4 — location-id backfill (equipment.locationIds[])
+// ===================================================================
+//
+// Console usage (signed in, on the app):
+//   await runLocationIdBackfill()                // DRY RUN — plans, writes nothing
+//   await runLocationIdBackfill({ apply: true }) // stamps locationIds[] on equipment
+//   await undoLocationIdBackfill()               // strips locationIds[] we added
+//
+// ADDITIVE + reversible: it only adds equipment.locationIds[] next to the
+// existing locations[] NAMES (never touches the names). Undo = strip the field.
+// Orphan gym names (gyms present on equipment with no location doc) are reported,
+// not created — they keep working via the name fallback until they get a doc.
+
+export async function runLocationIdBackfill({ apply = false } = {}) {
+    if (!AppState.currentUser) { console.error('Sign in first.'); return null; }
+    const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+    const mgr = new FirebaseWorkoutManager(AppState);
+    const [equipment, locations] = await Promise.all([mgr.getUserEquipment(), mgr.getUserLocations()]);
+
+    const plan = planLocationIdBackfill(equipment, locations);
+    const orphans = planOrphanGymDocs(equipment, locations);
+
+    console.group(`%cLocation ID backfill — ${apply ? 'APPLY' : 'DRY RUN'}`, 'font-weight:bold');
+    console.log('equipment docs:', equipment.length, '· location docs:', locations.length);
+    console.log('stats:', plan.stats);
+    console.log('equipment docs to stamp:', plan.writes.length);
+    if (orphans.length) console.log(`orphan gym names (no doc — stay name-only until named):`, orphans);
+    if (plan.review.length) console.log('ambiguous names (2+ docs share a name — not written):', plan.review);
+    console.groupEnd();
+
+    if (!apply) {
+        console.log('%cDRY RUN — nothing written. Re-run with runLocationIdBackfill({ apply: true }).', 'color:#1dd3b0');
+        return { plan, orphans };
+    }
+
+    const { db, doc, writeBatch } = await import('./firebase-config.js');
+    const uid = AppState.currentUser.uid;
+    // writeBatch caps at 500 ops; chunk to be safe.
+    for (let i = 0; i < plan.writes.length; i += 400) {
+        const batch = writeBatch(db);
+        for (const w of plan.writes.slice(i, i + 400)) {
+            batch.update(doc(db, 'users', uid, 'equipment', w.equipmentId), { locationIds: w.locationIds });
+        }
+        await batch.commit();
+    }
+    AppState._cachedEquipment = null;
+    console.log(`%c✅ Applied: ${plan.writes.length} equipment docs stamped with locationIds[]. Names untouched.`, 'color:#36c46b');
+    if (orphans.length) console.log(`${orphans.length} orphan gym(s) left name-only (create docs for them to fully collapse):`, orphans);
+    console.log('Undo any time with undoLocationIdBackfill().');
+    return { plan, orphans };
+}
+
+/** Revert: strip locationIds[] from every equipment doc. Names untouched. */
+export async function undoLocationIdBackfill() {
+    if (!AppState.currentUser) { console.error('Sign in first.'); return; }
+    const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');
+    const mgr = new FirebaseWorkoutManager(AppState);
+    const equipment = await mgr.getUserEquipment();
+    const { db, doc, updateDoc, deleteField } = await import('./firebase-config.js');
+    const uid = AppState.currentUser.uid;
+    let n = 0;
+    for (const eq of equipment) {
+        if (eq.locationIds !== undefined) {
+            await updateDoc(doc(db, 'users', uid, 'equipment', eq.id), { locationIds: deleteField() });
+            n++;
+        }
+    }
+    AppState._cachedEquipment = null;
+    console.log(`%c✅ Reverted: cleared locationIds[] on ${n} equipment docs. Names untouched.`, 'color:#f0c24b');
+}
+
 // Debug/admin tools — expose on window so they can be run from the console.
 if (typeof window !== 'undefined') {
     window.runEquipmentIdBackfill = runEquipmentIdBackfill;
     window.undoEquipmentIdBackfill = undoEquipmentIdBackfill;
     window.snapshotPersonalRecords = snapshotPersonalRecords;
+    window.runLocationIdBackfill = runLocationIdBackfill;
+    window.undoLocationIdBackfill = undoLocationIdBackfill;
 }
