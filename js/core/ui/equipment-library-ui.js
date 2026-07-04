@@ -2246,17 +2246,21 @@ function renderBrandCatalog(container) {
             const type = m.type || line.type || 'Other';
             const typeInfo = EQUIPMENT_TYPE_ICONS[type] || EQUIPMENT_TYPE_ICONS.Other;
             const typeColorClass = `equip-row__icon--${slugType(type)}`;
+            const owned = findOwnedForCatalogMachine(m);
+            const onClick = owned
+                ? `openEquipmentDetail('${escapeAttr(owned.id)}')`
+                : `openCatalogMachineAddToGym('${escapeAttr(m.id)}')`;
             return `
-                <div class="equip-row equip-row--compact" onclick="openCatalogMachineAddToGym('${escapeAttr(m.id)}')">
+                <div class="equip-row equip-row--compact" onclick="${onClick}">
                     <div class="equip-row__icon ${typeColorClass}">
                         <i class="fas ${typeInfo.icon}"></i>
                     </div>
                     <div class="equip-row__info">
                         <div class="equip-row__name">${escapeHtml(m.name)}</div>
-                        <div class="equip-row__meta">${escapeHtml(m.bodyPart || 'Multi-Use')}</div>
+                        <div class="equip-row__meta">${owned ? 'In your equipment' : escapeHtml(m.bodyPart || 'Multi-Use')}</div>
                     </div>
                     <span class="equip-row__type-pill ${typeColorClass}">${escapeHtml(type)}</span>
-                    <i class="fas fa-plus equip-row__last" aria-hidden="true"></i>
+                    <i class="fas ${owned ? 'fa-pen' : 'fa-plus'} equip-row__last" aria-hidden="true" title="${owned ? 'Owned — edit' : 'Add to a gym'}"></i>
                 </div>
             `;
         }).join('');
@@ -2284,6 +2288,22 @@ function renderBrandCatalog(container) {
  *   - 2+ gyms, GPS matches → auto-add to GPS gym
  *   - 2+ gyms, no GPS match → open the gym picker sheet (no typing)
  */
+/**
+ * The user's owned equipment doc matching a catalog machine, or null. Same
+ * predicate commitCatalogAdd uses (catalogRef / name / function) — lets catalog
+ * browse + search rows offer "edit" for machines you already own instead of
+ * only "add to gym" (P1: catalog tap had no edit path for owned machines).
+ */
+function findOwnedForCatalogMachine(machine) {
+    if (!machine) return null;
+    const nameLC = (machine.name || '').toLowerCase();
+    return allEquipment.find((eq) =>
+        eq.catalogRef === machine.id
+        || (eq.name || '').toLowerCase() === nameLC
+        || (eq.function || '').toLowerCase() === nameLC
+    ) || null;
+}
+
 export async function openCatalogMachineAddToGym(catalogRef) {
     const catalog = getCatalogSync();
     const resolved = resolveCatalogRef(catalogRef, catalog);
@@ -2982,17 +3002,21 @@ function renderCatalogSearchResults(catalog, term) {
             const rowsHTML = items.map((m) => {
                 const typeInfo = EQUIPMENT_TYPE_ICONS[m.type] || EQUIPMENT_TYPE_ICONS.Other;
                 const typeColorClass = `equip-row__icon--${slugType(m.type)}`;
+                const owned = findOwnedForCatalogMachine(m.machine);
+                const onClick = owned
+                    ? `openEquipmentDetail('${escapeAttr(owned.id)}')`
+                    : `openCatalogMachineAddToGym('${escapeAttr(m.machine.id)}')`;
                 return `
-                    <div class="equip-row equip-row--compact" onclick="openCatalogMachineAddToGym('${escapeAttr(m.machine.id)}')">
+                    <div class="equip-row equip-row--compact" onclick="${onClick}">
                         <div class="equip-row__icon ${typeColorClass}">
                             <i class="fas ${typeInfo.icon}"></i>
                         </div>
                         <div class="equip-row__info">
                             <div class="equip-row__name">${escapeHtml(m.machine.name)}</div>
-                            <div class="equip-row__meta">${escapeHtml(m.brand.name)} · ${escapeHtml(m.line.name)}</div>
+                            <div class="equip-row__meta">${owned ? 'In your equipment' : `${escapeHtml(m.brand.name)} · ${escapeHtml(m.line.name)}`}</div>
                         </div>
                         <span class="equip-row__type-pill ${typeColorClass}">${escapeHtml(m.type)}</span>
-                        <i class="fas fa-plus equip-row__last" aria-hidden="true"></i>
+                        <i class="fas ${owned ? 'fa-pen' : 'fa-plus'} equip-row__last" aria-hidden="true" title="${owned ? 'Owned — edit' : 'Add to a gym'}"></i>
                     </div>
                 `;
             }).join('');

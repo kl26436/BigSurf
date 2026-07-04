@@ -33,6 +33,17 @@ Post-implementation review findings, 2026-07-03. Theme: the range plumbing got u
 
 ---
 
+## Equipment editor flow bugs (Kevin report 2026-07-03, traced to root cause — P1 batch)
+
+Reported: "Full details opens the whole library; brand buttons don't work; catalog machine only offers add-to-gym, not edit."
+
+- [x] **[P1] Race: "Full details" gets stomped by the library list.** Was: `qeOpenFullDetails` used a hardcoded `setTimeout(200)` to call `openEquipmentDetail` after `navigateTo('equipment-library')`, but the library's async Firestore reads repaint the LIST into the same node — >~150ms and the list painted over the detail. **Fixed (7bd7be7)** with a handoff instead of a timing guess: `setPendingEquipmentDetail(id)` makes the library's OWN async paint render that detail. Race-free by construction (same async path, flag set before navigation) — no timing dependency. The "dead brand buttons" symptom was downstream of this race; handlers were always correctly wired.
+- [x] **[P1] Catalog tap is add-only — no edit path for owned machines.** **Fixed (this batch):** catalog browse + search rows now check ownership via `findOwnedForCatalogMachine` (reuses commitCatalogAdd's catalogRef/name/function predicate — not a third copy). Owned machines → `openEquipmentDetail(ownedId)` (the editable detail) with a pen icon + "In your equipment"; unowned → `openCatalogMachineAddToGym` with the plus. No more "go back to the gym page" workaround.
+- [ ] **[P2] Return context never set/honored on this trip.** `qeOpenFullDetails` never calls `setLibraryReturnContext`; `commitCatalogAdd` neither reads nor clears `_libraryReturnContext` and strands the user on the catalog after adding. *(DEFERRED to the Phase 2b on-device back-nav session — this is interim back-navigation and the plan already notes it's superseded by 2b's stack unification. Back-nav correctness needs device verification, so it pairs with 2b rather than being guessed at blind.)*
+- [ ] **[P3] Pre-existing dead handlers found by the wiring test during this trace** (unrelated to equipment): `awSettingsAdd`, `awSharedOpenCatalogQuickAdd`, `_bsSubStart`. Clean up separately.
+
+---
+
 ## The consistency contract
 
 Explicit goal: **one system, not a hodgepodge of add-on fixes.** Every phase below must conform to these canonical patterns — and when a phase touches a screen, it migrates that screen's legacy variants to the canonical pattern as part of the same PR (the CLAUDE.md Rule 9 "rename when doing neighboring work" clause, made mandatory for this overhaul). No phase introduces a new one-off.
@@ -215,6 +226,31 @@ User-test feedback (2026-07, first outside user): the app is built for the routi
 - [x] README: removed deleted-file references (exercise-progress.js, stats-ui.js, sheet.js, add-exercise-sheet.js). **(65605aa)**
 - [x] Active workout: rest-done banner to one line; `title` on +30s/Skip/Dismiss; notes textarea → --font-sm. **(40f54d2)**
 - [x] DESIGN-BACKLOG.md points to this plan as the successor; overlapping items marked superseded. **(40f54d2)**
+
+---
+
+## Phase 8 — Equipment domain overhaul (see docs/equipment-deep-dive-2026-07.md)
+
+Full data-model + surface map in the deep-dive doc. Root disease: equipment identity is a mutable name string used as the foreign key across workouts/templates/PRs; the equipment↔gym relationship lives in two disagreeing models bridged by healing jobs; six add flows and ~8 row renderings grew around that core. Ship the P1 editor-flow bug batch (above) first — it's independent and fixes the immediate pain.
+
+### 8a — Surface consolidation (M, consistency-contract work)
+- [ ] One add primitive: catalog quick-add sheet with contextual params (gymName, exerciseName, onDone); retire `awQuickAddEquipment`'s bare form (also the app's worst duplication vector — it bypasses `getOrCreateEquipment` dedup) and `addEquipmentFromPicker`.
+- [ ] One selection primitive: replace the isolated equipment-picker modal (equipment-picker.js, workout-management-ui.js:494) with `openSharedEquipmentSheet`.
+- [ ] Quick-edit sheet gains Brand/Line/Function rows (reuse the field-picker modal) — covers its stated "80% of edits" case.
+- [ ] "+ Add a gym" on the My-gyms tab (name + optional current location) — closes the chicken-and-egg gap (spec'd in equipment-library-redesign-brief.md:110-115, never built).
+- [ ] Convert "+ Assign exercise" from legacy full-page markup to a `mountEquipSheet` sheet like the other detail-page edits.
+- [ ] Delete orphaned `renderCatalogMachineDetail` path (or make it the universal catalog-row target per the P1 fix); unify catalog brand-drill vs search tap behavior.
+
+### 8b — Identity migration: equipmentId as the only FK (L, staged + additive-first)
+
+**Foundation built + tested (7bd7be7):** `js/core/data/equipment-id-resolver.js` (`resolveEquipmentId` — exact/alias/fuzzy on the app's `diceSimilarity`, with a confidence gate so a confidently-WRONG match is never auto-written — ambiguous → `needsReview`) and `equipment-id-migration.js` (`planEquipmentIdBackfill` = plan-don't-apply, idempotent, skips bodyweight; `rekeyExercisePRsByEquipmentId` = re-key with a hard "never lose a PR" guarantee — unresolved kept under name, id collisions merged by better-PR, count conserved). 22 tests in `equipment-id-{resolution,migration}.test.js`. **Pure — nothing is run against real data yet.**
+
+1. [ ] Dual-write `equipmentId` alongside the name string in every equipment-selection path (zero-risk, start anytime). ← recommended next step
+2. [ ] Backfill job `equipmentMigrationV4`: feed history/template/PR docs through `planEquipmentIdBackfill` / `rekeyExercisePRsByEquipmentId` (logic above); apply only the non-review writes; `needsReview` → existing scan-review UI. Validate the plan's accuracy on real data BEFORE step 3 trusts the IDs.
+3. [ ] Flip consumers ID-first (pr-tracker — highest blast radius, equipment-planner, plate-calculator, aggregators machine-picker), name-fallback retained; PR reads check both keys during transition so no PR ever appears to regress.
+4. [ ] Collapse the location dual-model → `equipment.locationIds[]`; delete `promoteCatalogToEquipment` / `healDuplicateLocationEquipment` / `migrateLocationCatalogRefs` / `syncCatalogRefOnLocation` / `untagGymFromPromotedDocs`.
+5. [ ] One identity-edit function regenerating `name` from brand/line/machine (bundle the `function`→`machine` rename here; careful — the CATALOG schema legitimately uses `machine` for a different object).
+6. [ ] Retire `aliases[]` + the deprecated `Machine` type bucket last, after telemetry shows no fresh drift.
 
 ---
 
