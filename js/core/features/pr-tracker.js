@@ -252,33 +252,51 @@ function getExerciseBodyPart(exerciseName) {
 }
 
 /**
- * Get PRs for a specific exercise and equipment
+ * Resolve which key an exercise's PRs live under, tolerating the equipment
+ * name→id transition. Prefers an existing id-keyed entry, then an existing
+ * name-keyed entry, then falls back to the name for brand-new entries.
+ *
+ * Reads pass the equipmentId so they FIND an id-keyed entry if a future re-key
+ * created one. Writes stay name-keyed for now (new entries → name): the store's
+ * display code surfaces the key AS the equipment label, so introducing raw id
+ * keys before the name-denormalization lands (identity-regeneration step) would
+ * show ids in the UI. The plumbing is in place so that re-key is a contained,
+ * separately-tested change, not a rewrite of every caller.
  */
-export function getExercisePRs(exerciseName, equipment = null) {
+function resolvePrEquipKey(exerciseData, equipmentId, equipmentName) {
+    if (equipmentId && exerciseData && exerciseData[equipmentId]) return equipmentId;
+    if (equipmentName && exerciseData && exerciseData[equipmentName]) return equipmentName;
+    return equipmentName || equipmentId || 'Unknown Equipment';
+}
+
+/**
+ * Get PRs for a specific exercise and equipment. `equipmentId` (optional) is the
+ * stable equipment id; when present it's tried before the name key.
+ */
+export function getExercisePRs(exerciseName, equipment = null, equipmentId = null) {
     if (!equipment) {
         equipment = getExerciseEquipment(exerciseName);
     }
 
     const exerciseData = prData.exercisePRs[exerciseName];
-    if (!exerciseData || !exerciseData[equipment]) {
-        return null;
-    }
+    if (!exerciseData) return null;
 
-    return exerciseData[equipment];
+    const key = resolvePrEquipKey(exerciseData, equipmentId, equipment);
+    return exerciseData[key] || null;
 }
 
 /**
  * Check if a set is a new PR
  * Returns: { isNewPR: boolean, prType: 'maxWeight'|'maxReps'|'maxVolume'|null, previousPR: object|null }
  */
-export function checkForNewPR(exerciseName, reps, weight, equipment = null) {
+export function checkForNewPR(exerciseName, reps, weight, equipment = null, equipmentId = null) {
     if (!reps || !weight) return { isNewPR: false, prType: null, previousPR: null };
 
     if (!equipment) {
         equipment = getExerciseEquipment(exerciseName);
     }
 
-    const currentPRs = getExercisePRs(exerciseName, equipment);
+    const currentPRs = getExercisePRs(exerciseName, equipment, equipmentId);
     const volume = calculateVolume(reps, weight);
 
     let isNewPR = false;
@@ -323,7 +341,8 @@ export async function recordPR(
     location = null,
     date = null,
     bodyPart = null,
-    unit = null
+    unit = null,
+    equipmentId = null
 ) {
     if (!equipment) {
         equipment = getExerciseEquipment(exerciseName);
@@ -360,11 +379,16 @@ export async function recordPR(
         prData.exercisePRs[exerciseName].bodyPart = bodyPart;
     }
 
-    if (!prData.exercisePRs[exerciseName][equipment]) {
-        prData.exercisePRs[exerciseName][equipment] = {};
+    // Key by stable id when available (and no legacy name entry to preserve),
+    // else by name — so a rebuild produces an id-keyed store while incremental
+    // writes never split an existing name-keyed entry.
+    const equipKey = resolvePrEquipKey(prData.exercisePRs[exerciseName], equipmentId, equipment);
+
+    if (!prData.exercisePRs[exerciseName][equipKey]) {
+        prData.exercisePRs[exerciseName][equipKey] = {};
     }
 
-    const equipmentPRs = prData.exercisePRs[exerciseName][equipment];
+    const equipmentPRs = prData.exercisePRs[exerciseName][equipKey];
 
     // Update max weight PR. Capture `unit` so dashboard / history can render
     // the value in the unit it was actually typed in, instead of guessing.
@@ -420,6 +444,9 @@ export async function processWorkoutForPRs(workoutData) {
         const exerciseIndex = exerciseKey.replace('exercise_', '');
         const originalExercise = workoutData.originalWorkout?.exercises?.[exerciseIndex];
         const equipment = originalExercise?.equipment || 'Unknown Equipment';
+        // Stable equipment id (backfilled/dual-written) keys PRs so they survive an
+        // equipment rename; falls back to the name key when absent (see getExercisePRs).
+        const equipmentId = exerciseData.equipmentId || originalExercise?.equipmentId || null;
         const bodyPart = originalExercise?.bodyPart || getExerciseBodyPart(exerciseName);
 
         // Check each set for PRs (skip warmup sets)
@@ -427,11 +454,11 @@ export async function processWorkoutForPRs(workoutData) {
             if (!set.reps || !set.weight) continue;
             if (set.type === 'warmup') continue;
 
-            const prCheck = checkForNewPR(exerciseName, set.reps, set.weight, equipment);
+            const prCheck = checkForNewPR(exerciseName, set.reps, set.weight, equipment, equipmentId);
 
             if (prCheck.isNewPR) {
                 // Use the workout's location, not the current location
-                await recordPR(exerciseName, set.reps, set.weight, equipment, workoutLocation, workoutDate, bodyPart, set.originalUnit || 'lbs');
+                await recordPR(exerciseName, set.reps, set.weight, equipment, workoutLocation, workoutDate, bodyPart, set.originalUnit || 'lbs', equipmentId);
                 newPRs.push({
                     exercise: exerciseName,
                     weight: set.weight,
@@ -650,6 +677,7 @@ export async function rebuildPRsFromHistory() {
                     const exerciseIndex = exerciseKey.replace('exercise_', '');
                     const originalExercise = workoutData.originalWorkout?.exercises?.[exerciseIndex];
                     const equipment = originalExercise?.equipment || 'Unknown Equipment';
+                    const equipmentId = exerciseData.equipmentId || originalExercise?.equipmentId || null;
                     const bodyPart = originalExercise?.bodyPart || getExerciseBodyPart(exerciseName);
 
                     // Process each set (skip warmup sets)
@@ -669,7 +697,8 @@ export async function rebuildPRsFromHistory() {
                             workoutLocation,
                             workoutDate,
                             bodyPart,
-                            set.originalUnit || 'lbs'
+                            set.originalUnit || 'lbs',
+                            equipmentId
                         );
                         prCount++;
                     }
