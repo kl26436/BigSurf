@@ -30,6 +30,14 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
+# Service-account keys — NEVER commit these
+*serviceAccount*.json
+*firebase-adminsdk*.json
+service-account*.json
+
+# Local data backups (from scripts/backup-user-data.mjs)
+backups/
+
 # Build outputs
 dist/
 build/
