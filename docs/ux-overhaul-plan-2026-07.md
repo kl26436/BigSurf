@@ -234,7 +234,7 @@ User-test feedback (2026-07, first outside user): the app is built for the routi
 Full data-model + surface map in the deep-dive doc. Root disease: equipment identity is a mutable name string used as the foreign key across workouts/templates/PRs; the equipment↔gym relationship lives in two disagreeing models bridged by healing jobs; six add flows and ~8 row renderings grew around that core. Ship the P1 editor-flow bug batch (above) first — it's independent and fixes the immediate pain.
 
 ### 8a — Surface consolidation (M, consistency-contract work)
-- [ ] One add primitive: catalog quick-add sheet with contextual params (gymName, exerciseName, onDone); retire `awQuickAddEquipment`'s bare form (also the app's worst duplication vector — it bypasses `getOrCreateEquipment` dedup) and `addEquipmentFromPicker`.
+- [ ] One add primitive: catalog quick-add sheet with contextual params (gymName, exerciseName, onDone); retire `awQuickAddEquipment`'s bare form and `addEquipmentFromPicker`. *(Interim win shipped: `awSaveNewEquipment` now routes through `getOrCreateEquipment` + idempotent `addLocationToEquipment` instead of writing `saveEquipment` directly — the duplication vector is closed even though the form itself isn't retired yet.)*
 - [ ] One selection primitive: replace the isolated equipment-picker modal (equipment-picker.js, workout-management-ui.js:494) with `openSharedEquipmentSheet`.
 - [ ] Quick-edit sheet gains Brand/Line/Function rows (reuse the field-picker modal) — covers its stated "80% of edits" case.
 - [ ] "+ Add a gym" on the My-gyms tab (name + optional current location) — closes the chicken-and-egg gap (spec'd in equipment-library-redesign-brief.md:110-115, never built).

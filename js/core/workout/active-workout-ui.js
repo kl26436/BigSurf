@@ -2778,22 +2778,27 @@ export async function awSaveNewEquipment(exerciseIdx) {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(AppState);
 
-        // Create equipment in Firebase
-        const eqData = {
-            name,
+        // Route through getOrCreateEquipment (exact + fuzzy dedup) instead of
+        // saveEquipment directly — this bare form was the app's prime duplication
+        // vector: typing a name that already existed minted a second doc. Now it
+        // reuses the existing record. The gym tag is applied idempotently after,
+        // so it lands whether the record was found or freshly created.
+        const eq = await workoutManager.getOrCreateEquipment(name, {
             equipmentType: equipType,
             baseWeight,
             baseWeightUnit: 'lb',
-            locations: locName ? [locName] : [],
-            exerciseTypes: [exName],
-            exerciseVideos: {},
-        };
+        }, exName);
+        if (!eq) {
+            showNotification("Couldn't create equipment", 'error');
+            return;
+        }
+        if (locName) {
+            await workoutManager.addLocationToEquipment(eq.id, locName);
+            AppState._sessionMappedEquipment?.add(name);
+        }
 
-        await workoutManager.saveEquipment(eqData);
-        if (locName) AppState._sessionMappedEquipment?.add(name);
-
-        // saveEquipment invalidated the shared cache; reload so the equipment
-        // line and sheet render the new item under its real doc id.
+        // Reload the shared cache so the equipment line + sheet render the item
+        // under its real doc id.
         AppState._cachedEquipment = await workoutManager.getUserEquipment();
 
         // Select it for this exercise
