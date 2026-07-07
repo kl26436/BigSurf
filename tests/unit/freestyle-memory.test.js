@@ -7,6 +7,8 @@ import {
     freestyleFocusOf,
     getLastFreestyleSession,
     getRecentFreestyleExercises,
+    freestyleComparisonKey,
+    findPriorComparableFreestyle,
     relativeDaysLabel,
 } from '../../js/core/features/freestyle-memory.js';
 
@@ -96,6 +98,57 @@ describe('getRecentFreestyleExercises', () => {
     it('empty history → empty list (no crash)', () => {
         expect(getRecentFreestyleExercises([])).toEqual([]);
         expect(getRecentFreestyleExercises(undefined)).toEqual([]);
+    });
+});
+
+describe('freestyleComparisonKey', () => {
+    it('prefers the declared focus label', () => {
+        const w = fs('2026-07-01', 'Legs', [ex('Bench press', 'Chest')]); // label wins even over contents
+        expect(freestyleComparisonKey(w)).toBe('Legs');
+    });
+
+    it('derives the dominant body-part bucket when the chip was skipped', () => {
+        const w = fs('2026-07-01', null, [
+            ex('Leg press', 'Legs'), ex('Hack squat', 'Quads'), ex('Leg curl', 'Hamstrings'),
+            ex('Crunch', 'Abs'),
+        ]);
+        expect(freestyleComparisonKey(w)).toBe('Legs'); // 3 of 4 bucketable → majority
+    });
+
+    it('returns null for a mixed session with no majority (comparison would be noise)', () => {
+        const w = fs('2026-07-01', null, [
+            ex('Bench press', 'Chest'), ex('Row', 'Back'), ex('Squat', 'Legs'),
+        ]);
+        expect(freestyleComparisonKey(w)).toBeNull();
+    });
+
+    it('returns null when nothing buckets', () => {
+        expect(freestyleComparisonKey(fs('2026-07-01', null, [ex('Mystery', null)]))).toBeNull();
+    });
+});
+
+describe('findPriorComparableFreestyle', () => {
+    it('matches an UNLABELED leg day against a labeled "Freestyle — Legs" (the chip-skip case)', () => {
+        const labeled = fs('2026-06-20', 'Legs', [ex('Leg press', 'Legs')]);
+        const current = fs('2026-07-01', null, [ex('Hack squat', 'Legs'), ex('Leg curl', 'Legs')]);
+        const match = findPriorComparableFreestyle([labeled, current], current);
+        expect(match).not.toBeNull();
+        expect(match.workout).toBe(labeled);
+        expect(match.key).toBe('Legs');
+    });
+
+    it('never compares unlike sessions (legs vs push), even under the same plain label', () => {
+        const push = fs('2026-06-20', null, [ex('Bench press', 'Chest'), ex('Incline press', 'Chest')]);
+        const current = fs('2026-07-01', null, [ex('Leg press', 'Legs'), ex('Leg curl', 'Legs')]);
+        expect(findPriorComparableFreestyle([push, current], current)).toBeNull();
+    });
+
+    it('picks the most recent comparable and excludes the current doc by id', () => {
+        const older = fs('2026-06-01', 'Legs', [ex('Leg press', 'Legs')], { id: 'w1' });
+        const newer = fs('2026-06-20', 'Legs', [ex('Hack squat', 'Legs')], { id: 'w2' });
+        const current = { ...fs('2026-07-01', 'Legs', [ex('Leg curl', 'Legs')], { id: 'w3' }), workoutId: 'w3' };
+        const match = findPriorComparableFreestyle([older, newer, current], current);
+        expect(match.workout.id).toBe('w2');
     });
 });
 

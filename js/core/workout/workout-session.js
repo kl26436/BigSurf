@@ -575,9 +575,24 @@ async function hydratePriorComparison(workoutData, currentVolume) {
         if (!type) return;
 
         const all = await loadAllWorkouts(AppState);
-        const prior = all
-            .filter(w => w.workoutType === type && w.id !== workoutData.workoutId)
-            .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))[0];
+
+        // Freestyle sessions compare like-for-like by declared-or-DERIVED focus
+        // (an unlabeled leg day still matches last week's "Freestyle — Legs");
+        // exact-label matching silently lost the comparison whenever the focus
+        // chip was skipped one of the weeks. Template workouts keep exact match.
+        let prior;
+        let compareName = type;
+        const mem = await import('../features/freestyle-memory.js');
+        if (mem.isFreestyleWorkout(workoutData)) {
+            const match = mem.findPriorComparableFreestyle(all, workoutData);
+            if (!match) return; // no comparable session → no noise
+            prior = match.workout;
+            compareName = `${match.key} freestyle`;
+        } else {
+            prior = all
+                .filter(w => w.workoutType === type && w.id !== workoutData.workoutId)
+                .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))[0];
+        }
         if (!prior) return;
 
         const priorVol = computeWorkoutVolume(prior);
@@ -589,8 +604,8 @@ async function hydratePriorComparison(workoutData, currentVolume) {
         const dir = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
         const icon = dir === 'up' ? 'fa-arrow-trend-up' : dir === 'down' ? 'fa-arrow-trend-down' : 'fa-equals';
         const label = pct === 0
-            ? `Same volume as last ${escapeHtml(type)} — ${priorStr} ${unit}`
-            : `${pct > 0 ? '+' : ''}${pct}% volume vs. last ${escapeHtml(type)} · ${priorStr} ${unit}`;
+            ? `Same volume as last ${escapeHtml(compareName)} — ${priorStr} ${unit}`
+            : `${pct > 0 ? '+' : ''}${pct}% volume vs. last ${escapeHtml(compareName)} · ${priorStr} ${unit}`;
 
         el.innerHTML = `<i class="fas ${icon}"></i> ${label}`;
         el.classList.add(`completion-compare--${dir}`);

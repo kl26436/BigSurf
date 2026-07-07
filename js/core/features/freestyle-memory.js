@@ -98,6 +98,76 @@ export function getRecentFreestyleExercises(workouts = [], { limit = 12 } = {}) 
 }
 
 /**
+ * Body-part bucket for one exercise — the same seven-bucket taxonomy the
+ * add-exercise sheet filters on (mirrors awExerciseBucket in
+ * active-workout-ui.js; keep the keyword lists in sync).
+ */
+export function bodyPartBucket(ex) {
+    const bp = (ex?.bodyPart || ex?.category || '').toLowerCase();
+    if (bp.includes('chest') || bp.includes('pec')) return 'Chest';
+    if (bp.includes('back') || bp.includes('lat') || bp.includes('trap')) return 'Back';
+    if (bp.includes('leg') || bp.includes('glute') || bp.includes('quad') ||
+        bp.includes('hamstring') || bp.includes('calf') || bp.includes('calve')) return 'Legs';
+    if (bp.includes('shoulder') || bp.includes('delt')) return 'Shoulders';
+    if (bp.includes('arm') || bp.includes('bicep') || bp.includes('tricep') ||
+        bp.includes('forearm')) return 'Arms';
+    if (bp.includes('core') || bp.startsWith('ab') || bp.includes('oblique')) return 'Core';
+    if (bp.includes('cardio')) return 'Cardio';
+    return 'Other';
+}
+
+/**
+ * What was this freestyle session ABOUT, for like-for-like comparison?
+ *   1. The declared focus when the chip was tapped ("Freestyle — Legs" → "Legs").
+ *   2. Else the DERIVED dominant body-part bucket — strict majority (>50%) of
+ *      the session's bucketable exercises. This is what lets a leg day where
+ *      he skipped the chip still compare against last week's labeled one.
+ *   3. Else null — a mixed session with no majority isn't comparable to
+ *      anything in particular, and a volume % against an unlike session is
+ *      noise, not signal.
+ */
+export function freestyleComparisonKey(w) {
+    const declared = freestyleFocusOf(w);
+    if (declared) return declared;
+    const exercises = w?.originalWorkout?.exercises;
+    if (!Array.isArray(exercises) || exercises.length === 0) return null;
+    const counts = new Map();
+    let bucketable = 0;
+    for (const ex of exercises) {
+        const b = bodyPartBucket(ex);
+        if (b === 'Other') continue;
+        bucketable += 1;
+        counts.set(b, (counts.get(b) || 0) + 1);
+    }
+    if (bucketable === 0) return null;
+    let best = null;
+    for (const [bucket, n] of counts) {
+        if (!best || n > best.n) best = { bucket, n };
+    }
+    return best && best.n * 2 > bucketable ? best.bucket : null;
+}
+
+/**
+ * The most recent OTHER freestyle session comparable to `current` — same
+ * declared-or-derived key. Used by the completion "+X% volume vs. last…"
+ * line, which previously matched the exact workoutType string and silently
+ * lost the comparison whenever the focus chip was skipped one of the weeks.
+ * Returns { workout, key } or null.
+ */
+export function findPriorComparableFreestyle(workouts = [], current) {
+    const key = freestyleComparisonKey(current);
+    if (!key) return null;
+    const prior = (workouts || [])
+        .filter((w) => w !== current
+            && (w.id == null || current?.workoutId == null || w.id !== current.workoutId)
+            && isFreestyleWorkout(w)
+            && !!w.completedAt && !w.cancelledAt
+            && freestyleComparisonKey(w) === key)
+        .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))[0];
+    return prior ? { workout: prior, key } : null;
+}
+
+/**
  * Short relative label for a workout date string: "today", "yesterday",
  * "5d ago", "3w ago", "2mo ago". `now` injectable for tests.
  */
