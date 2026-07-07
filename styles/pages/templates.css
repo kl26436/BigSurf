@@ -1280,3 +1280,11 @@
     border-bottom: 2px solid var(--border-subtle);
     border-bottom-left-radius: var(--radius-xs);
 }
+
+
+/* Template-kind sheet (5.6.0) — fires right after a workout, still breathing
+   hard: three stacked choices need full tap height, not hairline rows. */
+#template-kind-sheet .js-row {
+    min-height: var(--tap);
+    align-items: center;
+}

@@ -203,6 +203,13 @@
     padding: var(--space-8) var(--space-16);
     flex-shrink: 0;
 }
+/* These chips ARE the feature (never type mid-set) — real tap targets,
+   not the generic small-chip size. */
+.live-coach__chips .chip {
+    min-height: var(--tap-sm);
+    display: inline-flex;
+    align-items: center;
+}
 .live-coach__inputbar {
     display: flex;
     gap: var(--space-8);

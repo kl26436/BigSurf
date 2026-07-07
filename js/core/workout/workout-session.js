@@ -451,7 +451,7 @@ export function showReadinessSheet() {
             </div>
             <div class="readiness-scale__labels"><span>Wrecked</span><span>Great</span></div>
             <input type="text" id="readiness-note" class="field-input"
-                   placeholder="Optional note — slept badly, sore, etc.">
+                   placeholder="Optional note — slept badly, sore, etc." aria-label="Optional readiness note">
         </div>
         <div class="aw-sheet__actions">
             <button class="aw-sheet__action" onclick="dismissReadinessSheet()">Skip</button>

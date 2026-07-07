@@ -1016,7 +1016,7 @@ export async function openWeekPlanSheet() {
             ${DAY_KEYS.map(d => `
                 <div class="week-plan-editor__row">
                     <div class="week-plan-editor__day">${escapeHtml(DAY_LABELS[d])}</div>
-                    <select class="week-plan-editor__select" data-day="${d}">
+                    <select class="week-plan-editor__select" data-day="${d}" aria-label="${escapeAttr(DAY_LABELS[d])}">
                         ${options((plan.restDays || []).includes(d) ? '__rest' : seeded[d])}
                     </select>
                 </div>

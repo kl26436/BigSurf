@@ -144,6 +144,7 @@ function askTemplateKind(bestMatch) {
         sheet.id = 'template-kind-sheet';
         sheet.setAttribute('role', 'dialog');
         sheet.setAttribute('aria-modal', 'true');
+        sheet.setAttribute('aria-label', 'Keep as');
         sheet.innerHTML = `
             <div class="aw-sheet__handle"></div>
             <div class="aw-sheet__header">

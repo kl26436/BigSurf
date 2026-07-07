@@ -16,6 +16,7 @@ import { Config, debugLog } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
 import { formatCoachResponse } from './coach-markdown.js';
 import { getEquipmentAtLocation } from './equipment-planner.js';
+import { findBestMatch } from '../data/fuzzy-match.js';
 import { debouncedSaveWorkoutData } from '../data/data-manager.js';
 import {
     renderActiveWorkout,
@@ -133,7 +134,7 @@ export function openLiveCoach() {
             ${quickChips().map(c => `<button class="chip chip--sm" onclick="liveCoachChip('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join('')}
         </div>
         <div class="live-coach__inputbar">
-            <input type="text" id="live-coach-input" class="field-input" placeholder="Ask your coach…"
+            <input type="text" id="live-coach-input" class="field-input" placeholder="Ask your coach…" aria-label="Ask your coach"
                    onkeydown="if(event.key==='Enter'){liveCoachSend();}">
             ${micButtonHtml('live-coach-input')}
             <button class="live-coach__send" onclick="liveCoachSend()" aria-label="Send">
@@ -222,10 +223,18 @@ export async function liveCoachSend() {
         : text;
     _liveThread.push({ role: 'user', content: userTurn });
 
+    // Watchdog: gyms are dead zones — if the stream goes silent for 15s,
+    // abort into the normal error bubble instead of spinning forever.
+    let lastEventAt = Date.now();
+    let watchdog = null;
+
     try {
         const token = await AppState.currentUser?.getIdToken?.();
         if (!token) throw new Error('unauthenticated');
         _liveAbort = new AbortController();
+        watchdog = setInterval(() => {
+            if (Date.now() - lastEventAt > 15000) _liveAbort?.abort('timeout');
+        }, 5000);
 
         const resp = await fetch(Config.COACH_STREAM_URL, {
             method: 'POST',
@@ -249,6 +258,7 @@ export async function liveCoachSend() {
         while (!finished) {
             const { value, done } = await reader.read();
             if (done) break;
+            lastEventAt = Date.now();
             buffer += decoder.decode(value, { stream: true });
             let sep;
             while ((sep = buffer.indexOf('\n\n')) !== -1) {
@@ -284,11 +294,15 @@ export async function liveCoachSend() {
         _liveThread.push({ role: 'assistant', content: acc });
         speakCoachAnswer(acc); // live mode TTS — no-op unless the toggle is on
     } catch (e) {
-        if (e?.name === 'AbortError') { _liveThread.pop(); return; }
-        debugLog('live coach failed:', e);
         _liveThread.pop();
+        // Manual close (sheet dismissed) stays silent; a watchdog timeout or
+        // network failure gets the honest bubble.
+        const timedOut = _liveAbort?.signal?.reason === 'timeout';
+        if (e?.name === 'AbortError' && !timedOut) return;
+        debugLog('live coach failed:', e);
         if (bubble) bubble.innerHTML = `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Couldn't reach the coach — try again.`;
     } finally {
+        if (watchdog) clearInterval(watchdog);
         _liveAbort = null;
     }
 }
@@ -358,8 +372,15 @@ export function applyLiveProposal(id) {
 
 function findExerciseIdx(name) {
     const target = (name || '').trim().toLowerCase();
-    return (AppState.currentWorkout?.exercises || [])
-        .findIndex(e => (e.machine || e.name || '').toLowerCase() === target);
+    const exercises = AppState.currentWorkout?.exercises || [];
+    const exact = exercises.findIndex(e => (e.machine || e.name || '').toLowerCase() === target);
+    if (exact !== -1) return exact;
+    // The model phrases names its own way ("Barbell Bench Press" vs "Bench
+    // Press") — fall back to the same fuzzy matcher machine-id uses so Apply
+    // doesn't silently no-op over wording.
+    const names = exercises.map(e => e.machine || e.name || '');
+    const best = findBestMatch(name || '', names, 0.75);
+    return best ? names.indexOf(best.match) : -1;
 }
 
 function applyNextTarget(p) {

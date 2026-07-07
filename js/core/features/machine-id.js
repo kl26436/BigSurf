@@ -8,7 +8,7 @@
 // junk write.
 
 import { AppState } from '../utils/app-state.js';
-import { Config, debugLog } from '../utils/config.js';
+import { Config } from '../utils/config.js';
 import { showNotification, escapeHtml } from '../ui/ui-helpers.js';
 import { findBestMatch } from '../data/fuzzy-match.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
@@ -74,10 +74,12 @@ async function identifyFromFile(file) {
         };
         renderMachineIdResult();
     } catch (e) {
-        debugLog('machine id failed:', e);
+        // Raw backend text never reaches the screen (copy rule) — log it,
+        // show plain English.
+        console.error('❌ Machine ID failed:', e);
         const msg = (e?.message || '').includes('resource-exhausted')
             ? 'Daily photo-ID limit reached — try again tomorrow.'
-            : (e?.message && !e.message.includes('internal') ? e.message : "Couldn't identify the machine — try a clearer, wider shot.");
+            : "Couldn't identify the machine — try a clearer, wider shot.";
         setMachineIdBody(`
             <div class="machine-id__error">
                 <i class="fas fa-camera"></i>
