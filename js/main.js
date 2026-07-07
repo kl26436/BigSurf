@@ -425,11 +425,9 @@ import {
 // Dashboard functionality
 import {
     startWorkoutFromHistory,
-    dismissInsight,
     openWorkoutSelectorForDay,
     resumeActiveWorkout,
     confirmCancelActiveWorkout,
-    toggleWeekPaceMode,
     showTodaysPRs,
 } from './core/ui/dashboard-ui.js';
 
@@ -733,9 +731,7 @@ window.closeMoreMenu = closeMoreMenu;
 window.setHeaderMode = setHeaderMode;
 
 // Dashboard Functions
-window.dismissInsight = dismissInsight;
 window.openWorkoutSelectorForDay = openWorkoutSelectorForDay;
-window.toggleWeekPaceMode = toggleWeekPaceMode;
 window.showTodaysPRs = showTodaysPRs;
 window.startWorkoutFromHistory = startWorkoutFromHistory;
 window.resumeActiveWorkout = resumeActiveWorkout;

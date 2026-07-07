@@ -20,22 +20,19 @@
     margin: 0;
 }
 
-/* ===== GREETING ===== */
+/* ===== HEADER: DATE + AVATAR, THEN STATUS STRIP (V3) ===== */
+/* The greeting demoted to a quiet date line — the For-Today hero owns the
+   page's largest type now, not the pleasantries. */
 .dash-greeting {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 var(--space-4);
 }
-.dash-greeting__text h2 {
-    font-size: var(--font-xl);
-    font-weight: 700;
-    color: var(--text-strong);
-    margin: 0;
-}
-.dash-greeting__text span {
+.dash-greeting__date {
     font-size: var(--font-sm);
     color: var(--text-secondary);
+    font-weight: 600;
 }
 .dash-greeting__avatar {
     width: 44px;
@@ -54,74 +51,30 @@
 }
 .dash-greeting__avatar:active { transform: scale(0.95); }
 
-
-/* ===== HERO CHIP ROW ===== */
-.hero-chip-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 6px;
-    margin-bottom: 12px;
-}
-.hero-chip {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    padding: 10px 10px;
-    text-align: center;
-}
-.hero-chip--tap { cursor: pointer; }
-.hero-chip--tap:active { transform: scale(0.97); }
-.hero-chip__icon {
-    font-size: var(--font-base);
-    margin-bottom: 4px;
-}
-.hero-chip__val {
-    font-size: var(--font-lg);
-    font-weight: 800;
-    color: var(--text-strong);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-}
-.hero-chip__unit {
-    font-size: var(--font-2xs);
-    color: var(--text-muted);
-    font-weight: 500;
-    margin-left: 2px;
-}
-.hero-chip__label {
+/* One-line status strip: streak · week dots · pace. Replaces the hero chips. */
+.dash-strip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: 0 var(--space-4);
+    margin-top: -6px;
     font-size: var(--font-xs);
     color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-    margin-top: 3px;
+    flex-wrap: wrap;
 }
-.hero-chip__delta {
-    font-size: var(--font-xs);
-    font-weight: 600;
-    margin-top: 2px;
+.dash-strip__streak { color: var(--highlight-warm); font-weight: 600; }
+.dash-strip__sep { color: var(--text-very-muted); }
+.dash-strip__dots { display: inline-flex; gap: 4px; align-items: center; }
+.dash-strip__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border-light);
 }
-/* Delta is neutral by default — tinted only when the user has picked a goal
-   (settings.weightGoal) AND the delta direction matches/opposes that goal.
-   Logic lives in getBwDeltaDirectionClass() in dashboard-ui.js. */
-.hero-chip__delta { color: var(--text-muted); }
-.hero-chip__delta--good { color: var(--success); }
-.hero-chip__delta--bad { color: var(--danger); }
-/* This-week-vs-last-week pace, inline in the "This week" label. Ahead of last
-   week reads as a win (success); behind stays muted — a lighter week isn't a
-   failure, so we inform without shaming. */
-.hero-chip__wowd { font-weight: 800; }
-.hero-chip__wowd--up { color: var(--success); }
-.hero-chip__wowd--down { color: var(--text-muted); }
-.hero-chip--streak {
-    background: linear-gradient(135deg, var(--highlight-warm-bg-gradient-start), var(--highlight-warm-bg-gradient-end));
-    border-color: var(--highlight-warm-border);
-}
-.hero-chip--streak .hero-chip__val { color: var(--highlight-warm); }
-/* Hero-chip icon tint modifiers (replaces inline color styles) */
-.hero-chip__icon--warm      { color: var(--highlight-warm); }
-.hero-chip__icon--primary   { color: var(--primary); }
-.hero-chip__icon--shoulders { color: var(--cat-shoulders); }
+.dash-strip__dot--done { background: var(--primary); border-color: var(--primary); }
+.dash-strip__count { font-weight: 600; color: var(--text-secondary); }
+.dash-strip__pace { color: var(--success); font-weight: 600; }
 
 /* Dashboard loading skeletons — sized to match the real cards below */
 .dash-skel--hero  { height: 140px; }
@@ -139,18 +92,14 @@
 /* Body-part cell icon tints (e.g., trophy beside hero-lift max) */
 .bp-cell__icon--gold { color: var(--badge-gold); }
 
-/* Body-composition card variant: stacked under body-weight card */
-.bc-card--composition { margin-top: 12px; }
-
-/* Body-weight card icon tint */
-.bw-card-head__icon--primary { color: var(--primary); }
-
 /* ===== SECTION HEADER ===== */
+/* Extra top margin is the V3 sectional rhythm: with the page's 12px item gap
+   this yields ~28px before each section — sections finally read as sections. */
 .dash-section-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 14px 2px 8px;
+    margin: var(--space-16) 2px var(--space-4);
 }
 .dash-section-head h3 {
     font-size: var(--font-sm);
@@ -162,44 +111,48 @@
     color: var(--primary);
     font-weight: 600;
     cursor: pointer;
+    /* Real thumb target despite the small type (tokens --tap = 44px) */
+    min-height: var(--tap);
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--space-4);
+    margin: calc(var(--space-12) * -1) 0;
 }
-/* Quick start card (Phase 7 — the improviser's dashboard door: always in For
-   Today, alongside the recommendations or standing in for them on a rest day). */
-.dash-quickstart-card {
+/* ── Alternative list under the hero (V3): quiet divider rows, no card
+   chrome, no play circles — the hero must be the only card in For Today. ── */
+.dash-alt-list { margin-bottom: var(--space-8); }
+.dash-alt-row {
     display: flex;
     align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-12);
-    background: var(--primary-bg);
-    border: 1px solid var(--primary-border);
-    border-radius: var(--radius-md);
+    gap: var(--space-10);
+    min-height: var(--tap);
+    padding: var(--space-6) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
     cursor: pointer;
-    transition: transform 100ms;
 }
-.dash-quickstart-card:active { transform: scale(0.99); }
-.dash-quickstart-card__icon {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--primary);
-    color: var(--bg-app);
+.dash-alt-row:last-child { border-bottom: none; }
+.dash-alt-row:active { background: var(--bg-card-hover); }
+.dash-alt-row__icon {
+    width: 20px;
+    text-align: center;
+    font-size: var(--font-sm);
+    color: var(--text-muted);
     flex-shrink: 0;
 }
-.dash-quickstart-card__text { flex: 1; min-width: 0; }
-.dash-quickstart-card__title {
-    font-size: var(--font-base);
-    font-weight: 700;
-    color: var(--text-strong);
-}
-.dash-quickstart-card__sub {
-    font-size: var(--font-xs);
-    color: var(--primary);
-    margin-top: 1px;
-}
-.dash-quickstart-card__chev { color: var(--primary); font-size: var(--font-xs); }
+.dash-alt-row__txt { flex: 1; min-width: 0; font-size: var(--font-sm); }
+.dash-alt-row__txt--muted { color: var(--text-secondary); }
+.dash-alt-row__name { color: var(--text-strong); font-weight: 600; }
+.dash-alt-row__meta { color: var(--text-muted); font-size: var(--font-xs); }
+
+/* Category tints for alt-row icon glyphs (icon-only — no filled tiles here) */
+.cat-txt-push      { color: var(--cat-push); }
+.cat-txt-pull      { color: var(--cat-pull); }
+.cat-txt-legs      { color: var(--cat-legs); }
+.cat-txt-core      { color: var(--cat-core); }
+.cat-txt-cardio    { color: var(--cat-cardio); }
+.cat-txt-arms      { color: var(--cat-arms); }
+.cat-txt-shoulders { color: var(--cat-shoulders); }
+.cat-txt-other     { color: var(--text-secondary); }
 
 /* ===== BODY PART CARDS ===== */
 .bp-card {
@@ -298,15 +251,33 @@
     margin-top: 2px;
 }
 
-/* ===== BODY COMPOSITION CARD ===== */
-.bc-card {
+/* ===== BODY CARD (V3: weight + composition merged) ===== */
+.dash-body-card {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
-    padding: 12px;
+    padding: var(--space-12);
     cursor: pointer;
-    margin-bottom: 8px;
 }
+.dash-body-card:active { background: var(--bg-card-hover); }
+.dash-body-card__weight {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-8);
+    flex-wrap: wrap;
+}
+.dash-body-card__comp {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+/* When weight sits above, separate the composition line with a hairline */
+.dash-body-card__comp--split {
+    margin-top: var(--space-8);
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* bc-row/legend/leg/dot stay: composition + metric detail pages use them */
 .bc-row {
     display: flex;
     align-items: center;
@@ -333,27 +304,6 @@
     /* Color comes from --dot-color set inline (truly dynamic per segment) */
     background: var(--dot-color, var(--text-muted));
 }
-.bc-dexa-ago {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border-subtle);
-}
-
-/* Body Weight card (mockup style) */
-.bw-card-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-}
-.bw-card-title {
-    font-size: var(--font-sm);
-    font-weight: 700;
-    color: var(--text-strong);
-    flex: 1;
-}
 .bw-badge {
     font-size: var(--font-2xs);
     font-weight: 700;
@@ -376,47 +326,19 @@
     font-weight: 500;
     color: var(--text-muted);
 }
+/* Delta neutral by default; tinted only when the user has set a weight goal
+   (settings.weightGoal) — logic in getBwDeltaDirectionClass(). */
 .bw-delta {
     font-size: var(--font-xs);
-    color: var(--primary);
-    margin-top: 2px;
+    color: var(--text-muted);
 }
+.bw-delta--good { color: var(--success); }
+.bw-delta--bad { color: var(--danger); }
 .bw-spark {
     margin-top: 8px;
 }
 
-/* ===== INSIGHT CARD ===== */
-.dash-insight {
-    background: var(--primary-bg);
-    border: 1px solid var(--primary-border);
-    border-radius: var(--radius-md);
-    padding: 10px 12px;
-    margin-bottom: 8px;
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-}
-.dash-insight > i { color: var(--primary); font-size: var(--font-sm); margin-top: 2px; flex-shrink: 0; }
-.dash-insight-text { flex: 1; font-size: var(--font-sm); color: var(--text-main); line-height: 1.4; }
-.dash-insight-text strong { color: var(--text-strong); }
-.dash-insight__close {
-    flex-shrink: 0;
-    width: 44px;
-    height: 44px;
-    margin: -12px -12px -12px 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-    cursor: pointer;
-    border-radius: var(--radius-pill);
-}
-.dash-insight__close:active { background: var(--primary-bg-strong); color: var(--primary); }
-
-/* ===== FOR TODAY ROWS ===== */
+/* ===== TEMPLATE ROWS (composition-detail action rows still use these) ===== */
 .dash-template-row {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
@@ -479,53 +401,64 @@
 .cat-bg-shoulders { background: var(--cat-shoulders-bg); color: var(--cat-shoulders); }
 .cat-bg-other     { background: var(--muted-bg);         color: var(--text-secondary); }
 
-/* ── For Today hero (UX-2 / dashboard-v3): the first block, one-tap start,
-   PR-proximity hook. ── */
+/* ── For Today hero (V3): THE card on the page. Solid category-tinted fill
+   (tint layered over the card base via a flat two-stop gradient — same trick
+   as the streak chip), display-size name, and two co-equal doors: Start
+   workout (the plan) and Quick start (freestyle). ── */
 .dash-today-hero {
     background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
-    padding: 14px;
+    padding: var(--space-16);
     margin-bottom: var(--space-8);
-    cursor: pointer;
 }
-.dash-today-hero.cat-border-push      { border-color: var(--cat-push-border); }
-.dash-today-hero.cat-border-pull      { border-color: var(--cat-pull-border); }
-.dash-today-hero.cat-border-legs      { border-color: var(--cat-legs-border); }
-.dash-today-hero.cat-border-core      { border-color: var(--cat-core-border); }
-.dash-today-hero.cat-border-cardio    { border-color: var(--cat-cardio-border); }
-.dash-today-hero.cat-border-arms      { border-color: var(--cat-arms-border); }
-.dash-today-hero.cat-border-shoulders { border-color: var(--cat-shoulders-border); }
-.dash-today-hero__top { display: flex; align-items: center; gap: 12px; }
-.dash-today-hero__icon {
-    width: 42px;
-    height: 42px;
-    border-radius: var(--radius-sm);
+.dash-today-hero.cat-fill-push      { background: linear-gradient(var(--cat-push-bg), var(--cat-push-bg)), var(--bg-card); border-color: var(--cat-push-border); }
+.dash-today-hero.cat-fill-pull      { background: linear-gradient(var(--cat-pull-bg), var(--cat-pull-bg)), var(--bg-card); border-color: var(--cat-pull-border); }
+.dash-today-hero.cat-fill-legs      { background: linear-gradient(var(--cat-legs-bg), var(--cat-legs-bg)), var(--bg-card); border-color: var(--cat-legs-border); }
+.dash-today-hero.cat-fill-core      { background: linear-gradient(var(--cat-core-bg), var(--cat-core-bg)), var(--bg-card); border-color: var(--cat-core-border); }
+.dash-today-hero.cat-fill-cardio    { background: linear-gradient(var(--cat-cardio-bg), var(--cat-cardio-bg)), var(--bg-card); border-color: var(--cat-cardio-border); }
+.dash-today-hero.cat-fill-arms      { background: linear-gradient(var(--cat-arms-bg), var(--cat-arms-bg)), var(--bg-card); border-color: var(--cat-arms-border); }
+.dash-today-hero.cat-fill-shoulders { background: linear-gradient(var(--cat-shoulders-bg), var(--cat-shoulders-bg)), var(--bg-card); border-color: var(--cat-shoulders-border); }
+.dash-today-hero__eyebrow {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.dash-today-hero__name {
+    color: var(--text-strong);
+    font-size: var(--font-xl);
+    font-weight: 800;
+    line-height: 1.2;
+}
+.dash-today-hero__meta { color: var(--text-secondary); font-size: var(--font-xs); margin-top: 3px; }
+.dash-today-hero__actions {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-lg);
-    flex-shrink: 0;
+    gap: var(--space-8);
+    margin-top: var(--space-12);
 }
-.dash-today-hero__info { flex: 1; min-width: 0; }
-.dash-today-hero__name { color: var(--text-strong); font-size: var(--font-md); font-weight: 700; }
-.dash-today-hero__meta { color: var(--text-secondary); font-size: var(--font-2xs); margin-top: 2px; }
-.dash-today-hero__start {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
+.dash-today-hero__cta {
+    flex: 1.4;
+    min-height: var(--tap);
+    border: none;
+    border-radius: var(--radius-sm);
     background: var(--primary);
     color: var(--text-on-accent);
-    border: none;
+    font-size: var(--font-base);
+    font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--font-base);
-    flex-shrink: 0;
+    gap: var(--space-8);
     cursor: pointer;
-    box-shadow: 0 4px 12px var(--success-glow);
 }
-.dash-today-hero__start:active { transform: scale(0.94); }
+.dash-today-hero__cta:active { transform: scale(0.98); }
+.dash-today-hero__cta--ghost {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--primary-border);
+    color: var(--primary);
+}
 .dash-today-hero__pr {
     display: flex;
     align-items: center;
@@ -540,60 +473,36 @@
 .dash-today-hero__pr-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
 .dash-today-hero__pr-txt b { color: var(--text-strong); }
 
-/* ── Last-session one-liner ── */
-.dash-last-session {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+/* ── This week grouped card (V3): last session · latest PR · progress
+   headline as divider rows in one card — the whole retrospective tail. ── */
+.dash-week-card {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    margin: 10px 0 4px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+.dash-week-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    min-height: var(--tap);
+    padding: var(--space-10) var(--space-12);
+    border-bottom: 1px solid var(--border-subtle);
     cursor: pointer;
 }
-.dash-last-session__check {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: var(--success-bg);
-    color: var(--success);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-2xs);
+.dash-week-row:last-child { border-bottom: none; }
+.dash-week-row:active { background: var(--bg-card-hover); }
+.dash-week-row__icon {
+    width: 18px;
+    text-align: center;
+    font-size: var(--font-sm);
+    color: var(--text-muted);
     flex-shrink: 0;
 }
-.dash-last-session__txt { flex: 1; font-size: var(--font-2xs); color: var(--text-secondary); line-height: 1.4; min-width: 0; }
-.dash-last-session__txt b { color: var(--text-main); font-weight: 600; }
-
-/* ── Progress link row (replaces the 6 body-part cards on the dashboard) ── */
-.dash-progress-link {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--bg-card-hi);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    padding: 11px 12px;
-    margin-top: 10px;
-    cursor: pointer;
-}
-.dash-progress-link__icon {
-    width: 30px;
-    height: 30px;
-    border-radius: var(--radius-xs);
-    background: var(--primary-bg);
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-xs);
-    flex-shrink: 0;
-}
-.dash-progress-link__txt { flex: 1; min-width: 0; }
-.dash-progress-link__title { color: var(--text-main); font-size: var(--font-xs); font-weight: 600; }
-.dash-progress-link__sub { color: var(--text-muted); font-size: var(--font-2xs); margin-top: 1px; }
+.dash-week-row__icon--done { color: var(--success); }
+.dash-week-row__icon--gold { color: var(--badge-gold); }
+.dash-week-row__txt { flex: 1; min-width: 0; font-size: var(--font-xs); color: var(--text-secondary); line-height: 1.4; }
+.dash-week-row__txt b { color: var(--text-main); font-weight: 600; }
 
 /* ── Body-part volume chip (Low / On target / High vs MEV/MRV) ── */
 .vol-chip {

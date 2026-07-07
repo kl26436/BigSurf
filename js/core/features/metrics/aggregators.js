@@ -394,28 +394,47 @@ export function getHeroLiftForBodyPart(bodyPart, workouts) {
 
 /**
  * Count how many times each template has been used on each day of the week.
+ * Returns both raw counts (for display copy) and recency-decayed scores (for
+ * ranking): each session contributes 0.5^(ageDays/28), so a habit you dropped
+ * two months ago scores ~0.2 per old session while last week's choice scores
+ * ~0.85. Without decay, a user who switched their Monday workout keeps seeing
+ * the abandoned one ranked first forever — all-time counts never forget.
  */
-export function aggregateSessionsPerDayOfWeek(workouts) {
-    const map = new Map();
+export function aggregateSessionsPerDayOfWeek(workouts, today = new Date()) {
+    const HALF_LIFE_DAYS = 28;
+    const counts = new Map();
+    const scores = new Map();
     for (const w of workouts) {
         const name = w.workoutType;
         if (!name || !w.completedAt) continue;
         const parts = w.date.split('-');
-        const dow = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getDay();
-        if (!map.has(name)) map.set(name, Array(7).fill(0));
-        map.get(name)[dow]++;
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        const dow = d.getDay();
+        if (!counts.has(name)) {
+            counts.set(name, Array(7).fill(0));
+            scores.set(name, Array(7).fill(0));
+        }
+        counts.get(name)[dow]++;
+        const ageDays = Math.max(0, (today - d) / 86400000);
+        scores.get(name)[dow] += Math.pow(0.5, ageDays / HALF_LIFE_DAYS);
     }
-    return map;
+    return { counts, scores };
 }
 
 /**
- * Return templates ordered by how often they're used on a given day of week.
+ * Return templates ordered by recent day-of-week usage (recency-decayed).
+ * `count` stays the raw all-time count for display copy; `score` drives the
+ * order so stale habits fade out of the top slot.
  */
 export function getTemplatesForDayOfWeek(templates, workouts, dow) {
-    const counts = aggregateSessionsPerDayOfWeek(workouts);
+    const { counts, scores } = aggregateSessionsPerDayOfWeek(workouts);
     return templates
-        .map(t => ({ template: t, count: counts.get(t.name || t.day)?.[dow] || 0 }))
-        .sort((a, b) => b.count - a.count);
+        .map(t => ({
+            template: t,
+            count: counts.get(t.name || t.day)?.[dow] || 0,
+            score: scores.get(t.name || t.day)?.[dow] || 0,
+        }))
+        .sort((a, b) => b.score - a.score);
 }
 
 /**

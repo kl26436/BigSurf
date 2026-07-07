@@ -1993,3 +1993,8 @@ window.qsStartFromLast = qsStartFromLast;
 window.toggleArchivedGroup = toggleArchivedGroup;
 window.unarchiveTemplate = unarchiveTemplate;
 window.archiveTemplate = archiveTemplate;
+
+// Same-file wiring (see CLAUDE.md): openQuickStartSheet is referenced by this
+// module's own template strings AND the dashboard hero — a same-file window
+// assignment can't be version-skewed away from its markup by prod caching.
+window.openQuickStartSheet = openQuickStartSheet;

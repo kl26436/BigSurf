@@ -15,7 +15,6 @@ import { loadAllWorkouts } from '../data/data-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
 import { TrainingInsights } from '../features/training-insights.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
-import { updateSetting } from './settings-ui.js';
 
 import {
     aggregateBodyPartStats, getTemplatesForDayOfWeek, aggregateExerciseStats,
@@ -23,7 +22,6 @@ import {
 } from '../features/metrics/aggregators.js';
 import { analyzeWeeklyVolume } from '../features/training-insights.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
-import { chartDonut } from '../features/charts/chart-donut.js';
 import { chartLine } from '../features/charts/chart-line.js';
 
 // ===================================================================
@@ -143,37 +141,29 @@ async function renderDashboard() {
             const topInsight = TrainingInsights.getTopInsight(
                 insightsData.recentWorkouts, insightsData.allWorkouts, exerciseDatabase
             );
-            // Dismiss-by-content-hash so a NEW insight resurfaces even if today's was
-            // dismissed (replaces the old "dismissed for the day" logic).
-            const dismissedHash = AppState.settings?.insightDismissedHash;
-            const insightHash = topInsight ? hashInsight(topInsight) : null;
-            const showInsight = topInsight && insightHash !== dismissedHash;
 
             // Body weight data
             const bwData = await loadBodyWeightData();
 
             // De-dup: today's PRs surface in the banner, so exclude them from
-            // the Recent PRs list below to avoid the same win twice on screen.
+            // the This-week recap below to avoid the same win twice on screen.
             const todayStr = AppState.getTodayDateString();
             const todaysPRKeys = new Set(
                 recentPRs.filter(pr => pr.date === todayStr).map(prKey)
             );
 
-            // Build V2 layout — lead with "what am I doing today?" (UX-2 /
-            // dashboard-v3): For Today first, then a last-session closer, then
-            // the demoted stat chips, composition, PRs, and a Progress link
-            // (the 6 body-part cards moved to the Progress page).
+            // V3 layout (2026-07 redesign): one hero, quiet lists, grouped
+            // sections. The page's only card-weight element above the fold is
+            // the For-Today hero; the retrospective tail collapses into two
+            // grouped cards (This week, Body) so the hero has no competition.
             container.innerHTML = `
                 ${renderGreetingHeader()}
+                ${renderMetaStrip(streakDays, weekCount, weeklyGoal, detectDeloadWeek(allWorkouts), weekPace)}
                 ${renderActiveWorkoutPill()}
                 ${renderForToday(allWorkouts)}
-                ${renderLastSessionLine(allWorkouts)}
                 ${renderTodayPRBanner(recentPRs)}
-                ${renderHeroChipRow(streakDays, weekCount, weeklyGoal, bwData, weekPace, detectDeloadWeek(allWorkouts))}
-                ${showInsight ? renderDashboardInsight(topInsight) : ''}
-                ${await renderCompositionCard(bwData)}
-                ${renderRecentPRs(recentPRs, todaysPRKeys)}
-                ${renderProgressLinkRow(allWorkouts, topInsight, showInsight)}
+                ${renderThisWeekCard(allWorkouts, recentPRs, todaysPRKeys, topInsight)}
+                ${await renderBodyCard(bwData)}
             `;
 
             if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();
@@ -243,20 +233,47 @@ async function loadBodyWeightData() {
 // ===================================================================
 
 function renderGreetingHeader() {
-    const hour = new Date().getHours();
-    const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     const displayName = AppState.currentUser?.displayName || AppState.currentUser?.email || '';
     const initial = (displayName.trim().charAt(0) || '?').toUpperCase();
     return `
         <div class="dash-greeting">
-            <div class="dash-greeting__text">
-                <h2>${greeting}</h2>
-                <span>${dateStr}</span>
-            </div>
-            <div class="dash-greeting__avatar" onclick="navigateTo('settings')" aria-label="Open settings">${escapeHtml(initial)}</div>
+            <span class="dash-greeting__date">${dateStr}</span>
+            <div class="dash-greeting__avatar" onclick="navigateTo('settings')" role="button" tabindex="0" aria-label="Open settings">${escapeHtml(initial)}</div>
         </div>
     `;
+}
+
+/**
+ * One-line status strip under the date (V3): streak + week-goal dots + pace.
+ * Replaces the three hero chips — same signal, a fraction of the visual
+ * weight, and it can't be mistaken for the page's subject. Body weight moved
+ * to the Body card where it has context.
+ */
+function renderMetaStrip(streak, weekDone, weekGoal, isDeload = false, weekPace = {}) {
+    const goal = Math.min(7, Math.max(1, weekGoal));
+    const dots = Array.from({ length: goal }, (_, i) =>
+        `<span class="dash-strip__dot${i < weekDone ? ' dash-strip__dot--done' : ''}"></span>`
+    ).join('');
+
+    const streakHtml = isDeload
+        ? `<span class="dash-strip__streak"><i class="fas fa-battery-half"></i> Deload week</span>`
+        : (streak > 0 ? `<span class="dash-strip__streak"><i class="fas fa-fire"></i> ${streak} day streak</span>` : '');
+
+    // Ahead-of-last-week pace reads as a win; behind stays silent — a lighter
+    // week isn't a failure, so we inform without shaming (carried over from
+    // the hero-chip rules).
+    const lastDays = weekPace.lastWeekDays || 0;
+    const delta = lastDays > 0 ? weekDone - lastDays : 0;
+    const paceHtml = delta > 0 ? `<span class="dash-strip__pace">↑${delta} vs last week</span>` : '';
+
+    const parts = [
+        streakHtml,
+        `<span class="dash-strip__dots" role="img" aria-label="${weekDone} of ${goal} workouts this week">${dots}</span><span class="dash-strip__count">${weekDone} of ${goal}</span>`,
+        paceHtml,
+    ].filter(Boolean);
+
+    return `<div class="dash-strip">${parts.join('<span class="dash-strip__sep">·</span>')}</div>`;
 }
 
 function renderActiveWorkoutPill() {
@@ -379,15 +396,6 @@ function computeWeekPace(allWorkouts) {
     return { lastWeekDays: lastDays.size, thisWeekVol, lastWeekVol };
 }
 
-// Flip the "This week" chip between session-pace and volume-pace (persisted).
-export function toggleWeekPaceMode() {
-    const next = AppState.settings?.weekPaceMode === 'volume' ? 'sessions' : 'volume';
-    if (!AppState.settings) AppState.settings = {};
-    AppState.settings.weekPaceMode = next;
-    updateSetting('weekPaceMode', next);
-    showDashboard();
-}
-
 // Conservative, honest deload detection using rolling 7-day windows from today
 // (contiguous by construction — no ISO-week gap/boundary bugs). A "deload week"
 // is: you trained 1..HARD-1 days in the last 7, but each of the prior
@@ -422,55 +430,6 @@ function detectDeloadWeek(allWorkouts) {
     return hardWeeks >= NEEDED;
 }
 
-function renderHeroChipRow(streak, weekDone, weekGoal, bwData, weekPace = {}, isDeload = false) {
-    const bwVal = bwData ? Math.round(bwData.latest.displayWeight) : null;
-    const bwUnit = bwData ? bwData.unit : '';
-    const bwDelta = bwData ? bwData.delta : null;
-    const deltaDirClass = getBwDeltaDirectionClass(bwDelta);
-
-    // Pace vs last week — session count OR total volume, tappable to switch.
-    // Only surfaced once there's a prior week to compare against, so a brand-new
-    // user isn't shown "+N vs nothing".
-    const paceMode = AppState.settings?.weekPaceMode === 'volume' ? 'volume' : 'sessions';
-    let weekPaceHtml = '';
-    if (paceMode === 'volume') {
-        const { thisWeekVol = 0, lastWeekVol = 0 } = weekPace;
-        if (lastWeekVol > 0) {
-            const pct = Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100);
-            if (pct !== 0) {
-                weekPaceHtml = ` · <span class="hero-chip__wowd hero-chip__wowd--${pct > 0 ? 'up' : 'down'}">${pct > 0 ? '↑' : '↓'}${Math.abs(pct)}%</span>`;
-            }
-        }
-    } else {
-        const lastDays = weekPace.lastWeekDays || 0;
-        const weekDelta = lastDays > 0 ? weekDone - lastDays : null;
-        weekPaceHtml = weekDelta
-            ? ` · <span class="hero-chip__wowd hero-chip__wowd--${weekDelta > 0 ? 'up' : 'down'}">${weekDelta > 0 ? '↑' : '↓'}${Math.abs(weekDelta)}</span>`
-            : '';
-    }
-    const paceLabel = paceMode === 'volume' ? 'Tap to compare by workouts' : 'Tap to compare by volume';
-
-    return `
-        <div class="hero-chip-row">
-            <div class="hero-chip hero-chip--streak">
-                <div class="hero-chip__icon hero-chip__icon--warm"><i class="fas ${isDeload ? 'fa-battery-half' : 'fa-fire'}"></i></div>
-                <div class="hero-chip__val">${streak}</div>
-                <div class="hero-chip__label">${isDeload ? 'Deload week' : 'Streak'}</div>
-            </div>
-            <div class="hero-chip hero-chip--tap" onclick="toggleWeekPaceMode()" role="button" tabindex="0" title="${paceLabel}" aria-label="This week, ${weekDone} of ${weekGoal}. ${paceLabel}">
-                <div class="hero-chip__icon hero-chip__icon--primary"><i class="fas fa-bullseye"></i></div>
-                <div class="hero-chip__val">${weekDone}<span class="hero-chip__unit">/${weekGoal}</span></div>
-                <div class="hero-chip__label">This week${weekPaceHtml}</div>
-            </div>
-            <div class="hero-chip">
-                <div class="hero-chip__icon hero-chip__icon--shoulders"><i class="fas fa-weight"></i></div>
-                <div class="hero-chip__val">${bwVal != null ? bwVal : '—'}<span class="hero-chip__unit">${bwVal != null ? ` ${bwUnit}` : ''}</span></div>
-                ${bwDelta != null ? `<div class="hero-chip__delta ${deltaDirClass}">${bwDelta < 0 ? '↓' : '↑'} ${Math.abs(bwDelta).toFixed(1)} ${bwUnit}</div>` : '<div class="hero-chip__label">Body weight</div>'}
-            </div>
-        </div>
-    `;
-}
-
 // Color a body-weight delta only when the user has told us their goal direction.
 // Default (no goal set) is neutral — we never assume lose-is-good / gain-is-bad.
 function getBwDeltaDirectionClass(delta) {
@@ -479,28 +438,11 @@ function getBwDeltaDirectionClass(delta) {
     if (!goal || goal === 'maintain') return '';
     const losing = delta < 0;
     const gaining = delta > 0;
-    if (goal === 'lose' && losing) return 'hero-chip__delta--good';
-    if (goal === 'lose' && gaining) return 'hero-chip__delta--bad';
-    if (goal === 'gain' && gaining) return 'hero-chip__delta--good';
-    if (goal === 'gain' && losing) return 'hero-chip__delta--bad';
+    if (goal === 'lose' && losing) return 'bw-delta--good';
+    if (goal === 'lose' && gaining) return 'bw-delta--bad';
+    if (goal === 'gain' && gaining) return 'bw-delta--good';
+    if (goal === 'gain' && losing) return 'bw-delta--bad';
     return '';
-}
-
-// ===================================================================
-// INSIGHT
-// ===================================================================
-
-function renderDashboardInsight(insight) {
-    if (!insight) return '';
-    return `
-        <div class="dash-insight">
-            <i class="fas ${insight.icon || 'fa-lightbulb'}"></i>
-            <div class="dash-insight-text">${escapeHtml(insight.message)}</div>
-            <button class="dash-insight__close" onclick="dismissInsight()" aria-label="Dismiss insight">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
 }
 
 // ===================================================================
@@ -523,13 +465,14 @@ function renderForToday(allWorkouts) {
         }))
         .sort((a, b) => {
             if (a.scheduled !== b.scheduled) return a.scheduled ? -1 : 1;
-            return b.count - a.count;
+            return b.score - a.score;
         });
 
-    // Phase 7 — "For Today diet": hero + 2 compact rows max (was hero + 3). The
-    // busy 4-row stack pushed everything else below the fold; anything further
-    // lives behind "All →".
-    const visible = ranked.filter(r => r.count > 0 || r.scheduled).slice(0, 3);
+    // V3 diet: hero + ONE alternative, everything else behind "All workouts".
+    // Ranking is recency-decayed (see getTemplatesForDayOfWeek), so a switched
+    // routine — chest Mondays → leg Mondays → back — converges on what you've
+    // actually done lately instead of accumulating stale suggestions.
+    const visible = ranked.filter(r => r.count > 0 || r.scheduled).slice(0, 2);
     // Rest day (has workouts, none ranked for today) → offer to wing it.
     if (visible.length === 0) return renderForTodayEmpty(dayName);
 
@@ -544,49 +487,43 @@ function renderForToday(allWorkouts) {
         lastDoneByType[type] = { date: w.date, duration: w.totalDuration || 0 };
     }
 
-    // The top pick renders as a hero with a one-tap start and a PR-proximity
-    // hook (UX-2). The rest render as compact rows.
+    // The top pick renders as the page's single hero with two co-equal doors:
+    // Start workout (the plan) and Quick start (freestyle). The one runner-up
+    // renders as a quiet divider row; "All workouts" closes the list.
     const [hero, ...rest] = visible;
     const proximity = findPRProximity(
         buildProximityCandidates(hero.template, allWorkouts)
     );
 
-    // Recommendations are capped low (hero + up to 2) so Quick start reads as a
-    // co-equal option, not a footnote — the improviser and the routine user get
-    // equal billing on the dashboard.
     return `
-        <div class="dash-section-head">
-            <h3>For ${dayName}</h3>
-            <a onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">All →</a>
-        </div>
         ${renderForTodayHero(hero, dayName, lastDoneByType, proximity)}
-        ${rest.map(r => renderForTodayRow(r, false, dayName, lastDoneByType)).join('')}
-        ${renderQuickStartCard('Or start fresh — add exercises as you go')}
-    `;
-}
-
-/**
- * Prominent Quick start card (Phase 7 — the improviser's dashboard door).
- * Always present in For Today: alongside the recommendations when there's a
- * plan, or standing in for them on a rest day / for a new user.
- */
-function renderQuickStartCard(subtitle) {
-    return `
-        <div class="dash-quickstart-card" onclick="openQuickStartSheet()" role="button" tabindex="0">
-            <div class="dash-quickstart-card__icon"><i class="fas fa-bolt"></i></div>
-            <div class="dash-quickstart-card__text">
-                <div class="dash-quickstart-card__title">Quick start</div>
-                <div class="dash-quickstart-card__sub">${subtitle}</div>
+        <div class="dash-alt-list">
+            ${rest.map(r => renderForTodayAltRow(r, lastDoneByType)).join('')}
+            <div class="dash-alt-row" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')" role="button" tabindex="0">
+                <i class="fas fa-list dash-alt-row__icon"></i>
+                <div class="dash-alt-row__txt dash-alt-row__txt--muted">All workouts</div>
+                <i class="fas fa-chevron-right dash-chev"></i>
             </div>
-            <i class="fas fa-chevron-right dash-quickstart-card__chev"></i>
         </div>
     `;
 }
 
+// Rest day / new user: Quick start takes the hero slot instead of hiding.
 function renderForTodayEmpty(dayName) {
     return `
-        <div class="dash-section-head"><h3>For ${dayName}</h3></div>
-        ${renderQuickStartCard('Nothing planned — start now, add exercises as you go')}
+        <div class="dash-today-hero">
+            <div class="dash-today-hero__eyebrow">For ${dayName}</div>
+            <div class="dash-today-hero__name">Nothing planned</div>
+            <div class="dash-today-hero__meta">Start now and add exercises as you go</div>
+            <div class="dash-today-hero__actions">
+                <button class="dash-today-hero__cta" onclick="openQuickStartSheet()">
+                    <i class="fas fa-bolt"></i> Quick start
+                </button>
+                <button class="dash-today-hero__cta dash-today-hero__cta--ghost" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">
+                    All workouts
+                </button>
+            </div>
+        </div>
     `;
 }
 
@@ -633,13 +570,12 @@ function buildProximityCandidates(template, allWorkouts) {
 
 function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByType, proximity) {
     const category = template.category || getWorkoutCategory(template.name || template.day) || 'other';
-    const icon = getCategoryIcon(category);
     const exCount = template.exercises ? template.exercises.length : 0;
     const startArg = escapeAttr(template.day || template.name || template.id);
 
     const usageText = scheduled ? `Usually ${dayName}` : (count > 0 ? `${count}× on ${dayName}s` : '');
     const lastDoneText = formatLastDoneMeta(lastDoneByType[template.name || template.day]);
-    const meta = [usageText, lastDoneText].filter(Boolean).join(' · ');
+    const meta = [usageText, lastDoneText, `${exCount} exercises`].filter(Boolean).join(' · ');
 
     // PR-proximity hook — forward-looking "you're close, go for it".
     let prHook = '';
@@ -656,18 +592,40 @@ function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByT
     }
 
     return `
-        <div class="dash-today-hero cat-border-${category.toLowerCase()}" onclick="startWorkout('${startArg}')">
-            <div class="dash-today-hero__top">
-                <div class="dash-today-hero__icon cat-bg-${category.toLowerCase()}"><i class="${icon}"></i></div>
-                <div class="dash-today-hero__info">
-                    <div class="dash-today-hero__name">${escapeHtml(template.name || template.day)}</div>
-                    ${meta ? `<div class="dash-today-hero__meta">${meta} · ${exCount} exercises</div>` : `<div class="dash-today-hero__meta">${exCount} exercises</div>`}
-                </div>
-                <button class="dash-today-hero__start" onclick="event.stopPropagation(); startWorkout('${startArg}')" aria-label="Start ${escapeAttr(template.name || template.day)}">
-                    <i class="fas fa-play"></i>
+        <div class="dash-today-hero cat-fill-${category.toLowerCase()}">
+            <div class="dash-today-hero__eyebrow">Up today</div>
+            <div class="dash-today-hero__name">${escapeHtml(template.name || template.day)}</div>
+            <div class="dash-today-hero__meta">${meta}</div>
+            ${prHook}
+            <div class="dash-today-hero__actions">
+                <button class="dash-today-hero__cta" onclick="startWorkout('${startArg}')" aria-label="Start ${escapeAttr(template.name || template.day)}">
+                    <i class="fas fa-play"></i> Start workout
+                </button>
+                <button class="dash-today-hero__cta dash-today-hero__cta--ghost" onclick="openQuickStartSheet()">
+                    <i class="fas fa-bolt"></i> Quick start
                 </button>
             </div>
-            ${prHook}
+        </div>
+    `;
+}
+
+// One quiet runner-up under the hero: no card chrome, no play circle — the
+// hero must be the only card-weight element in For Today.
+function renderForTodayAltRow({ template }, lastDoneByType = {}) {
+    const category = (template.category || getWorkoutCategory(template.name || template.day) || 'other').toLowerCase();
+    const icon = getCategoryIcon(category);
+    const startArg = escapeAttr(template.day || template.name || template.id);
+    const rec = lastDoneByType[template.name || template.day];
+    const when = rec?.date ? formatRelativeDate(rec.date, { daysAgo: true, weeksAgo: true }) : '';
+
+    return `
+        <div class="dash-alt-row" onclick="startWorkout('${startArg}')" role="button" tabindex="0" aria-label="Start ${escapeAttr(template.name || template.day)}">
+            <i class="${icon} dash-alt-row__icon cat-txt-${category}"></i>
+            <div class="dash-alt-row__txt">
+                <span class="dash-alt-row__name">${escapeHtml(template.name || template.day)}</span>
+                ${when ? `<span class="dash-alt-row__meta"> · ${when}</span>` : ''}
+            </div>
+            <i class="fas fa-chevron-right dash-chev"></i>
         </div>
     `;
 }
@@ -698,47 +656,58 @@ export function openWorkoutSelectorForDay(dayName) {
 }
 
 /**
- * Last-session one-liner (UX-2): a closing "here's what you did last time" cue
- * under For Today. Built from the already-loaded workouts — no extra query.
- * Tapping opens that workout in history.
+ * "This week" grouped card (V3): the retrospective tail — last session, most
+ * recent PR, and the single most actionable progress headline — as three
+ * divider rows in ONE card instead of three separately-chromed surfaces.
+ * The section-head "Progress →" link replaces the old dash-progress-link row.
  */
-function renderLastSessionLine(allWorkouts) {
-    const last = (allWorkouts || []).find(w => w.completedAt && !w.cancelledAt);
-    if (!last) return '';
-
-    const when = formatRelativeDate(last.date, { daysAgo: true, weeksAgo: true });
-    const mins = Math.round((last.totalDuration || 0) / 60);
-    let volume = 0;
-    for (const ex of Object.values(last.exercises || {})) {
-        for (const s of ex.sets || []) {
-            if (s.reps && s.weight) volume += s.reps * s.weight;
-        }
-    }
+function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
     const unit = AppState.globalUnit || 'lbs';
-    const parts = [
-        `<b>${escapeHtml(last.workoutType || 'Workout')}</b>`,
-        when,
-        mins > 0 ? `${mins} min` : null,
-        volume > 0 ? `${formatVolume(volume)} ${unit} volume` : null,
-    ].filter(Boolean).join(' · ');
+    const rows = [];
 
-    return `
-        <div class="dash-last-session" onclick="viewWorkout('${escapeAttr(last.id)}')">
-            <div class="dash-last-session__check"><i class="fas fa-check"></i></div>
-            <div class="dash-last-session__txt">${parts}</div>
-            <i class="fas fa-chevron-right dash-chev"></i>
-        </div>
-    `;
-}
+    // Row 1: last completed session (tap → workout detail in history)
+    const last = (allWorkouts || []).find(w => w.completedAt && !w.cancelledAt);
+    if (last) {
+        const when = formatRelativeDate(last.date, { daysAgo: true, weeksAgo: true });
+        const mins = Math.round((last.totalDuration || 0) / 60);
+        let volume = 0;
+        for (const ex of Object.values(last.exercises || {})) {
+            for (const s of ex.sets || []) {
+                if (s.reps && s.weight) volume += s.reps * s.weight;
+            }
+        }
+        const parts = [
+            `<b>${escapeHtml(last.workoutType || 'Workout')}</b>`,
+            when,
+            mins > 0 ? `${mins} min` : null,
+            volume > 0 ? `${formatVolume(volume)} ${unit}` : null,
+        ].filter(Boolean).join(' · ');
+        rows.push(`
+            <div class="dash-week-row" onclick="viewWorkout('${escapeAttr(last.id)}')" role="button" tabindex="0">
+                <i class="fas fa-check dash-week-row__icon dash-week-row__icon--done"></i>
+                <div class="dash-week-row__txt">${parts}</div>
+                <i class="fas fa-chevron-right dash-chev"></i>
+            </div>
+        `);
+    }
 
-/**
- * Progress link row (UX-2): replaces the 6 body-part cards on the dashboard
- * with one row carrying the single most actionable headline — the lowest
- * body-part volume vs its weekly target (from analyzeWeeklyVolume), else the
- * top training insight. The cards themselves live on the Progress page now.
- */
-function renderProgressLinkRow(allWorkouts, topInsight, showInsight = false) {
+    // Row 2: most recent PR not already celebrated in today's banner
+    const pr = (recentPRs || []).filter(p => !excludeKeys || !excludeKeys.has(prKey(p)))[0];
+    if (pr) {
+        rows.push(`
+            <div class="dash-week-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')" role="button" tabindex="0">
+                <i class="fas fa-trophy dash-week-row__icon dash-week-row__icon--gold"></i>
+                <div class="dash-week-row__txt"><b>${escapeHtml(pr.exercise)} PR</b> · ${convertWeight(pr.weight, pr.unit || 'lbs', unit)} ${unit} · ${prMetaLine(pr)}</div>
+                <i class="fas fa-chevron-right dash-chev"></i>
+            </div>
+        `);
+    }
+
+    // Row 3: the single most actionable headline — lowest body-part volume vs
+    // its weekly target, else the top training insight, else a generic teaser.
+    // Tap → Progress page, where the full picture lives.
     let headline = 'Volume balance, trends, and all your PRs';
+    let headIcon = 'fa-chart-line';
     try {
         const weekStart = new Date(getDateString());
         weekStart.setDate(weekStart.getDate() - 7);
@@ -748,59 +717,23 @@ function renderProgressLinkRow(allWorkouts, topInsight, showInsight = false) {
         const low = vol.filter(v => v.status === 'low').sort((a, b) => a.weeklySets - b.weeklySets)[0];
         if (low) {
             headline = `${capitalize(low.bodyPart)} is low this week — ${low.weeklySets} set${low.weeklySets === 1 ? '' : 's'}`;
-        } else if (!showInsight && topInsight?.message) {
-            // Only borrow the insight message when the insight card above isn't
-            // already showing it — otherwise the same line renders twice.
+            headIcon = 'fa-exclamation-triangle';
+        } else if (topInsight?.message) {
             headline = topInsight.message;
+            headIcon = topInsight.icon || 'fa-lightbulb';
         }
     } catch { /* fall back to the generic headline */ }
-
-    return `
-        <div class="dash-progress-link" onclick="showProgressPage()">
-            <div class="dash-progress-link__icon"><i class="fas fa-chart-line"></i></div>
-            <div class="dash-progress-link__txt">
-                <div class="dash-progress-link__title">Progress</div>
-                <div class="dash-progress-link__sub">${escapeHtml(headline)}</div>
-            </div>
+    rows.push(`
+        <div class="dash-week-row" onclick="showProgressPage()" role="button" tabindex="0">
+            <i class="fas ${headIcon} dash-week-row__icon"></i>
+            <div class="dash-week-row__txt">${escapeHtml(headline)}</div>
             <i class="fas fa-chevron-right dash-chev"></i>
         </div>
-    `;
-}
-
-function renderForTodayRow({ template, count, scheduled }, isMostUsed, dayName, lastDoneByType = {}) {
-    const category = template.category || getWorkoutCategory(template.name || template.day) || 'other';
-    const icon = getCategoryIcon(category);
-    const exCount = template.exercises ? template.exercises.length : 0;
-    const usageText = count > 0
-        ? `${count} ${count === 1 ? 'time' : 'times'} on ${dayName}s`
-        : `Scheduled for ${dayName}s`;
-    const badge = scheduled
-        ? '<span class="dash-template-count">Scheduled</span>'
-        : (isMostUsed && count >= 1 ? '<span class="dash-template-count">Most used</span>' : '');
-
-    // Second meta line: how long since this workout was last done (and roughly
-    // how long it took) — the "am I on schedule?" signal that usage-count alone
-    // doesn't give. Omitted entirely if it's never been completed.
-    const lastDoneText = formatLastDoneMeta(lastDoneByType[template.name || template.day]);
-    const lastDoneHtml = lastDoneText
-        ? `<div class="dash-template-meta dash-template-meta--sub">${lastDoneText}</div>`
-        : '';
+    `);
 
     return `
-        <div class="dash-template-row" onclick="startWorkout('${escapeAttr(template.day || template.name || template.id)}')">
-            <div class="dash-template-icon cat-bg-${category.toLowerCase()}"><i class="${icon}"></i></div>
-            <div class="dash-template-info">
-                <div class="dash-template-name">
-                    ${escapeHtml(template.name || template.day)}
-                    ${badge}
-                </div>
-                <div class="dash-template-meta">${exCount} exercises · ${usageText}</div>
-                ${lastDoneHtml}
-            </div>
-            <button class="dash-template-play" onclick="event.stopPropagation(); startWorkout('${escapeAttr(template.day || template.name || template.id)}')">
-                <i class="fas fa-play"></i>
-            </button>
-        </div>
+        <div class="dash-section-head"><h3>This week</h3><a onclick="showProgressPage()">Progress →</a></div>
+        <div class="dash-week-card">${rows.join('')}</div>
     `;
 }
 
@@ -892,10 +825,10 @@ function weeklyVolumeByBodyPart(allWorkouts) {
 }
 
 // ===================================================================
-// COMPOSITION CARD
+// BODY CARD — weight + composition merged into one surface (V3)
 // ===================================================================
 
-async function renderCompositionCard(bwData) {
+async function renderBodyCard(bwData) {
     let scan = null;
     let prevScan = null;
     try {
@@ -909,30 +842,24 @@ async function renderCompositionCard(bwData) {
         }
     } catch { /* no dexa */ }
 
-    // Field on the scan doc is `totalLeanMass`, not `muscleMass`. Reading
-    // `scan.muscleMass` always came back undefined, so muscle% was 0 and
-    // water% absorbed the gap — the donut + legend never matched the actual
-    // scan. Use totalLeanMass throughout.
+    // Field on the scan doc is `totalLeanMass`, not `muscleMass` — see
+    // composition-detail-ui for the original donut bug this guards against.
     const hasDexa = scan && (scan.totalBodyFat != null || scan.totalLeanMass != null);
     const hasBw = bwData != null;
     if (!hasDexa && !hasBw) return renderConnectPrompt();
 
-    let html = `
-        <div class="dash-section-head">
-            <h3>Composition</h3>
-        </div>
-    `;
-
-    // --- Card 1: Body Weight (with Withings badge + sparkline) ---
+    // --- Weight block ---
+    let weightHtml = '';
     if (hasBw) {
         const source = bwData.latest.source === 'withings' ? '<span class="bw-badge">Withings</span>' : '';
         const weightStr = bwData.latest.displayWeight.toFixed(1);
+        const deltaDirClass = getBwDeltaDirectionClass(bwData.delta);
         const deltaStr = bwData.delta != null
-            ? `<div class="bw-delta">${bwData.delta < 0 ? '↓' : '↑'} ${Math.abs(bwData.delta).toFixed(1)} ${bwData.unit} · 30 days</div>`
+            ? `<span class="bw-delta ${deltaDirClass}">${bwData.delta < 0 ? '↓' : '↑'} ${Math.abs(bwData.delta).toFixed(1)} · 30 days</span>`
             : '';
 
-        // Build sparkline from the last 30 days only, so it matches the
-        // "· 30 days" delta caption (UX-2 — the window was 90d before).
+        // Sparkline over the last 30 days, matching the delta caption. Muted
+        // stroke on purpose — the hero owns the page's accent color.
         let sparkHtml = '';
         if (bwData.entries && bwData.entries.length > 2) {
             const thirtyAgo = new Date();
@@ -941,49 +868,35 @@ async function renderCompositionCard(bwData) {
             let recent = bwData.entries.filter(e => e.date >= thirtyStr);
             if (recent.length < 2) recent = bwData.entries.slice(-8); // fallback: last few
             const points = recent.map((e, i) => ({ x: i, y: e.displayWeight }));
-            sparkHtml = `<div class="bw-spark">${chartSparkline({ points, color: 'var(--primary)', width: 280, height: 32 })}</div>`;
+            sparkHtml = `<div class="bw-spark">${chartSparkline({ points, color: 'var(--text-very-muted)', width: 280, height: 26 })}</div>`;
         }
 
-        html += `
-            <div class="bc-card" onclick="showCompositionDetail()">
-                <div class="bw-card-head">
-                    <i class="fas fa-weight bw-card-head__icon--primary"></i>
-                    <span class="bw-card-title">Body Weight</span>
-                    ${source}
-                    <i class="fas fa-chevron-right dash-chev"></i>
-                </div>
-                <div class="bw-card-value">${weightStr} <span class="bw-card-unit">${bwData.unit}</span></div>
+        weightHtml = `
+            <div class="dash-body-card__weight">
+                <span class="bw-card-value">${weightStr} <span class="bw-card-unit">${bwData.unit}</span></span>
                 ${deltaStr}
-                ${sparkHtml}
+                ${source}
             </div>
+            ${sparkHtml}
         `;
     }
 
-    // --- Card 2: Body Composition (DEXA donut) ---
+    // --- Composition line (one quiet row; the donut lives in the detail page) ---
+    let compHtml = '';
     if (hasDexa) {
         const fatPct = Math.round(scan.totalBodyFat || 0);
         const leanPct = scan.totalLeanMass && scan.totalWeight
             ? Math.round(scan.totalLeanMass / scan.totalWeight * 100)
             : 0;
-        // Anything left over (bone, water, etc.) — labeled "Other" so users
-        // don't see "Water" inflated past reality.
-        const otherPct = Math.max(0, 100 - fatPct - leanPct);
-        const segments = [
-            { label: `Lean ${leanPct}%`, value: leanPct, color: 'var(--cat-legs)' },
-            { label: `Fat ${fatPct}%`, value: fatPct, color: 'var(--cat-pull)' },
-            { label: `Other ${otherPct}%`, value: otherPct, color: 'var(--primary)' },
-        ];
 
-        // Days since DEXA
         let dexaAgo = '';
         if (scan.date) {
             const daysAgo = Math.round((Date.now() - new Date(scan.date).getTime()) / 86400000);
-            if (daysAgo <= 1) dexaAgo = 'Today';
+            if (daysAgo <= 1) dexaAgo = 'today';
             else if (daysAgo < 7) dexaAgo = `${daysAgo} days ago`;
             else dexaAgo = `${Math.round(daysAgo / 7)} weeks ago`;
         }
 
-        // Lean-mass change from previous scan
         let muscleDelta = '';
         const prevLean = prevScan?.totalLeanMass;
         if (prevLean != null && scan.totalLeanMass != null) {
@@ -995,35 +908,32 @@ async function renderCompositionCard(bwData) {
             muscleDelta = ` · Lean ${d >= 0 ? '↑' : '↓'} ${Math.abs(d).toFixed(1)} ${unit}`;
         }
 
-        html += `
-            <div class="bc-card bc-card--composition" onclick="showCompositionDetail()">
-                <div class="bw-card-head">
-                    <span class="bw-card-title">Body Composition</span>
-                    <i class="fas fa-chevron-right dash-chev"></i>
-                </div>
-                <div class="bc-row">
-                    ${chartDonut({ segments, size: 60 })}
-                    <div class="bc-legend">
-                        ${segments.map(s => `<div class="bc-leg"><div class="bc-dot" style="--dot-color:${s.color};"></div>${s.label}</div>`).join('')}
-                    </div>
-                </div>
-                ${dexaAgo ? `<div class="bc-dexa-ago">Last DEXA: ${dexaAgo}${muscleDelta}</div>` : ''}
-            </div>
-        `;
+        const parts = [
+            leanPct ? `Lean ${leanPct}%` : null,
+            `Fat ${fatPct}%`,
+            dexaAgo ? `DEXA ${dexaAgo}` : null,
+        ].filter(Boolean).join(' · ');
+        compHtml = `<div class="dash-body-card__comp${hasBw ? ' dash-body-card__comp--split' : ''}">${parts}${muscleDelta}</div>`;
     }
 
-    return html;
+    return `
+        <div class="dash-section-head"><h3>Body</h3><a onclick="showCompositionDetail()">Details →</a></div>
+        <div class="dash-body-card" onclick="showCompositionDetail()" role="button" tabindex="0">
+            ${weightHtml}
+            ${compHtml}
+        </div>
+    `;
 }
 
 function renderConnectPrompt() {
     return `
         <div class="dash-section-head">
-            <h3>Composition</h3>
+            <h3>Body</h3>
         </div>
         <div class="connect-card" onclick="showCompositionDetail()">
             <i class="fas fa-circle-nodes"></i>
             <div class="connect-card__info">
-                <div class="connect-card__title">Track Body Composition</div>
+                <div class="connect-card__title">Track body composition</div>
                 <div class="connect-card__sub">Upload a DEXA scan or log body weight</div>
             </div>
             <i class="fas fa-chevron-right dash-chev"></i>
@@ -1153,29 +1063,6 @@ function prMetaLine(pr) {
 /** Stable key for a PR (exercise + equipment) — used to de-dup surfaces. */
 function prKey(pr) {
     return `${pr.exercise}|${pr.equipment || ''}`;
-}
-
-function renderRecentPRs(recentPRs, excludeKeys = null) {
-    let list = recentPRs || [];
-    if (excludeKeys && excludeKeys.size > 0) {
-        list = list.filter(pr => !excludeKeys.has(prKey(pr)));
-    }
-    if (list.length === 0) return '';
-    return `
-        <div class="dash-section-head dash-section-head--tight">
-            <h3>Recent PRs</h3>
-        </div>
-        ${list.slice(0, 3).map(pr => `
-            <div class="pr-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')">
-                <div class="pr-badge"><i class="fas fa-trophy"></i></div>
-                <div class="pr-info">
-                    <div class="pr-name">${escapeHtml(pr.exercise)}</div>
-                    <div class="pr-meta">${prMetaLine(pr)}</div>
-                </div>
-                <div class="pr-val">${convertWeight(pr.weight, pr.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}</div>
-            </div>
-        `).join('')}
-    `;
 }
 
 // ===================================================================
@@ -1316,27 +1203,6 @@ export async function renderProgressPage() {
 // ===================================================================
 // EXPORTED FUNCTIONS (window-bound in main.js)
 // ===================================================================
-
-// Tiny, stable content hash — enough to distinguish insights without a crypto lib.
-function hashInsight(insight) {
-    const src = `${insight.icon || ''}|${insight.message || ''}`;
-    let h = 0;
-    for (let i = 0; i < src.length; i++) {
-        h = ((h << 5) - h) + src.charCodeAt(i);
-        h |= 0;
-    }
-    return `h${h}`;
-}
-
-export function dismissInsight() {
-    // Remember *which* insight the user dismissed, not just the day.
-    // A new insight with a different hash will resurface automatically.
-    const card = document.querySelector('.dash-insight');
-    const text = card?.querySelector('.dash-insight-text')?.textContent?.trim() || '';
-    const icon = card?.querySelector(':scope > i')?.className?.match(/fa-[\w-]+/)?.[0] || '';
-    if (text) updateSetting('insightDismissedHash', hashInsight({ icon, message: text }));
-    if (card) card.remove();
-}
 
 export function resumeActiveWorkout() {
     stopPillTimer();
