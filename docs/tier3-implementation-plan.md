@@ -95,7 +95,9 @@ Phases 1→5 are ordered by dependency; 6 and 7 are independent and can go anyti
 
 **Verify:** settings persist per equipment+exercise; same exercise on different equipment (home vs travel gym) shows different settings; no chips for users who never saved any.
 
-## Phase 7 — F5: equipment quick-edit sheet (independent)
+## Phase 7 — F5: equipment quick-edit sheet (independent) — **SHIPPED 2026-07-02**
+
+> Build steps below reference `syncCatalogRefOnLocation` / `location.equipment[]` mirroring — that whole mechanism was removed in 8b step 4 (equipment collection is the sole source now). Historical; don't re-run.
 
 **Outcome:** Rename / exercise links / gym tags without the full-page form. Mockup frame: "F5 — Quick edit".
 
