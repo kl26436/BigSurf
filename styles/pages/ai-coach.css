@@ -178,31 +178,37 @@
 }
 
 /* ── Live in-workout coach sheet (Phase 6) ─────────────────────────── */
+/* CRITICAL: the body must stay the sheet's designated shrinkable scroller
+   (base .aw-sheet__body = flex:1 + min-height:0). Any fixed min/max height
+   here breaks keyboard handling — the sheet's height cap shrinks to
+   85dvh - kb-inset when the keyboard opens, and a body that can't shrink
+   pushes the input bar off the bottom, clipped behind the keyboard. */
 .live-coach__body {
     display: flex;
     flex-direction: column;
-    max-height: 42dvh;
-    min-height: 120px;
-    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
 .live-coach__hint {
-    padding: var(--space-16);
+    padding: var(--space-24) var(--space-16);
     text-align: center;
     color: var(--text-muted);
     font-size: var(--font-xs);
 }
+/* Chips + input pin BELOW the scrolling body — matching the sheet's 16px
+   side chrome — so the send box stays visible, keyboard up or down. */
 .live-coach__chips {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-8);
-    padding: var(--space-8) 0;
+    padding: var(--space-8) var(--space-16);
+    flex-shrink: 0;
 }
 .live-coach__inputbar {
     display: flex;
     gap: var(--space-8);
     align-items: center;
-    padding-top: var(--space-8);
+    padding: var(--space-4) var(--space-16) var(--space-12);
+    flex-shrink: 0;
 }
 .live-coach__inputbar .field-input { flex: 1; }
 .live-coach__send {
