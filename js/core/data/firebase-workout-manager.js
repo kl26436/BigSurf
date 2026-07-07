@@ -1046,6 +1046,13 @@ export class FirebaseWorkoutManager {
                 baseWeight: typeof equipmentData.baseWeight === 'number' ? equipmentData.baseWeight : 0,
                 baseWeightUnit: equipmentData.baseWeightUnit || 'lbs',
                 locations,
+                // Stable location ids (Phase 8b step 4) — without this line the
+                // whole create-path dual-write was a silent no-op (the field was
+                // derived by callers but dropped by this whitelist).
+                locationIds: Array.isArray(equipmentData.locationIds) ? equipmentData.locationIds : [],
+                // Catalog identity when promoted from the catalog — lets the
+                // owned/suggestion matchers dedupe by ref across reloads.
+                catalogRef: equipmentData.catalogRef || null,
                 exerciseTypes: equipmentData.exerciseTypes || [],
                 exerciseVideos,
                 // Per-exercise machine settings (Tier 3 3.2 / traveler D4):
@@ -1233,12 +1240,20 @@ export class FirebaseWorkoutManager {
             };
 
             // Keep locationIds[] in sync when the caller changed the gym names
-            // (Phase 8b step 4). Only override when we resolved ids, so a cold
-            // cache doesn't wipe existing ids.
-            if (Array.isArray(updates.locations)) {
-                const derivedIds = this._deriveLocationIds(updates.locations);
-                if (derivedIds.length) updatedData.locationIds = derivedIds;
-                else if (updates.locations.length === 0) updatedData.locationIds = [];
+            // (Phase 8b step 4). An explicitly-passed updates.locationIds wins.
+            // Otherwise derive from the names — gated on CACHE WARMTH, not on the
+            // derived count: "zero ids derived" is a legitimate result when the
+            // only remaining gyms are orphans (name-only, no doc), and keeping
+            // the old ids in that case left removed gyms stuck on the id-union
+            // readers ("remove from gym" didn't stick).
+            if (Array.isArray(updates.locations) && !Array.isArray(updates.locationIds)) {
+                if ((this.appState._cachedLocations || []).length) {
+                    updatedData.locationIds = this._deriveLocationIds(updates.locations);
+                } else if (updates.locations.length === 0) {
+                    updatedData.locationIds = [];
+                }
+                // Cold cache + non-empty names: leave existing ids untouched
+                // (can't distinguish resolvable from orphan without the docs).
             }
 
             await setDoc(docRef, updatedData);
@@ -1400,6 +1415,16 @@ export class FirebaseWorkoutManager {
                 const derivedIds = this._deriveLocationIds(locations);
                 if (derivedIds.length) writeData.locationIds = derivedIds;
                 await setDoc(docRef, writeData);
+
+                // Keep the shared cache coherent — this is an ADD, so patch the
+                // cached entry in place rather than nulling the whole cache
+                // (nulling mid-workout would blank base-weight/equip-line
+                // renders until the next full refetch).
+                const cached = (this.appState._cachedEquipment || []).find((e) => e.id === equipmentId);
+                if (cached) {
+                    cached.locations = locations;
+                    if (derivedIds.length) cached.locationIds = derivedIds;
+                }
             }
         } catch (error) {
             console.error('❌ Error adding location to equipment:', error);
@@ -1439,6 +1464,16 @@ export class FirebaseWorkoutManager {
             if (locationData.address) locationToSave.address = locationData.address;
 
             await setDoc(docRef, locationToSave);
+
+            // Keep the shared locations cache coherent so the next
+            // _deriveLocationIds call sees the just-created/updated gym —
+            // otherwise equipment tagged to a brand-new gym mid-flow (quick-add)
+            // gets the name but silently misses the id.
+            if (Array.isArray(this.appState._cachedLocations)) {
+                const idx = this.appState._cachedLocations.findIndex((l) => l.id === locationId);
+                if (idx >= 0) this.appState._cachedLocations[idx] = { ...locationToSave };
+                else this.appState._cachedLocations.push({ ...locationToSave });
+            }
             return { id: locationId, ...locationToSave };
         } catch (error) {
             console.error('❌ Error saving location:', error);
@@ -1519,7 +1554,14 @@ export class FirebaseWorkoutManager {
     }
 
     /**
-     * Delete a gym location
+     * Delete a gym location, cascading the gym's removal onto every equipment
+     * doc (by stable id AND name — without this the deleted gym "haunts" the
+     * app: gym views re-derive gyms from equipment.locations[] names).
+     *
+     * Ordering is deliberate: equipment strips commit FIRST, the location doc
+     * delete rides in the LAST batch. A mid-failure then leaves a consistent,
+     * retryable state (gym still exists, partially untagged) instead of the
+     * haunt bug (gym doc gone, names still on equipment).
      */
     async deleteLocation(locationId) {
         if (!this.appState.currentUser) {
@@ -1532,28 +1574,45 @@ export class FirebaseWorkoutManager {
             const locSnap = await getDoc(doc(this.db, 'users', uid, 'locations', locationId));
             const gymName = locSnap.exists() ? locSnap.data().name : null;
 
-            await deleteDoc(doc(this.db, 'users', uid, 'locations', locationId));
-
-            // Cascade: remove this gym from every equipment doc, by stable id AND
-            // by name. Without this, the deleted gym "haunts" the app — gym views
-            // re-derive gyms from equipment.locations[] names, so it reappears as
-            // a name-only gym (the bug this fixes).
-            const equipment = await this.getUserEquipment();
-            const batch = writeBatch(this.db);
-            let n = 0;
-            for (const eq of equipment) {
-                const hasName = gymName && Array.isArray(eq.locations) && eq.locations.includes(gymName);
-                const hasId = Array.isArray(eq.locationIds) && eq.locationIds.includes(locationId);
-                if (!hasName && !hasId) continue;
+            // Fetch equipment docs DIRECTLY — not via getUserEquipment(), whose
+            // fire-and-forget legacy-`location` sweep could race this cascade
+            // and re-write the gym name we're stripping.
+            const equipSnap = await getDocs(collection(this.db, 'users', uid, 'equipment'));
+            const updates = [];
+            equipSnap.forEach((d) => {
+                const eq = d.data();
+                const names = Array.isArray(eq.locations) ? eq.locations : [];
+                const ids = Array.isArray(eq.locationIds) ? eq.locationIds : [];
+                const hasName = gymName && names.includes(gymName);
+                const hasId = ids.includes(locationId);
+                if (!hasName && !hasId) return;
                 const update = {};
-                if (hasName) update.locations = eq.locations.filter((l) => l !== gymName);
-                if (hasId) update.locationIds = eq.locationIds.filter((id) => id !== locationId);
-                batch.update(doc(this.db, 'users', uid, 'equipment', eq.id), update);
-                n++;
-            }
-            if (n > 0) {
+                if (hasName) update.locations = names.filter((l) => l !== gymName);
+                if (hasId) update.locationIds = ids.filter((id) => id !== locationId);
+                updates.push({ id: d.id, update });
+            });
+
+            // Chunk under the 500-op batch limit; the location delete goes in
+            // the final batch so it only commits after every strip has.
+            const CHUNK = 400;
+            for (let i = 0; i < updates.length; i += CHUNK) {
+                const batch = writeBatch(this.db);
+                for (const u of updates.slice(i, i + CHUNK)) {
+                    batch.update(doc(this.db, 'users', uid, 'equipment', u.id), u.update);
+                }
+                if (i + CHUNK >= updates.length) {
+                    batch.delete(doc(this.db, 'users', uid, 'locations', locationId));
+                }
                 await batch.commit();
-                this.appState._cachedEquipment = null;
+            }
+            if (updates.length === 0) {
+                await deleteDoc(doc(this.db, 'users', uid, 'locations', locationId));
+            }
+
+            // Both caches are stale now.
+            if (updates.length > 0) this.appState._cachedEquipment = null;
+            if (Array.isArray(this.appState._cachedLocations)) {
+                this.appState._cachedLocations = this.appState._cachedLocations.filter((l) => l.id !== locationId);
             }
             return true;
         } catch (error) {
@@ -1584,11 +1643,18 @@ export class FirebaseWorkoutManager {
                 if (updates.name && data.name && updates.name !== data.name) {
                     await this.renameLocationOnEquipment(data.name, updates.name);
                 }
-                await setDoc(docRef, {
+                const merged = {
                     ...data,
                     ...updates,
                     updatedAt: new Date().toISOString(),
-                });
+                };
+                await setDoc(docRef, merged);
+                // Keep the shared locations cache coherent (a renamed gym must
+                // resolve to its id under the NEW name immediately).
+                if (Array.isArray(this.appState._cachedLocations)) {
+                    const idx = this.appState._cachedLocations.findIndex((l) => l.id === locationId);
+                    if (idx >= 0) this.appState._cachedLocations[idx] = { id: locationId, ...merged };
+                }
                 return true;
             }
             return false;

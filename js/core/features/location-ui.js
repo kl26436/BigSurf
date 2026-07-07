@@ -1055,7 +1055,7 @@ export async function deleteLocation(locationId) {
 
     const confirmed = await confirmSheet({
         title: `Delete "${location.name}"?`,
-        message: "This won't affect your workout history.",
+        message: "Equipment tagged here loses this gym. Workout history isn't affected.",
         confirmLabel: 'Delete location',
         cancelLabel: 'Keep location',
         destructive: true,
@@ -1081,34 +1081,52 @@ let _pendingLocationDelete = null;
 
 function showLocationUndoToast(location, originalIndex) {
     // Tear down any existing undo toast — if the user is rapid-firing
-    // deletes, only the most recent one gets the undo affordance.
+    // deletes, only the most recent one gets the undo affordance. The EARLIER
+    // pending delete must still happen: flush it now (fire-and-forget),
+    // otherwise deleting gym A then gym B within 6s silently dropped A's
+    // Firestore delete and A reappeared on next load.
     const existing = document.getElementById('location-undo-toast');
     if (existing) existing.remove();
-    if (_pendingLocationDelete?.timeoutId) {
+    if (_pendingLocationDelete) {
         clearTimeout(_pendingLocationDelete.timeoutId);
+        _pendingLocationDelete.commit();
     }
 
-    const commit = async () => {
-        if (!_pendingLocationDelete || _pendingLocationDelete.id !== location.id) return;
-        _pendingLocationDelete = null;
-        try {
-            const manager = getWorkoutManager();
-            await manager.deleteLocation(location.id);
-        } catch (err) {
-            console.error('Error deleting location after undo window:', err);
-            // Restore on failure so the user doesn't lose data silently.
-            const restore = { ...location };
-            const insertAt = Math.min(originalIndex, cachedLocations.length);
-            cachedLocations.splice(insertAt, 0, restore);
-            renderLocationManagementList();
-            showNotification("Couldn't delete location — restored", 'error');
-        }
-    };
-
-    _pendingLocationDelete = {
+    // Settled-flag lifecycle: exactly one of commit (Firestore delete) or
+    // cancel (undo) runs, no matter how timers and taps interleave.
+    const pending = {
         id: location.id,
-        timeoutId: setTimeout(commit, 6000),
+        settled: false,
+        timeoutId: null,
+        commit: async () => {
+            if (pending.settled) return;
+            pending.settled = true;
+            if (_pendingLocationDelete === pending) _pendingLocationDelete = null;
+            try {
+                const manager = getWorkoutManager();
+                await manager.deleteLocation(location.id);
+            } catch (err) {
+                console.error('Error deleting location after undo window:', err);
+                // Restore on failure so the user doesn't lose data silently.
+                // (deleteLocation strips equipment BEFORE deleting the doc, so
+                // a failure here means the gym doc still exists — honest.)
+                const restore = { ...location };
+                const insertAt = Math.min(originalIndex, cachedLocations.length);
+                cachedLocations.splice(insertAt, 0, restore);
+                renderLocationManagementList();
+                showNotification("Couldn't delete location — restored", 'error');
+            }
+        },
+        cancel: () => {
+            if (pending.settled) return false; // commit already ran — undo is too late
+            pending.settled = true;
+            clearTimeout(pending.timeoutId);
+            if (_pendingLocationDelete === pending) _pendingLocationDelete = null;
+            return true;
+        },
     };
+    pending.timeoutId = setTimeout(pending.commit, 6000);
+    _pendingLocationDelete = pending;
 
     const toast = document.createElement('div');
     toast.id = 'location-undo-toast';
@@ -1122,10 +1140,9 @@ function showLocationUndoToast(location, originalIndex) {
     requestAnimationFrame(() => toast.classList.add('app-toast--show'));
 
     toast.querySelector('.app-toast__undo')?.addEventListener('click', () => {
-        if (_pendingLocationDelete?.timeoutId) {
-            clearTimeout(_pendingLocationDelete.timeoutId);
-        }
-        _pendingLocationDelete = null;
+        // If the commit already fired (tap raced the 6s timer during the toast's
+        // exit animation), do NOT fake a successful undo — the doc is deleting.
+        if (!pending.cancel()) return;
         const insertAt = Math.min(originalIndex, cachedLocations.length);
         cachedLocations.splice(insertAt, 0, location);
         renderLocationManagementList();
