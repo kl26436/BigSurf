@@ -710,3 +710,26 @@
 .coach-msg-icon {
     margin-right: var(--space-6);
 }
+
+/* Feedback thumbs (7.3) — quiet, right-aligned, after streaming completes. */
+.coach-feedback {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+}
+.coach-feedback__btn {
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+}
+.coach-feedback__btn:active { color: var(--primary); }
+.coach-feedback__done {
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+}

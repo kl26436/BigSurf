@@ -116,8 +116,8 @@ describe('TOOL_DEFINITIONS', () => {
         expect(names).toEqual([
             'archive_template', 'create_workout_template', 'forget_fact',
             'get_exercise_history', 'get_prs', 'get_week_plan', 'list_templates',
-            'propose_session_adjustments', 'remember_fact', 'set_week_plan',
-            'update_workout_template',
+            'log_advice', 'propose_session_adjustments', 'remember_fact',
+            'set_week_plan', 'update_workout_template',
         ]);
         for (const t of TOOL_DEFINITIONS) {
             expect(t.description.length).toBeGreaterThan(20);

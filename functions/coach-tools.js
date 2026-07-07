@@ -64,6 +64,20 @@ const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'log_advice',
+        description: 'Silently log a concrete, CHECKABLE recommendation you just gave (one call per recommendation) so future conversations can reference whether it worked. Not user-visible. Never log vague advice.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                type: { type: 'string', description: "'weight_target' | 'deload' | 'volume_change' | 'exercise_swap' | 'technique'" },
+                exercise: { type: 'string', description: 'Exercise it applies to, when specific' },
+                detail: { type: 'string', description: 'One-line summary of the recommendation' },
+                targetValue: { description: 'The checkable value: target weight (number) or swap-to exercise name (string)' },
+            },
+            required: ['type', 'detail'],
+        },
+    },
+    {
         name: 'archive_template',
         description: "Archive a saved workout (non-destructive — hidden from the library's main list, the workout selector, and coach context; unarchivable in the app). Only when the user asks to clean up or approves a cleanup suggestion — never spontaneously.",
         input_schema: {
@@ -313,7 +327,7 @@ function applyTemplateChanges(template, changes) {
 
 // ── Firestore executors (Admin SDK, scoped to users/{userId}) ───────
 
-function makeToolExecutors({ db, userId }) {
+function makeToolExecutors({ db, userId, source = 'chat' }) {
     const userDoc = () => db.collection('users').doc(userId);
 
     return {
@@ -372,6 +386,27 @@ function makeToolExecutors({ db, userId }) {
                 };
             });
             return { templates, count: templates.length };
+        },
+
+        async log_advice(input) {
+            const VALID_TYPES = ['weight_target', 'deload', 'volume_change', 'exercise_swap', 'technique'];
+            const type = String(input?.type || '').trim();
+            const detail = clip(input?.detail, 200);
+            if (!VALID_TYPES.includes(type)) return { error: `type must be one of: ${VALID_TYPES.join(', ')}` };
+            if (!detail) return { error: 'detail is required' };
+            const doc = {
+                date: new Date().toISOString().slice(0, 10),
+                type,
+                detail,
+                source,
+                createdAt: new Date().toISOString(),
+            };
+            if (typeof input?.exercise === 'string' && input.exercise.trim()) doc.exercise = clip(input.exercise, 80);
+            if (typeof input?.targetValue === 'number' || (typeof input?.targetValue === 'string' && input.targetValue.trim())) {
+                doc.targetValue = typeof input.targetValue === 'number' ? input.targetValue : clip(input.targetValue, 80);
+            }
+            await userDoc().collection('coachAdvice').add(doc);
+            return { result: { logged: true } };
         },
 
         async archive_template(input) {
@@ -697,9 +732,9 @@ function validateProposal(toolName, input) {
     }
 }
 
-// Tool set for live mode: fast reads + proposals. NO template writes and no
-// memory writes — those belong to the coach tab, not mid-set.
-const LIVE_TOOL_NAMES = ['get_exercise_history', 'get_prs'];
+// Tool set for live mode: fast reads + proposals (+ silent advice logging).
+// NO template writes and no memory writes — those belong to the coach tab.
+const LIVE_TOOL_NAMES = ['get_exercise_history', 'get_prs', 'log_advice'];
 function liveToolDefinitions() {
     return [
         ...TOOL_DEFINITIONS.filter(t => LIVE_TOOL_NAMES.includes(t.name)),

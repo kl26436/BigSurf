@@ -1054,6 +1054,7 @@ TOOLS — you can act in the app, not just talk:
 - get_week_plan / set_week_plan: the weekly schedule (day → saved workout, rest days). "Move legs to Friday" or "I can only train Mon/Wed/Fri" = pointer updates via set_week_plan (partial updates fine: pass only the days that change; "rest" marks a rest day, null clears) — no template gets edited or duplicated for scheduling. Check get_week_plan before answering "what should I do today/this week".
 - get_exercise_history / list_templates / get_prs: read tools — use them instead of guessing when the summary context isn't detailed enough.
 - remember_fact: when the user shares DURABLE information — injuries, goals, schedule, equipment quirks, preferences — store it (short, one sentence). Never store measurements the app already tracks. Use forget_fact when the user corrects or retracts something you remembered.
+- log_advice: whenever you give a concrete CHECKABLE recommendation (a weight target, a deload, a volume change, an exercise swap), silently log it — one call per recommendation. Your context shows what happened after past recommendations; reference that track record when relevant, as correlation not causation.
 - If a tool fails, say so briefly and give your best text answer instead — never claim an action succeeded when it didn't.`;
 
 // Live-mode addendum (Phase 6): the coach is IN the workout, speed + brevity.
@@ -1065,7 +1066,8 @@ LIVE MODE — you are mid-workout with the user, between sets:
 - Concrete suggestions go through proposal tools (propose_next_target / propose_swap / propose_add_exercise / propose_rest) — the app renders a card the user can Apply with one tap. Nothing you propose applies itself; still ground it and keep it singular.
 - Swaps must use equipment from the current gym's list. Never propose equipment that isn't there.
 - Pain or a tweak: NEVER coach through it. Propose a swap that unloads the area, or ending the session — and say why in one line.
-- get_exercise_history / get_prs are available when you need more than the live state shows.`;
+- get_exercise_history / get_prs are available when you need more than the live state shows.
+- log_advice: silently log concrete checkable recommendations (weight targets, swaps) — one call each.`;
 
 /**
  * One streamed Anthropic round: emits visible text deltas via `send`, and
@@ -1413,7 +1415,7 @@ exports.coachChatStream = onRequest({
             console.error('coach memory load failed (continuing without):', e);
         }
 
-        const executors = makeToolExecutors({ db, userId });
+        const executors = makeToolExecutors({ db, userId, source: isLive ? 'live' : 'chat' });
         let msgs = withPromptCaching(apiMessages);
         let fullText = '';
         const usage = { inputTokens: 0, outputTokens: 0 };
@@ -1457,7 +1459,8 @@ exports.coachChatStream = onRequest({
             if (toolUses.length === 0) break; // defensive — shouldn't happen
             const resultBlocks = [];
             for (const tu of toolUses) {
-                send({ type: 'status', text: TOOL_STATUS[tu.name] || 'Working…' });
+                // log_advice is deliberately silent — no status flicker.
+                if (tu.name !== 'log_advice') send({ type: 'status', text: TOOL_STATUS[tu.name] || 'Working…' });
                 let out;
                 try {
                     if (tu.name.startsWith('propose_')) {

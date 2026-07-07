@@ -15,6 +15,7 @@ import {
     setTypeMarker, templatesChangedNote,
 } from './coach-context.js';
 import { summarizeWeekPlan } from './week-plan.js';
+import { buildOutcomesContext, buildFeedbackContext } from './coach-outcomes.js';
 
 /**
  * Iterate a workout's exercises with `name` resolved from the workout-level
@@ -334,7 +335,26 @@ export async function askCoach(question) {
             prList = PRTracker.getAllPRs?.() || [];
         } catch (e) { debugLog('coach: PRs unavailable', e); }
 
-        const context = buildTrainingContext(allWorkouts, healthSummary, prList);
+        // Track record (Phase 7): what actually happened after past advice,
+        // plus style feedback from thumbed answers. Non-fatal if unavailable.
+        let outcomesBlock = '';
+        let feedbackBlock = '';
+        try {
+            const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
+            const uid = AppState.currentUser.uid;
+            const [advSnap, histSnap] = await Promise.all([
+                getDocs(query(collection(db, 'users', uid, 'coachAdvice'), orderBy('date', 'desc'), limit(25))),
+                getDocs(query(collection(db, 'users', uid, 'coachHistory'), orderBy('timestamp', 'desc'), limit(10))),
+            ]);
+            const advice = advSnap.docs.map(d => d.data());
+            outcomesBlock = buildOutcomesContext(advice, allWorkouts, AppState.getTodayDateString());
+            const recentFeedback = histSnap.docs.flatMap(d => Object.values(d.data().feedback || {}));
+            feedbackBlock = buildFeedbackContext(recentFeedback);
+        } catch (e) { debugLog('coach: outcomes unavailable', e); }
+
+        const context = buildTrainingContext(allWorkouts, healthSummary, prList)
+            + (outcomesBlock ? `\n${outcomesBlock}` : '')
+            + (feedbackBlock ? `\n${feedbackBlock}` : '');
 
         // Append the user's turn to the running conversation. The first user
         // turn gets the training context prepended so Claude grounds its
@@ -357,6 +377,7 @@ export async function askCoach(question) {
         // Streaming first (first words in ~2s), falling back to the buffered
         // callable so the coach is never LESS reliable than it was.
         let recommendation = await streamCoachResponse(question.trim(), loadingBubble);
+        const streamed = recommendation != null;
 
         if (recommendation == null) {
             // Fallback: the legacy buffered callable. Reset the bubble to a
@@ -387,6 +408,12 @@ export async function askCoach(question) {
         // History is saved SERVER-side on both paths (the old extra client-side
         // save produced duplicate coachHistory docs).
         _coachConversation.push({ role: 'assistant', content: recommendation });
+
+        // Thumbs (7.3) — only on the streaming path (the thread doc exists
+        // under _coachThreadId there; the callable fallback has no doc id).
+        if (streamed && loadingBubble && _coachThreadId) {
+            attachFeedbackRow(loadingBubble, _coachThreadId, _coachConversation.length - 1);
+        }
 
     } catch (error) {
         console.error('AI Coach error:', error);
@@ -549,6 +576,32 @@ function handleCoachActionCard(card, streamingBubble) {
             clearSelectorCache?.();
         } catch (e) { debugLog('coach: workoutPlans refresh failed', e); }
     })();
+}
+
+// ===================================================================
+// FEEDBACK (7.3) — thumbs on answers, stored on the thread doc
+// ===================================================================
+
+function attachFeedbackRow(bubble, threadId, turnIdx) {
+    const row = document.createElement('div');
+    row.className = 'coach-feedback';
+    row.innerHTML = `
+        <button class="coach-feedback__btn" onclick="rateCoachAnswer(this, '${escapeAttr(threadId)}', ${turnIdx}, 'up')" aria-label="Good answer"><i class="far fa-thumbs-up"></i></button>
+        <button class="coach-feedback__btn" onclick="rateCoachAnswer(this, '${escapeAttr(threadId)}', ${turnIdx}, 'down')" aria-label="Not helpful"><i class="far fa-thumbs-down"></i></button>
+    `;
+    bubble.appendChild(row);
+}
+
+export async function rateCoachAnswer(btn, threadId, turnIdx, val) {
+    const row = btn.closest('.coach-feedback');
+    if (row) row.innerHTML = `<span class="coach-feedback__done">${val === 'up' ? 'Glad it helped' : 'Noted'}</span>`;
+    try {
+        const { db, doc, setDoc } = await import('../data/firebase-config.js');
+        await setDoc(doc(db, 'users', AppState.currentUser.uid, 'coachHistory', threadId),
+            { feedback: { [turnIdx]: val } }, { merge: true });
+    } catch (e) {
+        debugLog('coach feedback save failed:', e);
+    }
 }
 
 // ===================================================================
@@ -1425,4 +1478,5 @@ function truncate(str, len) {
 window.confirmRegenerateWorkout = confirmRegenerateWorkout;
 window.applySessionAdjustments = applySessionAdjustments;
 window.dismissSessionAdjustments = dismissSessionAdjustments;
+window.rateCoachAnswer = rateCoachAnswer;
 
