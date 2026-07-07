@@ -559,8 +559,9 @@
     gap: var(--space-8);
 }
 .location-item-actions button {
-    width: var(--tap-sm);
-    height: var(--tap-sm);
+    /* Rename/delete on a real data record — full 44px targets, not 36. */
+    width: var(--tap);
+    height: var(--tap);
     background: var(--bg-card-hi);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);

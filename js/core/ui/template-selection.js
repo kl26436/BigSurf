@@ -839,9 +839,11 @@ function renderSingleTemplateRow(template) {
                 ${renderCompatBadge(templateId)}
             </div>
             <i class="fas fa-chevron-right template-row__chev" aria-hidden="true"></i>
-            <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
-                <i class="fas fa-play"></i>
-            </button>
+            <div class="template-row__start">
+                <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
+                    <i class="fas fa-play"></i>
+                </button>
+            </div>
         </div>
     `;
 }

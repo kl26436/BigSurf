@@ -50,7 +50,8 @@
     justify-content: center;
     gap: 3px;
     color: var(--text-muted);
-    font-size: var(--font-2xs);
+    /* The app's most-used control shouldn't have its smallest text. */
+    font-size: var(--font-xs);
     background: none;
     border: none;
     min-height: var(--tap);

@@ -179,7 +179,8 @@
     background: transparent;
     border: none;
     color: var(--primary);
-    font-size: 0.76rem;
+    min-height: var(--tap);
+    font-size: var(--font-xs);
     font-weight: 600;
     cursor: pointer;
 }

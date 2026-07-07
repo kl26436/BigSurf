@@ -1,7 +1,7 @@
 // Metric Detail UI — drill-down detail views for tappable metric cards
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml } from './ui-helpers.js';
+import { escapeHtml, displayWeight } from './ui-helpers.js';
 import { navigateTo } from './navigation.js';
 import { formatRelativeDate as formatRelativeDateShared } from '../utils/date-helpers.js';
 
@@ -12,6 +12,16 @@ import {
     formatNumber, formatVolume, capitalize, BP_TO_CAT,
 } from '../features/metrics/aggregators.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
+
+// Volumes and estimated 1RMs are computed in lbs by the aggregators; the
+// body-weight path in this file already converts for display — these two
+// helpers give the volume/strength paths the same honesty for kg users.
+function toUserWeight(lbsValue) {
+    return displayWeight(lbsValue || 0, 'lbs', AppState.globalUnit || 'lbs').value;
+}
+function userWeightUnit() {
+    return (AppState.globalUnit || 'lbs') === 'kg' ? 'kg' : 'lb';
+}
 import { chartLine } from '../features/charts/chart-line.js';
 import { chartAreaStacked } from '../features/charts/chart-area-stacked.js';
 import { chartDonut } from '../features/charts/chart-donut.js';
@@ -214,7 +224,7 @@ async function renderVolumeBodyPartDetail(container, range) {
                         <div class="detail-row__sub">${sessions} sessions · ${sets} sets</div>
                     </div>
                     <div class="detail-row__right">
-                        <div class="detail-row__val">${formatVolume(cur[part] || 0)} lb</div>
+                        <div class="detail-row__val">${formatVolume(toUserWeight(cur[part] || 0))} ${userWeightUnit()}</div>
                         ${partDelta != null ? `<div class="detail-row__delta delta-${partDelta >= 0 ? 'up' : 'down'}">${partDelta >= 0 ? '↑' : '↓'} ${Math.abs(partDelta)}%</div>` : ''}
                     </div>
                 </div>
@@ -225,7 +235,7 @@ async function renderVolumeBodyPartDetail(container, range) {
             title: 'Volume by Body Part',
             range,
             hero: `
-                <div class="detail-hero__num">${formatNumber(total)}<span class="detail-hero__unit">lb</span></div>
+                <div class="detail-hero__num">${formatNumber(toUserWeight(total))}<span class="detail-hero__unit">${userWeightUnit()}</span></div>
                 ${deltaPct != null ? `<div class="detail-hero__delta delta-${deltaPct >= 0 ? 'up' : 'down'}">${deltaPct >= 0 ? '↑' : '↓'} ${Math.abs(deltaPct)}% vs previous ${rangeLabel(range)}</div>` : ''}
             `,
             chart: chartAreaStacked({ series, width: 300, height: 140 }),
@@ -254,8 +264,9 @@ async function renderStrengthDetail(container, range) {
         const liftRows = bigLifts.map(lift => {
             const series = aggregate1RMSeries(workouts, lift, bounds);
             const points = series.map((p, i) => ({ x: i, y: Math.round(p.oneRM) }));
-            const latest = series.length > 0 ? Math.round(series[series.length - 1].oneRM) : 0;
-            const first = series.length > 1 ? Math.round(series[0].oneRM) : latest;
+            // Convert BEFORE the delta so both numbers live in the user's unit.
+            const latest = series.length > 0 ? Math.round(toUserWeight(series[series.length - 1].oneRM)) : 0;
+            const first = series.length > 1 ? Math.round(toUserWeight(series[0].oneRM)) : latest;
             const delta = latest - first;
 
             return `
@@ -266,8 +277,8 @@ async function renderStrengthDetail(container, range) {
                         <div class="detail-row__sub">${series.length} sessions</div>
                     </div>
                     <div class="detail-row__right">
-                        <div class="detail-row__val">${latest} lb</div>
-                        ${delta !== 0 ? `<div class="detail-row__delta delta-${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)} lb</div>` : ''}
+                        <div class="detail-row__val">${latest} ${userWeightUnit()}</div>
+                        ${delta !== 0 ? `<div class="detail-row__delta delta-${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)} ${userWeightUnit()}</div>` : ''}
                     </div>
                 </div>
             `;
@@ -277,18 +288,18 @@ async function renderStrengthDetail(container, range) {
         let totalCurrent = 0;
         for (const lift of bigLifts) {
             const series = aggregate1RMSeries(workouts, lift, bounds);
-            if (series.length > 0) totalCurrent += Math.round(series[series.length - 1].oneRM);
+            if (series.length > 0) totalCurrent += Math.round(toUserWeight(series[series.length - 1].oneRM));
         }
 
         container.innerHTML = renderDetailLayout({
             title: 'Strength · Top Lifts',
             range,
             hero: `
-                <div class="detail-hero__num">${formatNumber(totalCurrent)}<span class="detail-hero__unit">lb combined</span></div>
+                <div class="detail-hero__num">${formatNumber(totalCurrent)}<span class="detail-hero__unit">${userWeightUnit()} combined</span></div>
                 <div class="md-hero-meta">Estimated 1RM · Epley formula</div>
             `,
             chart: '<div class="md-chart-placeholder">Per-lift trends below</div>',
-            insight: totalCurrent > 0 ? `Your combined estimated 1RM across the big 4 lifts is <strong>${formatNumber(totalCurrent)} lb</strong>.` : '',
+            insight: totalCurrent > 0 ? `Your combined estimated 1RM across the big 4 lifts is <strong>${formatNumber(totalCurrent)} ${userWeightUnit()}</strong>.` : '',
             breakdown: liftRows || mdEmptyRange('No compound lift data in this range.', range),
         });
     } catch (error) {

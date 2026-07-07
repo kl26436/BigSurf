@@ -43,9 +43,10 @@ export const Config = {
     DELOAD_CONSECUTIVE_WEEKS: 4, // Consecutive hard weeks before suggesting deload
     INSIGHTS_MIN_WORKOUTS: 3,   // Minimum workouts needed to show insights
     COACH_RATE_LIMIT_HOURS: 24, // Hours between AI coach calls
-    // 2nd-gen streaming coach endpoint (SSE). The v1 callable
-    // getTrainingRecommendation remains the fallback path.
-    COACH_STREAM_URL: 'https://us-central1-workout-tracker-b94b6.cloudfunctions.net/coachChatStream',
+    // 2nd-gen streaming coach endpoint (SSE) — canonical Cloud Run URL printed
+    // by the functions deploy. The v1 callable getTrainingRecommendation
+    // remains the fallback path.
+    COACH_STREAM_URL: 'https://coachchatstream-z6lvqykira-uc.a.run.app',
 };
 
 // Consistent category icons used across all screens (FA 6.0.0 compatible)

@@ -22,7 +22,7 @@ export const AppState = {
     globalUnit: 'lbs',
     exerciseUnits: {},
     focusedExerciseIndex: null,
-    dashboardRange: 'W',
+    dashboardRange: 'M', // matches DEFAULT_RANGE + the settings default; loadUserSettings overrides
     activeMetricDetail: null,
 
     // Bodyweight tracking — resolved once per session via ensureFreshBodyWeight()
