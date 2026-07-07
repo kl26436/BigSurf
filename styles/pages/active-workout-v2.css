@@ -24,7 +24,7 @@
     top: 0;
     z-index: var(--z-sticky);
 }
-.aw-back, .aw-menu {
+.aw-back, .aw-menu, .aw-coach {
     width: 32px; height: 32px;
     border-radius: 50%;
     border: none;
@@ -35,6 +35,8 @@
 }
 .aw-back { background: var(--bg-card); color: var(--text-main); }
 .aw-menu { background: transparent; color: var(--text-muted); }
+/* Live coach entry (Phase 6) — primary-tinted so it reads as a feature, not chrome. */
+.aw-coach { background: var(--primary-bg); color: var(--primary); }
 .aw-title { flex: 1; text-align: center; min-width: 0; }
 /* The workout name is the header hero — mid-set you care what you're doing,
    not the running clock. Dominant weight; the timer is a calm subtitle below. */

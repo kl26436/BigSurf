@@ -170,6 +170,92 @@
 /* Weekly reviews stand out in the past-sessions list. */
 .coach-history-review-icon { color: var(--primary); }
 
+/* ── Live in-workout coach sheet (Phase 6) ─────────────────────────── */
+.live-coach__body {
+    display: flex;
+    flex-direction: column;
+    max-height: 42dvh;
+    min-height: 120px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.live-coach__hint {
+    padding: var(--space-16);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+}
+.live-coach__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+    padding: var(--space-8) 0;
+}
+.live-coach__inputbar {
+    display: flex;
+    gap: var(--space-8);
+    align-items: center;
+    padding-top: var(--space-8);
+}
+.live-coach__inputbar .field-input { flex: 1; }
+.live-coach__send {
+    width: var(--tap);
+    height: var(--tap);
+    flex-shrink: 0;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: var(--primary);
+    color: var(--bg-app);
+    font-size: var(--font-sm);
+    cursor: pointer;
+}
+.live-coach__send:active { opacity: 0.8; }
+
+/* Proposal card — the coach suggests, the USER applies. */
+.live-proposal {
+    align-self: stretch;
+    margin: var(--space-4) 0;
+    padding: var(--space-12);
+    background: var(--primary-bg-subtle);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+}
+.live-proposal__title {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.live-proposal__why {
+    margin-top: 2px;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.live-proposal__actions {
+    display: flex;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
+}
+.live-proposal__apply {
+    flex: 1;
+    min-height: var(--tap-sm);
+    border: none;
+    border-radius: var(--radius-pill);
+    background: var(--primary);
+    color: var(--bg-app);
+    font-size: var(--font-xs);
+    font-weight: 700;
+    cursor: pointer;
+}
+.live-proposal__dismiss {
+    min-height: var(--tap-sm);
+    padding: 0 var(--space-12);
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    cursor: pointer;
+}
+
 /* Input bar pinned at bottom (spec §8: .coach-input-bar + __send) */
 .coach-input-bar {
     position: sticky;

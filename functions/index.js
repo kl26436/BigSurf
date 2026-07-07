@@ -20,14 +20,18 @@ const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
 const https = require('https');
-const { TOOL_DEFINITIONS, TOOL_STATUS, makeToolExecutors } = require('./coach-tools');
+const {
+    TOOL_DEFINITIONS, TOOL_STATUS, makeToolExecutors,
+    validateProposal, liveToolDefinitions,
+} = require('./coach-tools');
 
 // ── Model routing ────────────────────────────────────────────────────
 // Coach chat + template building + DEXA extraction use the flagship model
 // (quality is the product). High-volume/digest paths (weekly review) use the
 // cheaper model. Centralized so switching is a one-line change.
 const COACH_MODEL = 'claude-opus-4-8';
-const DIGEST_MODEL = 'claude-sonnet-5'; // reserved for scheduled digests
+const DIGEST_MODEL = 'claude-sonnet-5'; // scheduled digests (weekly review)
+const LIVE_COACH_MODEL = 'claude-sonnet-5'; // mid-workout: speed IS the feature
 
 // Withings API secrets (stored via: firebase functions:secrets:set)
 const withingsClientId = defineSecret('WITHINGS_CLIENT_ID');
@@ -1047,6 +1051,17 @@ TOOLS — you can act in the app, not just talk:
 - remember_fact: when the user shares DURABLE information — injuries, goals, schedule, equipment quirks, preferences — store it (short, one sentence). Never store measurements the app already tracks. Use forget_fact when the user corrects or retracts something you remembered.
 - If a tool fails, say so briefly and give your best text answer instead — never claim an action succeeded when it didn't.`;
 
+// Live-mode addendum (Phase 6): the coach is IN the workout, speed + brevity.
+const LIVE_COACH_PROMPT = `
+
+LIVE MODE — you are mid-workout with the user, between sets:
+- Answer in 1-3 short sentences. One concrete prescription beats three options.
+- The live workout state (gym, equipment there, sets just logged) is in the first message — ground every answer in it.
+- Concrete suggestions go through proposal tools (propose_next_target / propose_swap / propose_add_exercise / propose_rest) — the app renders a card the user can Apply with one tap. Nothing you propose applies itself; still ground it and keep it singular.
+- Swaps must use equipment from the current gym's list. Never propose equipment that isn't there.
+- Pain or a tweak: NEVER coach through it. Propose a swap that unloads the area, or ending the session — and say why in one line.
+- get_exercise_history / get_prs are available when you need more than the live state shows.`;
+
 /**
  * One streamed Anthropic round: emits visible text deltas via `send`, and
  * reconstructs the FULL content-block list (text, thinking + signature,
@@ -1338,8 +1353,12 @@ exports.coachChatStream = onRequest({
         return;
     }
 
+    const isLive = req.body?.mode === 'live';
     try {
-        await enforceAiDailyLimit(userId, 'coach', 10);
+        // Live mode gets its own generous cap (cheap model, short answers — a
+        // set-by-set conversation is many small turns).
+        if (isLive) await enforceAiDailyLimit(userId, 'coachLive', 30);
+        else await enforceAiDailyLimit(userId, 'coach', 10);
     } catch (e) {
         res.status(429).json({ error: 'resource-exhausted', message: 'Daily coach limit reached — try again tomorrow.' });
         return;
@@ -1395,15 +1414,29 @@ exports.coachChatStream = onRequest({
         const usage = { inputTokens: 0, outputTokens: 0 };
         const actionCards = [];
 
-        for (let round = 0; round < 6; round++) {
-            const roundResult = await anthropicStreamRound(apiKey, {
+        // Mode knobs: the coach tab gets the flagship model + deep thinking;
+        // live mode trades depth for time-to-first-token (Sonnet, no extended
+        // thinking, short answers, proposal tools instead of template writes).
+        const modeRequest = isLive
+            ? {
+                model: LIVE_COACH_MODEL,
+                max_tokens: 1500,
+                system: [{ type: 'text', text: TRAINING_SCIENCE_PROMPT + LIVE_COACH_PROMPT + memoryBlock, cache_control: { type: 'ephemeral' } }],
+                tools: liveToolDefinitions(),
+            }
+            : {
                 model: COACH_MODEL,
                 max_tokens: 16000,
                 thinking: { type: 'adaptive' },
                 output_config: { effort: 'xhigh' },
-                stream: true,
                 system: [{ type: 'text', text: TRAINING_SCIENCE_PROMPT + COACH_TOOLS_PROMPT + memoryBlock, cache_control: { type: 'ephemeral' } }],
                 tools: TOOL_DEFINITIONS,
+            };
+
+        for (let round = 0; round < 6; round++) {
+            const roundResult = await anthropicStreamRound(apiKey, {
+                ...modeRequest,
+                stream: true,
                 messages: msgs,
             }, send, fullText.length > 0);
 
@@ -1422,9 +1455,23 @@ exports.coachChatStream = onRequest({
                 send({ type: 'status', text: TOOL_STATUS[tu.name] || 'Working…' });
                 let out;
                 try {
-                    out = executors[tu.name]
-                        ? await executors[tu.name](tu.input)
-                        : { error: `Unknown tool: ${tu.name}` };
+                    if (tu.name.startsWith('propose_')) {
+                        // Proposals: validate + echo, ZERO I/O — the client
+                        // applies them only on a user tap (the active workout
+                        // is client-owned state; a server write would race
+                        // the debounced auto-save).
+                        const v = validateProposal(tu.name, tu.input);
+                        if (v.ok) {
+                            send({ type: 'proposal', proposal: v.proposal });
+                            out = { result: { proposed: true, proposal: v.proposal } };
+                        } else {
+                            out = { error: v.error };
+                        }
+                    } else {
+                        out = executors[tu.name]
+                            ? await executors[tu.name](tu.input)
+                            : { error: `Unknown tool: ${tu.name}` };
+                    }
                 } catch (e) {
                     console.error(`❌ coach tool ${tu.name} failed:`, e);
                     out = { error: 'Tool failed — tell the user the action could not be completed.' };
@@ -1447,6 +1494,14 @@ exports.coachChatStream = onRequest({
         }
 
         // History — same doc shape the callable writes.
+        // Live threads are ephemeral session talk — not saved to coachHistory.
+        if (isLive) {
+            console.log(`✅ Live coach for ${userId} (${usage.inputTokens} in, ${usage.outputTokens} out)`);
+            send({ type: 'done', fullText, usage });
+            res.end();
+            return;
+        }
+
         const lastUserMsg = [...apiMessages].reverse().find(m => m.role === 'user');
         const historyDoc = {
             question: question || (typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : ''),

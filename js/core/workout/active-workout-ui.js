@@ -209,6 +209,10 @@ function renderWorkoutHeader() {
                 <div class="aw-title__elapsed">${elapsed}</div>
                 ${exerciseCount > 0 ? `<div class="aw-title__meta">Exercise ${currentExerciseIdx + 1}/${exerciseCount}</div>` : ''}
             </div>
+            ${Config.LIVE_COACH_ENABLED ? `
+            <button class="aw-coach" onclick="openLiveCoach()" aria-label="Ask your coach" title="Ask your coach">
+                <i class="fas fa-robot"></i>
+            </button>` : ''}
             <button class="aw-menu" onclick="awToggleWorkoutMenu()" aria-label="Workout options">
                 <i class="fas fa-ellipsis-v"></i>
             </button>
@@ -331,6 +335,11 @@ function restBannerDoneInner() {
 
 function startRestTimer(duration) {
     clearRestTimer();
+    // One-shot override from an applied live-coach rest proposal (Phase 6).
+    if (AppState._nextRestOverride) {
+        duration = AppState._nextRestOverride;
+        AppState._nextRestOverride = null;
+    }
     restTimerDuration = duration || Config.DEFAULT_REST_TIMER_SECONDS;
     restTimerEndsAt = Date.now() + restTimerDuration * 1000;
     restTimerRemaining = restTimerDuration;

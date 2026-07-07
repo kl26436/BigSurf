@@ -432,6 +432,126 @@ function makeToolExecutors({ db, userId }) {
     };
 }
 
+// ── Live-mode proposal tools (Phase 6) ──────────────────────────────
+// The active workout is CLIENT-owned state (auto-saved, debounced) — a server
+// write would race it and lose data. So live write-tools produce PROPOSALS:
+// validated, echoed to the stream, applied client-side only on a user tap.
+
+const LIVE_PROPOSAL_TOOLS = [
+    {
+        name: 'propose_next_target',
+        description: "Propose weight/reps for the user's next set of an exercise. Renders as a card with an Apply button — never applies itself.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                exercise: { type: 'string' },
+                weight: { type: 'number', description: "In the user's display unit" },
+                reps: { type: 'number' },
+                why: { type: 'string', description: 'One short clause, e.g. "last set was a clean 8 at 145"' },
+            },
+            required: ['exercise'],
+        },
+    },
+    {
+        name: 'propose_swap',
+        description: 'Propose swapping an exercise for another (machine taken, pain, equipment missing). MUST pick equipment that exists at the current gym (it is in the live context).',
+        input_schema: {
+            type: 'object',
+            properties: {
+                fromExercise: { type: 'string' },
+                toExercise: { type: 'string' },
+                equipment: { type: 'string', description: 'Equipment name from the current gym list' },
+                why: { type: 'string' },
+            },
+            required: ['fromExercise', 'toExercise'],
+        },
+    },
+    {
+        name: 'propose_add_exercise',
+        description: 'Propose adding one exercise to the current session.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                exercise: { type: 'string' },
+                sets: { type: 'number' },
+                reps: { type: 'number' },
+                weight: { type: 'number' },
+                why: { type: 'string' },
+            },
+            required: ['exercise'],
+        },
+    },
+    {
+        name: 'propose_rest',
+        description: 'Propose a different rest duration before the next set (e.g. longer before a heavy top set).',
+        input_schema: {
+            type: 'object',
+            properties: {
+                seconds: { type: 'number' },
+                why: { type: 'string' },
+            },
+            required: ['seconds'],
+        },
+    },
+];
+
+const clip = (s, n) => String(s || '').trim().slice(0, n);
+
+/**
+ * Validate a live proposal's input. Pure. Returns
+ * {ok:true, proposal:{kind,…}} or {ok:false, error}.
+ */
+function validateProposal(toolName, input) {
+    const why = clip(input?.why, 140);
+    switch (toolName) {
+        case 'propose_next_target': {
+            const exercise = clip(input?.exercise, 80);
+            if (!exercise) return { ok: false, error: 'exercise is required' };
+            const weight = typeof input?.weight === 'number' && input.weight >= 0 && input.weight < 2000 ? input.weight : null;
+            const reps = intIn(input?.reps, 1, 50, null);
+            if (weight == null && reps == null) return { ok: false, error: 'weight or reps required' };
+            return { ok: true, proposal: { kind: 'next_target', exercise, weight, reps, why } };
+        }
+        case 'propose_swap': {
+            const fromExercise = clip(input?.fromExercise, 80);
+            const toExercise = clip(input?.toExercise, 80);
+            if (!fromExercise || !toExercise) return { ok: false, error: 'fromExercise and toExercise are required' };
+            return { ok: true, proposal: { kind: 'swap', fromExercise, toExercise, equipment: clip(input?.equipment, 80) || null, why } };
+        }
+        case 'propose_add_exercise': {
+            const exercise = clip(input?.exercise, 80);
+            if (!exercise) return { ok: false, error: 'exercise is required' };
+            const weight = typeof input?.weight === 'number' && input.weight >= 0 && input.weight < 2000 ? input.weight : null;
+            return {
+                ok: true,
+                proposal: {
+                    kind: 'add_exercise', exercise,
+                    sets: intIn(input?.sets, 1, 10, 3),
+                    reps: intIn(input?.reps, 1, 50, 10),
+                    weight, why,
+                },
+            };
+        }
+        case 'propose_rest': {
+            const seconds = intIn(input?.seconds, 15, 600, null);
+            if (seconds == null) return { ok: false, error: 'seconds must be 15-600' };
+            return { ok: true, proposal: { kind: 'rest', seconds, why } };
+        }
+        default:
+            return { ok: false, error: `Unknown proposal tool: ${toolName}` };
+    }
+}
+
+// Tool set for live mode: fast reads + proposals. NO template writes and no
+// memory writes — those belong to the coach tab, not mid-set.
+const LIVE_TOOL_NAMES = ['get_exercise_history', 'get_prs'];
+function liveToolDefinitions() {
+    return [
+        ...TOOL_DEFINITIONS.filter(t => LIVE_TOOL_NAMES.includes(t.name)),
+        ...LIVE_PROPOSAL_TOOLS,
+    ];
+}
+
 // Human-readable status line shown in chat while each tool runs.
 const TOOL_STATUS = {
     get_exercise_history: 'Reading your history…',
@@ -450,4 +570,7 @@ module.exports = {
     applyTemplateChanges,
     normalizeExercise,
     makeToolExecutors,
+    validateProposal,
+    liveToolDefinitions,
+    LIVE_PROPOSAL_TOOLS,
 };

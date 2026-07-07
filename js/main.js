@@ -11,6 +11,7 @@ import { confirmSheet } from './core/ui/confirm-sheet.js';
 import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal, completeOnboarding, restartOnboarding, rebuildPRsFromSettings, confirmDeleteAllData, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, selectProfileExperience, closeProfileExperiencePicker, closeProfile, editBodyWeightGoal, notifDiagEnable, notifDiagTest, editCoachInjuries, editCoachNotes } from './core/ui/settings-ui.js';
 import { exportWorkoutData, exportDataForAI } from './core/data/data-manager.js';
 import { dismissFirstUseTip } from './core/features/first-use-tips.js';
+import { openLiveCoach } from './core/features/coach-live.js';
 import {
     openEquipmentLibrary, openEquipmentDetail, backToEquipmentList,
     filterEquipmentByLocation, filterEquipmentBySearch,
@@ -863,6 +864,8 @@ window.selectProfileExperience = selectProfileExperience;
 window.closeProfileExperiencePicker = closeProfileExperiencePicker;
 window.closeProfile = closeProfile;
 window.dismissFirstUseTip = dismissFirstUseTip;
+// Live in-workout coach (Phase 6) — button renders in active-workout's header.
+window.openLiveCoach = openLiveCoach;
 
 // Body Measurements (Phase 12)
 window.showWeightEntryModal = showWeightEntryModal;

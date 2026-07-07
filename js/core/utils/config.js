@@ -47,6 +47,9 @@ export const Config = {
     // by the functions deploy. The v1 callable getTrainingRecommendation
     // remains the fallback path.
     COACH_STREAM_URL: 'https://coachchatstream-z6lvqykira-uc.a.run.app',
+    // Kill switch for the in-workout live coach (Phase 6) — a misbehaving
+    // feature can be disabled by deploy without reverting code.
+    LIVE_COACH_ENABLED: true,
 };
 
 // Consistent category icons used across all screens (FA 6.0.0 compatible)
