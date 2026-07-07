@@ -141,6 +141,14 @@ function installKeyboardAwareFocusHandler() {
     });
 }
 
+// Rate-limit the keyboard-occlusion detector to once per 5 minutes. Was
+// firing on every set-input focus during a workout (14+ hits in one 7/7
+// session), each of which is a Firestore write that piled up on the
+// reconnecting channel after a backgrounding cycle. One report per session
+// is enough to diagnose the pattern; more is just spam that contributed
+// to the "app slows down" report.
+let _lastOcclusionLog = 0;
+
 async function scheduleKeyboardOcclusionCheck(input) {
     if (!input || !input.isConnected) return;
     if (document.activeElement !== input) return; // user moved on; not our problem
@@ -156,6 +164,11 @@ async function scheduleKeyboardOcclusionCheck(input) {
     // shrinks — the diff is the occluded distance.
     const overhang = Math.round(rect.bottom - vv.height);
     if (overhang <= 8) return;
+
+    // Rate-limit: 5 minutes between captures per session.
+    const now = Date.now();
+    if (now - _lastOcclusionLog < 5 * 60 * 1000) return;
+    _lastOcclusionLog = now;
 
     try {
         const { captureWarning } = await import('./utils/error-handler.js');
@@ -207,24 +220,45 @@ function installKeyboardInsetTracker() {
     if (typeof window === 'undefined' || !window.visualViewport) return;
     _keyboardInsetTrackerInstalled = true;
     const vv = window.visualViewport;
-    const update = () => {
+
+    // Compute + apply --kb-inset. Cheap; safe to fire on every viewport
+    // event. Kept separate from the (throttled) follow-up scroll so we
+    // don't accidentally miss inset updates when the scroll is skipped.
+    const updateInset = () => {
         const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
         document.documentElement.style.setProperty('--kb-inset', `${Math.round(inset)}px`);
-        // If the currently-focused input is now behind the keyboard, re-scroll
-        // it into view. The initial scrollIntoView at focusin+300ms fires
-        // BEFORE the iOS keyboard finishes animating up — computed against a
-        // full-height viewport, then the keyboard arrives and the input is
-        // stranded 20-30px below the fold. This runs whenever visualViewport
-        // resizes (i.e., every keyboard transition) so a late-arriving
-        // keyboard triggers a follow-up scroll. The 7/4 mid-set 29px overhang
-        // on active-workout was the same class of bug that scrollIntoView
-        // alone couldn't fix.
-        const el = document.activeElement;
-        if (!el || !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
-        const rect = el.getBoundingClientRect();
-        if (rect.bottom > vv.height - 8) {
-            try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { /* noop */ }
-        }
+    };
+
+    // If the focused input is now behind the keyboard, re-scroll it into
+    // view. Throttled by two guards:
+    //   1) rAF-coalesced so a burst of viewport events during keyboard
+    //      animation runs the check ONCE per frame, not per event.
+    //   2) A 500ms cooldown after each fire so we don't stack overlapping
+    //      smooth-scroll animations — those confuse the browser and were
+    //      the source of the 7/7 "screen slows down after backgrounding
+    //      and tapping a set" report.
+    let _followupScheduled = false;
+    let _lastFollowupAt = 0;
+    const scheduleFollowupScroll = () => {
+        if (_followupScheduled) return;
+        _followupScheduled = true;
+        requestAnimationFrame(() => {
+            _followupScheduled = false;
+            const now = Date.now();
+            if (now - _lastFollowupAt < 500) return;
+            const el = document.activeElement;
+            if (!el || !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+            const rect = el.getBoundingClientRect();
+            if (rect.bottom > vv.height - 8) {
+                _lastFollowupAt = now;
+                try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { /* noop */ }
+            }
+        });
+    };
+
+    const update = () => {
+        updateInset();
+        scheduleFollowupScroll();
     };
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
@@ -235,13 +269,19 @@ function installKeyboardInsetTracker() {
     // floating in the middle of the screen. These extra triggers force a
     // recompute at moments the app naturally comes back into focus so a
     // stranded value corrects itself within a few hundred ms.
-    document.addEventListener('focusout', () => setTimeout(update, 50));
+    //
+    // Only recompute the inset (cheap) — don't schedule a follow-up scroll
+    // on the self-heal paths. The 7/7 "app slows down after backgrounding
+    // and tapping a set" report was partly caused by visibilitychange
+    // firing a scrollIntoView on foreground, then again on the burst of
+    // visualViewport events during keyboard re-open.
+    document.addEventListener('focusout', () => setTimeout(updateInset, 50));
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') update();
+        if (document.visibilityState === 'visible') updateInset();
     });
-    window.addEventListener('focus', update);
-    window.addEventListener('pageshow', update);
-    update();
+    window.addEventListener('focus', updateInset);
+    window.addEventListener('pageshow', updateInset);
+    updateInset();
 }
 
 // ===================================================================

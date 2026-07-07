@@ -5,7 +5,18 @@
     max-width: 600px;
     margin: 0 auto;
     padding: var(--pad-page);
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    /* Reserve room for the bottom nav (80px) PLUS the on-screen keyboard
+       (var(--kb-inset)). Non-fixed-layout pages (dashboard, active workout,
+       history) rely on natural document scroll — without extending this
+       padding to cover the keyboard height, scrollIntoView on an input near
+       the bottom can't center the input because the document runs out of
+       scroll room. The 7/7 active-workout occlusion cluster (14+ detector
+       hits, up to 195px overhang on set-row inputs) was exactly this: the
+       user scrolled to the bottom, keyboard covered the last set, and the
+       browser had nowhere to scroll to. --kb-inset is 0 when no keyboard is
+       up, so this is a no-op in the common case. */
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px) + var(--kb-inset, 0px));
+    transition: padding-bottom 0.15s ease;
 }
 
 /* Header */
