@@ -37,6 +37,12 @@ const DEFAULT_SETTINGS = {
     plateBarLbs: 45,
     plateBarKg: 20,
 
+    // AI coach profile — grounds the coach's answers in who it's talking to.
+    // Experience deliberately reuses profileExperience (one source of truth).
+    coachGoal: null,      // 'cut' | 'bulk' | 'recomp' | 'strength' | 'general' | null
+    coachInjuries: null,  // free text — safety-critical, the coach must program around it
+    coachNotes: null,     // free text — schedule constraints, preferences
+
     // Profile (user can override Firebase auth displayName; other fields are opt-in)
     profileName: null,       // override display name; null = use Firebase auth
     profileHeightCm: null,   // number (cm); convert display per unit pref
@@ -296,6 +302,40 @@ export function renderSettings() {
                         <div class="srow-desc">Use GPS to match saved locations</div>
                     </div>
                     ${toggleBtn('autoDetectLocation', s.autoDetectLocation !== false)}
+                </div>
+            </div>
+
+            <!-- AI coach profile -->
+            <div class="group-label">AI coach profile</div>
+            <div class="group">
+                <div class="srow srow--stack">
+                    <div class="srow-info">
+                        <div class="srow-name">Goal</div>
+                        <div class="srow-desc">Frames every recommendation the coach makes</div>
+                    </div>
+                    ${segmented('coachGoal', [
+                        { value: 'cut', label: 'Cut' },
+                        { value: 'bulk', label: 'Bulk' },
+                        { value: 'recomp', label: 'Recomp' },
+                        { value: 'strength', label: 'Strength' },
+                        { value: 'general', label: 'General' },
+                    ], s.coachGoal)}
+                </div>
+                <div class="srow srow--clickable" onclick="editCoachInjuries()">
+                    <div class="srow-icon ic-warning"><i class="fas fa-band-aid"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Injuries or limitations</div>
+                        <div class="srow-desc">${escapeHtml(s.coachInjuries || 'None listed — the coach programs around these')}</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
+                <div class="srow srow--clickable" onclick="editCoachNotes()">
+                    <div class="srow-icon ic-blue"><i class="fas fa-sticky-note"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Coach notes</div>
+                        <div class="srow-desc">${escapeHtml(s.coachNotes || 'Schedule, preferences — anything the coach should know')}</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
                 </div>
             </div>
 
@@ -773,6 +813,36 @@ function formatBirthday(iso) {
 }
 
 /** Prompt-based editors for each profile field. */
+export async function editCoachInjuries() {
+    const s = AppState.settings || DEFAULT_SETTINGS;
+    const next = await promptSheet({
+        title: 'Injuries or limitations',
+        message: 'The coach never programs exercises that load these without flagging it.',
+        initialValue: s.coachInjuries || '',
+        placeholder: 'e.g. bad left shoulder, no deep squats',
+        confirmLabel: 'Save',
+    });
+    if (next != null) {
+        updateSetting('coachInjuries', next.trim() || null);
+        renderSettings();
+    }
+}
+
+export async function editCoachNotes() {
+    const s = AppState.settings || DEFAULT_SETTINGS;
+    const next = await promptSheet({
+        title: 'Coach notes',
+        message: 'Schedule constraints, style preferences — anything durable.',
+        initialValue: s.coachNotes || '',
+        placeholder: 'e.g. 45-minute lunch sessions, hates burpees',
+        confirmLabel: 'Save',
+    });
+    if (next != null) {
+        updateSetting('coachNotes', next.trim() || null);
+        renderSettings();
+    }
+}
+
 export async function editProfileName() {
     const s = AppState.settings || DEFAULT_SETTINGS;
     const current = s.profileName || AppState.currentUser?.displayName || '';

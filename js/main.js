@@ -8,7 +8,7 @@
 import { AppState } from './core/utils/app-state.js';
 import { startApplication } from './core/app-initialization.js';
 import { confirmSheet } from './core/ui/confirm-sheet.js';
-import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal, completeOnboarding, restartOnboarding, rebuildPRsFromSettings, confirmDeleteAllData, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, selectProfileExperience, closeProfileExperiencePicker, closeProfile, editBodyWeightGoal, notifDiagEnable, notifDiagTest } from './core/ui/settings-ui.js';
+import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal, completeOnboarding, restartOnboarding, rebuildPRsFromSettings, confirmDeleteAllData, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, selectProfileExperience, closeProfileExperiencePicker, closeProfile, editBodyWeightGoal, notifDiagEnable, notifDiagTest, editCoachInjuries, editCoachNotes } from './core/ui/settings-ui.js';
 import { exportWorkoutData, exportDataForAI } from './core/data/data-manager.js';
 import { dismissFirstUseTip } from './core/features/first-use-tips.js';
 import {
@@ -854,6 +854,8 @@ window.confirmDeleteAllData = confirmDeleteAllData;
 // Profile detail (§5)
 window.openProfile = openProfile;
 window.editProfileName = editProfileName;
+window.editCoachInjuries = editCoachInjuries;
+window.editCoachNotes = editCoachNotes;
 window.editProfileHeight = editProfileHeight;
 window.editProfileBirthday = editProfileBirthday;
 window.editProfileExperience = editProfileExperience;

@@ -10,6 +10,10 @@ import { TrainingInsights } from './training-insights.js';
 import { Config, debugLog, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { formatCoachResponse } from './coach-markdown.js';
+import {
+    buildProfileContext, buildPRContext, buildTemplatesContext,
+    setTypeMarker, templatesChangedNote,
+} from './coach-context.js';
 
 /**
  * Iterate a workout's exercises with `name` resolved from the workout-level
@@ -31,6 +35,10 @@ function withResolvedNames(workout) {
 // sends the full thread to Claude so the model can carry context across
 // turns instead of forgetting the topic between sends.
 let _coachConversation = [];
+// Template names as of the thread's first turn — context is only attached
+// once, so mid-conversation template changes get a one-line freshness note
+// instead of a full context resend.
+let _coachThreadTemplateNames = null;
 
 // ===================================================================
 // AI COACH MODAL
@@ -312,14 +320,33 @@ export async function askCoach(question) {
         try {
             healthSummary = await buildHealthSummary(AppState.globalUnit || 'lbs');
         } catch (e) { debugLog('coach: health summary failed', e); }
-        const context = buildTrainingContext(allWorkouts, healthSummary);
+
+        // PRs — the coach can't say "that's 95% of your all-time best" without
+        // the record book. Non-fatal if unavailable.
+        let prList = [];
+        try {
+            const { PRTracker } = await import('./pr-tracker.js');
+            await PRTracker.loadPRData?.();
+            prList = PRTracker.getAllPRs?.() || [];
+        } catch (e) { debugLog('coach: PRs unavailable', e); }
+
+        const context = buildTrainingContext(allWorkouts, healthSummary, prList);
 
         // Append the user's turn to the running conversation. The first user
         // turn gets the training context prepended so Claude grounds its
-        // answers in real numbers; subsequent turns just carry the question.
-        const userTurn = _coachConversation.length === 0
-            ? `Here is my recent training data:\n\n${context}\n\nQuestion: ${question.trim()}`
-            : question.trim();
+        // answers in real numbers; subsequent turns just carry the question —
+        // plus a one-line freshness note when the template list changed since
+        // the thread started (context is never resent whole).
+        const templateNames = (AppState.workoutPlans || []).map(t => t.name || t.day).filter(Boolean);
+        let userTurn;
+        if (_coachConversation.length === 0) {
+            _coachThreadTemplateNames = templateNames;
+            userTurn = `Here is my recent training data:\n\n${context}\n\nQuestion: ${question.trim()}`;
+        } else {
+            const note = templatesChangedNote(_coachThreadTemplateNames || [], templateNames);
+            if (note) _coachThreadTemplateNames = templateNames;
+            userTurn = note + question.trim();
+        }
         _coachConversation.push({ role: 'user', content: userTurn });
 
         // Streaming first (first words in ~2s), falling back to the buffered
@@ -479,6 +506,7 @@ export function resetCoachUI() {
     if (chatMessages) chatMessages.innerHTML = '';
     // New chat → drop the in-memory conversation thread.
     _coachConversation = [];
+    _coachThreadTemplateNames = null;
 }
 
 // ===================================================================
@@ -492,13 +520,16 @@ export function resetCoachUI() {
  * @param {Array} workouts - Recent workouts (up to 8 weeks)
  * @returns {string} Compact training summary
  */
-function buildTrainingContext(workouts, healthSummary = '') {
+function buildTrainingContext(workouts, healthSummary = '', prList = []) {
     if (!workouts || workouts.length === 0) return 'No workout data available.';
 
     const weeks = getWeeksSpan(workouts);
     const exerciseDatabase = AppState.exerciseDatabase || [];
 
-    let summary = '';
+    // Who the coach is talking to comes first — goal/experience/injuries
+    // reframe everything below it.
+    let summary = buildProfileContext(AppState.settings || {});
+    if (summary) summary += '\n';
 
     // Volume by muscle group (last 4 weeks worth)
     const fourWeekWorkouts = workouts.filter(w => {
@@ -525,7 +556,9 @@ function buildTrainingContext(workouts, healthSummary = '') {
         for (const ex of withResolvedNames(workout)) {
             if (!ex.name || !ex.sets) continue;
             const normalized = ex.sets
-                .filter(s => s.weight)
+                // Warmups out — a 45 lb warmup polluting a max-weight trend
+                // reads as a strength crash that never happened.
+                .filter(s => s.weight && s.type !== 'warmup')
                 .map(s => convertWeight(s.weight, s.originalUnit || 'lbs', unit));
             const maxW = Math.max(...normalized, 0);
             if (maxW === 0) continue;
@@ -548,6 +581,14 @@ function buildTrainingContext(workouts, healthSummary = '') {
             summary += `${name}: ${recent.join(' -> ')} ${unit}\n`;
         });
     }
+
+    // Personal records — lets the coach anchor advice to all-time bests.
+    const prBlock = buildPRContext(prList);
+    if (prBlock) summary += `\n${prBlock}`;
+
+    // Saved workouts — "plan my week" should adjust what exists, not reinvent.
+    const templatesBlock = buildTemplatesContext(AppState.workoutPlans || []);
+    if (templatesBlock) summary += `\n${templatesBlock}`;
 
     // Training frequency
     const avgDaysPerWeek = weeks > 0 ? (workouts.length / weeks).toFixed(1) : workouts.length;
@@ -580,7 +621,7 @@ function buildTrainingContext(workouts, healthSummary = '') {
                     .filter(s => s.completed !== false && (s.reps || s.weight))
                     .map(s => {
                         const wt = s.weight ? convertWeight(s.weight, s.originalUnit || unit, unit) : 0;
-                        return `${s.reps || '?'}×${wt || 'BW'}`;
+                        return `${s.reps || '?'}×${wt || 'BW'}${setTypeMarker(s)}`;
                     })
                     .join(', ');
                 const notes = ex.notes ? ` — note: "${ex.notes}"` : '';

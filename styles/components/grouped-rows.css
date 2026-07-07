@@ -34,6 +34,14 @@
     border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Stacked variant — for controls too wide to sit inline with the label
+   (e.g. the 5-option coach-goal segmented). Label on top, control below. */
+.srow--stack {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-8);
+}
+
 .srow:last-child {
     border-bottom: none;
 }
