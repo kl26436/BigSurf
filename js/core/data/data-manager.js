@@ -98,6 +98,10 @@ export async function saveWorkoutData(state) {
                 weight: ex.weight,
                 video: ex.video || '',
                 equipment: ex.equipment || null,
+                // Carry the stable id — PR processing at completion reads
+                // originalExercise.equipmentId; dropping it here made every
+                // fresh session id-less and re-split the id-keyed PR store.
+                equipmentId: ex.equipmentId || null,
                 equipmentLocation: ex.equipmentLocation || null,
                 bodyPart: ex.bodyPart || null, // Include bodyPart for progress categorization
             })),
@@ -122,9 +126,21 @@ export async function saveWorkoutData(state) {
             const currentUnit = state.exerciseUnits[exerciseIndex] || state.globalUnit;
 
             if (exerciseData.equipment) {
-                const eid = confidentEquipmentId(exerciseData.equipment, equipCache);
-                if (eid) exerciseData.equipmentId = eid;
-                else delete exerciseData.equipmentId;   // clear any stale id on re-save
+                // Prefer an explicitly-set id that's still valid (the user's
+                // actual pick — two docs can share a name, so re-resolving by
+                // name could land on the wrong one). Else resolve by name.
+                const existingValid = exerciseData.equipmentId
+                    && equipCache.some((e) => e.id === exerciseData.equipmentId);
+                if (!existingValid) {
+                    const eid = confidentEquipmentId(exerciseData.equipment, equipCache);
+                    if (eid) exerciseData.equipmentId = eid;
+                    // Only clear a stale id when the cache is WARM and disowns it.
+                    // A cold cache (resume + autosave before any equipment screen
+                    // loads) must not strip every previously-backfilled id.
+                    else if (equipCache.length && exerciseData.equipmentId) {
+                        delete exerciseData.equipmentId;
+                    }
+                }
             }
 
             if (exerciseData.sets) {
@@ -648,11 +664,11 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
 
             const unit = state.exerciseUnits[exerciseIndex] || state.globalUnit;
 
-            // Get PR data for this exercise
+            // Get PR data for this exercise (id-first — the store is id-keyed)
             const { PRTracker } = await import('../features/pr-tracker.js');
             const exercise = state.currentWorkout?.exercises?.[exerciseIndex];
             const equipment = exercise?.equipment || 'Unknown Equipment';
-            const prs = PRTracker.getExercisePRs(exerciseName, equipment);
+            const prs = PRTracker.getExercisePRs(exerciseName, equipment, exercise?.equipmentId || null);
 
             // Show match info (equipment/location context)
             const histEquipment = lastExerciseData.equipment;
@@ -1215,7 +1231,7 @@ export async function reassignEquipment(equipmentId, equipmentName, oldExerciseN
     let prMergeConflicts = 0;
     try {
         const { renamePREquipmentExercise } = await import('../features/pr-tracker.js');
-        const prResult = await renamePREquipmentExercise(equipmentName, oldExerciseName, newExerciseName);
+        const prResult = await renamePREquipmentExercise(equipmentName, oldExerciseName, newExerciseName, equipmentId);
         prsMigrated = prResult.migrated;
         prMergeConflicts = prResult.mergedConflicts;
     } catch (err) {

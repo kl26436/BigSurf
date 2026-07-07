@@ -3001,14 +3001,18 @@ function computeEquipmentDetailStats(equipment) {
     let sessions = 0;
     for (const w of workouts) {
         const exs = w.exercises || {};
-        const hit = Object.keys(exs).some((k) => exs[k]?.equipment === eqName);
+        // Match by stable id OR name — old workouts keep the old name after a
+        // rename, but their backfilled equipmentId still points here.
+        const hit = Object.keys(exs).some((k) =>
+            exs[k]?.equipment === eqName || exs[k]?.equipmentId === equipment.id);
         if (hit) sessions += 1;
     }
 
     let pr = null;
     const exTypes = Array.isArray(equipment.exerciseTypes) ? equipment.exerciseTypes : [];
     for (const exName of exTypes) {
-        const prs = getExercisePRs(exName, eqName);
+        // id-first — the PR store is id-keyed for most machines now.
+        const prs = getExercisePRs(exName, eqName, equipment.id);
         if (!prs || !prs.maxWeight) continue;
         if (!pr || prs.maxWeight.weight > pr.weight) {
             pr = { weight: prs.maxWeight.weight, reps: prs.maxWeight.reps, exercise: exName };

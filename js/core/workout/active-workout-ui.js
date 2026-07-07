@@ -1328,7 +1328,7 @@ const _prCelebrated = new Set();
  * it never blocks the log-a-set path. Skips 'first' (first-ever attempt isn't
  * beating anything) and 'maxVolume' (fires too often to feel earned).
  */
-async function maybeCelebratePR(exercise, set, equipName) {
+async function maybeCelebratePR(exercise, set, equipName, equipId = null) {
     try {
         if (!set || !set.reps || !set.weight) return;
         if ((set.type || 'working') === 'warmup') return;
@@ -1340,7 +1340,9 @@ async function maybeCelebratePR(exercise, set, equipName) {
 
         const { PRTracker } = await import('../features/pr-tracker.js');
         await PRTracker.loadPRData?.();
-        const pr = PRTracker.checkForNewPR(exName, set.reps, total, equipName);
+        // Pass the stable id — the PR store is id-keyed, so a name-only lookup
+        // reads null for id-keyed machines and the celebration silently dies.
+        const pr = PRTracker.checkForNewPR(exName, set.reps, total, equipName, equipId);
         if (pr?.isNewPR && (pr.prType === 'maxWeight' || pr.prType === 'maxReps')) {
             _prCelebrated.add(key);
             haptic('pr');
@@ -1446,7 +1448,8 @@ export function awToggleSet(exerciseIdx, setIdx) {
         haptic('tap');
 
         // B3 — live PR moment (fire-and-forget; never blocks logging).
-        maybeCelebratePR(exercise, set, equipName);
+        maybeCelebratePR(exercise, set, equipName,
+            savedEx.equipmentId || exercise.equipmentId || equipDoc?.id || null);
 
         // Check if exercise is complete (all target sets done)
         const targetSets = exercise.sets || 3;
@@ -1974,7 +1977,7 @@ export async function awEquipFastPath(exerciseIdx, type, name) {
         if (!doc) { showNotification("Couldn't save — try again", 'error'); return; }
         equipFreeWeightsOpen = false;
         // awSelectEquipment gym-tags + exercise-links (auto-associate) + selects.
-        await awSelectEquipment(exerciseIdx, doc.name);
+        await awSelectEquipment(exerciseIdx, doc.name, doc.id || null);
     } catch (e) {
         console.error('Fast-path equipment failed:', e);
         showNotification("Couldn't save — try again", 'error');
@@ -2104,7 +2107,7 @@ export async function awPickSuggestedMachine(exerciseIdx, suggestionIdx) {
         // gym on the equipment doc (the single source of truth — Phase 8b step 4;
         // the old location.equipment[] mirror was removed).
         AppState._cachedEquipment = await mgr.getUserEquipment();
-        await awSelectEquipment(exerciseIdx, eq.name);
+        await awSelectEquipment(exerciseIdx, eq.name, eq.id || null);
     } catch (e) {
         console.error('Suggested machine add failed:', e);
         showNotification("Couldn't save — try again", 'error');
@@ -2189,7 +2192,7 @@ function renderEquipmentSheet(exerciseIdx) {
         const settingsStr = (eq.exerciseSettings?.[exName] || [])
             .map(p => `${p.label} ${p.value}`).join(' · ');
         return `
-            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}')">
+            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}', '${escapeAttr(eq.id || '')}' || null)">
                 <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
                 <div class="js-row__info">
                     <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
@@ -2329,7 +2332,7 @@ export function awOpenCatalogQuickAdd(exerciseIdx) {
         onDone: (added) => {
             added.forEach(eq => AppState._sessionMappedEquipment?.add(eq.name));
             if (added.length === 1) {
-                awSelectEquipment(exerciseIdx, added[0].name);
+                awSelectEquipment(exerciseIdx, added[0].name, added[0].id || null);
             } else {
                 // Zero or several added — reopen the picker so they choose.
                 awOpenEquipmentSheet(exerciseIdx);
@@ -2621,7 +2624,7 @@ export function awEquipSearch(exerciseIdx, query) {
         const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
         const locStr = equipLocationCue(eq, locName);
         return `
-            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}')">
+            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}', '${escapeAttr(eq.id || '')}' || null)">
                 <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
                 <div class="js-row__info">
                     <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
@@ -2636,21 +2639,31 @@ export function awEquipSearch(exerciseIdx, query) {
         : '<div class="aw-sheet__empty">No matches</div>';
 }
 
-export async function awSelectEquipment(exerciseIdx, equipName) {
+export async function awSelectEquipment(exerciseIdx, equipName, equipId = null) {
     const key = `exercise_${exerciseIdx}`;
     if (!AppState.savedData.exercises[key]) {
         AppState.savedData.exercises[key] = { sets: [] };
     }
+    // Resolve the id when the caller didn't pass one (name-unique case only —
+    // getEquipmentDoc falls back to name match).
+    const resolvedId = equipId || (equipName ? (getEquipmentDoc(equipName)?.id || null) : null);
+
     AppState.savedData.exercises[key].equipment = equipName || null;
+    // CRITICAL: keep the stable id in lockstep with the name. Leaving the OLD
+    // machine's id here made every id-first resolver (base weight, plate calc,
+    // settings sheet, PR keying) read the wrong equipment doc after a swap —
+    // e.g. a plate-loaded machine's 45 lb base silently added to cable sets.
+    AppState.savedData.exercises[key].equipmentId = resolvedId;
 
     // Also update template exercise
     if (AppState.currentWorkout.exercises[exerciseIdx]) {
         AppState.currentWorkout.exercises[exerciseIdx].equipment = equipName || null;
+        AppState.currentWorkout.exercises[exerciseIdx].equipmentId = resolvedId;
     }
 
     // Auto-associate: add current location + exercise to equipment if not already there
     if (equipName) {
-        const eq = getEquipmentDoc(equipName);
+        const eq = getEquipmentDoc(equipName, resolvedId);
         const exName = getExerciseName(AppState.currentWorkout.exercises[exerciseIdx]);
         const sessionLoc = AppState.savedData?.location;
         const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
@@ -2825,7 +2838,7 @@ export async function awSaveNewEquipment(exerciseIdx) {
         AppState._cachedEquipment = await workoutManager.getUserEquipment();
 
         // Select it for this exercise
-        awSelectEquipment(exerciseIdx, name);
+        awSelectEquipment(exerciseIdx, name, eq.id || null);
         showNotification(`${name} created`, 'success');
     } catch (err) {
         console.error('Error creating equipment:', err);

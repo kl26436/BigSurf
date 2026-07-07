@@ -1642,7 +1642,11 @@ async function checkSetForPR(exerciseIndex, setIndex) {
         }
 
         const { PRTracker } = await import('../features/pr-tracker.js');
-        const prCheck = PRTracker.checkForNewPR(exerciseName, set.reps, totalWeight, equipment);
+        // id-first — the PR store is id-keyed; name-only lookups against an
+        // id-keyed entry read null and fire a false "first PR" every set.
+        const equipmentId = AppState.savedData.exercises[exerciseKey]?.equipmentId
+            || exercise.equipmentId || null;
+        const prCheck = PRTracker.checkForNewPR(exerciseName, set.reps, totalWeight, equipment, equipmentId);
 
         if (prCheck.isNewPR) {
             haptic('pr');

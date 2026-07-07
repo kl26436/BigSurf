@@ -247,14 +247,62 @@ describe('equipment id-aware PR keying', () => {
         AppState._cachedEquipment = null;
     });
 
-    it('getAllPRs falls back to the raw key only when the id is not in the cache (deleted gear)', async () => {
+    it('getAllPRs never surfaces a raw equipment_ id — deleted/unknown gear shows "Unknown equipment"', async () => {
         await seedPRData({
             exercisePRs: { 'Row': { bodyPart: 'Back', equipment_deleted_999: { maxWeight: { weight: 100, reps: 8 } } } },
             locations: {}, currentLocation: null,
         });
         AppState._cachedEquipment = [];
         const row = getAllPRs().find((p) => p.exercise === 'Row');
-        expect(row.equipment).toBe('equipment_deleted_999');
+        expect(row.equipment).toBe('Unknown equipment');
+        expect(row.equipment).not.toContain('equipment_');
         AppState._cachedEquipment = null;
+    });
+
+    // ── Name-only callers against an id-keyed store — the post-re-key hazard.
+    // Most live call sites pass the id, but any that can't (legacy data, cold
+    // caches) must still resolve via the denormalized equipmentName instead of
+    // reading null (which fired fake "first PR"s and split the store).
+    const idKeyedWithName = {
+        exercisePRs: {
+            'Bench Press': {
+                bodyPart: 'Chest',
+                eq_hammer_123: {
+                    equipmentName: 'Hammer Strength Flat Press',
+                    maxWeight: { weight: 200, reps: 8, date: '2026-01-10', location: 'Gym A', unit: 'lbs' },
+                    maxReps: { weight: 135, reps: 12, date: '2026-01-08', location: 'Gym A', unit: 'lbs' },
+                    maxVolume: { weight: 160, reps: 12, volume: 1920, date: '2026-01-09', location: 'Gym A', unit: 'lbs' },
+                },
+            },
+        },
+        locations: {}, currentLocation: null,
+    };
+
+    it('NAME-ONLY getExercisePRs finds an id-keyed entry via its denormalized equipmentName', async () => {
+        await seedPRData(idKeyedWithName);
+        const prs = getExercisePRs('Bench Press', 'Hammer Strength Flat Press'); // no id passed
+        expect(prs).not.toBeNull();
+        expect(prs.maxWeight.weight).toBe(200);
+    });
+
+    it('NAME-ONLY checkForNewPR does not report a false "first" against an id-keyed entry', async () => {
+        const result = await checkForNewPR('Bench Press', 5, 150, 'Hammer Strength Flat Press', idKeyedWithName);
+        expect(result.isNewPR).toBe(false);
+        expect(result.prType).toBeNull();
+    });
+
+    it('NAME-ONLY recordPR updates the id-keyed entry in place — never splits the store', async () => {
+        await seedPRData(idKeyedWithName);
+        await recordPR('Bench Press', 3, 225, 'Hammer Strength Flat Press', 'Gym A', '2026-06-01', 'Chest', 'lbs'); // no id
+        const entries = getAllPRs().filter((p) => p.exercise === 'Bench Press');
+        expect(entries).toHaveLength(1); // no parallel name key created
+        expect(entries[0].prs.maxWeight.weight).toBe(225);
+    });
+
+    it('denormalized-name matching is case-insensitive (names drift in casing)', async () => {
+        await seedPRData(idKeyedWithName);
+        const prs = getExercisePRs('Bench Press', 'hammer strength flat press');
+        expect(prs).not.toBeNull();
+        expect(prs.maxWeight.weight).toBe(200);
     });
 });

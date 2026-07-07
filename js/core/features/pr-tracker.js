@@ -17,23 +17,30 @@ const PR_CUTOFF_DATE = Config.PR_CUTOFF_DATE;
 // ===================================================================
 
 /**
- * PR Data Structure (stored in Firebase per user):
+ * PR Data Structure (stored in Firebase per user).
+ *
+ * MIXED-KEY equipment level (since the 2026-07 8b re-key): an exercise's inner
+ * keys are EITHER a stable equipment doc id (`equipment_…`, preferred — survives
+ * renames) OR a legacy equipment NAME string. Id-keyed entries carry a
+ * denormalized `equipmentName` for display. Reads resolve id → exact name →
+ * denormalized-name scan (resolvePrEquipKey); new entries prefer the id.
  * {
  *   exercisePRs: {
  *     "Bench Press": {
- *       "Barbell": {
- *         maxWeight: { weight: 225, reps: 5, date: "2025-01-20", location: "Gym A" },
- *         maxReps: { weight: 185, reps: 15, date: "2025-01-18", location: "Gym A" },
- *         maxVolume: { weight: 205, reps: 10, volume: 2050, date: "2025-01-19", location: "Gym A" }
+ *       bodyPart: "Chest",                             // sibling label, not equipment
+ *       "equipment_1765..._abc": {                     // id-keyed (post re-key)
+ *         equipmentName: "Hammer Strength Flat Press", // denormalized display label
+ *         maxWeight: { weight: 225, reps: 5, date: "2025-01-20", location: "Gym A", unit: "lbs" },
+ *         maxReps:   { weight: 185, reps: 15, date: "2025-01-18", location: "Gym A", unit: "lbs" },
+ *         maxVolume: { weight: 205, reps: 10, volume: 2050, date: "2025-01-19", location: "Gym A", unit: "lbs" }
  *       },
- *       "Hammer Strength": {
+ *       "Barbell": {                                   // legacy name-keyed (pre re-key / unresolved)
  *         maxWeight: { weight: 200, reps: 8, date: "2025-01-15", location: "Gym B" }
  *       }
  *     }
  *   },
  *   locations: {
- *     "Gym A": { name: "Gym A", lastVisit: "2025-01-20", visitCount: 45 },
- *     "Gym B": { name: "Gym B", lastVisit: "2025-01-15", visitCount: 12 }
+ *     "Gym A": { name: "Gym A", lastVisit: "2025-01-20", visitCount: 45 }
  *   },
  *   currentLocation: "Gym A"
  * }
@@ -103,14 +110,15 @@ export async function savePRData() {
 
 /**
  * Migrate PR records when an equipment is reassigned from one exercise to another.
- * Moves prData.exercisePRs[oldExerciseName][equipmentName] → exercisePRs[newExerciseName][equipmentName],
+ * Moves every entry for that equipment (id-keyed AND legacy name-keyed — a split
+ * store can hold both) from exercisePRs[oldExerciseName] → exercisePRs[newExerciseName],
  * merging with any existing records on the destination by keeping the better metric
  * (max weight, max reps, max volume).
  *
  * Returns { migrated, mergedConflicts } where migrated is 1 if any records were moved,
  * and mergedConflicts is the number of metrics where both source and destination had a record.
  */
-export async function renamePREquipmentExercise(equipmentName, oldExerciseName, newExerciseName) {
+export async function renamePREquipmentExercise(equipmentName, oldExerciseName, newExerciseName, equipmentId = null) {
     if (!AppState.currentUser) return { migrated: 0, mergedConflicts: 0 };
     if (!equipmentName || !oldExerciseName || !newExerciseName) return { migrated: 0, mergedConflicts: 0 };
     if (oldExerciseName === newExerciseName) return { migrated: 0, mergedConflicts: 0 };
@@ -121,8 +129,21 @@ export async function renamePREquipmentExercise(equipmentName, oldExerciseName, 
 
     const data = prDoc.data();
     const oldExEntry = data.exercisePRs?.[oldExerciseName];
-    const oldEquipPRs = oldExEntry?.[equipmentName];
-    if (!oldEquipPRs) return { migrated: 0, mergedConflicts: 0 };
+    if (!oldExEntry) return { migrated: 0, mergedConflicts: 0 };
+
+    // Collect every key this equipment lives under in the old exercise: the
+    // stable id, the exact name, and any id-keyed entry whose denormalized
+    // equipmentName matches (mixed-key store).
+    const nameLC = equipmentName.toLowerCase();
+    const sourceKeys = [...new Set(Object.keys(oldExEntry).filter((k) => {
+        if (k === 'bodyPart') return false;
+        if (equipmentId && k === equipmentId) return true;
+        if (k === equipmentName) return true;
+        const entry = oldExEntry[k];
+        return entry && typeof entry === 'object'
+            && (entry.equipmentName || '').toLowerCase() === nameLC;
+    }))];
+    if (sourceKeys.length === 0) return { migrated: 0, mergedConflicts: 0 };
 
     if (!data.exercisePRs[newExerciseName]) {
         data.exercisePRs[newExerciseName] = {};
@@ -131,31 +152,40 @@ export async function renamePREquipmentExercise(equipmentName, oldExerciseName, 
         data.exercisePRs[newExerciseName].bodyPart = oldExEntry.bodyPart;
     }
 
-    const destEquipPRs = data.exercisePRs[newExerciseName][equipmentName] || {};
-    const merged = { ...destEquipPRs };
     let mergedConflicts = 0;
+    for (const sourceKey of sourceKeys) {
+        const oldEquipPRs = oldExEntry[sourceKey];
+        // Land on the same key in the destination (id stays id, name stays name).
+        const destEquipPRs = data.exercisePRs[newExerciseName][sourceKey] || {};
+        const merged = { ...destEquipPRs };
 
-    const compareAndKeep = (metric, valueKey) => {
-        const oldRec = oldEquipPRs[metric];
-        if (!oldRec) return;
-        const destRec = merged[metric];
-        if (!destRec) {
-            merged[metric] = oldRec;
-        } else {
-            mergedConflicts++;
-            if ((oldRec[valueKey] ?? 0) > (destRec[valueKey] ?? 0)) {
+        const compareAndKeep = (metric, valueKey) => {
+            const oldRec = oldEquipPRs[metric];
+            if (!oldRec) return;
+            const destRec = merged[metric];
+            if (!destRec) {
                 merged[metric] = oldRec;
+            } else {
+                mergedConflicts++;
+                // Number() both sides — legacy records store reps as strings,
+                // and '15' > '8' is false lexicographically.
+                if ((Number(oldRec[valueKey]) || 0) > (Number(destRec[valueKey]) || 0)) {
+                    merged[metric] = oldRec;
+                }
             }
+        };
+
+        compareAndKeep('maxWeight', 'weight');
+        compareAndKeep('maxReps', 'reps');
+        compareAndKeep('maxVolume', 'volume');
+        if (oldEquipPRs.equipmentName && !merged.equipmentName) {
+            merged.equipmentName = oldEquipPRs.equipmentName;
         }
-    };
 
-    compareAndKeep('maxWeight', 'weight');
-    compareAndKeep('maxReps', 'reps');
-    compareAndKeep('maxVolume', 'volume');
+        data.exercisePRs[newExerciseName][sourceKey] = merged;
+        delete data.exercisePRs[oldExerciseName][sourceKey];
+    }
 
-    data.exercisePRs[newExerciseName][equipmentName] = merged;
-
-    delete data.exercisePRs[oldExerciseName][equipmentName];
     const remainingEquip = Object.keys(data.exercisePRs[oldExerciseName]).filter(k => k !== 'bodyPart');
     if (remainingEquip.length === 0) {
         delete data.exercisePRs[oldExerciseName];
@@ -253,18 +283,34 @@ function getExerciseBodyPart(exerciseName) {
 
 /**
  * Resolve which key an exercise's PRs live under, tolerating the equipment
- * name→id transition. Prefers an existing id-keyed entry, then an existing
- * name-keyed entry, then falls back to the name for brand-new entries.
+ * name→id transition. Resolution order:
+ *   1. existing entry under the stable equipment id
+ *   2. existing entry under the equipment NAME key (legacy)
+ *   3. existing ID-KEYED entry whose denormalized `equipmentName` matches —
+ *      this is the load-bearing step for name-only callers: without it, a
+ *      caller that only has the name would miss the machine's id-keyed entry,
+ *      read null, and recordPR would create a parallel name key (a split) plus
+ *      a fake "first PR". Case-insensitive: names drift in casing.
+ *   4. brand-new entry → the stable id when we have one, else the name.
  *
- * Reads pass the equipmentId so they FIND an id-keyed entry whether or not the
- * store has been re-keyed. For an existing entry we keep its current key (id or
- * name — never split it); a brand-new entry goes to the stable id when we have
- * one. The human name is denormalized onto each entry (`equipmentName`) so the
- * PR list still shows a label when the key is a raw id.
+ * For an existing entry we keep its current key (never split it). The human
+ * name is denormalized onto each entry (`equipmentName`) so the PR list still
+ * shows a label when the key is a raw id.
  */
 function resolvePrEquipKey(exerciseData, equipmentId, equipmentName) {
     if (equipmentId && exerciseData && exerciseData[equipmentId]) return equipmentId;
     if (equipmentName && exerciseData && exerciseData[equipmentName]) return equipmentName;
+    if (equipmentName && exerciseData) {
+        const nameLC = equipmentName.toLowerCase();
+        for (const key of Object.keys(exerciseData)) {
+            if (key === 'bodyPart') continue;
+            const entry = exerciseData[key];
+            if (entry && typeof entry === 'object'
+                && (entry.equipmentName || '').toLowerCase() === nameLC) {
+                return key;
+            }
+        }
+    }
     return equipmentId || equipmentName || 'Unknown Equipment';
 }
 
@@ -522,7 +568,11 @@ function prEquipLabel(key, prs) {
     if (prs && prs.equipmentName) return prs.equipmentName;
     if (typeof key === 'string' && key.startsWith('equipment_')) {
         const eq = (AppState._cachedEquipment || []).find(e => e.id === key);
-        if (eq) return eq.function || eq.name || key;
+        if (eq) return eq.function || eq.name || 'Unknown equipment';
+        // No cache hit (deleted gear, or cache not warmed yet — the dashboard
+        // can render before any equipment screen loads it). A raw
+        // `equipment_1776…` string is never an acceptable label.
+        return 'Unknown equipment';
     }
     return key;
 }

@@ -140,10 +140,12 @@ describe('rekeyExercisePRsByEquipmentId — never loses a PR', () => {
     });
 
     it('total PR count is conserved across every scenario', () => {
+        // (Previously this fixture had a duplicate 'Leg Press' key that JS
+        // collapsed at parse time, silently testing one fewer entry.)
         const prs = {
             'Bench': { 'Flat Bench Press': { weight: 225 }, 'Junk': { weight: 1 } },
             'Pulldown': { 'Lat Pulldown': { weight: 140 } },
-            'Legs': { 'Leg Press': { weight: 400 }, 'Leg Press': { weight: 400 } },
+            'Legs': { 'Leg Press': { weight: 400 }, 'Hack Squat': { weight: 350 } },
         };
         const { rekeyed, stats } = rekeyExercisePRsByEquipmentId(prs, EQUIP);
         expect(countPRs(rekeyed)).toBe(countPRs(prs));
