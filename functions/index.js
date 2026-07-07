@@ -70,17 +70,27 @@ async function enforceAiDailyLimit(userId, kind, maxPerDay) {
     });
 }
 
-// VAPID keys for Web Push (generated using web-push library)
-// Public key is also in push-notification-manager.js on client
+// VAPID keys for Web Push (generated using web-push library).
+// Public key is also in push-notification-manager.js on the client. The
+// PRIVATE key lives in Secret Manager (functions:secrets:set VAPID_PRIVATE_KEY)
+// — it used to be hardcoded here, i.e. committed to the repo.
 const VAPID_PUBLIC_KEY = 'BCCpd5gMslosl6OBbQe5mSwa6YWG2AK8q7pNKAm2MdSIUR41iWFKsUarOxbb4NathzspJ9XdbvYtPTexZxNdrxs';
-const VAPID_PRIVATE_KEY = '746jLd3ZPl3qo_vgHFzSkHkkuPCmyqoyi07qhZ6CEkk';
+const vapidPrivateKey = defineSecret('VAPID_PRIVATE_KEY');
 
-// Configure web-push
-webpush.setVapidDetails(
-    'mailto:support@bigsurf.app',
-    VAPID_PUBLIC_KEY,
-    VAPID_PRIVATE_KEY
-);
+// web-push is configured LAZILY: secret values are only readable at runtime
+// inside functions that declare the secret, never at module load. Every
+// webpush.sendNotification caller must run this first (and bind the secret
+// via runWith/secrets).
+let _vapidConfigured = false;
+function ensureVapidConfigured() {
+    if (_vapidConfigured) return;
+    webpush.setVapidDetails(
+        'mailto:support@bigsurf.app',
+        VAPID_PUBLIC_KEY,
+        vapidPrivateKey.value()
+    );
+    _vapidConfigured = true;
+}
 
 /**
  * Schedule a push notification for rest timer
@@ -148,9 +158,10 @@ exports.cancelRestNotification = functions.https.onCall(async (data, context) =>
  * Scheduled function that runs every minute to send due notifications
  * This is the core of the iOS background notification system
  */
-exports.sendDueNotifications = functions.pubsub
+exports.sendDueNotifications = functions.runWith({ secrets: [vapidPrivateKey] }).pubsub
     .schedule('every 1 minutes')
     .onRun(async (context) => {
+        ensureVapidConfigured();
         const now = Date.now();
 
         // Find all notifications that are due
@@ -227,10 +238,11 @@ exports.sendDueNotifications = functions.pubsub
  * HTTP endpoint for immediate notification (alternative to scheduled)
  * Can be used for testing or immediate notifications
  */
-exports.sendImmediateNotification = functions.https.onCall(async (data, context) => {
+exports.sendImmediateNotification = functions.runWith({ secrets: [vapidPrivateKey] }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
+    ensureVapidConfigured();
 
     const { subscription, title, body } = data;
 
@@ -1018,6 +1030,13 @@ RESPOND WITH ONLY VALID JSON matching this schema — no markdown, no explanatio
  */
 // Appended to the system prompt on the STREAMING path only — the legacy
 // callable has no tools, so it must not promise any.
+// Appended to the system prompt on paths that have NO tools (the buffered
+// callable fallback). The model must never claim an in-app action succeeded
+// when it has no way to perform one.
+const NO_ACTIONS_NOTE = `
+
+IMPORTANT — NO ACTIONS AVAILABLE IN THIS SESSION: you cannot create, update, or save anything in the app right now (no workout templates, no memory). If the user asks you to build or change a workout, give the full details as text, then say plainly that you couldn't save it to their workouts this time and they should try again shortly. NEVER say you updated or saved something.`;
+
 const COACH_TOOLS_PROMPT = `
 
 TOOLS — you can act in the app, not just talk:
@@ -1206,7 +1225,10 @@ exports.getTrainingRecommendation = functions.runWith({
             // carries the big training-context block) are identical across the
             // turns of a conversation — cache them so multi-turn chats get
             // cheaper and faster time-to-first-token.
-            system: [{ type: 'text', text: TRAINING_SCIENCE_PROMPT, cache_control: { type: 'ephemeral' } }],
+            // NO_ACTIONS_NOTE: this buffered path has no tools. Without this
+            // line, a user asking "update my workout" gets a confident text
+            // reply claiming the change was saved when nothing happened.
+            system: [{ type: 'text', text: TRAINING_SCIENCE_PROMPT + NO_ACTIONS_NOTE, cache_control: { type: 'ephemeral' } }],
             messages: withPromptCaching(apiMessages),
         });
 
@@ -1466,7 +1488,7 @@ exports.coachChatStream = onRequest({
  * via settings.weeklyCoachReview === false (default on).
  */
 exports.weeklyCoachReview = functions.runWith({
-    secrets: [anthropicApiKey],
+    secrets: [anthropicApiKey, vapidPrivateKey],
     timeoutSeconds: 540,
     memory: '512MB',
     maxInstances: 1,
@@ -1552,6 +1574,7 @@ exports.weeklyCoachReview = functions.runWith({
                 const subSnap = await userRef.collection('push_subscriptions').doc('current').get();
                 const sub = subSnap.exists ? subSnap.data().subscription : null;
                 if (sub) {
+                    ensureVapidConfigured();
                     await webpush.sendNotification(sub, JSON.stringify({
                         title: 'Big Surf',
                         body: 'Your weekly training review is ready',
