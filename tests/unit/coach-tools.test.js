@@ -114,9 +114,10 @@ describe('TOOL_DEFINITIONS', () => {
     it('exposes exactly the coach-tab tool set with valid schemas', () => {
         const names = TOOL_DEFINITIONS.map(t => t.name).sort();
         expect(names).toEqual([
-            'create_workout_template', 'forget_fact', 'get_exercise_history',
-            'get_prs', 'get_week_plan', 'list_templates', 'remember_fact',
-            'set_week_plan', 'update_workout_template',
+            'archive_template', 'create_workout_template', 'forget_fact',
+            'get_exercise_history', 'get_prs', 'get_week_plan', 'list_templates',
+            'propose_session_adjustments', 'remember_fact', 'set_week_plan',
+            'update_workout_template',
         ]);
         for (const t of TOOL_DEFINITIONS) {
             expect(t.description.length).toBeGreaterThan(20);

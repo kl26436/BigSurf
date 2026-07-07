@@ -170,6 +170,13 @@
 /* Weekly reviews stand out in the past-sessions list. */
 .coach-history-review-icon { color: var(--primary); }
 
+/* Session-adjustment card (5.6.1) — Apply/Dismiss inside an action card. */
+.coach-action-card__actions {
+    display: flex;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
+}
+
 /* ── Live in-workout coach sheet (Phase 6) ─────────────────────────── */
 .live-coach__body {
     display: flex;

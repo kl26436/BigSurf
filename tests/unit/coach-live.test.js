@@ -111,6 +111,20 @@ describe('validateProposal', () => {
         expect(v.proposal.why.length).toBeLessThanOrEqual(140);
         expect(validateProposal('propose_teleport', {}).ok).toBe(false);
     });
+
+    it('session_adjustments (5.6.1): requires templateId+label+one change; validates bounds', () => {
+        const ok = validateProposal('propose_session_adjustments', {
+            templateId: 'push_day', label: 'Deload', weightPct: -40,
+            dropExercises: ['Dips'], addExercises: [{ name: 'Face Pull', sets: 3, reps: 15 }],
+        });
+        expect(ok.ok).toBe(true);
+        expect(ok.proposal).toMatchObject({ kind: 'session_adjustments', weightPct: -40, dropExercises: ['Dips'] });
+        expect(ok.proposal.addExercises[0]).toMatchObject({ machine: 'Face Pull', sets: 3, reps: 15 });
+
+        expect(validateProposal('propose_session_adjustments', { templateId: 'x', label: 'Deload' }).ok).toBe(false); // no change
+        expect(validateProposal('propose_session_adjustments', { label: 'Deload', weightPct: -40 }).ok).toBe(false);  // no template
+        expect(validateProposal('propose_session_adjustments', { templateId: 'x', label: 'L', weightPct: -99 }).ok).toBe(false); // out of bounds
+    });
 });
 
 describe('liveToolDefinitions', () => {

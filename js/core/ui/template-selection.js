@@ -512,10 +512,30 @@ function renderTemplateRows(container, templates, isFiltered, archivedTemplates 
         }
     }
 
+    // 5.6.0 — variations nest under their parent so four push riffs read as
+    // one family, not four rows. Orphaned variations (parent deleted/archived)
+    // render at top level like cores.
+    const parentIds = new Set(templates.map(t => t.id || t._id));
+    const isNestedVariation = (t) => t.kind === 'variation' && t.parentTemplateId
+        && parentIds.has(t.parentTemplateId) && (t.id || t._id) !== t.parentTemplateId;
+    const byParent = new Map();
+    for (const t of templates) {
+        if (isNestedVariation(t)) {
+            const list = byParent.get(t.parentTemplateId) || [];
+            list.push(t);
+            byParent.set(t.parentTemplateId, list);
+        }
+    }
+    const ordered = templates.filter(t => !isNestedVariation(t)).flatMap(t => [
+        t, ...(byParent.get(t.id || t._id) || []),
+    ]);
+
     container.innerHTML = renderQuickStartCta()
         + renderGymContextHeader()
         + renderSuggestedForToday(templates, isFiltered)
-        + templates.map(t => renderSingleTemplateRow(t)).join('')
+        + ordered.map(t => isNestedVariation(t)
+            ? `<div class="template-row--variation">${renderSingleTemplateRow(t)}</div>`
+            : renderSingleTemplateRow(t)).join('')
         + (isFiltered ? '' : renderArchivedGroup(archivedTemplates));
 
     // Pre-filled notes textareas start at their content height, not one row.

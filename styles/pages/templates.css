@@ -1264,3 +1264,19 @@
     padding: var(--space-10) var(--space-16);
     font-size: var(--font-sm);
 }
+/* 5.6.0 — variation rows nest under their parent core workout. */
+.template-row--variation {
+    margin-left: var(--space-20);
+    position: relative;
+}
+.template-row--variation::before {
+    content: '';
+    position: absolute;
+    left: calc(-1 * var(--space-12));
+    top: 0;
+    bottom: 50%;
+    width: 10px;
+    border-left: 2px solid var(--border-subtle);
+    border-bottom: 2px solid var(--border-subtle);
+    border-bottom-left-radius: var(--radius-xs);
+}

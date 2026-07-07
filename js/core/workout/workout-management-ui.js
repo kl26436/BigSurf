@@ -71,6 +71,16 @@ export async function saveWorkoutAsTemplate(workoutData) {
         isCustom: true,
     };
 
+    // 5.6.0 — classify at birth: most save-from-workout templates aren't new
+    // workouts, they're variations or one-offs. One chip question; the best
+    // match is pre-derived from exercise overlap so the user confirms.
+    const bestMatch = findBestTemplateMatch(toSave.exercises);
+    const pick = await askTemplateKind(bestMatch);
+    toSave.kind = pick.kind;
+    if (pick.kind === 'variation' && pick.parentTemplateId) {
+        toSave.parentTemplateId = pick.parentTemplateId;
+    }
+
     try {
         const wm = new FirebaseWorkoutManager(AppState);
         const docRef = await wm.saveWorkoutTemplate(toSave);
@@ -84,6 +94,82 @@ export async function saveWorkoutAsTemplate(workoutData) {
         console.error('❌ Error saving as template:', err);
         showNotification('Could not save workout', 'error');
     }
+}
+
+/**
+ * 5.6.0 — best existing template for "Variation of <X>": highest exercise-name
+ * overlap ≥ 50% among non-archived templates. Null when nothing's close.
+ */
+function findBestTemplateMatch(exercises) {
+    const names = new Set((exercises || []).map(e => (e.machine || e.name || '').toLowerCase()).filter(Boolean));
+    if (!names.size) return null;
+    let best = null;
+    for (const t of (AppState.workoutPlans || [])) {
+        if (t.archived) continue;
+        const tNames = new Set((t.exercises || []).map(e => (e.machine || e.name || '').toLowerCase()).filter(Boolean));
+        if (!tNames.size) continue;
+        const shared = [...names].filter(n => tNames.has(n)).length;
+        const ratio = shared / Math.max(names.size, tNames.size);
+        if (ratio >= 0.5 && (!best || ratio > best.ratio)) best = { template: t, ratio };
+    }
+    return best?.template || null;
+}
+
+/**
+ * 5.6.0 — one chip question at save time: Regular / Variation of <match> /
+ * Just this once. Backdrop tap = Regular (safe default, matches old behavior).
+ */
+function askTemplateKind(bestMatch) {
+    return new Promise((resolve) => {
+        document.getElementById('template-kind-backdrop')?.remove();
+        document.getElementById('template-kind-sheet')?.remove();
+
+        const finish = (pick) => {
+            const backdrop = document.getElementById('template-kind-backdrop');
+            const sheet = document.getElementById('template-kind-sheet');
+            backdrop?.classList.remove('visible');
+            sheet?.classList.remove('visible');
+            setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
+            resolve(pick);
+        };
+        window._pickTemplateKind = (kind, parentTemplateId = null) => finish({ kind, parentTemplateId });
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'aw-sheet-backdrop';
+        backdrop.id = 'template-kind-backdrop';
+        backdrop.onclick = () => finish({ kind: 'core' });
+
+        const sheet = document.createElement('div');
+        sheet.className = 'aw-sheet';
+        sheet.id = 'template-kind-sheet';
+        sheet.setAttribute('role', 'dialog');
+        sheet.setAttribute('aria-modal', 'true');
+        sheet.innerHTML = `
+            <div class="aw-sheet__handle"></div>
+            <div class="aw-sheet__header">
+                <div class="aw-sheet__title">Keep as</div>
+                <div class="aw-sheet__subtitle">Variations nest under their workout; one-timers archive after use</div>
+            </div>
+            <div class="aw-sheet__body">
+                <div class="js-row" onclick="_pickTemplateKind('core')">
+                    <i class="fas fa-dumbbell"></i>
+                    <div class="js-row__txt">Regular workout</div>
+                </div>
+                ${bestMatch ? `
+                <div class="js-row" onclick="_pickTemplateKind('variation', '${escapeAttr(bestMatch.id || bestMatch._id || '')}')">
+                    <i class="fas fa-code-branch"></i>
+                    <div class="js-row__txt">Variation of ${escapeHtml(bestMatch.name || '')}</div>
+                </div>` : ''}
+                <div class="js-row" onclick="_pickTemplateKind('oneOff')">
+                    <i class="fas fa-clock"></i>
+                    <div class="js-row__txt">Just this once</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(backdrop);
+        document.body.appendChild(sheet);
+        requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+    });
 }
 
 /**

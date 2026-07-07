@@ -38,8 +38,10 @@ const TOOL_DEFINITIONS = [
         input_schema: {
             type: 'object',
             properties: {
-                name: { type: 'string', description: 'Short workout name, e.g. "Pull day — Crunch"' },
+                name: { type: 'string', description: 'Short workout name by what it IS ("Pull day", "Legs — heavy") — NEVER a weekday' },
                 category: { type: 'string', description: 'One of: Push, Pull, Legs, Core, Cardio, Arms, Shoulders, Other' },
+                kind: { type: 'string', description: "'core' = recurring workout (default) · 'variation' = riff on an existing core workout (pass parentTemplateId) · 'oneOff' = single occasion (travel gym, test day — auto-archives after first use)" },
+                parentTemplateId: { type: 'string', description: 'Required when kind=variation: the core template this varies' },
                 exercises: {
                     type: 'array',
                     description: '5-8 exercises for a full workout (compound movements first); fewer only if the user asked for fewer',
@@ -59,6 +61,31 @@ const TOOL_DEFINITIONS = [
                 },
             },
             required: ['name', 'exercises'],
+        },
+    },
+    {
+        name: 'archive_template',
+        description: "Archive a saved workout (non-destructive — hidden from the library's main list, the workout selector, and coach context; unarchivable in the app). Only when the user asks to clean up or approves a cleanup suggestion — never spontaneously.",
+        input_schema: {
+            type: 'object',
+            properties: { templateId: { type: 'string' } },
+            required: ['templateId'],
+        },
+    },
+    {
+        name: 'propose_session_adjustments',
+        description: "Adjust an existing workout FOR ONE SESSION ONLY — deloads, make-up volume, time-crunched versions. Renders a card that starts the workout with the adjustments applied; the template itself is NEVER modified and no new template is created. This is the REQUIRED tool for deloads and one-off intensity changes.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                templateId: { type: 'string' },
+                label: { type: 'string', description: 'Short session label, e.g. "Deload", "Make-up legs"' },
+                weightPct: { type: 'number', description: 'Global weight change in percent, e.g. -40 for a deload' },
+                addExercises: { type: 'array', items: { type: 'object' }, description: 'Exercises added for this session only' },
+                dropExercises: { type: 'array', items: { type: 'string' }, description: 'Exercise names skipped this session' },
+                why: { type: 'string' },
+            },
+            required: ['templateId', 'label'],
         },
     },
     {
@@ -325,12 +352,17 @@ function makeToolExecutors({ db, userId }) {
 
         async list_templates() {
             const snap = await userDoc().collection('workoutTemplates').get();
-            const templates = snap.docs.slice(0, 20).map(d => {
+            // Archived templates are out of the coach's world (5.6.2).
+            const templates = snap.docs.filter(d => !d.data().archived).slice(0, 20).map(d => {
                 const t = d.data();
                 return {
                     templateId: d.id,
                     name: t.name || d.id,
                     category: t.category || null,
+                    kind: t.kind || 'core',
+                    ...(t.parentTemplateId ? { parentTemplateId: t.parentTemplateId } : {}),
+                    usageCount: t.usageCount || 0,
+                    lastUsedDate: t.lastUsedDate || null,
                     exercises: (t.exercises || []).slice(0, 15).map(e => ({
                         name: e.machine || e.name,
                         sets: e.sets, reps: e.defaultReps || e.reps,
@@ -340,6 +372,26 @@ function makeToolExecutors({ db, userId }) {
                 };
             });
             return { templates, count: templates.length };
+        },
+
+        async archive_template(input) {
+            const templateId = String(input?.templateId || '').trim();
+            if (!templateId) return { error: 'templateId is required' };
+            const ref = userDoc().collection('workoutTemplates').doc(templateId);
+            const snap = await ref.get();
+            if (!snap.exists) return { error: `Template not found: ${templateId}` };
+            await ref.set({ archived: true, lastUpdated: new Date().toISOString() }, { merge: true });
+            return {
+                result: { archived: templateId },
+                actionCard: {
+                    kind: 'template_updated',
+                    templateId,
+                    name: snap.data().name || templateId,
+                    category: snap.data().category || null,
+                    exerciseCount: (snap.data().exercises || []).length,
+                    diffSummary: 'Archived — restore anytime from the library',
+                },
+            };
         },
 
         async get_prs() {
@@ -367,6 +419,17 @@ function makeToolExecutors({ db, userId }) {
             if (!v.ok) return { error: v.error };
             const { name, category, exercises } = v.normalized;
 
+            // 5.6.0 — classify at birth. Variations must point at a real parent.
+            const kind = ['core', 'variation', 'oneOff'].includes(input.kind) ? input.kind : 'core';
+            let parentTemplateId = null;
+            if (kind === 'variation') {
+                const pid = String(input.parentTemplateId || '').trim();
+                if (!pid) return { error: 'kind=variation requires parentTemplateId (from list_templates)' };
+                const parent = await userDoc().collection('workoutTemplates').doc(pid).get();
+                if (!parent.exists) return { error: `parentTemplateId not found: ${pid}` };
+                parentTemplateId = pid;
+            }
+
             // Same slug scheme the client uses, with collision suffixing so the
             // coach can't silently overwrite an existing workout.
             let base = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
@@ -383,6 +446,8 @@ function makeToolExecutors({ db, userId }) {
                 name,
                 category,
                 exercises,
+                kind,
+                ...(parentTemplateId ? { parentTemplateId } : {}),
                 lastUpdated: nowIso,
                 createdBy: userId,
                 isCustom: true,
@@ -609,6 +674,24 @@ function validateProposal(toolName, input) {
             if (seconds == null) return { ok: false, error: 'seconds must be 15-600' };
             return { ok: true, proposal: { kind: 'rest', seconds, why } };
         }
+        case 'propose_session_adjustments': {
+            // Coach-tab proposal (5.6.1): one-session riff on an existing
+            // template. Template existence is checked client-side at Apply
+            // (the client owns the library cache) — validation here is shape.
+            const templateId = clip(input?.templateId, 80);
+            const label = clip(input?.label, 40);
+            if (!templateId || !label) return { ok: false, error: 'templateId and label are required' };
+            const weightPct = typeof input?.weightPct === 'number' && input.weightPct >= -90 && input.weightPct <= 100
+                ? Math.round(input.weightPct) : null;
+            const addExercises = Array.isArray(input?.addExercises)
+                ? input.addExercises.map(normalizeExercise).filter(Boolean).slice(0, 5) : [];
+            const dropExercises = Array.isArray(input?.dropExercises)
+                ? input.dropExercises.map(x => clip(x, 80)).filter(Boolean).slice(0, 10) : [];
+            if (weightPct == null && !addExercises.length && !dropExercises.length) {
+                return { ok: false, error: 'Provide weightPct, addExercises, or dropExercises' };
+            }
+            return { ok: true, proposal: { kind: 'session_adjustments', templateId, label, weightPct, addExercises, dropExercises, why } };
+        }
         default:
             return { ok: false, error: `Unknown proposal tool: ${toolName}` };
     }
@@ -635,6 +718,8 @@ const TOOL_STATUS = {
     forget_fact: 'Forgetting that…',
     get_week_plan: 'Checking your week…',
     set_week_plan: 'Updating your week…',
+    archive_template: 'Archiving…',
+    propose_session_adjustments: 'Building your session…',
 };
 
 module.exports = {

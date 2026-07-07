@@ -476,6 +476,8 @@ async function streamCoachResponse(question, bubble) {
                     scrollCoachChatIfNearBottom();
                 } else if (ev.type === 'action_card' && ev.card) {
                     handleCoachActionCard(ev.card, bubble);
+                } else if (ev.type === 'proposal' && ev.proposal?.kind === 'session_adjustments') {
+                    renderSessionAdjustmentCard(ev.proposal, bubble);
                 } else if (ev.type === 'delta') {
                     acc += ev.text || '';
                     if (bubble) bubble.innerHTML = formatCoachResponse(acc);
@@ -547,6 +549,104 @@ function handleCoachActionCard(card, streamingBubble) {
             clearSelectorCache?.();
         } catch (e) { debugLog('coach: workoutPlans refresh failed', e); }
     })();
+}
+
+// ===================================================================
+// SESSION ADJUSTMENTS (5.6.1) — one-session riff, template never touched
+// ===================================================================
+
+const _pendingSessionAdj = new Map();
+let _sessionAdjSeq = 0;
+
+function renderSessionAdjustmentCard(proposal, streamingBubble) {
+    const template = (AppState.workoutPlans || []).find(t => t.id === proposal.templateId);
+    if (!template) {
+        debugLog('session-adjustment proposal for unknown template:', proposal.templateId);
+        return;
+    }
+    const id = `sadj_${++_sessionAdjSeq}`;
+    _pendingSessionAdj.set(id, proposal);
+    const bits = [];
+    if (proposal.weightPct != null) bits.push(`${proposal.weightPct > 0 ? '+' : ''}${proposal.weightPct}% weight`);
+    if (proposal.addExercises?.length) bits.push(`+${proposal.addExercises.length} exercise${proposal.addExercises.length === 1 ? '' : 's'}`);
+    if (proposal.dropExercises?.length) bits.push(`skip ${proposal.dropExercises.join(', ')}`);
+
+    addChatBubble('bot', `
+        <div class="coach-action-card coach-action-card--session" id="${id}">
+            <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-sliders-h"></i></div>
+            <div class="coach-action-card__body">
+                <div class="coach-action-card__title">Start ${escapeHtml(template.name || '')} — ${escapeHtml(proposal.label)}</div>
+                <div class="coach-action-card__desc">${escapeHtml(bits.join(' · '))}${proposal.why ? ` · ${escapeHtml(proposal.why)}` : ''} · today only, workout unchanged</div>
+                <div class="coach-action-card__actions">
+                    <button class="live-proposal__apply" onclick="applySessionAdjustments('${id}')">Start session</button>
+                    <button class="live-proposal__dismiss" onclick="dismissSessionAdjustments('${id}')">Dismiss</button>
+                </div>
+            </div>
+        </div>
+    `);
+    if (streamingBubble?.parentElement) streamingBubble.parentElement.appendChild(streamingBubble);
+    scrollCoachChatIfNearBottom();
+}
+
+export function dismissSessionAdjustments(id) {
+    _pendingSessionAdj.delete(id);
+    document.getElementById(id)?.remove();
+}
+
+export async function applySessionAdjustments(id) {
+    const p = _pendingSessionAdj.get(id);
+    const template = p && (AppState.workoutPlans || []).find(t => t.id === p.templateId);
+    if (!template) return;
+    dismissSessionAdjustments(id);
+    closeAICoach();
+
+    try {
+        // Start from the EXISTING template through the normal path, then apply
+        // the one-session overrides to the (already deep-cloned) session copy.
+        await window.startWorkout(template.name);
+
+        const unit = AppState.globalUnit || 'lbs';
+        const step = unit === 'kg' ? 2.5 : 5;
+        const cw = AppState.currentWorkout;
+        if (!cw?.exercises) return;
+
+        if (p.dropExercises?.length) {
+            const drop = new Set(p.dropExercises.map(n => n.toLowerCase()));
+            cw.exercises = cw.exercises.filter(ex => !drop.has((ex.machine || ex.name || '').toLowerCase()));
+        }
+        if (p.weightPct != null) {
+            const f = 1 + p.weightPct / 100;
+            for (const ex of cw.exercises) {
+                if (typeof ex.weight === 'number' && ex.weight > 0) {
+                    ex.weight = Math.max(step, Math.round((ex.weight * f) / step) * step);
+                }
+            }
+        }
+        for (const add of (p.addExercises || [])) {
+            cw.exercises.push({
+                machine: add.machine || add.name,
+                sets: add.sets || 3,
+                defaultReps: add.reps || 10,
+                ...(add.weight != null ? { weight: add.weight } : {}),
+                ...(add.equipment ? { equipment: add.equipment } : {}),
+            });
+        }
+
+        // History honesty: the workout doc records what this session WAS.
+        if (AppState.savedData) {
+            AppState.savedData.basedOn = p.templateId;
+            AppState.savedData.sessionLabel = p.label;
+        }
+
+        const { renderActiveWorkout } = await import('../workout/workout-core.js');
+        const { debouncedSaveWorkoutData } = await import('../data/data-manager.js');
+        renderActiveWorkout();
+        debouncedSaveWorkoutData(AppState);
+        showNotification(`${p.label} session started — workout unchanged`, 'success');
+    } catch (e) {
+        console.error('❌ Session adjustments failed:', e);
+        showNotification("Couldn't start the adjusted session", 'error');
+    }
 }
 
 /**
@@ -1323,4 +1423,6 @@ function truncate(str, len) {
 // so template + handler ship together and can't version-skew under prod's
 // year-long JS cache. (Most of this file's handlers are wired via main.js.)
 window.confirmRegenerateWorkout = confirmRegenerateWorkout;
+window.applySessionAdjustments = applySessionAdjustments;
+window.dismissSessionAdjustments = dismissSessionAdjustments;
 

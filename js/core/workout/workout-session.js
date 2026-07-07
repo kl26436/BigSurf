@@ -249,8 +249,45 @@ export async function startWorkout(workoutType) {
     // Save initial state
     await saveWorkoutData(AppState);
 
+    // 5.6.2 — usage stats on the template doc (fire-and-forget merge write):
+    // most-used floats to the top of the library, cleanup finds the never-used.
+    bumpTemplateUsage(AppState.savedData?.workoutType);
+
     // Readiness check-in (Phase 5) — one tap, skippable, never blocking.
     showReadinessSheet();
+}
+
+/** 5.6.0 — auto-archive a kind:'oneOff' template after its first completion. */
+async function archiveOneOffTemplate(workoutType) {
+    try {
+        if (!workoutType || !AppState.currentUser) return;
+        const t = (AppState.workoutPlans || []).find(p => (p.name || p.day) === workoutType);
+        if (!t?.id || t.kind !== 'oneOff' || t.archived) return;
+        const { db, doc, setDoc } = await import('../data/firebase-config.js');
+        await setDoc(doc(db, 'users', AppState.currentUser.uid, 'workoutTemplates', t.id),
+            { archived: true, lastUpdated: new Date().toISOString() }, { merge: true });
+        t.archived = true;
+    } catch (e) {
+        console.error('❌ One-off auto-archive failed:', e);
+    }
+}
+
+/** Denormalized usageCount/lastUsedDate on the template doc (5.6.2). */
+async function bumpTemplateUsage(workoutType) {
+    try {
+        if (!workoutType || !AppState.currentUser) return;
+        const t = (AppState.workoutPlans || []).find(p => (p.name || p.day) === workoutType);
+        if (!t?.id) return;
+        const { db, doc, setDoc } = await import('../data/firebase-config.js');
+        const usageCount = (t.usageCount || 0) + 1;
+        const lastUsedDate = AppState.getTodayDateString();
+        await setDoc(doc(db, 'users', AppState.currentUser.uid, 'workoutTemplates', t.id),
+            { usageCount, lastUsedDate }, { merge: true });
+        t.usageCount = usageCount;
+        t.lastUsedDate = lastUsedDate;
+    } catch (e) {
+        console.error('❌ Template usage bump failed:', e);
+    }
 }
 
 /**
@@ -601,6 +638,10 @@ export async function completeWorkout() {
     // Invalidate the dashboard's full-history cache so the just-completed
     // workout shows up in body-part stats / streaks on next render.
     clearAllWorkoutsCache();
+
+    // 5.6.0 — one-off templates auto-archive after their first completed use:
+    // built for one occasion, then out of the way (unarchive brings it back).
+    archiveOneOffTemplate(AppState.savedData?.workoutType);
 
     // Clear editing flags if we were editing a historical workout
     window.editingHistoricalWorkout = false;
