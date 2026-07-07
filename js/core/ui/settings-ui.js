@@ -42,6 +42,7 @@ const DEFAULT_SETTINGS = {
     coachGoal: null,      // 'cut' | 'bulk' | 'recomp' | 'strength' | 'general' | null
     coachInjuries: null,  // free text — safety-critical, the coach must program around it
     coachNotes: null,     // free text — schedule constraints, preferences
+    weeklyCoachReview: true, // Monday digest push + review doc (server checks this)
 
     // Profile (user can override Firebase auth displayName; other fields are opt-in)
     profileName: null,       // override display name; null = use Firebase auth
@@ -344,6 +345,14 @@ export function renderSettings() {
                         <div class="srow-desc">Facts saved from your conversations — view and delete</div>
                     </div>
                     <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
+                <div class="srow">
+                    <div class="srow-icon ic-primary"><i class="fas fa-calendar-week"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Weekly coach review</div>
+                        <div class="srow-desc">A short Monday digest of your training week</div>
+                    </div>
+                    ${toggleBtn('weeklyCoachReview', s.weeklyCoachReview !== false)}
                 </div>
             </div>
 

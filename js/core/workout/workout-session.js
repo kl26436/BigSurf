@@ -249,7 +249,8 @@ export async function startWorkout(workoutType) {
     // Save initial state
     await saveWorkoutData(AppState);
 
-    // Removed annoying "workout started" notification
+    // Readiness check-in (Phase 5) — one tap, skippable, never blocking.
+    showReadinessSheet();
 }
 
 /**
@@ -365,7 +366,88 @@ export async function startFreestyleWorkout(focus = null, seedExercises = null) 
     // focus so the sheet's body-part filter is already parked on it (Legs/Core/
     // Cardio map 1:1; Push/Pull span body parts and fall back to All). A seeded
     // repeat already has its exercises — no sheet.
+    //
+    // Readiness check-in only when the add-exercise sheet ISN'T auto-opening:
+    // stacking two sheets on the zero-ceremony freestyle path is exactly the
+    // friction that persona rejects. Plain freestyle starts skip it.
     if (!seeded && typeof window.awAddExercise === 'function') window.awAddExercise(focus);
+    else showReadinessSheet();
+}
+
+// ===================================================================
+// READINESS CHECK-IN (Phase 5) — 1-5 + optional note on the workout doc
+// ===================================================================
+
+// Asked at most once per session (keyed on startedAt), even across re-renders.
+let _readinessAskedFor = null;
+
+export function showReadinessSheet() {
+    const session = AppState.savedData?.startedAt;
+    if (!session || _readinessAskedFor === session || AppState.savedData.readiness) return;
+    _readinessAskedFor = session;
+
+    document.getElementById('readiness-backdrop')?.remove();
+    document.getElementById('readiness-sheet')?.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'readiness-backdrop';
+    backdrop.onclick = dismissReadinessSheet;
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'readiness-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Readiness check-in');
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">How are you feeling?</div>
+            <div class="aw-sheet__subtitle">One tap — the coach uses it to adjust today's load</div>
+        </div>
+        <div class="aw-sheet__body">
+            <div class="readiness-scale">
+                ${[1, 2, 3, 4, 5].map(n =>
+                    `<button class="readiness-scale__btn" onclick="pickReadiness(${n})" aria-label="Feeling ${n} of 5">${n}</button>`
+                ).join('')}
+            </div>
+            <div class="readiness-scale__labels"><span>Wrecked</span><span>Great</span></div>
+            <input type="text" id="readiness-note" class="field-input"
+                   placeholder="Optional note — slept badly, sore, etc.">
+        </div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action" onclick="dismissReadinessSheet()">Skip</button>
+        </div>
+    `;
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+}
+
+export function pickReadiness(score) {
+    const note = document.getElementById('readiness-note')?.value?.trim() || null;
+    if (AppState.savedData) {
+        // Additive field on the workout doc — persisted by the normal
+        // saveWorkoutData path, read back into the coach context.
+        AppState.savedData.readiness = { score, ...(note ? { note } : {}) };
+        saveWorkoutData(AppState);
+    }
+    dismissReadinessSheet();
+}
+
+export function dismissReadinessSheet() {
+    const backdrop = document.getElementById('readiness-backdrop');
+    const sheet = document.getElementById('readiness-sheet');
+    backdrop?.classList.remove('visible');
+    sheet?.classList.remove('visible');
+    setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
+}
+
+// Self-wire (rendered from this module's own template strings).
+if (typeof window !== 'undefined') {
+    window.pickReadiness = pickReadiness;
+    window.dismissReadinessSheet = dismissReadinessSheet;
 }
 
 export function pauseWorkout() {

@@ -1365,6 +1365,36 @@
     text-align: center;
     color: var(--text-muted);
 }
+/* Readiness check-in sheet (Phase 5) — five equal one-tap scores. */
+.readiness-scale {
+    display: flex;
+    gap: var(--space-8);
+    margin-bottom: var(--space-4);
+}
+.readiness-scale__btn {
+    flex: 1;
+    min-height: var(--tap);
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-strong);
+    font-size: var(--font-md);
+    font-weight: 700;
+    cursor: pointer;
+}
+.readiness-scale__btn:active {
+    background: var(--primary-bg);
+    border-color: var(--primary-border);
+    color: var(--primary);
+}
+.readiness-scale__labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    margin-bottom: var(--space-12);
+}
+
 /* Freestyle memory — section labels splitting "Recent" (his own recently
    freestyled exercises) from the full library below it. */
 .aw-add-ex-group {

@@ -664,7 +664,12 @@ function buildTrainingContext(workouts, healthSummary = '', prList = []) {
         for (const w of recent) {
             const wName = w.workoutType || 'Workout';
             const loc = w.location || '';
-            summary += `\n${w.date} · ${wName}${loc ? ` @ ${loc}` : ''}\n`;
+            // Readiness check-in (Phase 5) — lets the coach auto-regulate
+            // ("you felt 2/5 and volume still climbed — back off today").
+            const ready = w.readiness?.score
+                ? ` · felt ${w.readiness.score}/5${w.readiness.note ? ` ("${w.readiness.note}")` : ''}`
+                : '';
+            summary += `\n${w.date} · ${wName}${loc ? ` @ ${loc}` : ''}${ready}\n`;
             for (const ex of withResolvedNames(w)) {
                 if (!ex.name) continue;
                 const equip = ex.equipment ? ` [${ex.equipment}]` : '';
@@ -871,7 +876,7 @@ async function loadCoachHistory() {
             </div>
             ${sessions.map(s => `
                 <div class="coach-history-item" onclick="showPastCoachSession('${escapeHtml(s.id)}')">
-                    <div class="coach-history-question">${escapeHtml(truncate(s.question, 60))}</div>
+                    <div class="coach-history-question">${s.type === 'weekly_review' ? '<i class="fas fa-calendar-week coach-history-review-icon"></i> ' : ''}${escapeHtml(truncate(s.question, 60))}</div>
                     <div class="coach-history-date">${formatRelativeDate(s.timestamp, { daysAgo: true })}</div>
                 </div>
             `).join('')}
@@ -925,6 +930,25 @@ export function showPastCoachSession(sessionId) {
             label.className = 'coach-past-label';
             label.innerHTML = `<i class="fas fa-history"></i> From ${formatRelativeDate(session.timestamp, { daysAgo: true })}`;
             firstBubble.insertBefore(label, firstBubble.firstChild);
+        }
+        return;
+    }
+
+    if (session.type === 'weekly_review') {
+        // Weekly reviews seed a thread so follow-ups work like a normal chat
+        // (the coach's tools can pull anything deeper it needs).
+        _coachConversation = [
+            { role: 'user', content: 'Give me my weekly training review.' },
+            { role: 'assistant', content: session.response },
+        ];
+        _coachThreadId = session.id;
+        _coachThreadTemplateNames = (AppState.workoutPlans || []).map(t => t.name || t.day).filter(Boolean);
+        const reviewBubble = addChatBubble('bot', formatCoachResponse(session.response));
+        if (reviewBubble) {
+            const label = document.createElement('div');
+            label.className = 'coach-past-label';
+            label.innerHTML = `<i class="fas fa-calendar-week"></i> Weekly review · ${formatRelativeDate(session.timestamp, { daysAgo: true })}`;
+            reviewBubble.insertBefore(label, reviewBubble.firstChild);
         }
         return;
     }

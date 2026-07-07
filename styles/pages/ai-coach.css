@@ -167,6 +167,8 @@
     padding: 0 4px;
     font-size: var(--font-xs);
 }
+/* Weekly reviews stand out in the past-sessions list. */
+.coach-history-review-icon { color: var(--primary); }
 
 /* Input bar pinned at bottom (spec §8: .coach-input-bar + __send) */
 .coach-input-bar {

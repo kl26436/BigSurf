@@ -932,6 +932,7 @@ const TRAINING_SCIENCE_PROMPT = `You are an expert strength and conditioning coa
 
 THE DATA YOU RECEIVE INCLUDES (depending on what's available):
 - User profile — goal (cut/bulk/recomp/strength/general), experience level, injuries/limitations, notes, height, weekly goal
+- Readiness check-ins — a 1-5 "how are you feeling" score (+ optional note) attached to recent workouts
 - Personal records — best sets per exercise+equipment with dates
 - The user's saved workout templates (name, category, exercises with sets×reps)
 - Weekly volume by muscle group with status (low / moderate / high)
@@ -947,6 +948,7 @@ HOW TO USE THE DATA — this is non-negotiable:
 - When the profile has a goal, frame recommendations around it (a cut and a bulk answer the same question differently).
 - Reference the user's actual numbers ("your bench went 135 → 145 → 145"), not abstract advice.
 - When the question touches an existing saved workout, adjust THAT workout rather than inventing a new plan from scratch.
+- Auto-regulate on readiness: low scores (1-2/5) → suggest reduced load/volume that day, not hero sets; repeated low scores across a week → probe recovery (sleep, deload).
 - When suggesting an exercise, prefer ones the user has equipment for at their training location.
 - If the user asks about a specific day (legs, push, pull), stay on that topic; don't drift.
 - If the data doesn't support a confident answer, say so plainly — never invent details.
@@ -1451,6 +1453,123 @@ exports.coachChatStream = onRequest({
         send({ type: 'error', message: 'Coach is unavailable right now — try again.' });
         res.end();
     }
+});
+
+/**
+ * Weekly coach review (Phase 5) — proactive digest every Monday 14:00 UTC.
+ * For each user active in the last 7 days: build a compact server-side
+ * summary, one cheap DIGEST_MODEL call, save to coachHistory as
+ * {type:'weekly_review'}, push "Your weekly training review is ready".
+ *
+ * Spend guardrails: skip users with zero workouts in the window, per-user
+ * 1/week via a weekKey (survives function retries), maxInstances 1, opt-out
+ * via settings.weeklyCoachReview === false (default on).
+ */
+exports.weeklyCoachReview = functions.runWith({
+    secrets: [anthropicApiKey],
+    timeoutSeconds: 540,
+    memory: '512MB',
+    maxInstances: 1,
+}).pubsub.schedule('every monday 14:00').onRun(async () => {
+    const apiKey = anthropicApiKey.value();
+    if (!apiKey) { console.error('❌ weeklyCoachReview: no API key'); return null; }
+
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const weekKey = new Date().toISOString().slice(0, 10); // this Monday
+
+    const userRefs = await db.collection('users').listDocuments();
+    let reviewed = 0;
+    for (const userRef of userRefs) {
+        try {
+            // Opt-out (default on).
+            const settingsSnap = await userRef.collection('preferences').doc('settings').get();
+            if (settingsSnap.exists && settingsSnap.data().weeklyCoachReview === false) continue;
+
+            // Active this week?
+            const workoutsSnap = await userRef.collection('workouts')
+                .where('date', '>=', weekAgo).orderBy('date', 'desc').limit(15).get();
+            const workouts = workoutsSnap.docs.map(d => d.data())
+                .filter(w => w.completedAt && !w.cancelledAt);
+            if (workouts.length === 0) continue;
+
+            // Once per week, retry-safe.
+            const limitRef = userRef.collection('preferences').doc('aiRateLimits');
+            const limitSnap = await limitRef.get();
+            if (limitSnap.exists && limitSnap.data().weeklyReview?.weekKey === weekKey) continue;
+            await limitRef.set({ weeklyReview: { weekKey } }, { merge: true });
+
+            // Compact summary — dates, types, top sets, readiness, notes.
+            const lines = [];
+            for (const w of workouts) {
+                const names = w.exerciseNames || {};
+                const ready = w.readiness?.score ? ` · felt ${w.readiness.score}/5` : '';
+                lines.push(`${w.date} — ${w.workoutType || 'Workout'}${ready}`);
+                for (const [key, ex] of Object.entries(w.exercises || {})) {
+                    const name = names[key];
+                    if (!name || !ex.sets?.length) continue;
+                    const sets = ex.sets
+                        .filter(s => s.type !== 'warmup' && (s.reps || s.weight))
+                        .map(s => `${s.reps || '?'}×${s.weight || 'BW'}`).join(', ');
+                    if (sets) lines.push(`  ${name}${ex.equipment ? ` [${ex.equipment}]` : ''}: ${sets}${ex.notes ? ` — "${ex.notes}"` : ''}`);
+                }
+            }
+
+            const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                },
+                body: JSON.stringify({
+                    model: DIGEST_MODEL,
+                    max_tokens: 1500,
+                    system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-5 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. No preamble, no sign-off. Ground every claim in the data provided.',
+                    messages: [{ role: 'user', content: `This week's training log:\n\n${lines.join('\n')}` }],
+                }),
+            });
+            if (!upstream.ok) {
+                console.error(`❌ weeklyCoachReview API error for ${userRef.id}:`, upstream.status);
+                continue;
+            }
+            const resp = await upstream.json();
+            const review = resp.content?.find(b => b.type === 'text')?.text;
+            if (!review) continue;
+
+            await userRef.collection('coachHistory').add({
+                type: 'weekly_review',
+                question: 'Weekly review',
+                response: review,
+                timestamp: new Date().toISOString(),
+                usage: {
+                    inputTokens: resp.usage?.input_tokens || 0,
+                    outputTokens: resp.usage?.output_tokens || 0,
+                },
+            });
+
+            // Push (best effort — web push infra).
+            try {
+                const subSnap = await userRef.collection('push_subscriptions').doc('current').get();
+                const sub = subSnap.exists ? subSnap.data().subscription : null;
+                if (sub) {
+                    await webpush.sendNotification(sub, JSON.stringify({
+                        title: 'Big Surf',
+                        body: 'Your weekly training review is ready',
+                        icon: '/BigSurf.png',
+                        badge: '/BigSurf.png',
+                        tag: 'weekly-review',
+                    }));
+                }
+            } catch (pushErr) {
+                console.log(`weeklyCoachReview push skipped for ${userRef.id}:`, pushErr.message);
+            }
+            reviewed++;
+        } catch (userErr) {
+            console.error(`❌ weeklyCoachReview failed for ${userRef.id}:`, userErr);
+        }
+    }
+    console.log(`✅ weeklyCoachReview: ${reviewed} review(s) generated`);
+    return null;
 });
 
 /**
