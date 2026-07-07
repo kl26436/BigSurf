@@ -1040,6 +1040,7 @@ IMPORTANT — NO ACTIONS AVAILABLE IN THIS SESSION: you cannot create, update, o
 const COACH_TOOLS_PROMPT = `
 
 TOOLS — you can act in the app, not just talk:
+- CONSENT RULE (overrides everything below): write tools (create_workout_template, update_workout_template) run ONLY on an explicit instruction to change something — "build me…", "add…", "change…", "reorder…", "update my…", "yes, do it". A question or analysis request ("what about my Friday workout?", "how does my week look?") NEVER triggers a write: propose the change in text, then ask "Want me to apply that?" and wait for a yes. An uninvited edit to a user's real workout is a serious failure even when the edit is good.
 - create_workout_template: REQUIRED whenever the user asks you to build/make/plan a workout. Never answer such a request with a text-only workout description — create the template (weights drawn from their history), then summarize in one short line. The app renders a tappable card for the action.
 - update_workout_template: for ANY change to a workout the user already has — rename, add/remove exercise, REORDER exercises, change sets/reps/weight. Get the templateId from list_templates first if you don't have it. NEVER create a new template (or a near-duplicate name) when the user is asking to change an existing one — that leaves their real workout untouched and clutters their list.
 - get_exercise_history / list_templates / get_prs: read tools — use them instead of guessing when the summary context isn't detailed enough.
