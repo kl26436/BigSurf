@@ -347,6 +347,19 @@ export async function startFreestyleWorkout(focus = null, seedExercises = null) 
     window.inProgressWorkout = { ...AppState.savedData, originalWorkout: AppState.currentWorkout };
     await saveWorkoutData(AppState);
 
+    // Freestyle memory — precompute the "Recent" section (his own recently
+    // freestyled exercises) before the add sheet auto-opens, so it renders in
+    // the first paint instead of popping in. History is usually already cached.
+    try {
+        const [{ loadAllWorkouts }, mem] = await Promise.all([
+            import('../data/data-manager.js'),
+            import('../features/freestyle-memory.js'),
+        ]);
+        AppState._freestyleRecent = mem.getRecentFreestyleExercises(await loadAllWorkouts(AppState));
+    } catch {
+        AppState._freestyleRecent = [];
+    }
+
     // Drop straight into picking the first exercise — the whole point of
     // freestyle is "add as you go", so don't make them find a menu. Pass the
     // focus so the sheet's body-part filter is already parked on it (Legs/Core/
@@ -728,7 +741,16 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
             </div>
             ` : ''}
 
-            ${!workoutData.templateId && exerciseCount > 0 ? `
+            ${!workoutData.templateId && exerciseCount > 0 ? (
+                (AppState.settings?.freestyleSaveDismissals || 0) >= 3
+                    // Dismissed a few times → he's a committed freestyler. Keep the
+                    // door open but drop the sales pitch to a quiet one-liner.
+                    ? `
+            <div class="completion-save-subtle" id="freestyle-save-banner">
+                <button class="btn-text" id="save-freestyle-btn"><i class="fas fa-bookmark"></i> Save as workout</button>
+            </div>
+            `
+                    : `
             <div class="completion-template-changes" id="freestyle-save-banner">
                 <div class="template-changes-text">
                     <i class="fas fa-bookmark"></i>
@@ -739,7 +761,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                     <button class="btn-text" id="dismiss-freestyle-btn" aria-label="Dismiss"><i class="fas fa-times"></i></button>
                 </div>
             </div>
-            ` : ''}
+            `) : ''}
 
             <div class="completion-notes-section">
                 <label for="workout-notes">How did it feel?</label>
@@ -935,8 +957,14 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
         }
     });
 
-    document.getElementById('dismiss-freestyle-btn')?.addEventListener('click', () => {
+    document.getElementById('dismiss-freestyle-btn')?.addEventListener('click', async () => {
         document.getElementById('freestyle-save-banner')?.remove();
+        // Count the dismissal (persisted in settings — no localStorage in this
+        // app). After 3, the banner renders as the subtle one-line variant.
+        try {
+            const { updateSetting } = await import('../ui/settings-ui.js');
+            updateSetting('freestyleSaveDismissals', (AppState.settings?.freestyleSaveDismissals || 0) + 1);
+        } catch { /* cosmetic counter — never block completion */ }
     });
 }
 

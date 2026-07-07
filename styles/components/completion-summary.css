@@ -149,6 +149,20 @@
     border-radius: var(--radius-sm);
     margin-bottom: var(--space-16);
 }
+/* Subtle variant of the freestyle "Save as workout" ask — shown after the
+   full banner has been dismissed a few times. Same action, no sales pitch. */
+.completion-save-subtle {
+    text-align: center;
+    margin-bottom: var(--space-16);
+}
+.completion-save-subtle .btn-text {
+    color: var(--primary);
+    font-size: var(--font-xs);
+    font-weight: 600;
+}
+.completion-save-subtle .btn-text > i {
+    margin-right: 4px;
+}
 .template-changes-actions {
     display: flex;
     align-items: center;

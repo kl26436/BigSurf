@@ -2898,10 +2898,45 @@ export function awAddExercise(seedFilter = null) {
         addExerciseFilter = validSeed;
     }
     addExerciseSearch = '';
+
+    // Freestyle memory (lazy) — a RESUMED freestyle session reaches this sheet
+    // without startFreestyleWorkout's precompute. Hydrate once in the
+    // background, then refresh the list in place. `null` = in-flight guard
+    // (the list builder only renders the section for a real array).
+    if (AppState.savedData?.isFreestyle && AppState._freestyleRecent === undefined) {
+        AppState._freestyleRecent = null;
+        (async () => {
+            try {
+                const [{ loadAllWorkouts }, mem] = await Promise.all([
+                    import('../data/data-manager.js'),
+                    import('../features/freestyle-memory.js'),
+                ]);
+                AppState._freestyleRecent = mem.getRecentFreestyleExercises(await loadAllWorkouts(AppState));
+                updateAddExerciseList();
+            } catch {
+                AppState._freestyleRecent = [];
+            }
+        })();
+    }
+
     renderAddExerciseSheet();
 }
 
-function renderAddExerciseSheet() {
+/**
+ * The add-exercise list inner HTML — ONE builder shared by the initial sheet
+ * render and the in-place filter/search updates (they used to duplicate this
+ * markup and drift).
+ *
+ * Sections, in order:
+ *   1. "+ Create <typed>" row when the search has no exact match.
+ *   2. Freestyle memory — "Recent" (exercises this user actually freestyled
+ *      recently, deduped, matching the active body-part filter, minus ones
+ *      already in this workout). Only for freestyle sessions, only when not
+ *      searching. This is what makes leg-day #10 open onto HIS list instead
+ *      of the full library.
+ *   3. The filtered library (capped at 50).
+ */
+function buildAddExerciseListHTML() {
     const library = AppState.exerciseDatabase || [];
     let filtered = library;
 
@@ -2915,16 +2950,8 @@ function renderAddExerciseSheet() {
         );
     }
 
-    const chips = AW_EX_CATEGORIES.map(c =>
-        `<button class="aw-sheet__chip ${c === addExerciseFilter ? 'active' : ''}" onclick="awSetAddFilter('${c}')">${c}</button>`
-    ).join('');
-
-    // Show an inline "+ Create" row when the search yields no exact match.
-    // Without this, a user trying to add a new exercise mid-workout had to
-    // close the sheet, navigate to the exercise library to create it, then
-    // come back and find it in the list. Now they can create + insert in one
-    // tap. We show it whenever the user has typed a search string and no
-    // exact-name match exists in the filtered results.
+    // Show an inline "+ Create" row when the search yields no exact match —
+    // create + insert in one tap instead of a detour through the library.
     const trimmed = (addExerciseSearch || '').trim();
     const exactMatch = trimmed && filtered.some(ex =>
         (ex.name || ex.machine || '').toLowerCase() === trimmed.toLowerCase()
@@ -2937,6 +2964,43 @@ function renderAddExerciseSheet() {
             </div>`
         : '';
 
+    let recentHTML = '';
+    if (!trimmed && AppState.savedData?.isFreestyle && Array.isArray(AppState._freestyleRecent)) {
+        const inWorkout = new Set((AppState.currentWorkout?.exercises || [])
+            .map(e => (e.machine || e.name || '').toLowerCase()));
+        const recent = AppState._freestyleRecent
+            .filter(r => r.name && !inWorkout.has(r.name.toLowerCase()))
+            .filter(r => addExerciseFilter === 'All' || awExerciseBucket(r) === addExerciseFilter)
+            .slice(0, 5);
+        if (recent.length) {
+            recentHTML = `<div class="aw-add-ex-group">Recent</div>`
+                + recent.map(r => `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeAttr(r.name)}')">
+                    <span class="aw-add-ex-row__name">${escapeHtml(r.name)}</span>
+                    <span class="aw-add-ex-row__cat">${escapeHtml(r.bodyPart || '')}</span>
+                </div>`).join('')
+                + `<div class="aw-add-ex-group">All exercises</div>`;
+        }
+    }
+
+    const rowsHTML = filtered.slice(0, 50).map(ex => {
+        const name = ex.name || ex.machine || 'Unknown';
+        const cat = ex.bodyPart || '';
+        return `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeAttr(name)}')">
+            <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
+            <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
+        </div>`;
+    }).join('');
+
+    return createRowHTML + recentHTML + rowsHTML
+        + (filtered.length > 50 ? `<div class="aw-add-ex-truncated">Showing 50 of ${filtered.length} — refine your search</div>` : '')
+        + (filtered.length === 0 && !createRowHTML && !recentHTML ? '<div class="aw-add-ex-empty">No exercises found</div>' : '');
+}
+
+function renderAddExerciseSheet() {
+    const chips = AW_EX_CATEGORIES.map(c =>
+        `<button class="aw-sheet__chip ${c === addExerciseFilter ? 'active' : ''}" onclick="awSetAddFilter('${c}')">${c}</button>`
+    ).join('');
+
     const body = `
         <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
@@ -2945,19 +3009,7 @@ function renderAddExerciseSheet() {
                    onfocus="setTimeout(() => this.scrollIntoView({ block: 'start' }), 200)">
         </div>
         <div class="aw-sheet__chips">${chips}</div>
-        <div id="aw-add-exercise-list">
-            ${createRowHTML}
-            ${filtered.slice(0, 50).map(ex => {
-                const name = ex.name || ex.machine || 'Unknown';
-                const cat = ex.bodyPart || '';
-                return `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeAttr(name)}')">
-                    <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
-                    <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
-                </div>`;
-            }).join('')}
-            ${filtered.length > 50 ? `<div class="aw-add-ex-truncated">Showing 50 of ${filtered.length} — refine your search</div>` : ''}
-            ${filtered.length === 0 && !createRowHTML ? '<div class="aw-add-ex-empty">No exercises found</div>' : ''}
-        </div>
+        <div id="aw-add-exercise-list">${buildAddExerciseListHTML()}</div>
     `;
 
     openSheet({
@@ -2985,39 +3037,7 @@ export function awSetAddFilter(cat) {
 function updateAddExerciseList() {
     const listEl = document.getElementById('aw-add-exercise-list');
     if (!listEl) return;
-
-    const library = AppState.exerciseDatabase || [];
-    let filtered = library;
-    if (addExerciseFilter !== 'All') {
-        filtered = filtered.filter(ex => awExerciseBucket(ex) === addExerciseFilter);
-    }
-    if (addExerciseSearch) {
-        const q = addExerciseSearch.toLowerCase();
-        filtered = filtered.filter(ex => (ex.name || ex.machine || '').toLowerCase().includes(q));
-    }
-
-    const trimmed = (addExerciseSearch || '').trim();
-    const exactMatch = trimmed && filtered.some(ex =>
-        (ex.name || ex.machine || '').toLowerCase() === trimmed.toLowerCase()
-    );
-    const createRowHTML = trimmed && !exactMatch
-        ? `<div class="aw-add-ex-row aw-add-ex-row--create" onclick="awCreateAndInsertExercise('${escapeAttr(trimmed)}')">
-                <i class="fas fa-plus-circle"></i>
-                <span class="aw-add-ex-row__name">Create "${escapeHtml(trimmed)}"</span>
-                <span class="aw-add-ex-row__cat">New</span>
-            </div>`
-        : '';
-
-    const rowsHTML = filtered.slice(0, 50).map(ex => {
-        const name = ex.name || ex.machine || 'Unknown';
-        const cat = ex.bodyPart || '';
-        return `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeAttr(name)}')">
-            <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
-            <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
-        </div>`;
-    }).join('');
-
-    listEl.innerHTML = createRowHTML + (rowsHTML || (createRowHTML ? '' : '<div class="aw-sheet__empty aw-sheet__empty--large">No exercises found</div>'));
+    listEl.innerHTML = buildAddExerciseListHTML();
 }
 
 export function awSetAddSearch(query) {

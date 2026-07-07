@@ -547,10 +547,15 @@ function renderQuickStartCta() {
 // Options are the template/workout categories (a programming focus), styled with
 // the shared .chip (no new pill variant — Phase 7 consistency gate).
 let _quickStartFocus = null;
+// Last matching freestyle session (hydrated async per focus) — powers the
+// "Start from last Legs" shortcut. Freestyle memory: the improviser's own
+// history is his template, so surface it without ever calling it one.
+let _qsLastSession = null;
 const QUICK_START_FOCUSES = ['Push', 'Pull', 'Legs', 'Core', 'Cardio'];
 
 export function openQuickStartSheet() {
     _quickStartFocus = null;
+    _qsLastSession = null;
     const chips = QUICK_START_FOCUSES.map(f =>
         `<button class="chip chip--sm" data-qs-focus="${f}" onclick="qsSetFocus('${f}')">${escapeHtml(f)}</button>`
     ).join('');
@@ -573,6 +578,7 @@ export function openQuickStartSheet() {
         </div>
         <div class="aw-sheet__body">
             <div class="qs-focus-chips">${chips}</div>
+            <div id="qs-memory"></div>
         </div>
         <div class="aw-sheet__actions">
             <button class="aw-sheet__action" onclick="closeQuickStartSheet()">Cancel</button>
@@ -582,6 +588,7 @@ export function openQuickStartSheet() {
     document.body.appendChild(backdrop);
     document.body.appendChild(sheet);
     requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+    hydrateQuickStartMemory();
 }
 
 export function qsSetFocus(focus) {
@@ -590,6 +597,63 @@ export function qsSetFocus(focus) {
     document.querySelectorAll('#qs-sheet [data-qs-focus]').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.qsFocus === _quickStartFocus);
     });
+    hydrateQuickStartMemory();
+}
+
+/**
+ * Async-fill the "last time" line for the current focus: "Last Legs · 2w ago —
+ * Leg press · Hack squat · Leg curl +2 more" with a one-tap "Start from last".
+ * Silent when there's no matching history (first-timers see nothing extra).
+ */
+async function hydrateQuickStartMemory() {
+    const el = document.getElementById('qs-memory');
+    if (!el) return;
+    const focusAtRequest = _quickStartFocus;
+    try {
+        const [{ loadAllWorkouts }, mem] = await Promise.all([
+            import('../data/data-manager.js'),
+            import('../features/freestyle-memory.js'),
+        ]);
+        const workouts = await loadAllWorkouts(AppState);
+        // The user may have tapped another chip while we loaded — drop stale fills.
+        if (_quickStartFocus !== focusAtRequest) return;
+        const last = mem.getLastFreestyleSession(workouts, _quickStartFocus);
+        const target = document.getElementById('qs-memory');
+        if (!target) return;
+        if (!last) { _qsLastSession = null; target.innerHTML = ''; return; }
+
+        _qsLastSession = last;
+        const names = last.exercises.map((e) => e.machine || e.name).filter(Boolean);
+        const shown = names.slice(0, 3).join(' · ');
+        const more = names.length > 3 ? ` +${names.length - 3} more` : '';
+        const label = last.focus ? `Last ${last.focus}` : 'Last freestyle';
+        const rel = mem.relativeDaysLabel(last.date);
+        target.innerHTML = `
+            <div class="qs-memory">
+                <div class="qs-memory__info">
+                    <div class="qs-memory__meta">${escapeHtml(label)}${rel ? ` · ${escapeHtml(rel)}` : ''}</div>
+                    <div class="qs-memory__list">${escapeHtml(shown + more)}</div>
+                </div>
+                <button class="qs-memory__go" onclick="qsStartFromLast()">
+                    <i class="fas fa-rotate-right" aria-hidden="true"></i> Start from last
+                </button>
+            </div>
+        `;
+    } catch {
+        // Memory is a bonus, never a blocker — leave the sheet plain.
+    }
+}
+
+/** Start a freestyle session pre-loaded with the last matching session's
+ *  exercises (same seeding path Repeat uses). */
+export function qsStartFromLast() {
+    const last = _qsLastSession;
+    if (!last) return;
+    const focus = _quickStartFocus || last.focus || null;
+    closeQuickStartSheet();
+    if (typeof window.startFreestyleWorkout === 'function') {
+        window.startFreestyleWorkout(focus, last.exercises);
+    }
 }
 
 export function closeQuickStartSheet() {
@@ -1924,6 +1988,7 @@ window.openQuickStartSheet = openQuickStartSheet;
 window.qsSetFocus = qsSetFocus;
 window.closeQuickStartSheet = closeQuickStartSheet;
 window.qsStart = qsStart;
+window.qsStartFromLast = qsStartFromLast;
 // Phase 7 — archive: group toggle + restore render in this module's strings.
 window.toggleArchivedGroup = toggleArchivedGroup;
 window.unarchiveTemplate = unarchiveTemplate;

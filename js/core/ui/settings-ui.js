@@ -51,6 +51,11 @@ const DEFAULT_SETTINGS = {
     // Meta
     hasCompletedOnboarding: false,
     seenTips: [],
+    // How many times the freestyle "Save as workout" completion banner was
+    // dismissed. After a few, the ask shrinks to a quiet one-line link — the
+    // freestyler persona never converts, and a full banner forever reads as
+    // the app insisting he's using it wrong. Never disappears entirely.
+    freestyleSaveDismissals: 0,
 
     // Migration flags (set true after one-time migrations have run).
     // Not user-configurable — checked by app-initialization.js on login.
