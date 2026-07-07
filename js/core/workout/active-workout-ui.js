@@ -2853,6 +2853,11 @@ export async function awSaveNewEquipment(exerciseIdx) {
 
 let addExerciseFilter = 'All';
 let addExerciseSearch = '';
+// Which workout session the filter belongs to (savedData.startedAt). The filter
+// PERSISTS across sheet opens within one workout — a leg-day freestyler adding
+// 6-8 exercises shouldn't re-tap "Legs" on every single open — and resets when
+// a different workout starts.
+let addExerciseFilterSession = null;
 
 // Exercise-picker taxonomy — browse by BODY PART, matching the exercise library
 // and the dashboard drill-downs. Push/Pull is a workout-programming concept, not
@@ -2874,9 +2879,24 @@ function awExerciseBucket(ex) {
     return 'Other';
 }
 
-export function awAddExercise() {
+/**
+ * Open the add-exercise sheet. `seedFilter` (optional) pre-parks the body-part
+ * filter — the freestyle quick-start passes its focus so "Legs" chosen at start
+ * is already selected on the first open. Only Legs/Core/Cardio map 1:1 (Push/
+ * Pull span several body parts, so they fall back to All). Within one workout
+ * the filter then sticks across opens; search always starts blank.
+ */
+export function awAddExercise(seedFilter = null) {
     awCloseMenus();
-    addExerciseFilter = 'All';
+    const session = AppState.savedData?.startedAt || null;
+    const validSeed = typeof seedFilter === 'string' && AW_EX_CATEGORIES.includes(seedFilter)
+        ? seedFilter : null;
+    if (session !== addExerciseFilterSession) {
+        addExerciseFilterSession = session;
+        addExerciseFilter = validSeed || 'All';
+    } else if (validSeed) {
+        addExerciseFilter = validSeed;
+    }
     addExerciseSearch = '';
     renderAddExerciseSheet();
 }

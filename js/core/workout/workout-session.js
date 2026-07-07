@@ -262,7 +262,7 @@ export async function startWorkout(workoutType) {
  * @param {string|null} focus - optional focus label (e.g. 'Legs') → workoutType
  *   becomes "Freestyle — Legs"; null → plain "Freestyle".
  */
-export async function startFreestyleWorkout(focus = null) {
+export async function startFreestyleWorkout(focus = null, seedExercises = null) {
     if (!AppState.currentUser) {
         showNotification('Sign in to start a workout', 'warning');
         return;
@@ -301,11 +301,14 @@ export async function startFreestyleWorkout(focus = null) {
     clearLastSessionCache();
 
     const displayName = focus ? `Freestyle — ${focus}` : 'Freestyle';
-    // Synthetic, template-less workout — no id, no substitutions, empty list.
+    // Synthetic, template-less workout — no id, no substitutions. Usually an
+    // empty list ("add as you go"); Repeat on a past freestyle session seeds it
+    // with that session's exercises instead (deep-cloned — never mutate history).
+    const seeded = Array.isArray(seedExercises) && seedExercises.length > 0;
     AppState.currentWorkout = {
         name: displayName,
         category: (focus || '').toLowerCase() || 'other',
-        exercises: [],
+        exercises: seeded ? JSON.parse(JSON.stringify(seedExercises)) : [],
     };
     AppState.workoutStartTime = new Date();
     AppState.savedData = {
@@ -345,8 +348,11 @@ export async function startFreestyleWorkout(focus = null) {
     await saveWorkoutData(AppState);
 
     // Drop straight into picking the first exercise — the whole point of
-    // freestyle is "add as you go", so don't make them find a menu.
-    if (typeof window.awAddExercise === 'function') window.awAddExercise();
+    // freestyle is "add as you go", so don't make them find a menu. Pass the
+    // focus so the sheet's body-part filter is already parked on it (Legs/Core/
+    // Cardio map 1:1; Push/Pull span body parts and fall back to All). A seeded
+    // repeat already has its exercises — no sheet.
+    if (!seeded && typeof window.awAddExercise === 'function') window.awAddExercise(focus);
 }
 
 export function pauseWorkout() {

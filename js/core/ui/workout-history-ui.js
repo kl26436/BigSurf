@@ -220,6 +220,21 @@ export async function repeatWorkout(workoutId) {
             window.workoutHistory.closeWorkoutDetailModal();
         }
 
+        // Freestyle sessions were never templates, so startWorkout() can't
+        // resolve them by name — it threw "Workout not found" at exactly the
+        // user who taps Repeat the most. Route them to a fresh freestyle
+        // seeded with the same exercises (same focus label).
+        const raw = workout.rawData || workout;
+        const isFreestyle = !!raw?.isFreestyle
+            || (raw?.templateId == null && /^Freestyle\b/.test(workoutName));
+        if (isFreestyle && typeof window.startFreestyleWorkout === 'function') {
+            const focus = (workoutName.match(/^Freestyle — (.+)$/) || [])[1] || null;
+            const seed = Array.isArray(raw?.originalWorkout?.exercises)
+                ? raw.originalWorkout.exercises : [];
+            window.startFreestyleWorkout(focus, seed);
+            return;
+        }
+
         // Start a workout using the workout type/name
         if (typeof window.startWorkout === 'function') {
             window.startWorkout(workoutName);
