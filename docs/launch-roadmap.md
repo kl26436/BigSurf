@@ -65,7 +65,8 @@ One queue across [ux-overhaul-plan-2026-07.md](ux-overhaul-plan-2026-07.md) and 
     4b dead "By Brand" view removal (f054fc6), 4c read-first restructure
     (4de2c52: hero→identity sheet, base-weight sheet, used-for sheet,
     scroll-preserve, danger card). Equipment↔gym write path was already unified
-    via syncCatalogRefOnLocation (Tier 0.1). Remaining bullet: "Edit form video"
+    via syncCatalogRefOnLocation (Tier 0.1; that mirror was itself removed in 8b
+    step 4 — equipment collection is now the sole source). Remaining bullet: "Edit form video"
     entry point from the active-workout exercise menu — deferred as a new
     active-workout feature needing on-device flow verification.
 12. ✅ T3-7 equipment quick-edit sheet (M) — shipped 2026-07-02 (pulled ahead of UX-4; it's a standalone sheet, so the detail-page restructure doesn't rework it)

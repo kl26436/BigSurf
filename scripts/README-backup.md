@@ -32,3 +32,5 @@ backup are left as-is (a migration rollback only reverts what it changed).
 - `await runEquipmentIdBackfill({ apply: true })` — writes the **additive** backfill (equipmentId next to the name).
 - `await undoEquipmentIdBackfill()` — strips every equipmentId we added (names untouched).
 - `await snapshotPersonalRecords()` — copies the PR doc to `stats/personalRecords__backup_<ts>` (for the later PR re-key step).
+- `await runLocationIdBackfill()` — dry run: plans the `equipment.locationIds[]` backfill (gym name → stable location id), writes nothing.
+- `await runLocationIdBackfill({ apply: true })` / `await undoLocationIdBackfill()` — apply the additive locationIds stamp / strip it (names untouched either way).

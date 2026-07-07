@@ -156,7 +156,7 @@ Audit §3. Mockup: `equipment-detail-redesign.html`.
 
 - [x] Restructure `openEquipmentDetail()` into 7 groups: hero card (tap → identity sheet: name/brand/line/function/type) · stat strip (keep) · Setup row-card (base weight → sheet) · Locations chips (keep inline) · Used-for compact row-cards (tap → sheet: Remove / edit form video / open video) · Notes · danger card with honest consequence copy. **(4de2c52)**
 - [x] Scroll restore — capture/restore scrollTop across every in-place re-render, killing the full-page reset that scrolled to top on every row action. **(4de2c52)**
-- [x] One shared write path for equipment↔gym links — already unified via `syncCatalogRefOnLocation` (Tier 0.1); every mutation site (add/remove location, delete equipment, quick-add) routes through it.
+- [x] One shared write path for equipment↔gym links — was unified via `syncCatalogRefOnLocation` (Tier 0.1). *(That mechanism was itself removed in 8b step 4 — the equipment collection is now the sole source of truth, so there's no second array to mirror onto.)*
 - [x] Fix: dead "View all →" (8467c0a); search no longer gated behind `locations.length > 0` (8467c0a); duplicate `.sec-head` in page-header.css (8467c0a); dead "By Brand" view path deleted (f054fc6). *(Deferred: `.equip-lib-search`→`.field-search` and `.filter-pill`→`.chip` — cosmetic list-view class renames, no behavior change.)*
 - [ ] "Edit form video" entry point from the workout-flow exercise menu — **deferred**: a new active-workout feature (highest-risk surface) needing a cross-module equipment-by-name→id lookup + on-device verification of change-equipment/replace/add/complete flows. Form-video editing already ships in the used-for sheet.
 - [ ] Tests: shared location-write helper coverage — deferred with the form-video entry.
@@ -236,10 +236,10 @@ Full data-model + surface map in the deep-dive doc. Root disease: equipment iden
 ### 8a — Surface consolidation (M, consistency-contract work)
 - [ ] One add primitive: catalog quick-add sheet with contextual params (gymName, exerciseName, onDone); retire `awQuickAddEquipment`'s bare form and `addEquipmentFromPicker`. *(Interim win shipped: `awSaveNewEquipment` now routes through `getOrCreateEquipment` + idempotent `addLocationToEquipment` instead of writing `saveEquipment` directly — the duplication vector is closed even though the form itself isn't retired yet.)*
 - [ ] One selection primitive: replace the isolated equipment-picker modal (equipment-picker.js, workout-management-ui.js:494) with `openSharedEquipmentSheet`.
-- [ ] Quick-edit sheet gains Brand/Line/Function rows (reuse the field-picker modal) — covers its stated "80% of edits" case.
-- [ ] "+ Add a gym" on the My-gyms tab (name + optional current location) — closes the chicken-and-egg gap (spec'd in equipment-library-redesign-brief.md:110-115, never built).
+- [x] Quick-edit sheet gains Brand/Line/Function rows — shipped via 8b step 5 **(9196727)**: inline inputs (not the field-picker modal) that regenerate the composed Name live via `composeEquipmentName`.
+- [x] "+ Add a gym" on the My-gyms tab **(4f9cb9d)** — promptSheet for the name; closes the chicken-and-egg gap.
 - [ ] Convert "+ Assign exercise" from legacy full-page markup to a `mountEquipSheet` sheet like the other detail-page edits.
-- [ ] Delete orphaned `renderCatalogMachineDetail` path (or make it the universal catalog-row target per the P1 fix); unify catalog brand-drill vs search tap behavior.
+- [x] ~~Delete orphaned~~ `renderCatalogMachineDetail` is **no longer orphaned** — it's the live catalog-machine detail (catalog taps route to it / the editable equipment detail since **2d04b29**). Don't delete it. *(Residual: confirm brand-drill vs search-row tap parity, then close.)*
 
 ### 8b — Identity migration: equipmentId as the only FK (L, staged + additive-first)
 

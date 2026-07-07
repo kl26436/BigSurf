@@ -1,5 +1,7 @@
 # Multi-gym / location / equipment assessment
 
+> **⚠️ Historical (2026-07-04):** the dual location model, `syncCatalogRefOnLocation` / `migrateLocationCatalogRefs` mirroring, and `location.equipment[]` described below were **fully removed in Phase 8b step 4** — the equipment collection (`locations[]` names + `locationIds[]` stable ids) is now the sole source of truth. Read as a dated audit, not current architecture.
+
 *2026-07-02 — code-level audit of the app's differentiating feature area, prioritized for "make it solid, then make it the reason people pay."*
 
 Scope: location-service.js, location-ui.js, equipment-planner.js, equipment-library-ui.js, equipment-picker.js, firebase-workout-manager.js, active-workout-ui.js, workout-management-ui.js.

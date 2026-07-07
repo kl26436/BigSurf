@@ -79,7 +79,7 @@ Redesign sketch (reuses existing primitives):
 1. Hero card: icon + name + brand·line + type chip → tap opens one "Identity" sheet (name/brand/line/function/type). Replaces 5 always-open editors.
 2. Stat strip (Sessions / PR / Last) — keep, it's the best part.
 3. "Setup": base weight as one row-card → tap-to-edit sheet.
-4. "Locations (N)": chip row, unchanged — but route legacy `equipment.locations[]` and catalog `location.equipment[]` writes through ONE shared path (today two different UIs edit the same relationship, with `healDuplicateLocationEquipment` papering over the drift, [equipment-library-ui.js:1216-1284](js/core/ui/equipment-library-ui.js#L1216)).
+4. "Locations (N)": chip row, unchanged — but route legacy `equipment.locations[]` and catalog `location.equipment[]` writes through ONE shared path (today two different UIs edit the same relationship, with `healDuplicateLocationEquipment` papering over the drift, [equipment-library-ui.js:1216-1284](js/core/ui/equipment-library-ui.js#L1216)). *— Resolved 2026-07-04 (8b step 4): the dual model + healing were deleted; equipment collection is the sole source.*
 5. "Used for (N)": compact row-cards (name + chevron) → per-exercise sheet with Remove / Edit form video. Kills the always-open URL input per row ([:3699-3726](js/core/ui/equipment-library-ui.js#L3699)).
 6. Notes.
 7. Danger zone in its own bordered card — today Delete sits directly under the Notes textarea in the same scroll ([:3735-3739](js/core/ui/equipment-library-ui.js#L3735)).

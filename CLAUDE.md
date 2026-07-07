@@ -51,6 +51,11 @@ js/
     │   ├── equipment-catalog-firestore.js  # Catalog Firestore reads/writes
     │   ├── equipment-catalog-helpers.js    # Catalog lookup/normalization helpers
     │   ├── equipment-migration.js  # Legacy equipment → catalog migration
+    │   ├── equipment-id-resolver.js    # Equipment name → stable doc id (exact/alias/fuzzy + confidence gate)
+    │   ├── equipment-id-migration.js   # Pure planners: equipmentId backfill + PR re-key (field-wise merge)
+    │   ├── equipment-id-migration-runner.js # ?debug console runner for the id backfills (dry-run default)
+    │   ├── location-id-resolver.js     # Gym name → stable location doc id (exact; ambiguous/orphan aware)
+    │   ├── location-id-migration.js    # Pure planners: locationIds[] backfill + orphan-gym detection
     │   ├── fuzzy-match.js          # Fuzzy string matching (catalog/exercise matching)
     │   └── schema-migration.js     # v2 to v3 migration
     ├── features/               # Feature modules
@@ -73,9 +78,11 @@ js/
     │   ├── equipment-planner.js    # Equipment-based workout planning (Phase 16)
     │   ├── first-use-tips.js       # One-time feature tips
     │   ├── geocoding.js            # Reverse geocoding for locations
+    │   ├── gym-session-context.js  # Session gym context (current-gym state helpers)
     │   ├── location-service.js     # GPS detection, location matching
     │   ├── location-ui.js          # Location management UI
     │   ├── machine-exercise-matcher.js # Machine → exercise fuzzy matcher
+    │   ├── exercise-machine-matcher.js # Exercise → machine fuzzy matcher
     │   ├── manual-workout.js       # Manual workout entry
     │   ├── plate-calculator.js     # Plate breakdown algorithm + standalone page
     │   ├── pr-tracker.js           # Personal record detection (segmented per exercise+equipment)
@@ -91,19 +98,21 @@ js/
     │   ├── metric-detail-ui.js     # Drill-down for tappable metric cards (body weight, volume, strength)
     │   ├── composition-detail-ui.js # Drill-down from composition card
     │   ├── equipment-library-ui.js # Equipment library (My gyms / Library / Catalog tabs) + equipment detail
+    │   ├── equipment-quick-edit.js # Quick-edit bottom sheet (name/brand/line/function, exercise + gym chips)
     │   ├── exercise-manager-ui.js  # Exercise library modal
     │   ├── error-log-ui.js         # Error log page (More menu)
     │   ├── navigation.js           # Bottom nav, routing, navStack for drill-downs
     │   ├── settings-ui.js          # Settings page, onboarding flow, profile detail
     │   ├── confirm-sheet.js        # confirmSheet()/promptSheet() — promise-based replacement for native confirm/prompt
     │   ├── equipment-picker.js     # Equipment picker render helper (categorized: For exercise / At gym / Other)
-    │   ├── template-selection.js   # Workouts page — unified library + inline editor (Phases 1-7)
+    │   ├── template-selection.js   # Workouts page — library + dedicated editor page (#workout-editor-section)
     │   ├── ui-helpers.js           # Notifications, conversions, modal helpers
     │   └── workout-history-ui.js   # History modal
     ├── utils/                  # Utilities
     │   ├── app-state.js            # Global state object
     │   ├── config.js               # Config constants, CATEGORY_ICONS/COLORS, debugLog
     │   ├── date-helpers.js         # Date parsing/formatting, getDayName()
+    │   ├── equipment-name.js       # composeEquipmentName() — the SINGLE brand/line/function → name composer
     │   ├── debug-utilities.js      # Debug functions
     │   ├── error-handler.js        # Error handling with severity levels
     │   ├── haptics.js              # Haptic feedback wrapper
@@ -204,30 +213,15 @@ Tests use Vitest and IMPORT THE REAL SOURCE MODULES — do not re-implement logi
 
 ```
 tests/
-├── fixtures/              # Mock data for tests
-│   ├── mock-pr-data.js
-│   └── mock-workouts.js
-└── unit/                  # Unit tests (run with `npm test`)
-    ├── config-values.test.js       # Config constants, category icons/colors
-    ├── date-helpers.test.js        # Date parsing, formatting
-    ├── display-weight.test.js      # Unit conversion with 0.5kg rounding
-    ├── exercise-completion.test.js # Set completion, exercise ordering
-    ├── exercise-grouping.test.js   # Superset grouping (Phase 10)
-    ├── id-generation.test.js       # Workout ID generation
-    ├── body-measurements.test.js   # 7-day average, unit conversion (Phase 12)
-    ├── data-export.test.js         # CSV generation, JSON import validation (Phase 13)
-    ├── plate-calculator.test.js    # Plate breakdown algorithm (Phase 11)
-    ├── pr-detection.test.js        # PR detection logic
-    ├── progress-calculations.test.js # 1RM, volume, trends
-    ├── social-feed.test.js         # Feed items, privacy filtering (Phase 14 stubs)
-    ├── streak-calculation.test.js  # Streak calculation
-    ├── template-management.test.js # Template operations
-    ├── training-insights.test.js   # Volume analysis, plateaus, deload (Phase 17)
-    ├── validation.test.js          # Input validation
-    ├── weekly-goal.test.js         # Goal percentage, progress ring
-    ├── weight-conversion.test.js   # Weight unit conversion
-    ├── workout-completion.test.js  # Completion summary stats
-    └── workout-helpers.test.js     # Exercise/workout name helpers
+├── fixtures/              # Mock data (mock-pr-data.js, mock-workouts.js, firestore-mock.js)
+└── unit/                  # 40+ Vitest files (run with `npm test`) — one per module/concern.
+                           # Don't trust any hardcoded list here; `ls tests/unit` is the truth.
+                           # Highlights beyond the obvious 1:1 module tests:
+                           #   pr-detection.test.js            — PR logic incl. id-aware equipment keys
+                           #   equipment-id-{resolution,migration}.test.js — 8b migration planners
+                           #   location-id-migration.test.js   — locationIds backfill planners
+                           #   equipment-name.test.js          — composeEquipmentName
+                           #   window-wiring.test.js           — every rendered onclick resolves to window.*
 ```
 
 ### Function Exposure Pattern
@@ -254,10 +248,17 @@ Exception: handlers referenced only from a module's OWN template strings should 
 ```
 users/{userId}/
   ├── workouts/{docId}         # Workout sessions (unique ID per workout)
-  ├── templates/{templateId}   # Custom workout templates
-  ├── exercises/{exerciseId}   # Custom exercises created by user
-  ├── equipment/{equipmentId}  # Saved equipment with locations + exerciseVideos map
-  ├── locations/{locationId}   # Saved gym locations with GPS
+  ├── workoutTemplates/{templateId} # Custom workout templates (NOT "templates")
+  ├── customExercises/{id}     # Custom exercises created by user
+  ├── exerciseOverrides/{id}   # Per-user edits to global-library exercises
+  ├── hiddenExercises/{id}     # Global-library exercises the user hid
+  ├── equipment/{equipmentId}  # Saved equipment: locations[] (gym names) + locationIds[]
+  │                            #   (stable location ids, dual-written) + exerciseVideos map
+  ├── locations/{locationId}   # Saved gym locations with GPS (id = location_<ts>_<rand>)
+  ├── stats/
+  │   └── personalRecords      # PR store: exercisePRs keyed exercise → equipment KEY
+  │                            #   (mixed: equipment doc id OR legacy name; entries carry
+  │                            #   denormalized equipmentName — see pr-tracker.js)
   └── preferences/
       ├── settings             # User settings (weight unit, rest timer, weekly goal, etc.)
       └── favorites            # Favorite exercises array
@@ -278,6 +279,8 @@ users/{userId}/
     exercise_0: {
       name: "Bench Press",
       equipment: "Hammer Strength Flat",
+      equipmentId: "equipment_1765..._abc",  // stable equipment doc id — dual-written at save
+                                             // (confident matches only; may be absent — name is the fallback)
       sets: [
         { reps: 10, weight: 135, originalUnit: "lbs", type: "working", completed: true },
         { reps: 8, weight: 145, originalUnit: "lbs", type: "working", completed: true }
@@ -315,7 +318,7 @@ The app supports both lbs and kg with per-exercise unit tracking:
 
 - Equipment can belong to multiple locations (array field)
 - Location auto-detected via GPS on workout start (500m radius matching)
-- Location locks after first set is logged
+- Location stays editable all workout; the first-set stamp only gates the once-per-workout equipment↔gym auto-association
 - Equipment auto-associated with location when first set logged
 
 ### Modal Management
@@ -621,7 +624,7 @@ After meaningful changes, run the relevant subset before saying a task is comple
 | CSS-only (tokens, components, restyle) | `npm run audit:design` (catches raw colors, untokenized font sizes, duplicate classes) |
 | HTML structure | `npm run audit:design` + manual smoke test |
 
-`npm run audit:design --strict` is the must-pass variant. Lint baseline: 24 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 24` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
+`npm run audit:design --strict` is the must-pass variant. Lint baseline: 20 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 20` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
 
 ## Important Notes
 
@@ -674,7 +677,7 @@ All shipped:
 
 ### Ongoing tech-debt notes
 
-- ESLint config has browser globals enabled now (Phase 9 cleanup); `npm run lint` reports 0 errors, 24 warnings (2026-07 sweep cut it from 131; the rest are load-bearing destructuring omissions, unused function params, and no-useless-assignment cases needing per-site judgment). The `--max-warnings 24` ratchet in package.json blocks regressions.
+- ESLint config has browser globals enabled now (Phase 9 cleanup); `npm run lint` reports 0 errors, 20 warnings (2026-07 sweeps cut it from 131; the rest are load-bearing destructuring omissions, unused function params, and no-useless-assignment cases needing per-site judgment). The `--max-warnings 20` ratchet in package.json blocks regressions.
 - workout-history.js's calendar uses in-memory month iteration over currentHistory (~1ms for 1000 workouts; not a real bottleneck).
 - Recent workouts list in history is paginated but not virtual-scrolled. Becomes DOM-stress past ~500 visible items.
 - `firebase-workout-manager.js#getUserWorkouts` uses `getDocsFromServer` deliberately (delete consistency); has its own un-shared cost.
