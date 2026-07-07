@@ -46,6 +46,8 @@ export default [
                 CustomEvent: 'readonly',
                 Event: 'readonly',
                 AbortController: 'readonly',
+                TextDecoder: 'readonly',
+                TextEncoder: 'readonly',
                 Notification: 'readonly',
                 Chart: 'readonly',
                 L: 'readonly',

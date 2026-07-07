@@ -141,6 +141,32 @@
     border-bottom-left-radius: 6px;
 }
 .coach-msg strong { color: var(--text-strong); }
+/* Richer coach markdown (coach-markdown.js): small headers, numbered lists,
+   inline code — sized to read as structure inside a bubble, not page chrome. */
+.coach-msg h3 {
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: var(--space-8) 0 var(--space-4);
+}
+.coach-msg h4 {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: var(--space-8) 0 var(--space-4);
+}
+.coach-msg ol,
+.coach-msg ul {
+    margin: var(--space-4) 0;
+    padding-left: var(--space-20);
+}
+.coach-msg code {
+    background: var(--bg-app);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xs);
+    padding: 0 4px;
+    font-size: var(--font-xs);
+}
 
 /* Input bar pinned at bottom (spec §8: .coach-input-bar + __send) */
 .coach-input-bar {

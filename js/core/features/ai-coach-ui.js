@@ -7,8 +7,9 @@ import { showNotification, escapeHtml, escapeAttr, convertWeight } from '../ui/u
 import { formatRelativeDate } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { TrainingInsights } from './training-insights.js';
-import { debugLog, getCategoryIcon } from '../utils/config.js';
+import { Config, debugLog, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
+import { formatCoachResponse } from './coach-markdown.js';
 
 /**
  * Iterate a workout's exercises with `name` resolved from the workout-level
@@ -321,41 +322,54 @@ export async function askCoach(question) {
             : question.trim();
         _coachConversation.push({ role: 'user', content: userTurn });
 
-        // Call Cloud Function
-        const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js');
-        const functions = getFunctions();
-        const getRecommendation = httpsCallable(functions, 'getTrainingRecommendation');
+        // Streaming first (first words in ~2s), falling back to the buffered
+        // callable so the coach is never LESS reliable than it was.
+        let recommendation = await streamCoachResponse(question.trim(), loadingBubble);
 
-        const result = await getRecommendation({
-            // Modern path: send the full thread so the model has memory of
-            // earlier turns. `question` + `context` are kept for backwards
-            // compatibility with the legacy server signature.
-            messages: _coachConversation,
-            question: question.trim(),
-            context,
-        });
-
-        const recommendation = result.data.recommendation;
-
-        // Track the assistant's reply so the next user message includes it.
-        _coachConversation.push({ role: 'assistant', content: recommendation });
-
-        // Replace loading bubble with actual response
-        if (loadingBubble) {
-            loadingBubble.innerHTML = formatCoachResponse(recommendation);
+        if (recommendation == null) {
+            // Fallback: the legacy buffered callable. Reset the bubble to a
+            // spinner in case the stream died mid-render.
+            if (loadingBubble) {
+                loadingBubble.innerHTML = `
+                    <div class="coach-loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Analyzing your training data…</span>
+                    </div>
+                `;
+            }
+            const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js');
+            const functions = getFunctions();
+            const getRecommendation = httpsCallable(functions, 'getTrainingRecommendation');
+            const result = await getRecommendation({
+                messages: _coachConversation,
+                question: question.trim(),
+                context,
+            });
+            recommendation = result.data.recommendation;
+            if (loadingBubble) {
+                loadingBubble.innerHTML = formatCoachResponse(recommendation);
+            }
         }
 
-        // Save to history
-        await saveCoachSession(question.trim(), recommendation);
+        // Track the assistant's reply so the next user message includes it.
+        // History is saved SERVER-side on both paths (the old extra client-side
+        // save produced duplicate coachHistory docs).
+        _coachConversation.push({ role: 'assistant', content: recommendation });
 
     } catch (error) {
         console.error('AI Coach error:', error);
 
+        // The user turn didn't produce an answer — drop it so a retry doesn't
+        // send a double question.
+        if (_coachConversation[_coachConversation.length - 1]?.role === 'user') {
+            _coachConversation.pop();
+        }
+
         const errorMessage = error.message || '';
         let errorHtml;
 
-        if (errorMessage.includes('once per day') || errorMessage.includes('rate limit')) {
-            errorHtml = `<i class="fas fa-clock text-warning coach-msg-icon"></i> Coach is available once per day. Check back tomorrow, or review your training insights on the dashboard.`;
+        if (errorMessage.includes('resource-exhausted') || errorMessage.includes('limit') || errorMessage.includes('rate')) {
+            errorHtml = `<i class="fas fa-clock text-warning coach-msg-icon"></i> Daily coach limit reached — try again tomorrow. Your dashboard insights are always available.`;
         } else if (errorMessage.includes('not-found') || errorMessage.includes('internal')) {
             errorHtml = `<i class="fas fa-cloud text-muted coach-msg-icon"></i> AI Coach requires Cloud Functions to be deployed. The rules-based insights on your dashboard are always available.`;
         } else {
@@ -365,6 +379,92 @@ export async function askCoach(question) {
         if (loadingBubble) {
             loadingBubble.innerHTML = errorHtml;
         }
+    }
+}
+
+/**
+ * Stream the coach's answer into `bubble` via the v2 SSE endpoint.
+ * Returns the full response text, or null when the caller should fall back to
+ * the buffered callable (endpoint missing, network error, stream died before
+ * finishing). Throws ONLY for the rate-limit case — falling back would just
+ * burn another quota unit on the same refusal.
+ */
+async function streamCoachResponse(question, bubble) {
+    let acc = '';
+    try {
+        const token = await AppState.currentUser?.getIdToken?.();
+        if (!token || !Config.COACH_STREAM_URL) return null;
+
+        const resp = await fetch(Config.COACH_STREAM_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ messages: _coachConversation, question }),
+        });
+        if (resp.status === 429) throw new Error('resource-exhausted');
+        if (!resp.ok || !resp.body) return null;
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let done = false;
+
+        while (!done) {
+            const { value, done: rDone } = await reader.read();
+            if (rDone) break;
+            buffer += decoder.decode(value, { stream: true });
+            let sep;
+            while ((sep = buffer.indexOf('\n\n')) !== -1) {
+                const raw = buffer.slice(0, sep);
+                buffer = buffer.slice(sep + 2);
+                const dataLine = raw.split('\n').find(l => l.startsWith('data:'));
+                if (!dataLine) continue;
+                let ev;
+                try { ev = JSON.parse(dataLine.slice(5).trim()); } catch { continue; }
+
+                if (ev.type === 'status' && bubble && !acc) {
+                    bubble.innerHTML = `
+                        <div class="coach-loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>${escapeHtml(ev.text || 'Thinking…')}</span>
+                        </div>
+                    `;
+                } else if (ev.type === 'delta') {
+                    acc += ev.text || '';
+                    if (bubble) bubble.innerHTML = formatCoachResponse(acc);
+                    scrollCoachChatIfNearBottom();
+                } else if (ev.type === 'done') {
+                    acc = ev.fullText || acc;
+                    if (bubble) bubble.innerHTML = formatCoachResponse(acc);
+                    scrollCoachChatIfNearBottom();
+                    done = true;
+                } else if (ev.type === 'error') {
+                    debugLog('coach stream error event:', ev.message);
+                    return null; // fall back to the callable
+                }
+            }
+        }
+        // Stream ended without a `done` event → treat as failure, fall back.
+        return done ? acc : null;
+    } catch (e) {
+        if ((e.message || '').includes('resource-exhausted')) throw e;
+        debugLog('coach stream failed, falling back:', e);
+        return null;
+    }
+}
+
+/**
+ * Auto-scroll the chat as chunks arrive — but only when the user is already
+ * near the bottom, so manual scroll-up to reread isn't fought.
+ */
+function scrollCoachChatIfNearBottom() {
+    const chatArea = document.getElementById('coach-chat-area');
+    if (!chatArea) return;
+    const distanceFromBottom = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
+    if (distanceFromBottom < 160) {
+        chatArea.scrollTop = chatArea.scrollHeight;
     }
 }
 
@@ -638,48 +738,15 @@ function getWeeksSpan(workouts) {
 // RESPONSE FORMATTING
 // ===================================================================
 
-/**
- * Format the Claude API response for display.
- * Converts markdown-style bullet points and bold to HTML.
- */
-function formatCoachResponse(text) {
-    if (!text) return '';
-
-    return text
-        // Bold text
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        // Bullet points
-        .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
-        // Wrap consecutive <li> in <ul>
-        .replace(/(<li>.*<\/li>\n?)+/g, match => `<ul>${match}</ul>`)
-        // Line breaks
-        .replace(/\n\n/g, '</p><p>')
-        .replace(/\n/g, '<br>')
-        // Wrap in paragraphs
-        .replace(/^(.+)/, '<p>$1</p>');
-}
+// (formatCoachResponse moved to coach-markdown.js — pure, unit-tested, and
+// extended with headers / numbered lists / inline code.)
 
 // ===================================================================
 // COACH HISTORY
 // ===================================================================
 
-/**
- * Save a coaching session to Firestore.
- */
-async function saveCoachSession(question, response) {
-    if (!AppState.currentUser) return;
-
-    try {
-        const { db, collection, addDoc } = await import('../data/firebase-config.js');
-        await addDoc(collection(db, 'users', AppState.currentUser.uid, 'coachHistory'), {
-            question,
-            response,
-            timestamp: new Date().toISOString(),
-        });
-    } catch (error) {
-        debugLog('Failed to save coach session:', error);
-    }
-}
+// (saveCoachSession removed — the server writes coachHistory on both the
+// streaming and callable paths; the client-side write was a duplicate.)
 
 /**
  * Load past coaching sessions and render in the modal.

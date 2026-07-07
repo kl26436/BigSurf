@@ -12,10 +12,21 @@
 // functions.runWith) so we import the v1 namespace explicitly rather than
 // rewriting every handler to v2.
 const functions = require('firebase-functions/v1');
+// v2 is used ONLY for coachChatStream — v1 callables buffer the whole response
+// and cannot stream. Mixing v1/v2 in one codebase is supported as long as
+// function names differ.
+const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
 const https = require('https');
+
+// ── Model routing ────────────────────────────────────────────────────
+// Coach chat + template building + DEXA extraction use the flagship model
+// (quality is the product). High-volume/digest paths (weekly review) use the
+// cheaper model. Centralized so switching is a one-line change.
+const COACH_MODEL = 'claude-opus-4-8';
+const DIGEST_MODEL = 'claude-sonnet-5'; // reserved for scheduled digests
 
 // Withings API secrets (stored via: firebase functions:secrets:set)
 const withingsClientId = defineSecret('WITHINGS_CLIENT_ID');
@@ -996,6 +1007,25 @@ RESPOND WITH ONLY VALID JSON matching this schema — no markdown, no explanatio
  * - question: string — the user's question
  * - context: string — compact training summary built client-side
  */
+/**
+ * Prompt caching for chat threads: the FIRST user turn carries the big
+ * training-context block and is resent verbatim every turn — mark it as a
+ * cache breakpoint so the API caches everything up to and including it.
+ * String content becomes a single text block; already-structured content is
+ * passed through untouched.
+ */
+function withPromptCaching(messages) {
+    return (messages || []).map((m, i) => {
+        if (i === 0 && m.role === 'user' && typeof m.content === 'string') {
+            return {
+                role: 'user',
+                content: [{ type: 'text', text: m.content, cache_control: { type: 'ephemeral' } }],
+            };
+        }
+        return m;
+    });
+}
+
 exports.getTrainingRecommendation = functions.runWith({
     secrets: [anthropicApiKey],
     // 120s (up from 60): Opus 4.8 at 'xhigh' effort reasons longer; the
@@ -1054,7 +1084,7 @@ exports.getTrainingRecommendation = functions.runWith({
             }];
 
         const requestBody = JSON.stringify({
-            model: 'claude-opus-4-8',
+            model: COACH_MODEL,
             // 16k (up from 12k): thinking tokens count against max_tokens, and
             // at 'xhigh' effort the reasoning can eat into the budget — give the
             // visible answer room so deep analyses don't truncate.
@@ -1065,8 +1095,12 @@ exports.getTrainingRecommendation = functions.runWith({
             // plateaus / volume / recomp without the overthinking risk of 'max'.
             thinking: { type: 'adaptive' },
             output_config: { effort: 'xhigh' },
-            system: TRAINING_SCIENCE_PROMPT,
-            messages: apiMessages,
+            // Prompt caching: the system prompt + the first user turn (which
+            // carries the big training-context block) are identical across the
+            // turns of a conversation — cache them so multi-turn chats get
+            // cheaper and faster time-to-first-token.
+            system: [{ type: 'text', text: TRAINING_SCIENCE_PROMPT, cache_control: { type: 'ephemeral' } }],
+            messages: withPromptCaching(apiMessages),
         });
 
         const response = await new Promise((resolve, reject) => {
@@ -1107,10 +1141,8 @@ exports.getTrainingRecommendation = functions.runWith({
         const recommendation = response.content?.find(b => b.type === 'text')?.text
             || 'No recommendation generated.';
 
-        // Update rate limit timestamp
-        await db.collection('users').doc(userId)
-            .collection('preferences').doc('coachRateLimit')
-            .set({ timestamp: Date.now() });
+        // (The old coachRateLimit timestamp write lived here — superseded by
+        // enforceAiDailyLimit, removed.)
 
         // Save coach response to history
         await db.collection('users').doc(userId)
@@ -1131,6 +1163,156 @@ exports.getTrainingRecommendation = functions.runWith({
         if (error instanceof functions.https.HttpsError) throw error;
         console.error('❌ AI Coach error:', error);
         throw new functions.https.HttpsError('internal', 'Failed to get training recommendation');
+    }
+});
+
+/**
+ * Streaming coach chat — 2nd-gen HTTPS function (v1 callables buffer the whole
+ * response; this streams the first words in ~2s instead of a 60-120s spinner).
+ *
+ * Request: POST, `Authorization: Bearer <idToken>`, body
+ * `{ messages: [{role, content}], question?: string }` — the same thread shape
+ * the callable accepts; `question` is only used for the history doc.
+ *
+ * Response: SSE. Event protocol (the substrate for later tool events):
+ *   {"type":"status","text":"Thinking…"}   — model is in a thinking block
+ *   {"type":"delta","text":"…"}            — visible text delta
+ *   {"type":"done","fullText":"…","usage":{…}} — terminal success
+ *   {"type":"error","message":"…"}         — terminal error
+ *
+ * getTrainingRecommendation stays deployed unchanged as the fallback path —
+ * prod has no build step, so cached clients keep calling it for a while.
+ */
+exports.coachChatStream = onRequest({
+    secrets: [anthropicApiKey],
+    timeoutSeconds: 300,
+    memory: '512MiB',
+    maxInstances: 2,
+    cors: true,
+    invoker: 'public', // auth is enforced in-handler via the bearer ID token
+}, async (req, res) => {
+    if (req.method !== 'POST') {
+        res.status(405).json({ error: 'POST only' });
+        return;
+    }
+
+    // Manual auth — no callable context here.
+    const authHeader = req.headers.authorization || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    let userId;
+    try {
+        if (!idToken) throw new Error('missing token');
+        userId = (await admin.auth().verifyIdToken(idToken)).uid;
+    } catch (e) {
+        res.status(401).json({ error: 'unauthenticated' });
+        return;
+    }
+
+    try {
+        await enforceAiDailyLimit(userId, 'coach', 10);
+    } catch (e) {
+        res.status(429).json({ error: 'resource-exhausted', message: 'Daily coach limit reached — try again tomorrow.' });
+        return;
+    }
+
+    const { messages, question } = req.body || {};
+    const apiMessages = (Array.isArray(messages) ? messages : [])
+        .filter(m => m && m.role && m.content)
+        .map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : m.content }));
+    if (apiMessages.length === 0) {
+        res.status(400).json({ error: 'invalid-argument', message: 'Missing messages' });
+        return;
+    }
+
+    // SSE from here on out.
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+    });
+    const send = (ev) => { res.write(`data: ${JSON.stringify(ev)}\n\n`); };
+
+    try {
+        const apiKey = anthropicApiKey.value();
+        if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
+
+        const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+                model: COACH_MODEL,
+                max_tokens: 16000,
+                thinking: { type: 'adaptive' },
+                output_config: { effort: 'xhigh' },
+                stream: true,
+                system: [{ type: 'text', text: TRAINING_SCIENCE_PROMPT, cache_control: { type: 'ephemeral' } }],
+                messages: withPromptCaching(apiMessages),
+            }),
+        });
+
+        if (!upstream.ok) {
+            const errBody = await upstream.text().catch(() => '');
+            console.error('❌ Claude API error (stream):', upstream.status, errBody.slice(0, 500));
+            send({ type: 'error', message: 'Coach is unavailable right now — try again.' });
+            res.end();
+            return;
+        }
+
+        // Parse the Anthropic SSE stream and re-emit our protocol.
+        let fullText = '';
+        let usage = {};
+        let buffer = '';
+        const decoder = new TextDecoder();
+        for await (const chunk of upstream.body) {
+            buffer += decoder.decode(chunk, { stream: true });
+            let sep;
+            while ((sep = buffer.indexOf('\n\n')) !== -1) {
+                const rawEvent = buffer.slice(0, sep);
+                buffer = buffer.slice(sep + 2);
+                const dataLine = rawEvent.split('\n').find(l => l.startsWith('data:'));
+                if (!dataLine) continue;
+                let ev;
+                try { ev = JSON.parse(dataLine.slice(5).trim()); } catch { continue; }
+
+                if (ev.type === 'content_block_start' && ev.content_block?.type === 'thinking') {
+                    send({ type: 'status', text: 'Thinking…' });
+                } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+                    fullText += ev.delta.text;
+                    send({ type: 'delta', text: ev.delta.text });
+                } else if (ev.type === 'message_start' && ev.message?.usage) {
+                    usage.inputTokens = ev.message.usage.input_tokens || 0;
+                } else if (ev.type === 'message_delta' && ev.usage) {
+                    usage.outputTokens = ev.usage.output_tokens || 0;
+                } else if (ev.type === 'error') {
+                    console.error('❌ Claude stream error event:', JSON.stringify(ev).slice(0, 500));
+                    send({ type: 'error', message: 'Coach hit an error mid-answer — try again.' });
+                    res.end();
+                    return;
+                }
+            }
+        }
+
+        // History — same doc shape the callable writes.
+        const lastUserMsg = [...apiMessages].reverse().find(m => m.role === 'user');
+        await db.collection('users').doc(userId).collection('coachHistory').add({
+            question: question || (typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : ''),
+            response: fullText,
+            timestamp: new Date().toISOString(),
+            usage,
+        });
+
+        console.log(`✅ Coach stream for ${userId} (${usage.inputTokens || 0} in, ${usage.outputTokens || 0} out)`);
+        send({ type: 'done', fullText, usage });
+        res.end();
+    } catch (error) {
+        console.error('❌ coachChatStream error:', error);
+        send({ type: 'error', message: 'Coach is unavailable right now — try again.' });
+        res.end();
     }
 });
 
@@ -1187,7 +1369,7 @@ Weight unit: ${unit || 'lbs'}
 Build the workout now. Return ONLY the JSON object.`;
 
         const requestBody = JSON.stringify({
-            model: 'claude-opus-4-8',
+            model: COACH_MODEL,
             // Bumped from 4k: 4k was occasionally truncating mid-JSON when
             // the template had alternatives + weights, producing parse
             // errors that surfaced as "didn't build me a template".
@@ -1385,7 +1567,7 @@ exports.extractDexaData = functions.runWith({
 
         // Call Claude API with PDF document
         const requestBody = JSON.stringify({
-            model: 'claude-opus-4-8',
+            model: COACH_MODEL,
             max_tokens: 4000,
             system: DEXA_EXTRACTION_PROMPT,
             messages: [{
