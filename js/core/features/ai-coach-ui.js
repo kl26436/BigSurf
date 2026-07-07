@@ -16,6 +16,7 @@ import {
 } from './coach-context.js';
 import { summarizeWeekPlan } from './week-plan.js';
 import { buildOutcomesContext, buildFeedbackContext } from './coach-outcomes.js';
+import { micButtonHtml } from './coach-voice.js';
 
 /**
  * Iterate a workout's exercises with `name` resolved from the workout-level
@@ -196,6 +197,7 @@ export function renderAICoachSection() {
             <div class="coach-input-bar">
                 <input id="coach-chat-input" type="text" placeholder="Ask your coach anything\u2026"
                     onkeydown="if(event.key==='Enter'){event.preventDefault();sendCoachMessage();}">
+                ${micButtonHtml('coach-chat-input')}
                 <button class="coach-input-bar__send" onclick="sendCoachMessage()" aria-label="Send"><i class="fas fa-arrow-up"></i></button>
             </div>
         </div>

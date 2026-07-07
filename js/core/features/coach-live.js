@@ -22,6 +22,7 @@ import {
     awInsertExercise,
     awSelectEquipment,
 } from '../workout/workout-core.js';
+import { micButtonHtml, ttsToggleHtml, speakCoachAnswer, stopSpeaking } from './coach-voice.js';
 
 // Ephemeral per-session thread (never saved to coachHistory).
 let _liveThread = [];
@@ -118,9 +119,12 @@ export function openLiveCoach() {
     sheet.setAttribute('aria-label', 'Coach');
     sheet.innerHTML = `
         <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">Coach</div>
-            <div class="aw-sheet__subtitle">Sees your session — answers in seconds</div>
+        <div class="aw-sheet__header live-coach__header">
+            <div>
+                <div class="aw-sheet__title">Coach</div>
+                <div class="aw-sheet__subtitle">Sees your session — answers in seconds</div>
+            </div>
+            ${ttsToggleHtml()}
         </div>
         <div class="aw-sheet__body live-coach__body" id="live-coach-messages">
             ${_liveThread.length === 0 ? '<div class="live-coach__hint">Ask about your next set, a swap, or anything mid-workout.</div>' : ''}
@@ -131,6 +135,7 @@ export function openLiveCoach() {
         <div class="live-coach__inputbar">
             <input type="text" id="live-coach-input" class="field-input" placeholder="Ask your coach…"
                    onkeydown="if(event.key==='Enter'){liveCoachSend();}">
+            ${micButtonHtml('live-coach-input')}
             <button class="live-coach__send" onclick="liveCoachSend()" aria-label="Send">
                 <i class="fas fa-arrow-up"></i>
             </button>
@@ -148,7 +153,8 @@ export function openLiveCoach() {
 }
 
 export function closeLiveCoach() {
-    // Closing stops the stream — no "wait!".
+    // Closing stops the stream — no "wait!". And the voice.
+    stopSpeaking();
     try { _liveAbort?.abort(); } catch { /* already done */ }
     _liveAbort = null;
     const backdrop = document.getElementById('live-coach-backdrop');
@@ -276,6 +282,7 @@ export async function liveCoachSend() {
             }
         }
         _liveThread.push({ role: 'assistant', content: acc });
+        speakCoachAnswer(acc); // live mode TTS — no-op unless the toggle is on
     } catch (e) {
         if (e?.name === 'AbortError') { _liveThread.pop(); return; }
         debugLog('live coach failed:', e);

@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS = {
     coachInjuries: null,  // free text — safety-critical, the coach must program around it
     coachNotes: null,     // free text — schedule constraints, preferences
     weeklyCoachReview: true, // Monday digest push + review doc (server checks this)
+    liveCoachTts: false, // live coach reads answers aloud (Phase 10)
 
     // Profile (user can override Firebase auth displayName; other fields are opt-in)
     profileName: null,       // override display name; null = use Firebase auth

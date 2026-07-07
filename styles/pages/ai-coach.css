@@ -733,3 +733,46 @@
     font-size: var(--font-2xs);
     color: var(--text-muted);
 }
+
+
+/* Voice (Phase 10) — dictation mic + live TTS toggle. */
+.coach-mic {
+    width: var(--tap);
+    height: var(--tap);
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    cursor: pointer;
+    border-radius: var(--radius-pill);
+}
+.coach-mic.listening {
+    color: var(--danger);
+    animation: mic-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+}
+.live-coach__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-8);
+}
+.coach-tts-toggle {
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    flex-shrink: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.coach-tts-toggle.on {
+    color: var(--primary);
+    border-color: var(--primary-border);
+    background: var(--primary-bg);
+}
