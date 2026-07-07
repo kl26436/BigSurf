@@ -64,6 +64,63 @@ const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'get_program',
+        description: "The user's active multi-week program (goal, length, week targets, split) with the CURRENT week derived from its start date. Call before any programming/periodization discussion.",
+        input_schema: { type: 'object', properties: {} },
+    },
+    {
+        name: 'create_program',
+        description: 'Create a multi-week program (propose-only trust level: the program informs your advice and one-tap session cards — it never auto-writes workouts). ALSO sets the week plan to the split, so one consent covers both. Deactivates any prior program. Templates for the split must already exist (create them first).',
+        input_schema: {
+            type: 'object',
+            properties: {
+                name: { type: 'string', description: 'e.g. "Strength block — 4 weeks"' },
+                goal: { type: 'string', description: "'strength' | 'hypertrophy' | 'recomp' | 'general'" },
+                weeks: { type: 'number', description: '1-16' },
+                startDate: { type: 'string', description: 'YYYY-MM-DD, the Monday of week 1' },
+                weekTargets: {
+                    type: 'array',
+                    description: 'One entry per week that differs from baseline',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            week: { type: 'number' },
+                            label: { type: 'string', description: 'e.g. "heavy", "deload"' },
+                            weightPct: { type: 'number', description: 'vs baseline, e.g. -40 for deload' },
+                            note: { type: 'string' },
+                        },
+                        required: ['week', 'label'],
+                    },
+                },
+                split: {
+                    type: 'object',
+                    description: 'day → templateId | "rest" | null (same shape as set_week_plan)',
+                },
+            },
+            required: ['name', 'goal', 'weeks', 'startDate', 'split'],
+        },
+    },
+    {
+        name: 'adjust_program',
+        description: 'Adjust the active program: rename, change weeks/startDate/weekTargets, or reshape the split ("I can only train 3 days next week"). Split changes also update the week plan. Consent rule applies.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                changes: {
+                    type: 'object',
+                    properties: {
+                        name: { type: 'string' },
+                        weeks: { type: 'number' },
+                        startDate: { type: 'string' },
+                        weekTargets: { type: 'array', items: { type: 'object' } },
+                        split: { type: 'object' },
+                    },
+                },
+            },
+            required: ['changes'],
+        },
+    },
+    {
         name: 'log_advice',
         description: 'Silently log a concrete, CHECKABLE recommendation you just gave (one call per recommendation) so future conversations can reference whether it worked. Not user-visible. Never log vague advice.',
         input_schema: {
@@ -325,6 +382,34 @@ function applyTemplateChanges(template, changes) {
     return { ok: true, updated, diffSummary: diffs.join('; ') };
 }
 
+/**
+ * Validate create_program input (Phase 9, pure).
+ * @returns {{ok:true, normalized:object} | {ok:false, error:string}}
+ */
+function validateProgramInput(input) {
+    if (!input || typeof input !== 'object') return { ok: false, error: 'Missing input' };
+    const name = clip(input.name, 60);
+    if (!name) return { ok: false, error: 'name is required' };
+    const goal = clip(input.goal, 20) || 'general';
+    const weeks = intIn(input.weeks, 1, 16, null);
+    if (weeks == null) return { ok: false, error: 'weeks must be 1-16' };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '')) {
+        return { ok: false, error: 'startDate must be YYYY-MM-DD' };
+    }
+    const weekTargets = [];
+    for (const t of (Array.isArray(input.weekTargets) ? input.weekTargets : [])) {
+        const week = intIn(t?.week, 1, weeks, null);
+        const label = clip(t?.label, 20);
+        if (week == null || !label) return { ok: false, error: 'each weekTarget needs week (within program) + label' };
+        const entry = { week, label };
+        if (typeof t.weightPct === 'number' && t.weightPct >= -90 && t.weightPct <= 100) entry.weightPct = Math.round(t.weightPct);
+        if (t.note) entry.note = clip(t.note, 80);
+        weekTargets.push(entry);
+    }
+    if (!input.split || typeof input.split !== 'object') return { ok: false, error: 'split is required' };
+    return { ok: true, normalized: { name, goal, weeks, startDate: input.startDate, weekTargets, split: input.split } };
+}
+
 // ── Firestore executors (Admin SDK, scoped to users/{userId}) ───────
 
 function makeToolExecutors({ db, userId, source = 'chat' }) {
@@ -386,6 +471,110 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
                 };
             });
             return { templates, count: templates.length };
+        },
+
+        async get_program() {
+            const snap = await userDoc().collection('programs')
+                .where('active', '==', true).limit(1).get();
+            if (snap.empty) return { program: null, note: 'No active program.' };
+            const program = snap.docs[0].data();
+            // Derived, never stored (see docs/coach-program-design.md).
+            const week = Math.floor(Math.round((new Date() - new Date(`${program.startDate}T12:00:00`)) / 86400000) / 7) + 1;
+            return { program, currentWeek: week, finished: week > program.weeks || week < 1 };
+        },
+
+        async create_program(input) {
+            const v = validateProgramInput(input);
+            if (!v.ok) return { error: v.error };
+            const { name, goal, weeks, startDate, weekTargets, split } = v.normalized;
+
+            // Apply the split through the SAME validated path as set_week_plan —
+            // one consent covers program + schedule.
+            const planOut = await this.set_week_plan({ days: split });
+            if (planOut.error) return { error: `split: ${planOut.error}` };
+
+            // One active program at a time.
+            const actives = await userDoc().collection('programs').where('active', '==', true).get();
+            for (const d of actives.docs) {
+                await d.ref.set({ active: false, state: 'superseded', lastUpdated: new Date().toISOString() }, { merge: true });
+            }
+
+            const id = `program_${Date.now()}`;
+            const nowIso = new Date().toISOString();
+            await userDoc().collection('programs').doc(id).set({
+                id, name, goal, weeks, startDate, weekTargets,
+                split: planOut.result.plan.days,
+                active: true,
+                trustLevel: 'propose',
+                state: 'active',
+                createdVia: 'coach',
+                createdAt: nowIso,
+                lastUpdated: nowIso,
+            });
+            return {
+                result: { programId: id, name, weeks, weekPlan: planOut.result.summary },
+                actionCard: {
+                    kind: 'program_set',
+                    name: `Program: ${name}`,
+                    summary: `${weeks} weeks · ${goal} · ${planOut.result.summary}`,
+                },
+            };
+        },
+
+        async adjust_program(input) {
+            const changes = input?.changes;
+            if (!changes || typeof changes !== 'object') return { error: 'changes is required' };
+            const snap = await userDoc().collection('programs').where('active', '==', true).limit(1).get();
+            if (snap.empty) return { error: 'No active program — create one first.' };
+            const ref = snap.docs[0].ref;
+            const current = snap.docs[0].data();
+
+            const updated = {};
+            const diffs = [];
+            if (changes.name && clip(changes.name, 60) !== current.name) {
+                updated.name = clip(changes.name, 60);
+                diffs.push(`renamed to "${updated.name}"`);
+            }
+            if (changes.weeks != null) {
+                const w = intIn(changes.weeks, 1, 16, null);
+                if (w == null) return { error: 'weeks must be 1-16' };
+                updated.weeks = w;
+                diffs.push(`${w} weeks`);
+            }
+            if (changes.startDate) {
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(changes.startDate)) return { error: 'startDate must be YYYY-MM-DD' };
+                updated.startDate = changes.startDate;
+                diffs.push(`starts ${changes.startDate}`);
+            }
+            if (Array.isArray(changes.weekTargets)) {
+                const check = validateProgramInput({
+                    name: current.name, goal: current.goal,
+                    weeks: updated.weeks || current.weeks,
+                    startDate: updated.startDate || current.startDate,
+                    weekTargets: changes.weekTargets, split: current.split || {},
+                });
+                if (!check.ok) return { error: check.error };
+                updated.weekTargets = check.normalized.weekTargets;
+                diffs.push('week targets updated');
+            }
+            if (changes.split && typeof changes.split === 'object') {
+                const planOut = await this.set_week_plan({ days: changes.split });
+                if (planOut.error) return { error: `split: ${planOut.error}` };
+                updated.split = planOut.result.plan.days;
+                diffs.push(`schedule: ${planOut.result.summary}`);
+            }
+            if (!diffs.length) return { error: 'No supported changes (name, weeks, startDate, weekTargets, split)' };
+
+            updated.lastUpdated = new Date().toISOString();
+            await ref.set(updated, { merge: true });
+            return {
+                result: { programId: current.id, diff: diffs.join('; ') },
+                actionCard: {
+                    kind: 'program_set',
+                    name: `Program: ${updated.name || current.name}`,
+                    summary: diffs.join(' · '),
+                },
+            };
         },
 
         async log_advice(input) {
@@ -755,6 +944,9 @@ const TOOL_STATUS = {
     set_week_plan: 'Updating your week…',
     archive_template: 'Archiving…',
     propose_session_adjustments: 'Building your session…',
+    get_program: 'Checking your program…',
+    create_program: 'Building your program…',
+    adjust_program: 'Adjusting your program…',
 };
 
 module.exports = {
@@ -767,4 +959,5 @@ module.exports = {
     validateProposal,
     liveToolDefinitions,
     LIVE_PROPOSAL_TOOLS,
+    validateProgramInput,
 };

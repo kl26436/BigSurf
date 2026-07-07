@@ -12,7 +12,7 @@ import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { formatCoachResponse } from './coach-markdown.js';
 import {
     buildProfileContext, buildPRContext, buildTemplatesContext,
-    setTypeMarker, templatesChangedNote,
+    setTypeMarker, templatesChangedNote, buildProgramContext,
 } from './coach-context.js';
 import { summarizeWeekPlan } from './week-plan.js';
 import { buildOutcomesContext, buildFeedbackContext } from './coach-outcomes.js';
@@ -335,24 +335,31 @@ export async function askCoach(question) {
             prList = PRTracker.getAllPRs?.() || [];
         } catch (e) { debugLog('coach: PRs unavailable', e); }
 
-        // Track record (Phase 7): what actually happened after past advice,
-        // plus style feedback from thumbed answers. Non-fatal if unavailable.
+        // Track record (Phase 7) + active program (Phase 9): what happened
+        // after past advice, style feedback, and the current program week.
+        // All non-fatal if unavailable.
         let outcomesBlock = '';
         let feedbackBlock = '';
+        let programBlock = '';
         try {
-            const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
+            const { db, collection, query, orderBy, limit, getDocs, where } = await import('../data/firebase-config.js');
             const uid = AppState.currentUser.uid;
-            const [advSnap, histSnap] = await Promise.all([
+            const [advSnap, histSnap, progSnap] = await Promise.all([
                 getDocs(query(collection(db, 'users', uid, 'coachAdvice'), orderBy('date', 'desc'), limit(25))),
                 getDocs(query(collection(db, 'users', uid, 'coachHistory'), orderBy('timestamp', 'desc'), limit(10))),
+                getDocs(query(collection(db, 'users', uid, 'programs'), where('active', '==', true), limit(1))),
             ]);
             const advice = advSnap.docs.map(d => d.data());
             outcomesBlock = buildOutcomesContext(advice, allWorkouts, AppState.getTodayDateString());
             const recentFeedback = histSnap.docs.flatMap(d => Object.values(d.data().feedback || {}));
             feedbackBlock = buildFeedbackContext(recentFeedback);
-        } catch (e) { debugLog('coach: outcomes unavailable', e); }
+            if (!progSnap.empty) {
+                programBlock = buildProgramContext(progSnap.docs[0].data(), AppState.getTodayDateString());
+            }
+        } catch (e) { debugLog('coach: outcomes/program unavailable', e); }
 
         const context = buildTrainingContext(allWorkouts, healthSummary, prList)
+            + (programBlock ? `\n${programBlock}` : '')
             + (outcomesBlock ? `\n${outcomesBlock}` : '')
             + (feedbackBlock ? `\n${feedbackBlock}` : '');
 
@@ -535,19 +542,21 @@ async function streamCoachResponse(question, bubble) {
  * so the created/updated template is live without a reload.
  */
 function handleCoachActionCard(card, streamingBubble) {
-    if (card.kind === 'week_plan_set') {
-        // Schedule card — no template to open; tap opens the week-plan editor.
+    if (card.kind === 'week_plan_set' || card.kind === 'program_set') {
+        // Schedule/program card — no template to open; tap opens the editor.
+        const icon = card.kind === 'program_set' ? 'fa-flag-checkered' : 'fa-calendar-week';
         addChatBubble('bot', `
             <div class="coach-action-card" onclick="openWeekPlanSheet()">
-                <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-calendar-week"></i></div>
+                <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas ${icon}"></i></div>
                 <div class="coach-action-card__body">
-                    <div class="coach-action-card__title">Week plan updated</div>
-                    <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 90))}</div>
+                    <div class="coach-action-card__title">${escapeHtml(card.name || 'Week plan updated')}</div>
+                    <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 110))}</div>
                 </div>
                 <i class="fas fa-chevron-right coach-action-card__chev"></i>
             </div>
         `);
-        // Invalidate the cached plan so the dashboard re-reads it.
+        // Invalidate the cached plan so the dashboard re-reads it (programs
+        // set the week plan too).
         AppState._weekPlan = undefined;
     } else {
         const descLabel = card.kind === 'template_updated'

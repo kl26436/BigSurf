@@ -93,6 +93,36 @@ export function setTypeMarker(set) {
 }
 
 /**
+ * Program week derivation (Phase 9) — NEVER stored, always derived from
+ * startDate so nothing rots and no cron advances state.
+ * @returns {{week:number, target:object|null, finished:boolean}}
+ */
+export function deriveProgramWeek(program, today) {
+    const start = new Date(`${program.startDate}T12:00:00`);
+    const now = new Date(`${today}T12:00:00`);
+    const week = Math.floor(Math.round((now - start) / 86400000) / 7) + 1;
+    const finished = week > (program.weeks || 1) || week < 1;
+    const target = (program.weekTargets || []).find(t => t.week === week) || null;
+    return { week, target, finished };
+}
+
+/**
+ * `Active program:` context line (Phase 9, propose-only trust level).
+ * @returns {string} '' when no active program.
+ */
+export function buildProgramContext(program, today) {
+    if (!program?.startDate) return '';
+    const { week, target, finished } = deriveProgramWeek(program, today);
+    if (finished) {
+        return `Program: "${program.name}" (${program.weeks} weeks, ${program.goal}) FINISHED — only propose a next block if the user asks.\n`;
+    }
+    const targetStr = target
+        ? ` — this week: ${target.label}${target.weightPct ? ` (${target.weightPct > 0 ? '+' : ''}${target.weightPct}% weight)` : ''}${target.note ? `, ${target.note}` : ''}`
+        : '';
+    return `Active program: "${program.name}" (${program.goal}) — week ${week} of ${program.weeks}${targetStr}. Session-shaped asks should honor this via propose_session_adjustments; trust level is propose-only (cards, never silent writes).\n`;
+}
+
+/**
  * Freshness note (context is only attached to the FIRST turn of a thread):
  * when the template list changed mid-conversation, prepend one line to the
  * next user turn instead of resending the whole context.

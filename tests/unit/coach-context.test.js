@@ -7,6 +7,8 @@ import {
     buildTemplatesContext,
     setTypeMarker,
     templatesChangedNote,
+    deriveProgramWeek,
+    buildProgramContext,
 } from '../../js/core/features/coach-context.js';
 
 describe('buildProfileContext', () => {
@@ -122,5 +124,35 @@ describe('templatesChangedNote', () => {
         expect(note).toContain('saved workouts changed');
         expect(note).toContain('New Pull Day');
         expect(note.endsWith('\n\n')).toBe(true);
+    });
+});
+
+describe('deriveProgramWeek / buildProgramContext (Phase 9)', () => {
+    const program = {
+        name: 'Strength block', goal: 'strength', weeks: 4, startDate: '2026-06-29',
+        weekTargets: [
+            { week: 2, label: 'heavy', weightPct: 5 },
+            { week: 4, label: 'deload', weightPct: -40, note: 'easy week' },
+        ],
+    };
+
+    it('derives the week from startDate — never stored', () => {
+        expect(deriveProgramWeek(program, '2026-06-29').week).toBe(1);
+        expect(deriveProgramWeek(program, '2026-07-07').week).toBe(2);
+        expect(deriveProgramWeek(program, '2026-07-20')).toMatchObject({ week: 4, finished: false });
+        expect(deriveProgramWeek(program, '2026-08-03').finished).toBe(true);
+    });
+
+    it('picks the matching week target (null when baseline)', () => {
+        expect(deriveProgramWeek(program, '2026-07-07').target).toMatchObject({ label: 'heavy', weightPct: 5 });
+        expect(deriveProgramWeek(program, '2026-06-30').target).toBeNull();
+    });
+
+    it('context line carries week-of + target; finished programs say so', () => {
+        const ctx = buildProgramContext(program, '2026-07-07');
+        expect(ctx).toContain('week 2 of 4');
+        expect(ctx).toContain('heavy (+5% weight)');
+        expect(buildProgramContext(program, '2026-08-10')).toContain('FINISHED');
+        expect(buildProgramContext(null, '2026-07-07')).toBe('');
     });
 });

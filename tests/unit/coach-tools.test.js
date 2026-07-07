@@ -7,6 +7,7 @@ import {
     validateCreateTemplateInput,
     applyTemplateChanges,
     normalizeExercise,
+    validateProgramInput,
     TOOL_DEFINITIONS,
 } from '../../functions/coach-tools.js';
 
@@ -114,8 +115,9 @@ describe('TOOL_DEFINITIONS', () => {
     it('exposes exactly the coach-tab tool set with valid schemas', () => {
         const names = TOOL_DEFINITIONS.map(t => t.name).sort();
         expect(names).toEqual([
-            'archive_template', 'create_workout_template', 'forget_fact',
-            'get_exercise_history', 'get_prs', 'get_week_plan', 'list_templates',
+            'adjust_program', 'archive_template', 'create_program',
+            'create_workout_template', 'forget_fact', 'get_exercise_history',
+            'get_program', 'get_prs', 'get_week_plan', 'list_templates',
             'log_advice', 'propose_session_adjustments', 'remember_fact',
             'set_week_plan', 'update_workout_template',
         ]);
@@ -123,5 +125,28 @@ describe('TOOL_DEFINITIONS', () => {
             expect(t.description.length).toBeGreaterThan(20);
             expect(t.input_schema.type).toBe('object');
         }
+    });
+});
+
+describe('validateProgramInput (Phase 9)', () => {
+    const good = () => ({
+        name: 'Strength block', goal: 'strength', weeks: 4, startDate: '2026-07-06',
+        weekTargets: [{ week: 4, label: 'deload', weightPct: -40 }],
+        split: { mon: 'push_day' },
+    });
+
+    it('accepts a sane program and normalizes targets', () => {
+        const v = validateProgramInput(good());
+        expect(v.ok).toBe(true);
+        expect(v.normalized.weekTargets[0]).toMatchObject({ week: 4, label: 'deload', weightPct: -40 });
+    });
+
+    it('rejects missing name/split, bad weeks, bad dates, out-of-range targets', () => {
+        expect(validateProgramInput({ ...good(), name: '' }).ok).toBe(false);
+        expect(validateProgramInput({ ...good(), split: null }).ok).toBe(false);
+        expect(validateProgramInput({ ...good(), weeks: 0 }).ok).toBe(false);
+        expect(validateProgramInput({ ...good(), weeks: 99 }).ok).toBe(false);
+        expect(validateProgramInput({ ...good(), startDate: 'next monday' }).ok).toBe(false);
+        expect(validateProgramInput({ ...good(), weekTargets: [{ week: 9, label: 'x' }] }).ok).toBe(false);
     });
 });
