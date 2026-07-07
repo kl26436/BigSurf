@@ -62,6 +62,26 @@ const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'remember_fact',
+        description: 'Store one short durable fact about the user (injury, goal, schedule, equipment quirk, preference) in coach memory. Never store measurements the app already tracks (weights, body weight, PRs).',
+        input_schema: {
+            type: 'object',
+            properties: {
+                text: { type: 'string', description: 'One short sentence, e.g. "Left knee is sketchy on deep squats"' },
+            },
+            required: ['text'],
+        },
+    },
+    {
+        name: 'forget_fact',
+        description: 'Delete one fact from coach memory by its id (ids are shown alongside remembered facts in your system prompt).',
+        input_schema: {
+            type: 'object',
+            properties: { id: { type: 'string' } },
+            required: ['id'],
+        },
+    },
+    {
         name: 'update_workout_template',
         description: 'Modify an existing saved workout template: rename, add/remove exercises, or change sets/reps/weight on an exercise. Call list_templates first if you do not know the templateId.',
         input_schema: {
@@ -330,6 +350,37 @@ function makeToolExecutors({ db, userId }) {
             };
         },
 
+        async remember_fact(input) {
+            const text = String(input?.text || '').trim().slice(0, 200);
+            if (!text) return { error: 'text is required' };
+            const ref = userDoc().collection('preferences').doc('coachMemory');
+            const snap = await ref.get();
+            const facts = snap.exists ? (snap.data().facts || []) : [];
+            if (facts.length >= 40) {
+                return { error: 'Memory is full (40 facts) — forget something first or ask the user to prune it in Settings.' };
+            }
+            const fact = {
+                id: `fact_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                text,
+                createdAt: new Date().toISOString(),
+                source: 'chat',
+            };
+            await ref.set({ facts: [...facts, fact] }, { merge: true });
+            return { result: { remembered: text, id: fact.id } };
+        },
+
+        async forget_fact(input) {
+            const id = String(input?.id || '').trim();
+            if (!id) return { error: 'id is required' };
+            const ref = userDoc().collection('preferences').doc('coachMemory');
+            const snap = await ref.get();
+            const facts = snap.exists ? (snap.data().facts || []) : [];
+            const next = facts.filter(f => f.id !== id);
+            if (next.length === facts.length) return { error: `No fact with id ${id}` };
+            await ref.set({ facts: next }, { merge: true });
+            return { result: { forgotten: id } };
+        },
+
         async update_workout_template(input) {
             const templateId = String(input?.templateId || '').trim();
             if (!templateId) return { error: 'templateId is required' };
@@ -364,6 +415,8 @@ const TOOL_STATUS = {
     get_prs: 'Checking your records…',
     create_workout_template: 'Creating your workout…',
     update_workout_template: 'Updating your workout…',
+    remember_fact: 'Noting that…',
+    forget_fact: 'Forgetting that…',
 };
 
 module.exports = {

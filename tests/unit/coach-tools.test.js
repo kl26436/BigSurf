@@ -98,11 +98,11 @@ describe('applyTemplateChanges', () => {
 });
 
 describe('TOOL_DEFINITIONS', () => {
-    it('exposes exactly the five phase-3 tools with valid schemas', () => {
+    it('exposes exactly the phase-3 + phase-4 tools with valid schemas', () => {
         const names = TOOL_DEFINITIONS.map(t => t.name).sort();
         expect(names).toEqual([
-            'create_workout_template', 'get_exercise_history', 'get_prs',
-            'list_templates', 'update_workout_template',
+            'create_workout_template', 'forget_fact', 'get_exercise_history',
+            'get_prs', 'list_templates', 'remember_fact', 'update_workout_template',
         ]);
         for (const t of TOOL_DEFINITIONS) {
             expect(t.description.length).toBeGreaterThan(20);

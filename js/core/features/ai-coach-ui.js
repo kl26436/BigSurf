@@ -39,6 +39,9 @@ let _coachConversation = [];
 // once, so mid-conversation template changes get a one-line freshness note
 // instead of a full context resend.
 let _coachThreadTemplateNames = null;
+// One coachHistory doc per conversation (server updates it each turn), so
+// past sessions restore with full context. Generated on the first turn.
+let _coachThreadId = null;
 
 // ===================================================================
 // AI COACH MODAL
@@ -341,6 +344,7 @@ export async function askCoach(question) {
         let userTurn;
         if (_coachConversation.length === 0) {
             _coachThreadTemplateNames = templateNames;
+            _coachThreadId = _coachThreadId || `thread_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
             userTurn = `Here is my recent training data:\n\n${context}\n\nQuestion: ${question.trim()}`;
         } else {
             const note = templatesChangedNote(_coachThreadTemplateNames || [], templateNames);
@@ -428,7 +432,7 @@ async function streamCoachResponse(question, bubble) {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ messages: _coachConversation, question }),
+            body: JSON.stringify({ messages: _coachConversation, question, threadId: _coachThreadId }),
         });
         if (resp.status === 429) throw new Error('resource-exhausted');
         if (!resp.ok || !resp.body) return null;
@@ -553,6 +557,7 @@ export function resetCoachUI() {
     // New chat → drop the in-memory conversation thread.
     _coachConversation = [];
     _coachThreadTemplateNames = null;
+    _coachThreadId = null;
 }
 
 // ===================================================================
@@ -893,7 +898,41 @@ export function showPastCoachSession(sessionId) {
     const chatMessages = document.getElementById('coach-chat-messages');
     if (chatMessages) chatMessages.innerHTML = '';
 
-    // Show past session as chat bubbles
+    if (Array.isArray(session.messages) && session.messages.length > 0) {
+        // Full-thread doc: rebuild the conversation so a follow-up continues
+        // exactly where it left off (same threadId → same history doc).
+        _coachConversation = session.messages
+            .filter(m => m && m.role && typeof m.content === 'string')
+            .map(m => ({ role: m.role, content: m.content }));
+        _coachThreadId = session.threadId || session.id;
+        _coachThreadTemplateNames = (AppState.workoutPlans || []).map(t => t.name || t.day).filter(Boolean);
+
+        let first = true;
+        for (const m of _coachConversation) {
+            if (m.role === 'user') {
+                // The first turn carries the big training-context block —
+                // show just the question the user actually typed.
+                const visible = first ? (m.content.split('\nQuestion: ').pop() || m.content) : m.content;
+                addChatBubble('user', escapeHtml(visible));
+                first = false;
+            } else {
+                addChatBubble('bot', formatCoachResponse(m.content));
+            }
+        }
+        const firstBubble = chatMessages?.firstElementChild;
+        if (firstBubble) {
+            const label = document.createElement('div');
+            label.className = 'coach-past-label';
+            label.innerHTML = `<i class="fas fa-history"></i> From ${formatRelativeDate(session.timestamp, { daysAgo: true })}`;
+            firstBubble.insertBefore(label, firstBubble.firstChild);
+        }
+        return;
+    }
+
+    // Legacy single-pair doc (no stored thread) — render read-only; replying
+    // starts a fresh thread rather than pretending there's context.
+    _coachConversation = [];
+    _coachThreadId = null;
     addChatBubble('user', escapeHtml(session.question));
     const botBubble = addChatBubble('bot', formatCoachResponse(session.response));
     if (botBubble) {

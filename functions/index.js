@@ -1022,6 +1022,7 @@ TOOLS — you can act in the app, not just talk:
 - create_workout_template: REQUIRED whenever the user asks you to build/make/plan a workout. Never answer such a request with a text-only workout description — create the template (weights drawn from their history), then summarize in one short line. The app renders a tappable card for the action.
 - update_workout_template: for changing a saved workout (rename, add/remove exercise, change sets/reps/weight). Get the templateId from list_templates first if you don't have it.
 - get_exercise_history / list_templates / get_prs: read tools — use them instead of guessing when the summary context isn't detailed enough.
+- remember_fact: when the user shares DURABLE information — injuries, goals, schedule, equipment quirks, preferences — store it (short, one sentence). Never store measurements the app already tracks. Use forget_fact when the user corrects or retracts something you remembered.
 - If a tool fails, say so briefly and give your best text answer instead — never claim an action succeeded when it didn't.`;
 
 /**
@@ -1319,7 +1320,7 @@ exports.coachChatStream = onRequest({
         return;
     }
 
-    const { messages, question } = req.body || {};
+    const { messages, question, threadId: rawThreadId } = req.body || {};
     const apiMessages = (Array.isArray(messages) ? messages : [])
         .filter(m => m && m.role && m.content)
         .map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : m.content }));
@@ -1327,6 +1328,10 @@ exports.coachChatStream = onRequest({
         res.status(400).json({ error: 'invalid-argument', message: 'Missing messages' });
         return;
     }
+    // Thread id (client-generated) → one coachHistory doc per conversation,
+    // updated as it grows, so past sessions can be reopened AND continued.
+    const threadId = typeof rawThreadId === 'string' && /^[\w-]{6,64}$/.test(rawThreadId)
+        ? rawThreadId : null;
 
     // SSE from here on out.
     res.writeHead(200, {
@@ -1345,6 +1350,20 @@ exports.coachChatStream = onRequest({
         // tools server-side (Admin SDK, scoped to this user), append the
         // results, and call again — streaming text deltas the whole way.
         // Hard cap 6 rounds; the whole loop costs ONE 'coach' rate-limit unit.
+        // Coach memory — durable facts injected into every call (cap 30).
+        let memoryBlock = '';
+        try {
+            const memSnap = await db.collection('users').doc(userId)
+                .collection('preferences').doc('coachMemory').get();
+            const facts = memSnap.exists ? (memSnap.data().facts || []) : [];
+            if (facts.length) {
+                memoryBlock = '\n\nWHAT YOU REMEMBER ABOUT THIS USER (from earlier conversations; ids usable with forget_fact):\n'
+                    + facts.slice(0, 30).map(f => `- [${f.id}] ${f.text}`).join('\n');
+            }
+        } catch (e) {
+            console.error('coach memory load failed (continuing without):', e);
+        }
+
         const executors = makeToolExecutors({ db, userId });
         let msgs = withPromptCaching(apiMessages);
         let fullText = '';
@@ -1358,7 +1377,7 @@ exports.coachChatStream = onRequest({
                 thinking: { type: 'adaptive' },
                 output_config: { effort: 'xhigh' },
                 stream: true,
-                system: [{ type: 'text', text: TRAINING_SCIENCE_PROMPT + COACH_TOOLS_PROMPT, cache_control: { type: 'ephemeral' } }],
+                system: [{ type: 'text', text: TRAINING_SCIENCE_PROMPT + COACH_TOOLS_PROMPT + memoryBlock, cache_control: { type: 'ephemeral' } }],
                 tools: TOOL_DEFINITIONS,
                 messages: msgs,
             }, send, fullText.length > 0);
@@ -1404,13 +1423,25 @@ exports.coachChatStream = onRequest({
 
         // History — same doc shape the callable writes.
         const lastUserMsg = [...apiMessages].reverse().find(m => m.role === 'user');
-        await db.collection('users').doc(userId).collection('coachHistory').add({
+        const historyDoc = {
             question: question || (typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : ''),
             response: fullText,
             timestamp: new Date().toISOString(),
             usage,
             ...(actionCards.length ? { actions: actionCards } : {}),
-        });
+        };
+        if (threadId) {
+            // Full-thread doc (one per conversation, grows turn by turn) so a
+            // past session can be reopened WITH its context and continued.
+            const thread = apiMessages
+                .filter(m => typeof m.content === 'string' && m.content)
+                .map(m => ({ role: m.role, content: m.content }));
+            thread.push({ role: 'assistant', content: fullText });
+            await db.collection('users').doc(userId).collection('coachHistory')
+                .doc(threadId).set({ ...historyDoc, threadId, messages: thread });
+        } else {
+            await db.collection('users').doc(userId).collection('coachHistory').add(historyDoc);
+        }
 
         console.log(`✅ Coach stream for ${userId} (${usage.inputTokens || 0} in, ${usage.outputTokens || 0} out)`);
         send({ type: 'done', fullText, usage });

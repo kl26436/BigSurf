@@ -337,6 +337,14 @@ export function renderSettings() {
                     </div>
                     <i class="fas fa-chevron-right srow-chev"></i>
                 </div>
+                <div class="srow srow--clickable" onclick="openCoachMemorySheet()">
+                    <div class="srow-icon ic-purple"><i class="fas fa-brain"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">What your coach remembers</div>
+                        <div class="srow-desc">Facts saved from your conversations — view and delete</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
             </div>
 
             <!-- Notifications (diagnostics) -->
@@ -843,6 +851,106 @@ export async function editCoachNotes() {
     }
 }
 
+// ── Coach memory transparency (Phase 4) ─────────────────────────────
+// The coach stores durable facts via its remember_fact tool. Users must be
+// able to SEE and REMOVE that memory — this sheet is the window into it.
+
+export async function openCoachMemorySheet() {
+    if (!AppState.currentUser) return;
+    closeCoachMemorySheet(true);
+
+    let facts;
+    try {
+        const snap = await getDoc(doc(db, 'users', AppState.currentUser.uid, 'preferences', 'coachMemory'));
+        facts = snap.exists() ? (snap.data().facts || []) : [];
+    } catch (e) {
+        console.error('❌ Coach memory load failed:', e);
+        showNotification("Couldn't load coach memory", 'error');
+        return;
+    }
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'coach-memory-backdrop';
+    backdrop.onclick = () => closeCoachMemorySheet();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'coach-memory-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'What your coach remembers');
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">What your coach remembers</div>
+            <div class="aw-sheet__subtitle">Saved from your conversations — delete anything</div>
+        </div>
+        <div class="aw-sheet__body" id="coach-memory-body">${renderCoachMemoryBody(facts)}</div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action primary" onclick="closeCoachMemorySheet()">Done</button>
+        </div>
+    `;
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+}
+
+function renderCoachMemoryBody(facts) {
+    if (!facts.length) {
+        return `
+            <div class="empty-state-compact">
+                <i class="fas fa-brain"></i>
+                <p>Nothing remembered yet</p>
+                <p class="empty-state-hint">Tell the coach durable things — injuries, schedule, preferences — and they'll show up here.</p>
+            </div>
+        `;
+    }
+    return facts.map(f => `
+        <div class="js-row">
+            <div class="srow-info">
+                <div class="srow-name">${escapeHtml(f.text)}</div>
+                <div class="srow-desc">${escapeHtml((f.createdAt || '').slice(0, 10))}</div>
+            </div>
+            <button class="btn-text" onclick="deleteCoachFact('${escapeAttr(f.id)}')" aria-label="Forget this">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+export async function deleteCoachFact(factId) {
+    const ok = await confirmSheet({
+        title: 'Forget this?',
+        message: "The coach won't factor it into future advice.",
+        confirmLabel: 'Forget it',
+        cancelLabel: 'Keep it',
+        destructive: true,
+    });
+    if (!ok || !AppState.currentUser) return;
+    try {
+        const ref = doc(db, 'users', AppState.currentUser.uid, 'preferences', 'coachMemory');
+        const snap = await getDoc(ref);
+        const facts = (snap.exists() ? (snap.data().facts || []) : []).filter(f => f.id !== factId);
+        await setDoc(ref, { facts }, { merge: true });
+        const body = document.getElementById('coach-memory-body');
+        if (body) body.innerHTML = renderCoachMemoryBody(facts);
+        showNotification('Forgotten', 'success', 1200);
+    } catch (e) {
+        console.error('❌ Coach fact delete failed:', e);
+        showNotification("Couldn't delete — try again", 'error');
+    }
+}
+
+export function closeCoachMemorySheet(immediate = false) {
+    const backdrop = document.getElementById('coach-memory-backdrop');
+    const sheet = document.getElementById('coach-memory-sheet');
+    if (immediate) { backdrop?.remove(); sheet?.remove(); return; }
+    backdrop?.classList.remove('visible');
+    sheet?.classList.remove('visible');
+    setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
+}
+
 export async function editProfileName() {
     const s = AppState.settings || DEFAULT_SETTINGS;
     const current = s.profileName || AppState.currentUser?.displayName || '';
@@ -1227,3 +1335,9 @@ async function deleteDocsInBatches(docs) {
     }
     return total;
 }
+
+// Self-wire handlers rendered only from this module's own template strings
+// (cache-skew rule): the coach-memory sheet + its row in the settings page.
+window.openCoachMemorySheet = openCoachMemorySheet;
+window.deleteCoachFact = deleteCoachFact;
+window.closeCoachMemorySheet = closeCoachMemorySheet;
