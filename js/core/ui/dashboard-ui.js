@@ -15,6 +15,7 @@ import { loadAllWorkouts } from '../data/data-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
 import { TrainingInsights } from '../features/training-insights.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
+import { satisfiedDays, todayCard, weekDates, loadWeekPlan } from '../features/week-plan.js';
 
 import {
     aggregateBodyPartStats, getTemplatesForDayOfWeek, aggregateExerciseStats,
@@ -91,6 +92,8 @@ async function renderDashboard() {
                 StatsTracker.getWeeklyStats(),
                 loadAllWorkouts(AppState),
                 TrainingInsights.loadInsightsData().catch(() => ({ recentWorkouts: [], allWorkouts: [] })),
+                // Week plan (5.5): hydrate once per session (null = none set).
+                AppState._weekPlan === undefined ? loadWeekPlan().catch(() => null) : Promise.resolve(),
             ]);
 
         await PRTracker.loadPRData();
@@ -456,6 +459,18 @@ function renderForToday(allWorkouts) {
     // No workouts at all (new user) → still give the dashboard a start path.
     if (templates.length === 0) return renderForTodayEmpty(dayName);
 
+    // Week plan (5.5): when a plan exists it DECIDES today — the usage-ranked
+    // suggestion below becomes the fallback for open/unplanned days.
+    const wp = AppState._weekPlan;
+    let planCard = null;
+    if (wp) {
+        const monday = weekDates().mon;
+        const weekWos = allWorkouts.filter(w => w.completedAt && !w.cancelledAt && w.date >= monday);
+        planCard = todayCard(wp, satisfiedDays(wp, weekWos, templates), new Date());
+    }
+    if (planCard?.kind === 'rest') return renderPlanStateCard(dayName, 'rest');
+    if (planCard?.kind === 'done') return renderPlanStateCard(dayName, 'done');
+
     const dow = new Date().getDay();
     const dayKey = dayName.toLowerCase();
     const ranked = getTemplatesForDayOfWeek(templates, allWorkouts, dow)
@@ -472,7 +487,20 @@ function renderForToday(allWorkouts) {
     // Ranking is recency-decayed (see getTemplatesForDayOfWeek), so a switched
     // routine — chest Mondays → leg Mondays → back — converges on what you've
     // actually done lately instead of accumulating stale suggestions.
-    const visible = ranked.filter(r => r.count > 0 || r.scheduled).slice(0, 2);
+    let visible = ranked.filter(r => r.count > 0 || r.scheduled).slice(0, 2);
+
+    // Planned workout takes the hero slot (reflowed: a missed Monday can land
+    // here on Wednesday). The best usage-ranked OTHER template stays as alt.
+    if (planCard?.kind === 'workout') {
+        const planned = templates.find(t => t.id === planCard.templateId);
+        if (planned) {
+            const heroEntry = ranked.find(r => r.template.id === planned.id)
+                || { template: planned, count: 0, score: 0, scheduled: true };
+            heroEntry.scheduled = true;
+            visible = [heroEntry, ...visible.filter(r => r.template.id !== planned.id)].slice(0, 2);
+        }
+    }
+
     // Rest day (has workouts, none ranked for today) → offer to wing it.
     if (visible.length === 0) return renderForTodayEmpty(dayName);
 
@@ -495,6 +523,17 @@ function renderForToday(allWorkouts) {
         buildProximityCandidates(hero.template, allWorkouts)
     );
 
+    // One-time quiet setup hint when no plan exists — dismissible forever,
+    // never a popup (pull, not push).
+    const setupRow = (wp === null && !AppState.settings?.weekPlanSetupDismissed) ? `
+        <div class="dash-alt-row dash-alt-row--setup" id="week-plan-setup-row">
+            <i class="fas fa-calendar-week dash-alt-row__icon"></i>
+            <div class="dash-alt-row__txt dash-alt-row__txt--muted" onclick="openWeekPlanSheet()" role="button" tabindex="0">Plan your week — one workout per day</div>
+            <button class="dash-alt-row__dismiss" onclick="dismissWeekPlanSetup(event)" aria-label="Dismiss">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>` : '';
+
     return `
         ${renderForTodayHero(hero, dayName, lastDoneByType, proximity)}
         <div class="dash-alt-list">
@@ -504,8 +543,36 @@ function renderForToday(allWorkouts) {
                 <div class="dash-alt-row__txt dash-alt-row__txt--muted">All workouts</div>
                 <i class="fas fa-chevron-right dash-chev"></i>
             </div>
+            ${setupRow}
         </div>
     `;
+}
+
+// Plan-decided non-workout states: rest day (calm, no CTA) and done-for-today.
+function renderPlanStateCard(dayName, kind) {
+    const isRest = kind === 'rest';
+    return `
+        <div class="dash-today-hero dash-today-hero--calm">
+            <div class="dash-today-hero__eyebrow">For ${escapeHtml(dayName)}</div>
+            <div class="dash-today-hero__name">${isRest ? 'Rest day' : 'Done for today'}</div>
+            <div class="dash-today-hero__meta">${isRest ? 'Recovery is part of the plan' : "Today's planned workout is in the books"}</div>
+            <div class="dash-today-hero__actions">
+                <button class="dash-today-hero__cta dash-today-hero__cta--ghost" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">
+                    All workouts
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+/** Dismiss the week-plan setup hint forever (quiet, no confirm). */
+export function dismissWeekPlanSetup(event) {
+    event?.stopPropagation?.();
+    document.getElementById('week-plan-setup-row')?.remove();
+    import('./settings-ui.js').then(m => m.updateSetting('weekPlanSetupDismissed', true)).catch(() => {});
+}
+if (typeof window !== 'undefined') {
+    window.dismissWeekPlanSetup = dismissWeekPlanSetup;
 }
 
 // Rest day / new user: Quick start takes the hero slot instead of hiding.

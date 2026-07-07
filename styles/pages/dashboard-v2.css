@@ -701,3 +701,20 @@
     color: var(--primary);
     font-weight: 700;
 }
+
+/* ── Week plan (Phase 5.5) ── */
+/* Calm plan-state hero: rest day / done for today — no loud CTA. */
+.dash-today-hero--calm .dash-today-hero__name { color: var(--text-main); }
+.dash-alt-row--setup .dash-alt-row__txt { flex: 1; }
+.dash-alt-row__dismiss {
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

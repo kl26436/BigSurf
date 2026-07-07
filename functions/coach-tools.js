@@ -62,6 +62,31 @@ const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'get_week_plan',
+        description: "The user's weekly schedule: which saved workout is planned for each day, plus rest days. Call before discussing scheduling or 'what should I do today/this week'.",
+        input_schema: { type: 'object', properties: {} },
+    },
+    {
+        name: 'set_week_plan',
+        description: 'Set or update the weekly schedule (partial updates fine — only days you pass change). Values: a templateId from list_templates, "rest", or null to clear. Requires explicit user consent like every write.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                days: {
+                    type: 'object',
+                    description: 'e.g. {"mon":"push_day","tue":"rest","wed":null}',
+                    properties: {
+                        mon: { type: ['string', 'null'] }, tue: { type: ['string', 'null'] },
+                        wed: { type: ['string', 'null'] }, thu: { type: ['string', 'null'] },
+                        fri: { type: ['string', 'null'] }, sat: { type: ['string', 'null'] },
+                        sun: { type: ['string', 'null'] },
+                    },
+                },
+            },
+            required: ['days'],
+        },
+    },
+    {
         name: 'remember_fact',
         description: 'Store one short durable fact about the user (injury, goal, schedule, equipment quirk, preference) in coach memory. Never store measurements the app already tracks (weights, body weight, PRs).',
         input_schema: {
@@ -374,6 +399,53 @@ function makeToolExecutors({ db, userId }) {
             };
         },
 
+        async get_week_plan() {
+            const snap = await userDoc().collection('preferences').doc('weekPlan').get();
+            if (!snap.exists) return { plan: null, note: 'No week plan set yet.' };
+            const { days = {}, restDays = [] } = snap.data();
+            return { days, restDays };
+        },
+
+        async set_week_plan(input) {
+            const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+            const incoming = input?.days;
+            if (!incoming || typeof incoming !== 'object') return { error: 'days is required' };
+
+            const ref = userDoc().collection('preferences').doc('weekPlan');
+            const snap = await ref.get();
+            const current = snap.exists ? snap.data() : { days: {}, restDays: [] };
+            const days = { ...current.days };
+            const restDays = new Set(current.restDays || []);
+
+            // Validate template ids against the real library.
+            const tSnap = await userDoc().collection('workoutTemplates').get();
+            const templateNames = new Map(tSnap.docs.map(d => [d.id, d.data().name || d.id]));
+
+            for (const [day, val] of Object.entries(incoming)) {
+                if (!DAYS.includes(day)) return { error: `Invalid day key: ${day} (use mon…sun)` };
+                if (val === 'rest') { days[day] = null; restDays.add(day); }
+                else if (val == null || val === '') { days[day] = null; restDays.delete(day); }
+                else {
+                    if (!templateNames.has(val)) return { error: `Unknown templateId "${val}" for ${day} — call list_templates for valid ids.` };
+                    days[day] = val;
+                    restDays.delete(day);
+                }
+            }
+            for (const d of DAYS) if (!(d in days)) days[d] = null;
+
+            const plan = { days, restDays: [...restDays], updatedAt: new Date().toISOString() };
+            await ref.set(plan);
+
+            const summary = DAYS
+                .filter(d => days[d])
+                .map(d => `${d[0].toUpperCase()}${d.slice(1)} ${templateNames.get(days[d])}`)
+                .join(' · ') + ([...restDays].length ? ` · rest ${[...restDays].join('/')}` : '');
+            return {
+                result: { plan, summary },
+                actionCard: { kind: 'week_plan_set', name: 'Week plan updated', summary: summary || 'All days open' },
+            };
+        },
+
         async remember_fact(input) {
             const text = String(input?.text || '').trim().slice(0, 200);
             if (!text) return { error: 'text is required' };
@@ -561,6 +633,8 @@ const TOOL_STATUS = {
     update_workout_template: 'Updating your workout…',
     remember_fact: 'Noting that…',
     forget_fact: 'Forgetting that…',
+    get_week_plan: 'Checking your week…',
+    set_week_plan: 'Updating your week…',
 };
 
 module.exports = {

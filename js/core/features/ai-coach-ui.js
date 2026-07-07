@@ -14,6 +14,7 @@ import {
     buildProfileContext, buildPRContext, buildTemplatesContext,
     setTypeMarker, templatesChangedNote,
 } from './coach-context.js';
+import { summarizeWeekPlan } from './week-plan.js';
 
 /**
  * Iterate a workout's exercises with `name` resolved from the workout-level
@@ -505,16 +506,32 @@ async function streamCoachResponse(question, bubble) {
  * so the created/updated template is live without a reload.
  */
 function handleCoachActionCard(card, streamingBubble) {
-    const descLabel = card.kind === 'template_updated'
-        ? (card.diffSummary ? truncate(card.diffSummary, 64) : 'Updated')
-        : 'Created';
-    addChatBubble('bot', renderActionCard({
-        templateId: card.templateId,
-        name: card.name,
-        category: card.category,
-        exerciseCount: card.exerciseCount || 0,
-        descLabel,
-    }));
+    if (card.kind === 'week_plan_set') {
+        // Schedule card — no template to open; tap opens the week-plan editor.
+        addChatBubble('bot', `
+            <div class="coach-action-card" onclick="openWeekPlanSheet()">
+                <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-calendar-week"></i></div>
+                <div class="coach-action-card__body">
+                    <div class="coach-action-card__title">Week plan updated</div>
+                    <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 90))}</div>
+                </div>
+                <i class="fas fa-chevron-right coach-action-card__chev"></i>
+            </div>
+        `);
+        // Invalidate the cached plan so the dashboard re-reads it.
+        AppState._weekPlan = undefined;
+    } else {
+        const descLabel = card.kind === 'template_updated'
+            ? (card.diffSummary ? truncate(card.diffSummary, 64) : 'Updated')
+            : 'Created';
+        addChatBubble('bot', renderActionCard({
+            templateId: card.templateId,
+            name: card.name,
+            category: card.category,
+            exerciseCount: card.exerciseCount || 0,
+            descLabel,
+        }));
+    }
     // Keep the in-progress answer as the last bubble.
     if (streamingBubble?.parentElement) {
         streamingBubble.parentElement.appendChild(streamingBubble);
@@ -640,6 +657,11 @@ function buildTrainingContext(workouts, healthSummary = '', prList = []) {
     // Saved workouts — "plan my week" should adjust what exists, not reinvent.
     const templatesBlock = buildTemplatesContext(AppState.workoutPlans || []);
     if (templatesBlock) summary += `\n${templatesBlock}`;
+
+    // Week plan (5.5) — grounds "what should I do today/this week".
+    if (AppState._weekPlan) {
+        summary += `\nWeek plan: ${summarizeWeekPlan(AppState._weekPlan, AppState.workoutPlans || [])}\n`;
+    }
 
     // Training frequency
     const avgDaysPerWeek = weeks > 0 ? (workouts.length / weeks).toFixed(1) : workouts.length;

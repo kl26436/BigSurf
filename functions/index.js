@@ -1044,9 +1044,10 @@ IMPORTANT — NO ACTIONS AVAILABLE IN THIS SESSION: you cannot create, update, o
 const COACH_TOOLS_PROMPT = `
 
 TOOLS — you can act in the app, not just talk:
-- CONSENT RULE (overrides everything below): write tools (create_workout_template, update_workout_template) run ONLY on an explicit instruction to change something — "build me…", "add…", "change…", "reorder…", "update my…", "yes, do it". A question or analysis request ("what about my Friday workout?", "how does my week look?") NEVER triggers a write: propose the change in text, then ask "Want me to apply that?" and wait for a yes. An uninvited edit to a user's real workout is a serious failure even when the edit is good.
-- create_workout_template: REQUIRED whenever the user asks you to build/make/plan a workout. Never answer such a request with a text-only workout description — create the template (weights drawn from their history), then summarize in one short line. The app renders a tappable card for the action.
+- CONSENT RULE (overrides everything below): write tools (create_workout_template, update_workout_template, set_week_plan) run ONLY on an explicit instruction to change something — "build me…", "add…", "change…", "reorder…", "update my…", "yes, do it". A question or analysis request ("what about my Friday workout?", "how does my week look?") NEVER triggers a write: propose the change in text, then ask "Want me to apply that?" and wait for a yes. An uninvited edit to a user's real workout is a serious failure even when the edit is good.
+- create_workout_template: REQUIRED whenever the user asks you to build/make/plan a workout. Never answer such a request with a text-only workout description — create the template (weights drawn from their history), then summarize in one short line. The app renders a tappable card for the action. Name templates by what they ARE ("Push day", "Legs — heavy"), NEVER by weekday ("Monday push") — days live in the week plan, not in names.
 - update_workout_template: for ANY change to a workout the user already has — rename, add/remove exercise, REORDER exercises, change sets/reps/weight. Get the templateId from list_templates first if you don't have it. NEVER create a new template (or a near-duplicate name) when the user is asking to change an existing one — that leaves their real workout untouched and clutters their list.
+- get_week_plan / set_week_plan: the weekly schedule (day → saved workout, rest days). "Move legs to Friday" or "I can only train Mon/Wed/Fri" = pointer updates via set_week_plan (partial updates fine: pass only the days that change; "rest" marks a rest day, null clears) — no template gets edited or duplicated for scheduling. Check get_week_plan before answering "what should I do today/this week".
 - get_exercise_history / list_templates / get_prs: read tools — use them instead of guessing when the summary context isn't detailed enough.
 - remember_fact: when the user shares DURABLE information — injuries, goals, schedule, equipment quirks, preferences — store it (short, one sentence). Never store measurements the app already tracks. Use forget_fact when the user corrects or retracts something you remembered.
 - If a tool fails, say so briefly and give your best text answer instead — never claim an action succeeded when it didn't.`;
@@ -1576,6 +1577,24 @@ exports.weeklyCoachReview = functions.runWith({
             if (limitSnap.exists && limitSnap.data().weeklyReview?.weekKey === weekKey) continue;
             await limitRef.set({ weeklyReview: { weekKey } }, { merge: true });
 
+            // Week plan (5.5) — anchor the review to planned-vs-done.
+            let planLine = '';
+            try {
+                const planSnap = await userRef.collection('preferences').doc('weekPlan').get();
+                if (planSnap.exists) {
+                    const { days = {}, restDays = [] } = planSnap.data();
+                    const tSnap = await userRef.collection('workoutTemplates').get();
+                    const names = new Map(tSnap.docs.map(d => [d.id, d.data().name || d.id]));
+                    const parts = Object.entries(days)
+                        .filter(([, tid]) => tid)
+                        .map(([d, tid]) => `${d} ${names.get(tid) || tid}`);
+                    if (restDays.length) parts.push(`rest ${restDays.join('/')}`);
+                    if (parts.length) planLine = `Week plan: ${parts.join(' · ')}\n\n`;
+                }
+            } catch (planErr) {
+                console.log(`weeklyCoachReview plan read skipped for ${userRef.id}:`, planErr.message);
+            }
+
             // Compact summary — dates, types, top sets, readiness, notes.
             const lines = [];
             for (const w of workouts) {
@@ -1602,8 +1621,8 @@ exports.weeklyCoachReview = functions.runWith({
                 body: JSON.stringify({
                     model: DIGEST_MODEL,
                     max_tokens: 1500,
-                    system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-5 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. No preamble, no sign-off. Ground every claim in the data provided.',
-                    messages: [{ role: 'user', content: `This week's training log:\n\n${lines.join('\n')}` }],
+                    system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-5 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. No preamble, no sign-off. Ground every claim in the data provided.',
+                    messages: [{ role: 'user', content: `${planLine}This week's training log:\n\n${lines.join('\n')}` }],
                 }),
             });
             if (!upstream.ok) {

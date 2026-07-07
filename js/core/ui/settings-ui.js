@@ -354,6 +354,14 @@ export function renderSettings() {
                     </div>
                     ${toggleBtn('weeklyCoachReview', s.weeklyCoachReview !== false)}
                 </div>
+                <div class="srow srow--clickable" onclick="openWeekPlanSheet()">
+                    <div class="srow-icon ic-blue"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Week plan</div>
+                        <div class="srow-desc">One workout per day — powers the dashboard's Today card</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
             </div>
 
             <!-- Notifications (diagnostics) -->
@@ -960,6 +968,93 @@ export function closeCoachMemorySheet(immediate = false) {
     setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
 }
 
+// ── Week plan editor (Phase 5.5) ────────────────────────────────────
+// One workout per weekday, rest days explicit. Seeds from the day chips
+// templates already carry so the user confirms rather than builds from zero.
+
+export async function openWeekPlanSheet() {
+    if (!AppState.currentUser) return;
+    closeWeekPlanSheet(true);
+    const { DAY_KEYS, DAY_LABELS, loadWeekPlan, emptyWeekPlan } = await import('../features/week-plan.js');
+    const plan = (AppState._weekPlan !== undefined ? AppState._weekPlan : await loadWeekPlan()) || emptyWeekPlan();
+    const templates = (AppState.workoutPlans || []).filter(t => !t.archived && (t.name || t.day));
+
+    // Seed empty days from template day chips (suggestedDays) — confirm, don't build.
+    const seeded = { ...plan.days };
+    for (const d of DAY_KEYS) {
+        if (seeded[d]) continue;
+        const match = templates.find(t => Array.isArray(t.suggestedDays)
+            && t.suggestedDays.includes(DAY_LABELS[d].toLowerCase()));
+        if (match && !(plan.restDays || []).includes(d)) seeded[d] = match.id;
+    }
+
+    const options = (selected) => [
+        `<option value="" ${!selected ? 'selected' : ''}>Open</option>`,
+        `<option value="__rest" ${selected === '__rest' ? 'selected' : ''}>Rest day</option>`,
+        ...templates.map(t => `<option value="${escapeAttr(t.id)}" ${selected === t.id ? 'selected' : ''}>${escapeHtml(t.name || t.day)}</option>`),
+    ].join('');
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'week-plan-backdrop';
+    backdrop.onclick = () => closeWeekPlanSheet();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'week-plan-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Week plan');
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">Week plan</div>
+            <div class="aw-sheet__subtitle">Missed days shift to your next open day — quietly</div>
+        </div>
+        <div class="aw-sheet__body week-plan-editor">
+            ${DAY_KEYS.map(d => `
+                <div class="week-plan-editor__row">
+                    <div class="week-plan-editor__day">${escapeHtml(DAY_LABELS[d])}</div>
+                    <select class="week-plan-editor__select" data-day="${d}">
+                        ${options((plan.restDays || []).includes(d) ? '__rest' : seeded[d])}
+                    </select>
+                </div>
+            `).join('')}
+        </div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action" onclick="closeWeekPlanSheet()">Cancel</button>
+            <button class="aw-sheet__action primary" onclick="saveWeekPlanFromSheet()">Save plan</button>
+        </div>
+    `;
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+}
+
+export async function saveWeekPlanFromSheet() {
+    const { DAY_KEYS, saveWeekPlan } = await import('../features/week-plan.js');
+    const days = {};
+    const restDays = [];
+    for (const d of DAY_KEYS) {
+        const sel = document.querySelector(`#week-plan-sheet select[data-day="${d}"]`);
+        const val = sel?.value || '';
+        if (val === '__rest') { days[d] = null; restDays.push(d); }
+        else days[d] = val || null;
+    }
+    const ok = await saveWeekPlan(days, restDays);
+    closeWeekPlanSheet();
+    showNotification(ok ? 'Week plan saved' : "Couldn't save — try again", ok ? 'success' : 'error');
+}
+
+export function closeWeekPlanSheet(immediate = false) {
+    const backdrop = document.getElementById('week-plan-backdrop');
+    const sheet = document.getElementById('week-plan-sheet');
+    if (immediate) { backdrop?.remove(); sheet?.remove(); return; }
+    backdrop?.classList.remove('visible');
+    sheet?.classList.remove('visible');
+    setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
+}
+
 export async function editProfileName() {
     const s = AppState.settings || DEFAULT_SETTINGS;
     const current = s.profileName || AppState.currentUser?.displayName || '';
@@ -1350,3 +1445,6 @@ async function deleteDocsInBatches(docs) {
 window.openCoachMemorySheet = openCoachMemorySheet;
 window.deleteCoachFact = deleteCoachFact;
 window.closeCoachMemorySheet = closeCoachMemorySheet;
+window.openWeekPlanSheet = openWeekPlanSheet;
+window.saveWeekPlanFromSheet = saveWeekPlanFromSheet;
+window.closeWeekPlanSheet = closeWeekPlanSheet;
