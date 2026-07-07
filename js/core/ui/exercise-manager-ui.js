@@ -524,14 +524,13 @@ function renderEditExerciseMarkup(title, v, showDelete) {
                 </button>
                 <div class="page-header__title">${escapeHtml(title)}</div>
             </div>
-            <button id="edit-ex-save-header" class="page-header__save" onclick="saveExerciseFromSection()" disabled>Save</button>
         </div>
 
         <div class="content-section-body edit-exercise-body">
             <div class="field">
                 <div class="field-label">Name</div>
                 <input id="edit-exercise-name" class="field-input" type="text" required
-                       placeholder="e.g., Bench Press" value="${escapeAttr(v.name)}">
+                       placeholder="Bench press" value="${escapeAttr(v.name)}">
             </div>
 
             <div class="field">
@@ -569,7 +568,7 @@ function renderEditExerciseMarkup(title, v, showDelete) {
             </div>
 
             <div class="field">
-                <div class="field-label">Starting weight <span class="field-label__hint">(lbs)</span></div>
+                <div class="field-label">Starting weight <span class="field-label__hint">(${AppState.globalUnit || 'lbs'})</span></div>
                 <input id="edit-exercise-weight" class="field-input" type="number"
                        inputmode="decimal" min="0" max="1000" value="${v.weight}">
             </div>
@@ -620,7 +619,7 @@ function renderEditExerciseMarkup(title, v, showDelete) {
 
         <div class="page-footer">
             <button type="button" id="edit-ex-save-footer" class="btn-primary" onclick="saveExerciseFromSection()" disabled>
-                <i class="fas fa-check"></i> Save Exercise
+                <i class="fas fa-check"></i> Save exercise
             </button>
         </div>
     `;
@@ -698,9 +697,9 @@ export function toggleEditExerciseMore() {
 function updateEditExerciseValidity() {
     const name = document.getElementById('edit-exercise-name')?.value.trim() || '';
     const valid = name.length > 0 && !!selectedBodyPart && !!selectedEquipmentType;
-    const header = document.getElementById('edit-ex-save-header');
+    // One save button (footer). The old header "Save" was a duplicate exit —
+    // two identical actions, one of them dressed as page chrome.
     const footer = document.getElementById('edit-ex-save-footer');
-    if (header) header.disabled = !valid;
     if (footer) footer.disabled = !valid;
 }
 

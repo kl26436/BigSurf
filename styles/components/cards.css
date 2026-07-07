@@ -45,6 +45,13 @@
 .row-card:active {
     background: var(--bg-card-hi);
 }
+/* Non-tappable variant: the row displays data; any action lives in an
+   explicit child button (e.g., equipment-detail location rows). */
+.row-card--static,
+.row-card--static:active {
+    cursor: default;
+    background: var(--bg-card);
+}
 .row-card__icon {
     width: var(--icon-md);
     height: var(--icon-md);

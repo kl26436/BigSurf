@@ -48,8 +48,8 @@ export async function renderCompositionDetail() {
             </div>
         </div>
         <div class="d-content">
-            ${hasDexa ? renderDexaSummary(scan, prevScan) : renderNoDexaState()}
             ${renderBodyWeightSection(bwEntries, userUnit)}
+            ${hasDexa ? renderDexaSummary(scan, prevScan) : renderNoDexaState()}
             ${renderActions(hasDexa)}
         </div>
     `;

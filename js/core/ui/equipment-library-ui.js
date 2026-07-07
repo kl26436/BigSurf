@@ -2,7 +2,7 @@
 // Gym-centric equipment management page
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displayWeight } from './ui-helpers.js';
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, writeBatch } from '../data/firebase-config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
@@ -94,7 +94,7 @@ function getManager() {
 // which read --equip-{type} tokens. Keep "Machine" for legacy data; v3 migration
 // reclassifies most to Plate-Loaded / Selectorized via catalog match.
 const EQUIPMENT_TYPE_ICONS = {
-    'Plate-Loaded': { icon: 'fa-cog',           color: 'var(--equip-plate-loaded)' },
+    'Plate-Loaded': { icon: 'fa-weight-hanging', color: 'var(--equip-plate-loaded)' },
     Selectorized:   { icon: 'fa-th-list',       color: 'var(--equip-selectorized)' },
     Machine:        { icon: 'fa-cog',           color: 'var(--equip-machine)' },
     Cable:          { icon: 'fa-link',          color: 'var(--equip-cable)' },
@@ -2769,7 +2769,7 @@ function computeEquipmentDetailStats(equipment) {
         const prs = getExercisePRs(exName, eqName, equipment.id);
         if (!prs || !prs.maxWeight) continue;
         if (!pr || prs.maxWeight.weight > pr.weight) {
-            pr = { weight: prs.maxWeight.weight, reps: prs.maxWeight.reps, exercise: exName };
+            pr = { weight: prs.maxWeight.weight, reps: prs.maxWeight.reps, unit: prs.maxWeight.unit, exercise: exName };
         }
     }
 
@@ -3029,15 +3029,17 @@ export async function openEquipmentDetail(equipmentId) {
     // element — fixed to target the canonical .page-header in index.html.
     const section = document.getElementById('equipment-library-section');
     const staticHeader = section?.querySelector('.page-header');
+    // One exit only: back. The old "Done" button was a second exit dressed as
+    // a save action — everything on this page autosaves, so it lied twice.
+    // The hero owns the name; the header stays generic (no truncated repeat).
     if (staticHeader) {
         staticHeader.innerHTML = `
             <div class="page-header__left">
                 <button class="page-header__back" onclick="backToEquipmentList()" aria-label="Back">
                     <i class="fas fa-chevron-left"></i>
                 </button>
-                <div class="page-header__title">${escapeHtml(equipment.name)}</div>
+                <div class="page-header__title">Equipment</div>
             </div>
-            <button class="page-header__save" onclick="backToEquipmentList()">Done</button>
         `;
     }
 
@@ -3055,25 +3057,41 @@ export async function openEquipmentDetail(equipmentId) {
     // the page back to the top — the old full-innerHTML reset's worst tic.
     const prevScroll = container.scrollTop;
 
+    // PR in the user's display unit, honestly labeled — the raw stored number
+    // could be kg shown to an lbs user with no unit at all.
+    let prVal = '—';
+    let prSub = '';
+    if (detailStats.pr) {
+        const dw = displayWeight(detailStats.pr.weight, detailStats.pr.unit || 'lbs', AppState.globalUnit || 'lbs');
+        prVal = `${dw.value} <span class="detail-stat-grid__unit">${dw.label}</span>`;
+        prSub = `<div class="detail-stat-grid__sub">× ${detailStats.pr.reps} reps</div>`;
+    }
+
     container.innerHTML = `
         <div class="equipment-detail">
             <div class="equip-detail-body">
-                <!-- 1. HERO — one tap opens the identity sheet (name/brand/line/function/type) -->
-                <div class="equip-detail-hero equip-detail-hero--tap" role="button" tabindex="0"
-                     onclick="openEquipmentIdentitySheet('${escapeAttr(equipmentId)}')"
-                     aria-haspopup="dialog" aria-label="Edit equipment identity">
-                    <div class="equip-detail-hero__icon ${heroTypeClass}">
-                        <i class="fas ${typeInfo.icon}"></i>
-                    </div>
+                <!-- 1. HERO — text-first (V3 crisp pass): the name is the hero, not a
+                     type glyph. Identity editing lives behind ONE explicit button. -->
+                <div class="equip-detail-hero">
                     <div class="equip-detail-hero__info">
                         <div class="equip-detail-hero__name">${escapeHtml(heroFunction)}</div>
                         ${heroSubtitle ? `<div class="equip-detail-hero__subtitle">${escapeHtml(heroSubtitle)}</div>` : ''}
-                        <span class="equip-detail-hero__type-pill ${heroTypeClass}">${escapeHtml(currentType)}</span>
+                        <div class="equip-detail-hero__chips">
+                            <span class="equip-detail-hero__type-pill ${heroTypeClass}"><i class="fas ${typeInfo.icon}" aria-hidden="true"></i> ${escapeHtml(currentType)}</span>
+                            ${BASE_WEIGHT_TYPES.includes(currentType) ? `
+                            <button class="equip-detail-hero__bw-chip"
+                                    onclick="openEquipmentBaseWeightSheet('${escapeAttr(equipmentId)}')"
+                                    aria-haspopup="dialog" aria-label="Edit base weight">
+                                Base ${equipment.baseWeight || 0} ${equipment.baseWeightUnit || 'lbs'}
+                            </button>` : ''}
+                        </div>
                     </div>
-                    <i class="fas fa-pen equip-detail-hero__edit" aria-hidden="true"></i>
+                    <button class="equip-detail-hero__edit-btn"
+                            onclick="openEquipmentIdentitySheet('${escapeAttr(equipmentId)}')"
+                            aria-haspopup="dialog" aria-label="Edit equipment identity">Edit</button>
                 </div>
 
-                <!-- 2. STAT STRIP — Sessions / PR / Last -->
+                <!-- 2. STAT STRIP — Sessions / PR / Last used -->
                 <div class="detail-stat-grid">
                     <div class="detail-stat-grid__card">
                         <div class="detail-stat-grid__label">Sessions</div>
@@ -3081,51 +3099,38 @@ export async function openEquipmentDetail(equipmentId) {
                     </div>
                     <div class="detail-stat-grid__card">
                         <div class="detail-stat-grid__label">PR</div>
-                        <div class="detail-stat-grid__value">${detailStats.pr ? `${detailStats.pr.weight}` : '—'}</div>
-                        ${detailStats.pr ? `<div class="detail-stat-grid__sub">${detailStats.pr.reps} reps</div>` : ''}
+                        <div class="detail-stat-grid__value">${prVal}</div>
+                        ${prSub}
                     </div>
                     <div class="detail-stat-grid__card">
-                        <div class="detail-stat-grid__label">Last</div>
-                        <div class="detail-stat-grid__value">${detailStats.lastRel || '—'}</div>
+                        <div class="detail-stat-grid__label">Last used</div>
+                        <div class="detail-stat-grid__value">${detailStats.lastRel ? `${detailStats.lastRel} <span class="detail-stat-grid__unit">ago</span>` : '—'}</div>
                     </div>
                 </div>
 
-                <!-- 3. SETUP — base weight (base-weight types only): read-first row → sheet -->
-                ${BASE_WEIGHT_TYPES.includes(currentType) ? `
-                <div class="sec-head"><h4>Setup</h4></div>
-                <div class="row-card" role="button" tabindex="0"
-                     onclick="openEquipmentBaseWeightSheet('${escapeAttr(equipmentId)}')" aria-haspopup="dialog">
-                    <div class="row-card__icon"><i class="fas fa-weight-hanging"></i></div>
-                    <div class="row-card__content">
-                        <div class="row-card__title">Base weight</div>
-                        <div class="row-card__subtitle">Empty machine / bar</div>
-                    </div>
-                    <div class="equip-rc-trail">
-                        <span class="equip-rc-trail__val">${equipment.baseWeight || 0} ${equipment.baseWeightUnit || 'lbs'}</span>
-                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                    </div>
-                </div>` : ''}
-
-                <!-- 4. LOCATIONS — inline chips -->
+                <!-- 3. LOCATIONS — quiet rows; remove is the row's ONE real action -->
                 <div class="sec-head">
                     <h4>Locations <span class="count">${locations.length}</span></h4>
                     <button class="sec-head__action" onclick="addEquipmentLocation('${escapeAttr(equipmentId)}')">+ Add</button>
                 </div>
-                <div class="chips equip-locations-chips">
-                    ${locations.map((loc) => `
-                        <div class="chip active eq-location-chip${sessionGym === loc ? ' eq-location-chip--here' : ''}">
-                            <i class="fas fa-map-marker-alt"></i> ${escapeHtml(loc)}
-                            ${sessionGym === loc ? '<span class="gym-card__here-pill">Here</span>' : ''}
-                            <button class="chip-remove"
-                                    onclick="event.stopPropagation(); removeEquipmentLocation('${escapeAttr(equipmentId)}', '${escapeAttr(loc)}')">
-                                <i class="fas fa-times"></i>
-                            </button>
+                ${locations.map((loc) => `
+                    <div class="row-card row-card--static">
+                        <i class="fas fa-map-marker-alt equip-loc-row__pin" aria-hidden="true"></i>
+                        <div class="row-card__content">
+                            <div class="row-card__title">${escapeHtml(loc)}</div>
                         </div>
-                    `).join('')}
-                    ${locations.length === 0 ? '<span class="equip-locations-empty">No locations yet</span>' : ''}
-                </div>
+                        ${sessionGym === loc ? '<span class="gym-card__here-pill">Here</span>' : ''}
+                        <button class="equip-loc-row__remove"
+                                onclick="removeEquipmentLocation('${escapeAttr(equipmentId)}', '${escapeAttr(loc)}')"
+                                aria-label="Remove from ${escapeAttr(loc)}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `).join('')}
+                ${locations.length === 0 ? '<div class="equip-locations-empty">No locations yet</div>' : ''}
 
-                <!-- 5. USED FOR — compact row-cards → per-exercise sheet -->
+                <!-- 4. USED FOR — row opens the per-exercise sheet; the play button
+                     actually PLAYS (it used to be decoration that looked tappable) -->
                 <div class="sec-head">
                     <h4>Used for <span class="count">${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}</span></h4>
                     <button class="sec-head__action" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Assign</button>
@@ -3133,26 +3138,29 @@ export async function openEquipmentDetail(equipmentId) {
                 ${exercises.map(ex => `
                     <div class="row-card" role="button" tabindex="0"
                          onclick="openEquipmentExerciseSheet('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')" aria-haspopup="dialog">
-                        <div class="row-card__icon"><i class="fas fa-dumbbell"></i></div>
                         <div class="row-card__content">
                             <div class="row-card__title">${escapeHtml(ex.name)}</div>
-                            <div class="row-card__subtitle">${ex.override ? 'Custom form video' : (ex.inherited ? 'Inherits exercise default' : 'No form video')}</div>
+                            <div class="row-card__subtitle">${ex.override ? 'Custom form video' : (ex.inherited ? 'Form video ready' : 'No form video')}</div>
                         </div>
                         <div class="equip-rc-trail">
-                            ${ex.effective ? '<i class="fas fa-circle-play equip-rc-trail__video" aria-hidden="true"></i>' : ''}
+                            ${ex.effective ? `<button class="equip-rc-trail__play"
+                                onclick="event.stopPropagation(); awShowFormVideo('${escapeAttr(ex.effective)}', '${escapeAttr(ex.name)}')"
+                                aria-label="Play form video for ${escapeAttr(ex.name)}">
+                                <i class="fas fa-play"></i>
+                            </button>` : ''}
                             <i class="fas fa-chevron-right" aria-hidden="true"></i>
                         </div>
                     </div>
                 `).join('')}
                 ${exercises.length === 0 ? '<div class="equip-locations-empty">No exercises yet — tap Assign to link one.</div>' : ''}
 
-                <!-- 6. NOTES — inline -->
+                <!-- 5. NOTES — inline (the one edit-often field on the page) -->
                 <div class="sec-head"><h4>Notes</h4></div>
                 <textarea class="field-input equip-notes"
-                          placeholder="e.g., Setting 5 for chest fly, setting 8 for pushdown"
+                          placeholder="Setting 5 for chest fly, setting 8 for pushdown"
                           oninput="saveEquipmentNotes('${escapeAttr(equipmentId)}', this.value)">${escapeHtml(notes)}</textarea>
 
-                <!-- 7. DANGER — bordered card, honest consequence copy -->
+                <!-- 6. DANGER — bordered card, honest consequence copy -->
                 <div class="equip-danger-card">
                     <button class="danger-action-btn"
                             onclick="deleteEquipmentFromLibrary('${escapeAttr(equipmentId)}')">

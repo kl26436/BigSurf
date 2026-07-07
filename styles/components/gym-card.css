@@ -326,6 +326,12 @@
     font-size: var(--font-2xs);
     color: var(--text-very-muted);
 }
+/* Inline unit beside a stat value ("160 lbs", "2 mo ago") */
+.detail-stat-grid__unit {
+    font-size: var(--font-xs);
+    font-weight: 500;
+    color: var(--text-muted);
+}
 
 /* Page-header subtitle (used in gym detail header) — slot below the title. */
 .page-header__title-block {

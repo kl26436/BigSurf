@@ -173,43 +173,43 @@
     display: none;
 }
 
-/* Detail-view hero — shown at the top of the equipment detail page */
+/* Detail-view hero (V3 crisp pass) — text-first: the machine's NAME is the
+   hero, not a 56px type glyph (fa-cog read as "settings", and Plate-Loaded /
+   Machine shared it anyway). Inset like every card below it — the old
+   full-bleed band was a second layout system colliding with the page. */
 .equip-detail-hero {
     display: flex;
-    align-items: center;
-    gap: var(--space-16);
-    padding: var(--space-20) var(--pad-page);
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
-    margin-bottom: var(--space-12);
-}
-.equip-detail-hero__icon {
-    width: var(--icon-xl);
-    height: var(--icon-xl);
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-xl);
-    flex-shrink: 0;
+    align-items: flex-start;
+    gap: var(--space-12);
+    padding: var(--space-16) 0 0;
+    margin-bottom: var(--space-4);
 }
 .equip-detail-hero__info {
     flex: 1;
     min-width: 0;
 }
 .equip-detail-hero__name {
-    font-size: var(--font-lg);
+    font-size: var(--font-xl);
     font-weight: 700;
     color: var(--text-strong);
+    line-height: 1.25;
 }
 .equip-detail-hero__subtitle {
     margin-top: var(--space-2);
     font-size: var(--font-sm);
-    color: var(--text-muted);
+    color: var(--text-secondary);
+}
+.equip-detail-hero__chips {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+    flex-wrap: wrap;
 }
 .equip-detail-hero__type-pill {
-    display: inline-block;
-    margin-top: var(--space-6);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
     padding: var(--space-4) var(--space-10);
     border-radius: var(--radius-pill);
     font-size: var(--font-xs);
@@ -217,20 +217,65 @@
     white-space: nowrap;
     flex-shrink: 0;
 }
-
-/* Tappable hero (UX-4c) — the whole card opens the identity sheet. */
-.equip-detail-hero--tap {
+/* Base-weight chip: the one identity-adjacent value you re-read at the gym
+   (plate math), so it stays glanceable; tap opens the base-weight sheet. */
+.equip-detail-hero__bw-chip {
+    padding: var(--space-4) var(--space-10);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    background: transparent;
+    border: 1px solid var(--border-medium);
+    color: var(--text-main);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.equip-detail-hero__bw-chip:active { background: var(--bg-card-hover); }
+.equip-detail-hero__edit-btn {
+    flex-shrink: 0;
+    min-height: var(--tap-sm);
+    padding: 0 var(--space-16);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    border: 1px solid var(--border-medium);
+    color: var(--text-main);
+    font-size: var(--font-xs);
+    font-weight: 600;
     cursor: pointer;
 }
-.equip-detail-hero--tap:active {
-    background: var(--bg-card-hi);
-}
-.equip-detail-hero__edit {
+.equip-detail-hero__edit-btn:active { background: var(--bg-card-hover); }
+
+/* Location rows: inert row, remove is the single real action */
+.equip-loc-row__pin {
+    color: var(--primary);
+    font-size: var(--font-sm);
+    width: 20px;
+    text-align: center;
     flex-shrink: 0;
-    margin-left: var(--space-8);
+}
+.equip-loc-row__remove {
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    border-radius: 50%;
+    background: transparent;
+    border: none;
     color: var(--text-muted);
     font-size: var(--font-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
+.equip-loc-row__remove:active { background: var(--bg-card-hover); color: var(--danger); }
+
+/* Sectional rhythm, scoped to this page (shared .sec-head keeps its default) */
+.equipment-detail .sec-head { margin-top: var(--space-24); }
+
+/* The shared stat grid carries its own --pad-page for full-bleed contexts;
+   inside the already-padded section body that double-pads and misaligns it
+   with the cards below. Zero it here. */
+.equipment-detail .detail-stat-grid { padding: var(--space-12) 0; }
 
 /* --------------------------------------------------------------------------
    Phase 3 — Add Equipment stepped flow (Brand -> Line -> Name & Type)
@@ -881,14 +926,27 @@
     color: var(--text-strong);
     font-weight: 700;
 }
-.equip-rc-trail__video {
+/* Real play button (V3): it PLAYS the form video via stopPropagation — the
+   old decorative circle-play looked tappable but just rode the row's tap. */
+.equip-rc-trail__play {
+    width: var(--tap-sm);
+    height: var(--tap-sm);
+    border-radius: 50%;
+    background: var(--primary-bg);
+    border: none;
     color: var(--primary);
-    font-size: var(--font-md);
+    font-size: var(--font-xs);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
+.equip-rc-trail__play:active { background: var(--primary-bg-strong); }
 
-/* Danger card (UX-4c) — bordered box, not a bare row after Notes. */
+/* Danger card (UX-4c) — bordered box, clearly separated from Notes. */
 .equip-danger-card {
-    margin-top: var(--space-20);
+    margin-top: var(--space-32);
     padding: var(--space-12);
     background: var(--danger-bg);
     border: 1px solid var(--danger-border);
