@@ -20,6 +20,7 @@ const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
 const https = require('https');
+const { TOOL_DEFINITIONS, TOOL_STATUS, makeToolExecutors } = require('./coach-tools');
 
 // ── Model routing ────────────────────────────────────────────────────
 // Coach chat + template building + DEXA extraction use the flagship model
@@ -1013,6 +1014,103 @@ RESPOND WITH ONLY VALID JSON matching this schema — no markdown, no explanatio
  * - question: string — the user's question
  * - context: string — compact training summary built client-side
  */
+// Appended to the system prompt on the STREAMING path only — the legacy
+// callable has no tools, so it must not promise any.
+const COACH_TOOLS_PROMPT = `
+
+TOOLS — you can act in the app, not just talk:
+- create_workout_template: REQUIRED whenever the user asks you to build/make/plan a workout. Never answer such a request with a text-only workout description — create the template (weights drawn from their history), then summarize in one short line. The app renders a tappable card for the action.
+- update_workout_template: for changing a saved workout (rename, add/remove exercise, change sets/reps/weight). Get the templateId from list_templates first if you don't have it.
+- get_exercise_history / list_templates / get_prs: read tools — use them instead of guessing when the summary context isn't detailed enough.
+- If a tool fails, say so briefly and give your best text answer instead — never claim an action succeeded when it didn't.`;
+
+/**
+ * One streamed Anthropic round: emits visible text deltas via `send`, and
+ * reconstructs the FULL content-block list (text, thinking + signature,
+ * redacted_thinking, tool_use with parsed input) so tool loops can pass the
+ * assistant turn back verbatim — required when extended thinking is on.
+ */
+async function anthropicStreamRound(apiKey, requestBody, send, emittedTextBefore) {
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(requestBody),
+    });
+    if (!upstream.ok) {
+        const errBody = await upstream.text().catch(() => '');
+        throw new Error(`Claude API ${upstream.status}: ${errBody.slice(0, 300)}`);
+    }
+
+    const open = {};   // index → in-progress block
+    const blocks = []; // finalized, in index order
+    let stopReason = null;
+    const usage = { inputTokens: 0, outputTokens: 0 };
+    let emittedText = false;
+    let buffer = '';
+    const decoder = new TextDecoder();
+
+    for await (const chunk of upstream.body) {
+        buffer += decoder.decode(chunk, { stream: true });
+        let sep;
+        while ((sep = buffer.indexOf('\n\n')) !== -1) {
+            const rawEvent = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            const dataLine = rawEvent.split('\n').find(l => l.startsWith('data:'));
+            if (!dataLine) continue;
+            let ev;
+            try { ev = JSON.parse(dataLine.slice(5).trim()); } catch { continue; }
+
+            if (ev.type === 'message_start') {
+                usage.inputTokens = ev.message?.usage?.input_tokens || 0;
+            } else if (ev.type === 'content_block_start') {
+                const cb = ev.content_block || {};
+                if (cb.type === 'text') open[ev.index] = { type: 'text', text: '' };
+                else if (cb.type === 'thinking') { open[ev.index] = { type: 'thinking', thinking: '', signature: '' }; send({ type: 'status', text: 'Thinking…' }); }
+                else if (cb.type === 'redacted_thinking') open[ev.index] = { ...cb };
+                else if (cb.type === 'tool_use') open[ev.index] = { type: 'tool_use', id: cb.id, name: cb.name, _json: '' };
+                else open[ev.index] = { ...cb };
+            } else if (ev.type === 'content_block_delta') {
+                const blk = open[ev.index];
+                if (!blk) continue;
+                if (ev.delta?.type === 'text_delta') {
+                    // Separate this round's text from a previous round's with a
+                    // blank line so the client's accumulated bubble reads clean.
+                    if (!emittedText && emittedTextBefore) send({ type: 'delta', text: '\n\n' });
+                    emittedText = true;
+                    blk.text += ev.delta.text;
+                    send({ type: 'delta', text: ev.delta.text });
+                } else if (ev.delta?.type === 'thinking_delta') {
+                    blk.thinking += ev.delta.thinking || '';
+                } else if (ev.delta?.type === 'signature_delta') {
+                    blk.signature = ev.delta.signature || '';
+                } else if (ev.delta?.type === 'input_json_delta') {
+                    blk._json += ev.delta.partial_json || '';
+                }
+            } else if (ev.type === 'content_block_stop') {
+                const blk = open[ev.index];
+                if (!blk) continue;
+                if (blk.type === 'tool_use') {
+                    try { blk.input = JSON.parse(blk._json || '{}'); } catch { blk.input = {}; }
+                    delete blk._json;
+                }
+                blocks[ev.index] = blk;
+                delete open[ev.index];
+            } else if (ev.type === 'message_delta') {
+                stopReason = ev.delta?.stop_reason || stopReason;
+                if (ev.usage?.output_tokens) usage.outputTokens = ev.usage.output_tokens;
+            } else if (ev.type === 'error') {
+                throw new Error(`Claude stream error: ${JSON.stringify(ev).slice(0, 300)}`);
+            }
+        }
+    }
+
+    return { blocks: blocks.filter(Boolean), stopReason, usage, emittedText };
+}
+
 /**
  * Prompt caching for chat threads: the FIRST user turn carries the big
  * training-context block and is resent verbatim every turn — mark it as a
@@ -1243,64 +1341,65 @@ exports.coachChatStream = onRequest({
         const apiKey = anthropicApiKey.value();
         if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
 
-        const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-            },
-            body: JSON.stringify({
+        // Tool loop: call the model; when it stops for tool_use, execute the
+        // tools server-side (Admin SDK, scoped to this user), append the
+        // results, and call again — streaming text deltas the whole way.
+        // Hard cap 6 rounds; the whole loop costs ONE 'coach' rate-limit unit.
+        const executors = makeToolExecutors({ db, userId });
+        let msgs = withPromptCaching(apiMessages);
+        let fullText = '';
+        const usage = { inputTokens: 0, outputTokens: 0 };
+        const actionCards = [];
+
+        for (let round = 0; round < 6; round++) {
+            const roundResult = await anthropicStreamRound(apiKey, {
                 model: COACH_MODEL,
                 max_tokens: 16000,
                 thinking: { type: 'adaptive' },
                 output_config: { effort: 'xhigh' },
                 stream: true,
-                system: [{ type: 'text', text: TRAINING_SCIENCE_PROMPT, cache_control: { type: 'ephemeral' } }],
-                messages: withPromptCaching(apiMessages),
-            }),
-        });
+                system: [{ type: 'text', text: TRAINING_SCIENCE_PROMPT + COACH_TOOLS_PROMPT, cache_control: { type: 'ephemeral' } }],
+                tools: TOOL_DEFINITIONS,
+                messages: msgs,
+            }, send, fullText.length > 0);
 
-        if (!upstream.ok) {
-            const errBody = await upstream.text().catch(() => '');
-            console.error('❌ Claude API error (stream):', upstream.status, errBody.slice(0, 500));
-            send({ type: 'error', message: 'Coach is unavailable right now — try again.' });
-            res.end();
-            return;
-        }
+            const { blocks, stopReason } = roundResult;
+            usage.inputTokens += roundResult.usage.inputTokens;
+            usage.outputTokens += roundResult.usage.outputTokens;
+            const roundText = blocks.filter(b => b.type === 'text').map(b => b.text).join('');
+            if (roundText) fullText += (fullText ? '\n\n' : '') + roundText;
 
-        // Parse the Anthropic SSE stream and re-emit our protocol.
-        let fullText = '';
-        let usage = {};
-        let buffer = '';
-        const decoder = new TextDecoder();
-        for await (const chunk of upstream.body) {
-            buffer += decoder.decode(chunk, { stream: true });
-            let sep;
-            while ((sep = buffer.indexOf('\n\n')) !== -1) {
-                const rawEvent = buffer.slice(0, sep);
-                buffer = buffer.slice(sep + 2);
-                const dataLine = rawEvent.split('\n').find(l => l.startsWith('data:'));
-                if (!dataLine) continue;
-                let ev;
-                try { ev = JSON.parse(dataLine.slice(5).trim()); } catch { continue; }
+            if (stopReason !== 'tool_use') break;
 
-                if (ev.type === 'content_block_start' && ev.content_block?.type === 'thinking') {
-                    send({ type: 'status', text: 'Thinking…' });
-                } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
-                    fullText += ev.delta.text;
-                    send({ type: 'delta', text: ev.delta.text });
-                } else if (ev.type === 'message_start' && ev.message?.usage) {
-                    usage.inputTokens = ev.message.usage.input_tokens || 0;
-                } else if (ev.type === 'message_delta' && ev.usage) {
-                    usage.outputTokens = ev.usage.output_tokens || 0;
-                } else if (ev.type === 'error') {
-                    console.error('❌ Claude stream error event:', JSON.stringify(ev).slice(0, 500));
-                    send({ type: 'error', message: 'Coach hit an error mid-answer — try again.' });
-                    res.end();
-                    return;
+            const toolUses = blocks.filter(b => b.type === 'tool_use');
+            if (toolUses.length === 0) break; // defensive — shouldn't happen
+            const resultBlocks = [];
+            for (const tu of toolUses) {
+                send({ type: 'status', text: TOOL_STATUS[tu.name] || 'Working…' });
+                let out;
+                try {
+                    out = executors[tu.name]
+                        ? await executors[tu.name](tu.input)
+                        : { error: `Unknown tool: ${tu.name}` };
+                } catch (e) {
+                    console.error(`❌ coach tool ${tu.name} failed:`, e);
+                    out = { error: 'Tool failed — tell the user the action could not be completed.' };
                 }
+                if (out.actionCard) {
+                    send({ type: 'action_card', card: out.actionCard });
+                    actionCards.push(out.actionCard);
+                }
+                const payload = out.error ? { error: out.error } : (out.result ?? out);
+                resultBlocks.push({
+                    type: 'tool_result',
+                    tool_use_id: tu.id,
+                    content: JSON.stringify(payload),
+                    is_error: !!out.error,
+                });
             }
+            // Pass the assistant turn back VERBATIM (incl. thinking blocks with
+            // signatures — required when extended thinking is enabled).
+            msgs = [...msgs, { role: 'assistant', content: blocks }, { role: 'user', content: resultBlocks }];
         }
 
         // History — same doc shape the callable writes.
@@ -1310,6 +1409,7 @@ exports.coachChatStream = onRequest({
             response: fullText,
             timestamp: new Date().toISOString(),
             usage,
+            ...(actionCards.length ? { actions: actionCards } : {}),
         });
 
         console.log(`✅ Coach stream for ${userId} (${usage.inputTokens || 0} in, ${usage.outputTokens || 0} out)`);

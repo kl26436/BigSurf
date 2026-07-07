@@ -451,13 +451,26 @@ async function streamCoachResponse(question, bubble) {
                 let ev;
                 try { ev = JSON.parse(dataLine.slice(5).trim()); } catch { continue; }
 
-                if (ev.type === 'status' && bubble && !acc) {
-                    bubble.innerHTML = `
-                        <div class="coach-loading">
-                            <i class="fas fa-spinner fa-spin"></i>
-                            <span>${escapeHtml(ev.text || 'Thinking…')}</span>
-                        </div>
-                    `;
+                if (ev.type === 'status' && bubble) {
+                    // Mid-answer statuses (a tool running) append below the text
+                    // already streamed; pre-text statuses replace the spinner.
+                    if (!acc) {
+                        bubble.innerHTML = `
+                            <div class="coach-loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span>${escapeHtml(ev.text || 'Thinking…')}</span>
+                            </div>
+                        `;
+                    } else {
+                        bubble.innerHTML = `${formatCoachResponse(acc)}
+                            <div class="coach-loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span>${escapeHtml(ev.text || 'Working…')}</span>
+                            </div>`;
+                    }
+                    scrollCoachChatIfNearBottom();
+                } else if (ev.type === 'action_card' && ev.card) {
+                    handleCoachActionCard(ev.card, bubble);
                 } else if (ev.type === 'delta') {
                     acc += ev.text || '';
                     if (bubble) bubble.innerHTML = formatCoachResponse(acc);
@@ -480,6 +493,39 @@ async function streamCoachResponse(question, bubble) {
         debugLog('coach stream failed, falling back:', e);
         return null;
     }
+}
+
+/**
+ * A write-tool completed server-side: render its action card as a chat bubble
+ * (keeping the streaming text bubble last) and refresh the Workouts tab data
+ * so the created/updated template is live without a reload.
+ */
+function handleCoachActionCard(card, streamingBubble) {
+    const descLabel = card.kind === 'template_updated'
+        ? (card.diffSummary ? truncate(card.diffSummary, 64) : 'Updated')
+        : 'Created';
+    addChatBubble('bot', renderActionCard({
+        templateId: card.templateId,
+        name: card.name,
+        category: card.category,
+        exerciseCount: card.exerciseCount || 0,
+        descLabel,
+    }));
+    // Keep the in-progress answer as the last bubble.
+    if (streamingBubble?.parentElement) {
+        streamingBubble.parentElement.appendChild(streamingBubble);
+    }
+    scrollCoachChatIfNearBottom();
+
+    // Fire-and-forget refresh so the Workouts tab reflects the change.
+    (async () => {
+        try {
+            const mgr = new FirebaseWorkoutManager(AppState);
+            AppState.workoutPlans = await mgr.getUserWorkoutTemplates();
+            const { clearSelectorCache } = await import('../ui/template-selection.js');
+            clearSelectorCache?.();
+        } catch (e) { debugLog('coach: workoutPlans refresh failed', e); }
+    })();
 }
 
 /**
