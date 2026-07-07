@@ -83,7 +83,7 @@ const TOOL_DEFINITIONS = [
     },
     {
         name: 'update_workout_template',
-        description: 'Modify an existing saved workout template: rename, add/remove exercises, or change sets/reps/weight on an exercise. Call list_templates first if you do not know the templateId.',
+        description: 'Modify an existing saved workout template: rename, add/remove exercises, REORDER exercises, or change sets/reps/weight on an exercise. ALWAYS use this (not create_workout_template) when the user refers to a workout they already have. Call list_templates first if you do not know the templateId.',
         input_schema: {
             type: 'object',
             properties: {
@@ -94,6 +94,7 @@ const TOOL_DEFINITIONS = [
                         rename: { type: 'string' },
                         addExercises: { type: 'array', items: { type: 'object' } },
                         removeExercises: { type: 'array', items: { type: 'string' }, description: 'Exercise names to remove' },
+                        reorderExercises: { type: 'array', items: { type: 'string' }, description: 'The COMPLETE list of existing exercise names in the desired new order' },
                         setExercise: {
                             type: 'object',
                             description: 'Change sets/reps/weight on one exercise by name',
@@ -207,6 +208,29 @@ function applyTemplateChanges(template, changes) {
         }
     }
 
+    if (Array.isArray(changes.reorderExercises) && changes.reorderExercises.length > 0) {
+        const want = changes.reorderExercises.map(n => String(n || '').trim().toLowerCase());
+        if (want.length !== updated.exercises.length) {
+            return { ok: false, error: `reorderExercises must list ALL ${updated.exercises.length} exercises (got ${want.length})` };
+        }
+        const byName = new Map(updated.exercises.map(e => [exName(e).toLowerCase(), e]));
+        if (byName.size !== updated.exercises.length) {
+            return { ok: false, error: 'Workout has duplicate exercise names — reorder not supported here' };
+        }
+        const reordered = [];
+        for (const n of want) {
+            const ex = byName.get(n);
+            if (!ex) return { ok: false, error: `No exercise named "${n}" in this workout` };
+            if (reordered.includes(ex)) return { ok: false, error: `"${n}" listed twice in reorderExercises` };
+            reordered.push(ex);
+        }
+        const changed = reordered.some((e, i) => e !== updated.exercises[i]);
+        if (changed) {
+            updated.exercises = reordered;
+            diffs.push(`Reordered: ${reordered.map(exName).join(' → ')}`);
+        }
+    }
+
     if (changes.setExercise && typeof changes.setExercise === 'object') {
         const target = String(changes.setExercise.name || '').trim().toLowerCase();
         const ex = updated.exercises.find(e => exName(e).toLowerCase() === target);
@@ -231,7 +255,7 @@ function applyTemplateChanges(template, changes) {
         }
     }
 
-    if (diffs.length === 0) return { ok: false, error: 'No supported changes provided (rename, addExercises, removeExercises, setExercise)' };
+    if (diffs.length === 0) return { ok: false, error: 'No supported changes provided (rename, addExercises, removeExercises, reorderExercises, setExercise)' };
     return { ok: true, updated, diffSummary: diffs.join('; ') };
 }
 

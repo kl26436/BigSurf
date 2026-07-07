@@ -76,6 +76,19 @@ describe('applyTemplateChanges', () => {
         expect(r.diffSummary).toContain('Removed OHP');
     });
 
+    it('reorders exercises by name and reports the new order', () => {
+        const r = applyTemplateChanges(template(), { reorderExercises: ['OHP', 'Bench Press'] });
+        expect(r.ok).toBe(true);
+        expect(r.updated.exercises.map(e => e.machine)).toEqual(['OHP', 'Bench Press']);
+        expect(r.diffSummary).toContain('Reordered: OHP → Bench Press');
+    });
+
+    it('reorder must list ALL exercises, no unknowns, no dupes', () => {
+        expect(applyTemplateChanges(template(), { reorderExercises: ['OHP'] }).ok).toBe(false);
+        expect(applyTemplateChanges(template(), { reorderExercises: ['OHP', 'Curlz'] }).ok).toBe(false);
+        expect(applyTemplateChanges(template(), { reorderExercises: ['OHP', 'OHP'] }).ok).toBe(false);
+    });
+
     it('unknown exercise name → tool error, template untouched', () => {
         const r = applyTemplateChanges(template(), { setExercise: { name: 'Curlz', weight: 50 } });
         expect(r.ok).toBe(false);
