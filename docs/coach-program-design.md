@@ -1,7 +1,10 @@
 # Coach programs — "trust mode" design (Phase 9)
 
-Status: **v1 (propose-only) shipping**; auto levels gated on usage data.
-Written 2026-07-07, per the plan's "design first, then build" gate.
+Status: **rungs 1 (propose-only) AND 2 (auto-generate + confirm) shipped**
+2026-07-07 — the owner greenlit rung 2 early (single-owner app: the owner
+trying it IS the usage data; it's opt-in via adjust_program trustLevel and
+reversible). Rung 3 stays gated on Phase 7 outcome data existing (advice must
+age 2+ weeks before the outcome engine scores it — nothing to learn from yet).
 
 ## What a program is
 
@@ -75,11 +78,12 @@ says so; the coach proposes the next block only when asked).
 
 1. **propose-only (v1, default, shipped)** — everything above. Zero writes
    without a tap; the program is knowledge + one-tap cards.
-2. **auto-generate + confirm (gated)** — on first app-open of a training day,
-   the dashboard Today card carries the program-adjusted session pre-built
-   ("Push day — heavy · from your program") with start = accept. Requires: a
-   dismissal-rate signal from level 1 and the 7.2 outcome data to justify
-   generated targets. No push notifications (pull, not push).
+2. **auto-generate + confirm (SHIPPED, opt-in)** — with
+   `trustLevel: 'auto_confirm'`, the dashboard Today card pre-builds the
+   program-adjusted session ("Deload · −40% weight · week 4 of your program")
+   and START is the acceptance (program-session.js). Baseline weeks render as
+   normal days. Opt-in/out through the coach: "turn on auto mode" →
+   adjust_program — consent rule guards it. No push notifications.
 3. **full auto (gated, explicit opt-in)** — sessions regenerate from outcomes
    without confirmation; weekly review doubles as the audit log. Requires
    level 2 usage + demonstrated outcome quality.
