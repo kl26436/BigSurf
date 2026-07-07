@@ -114,6 +114,7 @@ const TOOL_DEFINITIONS = [
                         startDate: { type: 'string' },
                         weekTargets: { type: 'array', items: { type: 'object' } },
                         split: { type: 'object' },
+                        trustLevel: { type: 'string', description: "'propose' (default — everything is a card) or 'auto_confirm' (the dashboard pre-builds each week's adjusted session; starting it is the confirmation). Switch ONLY on an explicit user request; always reversible." },
                     },
                 },
             },
@@ -562,6 +563,17 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
                 if (planOut.error) return { error: `split: ${planOut.error}` };
                 updated.split = planOut.result.plan.days;
                 diffs.push(`schedule: ${planOut.result.summary}`);
+            }
+            if (changes.trustLevel != null) {
+                if (!['propose', 'auto_confirm'].includes(changes.trustLevel)) {
+                    return { error: "trustLevel must be 'propose' or 'auto_confirm'" };
+                }
+                if (changes.trustLevel !== (current.trustLevel || 'propose')) {
+                    updated.trustLevel = changes.trustLevel;
+                    diffs.push(changes.trustLevel === 'auto_confirm'
+                        ? "auto mode ON — the dashboard pre-builds each week's session; starting it confirms"
+                        : 'back to propose-only');
+                }
             }
             if (!diffs.length) return { error: 'No supported changes (name, weeks, startDate, weekTargets, split)' };
 

@@ -16,6 +16,7 @@ import { getWorkoutCategory } from './template-selection.js';
 import { TrainingInsights } from '../features/training-insights.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 import { satisfiedDays, todayCard, weekDates, loadWeekPlan } from '../features/week-plan.js';
+import { loadActiveProgram, programSessionForToday, programSessionMeta } from '../features/program-session.js';
 
 import {
     aggregateBodyPartStats, getTemplatesForDayOfWeek, aggregateExerciseStats,
@@ -94,6 +95,8 @@ async function renderDashboard() {
                 TrainingInsights.loadInsightsData().catch(() => ({ recentWorkouts: [], allWorkouts: [] })),
                 // Week plan (5.5): hydrate once per session (null = none set).
                 AppState._weekPlan === undefined ? loadWeekPlan().catch(() => null) : Promise.resolve(),
+                // Active program (Phase 9 rung 2): same hydrate-once pattern.
+                AppState._activeProgram === undefined ? loadActiveProgram().catch(() => null) : Promise.resolve(),
             ]);
 
         await PRTracker.loadPRData();
@@ -523,6 +526,15 @@ function renderForToday(allWorkouts) {
         buildProximityCandidates(hero.template, allWorkouts)
     );
 
+    // Trust rung 2 (auto_confirm): when the plan decided today's hero AND the
+    // active program's week adjusts it, the hero pre-builds the session —
+    // Start is the confirmation.
+    const programSession = (planCard?.kind === 'workout'
+        && hero.template.id === planCard.templateId
+        && AppState._activeProgram)
+        ? programSessionForToday(AppState._activeProgram, getDateString())
+        : null;
+
     // One-time quiet setup hint when no plan exists — dismissible forever,
     // never a popup (pull, not push).
     const setupRow = (wp === null && !AppState.settings?.weekPlanSetupDismissed) ? `
@@ -535,7 +547,7 @@ function renderForToday(allWorkouts) {
         </div>` : '';
 
     return `
-        ${renderForTodayHero(hero, dayName, lastDoneByType, proximity)}
+        ${renderForTodayHero(hero, dayName, lastDoneByType, proximity, programSession)}
         <div class="dash-alt-list">
             ${rest.map(r => renderForTodayAltRow(r, lastDoneByType)).join('')}
             <div class="dash-alt-row" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')" role="button" tabindex="0">
@@ -635,14 +647,17 @@ function buildProximityCandidates(template, allWorkouts) {
     return candidates;
 }
 
-function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByType, proximity) {
+function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByType, proximity, programSession = null) {
     const category = template.category || getWorkoutCategory(template.name || template.day) || 'other';
     const exCount = template.exercises ? template.exercises.length : 0;
     const startArg = escapeAttr(template.day || template.name || template.id);
 
     const usageText = scheduled ? `Usually ${dayName}` : (count > 0 ? `${count}× on ${dayName}s` : '');
     const lastDoneText = formatLastDoneMeta(lastDoneByType[template.name || template.day]);
-    const meta = [usageText, lastDoneText, `${exCount} exercises`].filter(Boolean).join(' · ');
+    // Program-adjusted session (rung 2) leads the meta — it changes what
+    // today's numbers will be.
+    const meta = [programSession ? programSessionMeta(programSession) : '', usageText, lastDoneText, `${exCount} exercises`]
+        .filter(Boolean).join(' · ');
 
     // PR-proximity hook — forward-looking "you're close, go for it".
     let prHook = '';
@@ -665,8 +680,8 @@ function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByT
             <div class="dash-today-hero__meta">${meta}</div>
             ${prHook}
             <div class="dash-today-hero__actions">
-                <button class="dash-today-hero__cta" onclick="startWorkout('${startArg}')" aria-label="Start ${escapeAttr(template.name || template.day)}">
-                    <i class="fas fa-play"></i> Start workout
+                <button class="dash-today-hero__cta" onclick="${programSession ? `startProgramSession('${startArg}')` : `startWorkout('${startArg}')`}" aria-label="Start ${escapeAttr(template.name || template.day)}">
+                    <i class="fas fa-play"></i> ${programSession ? `Start — ${escapeHtml(programSession.label)}` : 'Start workout'}
                 </button>
                 <button class="dash-today-hero__cta dash-today-hero__cta--ghost" onclick="openQuickStartSheet()">
                     <i class="fas fa-bolt"></i> Quick start

@@ -557,9 +557,10 @@ function handleCoachActionCard(card, streamingBubble) {
                 <i class="fas fa-chevron-right coach-action-card__chev"></i>
             </div>
         `);
-        // Invalidate the cached plan so the dashboard re-reads it (programs
-        // set the week plan too).
+        // Invalidate the cached plan + program so the dashboard re-reads them
+        // (programs set the week plan too).
         AppState._weekPlan = undefined;
+        AppState._activeProgram = undefined;
     } else {
         const descLabel = card.kind === 'template_updated'
             ? (card.diffSummary ? truncate(card.diffSummary, 64) : 'Updated')
