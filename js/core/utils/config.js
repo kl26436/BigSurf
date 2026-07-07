@@ -50,6 +50,8 @@ export const Config = {
     // Kill switch for the in-workout live coach (Phase 6) — a misbehaving
     // feature can be disabled by deploy without reverting code.
     LIVE_COACH_ENABLED: true,
+    // Kill switch for machine photo ID (Phase 8).
+    MACHINE_ID_ENABLED: true,
 };
 
 // Consistent category icons used across all screens (FA 6.0.0 compatible)

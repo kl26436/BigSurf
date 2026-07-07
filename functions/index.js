@@ -32,6 +32,7 @@ const {
 const COACH_MODEL = 'claude-opus-4-8';
 const DIGEST_MODEL = 'claude-sonnet-5'; // scheduled digests (weekly review)
 const LIVE_COACH_MODEL = 'claude-sonnet-5'; // mid-workout: speed IS the feature
+const VISION_MODEL = 'claude-haiku-4-5-20251001'; // machine photo ID: cheap + vision-capable
 
 // Withings API secrets (stored via: firebase functions:secrets:set)
 const withingsClientId = defineSecret('WITHINGS_CLIENT_ID');
@@ -1539,6 +1540,113 @@ exports.coachChatStream = onRequest({
         console.error('❌ coachChatStream error:', error);
         send({ type: 'error', message: 'Coach is unavailable right now — try again.' });
         res.end();
+    }
+});
+
+// Machine photo ID (Phase 8) — strict-JSON identification prompt.
+const MACHINE_ID_PROMPT = `You identify gym equipment from a single photo for a workout tracker app.
+
+Return ONLY a JSON object (no markdown fences, no prose):
+{
+  "brand": string|null,          // visible manufacturer, e.g. "Hammer Strength", "Life Fitness" — null if not visible/known
+  "name": string,                // what the machine IS, e.g. "Iso-Lateral Chest Press", "Seated Leg Curl"
+  "machineFunction": string,     // short movement description, e.g. "chest press"
+  "equipmentType": string,       // one of: Machine, Cable, Free Weight, Bodyweight, Cardio, Other
+  "confidence": number,          // 0-1 — how sure you are of brand+name together
+  "exercises": string[],         // up to 6 exercise names doable on it, most common first
+  "notes": string|null,          // anything useful: plate-loaded vs selectorized, unusual setup
+  "altGuess": {"brand": string|null, "name": string}|null  // second-best interpretation when confidence < 0.7
+}
+
+Rules: identify what's actually IN the photo, never invent a brand you can't see or infer confidently; a blurry/ambiguous photo gets low confidence and an honest altGuess, not a guess dressed as certainty.`;
+
+/**
+ * Identify a gym machine from a photo (Phase 8). Same shape as
+ * extractDexaData: base64 in, strict JSON out, per-user daily cap.
+ */
+exports.identifyMachine = functions.runWith({
+    secrets: [anthropicApiKey],
+    timeoutSeconds: 60,
+    memory: '512MB',
+    maxInstances: 2,
+}).https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+    const userId = context.auth.uid;
+    const { imageBase64, mediaType } = data || {};
+    if (!imageBase64) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing image data');
+    }
+    // Client downscales to ≤1024px JPEG; anything past 5 MB is a bad upload.
+    const estimatedSize = (imageBase64.length * 3) / 4;
+    if (estimatedSize > 5 * 1024 * 1024) {
+        throw new functions.https.HttpsError('invalid-argument', 'Image too large. Maximum 5 MB.');
+    }
+
+    await enforceAiDailyLimit(userId, 'vision', 10);
+
+    try {
+        const apiKey = anthropicApiKey.value();
+        if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
+
+        const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+                model: VISION_MODEL,
+                max_tokens: 1000,
+                system: MACHINE_ID_PROMPT,
+                messages: [{
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'image',
+                            source: {
+                                type: 'base64',
+                                media_type: mediaType || 'image/jpeg',
+                                data: imageBase64,
+                            },
+                        },
+                        { type: 'text', text: 'Identify this gym machine. Return ONLY the JSON object.' },
+                    ],
+                }],
+            }),
+        });
+        if (!upstream.ok) {
+            const errBody = await upstream.text().catch(() => '');
+            console.error('❌ Vision API error:', upstream.status, errBody.slice(0, 300));
+            throw new functions.https.HttpsError('internal', "Couldn't analyze the photo — try again.");
+        }
+        const response = await upstream.json();
+        const rawText = response.content?.find(b => b.type === 'text')?.text || '';
+        let identified;
+        try {
+            const cleaned = rawText.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+            identified = JSON.parse(cleaned);
+        } catch (e) {
+            console.error('❌ Machine ID JSON parse failed:', rawText.slice(0, 300));
+            throw new functions.https.HttpsError('internal', "Couldn't read the photo — try a clearer shot.");
+        }
+        if (!identified.name) {
+            throw new functions.https.HttpsError('internal', "Couldn't tell what this machine is — try a wider shot.");
+        }
+        console.log(`✅ Machine identified for ${userId}: ${identified.brand || ''} ${identified.name} (${identified.confidence})`);
+        return {
+            identified,
+            usage: {
+                inputTokens: response.usage?.input_tokens || 0,
+                outputTokens: response.usage?.output_tokens || 0,
+            },
+        };
+    } catch (error) {
+        if (error instanceof functions.https.HttpsError) throw error;
+        console.error('❌ Machine ID error:', error);
+        throw new functions.https.HttpsError('internal', "Couldn't identify the machine");
     }
 });
 

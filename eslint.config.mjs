@@ -47,6 +47,7 @@ export default [
                 Event: 'readonly',
                 AbortController: 'readonly',
                 TextDecoder: 'readonly',
+                createImageBitmap: 'readonly',
                 TextEncoder: 'readonly',
                 Notification: 'readonly',
                 Chart: 'readonly',

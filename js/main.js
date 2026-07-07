@@ -12,6 +12,7 @@ import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal
 import { exportWorkoutData, exportDataForAI } from './core/data/data-manager.js';
 import { dismissFirstUseTip } from './core/features/first-use-tips.js';
 import { openLiveCoach } from './core/features/coach-live.js';
+import { openMachineIdCamera } from './core/features/machine-id.js';
 import {
     openEquipmentLibrary, openEquipmentDetail, backToEquipmentList,
     filterEquipmentByLocation, filterEquipmentBySearch,
@@ -866,6 +867,8 @@ window.closeProfile = closeProfile;
 window.dismissFirstUseTip = dismissFirstUseTip;
 // Live in-workout coach (Phase 6) — button renders in active-workout's header.
 window.openLiveCoach = openLiveCoach;
+// Machine photo ID (Phase 8) — camera button renders in the equipment library header.
+window.openMachineIdCamera = openMachineIdCamera;
 
 // Body Measurements (Phase 12)
 window.showWeightEntryModal = showWeightEntryModal;

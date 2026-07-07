@@ -1027,3 +1027,61 @@
     color: var(--text-muted);
     font-size: var(--font-xs);
 }
+
+
+/* ── Machine photo ID (Phase 8) ── */
+.page-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+.page-header__save--icon {
+    min-width: var(--tap);
+    padding: 0;
+    justify-content: center;
+}
+.machine-id__photo {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-12);
+}
+.machine-id__name {
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.machine-id__brand {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+.machine-id__notes {
+    margin-top: var(--space-4);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.machine-id__exercises {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+}
+.machine-id__owned {
+    margin-top: var(--space-12);
+    font-size: var(--font-sm);
+    color: var(--primary);
+}
+.machine-id__alt {
+    margin-top: var(--space-8);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.machine-id__actions { margin-top: var(--space-12); }
+.machine-id__error {
+    text-align: center;
+    padding: var(--space-16);
+    color: var(--text-muted);
+}
+.machine-id__error i { font-size: var(--font-2xl); margin-bottom: var(--space-8); }
+.machine-id__progress { justify-content: center; padding: var(--space-16); }

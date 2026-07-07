@@ -925,9 +925,14 @@ function restoreLibraryHeader() {
             </button>
             <div class="page-header__title">Equipment</div>
         </div>
-        <button class="page-header__save" onclick="showAddEquipmentFlow()" aria-label="Add equipment">
-            <i class="fas fa-plus"></i> Add equipment
-        </button>
+        <div class="page-header__actions">
+            <button class="page-header__save page-header__save--icon" onclick="openMachineIdCamera()" aria-label="Identify a machine by photo" title="Identify by photo">
+                <i class="fas fa-camera"></i>
+            </button>
+            <button class="page-header__save" onclick="showAddEquipmentFlow()" aria-label="Add equipment">
+                <i class="fas fa-plus"></i> Add equipment
+            </button>
+        </div>
     `;
     delete header.dataset.mutated;
 }
