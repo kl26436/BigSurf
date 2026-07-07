@@ -1,5 +1,5 @@
-// Enhanced Firebase Workout Manager - js/core/firebase-workout-manager.js
-// Replace your existing firebase-workout-manager.js with this version
+// Firebase Workout Manager — js/core/data/firebase-workout-manager.js
+// Templates, exercises, equipment, and locations CRUD against Firestore.
 
 import {
     db,

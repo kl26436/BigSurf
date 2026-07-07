@@ -3,12 +3,14 @@
 // Tier 3 Phase 7 / traveler-flow F5: the equipment detail view is a full-page
 // form — right for deliberate curation, wrong for "fix this machine's name"
 // or "this also does rows" mid-flow. This sheet does the 80% of edits with
-// 20% of the navigation: rename, exercise-link chips, gym-tag chips, and a
-// "Full details" escape to the big form.
+// 20% of the navigation: name + brand/line/function rows (which regenerate the
+// composed name while it's still derived), exercise-link chips, gym-tag chips,
+// and a "Full details" escape to the big form.
 //
 // Standalone module (natural seam per multigym-assessment tech-debt note):
-// all writes go through FirebaseWorkoutManager so Tier 0/1 mirroring keeps
-// working, and every save path ends by refreshing AppState._cachedEquipment.
+// all writes go through FirebaseWorkoutManager (the equipment doc is the sole
+// source of truth for gym tags — 8b step 4), and every save path ends by
+// refreshing AppState._cachedEquipment.
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
@@ -213,9 +215,18 @@ function qeSetExerciseQuery(v) { if (state) state.addExerciseQuery = v; }
 // Editing brand/line/function regenerates the composed name and reflects it in
 // the Name input live. No full re-render (that would blur the field mid-type) —
 // just patch state and the Name input's value directly.
+//
+// Guard: only auto-fill while the Name is still DERIVED (empty, or equal to
+// what the previous field values compose to). Once the user hand-types a name,
+// it has diverged and brand/line/function edits must not stomp it.
 function qeSetField(field, v) {
     if (!state) return;
+    const prevComposed = composeEquipmentName({
+        brand: state.brand, line: state.line, function: state.function,
+    });
     state[field] = v;
+    const nameIsDerived = !state.name || state.name === prevComposed;
+    if (!nameIsDerived) return;
     const composed = composeEquipmentName({
         brand: state.brand, line: state.line, function: state.function,
     });

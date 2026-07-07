@@ -470,6 +470,7 @@
    kg on this rack" 7/4 report from recurring. */
 .aw-last__unit {
     flex-shrink: 0;
+    position: relative; /* anchors the expanded hit area below */
     background: var(--bg-card);
     color: var(--text-strong);
     border: 1px solid var(--border-light);
@@ -481,6 +482,13 @@
     letter-spacing: 0.05em;
     cursor: pointer;
     line-height: 1.4;
+}
+/* Sweaty-thumb hit area: the pill stays visually small but its tappable region
+   expands to ~44px, matching the real button beside it in the same row. */
+.aw-last__unit::before {
+    content: '';
+    position: absolute;
+    inset: -13px -10px;
 }
 .aw-last__unit:active { opacity: 0.7; }
 /* Overload nudge — the "put the smarts where I lift" line. Primary-tinted so

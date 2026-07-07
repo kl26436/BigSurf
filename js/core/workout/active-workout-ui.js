@@ -2081,8 +2081,9 @@ async function setTemplateEquipmentForExercise(exName, equipment) {
 
 /**
  * One-tap add for a reverse-matcher suggestion: find-or-create the catalog
- * machine as an equipment doc, mirror the catalogRef onto the session gym's
- * location doc (Tier 0.1 contract), then select it — created, gym-tagged,
+ * machine as an equipment doc, then select it — awSelectEquipment auto-
+ * associates it with the session gym on the equipment doc (the single source
+ * of truth; the old location.equipment[] mirror is gone). Created, gym-tagged,
  * exercise-linked, selected.
  */
 export async function awPickSuggestedMachine(exerciseIdx, suggestionIdx) {
@@ -3310,6 +3311,16 @@ export function awToggleUnit(exerciseIdx) {
                 input.value = set.weight != null ? set.weight : '';
             }
         });
+
+        // Re-render the last-session card in place: its summary numbers AND its
+        // unit pill must reflect the new unit — the pill the user just tapped
+        // showing the OLD unit reads as "didn't register" and invites a second
+        // tap that silently flips everything back.
+        const lastCard = document.querySelector('.aw-last');
+        if (lastCard) {
+            const cardHtml = renderLastSessionCard(getExerciseName(exercise), exerciseIdx);
+            if (cardHtml) lastCard.outerHTML = cardHtml;
+        }
     }
 }
 

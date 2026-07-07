@@ -20,7 +20,7 @@ import {
     saveEquipmentNotes, showAddEquipmentFlow, confirmAddEquipment,
     saveEquipmentBaseWeight, setEquipmentBaseWeightUnit, saveEquipmentField, removeEquipmentLocation, addEquipmentLocation,
     setEquipmentTab, openGymDetail, openBrandCatalog,
-    closeGymDetail, setGymBpFilter, openCatalogMachine, toggleCatalogMachineAtGym, openQuickAddSheet,
+    closeGymDetail, setGymBpFilter, openCatalogMachine, openQuickAddSheet,
     toggleQuickAddRow, setQuickAddSearch, setQuickAddBp, commitQuickAdd, closeQuickAddSheet,
     toggleQuickAddCustom, setQuickAddCustomName, setQuickAddCustomType, commitQuickAddCustom,
     addFlowSetType, addFlowSetName,
@@ -28,7 +28,7 @@ import {
     reviewDiscoveredEquipment, exitScanReview, addUnlinkedEquipment, dismissUnlinkedEquipment, deleteOrphanFromHistory,
     linkOrphanToSuggestion, autoLinkAllOrphans,
     openManualLinkPicker, setManualLinkSearch, selectManualLinkTarget, closeManualLinkPicker,
-    closeBrandCatalog, openCatalogMachineAddToGym,
+    closeBrandCatalog,
     setCatalogSearch, openGymPickerSheet, commitGymPick, closeGymPickerSheet,
     openBrandPicker, openLinePicker, openFunctionPicker,
     selectFieldValue, filterFieldPicker, showFieldPickerCustom, closeFieldPicker,
@@ -1004,7 +1004,6 @@ window.openBrandCatalog = openBrandCatalog;
 window.closeGymDetail = closeGymDetail;
 window.setGymBpFilter = setGymBpFilter;
 window.openCatalogMachine = openCatalogMachine;
-window.toggleCatalogMachineAtGym = toggleCatalogMachineAtGym;
 window.openQuickAddSheet = openQuickAddSheet;
 window.toggleQuickAddRow = toggleQuickAddRow;
 window.setQuickAddSearch = setQuickAddSearch;
@@ -1036,7 +1035,6 @@ window.setManualLinkSearch = setManualLinkSearch;
 window.selectManualLinkTarget = selectManualLinkTarget;
 window.closeManualLinkPicker = closeManualLinkPicker;
 window.closeBrandCatalog = closeBrandCatalog;
-window.openCatalogMachineAddToGym = openCatalogMachineAddToGym;
 window.setCatalogSearch = setCatalogSearch;
 window.openGymPickerSheet = openGymPickerSheet;
 window.commitGymPick = commitGymPick;

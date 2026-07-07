@@ -111,6 +111,9 @@ export async function viewWorkout(workoutId) {
     // ID is the safety net.
     if (!workout && AppState.currentUser) {
         try {
+            // Visible feedback while the network fetch runs — on gym wifi the
+            // tapped row otherwise looks dead for a couple of seconds.
+            showNotification('Loading…', 'silent', 1500);
             const { doc: fsDoc, getDoc } = await import('../data/firebase-config.js');
             const snap = await getDoc(fsDoc(db, 'users', AppState.currentUser.uid, 'workouts', workoutId));
             if (snap.exists()) workout = { id: snap.id, ...snap.data() };

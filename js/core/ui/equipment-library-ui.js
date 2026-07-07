@@ -20,6 +20,7 @@ import { findBestMatch } from '../data/fuzzy-match.js';
 import { suggestExercisesForMachine } from '../features/machine-exercise-matcher.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
 import { resolveLocationId } from '../data/location-id-resolver.js';
+import { normalizeEquipName } from '../data/equipment-id-resolver.js';
 
 let workoutManager = null;
 let allEquipment = [];
@@ -1235,32 +1236,6 @@ async function refreshEquipmentCaches() {
 }
 
 /**
- * When a catalog machine is untagged from a gym (catalog-detail toggle),
- * remove that gym from every equipment doc representing the machine (matched by
- * catalogRef / name / function). This is the sole write for that action now —
- * the equipment doc is the source of truth.
- */
-async function untagGymFromPromotedDocs(catalogRef, gymName) {
-    const resolved = resolveCatalogRef(catalogRef, getCatalogSync());
-    const nameLC = resolved ? resolved.machine.name.toLowerCase() : null;
-    const matches = allEquipment.filter((eq) =>
-        (eq.catalogRef === catalogRef
-            || (nameLC && ((eq.function || '').toLowerCase() === nameLC
-                || (eq.name || '').toLowerCase() === nameLC)))
-        && (eq.locations || []).includes(gymName)
-    );
-    for (const eq of matches) {
-        const locations = (eq.locations || []).filter((l) => l !== gymName);
-        await getManager().updateEquipment(eq.id, { locations });
-    }
-    // Re-read so both locations[] AND the dual-written locationIds[] are fresh
-    // in the caches the workout picker + gym views read.
-    if (matches.length > 0) {
-        await refreshEquipmentCaches();
-    }
-}
-
-/**
  * Count items per body part. Returns a plain object keyed by body part name.
  */
 function countByBodyPart(items) {
@@ -1334,10 +1309,6 @@ export function setGymBpFilter(bp) {
     renderEquipmentLibrary();
 }
 
-// Module state for the catalog machine detail view — used so the toggle
-// handler can re-render the page after each gym change without losing context.
-let _catalogDetailRef = null;
-
 /**
  * Catalog machine tap. Unified detail flow: promote the catalog ref to a
  * legacy equipment record (find-or-create), then route to the rich
@@ -1361,170 +1332,26 @@ export async function openCatalogMachine(catalogRef) {
         if (Array.isArray(locs)) allLocations = locs;
     } catch { /* fall back to whatever's already cached */ }
 
+    // Know BEFORE promoting whether this was already in the library, so the
+    // add isn't silent — browsing the catalog quietly growing your equipment
+    // with no feedback read as "did that even work?".
+    const ownedBefore = !!findOwnedForCatalogMachine(resolved.machine);
+
     const equipment = await promoteCatalogToEquipment(catalogRef);
     if (!equipment) {
         showNotification("Couldn't open equipment — try again", 'error');
         return;
     }
-    _catalogDetailRef = null;
+    if (!ownedBefore) {
+        showNotification(`Added ${resolved.machine.name} to your equipment`, 'success', 2000);
+    }
     await openEquipmentDetail(equipment.id);
 }
 
-function renderCatalogMachineDetail() {
-    if (!_catalogDetailRef) return;
-    const catalog = getCatalogSync();
-    const resolved = resolveCatalogRef(_catalogDetailRef, catalog);
-    if (!resolved) return;
-
-    const { brand, line, machine } = resolved;
-    const container = document.getElementById('equipment-library-content');
-    if (!container) return;
-
-    // Swap the static page header for the detail variant — title is the
-    // machine name; back routes through backToEquipmentList so any
-    // returnTo context still works.
-    const section = document.getElementById('equipment-library-section');
-    const staticHeader = section?.querySelector('.page-header');
-    if (staticHeader) {
-        staticHeader.innerHTML = `
-            <div class="page-header__left">
-                <button class="page-header__back" onclick="backToEquipmentList()" aria-label="Back">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <div class="page-header__title">${escapeHtml(machine.name)}</div>
-            </div>
-        `;
-    }
-
-    const type = machine.type || line.type || 'Other';
-    const typeInfo = EQUIPMENT_TYPE_ICONS[type] || EQUIPMENT_TYPE_ICONS.Other;
-    const bodyPart = machine.bodyPart || 'Multi-Use';
-
-    // Determine which of the user's gyms already have this machine — derived
-    // from the equipment collection alone (Phase 8b step 4; the separate
-    // location.equipment[] representation is gone). A gym "has it" if an
-    // equipment doc matching this machine (by catalogRef / name / function) is
-    // tagged there by stable id OR name.
-    const machineNameLC = machine.name.toLowerCase();
-    const ownedGymNames = new Set();
-    const ownedGymIds = new Set();
-    for (const eq of allEquipment) {
-        const isThisMachine = eq.catalogRef === _catalogDetailRef
-            || (eq.name || '').toLowerCase() === machineNameLC
-            || (eq.function || '').toLowerCase() === machineNameLC;
-        if (!isThisMachine) continue;
-        (eq.locations || []).forEach((n) => n && ownedGymNames.add(n));
-        (eq.locationIds || []).forEach((id) => id && ownedGymIds.add(id));
-    }
-    const gymStates = allLocations.map((loc) => ({
-        id: loc.id,
-        name: loc.name,
-        hasIt: ownedGymNames.has(loc.name) || ownedGymIds.has(loc.id),
-    }));
-
-    const metaParts = [brand.name, line.name, type, bodyPart].filter(Boolean);
-    const gymRowsHTML = gymStates.length === 0
-        ? `<div class="empty-state-compact">
-                <i class="fas fa-map-marker-alt"></i>
-                <p>No gyms saved yet</p>
-                <p class="empty-state-hint">Start a workout to stamp a gym, then come back here to tag equipment.</p>
-            </div>`
-        : gymStates.map((g) => `
-            <button class="cm-gym-row${g.hasIt ? ' cm-gym-row--on' : ''}"
-                    onclick="toggleCatalogMachineAtGym('${escapeAttr(g.id)}')">
-                <i class="fas ${g.hasIt ? 'fa-check-circle' : 'fa-circle'} cm-gym-row__check"></i>
-                <span class="cm-gym-row__name">${escapeHtml(g.name)}</span>
-                <span class="cm-gym-row__status">${g.hasIt ? 'At this gym' : 'Tap to add'}</span>
-            </button>
-        `).join('');
-
-    // Exercises linked to this machine. Spec keeps this empty for now (Kevin
-    // populates the mapping over time) — show a hint instead of nothing.
-    const exerciseList = Array.isArray(machine.exercises) ? machine.exercises
-        : (machine.exercises?.primary || []);
-    const exercisesHTML = exerciseList.length > 0
-        ? `<ul class="cm-exercise-list">
-                ${exerciseList.map((e) => `<li>${escapeHtml(typeof e === 'string' ? e : (e.name || ''))}</li>`).join('')}
-            </ul>`
-        : `<p class="cm-hint">No exercises mapped to this machine yet.</p>`;
-
-    container.innerHTML = `
-        <div class="cm-detail">
-            <div class="cm-header">
-                <div class="cm-header__icon equip-row__icon--${slugType(type)}">
-                    <i class="fas ${typeInfo.icon}"></i>
-                </div>
-                <div class="cm-header__info">
-                    <div class="cm-header__name">${escapeHtml(machine.name)}</div>
-                    <div class="cm-header__meta">${escapeHtml(metaParts.join(' · '))}</div>
-                </div>
-            </div>
-
-            <div class="cm-section">
-                <div class="cm-section__title">At your gyms</div>
-                <div class="cm-gym-list">${gymRowsHTML}</div>
-            </div>
-
-            <div class="cm-section">
-                <div class="cm-section__title">Exercises</div>
-                ${exercisesHTML}
-            </div>
-        </div>
-    `;
-}
-
-// Tracks in-flight toggles by `${locationId}|${catalogRef}` so a double-tap
-// during the Firestore round-trip doesn't queue a duplicate add.
-const _inFlightCatalogToggles = new Set();
-
-/**
- * Toggle a catalog machine on/off for one of the user's gyms — used from
- * the gym list on the catalog machine detail page. Optimistic: updates the
- * in-memory location and re-renders immediately so the user gets instant
- * feedback, then reconciles with the server response.
- */
-export async function toggleCatalogMachineAtGym(locationId) {
-    if (!_catalogDetailRef || !locationId) return;
-    const key = `${locationId}|${_catalogDetailRef}`;
-    if (_inFlightCatalogToggles.has(key)) return;     // ignore double-tap
-    _inFlightCatalogToggles.add(key);
-
-    const loc = allLocations.find((l) => l.id === locationId);
-    if (!loc) { _inFlightCatalogToggles.delete(key); return; }
-
-    // Single source: is this catalog machine already an equipment doc at this
-    // gym? (Phase 8b step 4 — no more location.equipment[] mirror.)
-    const machine = resolveCatalogRef(_catalogDetailRef, getCatalogSync())?.machine;
-    const machineNameLC = (machine?.name || '').toLowerCase();
-    const hasIt = allEquipment.some((eq) =>
-        (eq.catalogRef === _catalogDetailRef
-            || (eq.name || '').toLowerCase() === machineNameLC
-            || (eq.function || '').toLowerCase() === machineNameLC)
-        && ((eq.locations || []).includes(loc.name)
-            || (Array.isArray(eq.locationIds) && eq.locationIds.includes(loc.id)))
-    );
-
-    try {
-        if (hasIt) {
-            // Remove the gym from the equipment doc(s) for this machine.
-            await untagGymFromPromotedDocs(_catalogDetailRef, loc.name);
-            showNotification(`Removed from ${loc.name}`, 'success', 1200);
-        } else {
-            // Promote to a real equipment doc tagged to this gym — visible to
-            // the workout picker immediately.
-            await promoteCatalogToEquipment(_catalogDetailRef, loc.name);
-            showNotification(`Added to ${loc.name}`, 'success', 1200);
-        }
-        // promote / untag both refresh the equipment cache; re-render reads it.
-        renderCatalogMachineDetail();
-    } catch (err) {
-        console.error('Toggle catalog machine at gym failed:', err);
-        showNotification("Couldn't save — try again", 'error');
-        renderCatalogMachineDetail();
-    } finally {
-        _inFlightCatalogToggles.delete(key);
-    }
-}
+// (The old standalone catalog-machine detail screen + per-gym toggle list were
+// deleted 2026-07-06: their gating ref was never set anywhere, making the whole
+// surface unreachable — catalog taps route through openCatalogMachine to the
+// real editable equipment detail instead.)
 
 // ===================================================================
 // QUICK-ADD SHEET — bulk-tag catalog machines to a gym (Phase 2 step 7)
@@ -1565,18 +1392,23 @@ export async function openQuickAddSheet(gymName, { onDone = null } = {}) {
     // Which catalog machines are already owned at this gym — derived from the
     // equipment collection alone (Phase 8b step 4; no more location.equipment[]).
     // A catalog machine is "already tagged" if an equipment doc at this gym (by
-    // stable id OR name) matches it by catalogRef / name / function.
+    // stable id OR name) matches it by catalogRef / NORMALIZED name / function —
+    // exact-string matching missed wording drift and let a tap create a dupe.
     const atGym = allEquipment.filter((eq) =>
         (eq.locations || []).includes(gymName)
         || (gymId && Array.isArray(eq.locationIds) && eq.locationIds.includes(gymId))
     );
+    const atGymNorm = atGym.map((eq) => ({
+        catalogRef: eq.catalogRef,
+        nameNorm: normalizeEquipName(eq.name || ''),
+        funcNorm: normalizeEquipName(eq.function || ''),
+    }));
     const alreadyTagged = new Set();
     for (const m of allMachines) {
-        const mNameLC = (m.name || '').toLowerCase();
-        const owned = atGym.some((eq) =>
+        const mNorm = normalizeEquipName(m.name || '');
+        const owned = atGymNorm.some((eq) =>
             eq.catalogRef === m.catalogRef
-            || (eq.name || '').toLowerCase() === mNameLC
-            || (eq.function || '').toLowerCase() === mNameLC
+            || (mNorm && (eq.nameNorm === mNorm || eq.funcNorm === mNorm))
         );
         if (owned) alreadyTagged.add(m.catalogRef);
     }
@@ -1949,8 +1781,9 @@ function updateQuickAddActionBar() {
 }
 
 /**
- * Commit the selected machines to the gym's `location.equipment[]`. Creates
- * the location doc if needed (for derived gyms with no location record yet).
+ * Promote the selected catalog machines to equipment docs tagged at this gym
+ * (the single source of truth). Creates the location doc first if needed so
+ * derived gyms become first-class (stable id for locationIds).
  */
 export async function commitQuickAdd() {
     if (!quickAddState) return;
@@ -2123,111 +1956,22 @@ function renderBrandCatalog(container) {
 }
 
 /**
- * From the brand-detail drill-down or catalog search, tapping a machine offers
- * to add it to a gym. Routing:
- *   - 0 gyms saved        → toast asking to save one first
- *   - 1 gym saved          → auto-add
- *   - 2+ gyms, GPS matches → auto-add to GPS gym
- *   - 2+ gyms, no GPS match → open the gym picker sheet (no typing)
- */
-/**
- * The user's owned equipment doc matching a catalog machine, or null. Same
- * predicate commitCatalogAdd uses (catalogRef / name / function) — lets catalog
- * browse + search rows offer "edit" for machines you already own instead of
- * only "add to gym" (P1: catalog tap had no edit path for owned machines).
+ * The user's owned equipment doc matching a catalog machine, or null. Matches
+ * by catalogRef or NORMALIZED name/function (lowercase, punctuation/spacing
+ * collapsed) — exact-string matching missed manually-added machines whose
+ * wording drifted from the catalog's canonical name, and a miss here creates a
+ * duplicate doc. Lets catalog browse + search rows offer "edit" for machines
+ * you already own instead of only "add to gym".
  */
 function findOwnedForCatalogMachine(machine) {
     if (!machine) return null;
-    const nameLC = (machine.name || '').toLowerCase();
+    const nameNorm = normalizeEquipName(machine.name || '');
+    if (!nameNorm && !machine.id) return null;
     return allEquipment.find((eq) =>
         eq.catalogRef === machine.id
-        || (eq.name || '').toLowerCase() === nameLC
-        || (eq.function || '').toLowerCase() === nameLC
+        || (nameNorm && (normalizeEquipName(eq.name || '') === nameNorm
+            || normalizeEquipName(eq.function || '') === nameNorm))
     ) || null;
-}
-
-export async function openCatalogMachineAddToGym(catalogRef) {
-    const catalog = getCatalogSync();
-    const resolved = resolveCatalogRef(catalogRef, catalog);
-    if (!resolved) {
-        showNotification('Catalog machine not found', 'error');
-        return;
-    }
-
-    const machineName = resolved.machine.name;
-    const sessionGym = getSessionLocation();
-    const gymNames = new Set();
-    allLocations.forEach((l) => gymNames.add(l.name));
-    allEquipment.forEach((eq) => (eq.locations || []).forEach((l) => l && gymNames.add(l)));
-    const gymList = [...gymNames].sort();
-
-    if (gymList.length === 0) {
-        showNotification('Save a gym first (start a workout to stamp a location)', 'info');
-        return;
-    }
-
-    let targetGym = sessionGym && gymList.includes(sessionGym) ? sessionGym : null;
-    if (!targetGym && gymList.length === 1) {
-        targetGym = gymList[0];
-    }
-    if (!targetGym) {
-        // Multiple gyms, GPS unknown — let the user tap to choose. The picker
-        // pre-highlights the GPS gym when one is detected (even if not saved).
-        openGymPickerSheet({
-            title: `Add ${machineName}`,
-            subtitle: 'Pick the gym to add it to',
-            gyms: gymList,
-            currentGym: sessionGym,
-            onSelect: (gymName) => commitCatalogAdd(catalogRef, machineName, gymName),
-        });
-        return;
-    }
-
-    await commitCatalogAdd(catalogRef, machineName, targetGym);
-}
-
-/**
- * Inner write step for openCatalogMachineAddToGym. Unified semantics: a
- * catalog "Add to gym" now creates (or finds) a legacy equipment record
- * AND tags the gym on it. Previously this only wrote a catalogRef onto
- * location.equipment[], which the active-workout picker and equipment
- * library list don't read from — that's why catalog-added machines didn't
- * show up when the user went to assign them during a workout.
- */
-async function commitCatalogAdd(catalogRef, machineName, gymName) {
-    try {
-        let loc = allLocations.find((l) => l.name === gymName);
-        if (!loc) {
-            const newLoc = await getManager().saveLocation({ name: gymName });
-            allLocations.push(newLoc);
-            loc = newLoc;
-        }
-
-        // Promote: find-or-create the legacy equipment record for this catalog
-        // machine and tag the gym on it. promoteCatalogToEquipment is
-        // idempotent — re-clicking "Add" on the same machine just returns
-        // the existing record with the location already present.
-        const machineNameLC = (machineName || '').toLowerCase();
-        const existingForGym = allEquipment.find((eq) =>
-            (eq.catalogRef === catalogRef
-                || (eq.name || '').toLowerCase() === machineNameLC
-                || (eq.function || '').toLowerCase() === machineNameLC)
-            && (eq.locations || []).includes(gymName)
-        );
-        const equipment = await promoteCatalogToEquipment(catalogRef, gymName);
-        if (!equipment) {
-            showNotification("Couldn't save — try again", 'error');
-            return;
-        }
-        if (existingForGym) {
-            showNotification(`${machineName} is already at ${gymName}`, 'info');
-            return;
-        }
-        showNotification(`Added ${machineName} to ${gymName}`, 'success');
-    } catch (err) {
-        console.error('Add to gym failed:', err);
-        showNotification("Couldn't save — try again", 'error');
-    }
 }
 
 // ===================================================================
@@ -2590,10 +2334,20 @@ function computeGymStats() {
         // count was ADDED on top of this, double-counting any machine present in
         // both — removed (Phase 8b step 4; every catalog machine is an equipment
         // doc, so A alone is the true count).
-        const atGym = allEquipment.filter((e) =>
+        const rawAtGym = allEquipment.filter((e) =>
             (e.locations || []).includes(name)
             || (gymId && Array.isArray(e.locationIds) && e.locationIds.includes(gymId))
         );
+        // Dedupe by the SAME normalized function-name rule gatherGymEquipment
+        // uses for the gym-detail list — otherwise a duplicate doc makes the
+        // card say 12 while the list shows 11.
+        const seenFn = new Set();
+        const atGym = rawAtGym.filter((e) => {
+            const key = (e.function || e.name || '—').toLowerCase().trim().replace(/\s+/g, ' ');
+            if (seenFn.has(key)) return false;
+            seenFn.add(key);
+            return true;
+        });
 
         const typeCounts = new Map();
         const bump = (type) => {
@@ -3627,7 +3381,6 @@ function dismissEquipSheet(idBase) {
 }
 
 export function backToEquipmentList() {
-    _catalogDetailRef = null;
     // Always restore the canonical header + list view so a future standalone
     // open of the library shows a clean state, even if we're about to hand
     // control back to a caller via returnTo.
@@ -4091,7 +3844,7 @@ function computeFieldPickerScope() {
         return {
             options: getDetailBrandSuggestions(),
             currentValue: eq.brand && eq.brand !== 'Unknown' ? eq.brand : null,
-            title: 'Select Brand',
+            title: 'Select brand',
             scopeLabel: 'Catalog + your equipment',
             scopeHint: null,
             placeholder: 'e.g., Hammer Strength',
@@ -4103,7 +3856,7 @@ function computeFieldPickerScope() {
         return {
             options: hasBrand ? getDetailLineSuggestions(eq.brand) : [],
             currentValue: eq.line || null,
-            title: 'Select Line',
+            title: 'Select line',
             scopeLabel: hasBrand ? eq.brand : 'No brand set',
             scopeHint: hasBrand ? null : 'Set a brand first so we can filter the line list.',
             placeholder: 'e.g., Fit Evo, Plate-Loaded',
@@ -4142,7 +3895,7 @@ function computeFieldPickerScope() {
     return {
         options: getDetailFunctionSuggestions(brand, line),
         currentValue: eq.function || null,
-        title: 'Select Function',
+        title: 'Select function',
         scopeLabel,
         scopeHint,
         placeholder: 'e.g., Leg Extension',
@@ -4323,13 +4076,18 @@ export async function selectFieldValue(equipmentId, field, value) {
     }
 
     // Regenerate the composed display name from the resulting identity fields so
-    // a brand/line/function edit never leaves a stale `name`. Guard on a non-empty
-    // result so clearing all identity fields doesn't blank a custom name.
+    // a brand/line/function edit never leaves a stale `name` — but ONLY when the
+    // current name was itself auto-derived (matches what the old fields compose
+    // to) or empty. A hand-typed custom name is the user's word: silently
+    // replacing it because they fixed a brand typo reads as the app eating
+    // their edit.
     const finalBrand = ('brand' in update) ? update.brand : doc0.brand;
     const finalLine = ('line' in update) ? update.line : doc0.line;
     const finalFunc = ('function' in update) ? update.function : doc0.function;
     const composedName = composeEquipmentName({ brand: finalBrand, line: finalLine, function: finalFunc });
-    if (composedName) update.name = composedName;
+    const prevComposed = composeEquipmentName({ brand: doc0.brand, line: doc0.line, function: doc0.function });
+    const nameWasDerived = !doc0.name || doc0.name === prevComposed;
+    if (composedName && nameWasDerived) update.name = composedName;
 
     try {
         const userId = AppState.currentUser.uid;
