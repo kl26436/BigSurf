@@ -444,6 +444,76 @@ weekly review make this concrete (move the day, or drop it and note it).
 
 ---
 
+## Phase 5.7 — Ambient coach: intake, program presence, progression pre-fill
+
+North-star workflow (2026-07-06 discussion): a user who NEVER opens the chat still gets 80% of
+the value. Set it up once conversationally, then the coach lives in the surfaces you already
+touch — subtly visible, never demanding. Chat is the steering wheel, not the car.
+
+### 5.7.1 Conversational intake (setup is a chat, not a form)
+
+- First open of the coach (or "Start a program" any time later): the coach runs a short guided
+  conversation — goal, training days, where you train, injuries. For existing users it leads
+  with what it already knows: "You've trained 4 days/week, mostly push/pull/legs at <gym> —
+  build around that?"
+- The intake writes through EXISTING tools as it goes: profile fields (2.1), `remember_fact`
+  for injuries/constraints, template classification/creation (5.6), `set_week_plan` (5.5), and
+  the program state doc (5.7.2). No new write paths — the intake is just a scripted opening
+  message + the tool loop.
+- Ends with a recap card: plan for the week + "you're set — I'll keep targets updated; check
+  the Monday review". Skippable at every step; settings remain the manual fallback.
+
+### 5.7.2 Program presence (the subtle "I'm in a program" signal)
+
+The user asked for exactly this: set it, then quietly KNOW it's running as they go.
+
+- Lightweight `users/{uid}/preferences/programState` (pre-Phase 9; Phase 9 supersedes it):
+  `{ label: 'Cut — 8 weeks', startDate, weeks, goal, active: true }`. Written by intake or any
+  "I'm cutting for 8 weeks" conversation.
+- **Dashboard:** the Today card gains one subtitle line: `Week 3 of 8 — cut · 2 of 4 days done`
+  (program label + week-plan completion dots). That line IS the program indicator — no badge,
+  no banner, no notification. Tap → small summary sheet (plan, week progress, "adjust with
+  coach" button).
+- **Active workout header:** the existing workout title picks up a quiet meta line
+  (`Pull day · week 3 of 8`) — same place the location/duration meta already lives.
+- **Weekly review** opens with program position ("halfway through the cut — on pace").
+- No `programState` → all of this simply doesn't render. Zero pressure on non-program users.
+
+### 5.7.3 Progression pre-fill (deterministic targets, AI for exceptions)
+
+Most days the "coach" should just be the right number already sitting in the set row:
+
+- New pure module `js/core/features/progression.js`: double-progression rule — hit the top of
+  the rep range on all working sets last session → bump weight (+5 lbs / +2.5 kg, plate-aware
+  via plate-calculator helpers); missed reps → repeat weight; 2+ consecutive repeats → mark the
+  lift `stalled` (feeds 5.7.4 and the coach context). Unit-test the rule matrix hard.
+- Workout start applies it on top of `getLastSessionDefaults()`: targets become "what you
+  should do today", not "what you did last time". A tiny ↑ marker on bumped targets tells the
+  user why the number changed — the only UI this needs.
+- No API call anywhere in this path — it's instant, free, and predictable. The model only sees
+  the OUTPUT (stall flags) and handles exceptions ("why am I stuck?" → deload proposal).
+
+### 5.7.4 Insight deep links (how the chat gets discovered)
+
+- `training-insights.js` already detects plateaus/imbalances. Render its top finding as a quiet
+  dismissible chip on the dashboard and on the relevant exercise-detail page:
+  `Bench stalled 3 sessions · Ask the coach` → `showAICoach(prefillContext)` (hook exists).
+- Post-workout summary gains a `Review this session` chip → opens the coach with a prefilled
+  session-review prompt.
+- Pull-not-push rules apply: chips are passive, dismissible, never notify, max one at a time.
+
+### Acceptance
+
+- Fresh user: intake chat → plan + program line on dashboard, all via existing tools; skipping
+  intake leaves the app exactly as today.
+- Program line renders only when a program is active; tap → summary sheet; completing workouts
+  advances the dots with no coach involvement.
+- Set targets bump per the progression rule with the ↑ marker; two repeats → stall chip appears;
+  chip opens a prefilled coach thread. `progression.test.js` covers the matrix.
+- Airplane mode: today card, targets, and program line all still work (no API in the daily loop).
+
+---
+
 ## Cross-cutting notes
 
 **Model routing.** Keep Opus 4.8 + adaptive thinking/xhigh for coach chat (quality is the product).

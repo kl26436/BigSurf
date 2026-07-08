@@ -11,7 +11,26 @@
 // would need a fragile mock tower. Per-function MIRRORS notes below — keep in
 // sync manually when the source changes.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// progression.js imports convertWeight from ui-helpers (DOM-heavy at import) —
+// mock it with the real math so we can import the REAL progression module
+// instead of mirroring it (Phase 5.7.3 extraction).
+vi.mock('../../js/core/ui/ui-helpers.js', () => ({
+    convertWeight: (weight, fromUnit, toUnit) => {
+        if (!weight || isNaN(weight) || weight <= 0 || weight > 1000) return 0;
+        if (fromUnit === toUnit) return Math.round(weight * 10) / 10;
+        if (fromUnit === 'lbs' && toUnit === 'kg') return Math.round(weight * 0.453592 * 10) / 10;
+        if (fromUnit === 'kg' && toUnit === 'lbs') return Math.round(weight * 2.20462 * 10) / 10;
+        return Math.round(weight * 10) / 10;
+    },
+}));
+
+import {
+    computeOverloadNudge as realComputeOverloadNudge,
+    buildExerciseSessions as realBuildExerciseSessions,
+    progressionTarget,
+} from '../../js/core/features/progression.js';
 
 // MIRRORS: js/core/ui/ui-helpers.js#convertWeight (lines 67-86) — simplified:
 // exact math with no 1-decimal rounding, no >1000 guard. The source functions
@@ -134,30 +153,8 @@ describe('nextTargetFor (overload nudge)', () => {
     });
 });
 
-// MIRRORS: js/core/workout/active-workout-ui.js#computeOverloadNudge (lines
-// 658-689) — smart B2 coach; keep in sync manually
-function computeOverloadNudge(sessions, displayUnit, repTarget) {
-    if (!Array.isArray(sessions) || sessions.length === 0) return null;
-    const cur = sessions[0];
-    const W = cur.topWeight;
-    if (!W) return null;
-    const inc = displayUnit === 'kg' ? 2.5 : 5;
-    const next = Math.round((W + inc) * 10) / 10;
-    const rt = repTarget && repTarget > 0 ? repTarget : null;
-    const R = cur.topReps || cur.maxReps || 0;
-    if (sessions.length >= 3 && sessions[1].topWeight === W && sessions[2].topWeight === W) {
-        const repsClimbing = (sessions[0].maxReps || 0) > (sessions[2].maxReps || 0);
-        return repsClimbing
-            ? `3 sessions at ${W} ${displayUnit} — reps are climbing, go ${next} next`
-            : `Stalled at ${W} ${displayUnit} for 3 sessions — try ${next} or a back-off set`;
-    }
-    if (rt && R >= rt) return `${R} reps at ${W} ${displayUnit} — bump to ${next}`;
-    if (sessions.length >= 2 && W > sessions[1].topWeight) {
-        return `Up from ${sessions[1].topWeight} — own ${W} ${displayUnit} for ${rt || R || 'your'} reps`;
-    }
-    if (rt && R > 0 && R < rt) return `Add a rep — aim ${R + 1}×${W} ${displayUnit} toward ${rt}`;
-    return `Beat it — try ${next} ${displayUnit}`;
-}
+// Real source now (Phase 5.7.3): imported from js/core/features/progression.js.
+const computeOverloadNudge = realComputeOverloadNudge;
 
 describe('computeOverloadNudge (smart coach)', () => {
     const SS = (topWeight, topReps, maxReps = topReps) => ({ topWeight, topReps, maxReps });
@@ -208,35 +205,44 @@ describe('computeOverloadNudge (smart coach)', () => {
     });
 });
 
-// MIRRORS: js/core/workout/active-workout-ui.js#buildExerciseSessions (lines
-// 618-646) — keep in sync manually
-function buildExerciseSessions(allWorkouts, exName, displayUnit) {
-    if (!Array.isArray(allWorkouts) || !exName) return [];
-    const sessions = [];
-    for (const w of allWorkouts) {
-        if (!w || !w.exercises || !w.date || !w.completedAt || w.cancelledAt) continue;
-        for (const [k, ex] of Object.entries(w.exercises)) {
-            const name = w.exerciseNames?.[k] || ex?.name || ex?.machine;
-            if (name !== exName) continue;
-            const working = (ex.sets || []).filter(s =>
-                s && s.completed !== false && s.weight && (s.type || 'working') !== 'warmup');
-            if (working.length === 0) break;
-            let topWeight = 0;
-            for (const s of working) topWeight = Math.max(topWeight, convertWeight(s.weight, s.originalUnit || 'lbs', displayUnit));
-            topWeight = Math.round(topWeight * 10) / 10;
-            let topReps = 0, maxReps = 0;
-            for (const s of working) {
-                maxReps = Math.max(maxReps, s.reps || 0);
-                const w2 = Math.round(convertWeight(s.weight, s.originalUnit || 'lbs', displayUnit) * 10) / 10;
-                if (w2 === topWeight) topReps = Math.max(topReps, s.reps || 0);
-            }
-            sessions.push({ date: w.date, topWeight, topReps, maxReps });
-            break;
-        }
-    }
-    sessions.sort((a, b) => b.date.localeCompare(a.date));
-    return sessions;
-}
+// Real source now (Phase 5.7.3): imported from js/core/features/progression.js.
+const buildExerciseSessions = realBuildExerciseSessions;
+
+describe('progressionTarget (5.7.3 structured recommendation)', () => {
+    const SS = (topWeight, topReps, maxReps = topReps) => ({ topWeight, topReps, maxReps });
+
+    it('bumps weight (↑) after hitting the rep target', () => {
+        expect(progressionTarget([SS(135, 10, 10)], 'lbs', 10))
+            .toMatchObject({ weight: 140, bumped: true, stalled: false, action: 'bump' });
+    });
+
+    it('flags a true stall — 3 flat sessions, reps not climbing', () => {
+        const s = [SS(135, 8), SS(135, 8), SS(135, 8)];
+        expect(progressionTarget(s, 'lbs', 10))
+            .toMatchObject({ weight: 135, bumped: false, stalled: true, action: 'stalled' });
+    });
+
+    it('a plateau with climbing reps is a bump, not a stall', () => {
+        const s = [SS(135, 10, 10), SS(135, 9, 9), SS(135, 8, 8)];
+        expect(progressionTarget(s, 'lbs', 12))
+            .toMatchObject({ weight: 140, bumped: true, stalled: false });
+    });
+
+    it('holds weight to consolidate after a recent increase', () => {
+        expect(progressionTarget([SS(140, 6, 6), SS(135, 8, 8)], 'lbs', 10))
+            .toMatchObject({ weight: 140, bumped: false, action: 'consolidate' });
+    });
+
+    it('chases a rep when below target', () => {
+        expect(progressionTarget([SS(135, 8, 8), SS(135, 8, 8)], 'lbs', 10))
+            .toMatchObject({ weight: 135, reps: 9, action: 'chase-rep' });
+    });
+
+    it('null on empty / no-weight history', () => {
+        expect(progressionTarget([], 'lbs', 10)).toBeNull();
+        expect(progressionTarget([SS(0, 0, 0)], 'lbs', 10)).toBeNull();
+    });
+});
 
 describe('buildExerciseSessions', () => {
     const wk = (date, sets) => ({
