@@ -383,34 +383,26 @@ export async function askCoach(question) {
         }
         _coachConversation.push({ role: 'user', content: userTurn });
 
-        // Streaming first (first words in ~2s), falling back to the buffered
-        // callable so the coach is never LESS reliable than it was.
+        // Streaming with ONE automatic retry. The old fallback to the
+        // buffered callable is GONE: post-tools, that path has no tools —
+        // it narrates actions it can't perform (live-tested: 'archive
+        // everything else' fell back and nothing happened). An honest error
+        // beats a silently lobotomized coach.
         let recommendation = await streamCoachResponse(question.trim(), loadingBubble);
-        const streamed = recommendation != null;
-
         if (recommendation == null) {
-            // Fallback: the legacy buffered callable. Reset the bubble to a
-            // spinner in case the stream died mid-render.
             if (loadingBubble) {
                 loadingBubble.innerHTML = `
                     <div class="coach-loading">
                         <i class="fas fa-spinner fa-spin"></i>
-                        <span>Analyzing your training data…</span>
+                        <span>Connection hiccup — retrying…</span>
                     </div>
                 `;
             }
-            const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js');
-            const functions = getFunctions();
-            const getRecommendation = httpsCallable(functions, 'getTrainingRecommendation');
-            const result = await getRecommendation({
-                messages: _coachConversation,
-                question: question.trim(),
-                context,
-            });
-            recommendation = result.data.recommendation;
-            if (loadingBubble) {
-                loadingBubble.innerHTML = formatCoachResponse(recommendation);
-            }
+            recommendation = await streamCoachResponse(question.trim(), loadingBubble);
+        }
+        const streamed = recommendation != null;
+        if (recommendation == null) {
+            throw new Error('stream-failed');
         }
 
         // Track the assistant's reply so the next user message includes it.
