@@ -24,6 +24,7 @@ const {
     TOOL_DEFINITIONS, TOOL_STATUS, makeToolExecutors,
     validateProposal, liveToolDefinitions,
 } = require('./coach-tools');
+const { buildOutcomesContext } = require('./coach-outcomes');
 
 // ── Model routing ────────────────────────────────────────────────────
 // Coach chat + template building + DEXA extraction use the flagship model
@@ -1716,8 +1717,11 @@ exports.weeklyCoachReview = functions.runWith({
             if (limitSnap.exists && limitSnap.data().weeklyReview?.weekKey === weekKey) continue;
             await limitRef.set({ weeklyReview: { weekKey } }, { merge: true });
 
-            // Week plan (5.5) — anchor the review to planned-vs-done.
+            // Week plan (5.5) — anchor the review to planned-vs-done, with an
+            // explicit adherence line (minimal adherence awareness: the review
+            // is the checkpoint that notices a broken week, not the user).
             let planLine = '';
+            let adherenceLine = '';
             try {
                 const planSnap = await userRef.collection('preferences').doc('weekPlan').get();
                 if (planSnap.exists) {
@@ -1729,9 +1733,60 @@ exports.weeklyCoachReview = functions.runWith({
                         .map(([d, tid]) => `${d} ${names.get(tid) || tid}`);
                     if (restDays.length) parts.push(`rest ${restDays.join('/')}`);
                     if (parts.length) planLine = `Week plan: ${parts.join(' · ')}\n\n`;
+                    // days values are templateId | 'rest' | null — only real
+                    // workouts count as planned training days.
+                    const plannedCount = Object.values(days).filter(tid => tid && tid !== 'rest').length;
+                    if (plannedCount > 0) {
+                        const trainedDays = new Set(workouts.map(w => w.date)).size;
+                        adherenceLine = `Adherence: trained ${trainedDays} of ${plannedCount} planned days this week.\n\n`;
+                    }
                 }
             } catch (planErr) {
                 console.log(`weeklyCoachReview plan read skipped for ${userRef.id}:`, planErr.message);
+            }
+
+            // Active program (Phase 9) — the review must know the block it's
+            // reviewing. Week derived from startDate, never stored.
+            let programLine = '';
+            try {
+                const progSnap = await userRef.collection('programs')
+                    .where('active', '==', true).limit(1).get();
+                if (!progSnap.empty) {
+                    const prog = progSnap.docs[0].data();
+                    const week = Math.floor(Math.round((new Date() - new Date(`${prog.startDate}T12:00:00`)) / 86400000) / 7) + 1;
+                    if (week > (prog.weeks || 1)) {
+                        programLine = `Program: "${prog.name}" (${prog.weeks} weeks, ${prog.goal}) FINISHED — acknowledge the block is done and invite planning the next one.\n\n`;
+                    } else if (week >= 1) {
+                        const target = (prog.weekTargets || []).find(t => t.week === week);
+                        const next = (prog.weekTargets || []).find(t => t.week === week + 1);
+                        programLine = `Program: "${prog.name}" (${prog.goal}) — week ${week} of ${prog.weeks}`
+                            + (target ? ` — this week: ${target.label}${target.weightPct ? ` (${target.weightPct > 0 ? '+' : ''}${target.weightPct}% weight)` : ''}` : '')
+                            + (next ? `; next week: ${next.label}` : '')
+                            + '.\n\n';
+                    }
+                }
+            } catch (progErr) {
+                console.log(`weeklyCoachReview program read skipped for ${userRef.id}:`, progErr.message);
+            }
+
+            // Past advice outcomes (Phase 7) — the one proactive push should
+            // know whether earlier calls worked. Outcome windows need up to
+            // ~10 weeks of history; only read it when there's advice to score.
+            let outcomesBlock = '';
+            try {
+                const advSnap = await userRef.collection('coachAdvice')
+                    .orderBy('date', 'desc').limit(15).get();
+                const advice = advSnap.docs.map(d => d.data());
+                if (advice.length) {
+                    const historyStart = new Date(Date.now() - 70 * 86400000).toISOString().slice(0, 10);
+                    const histSnap = await userRef.collection('workouts')
+                        .where('date', '>=', historyStart).orderBy('date', 'desc').limit(120).get();
+                    const history = histSnap.docs.map(d => d.data()).filter(w => w.completedAt && !w.cancelledAt);
+                    const scored = buildOutcomesContext(advice, history, weekKey, { limit: 5 });
+                    if (scored) outcomesBlock = `${scored}\n`;
+                }
+            } catch (outErr) {
+                console.log(`weeklyCoachReview outcomes skipped for ${userRef.id}:`, outErr.message);
             }
 
             // Compact summary — dates, types, top sets, readiness, notes.
@@ -1760,8 +1815,8 @@ exports.weeklyCoachReview = functions.runWith({
                 body: JSON.stringify({
                     model: DIGEST_MODEL,
                     max_tokens: 1500,
-                    system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-5 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. No preamble, no sign-off. Ground every claim in the data provided.',
-                    messages: [{ role: 'user', content: `${planLine}This week's training log:\n\n${lines.join('\n')}` }],
+                    system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-5 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.',
+                    messages: [{ role: 'user', content: `${programLine}${adherenceLine}${planLine}${outcomesBlock}This week's training log:\n\n${lines.join('\n')}` }],
                 }),
             });
             if (!upstream.ok) {
