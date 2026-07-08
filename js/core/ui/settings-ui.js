@@ -21,6 +21,9 @@ const DEFAULT_SETTINGS = {
     // Log RPE (rate of perceived exertion, 6–10) per completed set. Off by
     // default so casual users aren't taxed; opt-in shows a chip row per set.
     trackRpe: false,
+    // Active-workout autofill hint ("Pre-filled from last session…") is shown
+    // once per user, ever — flipped true the first time it renders.
+    autofillHintSeen: false,
 
     // Goals
     weeklyGoal: 5,

@@ -151,6 +151,53 @@ export function openLiveCoach() {
         if (m.role === 'user') addLiveBubble('user', escapeHtml(stripLiveContext(m.content)));
         else addLiveBubble('bot', formatCoachResponse(m.content));
     }
+
+    maybeOfferReadiness();
+}
+
+// ===================================================================
+// READINESS CHECK-IN — inline first message (moved from workout start)
+// ===================================================================
+// Formerly a bottom sheet that popped over EVERY template start. The score is
+// only ever consumed here (buildLiveWorkoutContext) and in coach history, so
+// it's asked where it's used: first coach open, once per session, skippable
+// by simply ignoring it. Non-coach users never see it.
+
+let _readinessOfferedFor = null;
+
+function maybeOfferReadiness() {
+    if (AppState.savedData?.readiness || _liveThread.length > 0) return;
+    const session = AppState.savedData?.startedAt;
+    if (!session || _readinessOfferedFor === session) return;
+    _readinessOfferedFor = session;
+
+    const wrap = document.getElementById('live-coach-messages');
+    if (!wrap) return;
+    document.querySelector('.live-coach__hint')?.remove();
+    const bubble = document.createElement('div');
+    bubble.className = 'coach-msg coach-msg--bot';
+    bubble.id = 'live-readiness';
+    bubble.innerHTML = `
+        <div>How are you feeling today? One tap — I'll factor it into the load.</div>
+        <div class="readiness-scale">
+            ${[1, 2, 3, 4, 5].map(n =>
+                `<button class="readiness-scale__btn" onclick="liveCoachReadiness(${n})" aria-label="Feeling ${n} of 5">${n}</button>`
+            ).join('')}
+        </div>
+        <div class="readiness-scale__labels"><span>Wrecked</span><span>Great</span></div>
+    `;
+    wrap.appendChild(bubble);
+}
+
+export function liveCoachReadiness(score) {
+    if (AppState.savedData) {
+        // Additive field on the workout doc — persisted by the normal save
+        // path, read back into buildLiveWorkoutContext on the first turn.
+        AppState.savedData.readiness = { score };
+        debouncedSaveWorkoutData(AppState);
+    }
+    const bubble = document.getElementById('live-readiness');
+    if (bubble) bubble.innerHTML = `Feeling ${score}/5 — noted.`;
 }
 
 export function closeLiveCoach() {
@@ -458,6 +505,7 @@ function applyRest(p) {
 if (typeof window !== 'undefined') {
     window.liveCoachSend = liveCoachSend;
     window.liveCoachChip = liveCoachChip;
+    window.liveCoachReadiness = liveCoachReadiness;
     window.applyLiveProposal = applyLiveProposal;
     window.dismissLiveProposal = dismissLiveProposal;
     window.closeLiveCoach = closeLiveCoach;

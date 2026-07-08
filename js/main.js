@@ -126,7 +126,6 @@ import {
     awOpenEquipmentSheet,
     awSelectEquipment,
     awGoToEquipmentLibrary,
-    awShowLastSessionSource,
     awShowFormVideo,
     awCloseFormVideo,
     awAddExercise,
@@ -583,7 +582,6 @@ window.awConfirmSupersetLink = awConfirmSupersetLink;
 window.awOpenEquipmentSheet = awOpenEquipmentSheet;
 window.awSelectEquipment = awSelectEquipment;
 window.awGoToEquipmentLibrary = awGoToEquipmentLibrary;
-window.awShowLastSessionSource = awShowLastSessionSource;
 window.awShowFormVideo = awShowFormVideo;
 window.awCloseFormVideo = awCloseFormVideo;
 window.awAddExercise = awAddExercise;

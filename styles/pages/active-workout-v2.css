@@ -313,18 +313,7 @@
     cursor: pointer;
 }
 .aw-hero__plates:active { opacity: 0.7; }
-.aw-hero__video {
-    width: 34px; height: 34px;
-    background: transparent;
-    border: 1px solid var(--border-light);
-    border-radius: 50%;
-    color: var(--primary);
-    display: flex; align-items: center; justify-content: center;
-    font-size: var(--font-md);
-    flex-shrink: 0;
-    cursor: pointer;
-}
-.aw-hero__video:active { opacity: 0.7; }
+/* Form video moved into the exercise cog menu — no standing hero icon. */
 
 /* === FORM VIDEO OVERLAY === */
 .aw-form-video-overlay {
@@ -394,16 +383,28 @@
     border: 0;
 }
 
-/* === COMPACT EQUIPMENT LINE === */
+/* === COMPACT EQUIPMENT LINE ===
+   One tappable row (a <button>) — name + base weight + machine settings
+   inline, whole row opens the equipment picker. Quick-edit and settings
+   editing live in the exercise cog menu. */
 .aw-equip-line {
+    appearance: none;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 0 2px;
+    padding: 6px 2px;
+    min-height: var(--tap-sm);
     margin-bottom: 10px;
     font-size: var(--font-xs);
+    font-family: inherit;
     color: var(--text-muted);
+    cursor: pointer;
 }
+.aw-equip-line:active { opacity: 0.7; }
 .aw-equip-line > i {
     font-size: var(--font-2xs);
     opacity: 0.7;
@@ -417,25 +418,22 @@
     color: var(--text-secondary);
     font-weight: 500;
 }
-.aw-equip-line__change {
-    color: var(--primary);
-    font-size: var(--font-xs);
-    font-weight: 600;
-    background: var(--primary-bg);
-    border: 1px solid var(--primary-border);
-    border-radius: var(--radius-pill);
-    padding: 6px 12px;
-    min-height: var(--tap-sm);
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+.aw-equip-line__chev {
     flex-shrink: 0;
-    cursor: pointer;
+    color: var(--text-muted);
+    font-size: var(--font-2xs);
 }
-.aw-equip-line__change:active { transform: scale(0.96); }
 
-/* === LAST SESSION CARD === */
+/* === LAST SESSION ROW ===
+   One read-only fact, one tap target: the whole row (a <button>) opens this
+   lift's progress detail. Unit pill and cross-equipment glyph were retired —
+   the sets-header toggle owns units, and the row tap answers "from where?". */
 .aw-last {
+    appearance: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    border: none;
     background: var(--bg-card-hi);
     border-radius: var(--radius-sm);
     padding: 9px 12px;
@@ -443,19 +441,15 @@
     align-items: center;
     gap: 10px;
     margin-bottom: 12px;
+    cursor: pointer;
 }
+.aw-last:active { opacity: 0.7; }
 .aw-last > i {
     color: var(--text-muted);
     font-size: var(--font-sm);
+    flex-shrink: 0;
 }
 .aw-last__info { flex: 1; min-width: 0; }
-.aw-last__label {
-    font-size: var(--font-2xs);
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-}
 .aw-last__val {
     font-size: var(--font-xs);
     color: var(--text-main);
@@ -464,42 +458,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
-.aw-last__val > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-}
-/* Tappable unit pill on the last-session card — same intent as the header's
-   unit toggle so the user can convert the historical numbers into whatever
-   unit their machine reads at a glance. Keeps the "no idea if that's lb or
-   kg on this rack" 7/4 report from recurring. */
-.aw-last__unit {
-    flex-shrink: 0;
-    position: relative; /* anchors the expanded hit area below */
-    background: var(--bg-card);
-    color: var(--text-strong);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-pill);
-    padding: 1px 8px;
-    font-size: var(--font-2xs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-    line-height: 1.4;
-}
-/* Sweaty-thumb hit area: the pill stays visually small but its tappable region
-   expands to ~44px, matching the real button beside it in the same row. */
-.aw-last__unit::before {
-    content: '';
-    position: absolute;
-    inset: -13px -10px;
-}
-.aw-last__unit:active { opacity: 0.7; }
 /* Overload nudge — the "put the smarts where I lift" line. Primary-tinted so
    it reads as an actionable target, not just more history. */
 .aw-last__nudge {
@@ -509,65 +468,10 @@
     color: var(--primary);
 }
 .aw-last__nudge > i { margin-right: 3px; }
-
-/* Icon column. Stacks the history icon + (optional) info button so the
-   info glyph stays adjacent to the existing history icon without pushing
-   the label/value text around. */
-.aw-last__icons {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+.aw-last__chev {
     flex-shrink: 0;
-}
-/* Tap-through to this lift's progress page — the "see my 6-month trend during
-   a rest set" affordance. Typed set values persist on blur before we navigate. */
-.aw-last__progress {
-    flex-shrink: 0;
-    width: var(--tap);
-    height: var(--tap);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
     color: var(--text-muted);
-    cursor: pointer;
-}
-.aw-last__progress:active { opacity: 0.6; }
-.aw-last__icons > i {
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-}
-
-/* Tappable info glyph appears only when the last-session data came from a
-   different machine than the one currently selected. Tap → toast with the
-   full source equipment name. Sized to match other inline icon buttons. */
-.aw-last__src-btn {
-    appearance: none;
-    background: transparent;
-    border: 0;
-    padding: 4px;
-    margin: 0;
-    color: var(--warn, var(--highlight-warm));
-    font-size: var(--font-sm);
-    line-height: 1;
-    cursor: pointer;
-    border-radius: 50%;
-}
-.aw-last__src-btn:active {
-    background: var(--bg-card-hi);
-}
-
-/* When the autofill came from a different equipment than the one currently
-   selected (name-only fallback in getLastSessionDefaults), soften the card
-   with a dashed border and dim the value text — visual cue that this isn't
-   from the current machine. The tappable info glyph reveals the source. */
-.aw-last--cross-equip {
-    background: var(--bg-card);
-    border: 1px dashed var(--border);
-}
-.aw-last--cross-equip .aw-last__val {
-    color: var(--text-muted);
+    font-size: var(--font-2xs);
 }
 
 /* === AUTOFILL HINT === */
@@ -831,21 +735,8 @@
 .aw-footer__next.finish {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
 }
-/* Always-available finish shortcut (shown once any set is logged, while the
-   primary button is still "Next"). Success-tinted so it reads as "wrap it up"
-   without competing with the primary teal action. */
-.aw-footer__finish {
-    background: var(--success-bg);
-    border: 1px solid var(--success-border);
-    color: var(--success);
-    border-radius: var(--radius-md);
-    min-width: 44px;
-    min-height: 44px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: var(--font-base);
-    cursor: pointer;
-}
-.aw-footer__finish:active { transform: scale(0.96); }
+/* Early finish lives in the kebab menu and the "All" sheet — the footer
+   shortcut button was retired (duplicate of the primary button's flip). */
 
 /* Substitution sheet on start (Tier 3 Phase 4): per-exercise
    Keep / Machine / Swap / Skip rows for unmapped exercises. */

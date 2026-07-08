@@ -241,6 +241,9 @@ function renderWorkoutMenu() {
                 <i class="fas fa-file-export"></i> Export session
             </button>
             <div class="aw-ex-menu__divider"></div>
+            <button class="aw-ex-menu__item" onclick="awCloseMenus(); awFinishWorkout();">
+                <i class="fas fa-flag-checkered"></i> Finish workout
+            </button>
             <button class="aw-ex-menu__item danger" onclick="awCancelWorkout()">
                 <i class="fas fa-times"></i> Cancel workout
             </button>
@@ -466,6 +469,14 @@ function renderExerciseView(exercise, idx, savedEx) {
     const isBW = isBodyweightExercise(exercise);
     const equipDoc = getEquipmentDoc(equipmentName, equipmentId);
     const hasBaseWeight = !isBW && equipDoc && equipDoc.baseWeight > 0;
+
+    // Equipment unit memory: a machine the user has flipped to kg opens in kg
+    // (preferredUnit persisted on the equipment doc by awToggleUnit). Only
+    // fills the gap — an explicit toggle this session always wins.
+    if (equipDoc?.preferredUnit && AppState.exerciseUnits?.[idx] === undefined) {
+        if (!AppState.exerciseUnits) AppState.exerciseUnits = {};
+        AppState.exerciseUnits[idx] = equipDoc.preferredUnit;
+    }
     const unit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
     const lastSessionHtml = renderLastSessionCard(exName, idx);
     const notes = savedEx.notes || '';
@@ -487,29 +498,25 @@ function renderExerciseView(exercise, idx, savedEx) {
     // Same set table for ALL exercise types — always Reps | Weight | ✓
     const sets = buildSetRows(exercise, idx, savedEx, unit);
 
-    // Autofill hint: show the first time each exercise appears with pre-filled
-    // values. Tracked per exercise name (not once per session) — otherwise the
-    // second exercise shows dashed numbers with no explanation and reads like
-    // the app invented them. Once you've seen the hint for a given lift, the
-    // dashed styling alone is enough on later visits.
-    const hintSeen = AppState._autofillHintSeen || (AppState._autofillHintSeen = new Set());
-    const showAutofillHint = sets.hasAutofill && !hintSeen.has(exName);
-    if (showAutofillHint) hintSeen.add(exName);
+    // Autofill hint: shown once per USER (persisted in settings), not once per
+    // exercise name — after you've learned what the dashed numbers mean, the
+    // styling alone is enough on every future lift.
+    const showAutofillHint = sets.hasAutofill && !AppState.settings?.autofillHintSeen;
+    if (showAutofillHint) {
+        if (!AppState.settings) AppState.settings = {};
+        AppState.settings.autofillHintSeen = true; // sync, so re-renders don't re-show
+        import('../ui/settings-ui.js')
+            .then((m) => m.updateSetting('autofillHintSeen', true))
+            .catch(() => { /* hint persistence is a bonus, never a blocker */ });
+    }
 
     // Weight column label
     let weightLabel = unit;
     if (isBW) weightLabel = `Added ${unit}`;
     else if (hasBaseWeight) weightLabel = `Plates ${unit}`;
 
-    // Form video — resolved during autofill into exercise._formVideoUrl, so
-    // surfacing it here is a sync read. Shows a small play icon in the hero
-    // top row when a video is available; tap fires the existing
-    // showExerciseVideo modal. Hidden when there's no video so it doesn't
-    // clutter exercises that don't have one configured.
-    const videoUrl = exercise._formVideoUrl || null;
-    const videoBtn = videoUrl
-        ? `<button class="aw-hero__video" onclick="awShowFormVideo('${escapeAttr(videoUrl)}', '${escapeAttr(exName)}')" aria-label="Form video" title="Form video"><i class="fas fa-play-circle"></i></button>`
-        : '';
+    // Form video lives in the exercise cog menu (renderExerciseMenu) — an
+    // occasional-use action doesn't earn a standing hero icon.
 
     // Plate calculator — one tap from the lift for barbell / plate-loaded gear.
     // Show it when the equipment takes plates: either a recorded bar/base weight
@@ -533,7 +540,6 @@ function renderExerciseView(exercise, idx, savedEx) {
                     <div class="aw-hero__sub">${completedSets > 0 ? `Set ${completedSets} done · ${remaining} left` : `${targetSets} sets · ${targetReps} reps target`}</div>
                 </div>
                 ${platesBtn}
-                ${videoBtn}
                 <button class="aw-hero__more" onclick="awToggleExerciseMenu(${idx})" aria-label="Edit exercise" title="Edit exercise"><i class="fas fa-cog"></i></button>
             </div>
             ${contextBanner}
@@ -569,14 +575,25 @@ function renderEquipLine(equipmentName, idx, equipmentId = null) {
         const bwUnit = eq.baseWeightUnit || 'lb';
         baseWeightStr = ` · ${eq.baseWeight} ${bwUnit} ${eq.type === 'barbell' ? 'bar' : 'base'}`;
     }
+    // Machine settings ("Seat 4 · Pin 13") fold into the same line — one row,
+    // one tap target (opens the equipment picker). Editing settings and
+    // equipment details lives in the exercise cog menu.
+    let settingsStr = '';
+    const exercise = AppState.currentWorkout?.exercises?.[idx];
+    if (eq && exercise) {
+        const pairs = eq.exerciseSettings?.[getExerciseName(exercise)] || [];
+        if (pairs.length) settingsStr = ' · ' + pairs.map(p => `${p.label} ${p.value}`.trim()).join(' · ');
+    }
+    const label = equipmentName
+        ? escapeHtml(equipmentName + baseWeightStr + settingsStr)
+        : 'Choose equipment';
     return `
-        <div class="aw-equip-line">
-            <i class="fas fa-cog"></i>
-            <span class="aw-equip-line__name">${equipmentName ? escapeHtml(equipmentName) + baseWeightStr : 'Choose equipment'}</span>
-            ${equipmentName ? `<button class="aw-equip-line__more" onclick="awQuickEditEquipment(${idx}, '${escapeAttr(equipmentName)}')" aria-label="Edit ${escapeAttr(equipmentName)}"><i class="fas fa-ellipsis-h"></i></button>` : ''}
-            <button class="aw-equip-line__change" onclick="awOpenEquipmentSheet(${idx})" aria-label="Change equipment"><i class="fas fa-exchange-alt"></i> Change</button>
-        </div>
-        ${renderSettingsChips(eq, idx)}
+        <button type="button" class="aw-equip-line" onclick="awOpenEquipmentSheet(${idx})"
+                aria-label="${equipmentName ? `Change equipment — ${escapeAttr(equipmentName)}` : 'Choose equipment'}">
+            <i class="fas fa-cog" aria-hidden="true"></i>
+            <span class="aw-equip-line__name">${label}</span>
+            <i class="fas fa-chevron-right aw-equip-line__chev" aria-hidden="true"></i>
+        </button>
     `;
 }
 
@@ -596,37 +613,8 @@ export async function awQuickEditEquipment(exerciseIdx, equipName) {
     }
 }
 
-/**
- * Machine settings chips under the equipment line (Tier 3 3.2 / D4):
- * "Seat 4 · Pin 13" read-only at set time, pencil to edit, ghost
- * "+ Note settings" when empty. Zero prompts — the ghost chip is the only
- * affordance (D0), and it only appears once equipment is chosen.
- */
-function renderSettingsChips(eq, idx) {
-    if (!eq) return '';
-    const exercise = AppState.currentWorkout?.exercises?.[idx];
-    if (!exercise) return '';
-    const exName = getExerciseName(exercise);
-    const pairs = eq.exerciseSettings?.[exName] || [];
-
-    if (pairs.length === 0) {
-        return `
-            <div class="settings-chips">
-                <button type="button" class="settings-chip settings-chip--ghost" onclick="awOpenSettingsSheet(${idx})">
-                    <i class="fas fa-sliders-h"></i> Note settings
-                </button>
-            </div>
-        `;
-    }
-    return `
-        <div class="settings-chips">
-            ${pairs.map(p => `<span class="settings-chip">${escapeHtml(p.label)} ${escapeHtml(p.value)}</span>`).join('')}
-            <button type="button" class="settings-chip settings-chip--edit" onclick="awOpenSettingsSheet(${idx})" aria-label="Edit settings">
-                <i class="fas fa-pencil-alt"></i>
-            </button>
-        </div>
-    `;
-}
+// Machine settings render inline on the equipment line (renderEquipLine);
+// editing them lives in the exercise cog menu → awOpenSettingsSheet.
 
 // ── Machine settings edit sheet (Tier 3 3.2) ──
 let _settingsSheetState = null; // { idx, exName, equipmentId, equipmentName, pairs }
@@ -892,7 +880,7 @@ function renderLastSessionCard(exerciseName, idx) {
     if (!lastDefaults || lastDefaults.length === 0) return '';
 
     const daysAgo = exercise._lastSessionDaysAgo || '?';
-    const daysLabel = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`;
+    const daysLabel = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo}d ago`;
 
     // Convert each set's weight to the user's display unit so a kg-logged
     // session shows correctly when the user is now in lb mode (and vice versa).
@@ -905,20 +893,6 @@ function renderLastSessionCard(exerciseName, idx) {
         return `${r}×${dw}`;
     }).join(' · ');
 
-    // If the autofill came from a DIFFERENT equipment than the one currently
-    // selected (the name-only fallback in getLastSessionDefaults), surface
-    // a tappable info glyph next to the history icon. Equipment names can be
-    // long ("Hammer Strength MTS — Iso-Lateral Bench Press") so we don't
-    // inline them — the user taps to see the source name in a toast.
-    const currentEquip = exercise.equipment || null;
-    const sourceEquip = exercise._lastSessionEquipment || null;
-    const equipMismatch = currentEquip && sourceEquip && currentEquip !== sourceEquip;
-    const sourceGlyph = equipMismatch
-        ? `<button class="aw-last__src-btn" onclick="awShowLastSessionSource(${idx})" aria-label="Show source equipment">
-               <i class="fas fa-info-circle"></i>
-           </button>`
-        : '';
-
     // Overload nudge — only for weighted lifts (a bodyweight "try +5" is noise).
     // Prefer the smart multi-session coach hydrated by loadAutofillForExercise;
     // fall back to the simple last-session step until it's computed.
@@ -929,43 +903,20 @@ function renderLastSessionCard(exerciseName, idx) {
         ? `<div class="aw-last__nudge"><i class="fas fa-bolt" aria-hidden="true"></i> ${nudge}</div>`
         : '';
 
+    // One read-only fact, one tap target: the whole row opens the exercise's
+    // progress detail. The unit pill (duplicate of the sets-header toggle) and
+    // the cross-equipment info glyph earned their keep less than the calm.
     return `
-        <div class="aw-last${equipMismatch ? ' aw-last--cross-equip' : ''}">
-            <div class="aw-last__icons">
-                <i class="fas fa-history"></i>
-                ${sourceGlyph}
-            </div>
+        <button type="button" class="aw-last" onclick="showExerciseDetail('${escapeAttr(exerciseName)}')"
+                aria-label="View ${escapeAttr(exerciseName)} progress">
+            <i class="fas fa-history" aria-hidden="true"></i>
             <div class="aw-last__info">
-                <div class="aw-last__label">Last session · ${daysLabel}</div>
-                <div class="aw-last__val">
-                    <span>${summary}</span>
-                    <button type="button"
-                            class="aw-last__unit"
-                            onclick="event.stopPropagation(); awToggleUnit(${idx})"
-                            aria-label="Toggle display unit (currently ${displayUnit})"
-                            title="Tap to switch unit">
-                        ${displayUnit}
-                    </button>
-                </div>
+                <div class="aw-last__val">Last: ${summary} ${displayUnit} · ${daysLabel}</div>
                 ${nudgeHtml}
             </div>
-            <button class="aw-last__progress" onclick="showExerciseDetail('${escapeAttr(exerciseName)}')" aria-label="View ${escapeAttr(exerciseName)} progress">
-                <i class="fas fa-chevron-right" aria-hidden="true"></i>
-            </button>
-        </div>
+            <i class="fas fa-chevron-right aw-last__chev" aria-hidden="true"></i>
+        </button>
     `;
-}
-
-/**
- * Tapping the info glyph on a cross-equipment last-session card surfaces
- * the source equipment as a toast so users can see the full machine name
- * without it wrapping inline on the card.
- */
-export function awShowLastSessionSource(idx) {
-    const exercise = AppState.currentWorkout?.exercises?.[idx];
-    const sourceEquip = exercise?._lastSessionEquipment;
-    if (!sourceEquip) return;
-    showNotification(`Last session: ${sourceEquip}`, 'info', 4000);
 }
 
 /**
@@ -1179,8 +1130,30 @@ function renderExerciseMenu(idx) {
     const savedEx = AppState.savedData?.exercises?.[`exercise_${idx}`] || {};
     const group = savedEx.group || exercise.group;
 
+    // Occasional-use actions demoted here from standing buttons: form video
+    // (was a hero icon), machine settings + equipment quick-edit (were extra
+    // tap targets on the equipment line).
+    const exName = getExerciseName(exercise);
+    const equipName = savedEx.equipment || exercise.equipment || null;
+    const equipId = savedEx.equipmentId || exercise.equipmentId || null;
+    const eq = getEquipmentDoc(equipName, equipId);
+    const videoUrl = exercise._formVideoUrl || null;
+
     return `
         <div class="aw-ex-menu">
+            ${videoUrl ? `
+            <button class="aw-ex-menu__item" onclick="awShowFormVideo('${escapeAttr(videoUrl)}', '${escapeAttr(exName)}'); awCloseMenus();">
+                <i class="fas fa-play-circle"></i> Form video
+            </button>` : ''}
+            ${eq?.id ? `
+            <button class="aw-ex-menu__item" onclick="awCloseMenus(); awOpenSettingsSheet(${idx});">
+                <i class="fas fa-sliders-h"></i> Machine settings
+            </button>` : ''}
+            ${equipName ? `
+            <button class="aw-ex-menu__item" onclick="awCloseMenus(); awQuickEditEquipment(${idx}, '${escapeAttr(equipName)}');">
+                <i class="fas fa-ellipsis-h"></i> Edit equipment
+            </button>` : ''}
+            ${videoUrl || equipName || eq?.id ? '<div class="aw-ex-menu__divider"></div>' : ''}
             <button class="aw-ex-menu__item" onclick="awReplaceExercise(${idx})">
                 <i class="fas fa-exchange-alt"></i> Swap exercise
             </button>
@@ -1261,22 +1234,14 @@ function renderFooter() {
         return sets && sets.length > 0 && sets.every(s => s.completed);
     });
 
-    // Once any set is logged, offer an always-available finish so a skipped
-    // warmup (or finishing early) doesn't trap the user tapping "Next" to the
-    // end. awFinishWorkout confirms if sets are still incomplete. Hidden once
-    // the primary button has itself become "Finish" (would be redundant).
-    const hasProgress = exercises.some((_, i) =>
-        AppState.savedData?.exercises?.[`exercise_${i}`]?.sets?.some(s => s.completed));
-    const showFinishShortcut = hasProgress && !allExercisesDone;
-
+    // Early finish (leaving before every set is done) lives in the kebab menu
+    // and the "All" sheet — no standing shortcut button. The primary button
+    // still flips to "Finish workout" the moment everything is complete.
     return `
         <div class="aw-footer">
             <button class="aw-footer__list-btn" onclick="awOpenJumpSheet()">
                 <i class="fas fa-list"></i> All
             </button>
-            ${showFinishShortcut
-                ? `<button class="aw-footer__finish" onclick="awFinishWorkout()" aria-label="Finish workout" title="Finish workout"><i class="fas fa-flag-checkered"></i></button>`
-                : ''}
             <button class="aw-footer__next ${allExercisesDone ? 'finish' : ''}" onclick="${allExercisesDone ? 'awFinishWorkout()' : 'awNextExercise()'}">
                 ${allExercisesDone
                     ? '<i class="fas fa-flag-checkered"></i> Finish workout'
@@ -3316,6 +3281,26 @@ export function awToggleUnit(exerciseIdx) {
     if (!AppState.exerciseUnits) AppState.exerciseUnits = {};
     AppState.exerciseUnits[exerciseIdx] = newUnit;
 
+    // Equipment unit memory — remember the flip on the equipment doc so this
+    // machine opens in the right unit next session (renderExerciseView reads
+    // preferredUnit back). Keyed on the doc, so two same-named machines at
+    // different gyms each keep their own. Fire-and-forget: memory is a bonus.
+    {
+        const memKey = `exercise_${exerciseIdx}`;
+        const memSaved = AppState.savedData?.exercises?.[memKey];
+        const memEx = AppState.currentWorkout?.exercises?.[exerciseIdx];
+        const memDoc = getEquipmentDoc(
+            memSaved?.equipment || memEx?.equipment || null,
+            memSaved?.equipmentId || memEx?.equipmentId || null);
+        if (memDoc?.id && memDoc.preferredUnit !== newUnit) {
+            memDoc.preferredUnit = newUnit; // keep the cache in sync immediately
+            import('../data/firebase-workout-manager.js')
+                .then(({ FirebaseWorkoutManager }) =>
+                    new FirebaseWorkoutManager(AppState).updateEquipment(memDoc.id, { preferredUnit: newUnit }))
+                .catch(() => { /* offline / race — cache already updated */ });
+        }
+    }
+
     // Convert existing set values. Use each set's OWN originalUnit as the
     // source — an autofilled set may be in a different unit than the current
     // exerciseUnits value. Using `current` blindly caused 70 lbs autofill to
@@ -3361,10 +3346,8 @@ export function awToggleUnit(exerciseIdx) {
             }
         });
 
-        // Re-render the last-session card in place: its summary numbers AND its
-        // unit pill must reflect the new unit — the pill the user just tapped
-        // showing the OLD unit reads as "didn't register" and invites a second
-        // tap that silently flips everything back.
+        // Re-render the last-session row in place so its summary numbers and
+        // unit label reflect the new unit.
         const lastCard = document.querySelector('.aw-last');
         if (lastCard) {
             const cardHtml = renderLastSessionCard(getExerciseName(exercise), exerciseIdx);
@@ -3496,6 +3479,7 @@ function renderJumpSheetContent() {
             },
             ...(!reorderMode ? [
                 { label: '<i class="fas fa-link"></i> Superset', onClick: 'awOpenSupersetSheet()', warm: true },
+                { label: '<i class="fas fa-flag-checkered"></i> Finish', onClick: 'awCloseSheet(); awFinishWorkout();' },
             ] : []),
             { label: 'Close', onClick: 'awCloseSheet(); awEndReorder();', primary: !reorderMode },
         ],
