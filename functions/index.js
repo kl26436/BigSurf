@@ -1526,6 +1526,15 @@ exports.coachChatStream = onRequest({
         }
 
         const lastUserMsg = [...apiMessages].reverse().find(m => m.role === 'user');
+        // Thread title = the conversation's FIRST question (context prefix
+        // stripped), stable across turns. Titling by the latest question made
+        // one conversation morph names in the history list — reading as
+        // several different chats.
+        const firstUserMsg = apiMessages.find(m => m.role === 'user');
+        const firstText = typeof firstUserMsg?.content === 'string' ? firstUserMsg.content : '';
+        const qMarker = '\nQuestion: ';
+        const qIdx = firstText.indexOf(qMarker);
+        const threadTitle = (qIdx !== -1 ? firstText.slice(qIdx + qMarker.length) : firstText).slice(0, 200);
         const historyDoc = {
             question: question || (typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : ''),
             response: fullText,
@@ -1541,7 +1550,7 @@ exports.coachChatStream = onRequest({
                 .map(m => ({ role: m.role, content: m.content }));
             thread.push({ role: 'assistant', content: fullText });
             await db.collection('users').doc(userId).collection('coachHistory')
-                .doc(threadId).set({ ...historyDoc, threadId, messages: thread });
+                .doc(threadId).set({ ...historyDoc, question: threadTitle || historyDoc.question, threadId, messages: thread });
         } else {
             await db.collection('users').doc(userId).collection('coachHistory').add(historyDoc);
         }

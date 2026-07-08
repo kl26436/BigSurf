@@ -235,21 +235,28 @@ export function showAICoach(prefillContext) {
 }
 
 /**
- * Close the AI Coach page — returns to whatever was previously visible.
+ * Close the AI Coach page. Back is HIERARCHICAL: from an open chat, the first
+ * back returns to the coach landing (past conversations + starter prompts);
+ * only from the landing does back leave the section. Matches how every chat
+ * app works — and how the owner expected it to work.
  */
 export function closeAICoach() {
+    const chatMessages = document.getElementById('coach-chat-messages');
+    if (chatMessages && chatMessages.children.length > 0) {
+        openCoachHistory();
+        return;
+    }
     navigateBack();
 }
 
 /**
- * Reset to the empty state so the history list (and starter prompts) is visible.
- * Called from the history icon in the page-header.
+ * Return to the coach landing (history list + starter prompts). Also ENDS the
+ * current thread: a new question from the landing starts a fresh conversation
+ * instead of silently appending to the old one (which merged unrelated topics
+ * into a single history row). Reopening a past conversation still continues it.
  */
 export function openCoachHistory() {
-    const chatMessages = document.getElementById('coach-chat-messages');
-    if (chatMessages) chatMessages.innerHTML = '';
-    const emptyState = document.getElementById('coach-empty-state');
-    if (emptyState) emptyState.classList.remove('hidden');
+    resetCoachUI();
     loadCoachHistory();
     document.getElementById('coach-chat-area')?.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1055,7 +1062,7 @@ async function loadCoachHistory() {
             </div>
             ${sessions.map(s => `
                 <div class="coach-history-item" onclick="showPastCoachSession('${escapeHtml(s.id)}')">
-                    <div class="coach-history-question">${s.type === 'weekly_review' ? '<i class="fas fa-calendar-week coach-history-review-icon"></i> ' : ''}${escapeHtml(truncate(s.question, 60))}</div>
+                    <div class="coach-history-question">${s.type === 'weekly_review' ? '<i class="fas fa-calendar-week coach-history-review-icon"></i> ' : ''}${escapeHtml(truncate(coachSessionTitle(s), 60))}</div>
                     <div class="coach-history-date">${formatRelativeDate(s.timestamp, { daysAgo: true })}</div>
                 </div>
             `).join('')}
@@ -1474,6 +1481,24 @@ export function openCoachTemplate(templateId) {
 function truncate(str, len) {
     if (!str) return '';
     return str.length > len ? str.slice(0, len) + '…' : str;
+}
+
+/**
+ * Stable list title for a history doc: the conversation's FIRST question.
+ * Existing thread docs were titled by their LATEST question (the server
+ * overwrote it each turn) — derive from the stored messages so old docs
+ * display coherently without a data migration.
+ */
+function coachSessionTitle(s) {
+    if (Array.isArray(s.messages) && s.messages.length > 0) {
+        const first = s.messages.find(m => m.role === 'user');
+        if (first?.content) {
+            const marker = '\nQuestion: ';
+            const i = first.content.indexOf(marker);
+            return i !== -1 ? first.content.slice(i + marker.length) : first.content;
+        }
+    }
+    return s.question || '';
 }
 
 // Self-wire handlers referenced only from this module's own template strings,
