@@ -380,6 +380,58 @@
     flex-shrink: 0;
 }
 
+/* Receipt cards — the write already happened server-side (the ask was the
+   consent). Visually distinct from tap-to-apply proposal cards so the two
+   contracts never blur: receipts carry the Applied tag + success edge. */
+.coach-action-card--receipt {
+    border-left: 3px solid var(--success-border);
+}
+.coach-receipt-tag {
+    flex-shrink: 0;
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--success);
+    background: var(--success-bg-subtle);
+    border: 1px solid var(--success-border);
+    border-radius: var(--radius-pill);
+    padding: 2px 8px;
+}
+
+/* Program landing card — the coach's biggest commitment gets hero weight:
+   block layout, larger title, deload callout, review + undo actions. */
+.coach-program-card {
+    display: block;
+    cursor: default;
+}
+.coach-program-card:active {
+    background: var(--bg-card-hi);
+    transform: none;
+}
+.coach-program-card__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+}
+.coach-program-card__title {
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.coach-program-card__meta {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.coach-program-card .coach-action-card__desc {
+    margin-top: var(--space-8);
+}
+
+/* Post-undo state — the receipt collapses to a quiet tombstone. */
+.coach-action-card--undone {
+    opacity: 0.65;
+    cursor: default;
+}
+
 /* Loading state inside bot bubble */
 .coach-msg .coach-loading {
     display: flex;

@@ -543,16 +543,45 @@ async function streamCoachResponse(question, bubble) {
  * so the created/updated template is live without a reload.
  */
 function handleCoachActionCard(card, streamingBubble) {
-    if (card.kind === 'week_plan_set' || card.kind === 'program_set') {
-        // Schedule/program card — no template to open; tap opens the editor.
+    if (card.kind === 'program_set' && card.program) {
+        // Program creation is the biggest commitment the coach can make —
+        // it gets a landing moment (hero-weight receipt with review + undo),
+        // not a one-line chat card that reads like every other reply.
+        const p = card.program;
+        const id = `pcard_${++_programCardSeq}`;
+        if (card.undo?.newProgramId) _pendingProgramUndo.set(id, card.undo);
+        addChatBubble('bot', `
+            <div class="coach-action-card coach-action-card--receipt coach-program-card" id="${id}">
+                <div class="coach-program-card__head">
+                    <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-flag-checkered"></i></div>
+                    <div class="coach-action-card__body">
+                        <div class="coach-program-card__title">${escapeHtml(p.name || 'Program set')}</div>
+                        <div class="coach-program-card__meta">${p.weeks} weeks · ${escapeHtml(p.goal || '')}${p.deloadWeek ? ` · deload lands week ${p.deloadWeek}` : ''}</div>
+                    </div>
+                    <span class="coach-receipt-tag">Applied</span>
+                </div>
+                <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 140))}</div>
+                <div class="coach-action-card__actions">
+                    <button class="live-proposal__apply" onclick="openWeekPlanSheet()">Review week plan</button>
+                    ${card.undo?.newProgramId ? `<button class="live-proposal__dismiss" onclick="undoProgramCreate('${id}')">Undo</button>` : ''}
+                </div>
+            </div>
+        `);
+        AppState._weekPlan = undefined;
+        AppState._activeProgram = undefined;
+    } else if (card.kind === 'week_plan_set' || card.kind === 'program_set') {
+        // Schedule/program-adjust RECEIPT — the write already happened
+        // server-side (the ask was the consent). The Applied tag says so;
+        // this card must never read like a tap-to-apply proposal.
         const icon = card.kind === 'program_set' ? 'fa-flag-checkered' : 'fa-calendar-week';
         addChatBubble('bot', `
-            <div class="coach-action-card" onclick="openWeekPlanSheet()">
+            <div class="coach-action-card coach-action-card--receipt" onclick="openWeekPlanSheet()">
                 <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas ${icon}"></i></div>
                 <div class="coach-action-card__body">
                     <div class="coach-action-card__title">${escapeHtml(card.name || 'Week plan updated')}</div>
                     <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 110))}</div>
                 </div>
+                <span class="coach-receipt-tag">Applied</span>
                 <i class="fas fa-chevron-right coach-action-card__chev"></i>
             </div>
         `);
@@ -612,6 +641,55 @@ export async function rateCoachAnswer(btn, threadId, turnIdx, val) {
             { feedback: { [turnIdx]: val } }, { merge: true });
     } catch (e) {
         debugLog('coach feedback save failed:', e);
+    }
+}
+
+// ===================================================================
+// PROGRAM-CREATE UNDO — receipt cards write first (the ask was the
+// consent), so the undo is the exit ramp. Restores the prior week plan,
+// retires the created program, and reactivates the one it superseded.
+// ===================================================================
+
+const _pendingProgramUndo = new Map();
+let _programCardSeq = 0;
+
+export async function undoProgramCreate(cardId) {
+    const u = _pendingProgramUndo.get(cardId);
+    if (!u?.newProgramId || !AppState.currentUser) return;
+    const card = document.getElementById(cardId);
+    try {
+        const { db, doc, setDoc, deleteDoc } = await import('../data/firebase-config.js');
+        const uid = AppState.currentUser.uid;
+        const nowIso = new Date().toISOString();
+        // A program that scheduled itself unschedules itself too.
+        if (u.priorPlan) {
+            await setDoc(doc(db, 'users', uid, 'preferences', 'weekPlan'), u.priorPlan);
+        } else {
+            await deleteDoc(doc(db, 'users', uid, 'preferences', 'weekPlan'));
+        }
+        await setDoc(doc(db, 'users', uid, 'programs', u.newProgramId),
+            { active: false, state: 'undone', lastUpdated: nowIso }, { merge: true });
+        if (u.priorProgramId) {
+            await setDoc(doc(db, 'users', uid, 'programs', u.priorProgramId),
+                { active: true, state: 'active', lastUpdated: nowIso }, { merge: true });
+        }
+        _pendingProgramUndo.delete(cardId);
+        AppState._weekPlan = undefined;
+        AppState._activeProgram = undefined;
+        if (card) {
+            card.outerHTML = `
+                <div class="coach-action-card coach-action-card--undone">
+                    <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-rotate-left"></i></div>
+                    <div class="coach-action-card__body">
+                        <div class="coach-action-card__title">Program undone</div>
+                        <div class="coach-action-card__desc">Week plan restored${u.priorProgramId ? ' · previous program reactivated' : ''}</div>
+                    </div>
+                </div>`;
+        }
+        showNotification('Program undone', 'success');
+    } catch (e) {
+        console.error('❌ Program undo failed:', e);
+        showNotification("Couldn't undo — ask the coach to revert it", 'error');
     }
 }
 
@@ -1508,4 +1586,5 @@ window.confirmRegenerateWorkout = confirmRegenerateWorkout;
 window.applySessionAdjustments = applySessionAdjustments;
 window.dismissSessionAdjustments = dismissSessionAdjustments;
 window.rateCoachAnswer = rateCoachAnswer;
+window.undoProgramCreate = undoProgramCreate;
 

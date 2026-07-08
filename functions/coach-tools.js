@@ -529,6 +529,18 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
             if (!v.ok) return { error: v.error };
             const { name, goal, weeks, startDate, weekTargets, split } = v.normalized;
 
+            // Snapshot prior state BEFORE any write — the card renders after
+            // the write (the ask was the consent), so a real undo needs to
+            // know what to restore.
+            let priorPlan = null;
+            try {
+                const priorSnap = await userDoc().collection('preferences').doc('weekPlan').get();
+                if (priorSnap.exists) {
+                    const p = priorSnap.data();
+                    priorPlan = { days: p.days || {}, restDays: p.restDays || [] };
+                }
+            } catch { /* undo degrades to program-only */ }
+
             // Apply the split through the SAME validated path as set_week_plan —
             // one consent covers program + schedule.
             const planOut = await this.set_week_plan({ days: split });
@@ -536,6 +548,7 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
 
             // One active program at a time.
             const actives = await userDoc().collection('programs').where('active', '==', true).get();
+            const priorProgramId = actives.docs.length ? actives.docs[0].id : null;
             for (const d of actives.docs) {
                 await d.ref.set({ active: false, state: 'superseded', lastUpdated: new Date().toISOString() }, { merge: true });
             }
@@ -552,12 +565,17 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
                 createdAt: nowIso,
                 lastUpdated: nowIso,
             });
+            // Deload callout for the card's landing moment — the week the
+            // whole program exists for should be visible at creation.
+            const deloadWeek = (weekTargets.find(t => (t.weightPct || 0) < 0) || {}).week || null;
             return {
                 result: { programId: id, name, weeks, weekPlan: planOut.result.summary },
                 actionCard: {
                     kind: 'program_set',
                     name: `Program: ${name}`,
                     summary: `${weeks} weeks · ${goal} · ${planOut.result.summary}`,
+                    program: { programId: id, name, goal, weeks, startDate, deloadWeek },
+                    undo: { newProgramId: id, priorProgramId, priorPlan },
                 },
             };
         },
