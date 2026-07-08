@@ -3,8 +3,14 @@
 Status: **rungs 1 (propose-only) AND 2 (auto-generate + confirm) shipped**
 2026-07-07 — the owner greenlit rung 2 early (single-owner app: the owner
 trying it IS the usage data; it's opt-in via adjust_program trustLevel and
-reversible). Rung 3 stays gated on Phase 7 outcome data existing (advice must
-age 2+ weeks before the outcome engine scores it — nothing to learn from yet).
+reversible). Rung 3 stays gated — see the ladder below: the gate is now
+**adherence-aware reflow shipped**, not just outcome data existing (the
+3-month Marcus review showed the missing adherence signal is the scarier
+gap; docs/marcus-3-month-review-2026-07.md).
+
+**Visibility layer shipped 2026-07-07** (same-day follow-up to that review):
+the program now has passive surfaces outside chat — see "Visibility layer"
+below. The core write-path design is unchanged.
 
 ## What a program is
 
@@ -86,11 +92,51 @@ says so; the coach proposes the next block only when asked).
    adjust_program — consent rule guards it. No push notifications.
 3. **full auto (gated, explicit opt-in)** — sessions regenerate from outcomes
    without confirmation; weekly review doubles as the audit log. Requires
-   level 2 usage + demonstrated outcome quality.
+   level 2 usage + demonstrated outcome quality **+ adherence-aware reflow
+   shipped** — full auto without an adherence check would automate the
+   calendar-marches-on blind spot with no human glance in between.
 
 Levels 2–3 are design-gated on real usage of level 1 + Phase 7 outcomes, per
 the plan. `trustLevel` is stored so the upgrade is a data migration, not a
 schema change.
+
+## Visibility layer (2026-07-07, post 3-month review)
+
+The write-path rules above are unchanged; what changed is that the program is
+no longer chat-only. All of these are render-time derivations from data the
+client already loads — no cron, no new generation path, pull-not-push holds:
+
+- **Propose-mode hero notice** — on a nonbaseline week at `propose` trust, the
+  dashboard hero shows a quiet tappable line ("Deload week (−40%) — tap for
+  adjusted weights") that one-taps into the coach's propose flow
+  (`programNoticeForToday` in program-session.js). Baseline weeks stay silent
+  at every trust level.
+- **Block-complete banner** — an active program past its last week renders a
+  gold dashboard banner (celebrate + "Plan the next block" handoff into the
+  coach + dismiss, which retires the doc `state:'completed'`)
+  (`programCompletionForToday`). This amends "propose the next block only when
+  asked": the *coach* still never pushes; the dashboard offers one dismissible
+  door.
+- **Receipt card contract** — `program_set`/`week_plan_set` cards are receipts
+  (the ask was the consent; the write precedes the card) and now look like it:
+  Applied tag + success edge, visually distinct from tap-to-apply proposal
+  cards. Program creation renders a hero-weight landing card (weeks · goal ·
+  deload week) with **Review week plan** and **Undo** — `create_program`
+  snapshots the prior week plan + active program so the client can restore
+  both (`undoProgramCreate` in ai-coach-ui.js).
+- **Session traces** — `sessionLabel`/`basedOn` (already persisted on workout
+  docs) render on the completion summary and the history detail modal.
+- **Settings row** — passive "Program" row in the AI coach group shows name +
+  trust state; auto mode is still toggled only through the coach.
+- **Weekly review context** — the Monday review gets the active program
+  (week N of M, targets, or FINISHED), an adherence line ("trained N of M
+  planned days") with a no-guilt reflow offer when under-trained, and up to 5
+  scored advice outcomes (functions/coach-outcomes.js mirrors the client
+  module — keep in sync). This is the minimal version of adherence awareness;
+  full proactive reflow remains open work and gates rung 3.
+- **Coach landing** — a program starter prompt card shows until a program is
+  active, and the most recent checkable advice outcome hydrates as a one-line
+  track record under the hero.
 
 ## Why no scheduled generation function
 
