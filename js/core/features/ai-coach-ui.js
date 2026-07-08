@@ -15,7 +15,7 @@ import {
     setTypeMarker, templatesChangedNote, buildProgramContext,
 } from './coach-context.js';
 import { summarizeWeekPlan } from './week-plan.js';
-import { buildOutcomesContext, buildFeedbackContext } from './coach-outcomes.js';
+import { buildOutcomesContext, buildFeedbackContext, computeAdviceOutcome } from './coach-outcomes.js';
 import { micButtonHtml } from './coach-voice.js';
 
 /**
@@ -111,6 +111,15 @@ function getContextualPrompts() {
 
     const usedIcons = new Set(prompts.map(p => p.icon));
     const fallbacks = [
+        // Program door (Phase 9) — without a card, programs only exist for
+        // users who already know to type the word "program". Hidden once one
+        // is active (undefined = not hydrated yet; show it, harmless).
+        ...(!AppState._activeProgram ? [{
+            icon: 'fa-flag-checkered',
+            iconClass: '',
+            text: 'Build me a 4-week program from my workouts — pick the split, set week-by-week intensity, and end with a deload.',
+            html: `Plan a <strong>4-week program</strong> with a deload at the end.`,
+        }] : []),
         {
             icon: 'fa-calendar-alt',
             iconClass: 'coach-prompt-card__icon--warm',
@@ -180,6 +189,7 @@ export function renderAICoachSection() {
                         <div class="coach-hero__icon"><i class="fas fa-robot"></i></div>
                         <div class="coach-hero__title">Ask anything</div>
                         <div class="coach-hero__desc">I know your training history.</div>
+                        <div id="coach-track-record" class="coach-hero__fact hidden"></div>
                     </div>
 
                     <!-- Past reviews lead when they exist (revealed by loadCoachHistory);
@@ -204,6 +214,41 @@ export function renderAICoachSection() {
     `;
 
     loadCoachHistory();
+    hydrateCoachTrackRecord();
+}
+
+/**
+ * Payoff loop made visible (Phase 7): surface the most recent checkable
+ * advice outcome as one quiet line on the landing, so "did it work?" doesn't
+ * require remembering to interrogate the coach. Async-hydrates the slot
+ * rendered by renderAICoachSection; silently absent until data qualifies.
+ */
+async function hydrateCoachTrackRecord() {
+    if (!AppState.currentUser || !document.getElementById('coach-track-record')) return;
+    try {
+        const [{ db, collection, query, orderBy, limit, getDocs }, { loadAllWorkouts }] = await Promise.all([
+            import('../data/firebase-config.js'),
+            import('../data/data-manager.js'),
+        ]);
+        const snap = await getDocs(query(
+            collection(db, 'users', AppState.currentUser.uid, 'coachAdvice'),
+            orderBy('date', 'desc'), limit(25)
+        ));
+        const advice = snap.docs.map(d => d.data());
+        if (!advice.length) return;
+        const workouts = await loadAllWorkouts(AppState);
+        const today = AppState.getTodayDateString();
+        const line = advice.map(a => computeAdviceOutcome(a, workouts, today)).find(Boolean);
+        if (!line) return;
+        const el = document.getElementById('coach-track-record');
+        if (!el) return; // user navigated away mid-hydrate
+        // The context line leads with the date for the LLM; for humans the
+        // fact reads better without it.
+        el.textContent = `Track record: ${line.replace(/^\d{4}-\d{2}-\d{2} — /, '')}`;
+        el.classList.remove('hidden');
+    } catch (e) {
+        debugLog('coach track record hydrate failed:', e);
+    }
 }
 
 /**
