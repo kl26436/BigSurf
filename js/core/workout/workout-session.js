@@ -765,6 +765,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                 <i class="fas fa-check-circle completion-header__icon"></i>
                 <h2>Workout complete</h2>
                 <p class="completion-workout-name">${escapeHtml(workoutData.workoutType || 'Workout')}</p>
+                ${workoutData.sessionLabel ? `<span class="chip chip--sm completion-session-chip"><i class="fas fa-flag-checkered"></i> ${escapeHtml(workoutData.sessionLabel)} · from your program</span>` : ''}
             </div>
 
             ${prsHtml}

@@ -1323,6 +1323,7 @@ export function getWorkoutHistory(appState) {
         <div class="workout-detail-summary">
             <div class="workout-meta">
                 <div><strong>Status:</strong> ${escapeHtml(formatStatus(workoutStatus))}</div>
+                ${workout.sessionLabel ? `<div><strong>Session:</strong> ${escapeHtml(workout.sessionLabel)} · from your program</div>` : ''}
                 <div><strong>Duration:</strong> ${escapeHtml(String(formattedDuration))}</div>
                 <div><strong>Progress:</strong> ${parseInt(this.calculateProgress(workout)) || 0}%</div>
             </div>

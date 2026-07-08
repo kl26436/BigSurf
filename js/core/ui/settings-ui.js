@@ -172,6 +172,18 @@ function toggleBtn(settingKey, isOn) {
 /**
  * Render the settings page into #settings-content.
  */
+/**
+ * Passive trust-level indicator (Phase 9): auto mode is toggled through the
+ * coach, but checking which mode you're in shouldn't need a chat round trip.
+ */
+function programTrustDesc() {
+    const p = AppState._activeProgram;
+    if (p === undefined) return 'Checking…';
+    if (!p) return 'No active program — ask the coach to build one';
+    const auto = (p.trustLevel || 'propose') === 'auto_confirm';
+    return `${p.name || 'Program'} — ${auto ? 'auto mode on, Start confirms each session' : 'propose-only, the coach suggests and you tap'}`;
+}
+
 export function renderSettings() {
     const container = document.getElementById('settings-content');
     if (!container) return;
@@ -358,6 +370,13 @@ export function renderSettings() {
                     </div>
                     ${toggleBtn('weeklyCoachReview', s.weeklyCoachReview !== false)}
                 </div>
+                <div class="srow">
+                    <div class="srow-icon ic-primary"><i class="fas fa-flag-checkered"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Program</div>
+                        <div class="srow-desc" id="program-trust-desc">${escapeHtml(programTrustDesc())}</div>
+                    </div>
+                </div>
                 <div class="srow srow--clickable" onclick="openWeekPlanSheet()">
                     <div class="srow-icon ic-blue"><i class="fas fa-calendar-alt"></i></div>
                     <div class="srow-info">
@@ -459,6 +478,16 @@ export function renderSettings() {
             </div>
         </div>
     `;
+
+    // Program row hydrates once the active program is known (same hydrate-once
+    // pattern as the dashboard — undefined means not fetched yet).
+    if (AppState._activeProgram === undefined) {
+        import('../features/program-session.js').then(async m => {
+            await m.loadActiveProgram();
+            const el = document.getElementById('program-trust-desc');
+            if (el) el.textContent = programTrustDesc();
+        }).catch(() => {});
+    }
 
     // Update Withings connection status after DOM is ready
     if (window._withingsConnected !== undefined && window.updateWithingsUI) {

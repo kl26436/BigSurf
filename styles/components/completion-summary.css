@@ -18,6 +18,11 @@
     font-size: var(--font-base);
     color: var(--text-muted);
 }
+/* Program session tag under the name — "Deload · from your program" leaves a
+   trace of the week that adjusted this session. */
+.completion-session-chip {
+    margin-top: var(--space-8);
+}
 .completion-stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
