@@ -431,7 +431,11 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
                 const names = w.exerciseNames || {};
                 for (const key of Object.keys(w.exercises)) {
                     const name = names[key];
-                    if (!name || name.toLowerCase() !== target) continue;
+                    if (!name) continue;
+                    const lower = name.toLowerCase();
+                    // Exact first, then containment either way — the model says
+                    // "Chest Press" where the log says "Seated Chest Press".
+                    if (lower !== target && !lower.includes(target) && !target.includes(lower)) continue;
                     const ex = w.exercises[key];
                     sessions.push({
                         date: w.date,
@@ -453,16 +457,48 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
         async list_templates() {
             const snap = await userDoc().collection('workoutTemplates').get();
             // Archived templates are out of the coach's world (5.6.2).
-            const templates = snap.docs.filter(d => !d.data().archived).slice(0, 20).map(d => {
+            const activeDocs = snap.docs.filter(d => !d.data().archived);
+
+            // Usage honesty: denormalized usageCount only began 2026-07-07 —
+            // without a history-derived backfill the coach reads long-used
+            // staples as 'never used' and proposes archiving them (live bug).
+            // Derive from completed workouts by name and backfill durably.
+            const needsUsage = activeDocs.some(d => d.data().usageCount == null);
+            const usageByName = new Map();
+            if (needsUsage) {
+                const woSnap = await userDoc().collection('workouts')
+                    .orderBy('date', 'desc').limit(200).get();
+                for (const doc of woSnap.docs) {
+                    const w = doc.data();
+                    if (!w.completedAt || w.cancelledAt || !w.workoutType) continue;
+                    const key = w.workoutType.toLowerCase();
+                    const cur = usageByName.get(key) || { count: 0, last: null };
+                    cur.count += 1;
+                    if (!cur.last || w.date > cur.last) cur.last = w.date;
+                    usageByName.set(key, cur);
+                }
+            }
+
+            let usageIncomplete = false;
+            const templates = activeDocs.slice(0, 20).map(d => {
                 const t = d.data();
+                let usageCount = t.usageCount;
+                let lastUsedDate = t.lastUsedDate || null;
+                if (usageCount == null) {
+                    const u = usageByName.get((t.name || d.id).toLowerCase());
+                    usageCount = u ? u.count : 0;
+                    lastUsedDate = lastUsedDate || (u ? u.last : null);
+                    if (u) d.ref.set({ usageCount, lastUsedDate }, { merge: true }).catch(() => {});
+                    else usageIncomplete = true; // renamed templates lose name lineage
+                }
                 return {
                     templateId: d.id,
                     name: t.name || d.id,
                     category: t.category || null,
                     kind: t.kind || 'core',
                     ...(t.parentTemplateId ? { parentTemplateId: t.parentTemplateId } : {}),
-                    usageCount: t.usageCount || 0,
-                    lastUsedDate: t.lastUsedDate || null,
+                    usageCount,
+                    lastUsedDate,
                     exercises: (t.exercises || []).slice(0, 15).map(e => ({
                         name: e.machine || e.name,
                         sets: e.sets, reps: e.defaultReps || e.reps,
@@ -471,7 +507,11 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
                     })),
                 };
             });
-            return { templates, count: templates.length };
+            return {
+                templates,
+                count: templates.length,
+                ...(usageIncomplete ? { note: 'Some usage counts may undercount: workouts logged under a template’s OLD name (before a rename) are not attributed. Never call a template unused from usageCount alone — cross-check the recent-workouts context.' } : {}),
+            };
         },
 
         async get_program() {
