@@ -281,8 +281,29 @@ function computeBadge(template) {
  * and the Phase 3b editor page so both have their data regardless of which one
  * the user reached first (e.g. a deep-link straight into the editor).
  */
+let _selectorFreshAt = 0;
+
 async function ensureSelectorContext() {
     await loadGymContext();
+
+    // Staleness fix (owner screenshot): coach-side renames/archives happen in
+    // Firestore, but this list rendered a session-old AppState.workoutPlans —
+    // showing pre-rename names and archived rows. Refetch when older than 30s
+    // (coach action cards and pull-to-refresh still invalidate immediately).
+    if (AppState.currentUser && Date.now() - _selectorFreshAt > 30000) {
+        try {
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            AppState.workoutPlans = await new FirebaseWorkoutManager(AppState).getUserWorkoutTemplates();
+            _selectorFreshAt = Date.now();
+        } catch { /* offline — render what we have */ }
+    }
+    // Week plan is the scheduling truth for row meta (5.5.5).
+    if (AppState._weekPlan === undefined) {
+        try {
+            const { loadWeekPlan } = await import('../features/week-plan.js');
+            await loadWeekPlan();
+        } catch { /* meta falls back to chips */ }
+    }
 
     // Load workout history for recency sorting + "usually" derivation (cached).
     if (!cachedWorkoutHistory && AppState.currentUser) {
@@ -1108,9 +1129,21 @@ function renderTemplateSummary(template) {
     const cat = (template.category || 'other').toLowerCase();
     const catLabel = getCategoryLabel(cat);
 
+    // Scheduling truth ladder (5.5.5): week plan → history-derived "usually"
+    // → legacy day chips. The chips said "Schedule: Thu" while the week plan
+    // said Friday — the plan wins.
+    const PLAN_DAY = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+    const tid = template._id || template.id;
+    const planDays = AppState._weekPlan
+        ? Object.entries(AppState._weekPlan.days || {})
+            .filter(([, v]) => v && v === tid)
+            .map(([d]) => PLAN_DAY[d])
+        : [];
     const usuallyArr = deriveUsuallyDays(template._name);
     let scheduleText = null;
-    if (usuallyArr.length > 0) {
+    if (planDays.length > 0) {
+        scheduleText = `Scheduled ${planDays.join(', ')}`;
+    } else if (usuallyArr.length > 0) {
         scheduleText = `Usually ${usuallyArr.join(', ')}`;
     } else if (Array.isArray(template.suggestedDays) && template.suggestedDays.length > 0) {
         const labels = template.suggestedDays.map(d => DAY_DISPLAY[d] || d).join(', ');
