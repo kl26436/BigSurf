@@ -1017,6 +1017,12 @@ function buildSetRows(exercise, idx, savedEx, unit) {
         const weightPlaceholder = !set._userEdited && !set.completed && weightShown != null ? weightShown : unitLabel;
         const repsPlaceholder = !set._userEdited && !set.completed && set.reps != null ? set.reps : 'reps';
 
+        // 5.7.3 — ↑ marker on an earned-bump suggestion (until the user edits it).
+        const suggestBump = set._suggested && !set._userEdited && !set.completed;
+        const suggestMarker = suggestBump
+            ? '<span class="aw-set-row__suggest" aria-label="Suggested progression — heavier than last time" title="Suggested — you hit your reps last time">↑</span>'
+            : '';
+
         return `
             <div class="${classes.join(' ')}" data-set-idx="${si}">
                 <div class="aw-set-row__num">${si + 1}</div>
@@ -1041,7 +1047,7 @@ function buildSetRows(exercise, idx, savedEx, unit) {
                         aria-label="${set.completed ? 'Unmark set' : 'Mark set complete'}">
                     <i class="${set.completed ? 'fas fa-check' : 'far fa-circle'}" aria-hidden="true"></i>
                 </button>
-                ${beatBadge}
+                ${beatBadge}${suggestMarker}
             </div>
             ${rpeRow}
         `;
@@ -3728,11 +3734,22 @@ export async function loadAutofillForExercise(idx) {
             if (exercise.group) sx.group = exercise.group;
 
             if (!sx.sets || sx.sets.length === 0) {
+                // 5.7.3 — progression pre-fill: when a bump is EARNED (hit the
+                // rep target last session), suggest the progressed weight/reps
+                // instead of last session's numbers, flagged _suggested so the
+                // row shows a ↑. Only on an earned bump — hold/chase/consolidate
+                // keep last session's exact per-set values (never silently seed
+                // a number the user didn't earn). The suggestion is an editable
+                // placeholder, same as any autofill.
+                const prog = exercise._progression;
+                const bump = prog && prog.bumped && prog.weight > 0;
+                const progUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
                 sx.sets = lastSession.sets.map(s => ({
-                    weight: (s.weight && s.weight > 0) ? s.weight : null,
-                    reps: (s.reps && s.reps > 0) ? s.reps : null,
+                    weight: bump ? prog.weight : ((s.weight && s.weight > 0) ? s.weight : null),
+                    reps: bump && prog.reps ? prog.reps : ((s.reps && s.reps > 0) ? s.reps : null),
                     completed: false,
-                    originalUnit: s.originalUnit || AppState.globalUnit || 'lbs',
+                    originalUnit: bump ? progUnit : (s.originalUnit || AppState.globalUnit || 'lbs'),
+                    ...(bump ? { _suggested: true } : {}),
                 }));
             }
         } else {

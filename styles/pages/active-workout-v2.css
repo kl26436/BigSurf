@@ -549,6 +549,22 @@
     pointer-events: none;
 }
 
+/* 5.7.3 — earned-progression ↑ marker on a suggested (pre-filled) set. Sits
+   just left of the check, primary-tinted so it reads as "the app's pick". */
+.aw-set-row__suggest {
+    position: absolute;
+    top: -8px;
+    right: 46px;
+    font-size: var(--font-2xs);
+    font-weight: 800;
+    color: var(--primary);
+    background: var(--bg-card-hi);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-pill);
+    padding: 1px 7px;
+    pointer-events: none;
+}
+
 /* RPE row (opt-in) — effort chips tucked under a completed set. */
 .aw-rpe-row {
     display: flex;
