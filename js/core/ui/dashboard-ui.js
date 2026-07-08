@@ -1350,3 +1350,20 @@ export async function startWorkoutFromHistory(workoutId) {
 // HELPERS
 // ===================================================================
 
+
+// Pull-to-refresh (owner's gym bug log): re-pull plan/program/workout caches.
+import('../utils/pull-to-refresh.js').then(({ registerPullToRefresh }) => {
+    registerPullToRefresh(
+        () => {
+            const section = document.getElementById('dashboard');
+            return !!section && !section.classList.contains('hidden');
+        },
+        async () => {
+            AppState._weekPlan = undefined;
+            AppState._activeProgram = undefined;
+            const { clearAllWorkoutsCache } = await import('../data/data-manager.js');
+            clearAllWorkoutsCache();
+            await renderDashboard();
+        }
+    );
+}).catch(() => { /* non-critical enhancement */ });

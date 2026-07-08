@@ -84,7 +84,10 @@ function getAppContext() {
     }
 
     // Any modal open?
-    const openModal = document.querySelector('dialog[open], .modal:not(.hidden)');
+    // NOTE: <dialog class="modal"> elements hide via the dialog mechanism, not
+    // a .hidden class — the old selector reported them as permanently open
+    // (every 7/7 bug report falsely carried openModal: add-exercise-modal).
+    const openModal = document.querySelector('dialog[open], .modal:not(.hidden):not(dialog)');
     if (openModal) {
         ctx.openModal = openModal.id || openModal.className;
     }

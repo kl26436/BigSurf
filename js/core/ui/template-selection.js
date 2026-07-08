@@ -2020,3 +2020,20 @@ window.archiveTemplate = archiveTemplate;
 // module's own template strings AND the dashboard hero — a same-file window
 // assignment can't be version-skewed away from its markup by prod caching.
 window.openQuickStartSheet = openQuickStartSheet;
+
+// Pull-to-refresh (owner's gym bug log): the workout list is where coach-made
+// changes land — a pull re-fetches templates instead of needing a hard refresh.
+import('../utils/pull-to-refresh.js').then(({ registerPullToRefresh }) => {
+    registerPullToRefresh(
+        () => {
+            const section = document.getElementById('workout-selector');
+            return !!section && !section.classList.contains('hidden');
+        },
+        async () => {
+            clearSelectorCache();
+            const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+            AppState.workoutPlans = await new FirebaseWorkoutManager(AppState).getUserWorkoutTemplates();
+            await renderWorkoutSelectorUI();
+        }
+    );
+}).catch(() => { /* non-critical enhancement */ });
