@@ -747,10 +747,16 @@ export class FirebaseWorkoutManager {
                 });
             }
 
-            // Filter out defaults that have been overridden or hidden
-            const visibleDefaults = defaultTemplates.filter(
-                (template) => !overriddenDefaultIds.has(template.id || template.day)
-            );
+            // Defaults exist to bootstrap an EMPTY library. Once the user has
+            // any templates of their own, defaults are noise — and worse: the
+            // name-based dedup below shadowed them only while user templates
+            // kept the SAME names, so renaming a template resurrected its
+            // stale day-named ghost in the list (owner report, 7/8).
+            const visibleDefaults = customTemplates.length > 0
+                ? []
+                : defaultTemplates.filter(
+                    (template) => !overriddenDefaultIds.has(template.id || template.day)
+                );
 
             const allTemplates = [...visibleDefaults, ...customTemplates];
 
