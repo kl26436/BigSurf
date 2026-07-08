@@ -473,6 +473,75 @@
 .dash-today-hero__pr-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
 .dash-today-hero__pr-txt b { color: var(--text-strong); }
 
+/* Program adjustment-week notice (propose-only trust) — same shape as the PR
+   hook but success-tinted; tap sends the session ask to the coach. */
+.dash-today-hero__program {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin-top: 12px;
+    background: var(--success-bg-subtle);
+    border: 1px solid var(--success-border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    cursor: pointer;
+}
+.dash-today-hero__program i { color: var(--success); font-size: var(--font-xs); }
+.dash-today-hero__program-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
+.dash-today-hero__program-txt b { color: var(--text-strong); }
+
+/* Program-complete banner — the block finishing is a milestone (gold, like a
+   PR), with the next block one tap away. */
+.dash-program-done {
+    background: var(--bg-card);
+    border: 1px solid var(--badge-gold-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-12);
+    margin-bottom: var(--space-12);
+}
+.dash-program-done__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+}
+.dash-program-done__icon {
+    color: var(--badge-gold);
+    font-size: var(--font-md);
+    flex-shrink: 0;
+}
+.dash-program-done__txt { flex: 1; min-width: 0; }
+.dash-program-done__title {
+    font-size: var(--font-base);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.dash-program-done__meta {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.dash-program-done__dismiss {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    padding: var(--space-8);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.dash-program-done__cta {
+    width: 100%;
+    margin-top: var(--space-10);
+    background: var(--badge-gold-bg);
+    border: 1px solid var(--badge-gold-border);
+    color: var(--text-strong);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    cursor: pointer;
+}
+
 /* ── This week grouped card (V3): last session · latest PR · progress
    headline as divider rows in one card — the whole retrospective tail. ── */
 .dash-week-card {

@@ -12,7 +12,10 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({
     showNotification: vi.fn(),
 }));
 
-import { programSessionForToday, programSessionMeta } from '../../js/core/features/program-session.js';
+import {
+    programSessionForToday, programSessionMeta,
+    programNoticeForToday, programCompletionForToday,
+} from '../../js/core/features/program-session.js';
 
 const program = (overrides = {}) => ({
     id: 'program_1', name: 'Strength block', goal: 'strength',
@@ -58,5 +61,38 @@ describe('programSessionMeta', () => {
         const meta = programSessionMeta({ label: 'Deload', weightPct: -40, week: 4 });
         expect(meta).toBe('Deload · -40% weight · week 4 of your program');
         expect(programSessionMeta(null)).toBe('');
+    });
+});
+
+describe('programNoticeForToday', () => {
+    it('surfaces adjustment weeks regardless of trust level', () => {
+        // The whole point: propose-only users get the notice auto_confirm
+        // users get as a pre-built session.
+        expect(programNoticeForToday(program({ trustLevel: 'propose' }), '2026-07-21'))
+            .toMatchObject({ label: 'Deload', weightPct: -40, week: 4, weeks: 4 });
+        expect(programNoticeForToday(program(), '2026-07-07'))
+            .toMatchObject({ label: 'Heavy', weightPct: 5, week: 2 });
+    });
+
+    it('stays silent on baseline weeks and outside the program', () => {
+        expect(programNoticeForToday(program({ trustLevel: 'propose' }), '2026-06-30')).toBeNull(); // week 1: no target
+        expect(programNoticeForToday(program({ trustLevel: 'propose' }), '2026-07-14')).toBeNull(); // week 3: 0%
+        expect(programNoticeForToday(program({ trustLevel: 'propose' }), '2026-08-04')).toBeNull(); // finished
+        expect(programNoticeForToday(null, '2026-07-07')).toBeNull();
+    });
+});
+
+describe('programCompletionForToday', () => {
+    it('signals an active program past its last week', () => {
+        expect(programCompletionForToday(program(), '2026-07-27'))
+            .toMatchObject({ id: 'program_1', name: 'Strength block', weeks: 4 });
+    });
+
+    it('never signals mid-program, pre-start, or already-retired programs', () => {
+        expect(programCompletionForToday(program(), '2026-07-21')).toBeNull();  // week 4: still running
+        // startDate in the future → week < 1: "not started", not "done".
+        expect(programCompletionForToday(program({ startDate: '2026-08-10' }), '2026-07-07')).toBeNull();
+        expect(programCompletionForToday(program({ active: false }), '2026-07-27')).toBeNull();
+        expect(programCompletionForToday(null, '2026-07-27')).toBeNull();
     });
 });

@@ -16,7 +16,10 @@ import { getWorkoutCategory } from './template-selection.js';
 import { TrainingInsights } from '../features/training-insights.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 import { satisfiedDays, todayCard, weekDates, loadWeekPlan } from '../features/week-plan.js';
-import { loadActiveProgram, programSessionForToday, programSessionMeta } from '../features/program-session.js';
+import {
+    loadActiveProgram, programSessionForToday, programSessionMeta,
+    programNoticeForToday, programCompletionForToday,
+} from '../features/program-session.js';
 
 import {
     aggregateBodyPartStats, getTemplatesForDayOfWeek, aggregateExerciseStats,
@@ -166,6 +169,7 @@ async function renderDashboard() {
                 ${renderGreetingHeader()}
                 ${renderMetaStrip(streakDays, weekCount, weeklyGoal, detectDeloadWeek(allWorkouts), weekPace)}
                 ${renderActiveWorkoutPill()}
+                ${renderProgramCompleteBanner()}
                 ${renderForToday(allWorkouts)}
                 ${renderTodayPRBanner(recentPRs)}
                 ${renderThisWeekCard(allWorkouts, recentPRs, todaysPRKeys, topInsight)}
@@ -455,6 +459,31 @@ function getBwDeltaDirectionClass(delta) {
 // FOR TODAY
 // ===================================================================
 
+// Program-end landing: finishing a block is a milestone — the dashboard says
+// so (gold, like a PR) and offers the next block one tap away, instead of
+// the program quietly expiring as LLM-context-only text.
+function renderProgramCompleteBanner() {
+    const done = AppState._activeProgram
+        ? programCompletionForToday(AppState._activeProgram, getDateString())
+        : null;
+    if (!done) return '';
+    return `
+        <div class="dash-program-done">
+            <div class="dash-program-done__head">
+                <i class="fas fa-flag-checkered dash-program-done__icon"></i>
+                <div class="dash-program-done__txt">
+                    <div class="dash-program-done__title">Program complete</div>
+                    <div class="dash-program-done__meta">${escapeHtml(done.name)} · ${done.weeks} weeks in the books</div>
+                </div>
+                <button class="dash-program-done__dismiss" onclick="dismissProgramComplete('${escapeAttr(done.id)}')" aria-label="Dismiss">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <button class="dash-program-done__cta" onclick="planNextBlock()">Plan the next block</button>
+        </div>
+    `;
+}
+
 function renderForToday(allWorkouts) {
     const dayName = getDayName();
     // Phase 7 — archived workouts drop out of For Today ranking.
@@ -529,10 +558,17 @@ function renderForToday(allWorkouts) {
     // Trust rung 2 (auto_confirm): when the plan decided today's hero AND the
     // active program's week adjusts it, the hero pre-builds the session —
     // Start is the confirmation.
-    const programSession = (planCard?.kind === 'workout'
+    const heroIsPlanned = planCard?.kind === 'workout'
         && hero.template.id === planCard.templateId
-        && AppState._activeProgram)
+        && AppState._activeProgram;
+    const programSession = heroIsPlanned
         ? programSessionForToday(AppState._activeProgram, getDateString())
+        : null;
+    // Propose-only visibility: on adjustment weeks before auto mode, the hero
+    // still gets a quiet notice line (tap → coach proposes the adjustments) so
+    // the default Start habit can't blow past the week the program exists for.
+    const programNotice = heroIsPlanned && !programSession
+        ? programNoticeForToday(AppState._activeProgram, getDateString())
         : null;
 
     // One-time quiet setup hint when no plan exists — dismissible forever,
@@ -547,7 +583,7 @@ function renderForToday(allWorkouts) {
         </div>` : '';
 
     return `
-        ${renderForTodayHero(hero, dayName, lastDoneByType, proximity, programSession)}
+        ${renderForTodayHero(hero, dayName, lastDoneByType, proximity, programSession, programNotice)}
         <div class="dash-alt-list">
             ${rest.map(r => renderForTodayAltRow(r, lastDoneByType)).join('')}
             <div class="dash-alt-row" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')" role="button" tabindex="0">
@@ -647,17 +683,37 @@ function buildProximityCandidates(template, allWorkouts) {
     return candidates;
 }
 
-function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByType, proximity, programSession = null) {
+function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByType, proximity, programSession = null, programNotice = null) {
     const category = template.category || getWorkoutCategory(template.name || template.day) || 'other';
-    const exCount = template.exercises ? template.exercises.length : 0;
+    const exList = Array.isArray(template.exercises) ? template.exercises : Object.values(template.exercises || {});
+    const exCount = exList.length;
     const startArg = escapeAttr(template.day || template.name || template.id);
 
     const usageText = scheduled ? `Usually ${dayName}` : (count > 0 ? `${count}× on ${dayName}s` : '');
     const lastDoneText = formatLastDoneMeta(lastDoneByType[template.name || template.day]);
     // Program-adjusted session (rung 2) leads the meta — it changes what
-    // today's numbers will be.
-    const meta = [programSession ? programSessionMeta(programSession) : '', usageText, lastDoneText, `${exCount} exercises`]
+    // today's numbers will be. +N% only scales weighted moves, so say the
+    // skip out loud when the template has bodyweight entries.
+    const hasBw = programSession && exList.some(e => !(typeof e.weight === 'number' && e.weight > 0));
+    const programPart = programSession
+        ? programSessionMeta(programSession) + (hasBw ? ' · bodyweight moves unchanged' : '')
+        : '';
+    const meta = [programPart, usageText, lastDoneText, `${exCount} exercises`]
         .filter(Boolean).join(' · ');
+
+    // Propose-only adjustment week: quiet tappable line — one tap sends the
+    // session ask to the coach, which answers with the propose card.
+    let programHook = '';
+    if (!programSession && programNotice) {
+        const pct = `${programNotice.weightPct > 0 ? '+' : ''}${programNotice.weightPct}%`;
+        programHook = `
+            <div class="dash-today-hero__program" onclick="askCoachAboutProgramWeek()" role="button" tabindex="0"
+                aria-label="${escapeAttr(capitalize(programNotice.label))} week — ask the coach for adjusted weights">
+                <i class="fas fa-flag-checkered"></i>
+                <div class="dash-today-hero__program-txt"><b>${escapeHtml(capitalize(programNotice.label))} week (${pct})</b> — tap for adjusted weights</div>
+            </div>
+        `;
+    }
 
     // PR-proximity hook — forward-looking "you're close, go for it".
     let prHook = '';
@@ -678,6 +734,7 @@ function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByT
             <div class="dash-today-hero__eyebrow">Up today</div>
             <div class="dash-today-hero__name">${escapeHtml(template.name || template.day)}</div>
             <div class="dash-today-hero__meta">${meta}</div>
+            ${programHook}
             ${prHook}
             <div class="dash-today-hero__actions">
                 <button class="dash-today-hero__cta" onclick="${programSession ? `startProgramSession('${startArg}')` : `startWorkout('${startArg}')`}" aria-label="Start ${escapeAttr(template.name || template.day)}">

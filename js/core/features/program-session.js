@@ -72,6 +72,34 @@ export function programSessionMeta(session) {
 }
 
 /**
+ * Propose-only visibility: the current week's nonbaseline target for ANY
+ * trust level, so the hero can show a quiet notice line even before auto
+ * mode. Without this, the default Start habit blows straight past the one
+ * week the program exists for (auto_confirm gets the full pre-built session
+ * via programSessionForToday instead). Pure — inputs injected for tests.
+ */
+export function programNoticeForToday(program, today) {
+    if (!program?.startDate) return null;
+    const { week, target, finished } = deriveProgramWeek(program, today);
+    if (finished || !target) return null;
+    if (target.weightPct == null || target.weightPct === 0) return null;
+    return { label: target.label, weightPct: target.weightPct, week, weeks: program.weeks || 1 };
+}
+
+/**
+ * Program-end signal: an active program past its last week. The dashboard
+ * closes the loop (celebrate + plan-next door) instead of letting the block
+ * quietly expire as LLM-context-only text. Week < 1 = not started, not done.
+ * Pure — inputs injected for tests.
+ */
+export function programCompletionForToday(program, today) {
+    if (!program?.startDate || program.active === false) return null;
+    const { week, finished } = deriveProgramWeek(program, today);
+    if (!finished || week < 1) return null;
+    return { id: program.id, name: program.name || 'Your program', weeks: program.weeks || 1 };
+}
+
+/**
  * Start today's workout WITH the program adjustments applied to the session
  * copy (start tap = the confirmation). Mirrors applySessionAdjustments'
  * weight handling: plate-rounded, template untouched, history honest.
@@ -86,9 +114,12 @@ export async function startProgramSession(templateName) {
         const unit = AppState.globalUnit || 'lbs';
         const step = unit === 'kg' ? 2.5 : 5;
         const f = 1 + session.weightPct / 100;
+        let skippedBw = 0;
         for (const ex of (AppState.currentWorkout?.exercises || [])) {
             if (typeof ex.weight === 'number' && ex.weight > 0) {
                 ex.weight = Math.max(step, Math.round((ex.weight * f) / step) * step);
+            } else {
+                skippedBw++;
             }
         }
         if (AppState.savedData) {
@@ -98,13 +129,57 @@ export async function startProgramSession(templateName) {
         const { renderActiveWorkout } = await import('../workout/workout-core.js');
         renderActiveWorkout();
         debouncedSaveWorkoutData(AppState);
-        showNotification(`${session.label} week — weights adjusted ${session.weightPct > 0 ? '+' : ''}${session.weightPct}%`, 'success');
+        // Unchanged dips on a "+5%" week read as a bug — say the skip out loud.
+        showNotification(`${session.label} week — weights adjusted ${session.weightPct > 0 ? '+' : ''}${session.weightPct}%${skippedBw ? ' · bodyweight moves unchanged' : ''}`, 'success');
     } catch (e) {
         debugLog('program session start failed (plain start already ran):', e);
     }
 }
 
-// Self-wire — the dashboard hero renders this handler.
+/**
+ * One tap from the propose-mode hero notice to the rung-1 flow: open the
+ * coach with the session ask pre-sent, so the propose card arrives without
+ * typing anything between sets.
+ */
+export function askCoachAboutProgramWeek() {
+    import('./ai-coach-ui.js').then(m => {
+        m.showAICoach();
+        setTimeout(() => window.askCoach?.("What's today's session on my program? Propose the adjustments."), 350);
+    }).catch(e => debugLog('program week ask failed:', e));
+}
+
+/** Finished-block banner dismissed — retire the program and re-render. */
+export async function dismissProgramComplete(programId) {
+    if (!AppState.currentUser || !programId) return;
+    try {
+        const { db, doc, setDoc } = await import('../data/firebase-config.js');
+        await setDoc(doc(db, 'users', AppState.currentUser.uid, 'programs', programId),
+            { active: false, state: 'completed', lastUpdated: new Date().toISOString() }, { merge: true });
+        AppState._activeProgram = undefined;
+        const { renderDashboard } = await import('../ui/dashboard-ui.js');
+        renderDashboard();
+    } catch (e) {
+        console.error('❌ Program dismiss failed:', e);
+    }
+}
+
+/**
+ * "Plan the next block" — hand off to the coach with the ask pre-sent. The
+ * finished program stays active until the coach supersedes it (create_program
+ * deactivates it) so its context is still visible while planning.
+ */
+export function planNextBlock() {
+    import('./ai-coach-ui.js').then(m => {
+        m.showAICoach();
+        setTimeout(() => window.askCoach?.('My program just wrapped up — how did it go, and what should the next block be? Propose it.'), 350);
+    }).catch(e => debugLog('plan next block failed:', e));
+}
+
+// Self-wire — the dashboard renders these handlers (same-file assignment
+// keeps template and handler in one cache unit; see CLAUDE.md).
 if (typeof window !== 'undefined') {
     window.startProgramSession = startProgramSession;
+    window.askCoachAboutProgramWeek = askCoachAboutProgramWeek;
+    window.dismissProgramComplete = dismissProgramComplete;
+    window.planNextBlock = planNextBlock;
 }
