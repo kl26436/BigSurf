@@ -172,7 +172,6 @@ async function renderDashboard() {
                 ${renderActiveWorkoutPill()}
                 ${renderProgramCompleteBanner(allWorkouts)}
                 ${renderForToday(allWorkouts)}
-                ${renderProgramHeartbeat()}
                 ${renderTodayPRBanner(recentPRs)}
                 ${renderThisWeekCard(allWorkouts, recentPRs, todaysPRKeys, topInsight)}
                 ${await renderBodyCard(bwData)}
@@ -467,10 +466,11 @@ function getBwDeltaDirectionClass(delta) {
 // numbers from the block, not just "the clock ran out".
 function renderProgramCompleteBanner(allWorkouts = []) {
     const program = AppState._activeProgram;
-    const done = program ? programCompletionForToday(program, getDateString()) : null;
+    const today = AppState.getTodayDateString();
+    const done = program ? programCompletionForToday(program, today) : null;
     if (!done) return '';
 
-    const stats = programBlockStats(program, allWorkouts, PRTracker.getRecentPRs(200), getDateString());
+    const stats = programBlockStats(program, allWorkouts, PRTracker.getRecentPRs(200), today);
     const chips = [];
     if (stats) {
         if (stats.planned > 0) chips.push(`${stats.daysTrained} of ${stats.planned} planned days trained`);
@@ -507,7 +507,7 @@ function renderProgramCompleteBanner(allWorkouts = []) {
 // the completion banner (heartbeat is null once finished).
 function renderProgramHeartbeat() {
     const beat = AppState._activeProgram
-        ? programHeartbeat(AppState._activeProgram, getDateString())
+        ? programHeartbeat(AppState._activeProgram, AppState.getTodayDateString())
         : null;
     if (!beat) return '';
     return `
@@ -597,14 +597,15 @@ function renderForToday(allWorkouts) {
     const heroIsPlanned = planCard?.kind === 'workout'
         && hero.template.id === planCard.templateId
         && AppState._activeProgram;
+    const programToday = AppState.getTodayDateString();
     const programSession = heroIsPlanned
-        ? programSessionForToday(AppState._activeProgram, getDateString())
+        ? programSessionForToday(AppState._activeProgram, programToday)
         : null;
     // Propose-only visibility: on adjustment weeks before auto mode, the hero
     // still gets a quiet notice line (tap → coach proposes the adjustments) so
     // the default Start habit can't blow past the week the program exists for.
     const programNotice = heroIsPlanned && !programSession
-        ? programNoticeForToday(AppState._activeProgram, getDateString())
+        ? programNoticeForToday(AppState._activeProgram, programToday)
         : null;
 
     // Pre-Start caution: before a program-adjusted HEAVY session (weight going
@@ -613,7 +614,7 @@ function renderForToday(allWorkouts) {
     // fine, so only weight increases trigger it.
     const adj = programSession || programNotice;
     const programCaution = (adj && adj.weightPct > 0 && wp)
-        ? trailingWeekLight(wp, allWorkouts, getDateString())
+        ? trailingWeekLight(wp, allWorkouts, programToday)
         : null;
 
     // One-time quiet setup hint when no plan exists — dismissible forever,
@@ -629,6 +630,7 @@ function renderForToday(allWorkouts) {
 
     return `
         ${renderForTodayHero(hero, dayName, lastDoneByType, proximity, programSession, programNotice, programCaution)}
+        ${renderProgramHeartbeat()}
         <div class="dash-alt-list">
             ${rest.map(r => renderForTodayAltRow(r, lastDoneByType)).join('')}
             <div class="dash-alt-row" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')" role="button" tabindex="0">
@@ -655,6 +657,7 @@ function renderPlanStateCard(dayName, kind) {
                 </button>
             </div>
         </div>
+        ${renderProgramHeartbeat()}
     `;
 }
 

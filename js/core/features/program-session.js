@@ -53,7 +53,7 @@ export function programSessionForToday(program, today) {
     if (!program?.startDate) return null;
     if ((program.trustLevel || 'propose') !== 'auto_confirm') return null;
     const { week, target, finished } = deriveProgramWeek(program, today);
-    if (finished || !target) return null;
+    if (!Number.isFinite(week) || finished || !target) return null;
     // Only surface weeks that actually CHANGE the session — a baseline week
     // starts like any normal day, no special chrome.
     if (target.weightPct == null || target.weightPct === 0) return null;
@@ -82,7 +82,7 @@ export function programSessionMeta(session) {
 export function programNoticeForToday(program, today) {
     if (!program?.startDate) return null;
     const { week, target, finished } = deriveProgramWeek(program, today);
-    if (finished || !target) return null;
+    if (!Number.isFinite(week) || finished || !target) return null;
     if (target.weightPct == null || target.weightPct === 0) return null;
     return { label: target.label, weightPct: target.weightPct, week, weeks: program.weeks || 1 };
 }
@@ -96,7 +96,7 @@ export function programNoticeForToday(program, today) {
 export function programCompletionForToday(program, today) {
     if (!program?.startDate || program.active === false) return null;
     const { week, finished } = deriveProgramWeek(program, today);
-    if (!finished || week < 1) return null;
+    if (!Number.isFinite(week) || !finished || week < 1) return null;
     return { id: program.id, name: program.name || 'Your program', weeks: program.weeks || 1 };
 }
 
@@ -112,7 +112,7 @@ export function programCompletionForToday(program, today) {
 export function programHeartbeat(program, today) {
     if (!program?.startDate || program.active === false) return null;
     const { week, finished } = deriveProgramWeek(program, today);
-    if (finished || week < 1) return null;
+    if (!Number.isFinite(week) || finished || week < 1) return null;
     return { name: program.name || 'Program', week, weeks: program.weeks || 1 };
 }
 
@@ -308,7 +308,8 @@ export function openProgramDetailSheet() {
     if (!program?.startDate) return;
     closeProgramDetailSheet();
 
-    const { week: curWeek } = deriveProgramWeek(program, AppState.getTodayDateString());
+    const { week: rawWeek } = deriveProgramWeek(program, AppState.getTodayDateString());
+    const curWeek = Number.isFinite(rawWeek) ? rawWeek : 1;
     const templates = AppState.workoutPlans || AppState.templates || [];
     const nameOf = (id) => templates.find(t => t.id === id)?.name || id;
 

@@ -112,6 +112,13 @@ describe('programHeartbeat', () => {
         expect(programHeartbeat(program({ active: false }), '2026-07-07')).toBeNull();
         expect(programHeartbeat(null, '2026-07-07')).toBeNull();
     });
+
+    it('never emits NaN when today is unparseable (renders "week NaN" otherwise)', () => {
+        // getDateString() with no arg returns '' → deriveProgramWeek → NaN.
+        // The guard must hide the chip, not surface "week NaN of N".
+        expect(programHeartbeat(program(), '')).toBeNull();
+        expect(programHeartbeat(program(), undefined)).toBeNull();
+    });
 });
 
 describe('programBlockStats', () => {
