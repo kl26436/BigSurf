@@ -202,8 +202,8 @@ function renderWorkoutHeader() {
 
     return `
         <div class="aw-header">
-            <button class="aw-back" onclick="awConfirmExit()" aria-label="Exit workout" title="Exit workout">
-                <i class="fas fa-times"></i>
+            <button class="aw-back" onclick="awConfirmExit()" aria-label="Back to dashboard" title="Back to dashboard">
+                <i class="fas fa-chevron-left"></i>
             </button>
             <div class="aw-title">
                 <div class="aw-title__name">${escapeHtml(workoutName)}${locName ? ` <span class="aw-title__loc"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(locName)}</span>` : ''}</div>
@@ -1623,20 +1623,14 @@ function commitReplaceExercise(idx, exercise) {
 }
 
 export async function awConfirmExit() {
-    if (AppState.savedData && Object.keys(AppState.savedData.exercises || {}).length > 0) {
-        const hasSets = Object.values(AppState.savedData.exercises).some(ex =>
-            ex.sets?.some(s => s.completed)
-        );
-        if (hasSets) {
-            const ok = await confirmSheet({
-                title: 'Leave workout?',
-                message: 'Your progress is saved — resume anytime from the dashboard.',
-                confirmLabel: 'Leave workout',
-                cancelLabel: 'Keep lifting',
-            });
-            if (!ok) return;
-        }
-    }
+    // No confirm — the back-arrow reads as "leave to dashboard", not "end
+    // workout". Nothing is discarded: currentWorkout + savedData stay in
+    // AppState, the dumbbell FAB / duration pill on the dashboard signal
+    // that the workout is still running, and Resume from either surface
+    // brings the user right back. Killing the workout entirely lives on
+    // "Cancel workout" in the kebab menu, which keeps its own confirm.
+    // Prior modal-confirm was 7/8 friction — user leaves on purpose,
+    // shouldn't have to answer "Are you sure?" every time.
     cleanup();
     navigateTo('dashboard');
 }

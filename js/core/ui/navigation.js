@@ -289,8 +289,13 @@ function showActiveWorkout() {
     if (activeWorkout) {
         activeWorkout.classList.remove('hidden');
     }
-    // Show nav on active workout, but hide main header (no logo during workouts)
-    setBottomNavVisible(true);
+    // Hide BOTH the main header (no logo during workouts) AND the bottom nav.
+    // The active workout has its own footer (All / Next exercise / Finish)
+    // so a second bar underneath is redundant. The 7/8 "nav bar came back
+    // after leaving off exercise and reopening" report — workout start
+    // hides the nav, but any route round-trip flipped it back on because
+    // this function called setBottomNavVisible(true).
+    setBottomNavVisible(false);
     const { setHeaderMode } = window;
     if (setHeaderMode) setHeaderMode(false);
 
