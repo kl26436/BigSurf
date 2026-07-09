@@ -15,6 +15,7 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({
 import {
     programSessionForToday, programSessionMeta,
     programNoticeForToday, programCompletionForToday,
+    programHeartbeat, programBlockStats, trailingWeekLight,
 } from '../../js/core/features/program-session.js';
 
 const program = (overrides = {}) => ({
@@ -94,5 +95,75 @@ describe('programCompletionForToday', () => {
         expect(programCompletionForToday(program({ startDate: '2026-08-10' }), '2026-07-07')).toBeNull();
         expect(programCompletionForToday(program({ active: false }), '2026-07-27')).toBeNull();
         expect(programCompletionForToday(null, '2026-07-27')).toBeNull();
+    });
+});
+
+describe('programHeartbeat', () => {
+    it('beats on every ongoing week, baseline included', () => {
+        expect(programHeartbeat(program(), '2026-06-30'))   // week 1 (baseline)
+            .toMatchObject({ name: 'Strength block', week: 1, weeks: 4 });
+        expect(programHeartbeat(program(), '2026-07-21'))   // week 4 (deload)
+            .toMatchObject({ week: 4, weeks: 4 });
+    });
+
+    it('goes quiet once finished, before start, or retired', () => {
+        expect(programHeartbeat(program(), '2026-08-04')).toBeNull();                       // past week 4
+        expect(programHeartbeat(program({ startDate: '2026-08-10' }), '2026-07-07')).toBeNull(); // not started
+        expect(programHeartbeat(program({ active: false }), '2026-07-07')).toBeNull();
+        expect(programHeartbeat(null, '2026-07-07')).toBeNull();
+    });
+});
+
+describe('programBlockStats', () => {
+    const split = { mon: 't1', tue: null, wed: 't2', thu: null, fri: 't3', sat: 'rest', sun: null };
+    const workouts = [
+        { date: '2026-06-30', completedAt: 'x' },
+        { date: '2026-07-03', completedAt: 'x' },
+        { date: '2026-07-03', completedAt: 'x' },   // same day → one training day
+        { date: '2026-07-20', completedAt: 'x' },
+        { date: '2026-07-10', completedAt: 'x', cancelledAt: 'x' }, // cancelled → skip
+        { date: '2026-08-15', completedAt: 'x' },   // after block → skip
+    ];
+    const prs = [{ date: '2026-07-01' }, { date: '2026-05-01' }]; // one inside the block
+
+    it('counts unique training days, planned days from the split, and in-block PRs', () => {
+        // Block window 2026-06-29 .. 2026-07-26; per-week planned = 3 (t1/t2/t3), × 4 weeks.
+        expect(programBlockStats(program({ split }), workouts, prs, '2026-07-27'))
+            .toEqual({ daysTrained: 3, planned: 12, prCount: 1, weeks: 4 });
+    });
+
+    it('never counts the future when the block is still running', () => {
+        // today mid-block → cap at today, so 2026-07-20 hasn't happened yet.
+        expect(programBlockStats(program({ split }), workouts, prs, '2026-07-05').daysTrained).toBe(2);
+    });
+
+    it('returns null without a start date', () => {
+        expect(programBlockStats(null, workouts, prs, '2026-07-27')).toBeNull();
+    });
+});
+
+describe('trailingWeekLight', () => {
+    const plan = { days: { mon: 't1', tue: 't2', wed: 't3', thu: 't4', fri: 't5', sat: 't6', sun: null } };
+    const only3 = [
+        { date: '2026-07-02', completedAt: 'x' },
+        { date: '2026-07-04', completedAt: 'x' },
+        { date: '2026-07-06', completedAt: 'x' },
+        { date: '2026-06-20', completedAt: 'x' }, // outside trailing 7 days
+    ];
+
+    it('flags a light week (2+ planned days missed)', () => {
+        // 6 planned, trained 3 in the trailing 7 days → 3 missed → light.
+        expect(trailingWeekLight(plan, only3, '2026-07-07'))
+            .toEqual({ planned: 6, trained: 3, light: true });
+    });
+
+    it('does not flag a nearly-complete week', () => {
+        const five = ['2026-07-01', '2026-07-02', '2026-07-04', '2026-07-05', '2026-07-06']
+            .map(date => ({ date, completedAt: 'x' }));
+        expect(trailingWeekLight(plan, five, '2026-07-07')).toEqual({ planned: 6, trained: 5, light: false });
+    });
+
+    it('returns null when nothing is planned', () => {
+        expect(trailingWeekLight({ days: {} }, only3, '2026-07-07')).toBeNull();
     });
 });

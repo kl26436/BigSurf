@@ -473,22 +473,93 @@
 .dash-today-hero__pr-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
 .dash-today-hero__pr-txt b { color: var(--text-strong); }
 
-/* Program adjustment-week notice (propose-only trust) — same shape as the PR
-   hook but success-tinted; tap sends the session ask to the coach. */
+/* Program adjustment-week notice (propose-only trust) — success-tinted; the
+   primary button APPLIES the deterministic adjustment and starts (no chat
+   round trip), with a secondary "Ask coach" for discussion. */
 .dash-today-hero__program {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
     margin-top: 12px;
     background: var(--success-bg-subtle);
     border: 1px solid var(--success-border);
     border-radius: var(--radius-sm);
     padding: 8px 10px;
-    cursor: pointer;
 }
-.dash-today-hero__program i { color: var(--success); font-size: var(--font-xs); }
+.dash-today-hero__program-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+.dash-today-hero__program-head i { color: var(--success); font-size: var(--font-xs); }
 .dash-today-hero__program-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
 .dash-today-hero__program-txt b { color: var(--text-strong); }
+.dash-today-hero__program-actions {
+    display: flex;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
+}
+.dash-today-hero__program-apply {
+    flex: 1;
+    background: var(--success);
+    border: none;
+    color: var(--text-on-accent);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    cursor: pointer;
+}
+.dash-today-hero__program-ask {
+    background: transparent;
+    border: 1px solid var(--success-border);
+    color: var(--success);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+/* Pre-Start caution — light trailing week before a heavy program week. Amber,
+   quieter than the success notice; taps through to a coach reflow. */
+.dash-today-hero__caution {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin-top: 12px;
+    background: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    cursor: pointer;
+}
+.dash-today-hero__caution i { color: var(--warning); font-size: var(--font-xs); }
+.dash-today-hero__caution-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
+.dash-today-hero__caution-txt b { color: var(--text-strong); }
+
+/* Persistent program heartbeat chip — calm mid-block proof of life, distinct
+   from the loud adjustment notice: neutral card, no accent fill. */
+.dash-program-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin-bottom: var(--space-12);
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+.dash-program-chip__icon { color: var(--text-secondary); font-size: var(--font-xs); flex-shrink: 0; }
+.dash-program-chip__txt {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-xs);
+    color: var(--text-main);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.dash-program-chip__chev { color: var(--text-muted); font-size: var(--font-2xs); flex-shrink: 0; }
 
 /* Program-complete banner — the block finishing is a milestone (gold, like a
    PR), with the next block one tap away. */
@@ -519,6 +590,20 @@
     font-size: var(--font-xs);
     color: var(--text-muted);
     margin-top: 2px;
+}
+.dash-program-done__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+    margin-top: var(--space-10);
+}
+.dash-program-done__stat {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--text-strong);
+    background: var(--badge-gold-bg);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
 }
 .dash-program-done__dismiss {
     background: none;

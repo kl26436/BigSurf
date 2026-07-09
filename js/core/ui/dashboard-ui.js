@@ -19,6 +19,7 @@ import { satisfiedDays, todayCard, weekDates, loadWeekPlan } from '../features/w
 import {
     loadActiveProgram, programSessionForToday, programSessionMeta,
     programNoticeForToday, programCompletionForToday,
+    programHeartbeat, programBlockStats, trailingWeekLight,
 } from '../features/program-session.js';
 
 import {
@@ -169,7 +170,8 @@ async function renderDashboard() {
                 ${renderGreetingHeader()}
                 ${renderMetaStrip(streakDays, weekCount, weeklyGoal, detectDeloadWeek(allWorkouts), weekPace)}
                 ${renderActiveWorkoutPill()}
-                ${renderProgramCompleteBanner()}
+                ${renderProgramCompleteBanner(allWorkouts)}
+                ${renderProgramHeartbeat()}
                 ${renderForToday(allWorkouts)}
                 ${renderTodayPRBanner(recentPRs)}
                 ${renderThisWeekCard(allWorkouts, recentPRs, todaysPRKeys, topInsight)}
@@ -461,12 +463,24 @@ function getBwDeltaDirectionClass(delta) {
 
 // Program-end landing: finishing a block is a milestone — the dashboard says
 // so (gold, like a PR) and offers the next block one tap away, instead of
-// the program quietly expiring as LLM-context-only text.
-function renderProgramCompleteBanner() {
-    const done = AppState._activeProgram
-        ? programCompletionForToday(AppState._activeProgram, getDateString())
-        : null;
+// the program quietly expiring as LLM-context-only text. Leads with real
+// numbers from the block, not just "the clock ran out".
+function renderProgramCompleteBanner(allWorkouts = []) {
+    const program = AppState._activeProgram;
+    const done = program ? programCompletionForToday(program, getDateString()) : null;
     if (!done) return '';
+
+    const stats = programBlockStats(program, allWorkouts, PRTracker.getRecentPRs(200), getDateString());
+    const chips = [];
+    if (stats) {
+        if (stats.planned > 0) chips.push(`${stats.daysTrained} of ${stats.planned} planned days trained`);
+        else if (stats.daysTrained > 0) chips.push(`${stats.daysTrained} days trained`);
+        if (stats.prCount > 0) chips.push(`${stats.prCount} PR${stats.prCount === 1 ? '' : 's'}`);
+    }
+    const statLine = chips.length
+        ? `<div class="dash-program-done__stats">${chips.map(c => `<span class="dash-program-done__stat">${escapeHtml(c)}</span>`).join('')}</div>`
+        : '';
+
     return `
         <div class="dash-program-done">
             <div class="dash-program-done__head">
@@ -479,7 +493,28 @@ function renderProgramCompleteBanner() {
                     <i class="fas fa-times"></i>
                 </button>
             </div>
+            ${statLine}
             <button class="dash-program-done__cta" onclick="planNextBlock()">Plan the next block</button>
+        </div>
+    `;
+}
+
+// Persistent, quiet "you're mid-block" chip — proof the program is running on
+// every week (baseline included), so a freshly-started block isn't invisible
+// until its first adjustment week. Deliberately calm: no gold, no CTA, taps
+// through to the week plan (the program's actual shape). Mutually exclusive
+// with the completion banner (heartbeat is null once finished).
+function renderProgramHeartbeat() {
+    const beat = AppState._activeProgram
+        ? programHeartbeat(AppState._activeProgram, getDateString())
+        : null;
+    if (!beat) return '';
+    return `
+        <div class="dash-program-chip" onclick="openWeekPlanSheet()" role="button" tabindex="0"
+            aria-label="${escapeAttr(beat.name)}, week ${beat.week} of ${beat.weeks} — view week plan">
+            <i class="fas fa-flag-checkered dash-program-chip__icon"></i>
+            <span class="dash-program-chip__txt">${escapeHtml(beat.name)} · week ${beat.week} of ${beat.weeks}</span>
+            <i class="fas fa-chevron-right dash-program-chip__chev"></i>
         </div>
     `;
 }
@@ -571,6 +606,15 @@ function renderForToday(allWorkouts) {
         ? programNoticeForToday(AppState._activeProgram, getDateString())
         : null;
 
+    // Pre-Start caution: before a program-adjusted HEAVY session (weight going
+    // UP), if the trailing week was light, warn in the moment — the weekly
+    // digest catches this a week too late. Deloads after a light week are
+    // fine, so only weight increases trigger it.
+    const adj = programSession || programNotice;
+    const programCaution = (adj && adj.weightPct > 0 && wp)
+        ? trailingWeekLight(wp, allWorkouts, getDateString())
+        : null;
+
     // One-time quiet setup hint when no plan exists — dismissible forever,
     // never a popup (pull, not push).
     const setupRow = (wp === null && !AppState.settings?.weekPlanSetupDismissed) ? `
@@ -583,7 +627,7 @@ function renderForToday(allWorkouts) {
         </div>` : '';
 
     return `
-        ${renderForTodayHero(hero, dayName, lastDoneByType, proximity, programSession, programNotice)}
+        ${renderForTodayHero(hero, dayName, lastDoneByType, proximity, programSession, programNotice, programCaution)}
         <div class="dash-alt-list">
             ${rest.map(r => renderForTodayAltRow(r, lastDoneByType)).join('')}
             <div class="dash-alt-row" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')" role="button" tabindex="0">
@@ -683,7 +727,7 @@ function buildProximityCandidates(template, allWorkouts) {
     return candidates;
 }
 
-function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByType, proximity, programSession = null, programNotice = null) {
+function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByType, proximity, programSession = null, programNotice = null, programCaution = null) {
     const category = template.category || getWorkoutCategory(template.name || template.day) || 'other';
     const exList = Array.isArray(template.exercises) ? template.exercises : Object.values(template.exercises || {});
     const exCount = exList.length;
@@ -701,16 +745,37 @@ function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByT
     const meta = [programPart, usageText, lastDoneText, `${exCount} exercises`]
         .filter(Boolean).join(' · ');
 
-    // Propose-only adjustment week: quiet tappable line — one tap sends the
-    // session ask to the coach, which answers with the propose card.
+    // Propose-only adjustment week: the adjustment is deterministic, so the
+    // primary action APPLIES it and starts (no chat round trip mid-workout);
+    // a secondary link opens the coach for anyone who wants to discuss.
     let programHook = '';
     if (!programSession && programNotice) {
         const pct = `${programNotice.weightPct > 0 ? '+' : ''}${programNotice.weightPct}%`;
+        const label = capitalize(programNotice.label);
         programHook = `
-            <div class="dash-today-hero__program" onclick="askCoachAboutProgramWeek()" role="button" tabindex="0"
-                aria-label="${escapeAttr(capitalize(programNotice.label))} week — ask the coach for adjusted weights">
-                <i class="fas fa-flag-checkered"></i>
-                <div class="dash-today-hero__program-txt"><b>${escapeHtml(capitalize(programNotice.label))} week (${pct})</b> — tap for adjusted weights</div>
+            <div class="dash-today-hero__program">
+                <div class="dash-today-hero__program-head">
+                    <i class="fas fa-flag-checkered"></i>
+                    <div class="dash-today-hero__program-txt"><b>${escapeHtml(label)} week (${pct})</b> — weights adjust for you</div>
+                </div>
+                <div class="dash-today-hero__program-actions">
+                    <button class="dash-today-hero__program-apply" onclick="applyProgramWeekAndStart('${startArg}')">
+                        Apply ${pct} &amp; start
+                    </button>
+                    <button class="dash-today-hero__program-ask" onclick="askCoachAboutProgramWeek()">Ask coach</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Pre-Start caution before a heavy week off a light trailing week.
+    let programCautionHook = '';
+    if (programCaution?.light) {
+        programCautionHook = `
+            <div class="dash-today-hero__caution" onclick="askCoachToReflow()" role="button" tabindex="0"
+                aria-label="Light week behind you — trained ${programCaution.trained} of ${programCaution.planned} planned days. Tap to ask the coach to reflow.">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div class="dash-today-hero__caution-txt"><b>Light week behind you</b> — ${programCaution.trained} of ${programCaution.planned} planned days. Ease in or tap to reflow.</div>
             </div>
         `;
     }
@@ -734,6 +799,7 @@ function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByT
             <div class="dash-today-hero__eyebrow">Up today</div>
             <div class="dash-today-hero__name">${escapeHtml(template.name || template.day)}</div>
             <div class="dash-today-hero__meta">${meta}</div>
+            ${programCautionHook}
             ${programHook}
             ${prHook}
             <div class="dash-today-hero__actions">

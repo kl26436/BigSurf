@@ -189,7 +189,10 @@ export function renderAICoachSection() {
                         <div class="coach-hero__icon"><i class="fas fa-robot"></i></div>
                         <div class="coach-hero__title">Ask anything</div>
                         <div class="coach-hero__desc">I know your training history.</div>
-                        <div id="coach-track-record" class="coach-hero__fact hidden"></div>
+                        <div id="coach-track-record" class="coach-track-record hidden">
+                            <i class="fas fa-chart-line coach-track-record__icon"></i>
+                            <span id="coach-track-record-txt" class="coach-track-record__txt"></span>
+                        </div>
                     </div>
 
                     <!-- Past reviews lead when they exist (revealed by loadCoachHistory);
@@ -241,10 +244,11 @@ async function hydrateCoachTrackRecord() {
         const line = advice.map(a => computeAdviceOutcome(a, workouts, today)).find(Boolean);
         if (!line) return;
         const el = document.getElementById('coach-track-record');
-        if (!el) return; // user navigated away mid-hydrate
+        const txt = document.getElementById('coach-track-record-txt');
+        if (!el || !txt) return; // user navigated away mid-hydrate
         // The context line leads with the date for the LLM; for humans the
         // fact reads better without it.
-        el.textContent = `Track record: ${line.replace(/^\d{4}-\d{2}-\d{2} — /, '')}`;
+        txt.textContent = line.replace(/^\d{4}-\d{2}-\d{2} — /, '');
         el.classList.remove('hidden');
     } catch (e) {
         debugLog('coach track record hydrate failed:', e);
@@ -595,13 +599,23 @@ function handleCoachActionCard(card, streamingBubble) {
         const p = card.program;
         const id = `pcard_${++_programCardSeq}`;
         if (card.undo?.newProgramId) _pendingProgramUndo.set(id, card.undo);
+        // Spell out the end date so "4 weeks" isn't calendar math the user has
+        // to do in their head. Block ends on the last day of the last week.
+        let throughStr = '';
+        if (p.startDate && p.weeks) {
+            const end = new Date(`${p.startDate}T12:00:00`);
+            end.setDate(end.getDate() + p.weeks * 7 - 1);
+            if (!Number.isNaN(end.getTime())) {
+                throughStr = ` · through ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+            }
+        }
         addChatBubble('bot', `
             <div class="coach-action-card coach-action-card--receipt coach-program-card" id="${id}">
                 <div class="coach-program-card__head">
                     <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-flag-checkered"></i></div>
                     <div class="coach-action-card__body">
                         <div class="coach-program-card__title">${escapeHtml(p.name || 'Program set')}</div>
-                        <div class="coach-program-card__meta">${p.weeks} weeks · ${escapeHtml(p.goal || '')}${p.deloadWeek ? ` · deload lands week ${p.deloadWeek}` : ''}</div>
+                        <div class="coach-program-card__meta">${p.weeks} weeks${throughStr} · ${escapeHtml(p.goal || '')}${p.deloadWeek ? ` · deload lands week ${p.deloadWeek}` : ''}</div>
                     </div>
                     <span class="coach-receipt-tag">Applied</span>
                 </div>

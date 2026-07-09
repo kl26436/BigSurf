@@ -52,15 +52,30 @@
     font-size: var(--font-sm);
     color: var(--text-muted);
 }
-/* One-line track record under the hero — the outcome loop's passive surface. */
-.coach-hero__fact {
-    font-size: var(--font-2xs);
-    color: var(--text-muted);
-    margin-top: var(--space-8);
+/* Track record under the hero — the outcome loop's payoff line, and the
+   single most convincing thing the coach can say ("here's proof it worked").
+   Given real weight: a bordered chip with an accent icon, not a footnote. */
+.coach-track-record {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin: var(--space-12) auto 0;
+    max-width: 360px;
+    padding: 8px 12px;
+    background: var(--success-bg-subtle);
+    border: 1px solid var(--success-border);
+    border-radius: var(--radius-md);
+    text-align: left;
+}
+.coach-track-record__icon {
+    color: var(--success);
+    font-size: var(--font-sm);
+    flex-shrink: 0;
+}
+.coach-track-record__txt {
+    font-size: var(--font-xs);
+    color: var(--text-main);
     line-height: 1.4;
-    max-width: 340px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 /* Prompt cards (spec §8: .coach-prompt-card family) */
