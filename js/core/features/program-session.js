@@ -15,9 +15,10 @@
 
 import { AppState } from '../utils/app-state.js';
 import { debugLog } from '../utils/config.js';
-import { showNotification } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml } from '../ui/ui-helpers.js';
 import { deriveProgramWeek } from './coach-context.js';
 import { debouncedSaveWorkoutData } from '../data/data-manager.js';
+import { DAY_KEYS, DAY_LABELS } from './week-plan.js';
 
 /**
  * Hydrate the active program once per session. null = fetched, none active.
@@ -292,6 +293,106 @@ export function planNextBlock() {
     }).catch(e => debugLog('plan next block failed:', e));
 }
 
+// ── Program detail sheet ────────────────────────────────────────────
+// The "program home": tapping the dashboard heartbeat opens this. Shows the
+// whole multi-week block (current week highlighted), the weekly schedule, and
+// two doors — edit the schedule, or bring the coach in to change/discuss it.
+
+export function closeProgramDetailSheet() {
+    document.getElementById('program-detail-backdrop')?.remove();
+    document.getElementById('program-detail-sheet')?.remove();
+}
+
+export function openProgramDetailSheet() {
+    const program = AppState._activeProgram;
+    if (!program?.startDate) return;
+    closeProgramDetailSheet();
+
+    const { week: curWeek } = deriveProgramWeek(program, AppState.getTodayDateString());
+    const templates = AppState.workoutPlans || AppState.templates || [];
+    const nameOf = (id) => templates.find(t => t.id === id)?.name || id;
+
+    // Every week of the block, baseline weeks included (weekTargets is sparse).
+    const weekRows = Array.from({ length: program.weeks || 1 }, (_, i) => {
+        const wk = i + 1;
+        const t = (program.weekTargets || []).find(x => x.week === wk);
+        const label = t?.label || 'Baseline';
+        const pct = t?.weightPct ? `${t.weightPct > 0 ? '+' : ''}${t.weightPct}% weight` : '';
+        const detail = [pct, t?.note].filter(Boolean).join(' · ') || 'Normal volume';
+        const isCur = wk === curWeek;
+        return `
+            <div class="program-detail__week${isCur ? ' program-detail__week--current' : ''}">
+                <div class="program-detail__week-num">Wk ${wk}</div>
+                <div class="program-detail__week-info">
+                    <div class="program-detail__week-label">${escapeHtml(label)}${isCur ? '<span class="program-detail__week-tag">This week</span>' : ''}</div>
+                    <div class="program-detail__week-detail">${escapeHtml(detail)}</div>
+                </div>
+            </div>`;
+    }).join('');
+
+    const split = program.split || {};
+    const scheduled = DAY_KEYS.filter(d => split[d]);
+    const scheduleRows = scheduled.length
+        ? scheduled.map(d => `
+            <div class="program-detail__day">
+                <span class="program-detail__day-name">${escapeHtml(DAY_LABELS[d].slice(0, 3))}</span>
+                <span class="program-detail__day-workout">${escapeHtml(nameOf(split[d]))}</span>
+            </div>`).join('')
+        : '<div class="program-detail__day program-detail__day--empty">No days scheduled yet</div>';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'program-detail-backdrop';
+    backdrop.onclick = () => closeProgramDetailSheet();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'program-detail-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Program detail');
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">${escapeHtml(program.name || 'Program')}</div>
+            <div class="aw-sheet__subtitle">Week ${curWeek} of ${program.weeks || 1} · ${escapeHtml(program.goal || 'general')}</div>
+        </div>
+        <div class="aw-sheet__body">
+            <div class="program-detail__section-label">The block</div>
+            <div class="program-detail__weeks">${weekRows}</div>
+            <div class="program-detail__section-label">Weekly schedule</div>
+            <div class="program-detail__schedule">${scheduleRows}</div>
+            <button class="program-detail__edit" onclick="editProgramSchedule()">
+                <i class="fas fa-calendar-week"></i> Edit week schedule
+            </button>
+        </div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action" onclick="closeProgramDetailSheet()">Close</button>
+            <button class="aw-sheet__action primary" onclick="discussProgramWithCoach()">
+                <i class="fas fa-robot"></i> Discuss with coach
+            </button>
+        </div>
+    `;
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+}
+
+/** Edit the schedule that drives the program — routes to the week plan sheet. */
+export function editProgramSchedule() {
+    closeProgramDetailSheet();
+    if (typeof window.openWeekPlanSheet === 'function') window.openWeekPlanSheet();
+}
+
+/** Bring the coach in to change or discuss the program, from the detail sheet. */
+export function discussProgramWithCoach() {
+    closeProgramDetailSheet();
+    import('./ai-coach-ui.js').then(m => {
+        m.showAICoach();
+        setTimeout(() => window.askCoach?.("Let's review my program — walk me through the coming weeks, and what we could change."), 350);
+    }).catch(e => debugLog('program discuss failed:', e));
+}
+
 // Self-wire — the dashboard renders these handlers (same-file assignment
 // keeps template and handler in one cache unit; see CLAUDE.md).
 if (typeof window !== 'undefined') {
@@ -301,4 +402,8 @@ if (typeof window !== 'undefined') {
     window.askCoachToReflow = askCoachToReflow;
     window.dismissProgramComplete = dismissProgramComplete;
     window.planNextBlock = planNextBlock;
+    window.openProgramDetailSheet = openProgramDetailSheet;
+    window.closeProgramDetailSheet = closeProgramDetailSheet;
+    window.editProgramSchedule = editProgramSchedule;
+    window.discussProgramWithCoach = discussProgramWithCoach;
 }

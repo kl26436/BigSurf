@@ -535,31 +535,115 @@
 .dash-today-hero__caution-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
 .dash-today-hero__caution-txt b { color: var(--text-strong); }
 
-/* Persistent program heartbeat chip — calm mid-block proof of life, distinct
-   from the loud adjustment notice: neutral card, no accent fill. */
-.dash-program-chip {
+/* Persistent program heartbeat — a quiet muted footer row under the hero, not
+   a highlighted card. Just enough to confirm the block is running and open its
+   detail; deliberately understated so it never competes with Start. */
+.dash-program-line {
     display: flex;
     align-items: center;
     gap: var(--space-8);
-    margin-bottom: var(--space-12);
-    padding: 8px 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-pill);
+    margin-top: var(--space-10);
+    padding: 6px 4px;
     cursor: pointer;
 }
-.dash-program-chip__icon { color: var(--text-secondary); font-size: var(--font-xs); flex-shrink: 0; }
-.dash-program-chip__txt {
+.dash-program-line__icon { color: var(--text-muted); font-size: var(--font-2xs); flex-shrink: 0; }
+.dash-program-line__txt {
     flex: 1;
     min-width: 0;
-    font-size: var(--font-xs);
-    color: var(--text-main);
-    font-weight: 600;
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.dash-program-chip__chev { color: var(--text-muted); font-size: var(--font-2xs); flex-shrink: 0; }
+.dash-program-line__chev { color: var(--text-muted); font-size: var(--font-2xs); flex-shrink: 0; }
+
+/* Program detail sheet — the "program home" behind the heartbeat line. */
+.program-detail__section-label {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin: var(--space-16) 0 var(--space-8);
+}
+.program-detail__section-label:first-child { margin-top: 0; }
+.program-detail__week {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-10) var(--space-12);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-8);
+}
+.program-detail__week--current {
+    border-color: var(--success-border);
+    background: var(--success-bg-subtle);
+}
+.program-detail__week-num {
+    font-size: var(--font-xs);
+    font-weight: 700;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    width: 34px;
+}
+.program-detail__week-info { flex: 1; min-width: 0; }
+.program-detail__week-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.program-detail__week-tag {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--success);
+    background: var(--success-bg-subtle);
+    border: 1px solid var(--success-border);
+    border-radius: var(--radius-pill);
+    padding: 1px 8px;
+}
+.program-detail__week-detail {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.program-detail__schedule {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+.program-detail__day {
+    display: flex;
+    gap: var(--space-10);
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    padding: var(--space-4) 0;
+}
+.program-detail__day-name {
+    width: 40px;
+    flex-shrink: 0;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.program-detail__day-workout { color: var(--text-strong); }
+.program-detail__day--empty { color: var(--text-muted); }
+.program-detail__edit {
+    width: 100%;
+    margin-top: var(--space-12);
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    cursor: pointer;
+}
 
 /* Program-complete banner — the block finishing is a milestone (gold, like a
    PR), with the next block one tap away. */

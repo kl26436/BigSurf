@@ -171,8 +171,8 @@ async function renderDashboard() {
                 ${renderMetaStrip(streakDays, weekCount, weeklyGoal, detectDeloadWeek(allWorkouts), weekPace)}
                 ${renderActiveWorkoutPill()}
                 ${renderProgramCompleteBanner(allWorkouts)}
-                ${renderProgramHeartbeat()}
                 ${renderForToday(allWorkouts)}
+                ${renderProgramHeartbeat()}
                 ${renderTodayPRBanner(recentPRs)}
                 ${renderThisWeekCard(allWorkouts, recentPRs, todaysPRKeys, topInsight)}
                 ${await renderBodyCard(bwData)}
@@ -499,22 +499,23 @@ function renderProgramCompleteBanner(allWorkouts = []) {
     `;
 }
 
-// Persistent, quiet "you're mid-block" chip — proof the program is running on
-// every week (baseline included), so a freshly-started block isn't invisible
-// until its first adjustment week. Deliberately calm: no gold, no CTA, taps
-// through to the week plan (the program's actual shape). Mutually exclusive
-// with the completion banner (heartbeat is null once finished).
+// Persistent, quiet "you're mid-block" line under the hero — proof the program
+// is running on every week (baseline included), so a freshly-started block
+// isn't invisible until its first adjustment week. Deliberately understated:
+// a muted footer row, not a highlighted card. Taps into the program detail
+// sheet (the block, the schedule, a coach handoff). Mutually exclusive with
+// the completion banner (heartbeat is null once finished).
 function renderProgramHeartbeat() {
     const beat = AppState._activeProgram
         ? programHeartbeat(AppState._activeProgram, getDateString())
         : null;
     if (!beat) return '';
     return `
-        <div class="dash-program-chip" onclick="openWeekPlanSheet()" role="button" tabindex="0"
-            aria-label="${escapeAttr(beat.name)}, week ${beat.week} of ${beat.weeks} — view week plan">
-            <i class="fas fa-flag-checkered dash-program-chip__icon"></i>
-            <span class="dash-program-chip__txt">${escapeHtml(beat.name)} · week ${beat.week} of ${beat.weeks}</span>
-            <i class="fas fa-chevron-right dash-program-chip__chev"></i>
+        <div class="dash-program-line" onclick="openProgramDetailSheet()" role="button" tabindex="0"
+            aria-label="${escapeAttr(beat.name)}, week ${beat.week} of ${beat.weeks} — open program">
+            <i class="fas fa-flag-checkered dash-program-line__icon"></i>
+            <span class="dash-program-line__txt">${escapeHtml(beat.name)} · week ${beat.week} of ${beat.weeks}</span>
+            <i class="fas fa-chevron-right dash-program-line__chev"></i>
         </div>
     `;
 }
@@ -774,7 +775,7 @@ function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByT
         programCautionHook = `
             <div class="dash-today-hero__caution" onclick="askCoachToReflow()" role="button" tabindex="0"
                 aria-label="Light week behind you — trained ${programCaution.trained} of ${programCaution.planned} planned days. Tap to ask the coach to reflow.">
-                <i class="fas fa-triangle-exclamation"></i>
+                <i class="fas fa-exclamation-triangle"></i>
                 <div class="dash-today-hero__caution-txt"><b>Light week behind you</b> — ${programCaution.trained} of ${programCaution.planned} planned days. Ease in or tap to reflow.</div>
             </div>
         `;
