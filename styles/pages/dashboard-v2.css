@@ -459,6 +459,30 @@
     border: 1px solid var(--primary-border);
     color: var(--primary);
 }
+
+/* Active-workout hero: same shell as .dash-today-hero, live-dot in the eyebrow
+   marks it as "running." The Cancel ghost gets a danger tint. */
+.dash-today-hero--active .dash-today-hero__eyebrow {
+    color: var(--success);
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+}
+.dash-today-hero__live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: dashActiveHeroPulse 1.6s ease-in-out infinite;
+}
+@keyframes dashActiveHeroPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+.dash-today-hero--active .dash-today-hero__cta--ghost {
+    border-color: var(--danger);
+    color: var(--danger);
+}
 .dash-today-hero__pr {
     display: flex;
     align-items: center;

@@ -843,6 +843,15 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
     // Open modal
     openModal('workout-completion-modal');
 
+    // Any close path (X button, backdrop tap, Escape) must return the user
+    // to the dashboard — the workout is done and #active-workout underneath
+    // is stale/empty (7/8 report: "finished workout, clicked down, stayed
+    // on active workout screen"). Done button navigates itself; this catches
+    // every other exit.
+    modal.addEventListener('close', () => {
+        navigateTo('dashboard');
+    }, { once: true });
+
     // Async-hydrate a "vs. last {type}" volume delta once prior history loads.
     // Best-effort progressive enhancement — the modal is already usable without it.
     hydratePriorComparison(workoutData, totalVolume);

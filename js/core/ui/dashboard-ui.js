@@ -287,10 +287,58 @@ function renderMetaStrip(streak, weekDone, weekGoal, isDeload = false, weekPace 
     return `<div class="dash-strip">${parts.join('<span class="dash-strip__sep">·</span>')}</div>`;
 }
 
+// Active-workout hero: same shell as renderForTodayHero, but the eyebrow
+// shows the running timer and the two CTAs become Continue / Cancel. Returns
+// '' when no workout is in progress so renderForToday keeps its normal path.
+function renderActiveWorkoutHero() {
+    const inProgress = window.inProgressWorkout;
+    const hasActiveWorkout = AppState.currentWorkout || inProgress;
+    if (!hasActiveWorkout) return '';
+
+    const workoutType = AppState.savedData?.workoutType
+        || AppState.currentWorkout?.workoutType
+        || inProgress?.workoutType
+        || 'Workout';
+    const exercises = AppState.savedData?.exercises || inProgress?.exercises || {};
+    const total = AppState.currentWorkout?.exercises?.length || Object.keys(exercises).length;
+    const done = Object.values(exercises).filter(e => e.completed).length;
+    const startedAt = AppState.savedData?.startedAt
+        || AppState.currentWorkout?.startedAt
+        || inProgress?.startedAt;
+    const elapsedSeconds = startedAt
+        ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
+        : 0;
+    const elapsed = formatPillElapsed(elapsedSeconds);
+    const category = (getWorkoutCategory(workoutType) || 'other').toLowerCase();
+
+    return `
+        <div class="dash-today-hero dash-today-hero--active cat-fill-${category}">
+            <div class="dash-today-hero__eyebrow">
+                <span class="dash-today-hero__live-dot" aria-hidden="true"></span>
+                In progress · <span id="dash-active-hero-timer">${elapsed}</span>
+            </div>
+            <div class="dash-today-hero__name">${escapeHtml(workoutType)}</div>
+            <div class="dash-today-hero__meta">${done}/${total} exercise${total === 1 ? '' : 's'} done</div>
+            <div class="dash-today-hero__actions">
+                <button class="dash-today-hero__cta" onclick="resumeActiveWorkout()" aria-label="Continue workout">
+                    <i class="fas fa-play"></i> Continue
+                </button>
+                <button class="dash-today-hero__cta dash-today-hero__cta--ghost" onclick="confirmCancelActiveWorkout()" aria-label="Cancel workout">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 function renderActiveWorkoutPill() {
     const inProgress = window.inProgressWorkout;
     const hasActiveWorkout = AppState.currentWorkout || inProgress;
     if (!hasActiveWorkout) return '';
+    // 7/9 clutter reduction: when the For-Today hero is going to render as
+    // the active-workout hero (Continue/Cancel), the pill becomes redundant.
+    // Only show the pill in the fallback (no templates → no hero possible).
+    if ((AppState.templates || []).some(t => !t.archived)) return '';
 
     const workoutType = AppState.savedData?.workoutType
         || AppState.currentWorkout?.workoutType
@@ -340,8 +388,9 @@ function startPillTimer() {
     stopPillTimer();
     pillTimerInterval = setInterval(() => {
         const pill = document.querySelector('.active-pill__meta');
+        const heroTimer = document.getElementById('dash-active-hero-timer');
         const inProgress = window.inProgressWorkout;
-        if (!pill || (!AppState.currentWorkout && !inProgress)) {
+        if ((!pill && !heroTimer) || (!AppState.currentWorkout && !inProgress)) {
             stopPillTimer();
             return;
         }
@@ -352,7 +401,9 @@ function startPillTimer() {
         const elapsedSeconds = startedAt
             ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
             : 0;
-        pill.textContent = `${done}/${total} · ${formatPillElapsed(elapsedSeconds)}`;
+        const elapsed = formatPillElapsed(elapsedSeconds);
+        if (pill) pill.textContent = `${done}/${total} · ${elapsed}`;
+        if (heroTimer) heroTimer.textContent = elapsed;
     }, 1000);
 }
 function stopPillTimer() {
@@ -522,6 +573,12 @@ function renderProgramHeartbeat() {
 
 function renderForToday(allWorkouts) {
     const dayName = getDayName();
+    // 7/9 UX: when a workout is in progress, the For-Today hero becomes the
+    // active-workout hero — same visual, buttons swap to Continue/Cancel and
+    // the eyebrow shows the running timer. Keeps the pretty hero while
+    // removing the pill+Start-workout redundancy the user flagged.
+    const activeHero = renderActiveWorkoutHero();
+    if (activeHero) return activeHero;
     // Phase 7 — archived workouts drop out of For Today ranking.
     const templates = (AppState.templates || []).filter(t => !t.archived);
     // No workouts at all (new user) → still give the dashboard a start path.
@@ -1192,7 +1249,10 @@ function renderTodayPRBanner(recentPRs) {
  */
 export function showTodaysPRs() {
     const today = AppState.getTodayDateString();
-    const recentPRs = window.PRTracker?.getRecentPRs?.(30) || [];
+    // Use the imported PRTracker, not window.PRTracker — window assignment
+    // happens post-init and can be racy on first render (was: banner tap
+    // silently no-op'd because window.PRTracker was undefined).
+    const recentPRs = PRTracker.getRecentPRs(30) || [];
     const todays = recentPRs.filter(pr => pr.date === today);
     if (todays.length === 0) return;
 
@@ -1228,8 +1288,17 @@ export function showTodaysPRs() {
         overlay.classList.remove('dash-todays-prs-overlay--show');
         setTimeout(() => overlay.remove(), 200);
     };
+    // iOS Safari can fire a synthetic click on a newly-appended fullscreen
+    // element positioned under the user's finger — the same tap that opened
+    // the overlay hits the backdrop-close branch and dismisses it in the
+    // same frame. Guard by refusing to close until the show class has
+    // settled (rules out both the phantom click and any bubbled remnants
+    // from the banner tap).
+    const openedAt = performance.now();
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay || e.target.closest('[data-close]')) {
+        const backdropTap = e.target === overlay || e.target.closest('[data-close]');
+        if (backdropTap && performance.now() - openedAt < 300) return;
+        if (backdropTap) {
             close();
             return;
         }

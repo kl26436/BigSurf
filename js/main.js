@@ -317,6 +317,7 @@ import {
     searchLocationAddress,
     selectAddressResult,
     applyManualCoords,
+    retryLocationGPS,
 } from './core/features/location-ui.js';
 
 // Location service (GPS-based location detection)
@@ -717,6 +718,7 @@ window.switchLocationMethod = switchLocationMethod;
 window.searchLocationAddress = searchLocationAddress;
 window.selectAddressResult = selectAddressResult;
 window.applyManualCoords = applyManualCoords;
+window.retryLocationGPS = retryLocationGPS;
 
 // Modal helpers (used by inline onclick in HTML)
 window.openModal = openModal;

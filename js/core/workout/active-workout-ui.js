@@ -105,6 +105,14 @@ export function renderActiveWorkout() {
     // Start duration timer
     startDurationTimer();
 
+    // 7/10 fix: if the user briefly went back to dashboard mid-rest, cleanup()
+    // cleared the setInterval but left the timer STATE (restTimerActive +
+    // restTimerEndsAt) intact — so on re-entry the banner rendered a stuck
+    // stale value with nothing to tick it. restTimerEndsAt is the authoritative
+    // timestamp; resume by recomputing from it, or trip the "done" state if
+    // it already elapsed while we were away.
+    resumeRestTimerIfActive();
+
     // Render full UI
     renderAll();
 }
@@ -408,6 +416,27 @@ function clearRestTimer() {
         clearInterval(restTimerInterval);
         restTimerInterval = null;
     }
+}
+
+// Restart the tick interval from the persisted endsAt when we re-enter the
+// page after a dashboard side-trip. Elapsed-during-away → immediately shows
+// the "Ready" state. No-op unless a rest is actually still armed.
+function resumeRestTimerIfActive() {
+    if (!restTimerActive || restTimerEndsAt <= 0) return;
+    if (restTimerInterval) return; // already ticking (defensive)
+
+    restTimerRemaining = Math.max(0, Math.ceil((restTimerEndsAt - Date.now()) / 1000));
+    if (restTimerRemaining <= 0) {
+        // Rest ended while we were away — swap into the persistent "Ready"
+        // state instead of stranding the countdown at 0.
+        onRestTimerComplete();
+        return;
+    }
+    restTimerInterval = setInterval(() => {
+        restTimerRemaining = Math.max(0, Math.ceil((restTimerEndsAt - Date.now()) / 1000));
+        updateRestTimerDisplay();
+        if (restTimerRemaining <= 0) onRestTimerComplete();
+    }, 1000);
 }
 
 export function awRestAdd30() {

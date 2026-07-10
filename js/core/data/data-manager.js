@@ -236,8 +236,15 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
         // historical workout rewrites completedAt to "now", which pushes
         // stale edits to the top of this query and can starve out the
         // actually-most-recent session within the limit.
+        //
+        // Limit is 90 (not 30) because cancelled/junk workout docs share
+        // this window: a testing-heavy week (see 2026-07-01..07 with ~20
+        // cancelled attempts) can push the actual last-session out of a
+        // 30-doc fetch. Server-side filtering on cancelledAt isn't safe
+        // without a backfill — legacy completed docs don't have the field,
+        // and Firestore `== null` only matches docs where the field exists.
         const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
-        const q = query(workoutsRef, orderBy('date', 'desc'), limit(30));
+        const q = query(workoutsRef, orderBy('date', 'desc'), limit(90));
         const snapshot = await withTimeout(getDocs(q));
 
         const today = state.getTodayDateString();

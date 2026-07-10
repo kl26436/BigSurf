@@ -145,3 +145,42 @@
     border-radius: var(--radius-xs);
     margin: var(--space-6) 0;
 }
+
+/* ── GPS status pill on the location list ── */
+.location-gps-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-10) var(--space-12);
+    border-radius: var(--radius-md);
+    font-size: var(--font-sm);
+    margin-bottom: var(--space-10);
+    border: 1px solid var(--border-subtle);
+}
+.location-gps-status i { flex-shrink: 0; }
+.location-gps-status span { flex: 1; }
+.location-gps-status--detecting {
+    background: var(--bg-card);
+    color: var(--text-muted);
+}
+.location-gps-status--ok {
+    background: var(--success-bg);
+    color: var(--success);
+    border-color: var(--success);
+}
+.location-gps-status--err {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+.location-gps-status__retry {
+    background: transparent;
+    border: 1px solid currentColor;
+    color: inherit;
+    padding: var(--space-4) var(--space-10);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    cursor: pointer;
+}
+.location-gps-status__retry:active { opacity: 0.7; }

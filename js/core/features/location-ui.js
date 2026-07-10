@@ -5,7 +5,7 @@ import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from 
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
 import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
-import { getSessionLocation, setSessionLocation, getCurrentPosition, findNearbyLocation } from './location-service.js';
+import { getSessionLocation, setSessionLocation, getCurrentPosition, getLastGeoError, findNearbyLocation } from './location-service.js';
 import { functions, httpsCallable } from '../data/firebase-config.js';
 
 let workoutManager = null;
@@ -86,6 +86,7 @@ export async function showLocationManagement() {
     renderLocationManagementList();
     updateCurrentLocationDisplay();
     updateLocationMap(); // Shows placeholder initially
+    renderGPSStatusPill('detecting');
 
     // Auto-detect current GPS location and match to saved locations
     try {
@@ -106,10 +107,85 @@ export async function showLocationManagement() {
                 setSessionLocation(matchedLocation.name);
                 updateCurrentLocationDisplay();
                 renderLocationManagementList(); // Re-render to show CURRENT badge
+                renderGPSStatusPill('matched', { name: matchedLocation.name });
+            } else {
+                renderGPSStatusPill('unmatched');
             }
+        } else {
+            // 7/9 "GPS isn't working" report: coords null with no user feedback.
+            // Surface the specific reason (permission / timeout / unavailable)
+            // and give a retry button so the user knows what to do.
+            renderGPSStatusPill('failed', { error: getLastGeoError() });
         }
     } catch (error) {
         console.error('❌ Error auto-detecting GPS:', error);
+        renderGPSStatusPill('failed', { error: { label: 'unknown', message: error?.message || '' } });
+    }
+}
+
+/**
+ * Visible GPS status above the map. States: detecting | matched | unmatched
+ * | failed. On failure surfaces the specific error label + a Try again button
+ * — silent null-resolution left users with no idea what happened.
+ */
+function renderGPSStatusPill(state, opts = {}) {
+    const container = document.querySelector('#location-management-section .location-management-content');
+    if (!container) return;
+    let pill = document.getElementById('location-gps-status');
+    if (!pill) {
+        pill = document.createElement('div');
+        pill.id = 'location-gps-status';
+        pill.className = 'location-gps-status';
+        container.insertBefore(pill, container.firstChild);
+    }
+    let html;
+    if (state === 'detecting') {
+        pill.className = 'location-gps-status location-gps-status--detecting';
+        html = '<i class="fas fa-spinner fa-spin"></i><span>Detecting your location…</span>';
+    } else if (state === 'matched') {
+        pill.className = 'location-gps-status location-gps-status--ok';
+        html = `<i class="fas fa-check-circle"></i><span>At ${escapeHtml(opts.name || 'a saved location')}</span>`;
+    } else if (state === 'unmatched') {
+        pill.className = 'location-gps-status location-gps-status--ok';
+        html = '<i class="fas fa-location-crosshairs"></i><span>Location detected — not near a saved gym</span>';
+    } else {
+        pill.className = 'location-gps-status location-gps-status--err';
+        const label = opts.error?.label || 'unknown';
+        const reason =
+            label === 'permission-denied' ? 'Location permission denied. Allow in Settings → Safari.'
+            : label === 'timeout' ? "GPS timed out — try again outdoors or near a window."
+            : label === 'position-unavailable' ? "GPS unavailable right now — try again in a moment."
+            : label === 'unsupported' ? "This device doesn't support GPS."
+            : "GPS couldn't get a fix.";
+        html = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>${escapeHtml(reason)}</span>
+            <button class="location-gps-status__retry" onclick="retryLocationGPS()" aria-label="Try again">Try again</button>
+        `;
+    }
+    pill.innerHTML = html;
+}
+
+// Retry the auto-detect flow — called from the failed-state pill.
+export async function retryLocationGPS() {
+    renderGPSStatusPill('detecting');
+    const coords = await getCurrentPosition();
+    if (coords) {
+        window.currentGPSCoords = coords;
+        updateLocationMap();
+        const effectiveRadius = Math.min(Math.max(coords.accuracy || 500, 500), 5000);
+        const matchedLocation = findNearbyLocation(cachedLocations, coords, effectiveRadius);
+        if (matchedLocation) {
+            currentLocationName = matchedLocation.name;
+            setSessionLocation(matchedLocation.name);
+            updateCurrentLocationDisplay();
+            renderLocationManagementList();
+            renderGPSStatusPill('matched', { name: matchedLocation.name });
+        } else {
+            renderGPSStatusPill('unmatched');
+        }
+    } else {
+        renderGPSStatusPill('failed', { error: getLastGeoError() });
     }
 }
 

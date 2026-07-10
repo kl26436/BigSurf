@@ -16,14 +16,34 @@ let currentLocationName = null;
  * Get current GPS coordinates
  * @returns {Promise<{latitude: number, longitude: number} | null>}
  */
+// Codes: 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT.
+const GEO_ERROR_LABEL = { 1: 'permission-denied', 2: 'position-unavailable', 3: 'timeout' };
+
+// Cache the last error so the UI can surface a specific reason ("permission
+// denied" vs "timeout") when the "GPS isn't working" complaint comes in —
+// resolve(null) alone hid the cause.
+let _lastGeoError = null;
+export function getLastGeoError() { return _lastGeoError; }
+
+// Rate-limit the captureWarning to once per 5 minutes per error label. A rapid
+// retry loop (22 fires in 7s on 2026-07-09 after the first fix rolled out) would
+// otherwise pile up Firestore writes for the same permission-denied answer.
+const _lastGeoWarn = {};
+
 export function getCurrentPosition() {
+    _lastGeoError = null;
     return new Promise((resolve) => {
         if (!navigator.geolocation) {
+            _lastGeoError = { code: 0, label: 'unsupported', message: 'Geolocation not supported' };
             console.error('❌ Geolocation not supported');
             resolve(null);
             return;
         }
 
+        // iOS Safari can return silently after enableHighAccuracy times out —
+        // surface the failure mode (permission denied vs timeout vs unavailable)
+        // to errorLogs so the "GPS isn't working" reports have a diagnostic
+        // trail, and cache it so the UI can show a specific reason.
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const coords = {
@@ -34,8 +54,31 @@ export function getCurrentPosition() {
                 currentLocation = coords;
                 resolve(coords);
             },
-            (error) => {
-                console.error('❌ Geolocation error:', error.message);
+            async (error) => {
+                _lastGeoError = {
+                    code: error.code,
+                    label: GEO_ERROR_LABEL[error.code] || 'unknown',
+                    message: error.message || '',
+                };
+                console.error('❌ Geolocation error:', _lastGeoError);
+                const now = Date.now();
+                const last = _lastGeoWarn[_lastGeoError.label] || 0;
+                if (now - last > 5 * 60 * 1000) {
+                    _lastGeoWarn[_lastGeoError.label] = now;
+                    try {
+                        const { captureWarning } = await import('../utils/error-handler.js');
+                        captureWarning(
+                            `Geolocation failed — ${_lastGeoError.label}`,
+                            'getCurrentPosition',
+                            {
+                                code: error.code,
+                                label: _lastGeoError.label,
+                                message: error.message || null,
+                                userAgent: navigator.userAgent || null,
+                            }
+                        );
+                    } catch { /* diagnostic must not break flow */ }
+                }
                 resolve(null);
             },
             {
