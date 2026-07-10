@@ -159,7 +159,12 @@ dialog[open] > .modal-content {
     z-index: 50;
     padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px) + var(--kb-inset, 0px));
 }
-.content-section.pinned-header > .section-header-row {
+/* Header must not shrink as a flex item, or the scroll body's remaining
+   height is computed unreliably on iOS first paint (content is injected
+   async, before which the body can end up with no scrollable height until a
+   later reflow). Both header patterns used under .pinned-header get this. */
+.content-section.pinned-header > .section-header-row,
+.content-section.pinned-header > .page-header {
     flex-shrink: 0;
 }
 .content-section-body {
