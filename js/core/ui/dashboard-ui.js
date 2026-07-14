@@ -685,6 +685,18 @@ function renderForToday(allWorkouts) {
             </button>
         </div>` : '';
 
+    // Program door on the home surface (discoverability review): quiet and
+    // dismissible like the week-plan hint, and only one hint at a time — the
+    // week-plan hint goes first, since a plan is the natural first rung.
+    const programRow = (!setupRow && !AppState._activeProgram && !AppState.settings?.programStarterDismissed) ? `
+        <div class="dash-alt-row dash-alt-row--setup" id="program-starter-row">
+            <i class="fas fa-flag-checkered dash-alt-row__icon"></i>
+            <div class="dash-alt-row__txt dash-alt-row__txt--muted" onclick="startProgramChat()" role="button" tabindex="0">Get a 4-week program built from your workouts</div>
+            <button class="dash-alt-row__dismiss" onclick="dismissProgramStarter(event)" aria-label="Dismiss">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>` : '';
+
     return `
         ${renderForTodayHero(hero, dayName, lastDoneByType, proximity, programSession, programNotice, programCaution)}
         ${renderProgramHeartbeat()}
@@ -696,6 +708,7 @@ function renderForToday(allWorkouts) {
                 <i class="fas fa-chevron-right dash-chev"></i>
             </div>
             ${setupRow}
+            ${programRow}
         </div>
     `;
 }
@@ -726,6 +739,16 @@ export function dismissWeekPlanSetup(event) {
 }
 if (typeof window !== 'undefined') {
     window.dismissWeekPlanSetup = dismissWeekPlanSetup;
+}
+
+/** Dismiss the program starter hint forever (quiet, no confirm). */
+export function dismissProgramStarter(event) {
+    event?.stopPropagation?.();
+    document.getElementById('program-starter-row')?.remove();
+    import('./settings-ui.js').then(m => m.updateSetting('programStarterDismissed', true)).catch(() => {});
+}
+if (typeof window !== 'undefined') {
+    window.dismissProgramStarter = dismissProgramStarter;
 }
 
 // Rest day / new user: Quick start takes the hero slot instead of hiding.

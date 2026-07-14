@@ -373,12 +373,13 @@ export function renderSettings() {
                     </div>
                     ${toggleBtn('weeklyCoachReview', s.weeklyCoachReview !== false)}
                 </div>
-                <div class="srow">
+                <div class="srow srow--clickable" onclick="settingsProgramRowTap()">
                     <div class="srow-icon ic-primary"><i class="fas fa-flag-checkered"></i></div>
                     <div class="srow-info">
                         <div class="srow-name">Program</div>
                         <div class="srow-desc" id="program-trust-desc">${escapeHtml(programTrustDesc())}</div>
                     </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
                 </div>
                 <div class="srow srow--clickable" onclick="openWeekPlanSheet()">
                     <div class="srow-icon ic-blue"><i class="fas fa-calendar-alt"></i></div>
@@ -1008,6 +1009,16 @@ export function closeCoachMemorySheet(immediate = false) {
 // One workout per weekday, rest days explicit. Seeds from the day chips
 // templates already carry so the user confirms rather than builds from zero.
 
+/** Program row tap: detail sheet when a program is active, coach door when
+ *  not — the row used to be a dead end that told you to go type "program". */
+export function settingsProgramRowTap() {
+    if (AppState._activeProgram) {
+        import('../features/program-session.js').then((m) => m.openProgramDetailSheet?.()).catch(() => {});
+    } else {
+        import('../features/ai-coach-ui.js').then((m) => m.startProgramChat?.()).catch(() => {});
+    }
+}
+
 export async function openWeekPlanSheet() {
     if (!AppState.currentUser) return;
     closeWeekPlanSheet(true);
@@ -1056,6 +1067,11 @@ export async function openWeekPlanSheet() {
                     </select>
                 </div>
             `).join('')}
+            ${!AppState._activeProgram ? `
+                <div class="week-plan-editor__coach" onclick="startProgramChat()" role="button" tabindex="0">
+                    <i class="fas fa-flag-checkered"></i>
+                    <span>Want blocks and deloads planned too? Ask the coach for a program</span>
+                </div>` : ''}
         </div>
         <div class="aw-sheet__actions">
             <button class="aw-sheet__action" onclick="closeWeekPlanSheet()">Cancel</button>
@@ -1482,5 +1498,6 @@ window.openCoachMemorySheet = openCoachMemorySheet;
 window.deleteCoachFact = deleteCoachFact;
 window.closeCoachMemorySheet = closeCoachMemorySheet;
 window.openWeekPlanSheet = openWeekPlanSheet;
+window.settingsProgramRowTap = settingsProgramRowTap;
 window.saveWeekPlanFromSheet = saveWeekPlanFromSheet;
 window.closeWeekPlanSheet = closeWeekPlanSheet;

@@ -349,3 +349,16 @@
     font-size: var(--font-sm);
     padding: 0 var(--space-12);
 }
+.week-plan-editor__coach {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.week-plan-editor__coach i {
+    color: var(--primary);
+    flex-shrink: 0;
+}

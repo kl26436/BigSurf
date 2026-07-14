@@ -56,6 +56,11 @@ let _coachThreadId = null;
  * Prioritizes contextual prompts (stalled lifts, volume imbalance, deload),
  * then fills remaining slots with generic starter prompts. Always returns 4.
  */
+// The program door prompt — shared by the coach landing fallback card and
+// the external entry points (dashboard starter row, Settings program row,
+// week-plan sheet cross-sell).
+const PROGRAM_STARTER_PROMPT = 'Build me a 4-week program from my workouts — pick the split, set week-by-week intensity, and end with a deload.';
+
 function getContextualPrompts() {
     const workouts = AppState.workouts || [];
     const exerciseDatabase = AppState.exerciseDatabase || [];
@@ -118,7 +123,7 @@ function getContextualPrompts() {
         ...(!AppState._activeProgram ? [{
             icon: 'fa-flag-checkered',
             iconClass: '',
-            text: 'Build me a 4-week program from my workouts — pick the split, set week-by-week intensity, and end with a deload.',
+            text: PROGRAM_STARTER_PROMPT,
             html: `Plan a <strong>4-week program</strong> with a deload at the end.`,
         }] : []),
         {
@@ -232,6 +237,12 @@ export function renderAICoachSection() {
 
     loadCoachHistory();
     hydrateCoachTrackRecord();
+
+    // One-time nudge: programs are the coach's biggest capability and
+    // otherwise invisible until you ask (owner discoverability review).
+    if (!AppState._activeProgram) {
+        import('./first-use-tips.js').then((m) => m.showFirstUseTip('coach-programs')).catch(() => {});
+    }
 }
 
 /**
@@ -334,6 +345,18 @@ export function reviewSessionWithCoach(workoutName) {
     showAICoach({
         question: `Review my ${workoutName || 'workout'} session from today — how did it go compared to recent sessions, and what should I change next time?`,
     });
+}
+
+/**
+ * Program door from outside the coach (dashboard starter row, Settings
+ * program row, week-plan sheet cross-sell): open the coach and ask for a
+ * program — the same prompt the landing's starter card sends.
+ */
+export function startProgramChat() {
+    // The tap may come from inside the week-plan sheet — close it first.
+    import('../ui/settings-ui.js').then((m) => m.closeWeekPlanSheet?.(true)).catch(() => {});
+    showAICoach();
+    setTimeout(() => askCoach(PROGRAM_STARTER_PROMPT), 300);
 }
 
 /**

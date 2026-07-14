@@ -362,6 +362,7 @@ import {
     openCoachTemplate,
     sendCoachMessage,
     askCoach,
+    startProgramChat,
     resetCoachUI,
     showPastCoachSession,
     showWorkoutBuilder,
@@ -909,6 +910,7 @@ window.openCoachHistory = openCoachHistory;
 window.openCoachTemplate = openCoachTemplate;
 window.sendCoachMessage = sendCoachMessage;
 window.askCoach = askCoach;
+window.startProgramChat = startProgramChat;
 window.resetCoachUI = resetCoachUI;
 window.showPastCoachSession = showPastCoachSession;
 window.showWorkoutBuilder = showWorkoutBuilder;

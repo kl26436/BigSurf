@@ -21,6 +21,11 @@ const TIPS = {
         text: 'Tap the checkbox after completing each set',
         position: 'above',
     },
+    'coach-programs': {
+        target: '.coach-hero__icon',
+        text: 'The coach can build multi-week programs — splits, intensity, deloads. Just ask.',
+        position: 'below',
+    },
 };
 
 /**
