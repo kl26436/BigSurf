@@ -200,3 +200,8 @@
 .completion-header__icon    { color: var(--success); font-size: var(--font-3xl); }
 .completion-hero__chart     { color: var(--primary); font-size: var(--font-3xl); }
 .completion-template-saved  { color: var(--success); }
+/* Post-workout coach review (5.7.4) — one quiet line above the Done button. */
+.completion-coach-review {
+    text-align: center;
+    margin-bottom: var(--space-8);
+}

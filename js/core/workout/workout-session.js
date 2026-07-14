@@ -834,6 +834,12 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                 <textarea id="workout-notes" placeholder="Add notes…" rows="2"></textarea>
             </div>
 
+            <div class="completion-coach-review">
+                <button class="btn-text" onclick="reviewSessionWithCoach('${escapeAttr(workoutData.workoutType || 'Workout')}')">
+                    <i class="fas fa-comment-dots"></i> Review this session with the coach
+                </button>
+            </div>
+
             <div class="completion-actions">
                 <button class="btn btn-primary btn-full" id="completion-done-btn">Done</button>
             </div>

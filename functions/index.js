@@ -1407,7 +1407,10 @@ exports.coachChatStream = onRequest({
         // Tool loop: call the model; when it stops for tool_use, execute the
         // tools server-side (Admin SDK, scoped to this user), append the
         // results, and call again — streaming text deltas the whole way.
-        // Hard cap 6 rounds; the whole loop costs ONE 'coach' rate-limit unit.
+        // Hard cap MAX_TOOL_ROUNDS (12 — a program build chains list_templates
+        // + several creates + set_week_plan + create_program + log_advice, so
+        // the plan's original 6 truncated real flows); the whole loop still
+        // costs ONE 'coach' rate-limit unit.
         // Coach memory — durable facts injected into every call (cap 30).
         let memoryBlock = '';
         try {
@@ -1901,6 +1904,7 @@ exports.requestWeeklyReview = functions.runWith({
     secrets: [anthropicApiKey],
     timeoutSeconds: 120,
     memory: '512MB',
+    maxInstances: 2,
 }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Sign in to get a review');
@@ -1912,11 +1916,17 @@ exports.requestWeeklyReview = functions.runWith({
 
     const userRef = db.collection('users').doc(context.auth.uid);
 
+    // Deliberately NOT enforceAiDailyLimit: that limiter counts BEFORE the
+    // call, so a failed generation would burn the day's only slot. Here the
+    // slot is written only on success — same spend ceiling (1/day), kinder
+    // failure mode. Admin exemption matches the shared limiter's.
     const todayKey = new Date().toISOString().slice(0, 10);
     const limitRef = userRef.collection('preferences').doc('aiRateLimits');
-    const limitSnap = await limitRef.get();
-    if (limitSnap.exists && limitSnap.data().weeklyReview?.manualDate === todayKey) {
-        return { status: 'rate_limited' };
+    if (context.auth.uid !== ADMIN_UID) {
+        const limitSnap = await limitRef.get();
+        if (limitSnap.exists && limitSnap.data().weeklyReview?.manualDate === todayKey) {
+            return { status: 'rate_limited' };
+        }
     }
 
     const result = await generateWeeklyReviewForUser(userRef, apiKey, { force: true, sendPush: false });

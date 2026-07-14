@@ -521,7 +521,9 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
             const program = snap.docs[0].data();
             // Derived, never stored (see docs/coach-program-design.md).
             const week = Math.floor(Math.round((new Date() - new Date(`${program.startDate}T12:00:00`)) / 86400000) / 7) + 1;
-            return { program, currentWeek: week, finished: week > program.weeks || week < 1 };
+            // `weeks || 1` guards legacy docs without the field — `week >
+            // undefined` is false, which would report a finished block active.
+            return { program, currentWeek: week, finished: week > (program.weeks || 1) || week < 1 };
         },
 
         async create_program(input) {

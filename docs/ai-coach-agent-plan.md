@@ -807,3 +807,72 @@ SHIPPED in the working tree — don't redo them. These five remain, ordered by v
 
 Verification per CLAUDE.md: `npm test` + `npm run lint` + `npm run audit:design` after each item;
 item 2 also needs the active-workout safety checks (start-from-library flow).
+
+---
+
+# Amendments — 2026-07-13 full-plan audit + fixes
+
+A four-agent audit verified every phase above against source. Everything is implemented; the
+items below are the deviations found (now either fixed or ratified as intentional) so future
+audits don't re-litigate them.
+
+## Ratified deviations (the code is right; the plan text above is outdated)
+
+- **1.3 fallback → stream retry.** The callable fallback was deliberately removed post-tools
+  (a fallback with no tools narrates actions it can't perform). Replaced by ONE automatic
+  stream retry — now guarded on side effects: once an action card/proposal has rendered, a
+  server write already ran, so the turn fails honestly instead of re-driving the tool loop
+  (which duplicated templates and double-charged quota).
+- **2.1 `coachExperience`** never shipped as its own field — experience is unified on
+  `profileExperience`. Intentional.
+- **3.1 / cross-cutting tool-loop cap is 12, not 6.** A program build legitimately chains
+  list_templates + several creates + set_week_plan + create_program + log_advice; 6 truncated
+  real flows. Still one 'coach' rate unit per user message.
+- **5.1 readiness** lives in the live-coach sheet, not on workout start (workout start is
+  zero-popup). Known tradeoff: capture is gated by `Config.LIVE_COACH_ENABLED`. The optional
+  note is now actually captured (was a dead field read by three consumers).
+- **6.2 `liveContext`** is embedded in `messages[0]` rather than a separate request field.
+- **7.2 outcome window** is 2–10 weeks (code) vs the 2–6 written above — more forgiving for
+  infrequent lifts; keeping the code's value.
+- **5.6.0 migration**: the heuristic reclassification of pre-existing templates is entirely
+  deferred (not just its review screen). Legacy templates read as `core`.
+- **5.7.3 increments** are fixed +5 lbs / +2.5 kg, not routed through plate-calculator
+  gym-plate awareness. Good enough until real plate data exists per gym.
+
+## Fixed 2026-07-13 (same-day sweep after the audit)
+
+- `formatCoachResponse` now HTML-escapes before the markdown passes (model output echoes
+  user-stored strings — workout names, notes, memory facts — straight into `innerHTML`).
+- **Session adjustments now scale what the user sees.** `startWorkout` awaits autofill, so
+  scaling only the template `ex.weight` never reached the set rows (they render savedData's
+  last-session numbers). Both apply paths (program week + coach proposal) now also scale
+  uncompleted, un-edited per-set targets via `scaleSessionSetTargets` (program-session.js),
+  plate-rounded per set unit. Drop-exercise proposals re-key `savedData.exercises` in lockstep
+  (raw filtering misaligned every exercise after the first drop).
+- Live `propose_next_target` Apply appends an extra set when every planned set is logged,
+  instead of overwriting (un-logging) a completed set.
+- Session-adjustment cards no longer silently drop when the target template was created
+  earlier in the same turn (refetches templates before giving up).
+- `requestWeeklyReview` got `maxInstances: 2` + the admin exemption (kept its own
+  success-only 1/day guard — kinder than the count-before-call shared limiter).
+- Photo-ID adds now dual-write `locationIds[]` (derived), not just the gym name.
+- `get_program` guards `finished` against legacy docs missing `weeks`.
+- **5.7.4 insight deep links shipped**: dashboard stall chip (`.coach-chip`, below the This
+  week card), exercise-detail stall chip, and a post-workout "Review this session with the
+  coach" line on the completion summary. Dismissal persists per finding in
+  `settings.dismissedCoachChips` (capped 20); a dismissed stall reverts to a plain insight
+  headline with no coach ask. Handlers: `coachChipAsk` / `coachChipDismiss` /
+  `reviewSessionWithCoach` (wired in main.js).
+- **8 coach-tab camera shipped**: header camera button on the coach page (gated by
+  `Config.MACHINE_ID_ENABLED`) reusing `openMachineIdCamera`.
+- **5.7.2 active-workout header meta** now carries `· week N of M` via `programHeartbeat`.
+- **5.5.3 chat context adherence**: `This week so far: N of M planned days done.` under the
+  week-plan line (was weekly-review-only).
+
+## Still open (unchanged)
+
+- 5.7.1 scripted conversational intake (today: the program prompt card + tool loop).
+- 6.3 inline last-session/PR + rest-timer state in the live context (the model tool-calls for
+  them instead).
+- Proactive adherence-aware program reflow — gates trust rung 3 (see coach-program-design.md).
+- 5.6.0 heuristic template-kind migration + review screen (needs the owner's real templates).

@@ -972,8 +972,14 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
     // Row 3: the single most actionable headline — lowest body-part volume vs
     // its weekly target, else the top training insight, else a generic teaser.
     // Tap → Progress page, where the full picture lives.
+    //
+    // A stalled lift is the one finding the coach can actually act on, so it
+    // renders as a coach deep-link chip below the card instead (5.7.4) —
+    // dismissible, max one, and once dismissed the stall reverts to being an
+    // ordinary headline with no coach ask.
     let headline = 'Volume balance, trends, and all your PRs';
     let headIcon = 'fa-chart-line';
+    let coachChip = '';
     try {
         const weekStart = new Date(getDateString());
         weekStart.setDate(weekStart.getDate() - 7);
@@ -981,10 +987,27 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
         const weekWorkouts = (allWorkouts || []).filter(w => w.date >= weekStartStr && w.completedAt);
         const vol = analyzeWeeklyVolume(weekWorkouts, AppState.exerciseDatabase || []);
         const low = vol.filter(v => v.status === 'low').sort((a, b) => a.weeklySets - b.weeklySets)[0];
+
+        if (topInsight?.type === 'plateau' && topInsight.exerciseName) {
+            const sig = `plateau:${topInsight.exerciseName.toLowerCase()}`;
+            if (!(AppState.settings?.dismissedCoachChips || []).includes(sig)) {
+                const n = topInsight.message.match(/(\d+) sessions/)?.[1];
+                coachChip = `
+                    <div class="coach-chip" role="button" tabindex="0" onclick="coachChipAsk('${escapeAttr(topInsight.exerciseName)}')">
+                        <i class="fas fa-equals coach-chip__icon"></i>
+                        <span class="coach-chip__txt">${escapeHtml(topInsight.exerciseName)} stalled${n ? ` ${n} sessions` : ''} · Ask the coach</span>
+                        <button class="coach-chip__dismiss" onclick="coachChipDismiss(event, '${escapeAttr(sig)}')" aria-label="Dismiss">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
         if (low) {
             headline = `${capitalize(low.bodyPart)} is low this week — ${low.weeklySets} set${low.weeklySets === 1 ? '' : 's'}`;
             headIcon = 'fa-exclamation-triangle';
-        } else if (topInsight?.message) {
+        } else if (topInsight?.message && !coachChip) {
             headline = topInsight.message;
             headIcon = topInsight.icon || 'fa-lightbulb';
         }
@@ -1000,6 +1023,7 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
     return `
         <div class="dash-section-head"><h3>This week</h3><a onclick="showProgressPage()">Progress →</a></div>
         <div class="dash-week-card">${rows.join('')}</div>
+        ${coachChip}
     `;
 }
 

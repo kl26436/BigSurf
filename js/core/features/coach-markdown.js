@@ -3,8 +3,9 @@
 // The coach's answers arrive as light markdown. This is deliberately NOT a
 // full markdown parser: it handles exactly what the model emits (bold,
 // bullets, numbered lists, ###/## headers, inline code) and nothing else.
-// Model output is trusted app content — user-typed text is escaped at the
-// bubble layer, not here.
+// The model routinely echoes user-stored strings verbatim (workout names,
+// notes, memory facts), so raw text is HTML-escaped BEFORE the markdown
+// passes — the only tags in the output are the ones this function emits.
 
 /**
  * @param {string} text - raw model text
@@ -13,7 +14,10 @@
 export function formatCoachResponse(text) {
     if (!text) return '';
 
-    let html = text
+    let html = String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
         // Inline code first, so later passes don't chew on backtick contents.
         .replace(/`([^`\n]+)`/g, '<code>$1</code>')
         // Bold

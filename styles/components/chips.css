@@ -105,3 +105,37 @@
     padding: 5px 12px;
     font-size: 0.74rem;
 }
+
+/* Coach deep-link chip (5.7.4) — a stalled lift's quiet, dismissible door
+   into the coach. Full-width tappable row-chip; max one per surface. */
+.coach-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-height: var(--tap);
+    padding: var(--space-8) var(--space-12);
+    margin-top: var(--space-8);
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    color: var(--text-strong);
+    font-size: var(--font-sm);
+    cursor: pointer;
+}
+.coach-chip__icon {
+    color: var(--primary);
+}
+.coach-chip__txt {
+    flex: 1;
+}
+.coach-chip__dismiss {
+    min-width: var(--tap-sm);
+    min-height: var(--tap-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}

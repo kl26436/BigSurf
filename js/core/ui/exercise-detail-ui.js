@@ -7,6 +7,7 @@ import {
 } from '../features/metrics/aggregators.js';
 import { chartTrend } from '../features/charts/chart-trend.js';
 import { renderRangeFilter, DEFAULT_RANGE, persistRange, rangeLabel } from '../features/metrics/range-filter.js';
+import { detectPlateaus } from '../features/training-insights.js';
 
 const BP_ICONS = {
     chest: 'fa-hand-paper', back: 'fa-fist-raised', legs: 'fa-walking',
@@ -80,6 +81,28 @@ export function renderExerciseDetail(exerciseName) {
         }
     }
 
+    // Coach deep link (5.7.4): a quiet dismissible chip when THIS lift is
+    // stalled. Dismissal persists per finding (shared with the dashboard chip).
+    let stallChip = '';
+    try {
+        const plateau = detectPlateaus(workouts)
+            .find(p => (p.exercise || '').toLowerCase() === exerciseName.toLowerCase());
+        if (plateau) {
+            const sig = `plateau:${plateau.exercise.toLowerCase()}`;
+            if (!(AppState.settings?.dismissedCoachChips || []).includes(sig)) {
+                stallChip = `
+                    <div class="coach-chip" role="button" tabindex="0" onclick="coachChipAsk('${escapeAttr(plateau.exercise)}')">
+                        <i class="fas fa-equals coach-chip__icon"></i>
+                        <span class="coach-chip__txt">Stalled ${plateau.sessions} sessions · Ask the coach</span>
+                        <button class="coach-chip__dismiss" onclick="coachChipDismiss(event, '${escapeAttr(sig)}')" aria-label="Dismiss">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }
+        }
+    } catch { /* chip is best-effort — the page renders without it */ }
+
     container.innerHTML = `
         <div class="d-header">
             <button class="d-back" onclick="navigateBack()"><i class="fas fa-chevron-left"></i></button>
@@ -111,6 +134,8 @@ export function renderExerciseDetail(exerciseName) {
                 <div class="d-pill">Est. 1RM <strong>${Math.round(s.est1RM)} ${s.displayUnit || 'lb'}</strong>${est1RMDelta}</div>
                 <div class="d-pill">Volume <strong>${formatVolume(s.totalVolume)} ${s.displayUnit || 'lb'}</strong></div>
             </div>
+
+            ${stallChip}
 
             ${renderTrendCard(s, color, activeMachine, equipCounts)}
 

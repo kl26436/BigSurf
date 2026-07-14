@@ -67,6 +67,9 @@ const DEFAULT_SETTINGS = {
     // freestyler persona never converts, and a full banner forever reads as
     // the app insisting he's using it wrong. Never disappears entirely.
     freestyleSaveDismissals: 0,
+    // Dismissed coach insight-chip signatures (e.g. 'plateau:bench press') —
+    // dismissal is final per finding; capped at 20 in coachChipDismiss.
+    dismissedCoachChips: [],
 
     // Migration flags (set true after one-time migrations have run).
     // Not user-configurable — checked by app-initialization.js on login.

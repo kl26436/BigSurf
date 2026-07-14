@@ -173,6 +173,27 @@ export function trailingWeekLight(plan, workouts = [], today) {
 }
 
 /**
+ * Scale the SESSION's per-set targets, not just the template default weight.
+ * startWorkout AWAITS autofill, so by the time an adjustment applies, the set
+ * rows already carry last-session numbers in savedData — scaling only
+ * ex.weight never reaches the targets the user actually sees. Plate-rounded
+ * per each set's own unit; completed and user-edited sets are never touched.
+ * Shared with the coach's session-adjustment apply (ai-coach-ui.js).
+ */
+export function scaleSessionSetTargets(factor) {
+    for (const saved of Object.values(AppState.savedData?.exercises || {})) {
+        for (const set of (saved?.sets || [])) {
+            if (!set || set.completed || set._userEdited) continue;
+            if (typeof set.weight !== 'number' || set.weight <= 0) continue;
+            const step = (set.originalUnit || AppState.globalUnit || 'lbs') === 'kg' ? 2.5 : 5;
+            set.weight = Math.max(step, Math.round((set.weight * factor) / step) * step);
+            // A scaled target is the adjustment now, not the earned-bump hint.
+            delete set._suggested;
+        }
+    }
+}
+
+/**
  * Apply an adjustment {label, weightPct} to the in-flight session copy:
  * plate-rounded weight scale on weighted moves only, template untouched,
  * history honest (basedOn + sessionLabel). Returns the count of bodyweight
@@ -190,6 +211,9 @@ function applyAdjustmentToCurrentSession(program, adj) {
             skippedBw++;
         }
     }
+    // The visible set targets (autofilled from last session) scale too —
+    // without this the "-40%" toast shows but the rows still say last week.
+    scaleSessionSetTargets(f);
     if (AppState.savedData) {
         AppState.savedData.basedOn = program.id;
         AppState.savedData.sessionLabel = adj.label;

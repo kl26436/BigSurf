@@ -17,6 +17,7 @@ import { confirmSheet } from '../ui/confirm-sheet.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
 import { suggestMachinesForExercise } from '../features/exercise-machine-matcher.js';
 import { getEquipmentAtLocation, getExercisesAtLocation } from '../features/equipment-planner.js';
+import { programHeartbeat } from '../features/program-session.js';
 
 // ===================================================================
 // STATE
@@ -208,6 +209,15 @@ function renderWorkoutHeader() {
     const location = AppState.savedData?.location;
     const locName = typeof location === 'object' ? location?.name : location;
 
+    // Program presence (5.7.2): the same quiet week-N-of-M signal the
+    // dashboard heartbeat shows, folded into the existing meta line. Renders
+    // nothing without an active program.
+    let programMeta = '';
+    try {
+        const hb = programHeartbeat(AppState._activeProgram, AppState.getTodayDateString());
+        if (hb) programMeta = ` · week ${hb.week} of ${hb.weeks}`;
+    } catch { /* no program, no line */ }
+
     return `
         <div class="aw-header">
             <button class="aw-back" onclick="awConfirmExit()" aria-label="Back to dashboard" title="Back to dashboard">
@@ -216,7 +226,7 @@ function renderWorkoutHeader() {
             <div class="aw-title">
                 <div class="aw-title__name">${escapeHtml(workoutName)}${locName ? ` <span class="aw-title__loc"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(locName)}</span>` : ''}</div>
                 <div class="aw-title__elapsed">${elapsed}</div>
-                ${exerciseCount > 0 ? `<div class="aw-title__meta">Exercise ${currentExerciseIdx + 1}/${exerciseCount}</div>` : ''}
+                ${exerciseCount > 0 ? `<div class="aw-title__meta">Exercise ${currentExerciseIdx + 1}/${exerciseCount}${programMeta}</div>` : ''}
             </div>
             ${Config.LIVE_COACH_ENABLED ? `
             <button class="aw-coach" onclick="openLiveCoach()" aria-label="Ask your coach" title="Ask your coach">

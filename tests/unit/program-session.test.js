@@ -174,3 +174,55 @@ describe('trailingWeekLight', () => {
         expect(trailingWeekLight({ days: {} }, only3, '2026-07-07')).toBeNull();
     });
 });
+
+describe('scaleSessionSetTargets', () => {
+    // Mutates AppState.savedData — import the real singleton and stage it.
+    const stage = async (exercises) => {
+        const { AppState } = await import('../../js/core/utils/app-state.js');
+        AppState.globalUnit = 'lbs';
+        AppState.savedData = { exercises };
+        return AppState;
+    };
+
+    it('scales uncompleted autofilled targets, plate-rounded, and drops the ↑ hint', async () => {
+        const { scaleSessionSetTargets } = await import('../../js/core/features/program-session.js');
+        const app = await stage({
+            exercise_0: { sets: [
+                { weight: 135, reps: 10, completed: false, originalUnit: 'lbs', _suggested: true },
+                { weight: 145, reps: 8, completed: false, originalUnit: 'lbs' },
+            ] },
+        });
+        scaleSessionSetTargets(0.6); // deload -40%
+        const sets = app.savedData.exercises.exercise_0.sets;
+        expect(sets[0].weight).toBe(80);  // 81 → nearest 5
+        expect(sets[0]._suggested).toBeUndefined();
+        expect(sets[1].weight).toBe(85);  // 87 → nearest 5
+    });
+
+    it('never touches completed or user-edited sets, and floors at one plate step', async () => {
+        const { scaleSessionSetTargets } = await import('../../js/core/features/program-session.js');
+        const app = await stage({
+            exercise_0: { sets: [
+                { weight: 225, reps: 5, completed: true, originalUnit: 'lbs' },
+                { weight: 200, reps: 5, completed: false, originalUnit: 'lbs', _userEdited: true },
+                { weight: 5, reps: 12, completed: false, originalUnit: 'lbs' },
+                { weight: null, reps: 12, completed: false },
+            ] },
+        });
+        scaleSessionSetTargets(0.6);
+        const sets = app.savedData.exercises.exercise_0.sets;
+        expect(sets[0].weight).toBe(225); // completed — untouched
+        expect(sets[1].weight).toBe(200); // user-edited — untouched
+        expect(sets[2].weight).toBe(5);   // floors at the plate step, never 0
+        expect(sets[3].weight).toBeNull();
+    });
+
+    it('rounds kg sets on the 2.5 kg ladder by their own unit', async () => {
+        const { scaleSessionSetTargets } = await import('../../js/core/features/program-session.js');
+        const app = await stage({
+            exercise_0: { sets: [{ weight: 60, reps: 8, completed: false, originalUnit: 'kg' }] },
+        });
+        scaleSessionSetTargets(0.6); // 36 → 35 on the 2.5 ladder? 36/2.5=14.4 → 14 → 35
+        expect(app.savedData.exercises.exercise_0.sets[0].weight).toBe(35);
+    });
+});

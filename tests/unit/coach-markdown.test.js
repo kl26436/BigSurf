@@ -56,4 +56,23 @@ describe('formatCoachResponse', () => {
         expect(html).toContain('<h3>Focus</h3>');
         expect(html).toContain('<li><strong>Squat</strong>: add 5 lbs</li>');
     });
+
+    it('escapes HTML echoed from user-stored strings (XSS)', () => {
+        const html = formatCoachResponse('Your "<img src=x onerror=alert(1)>" workout looks good');
+        expect(html).not.toContain('<img');
+        expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    });
+
+    it('escapes script tags and preserves ampersands', () => {
+        const html = formatCoachResponse('<script>steal()</script> push & pull');
+        expect(html).not.toContain('<script>');
+        expect(html).toContain('&lt;script&gt;');
+        expect(html).toContain('push &amp; pull');
+    });
+
+    it('escaped content still formats: bold and code around angle brackets', () => {
+        const html = formatCoachResponse('**5x5 <185 lbs** then `a<b`');
+        expect(html).toContain('<strong>5x5 &lt;185 lbs</strong>');
+        expect(html).toContain('<code>a&lt;b</code>');
+    });
 });

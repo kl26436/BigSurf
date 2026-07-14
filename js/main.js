@@ -368,6 +368,9 @@ import {
     generateWorkoutTemplate,
     removePreviewExercise,
     saveGeneratedTemplate,
+    coachChipAsk,
+    coachChipDismiss,
+    reviewSessionWithCoach,
 } from './core/features/ai-coach-ui.js';
 
 // DEXA Scan Integration (Phase 18)
@@ -912,6 +915,11 @@ window.showWorkoutBuilder = showWorkoutBuilder;
 window.generateWorkoutTemplate = generateWorkoutTemplate;
 window.removePreviewExercise = removePreviewExercise;
 window.saveGeneratedTemplate = saveGeneratedTemplate;
+// Insight deep links (5.7.4) — rendered from dashboard-ui, exercise-detail-ui,
+// and the completion summary, so wired here rather than self-wired.
+window.coachChipAsk = coachChipAsk;
+window.coachChipDismiss = coachChipDismiss;
+window.reviewSessionWithCoach = reviewSessionWithCoach;
 
 // DEXA Scan Integration (Phase 18)
 window.renderDexaCard = renderDexaCard;

@@ -196,8 +196,32 @@ export function liveCoachReadiness(score) {
         AppState.savedData.readiness = { score };
         debouncedSaveWorkoutData(AppState);
     }
+    // Score is saved on the tap; the note is a purely optional follow-up
+    // (context/weekly review already read readiness.note when present).
     const bubble = document.getElementById('live-readiness');
-    if (bubble) bubble.innerHTML = `Feeling ${score}/5 — noted.`;
+    if (bubble) {
+        bubble.innerHTML = `
+            <div>Feeling ${score}/5 — noted.</div>
+            <div class="readiness-note">
+                <input type="text" id="live-readiness-note" class="field-input" placeholder="Add a note — optional"
+                       maxlength="120" aria-label="Readiness note"
+                       onkeydown="if(event.key==='Enter'){liveCoachReadinessNote();}">
+                <button class="readiness-note__save" onclick="liveCoachReadinessNote()">Save</button>
+            </div>`;
+    }
+}
+
+export function liveCoachReadinessNote() {
+    const note = (document.getElementById('live-readiness-note')?.value || '').trim();
+    const bubble = document.getElementById('live-readiness');
+    if (note && AppState.savedData?.readiness) {
+        AppState.savedData.readiness.note = note;
+        debouncedSaveWorkoutData(AppState);
+    }
+    if (bubble) {
+        const score = AppState.savedData?.readiness?.score;
+        bubble.innerHTML = `Feeling ${score ?? '–'}/5${note ? ` — "${escapeHtml(note)}"` : ' — noted.'}`;
+    }
 }
 
 export function closeLiveCoach() {
@@ -437,10 +461,16 @@ function applyNextTarget(p) {
     if (!AppState.savedData.exercises[key]) AppState.savedData.exercises[key] = { sets: [] };
     const saved = AppState.savedData.exercises[key];
     const planned = AppState.currentWorkout.exercises[idx].sets || 3;
-    // Target the first incomplete set slot.
-    let slot = (saved.sets || []).findIndex(s => !s?.completed);
-    if (slot === -1) slot = Math.min((saved.sets || []).length, planned - 1);
     if (!saved.sets) saved.sets = [];
+    // Target the first incomplete set slot.
+    let slot = saved.sets.findIndex(s => !s?.completed);
+    if (slot === -1) {
+        // No incomplete slot materialized: target the next unlogged slot, or
+        // — when every planned set is already logged — append an EXTRA set.
+        // Never overwrite a completed set (that would silently un-log it).
+        slot = saved.sets.length;
+        if (slot >= planned) AppState.currentWorkout.exercises[idx].sets = slot + 1;
+    }
     const existing = saved.sets[slot] || {};
     saved.sets[slot] = {
         ...existing,
@@ -506,6 +536,7 @@ if (typeof window !== 'undefined') {
     window.liveCoachSend = liveCoachSend;
     window.liveCoachChip = liveCoachChip;
     window.liveCoachReadiness = liveCoachReadiness;
+    window.liveCoachReadinessNote = liveCoachReadinessNote;
     window.applyLiveProposal = applyLiveProposal;
     window.dismissLiveProposal = dismissLiveProposal;
     window.closeLiveCoach = closeLiveCoach;

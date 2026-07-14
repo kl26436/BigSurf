@@ -3,7 +3,7 @@
 // Handles modal, prompt cards, freeform input, and coach history display
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr, convertWeight } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, convertWeight, closeModal } from '../ui/ui-helpers.js';
 import { formatRelativeDate } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { TrainingInsights } from './training-insights.js';
@@ -14,7 +14,8 @@ import {
     buildProfileContext, buildPRContext, buildTemplatesContext,
     setTypeMarker, templatesChangedNote, buildProgramContext,
 } from './coach-context.js';
-import { summarizeWeekPlan } from './week-plan.js';
+import { summarizeWeekPlan, satisfiedDays, weekDates, DAY_KEYS } from './week-plan.js';
+import { scaleSessionSetTargets } from './program-session.js';
 import { buildOutcomesContext, buildFeedbackContext, computeAdviceOutcome } from './coach-outcomes.js';
 import { micButtonHtml } from './coach-voice.js';
 
@@ -186,7 +187,13 @@ export function renderAICoachSection() {
                 <button class="page-header__back" onclick="closeAICoach()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
                 <div class="page-header__title">AI Coach</div>
             </div>
-            <button class="page-header__icon-btn" onclick="openCoachHistory()" aria-label="Past conversations"><i class="fas fa-history"></i></button>
+            <div class="page-header__actions">
+                ${Config.MACHINE_ID_ENABLED ? `
+                <button class="page-header__icon-btn" onclick="openMachineIdCamera()" aria-label="Identify a machine by photo" title="Identify by photo">
+                    <i class="fas fa-camera"></i>
+                </button>` : ''}
+                <button class="page-header__icon-btn" onclick="openCoachHistory()" aria-label="Past conversations"><i class="fas fa-history"></i></button>
+            </div>
         </div>
 
         <div class="coach-chat-container">
@@ -264,7 +271,8 @@ async function hydrateCoachTrackRecord() {
 
 /**
  * Show the AI Coach page. Direct entry point — renders + navigates.
- * @param {string} [prefillContext] - Optional exercise name for pre-filled plateau context
+ * @param {string|{question: string}} [prefillContext] - Exercise name for the
+ *   pre-filled plateau question, or `{question}` to auto-ask any prompt.
  */
 export function showAICoach(prefillContext) {
     renderAICoachSection();
@@ -282,12 +290,50 @@ export function showAICoach(prefillContext) {
         })();
     }
 
-    // If prefill context, auto-ask about a plateau
+    // If prefill context, auto-ask (exercise name → plateau question;
+    // object form → any prompt, e.g. the post-workout session review).
     if (prefillContext) {
-        setTimeout(() => {
-            askCoach(`My ${prefillContext} has plateaued. Analyze my recent data for this exercise and suggest strategies to break through.`);
-        }, 300);
+        const question = typeof prefillContext === 'object'
+            ? prefillContext.question
+            : `My ${prefillContext} has plateaued. Analyze my recent data for this exercise and suggest strategies to break through.`;
+        if (question) {
+            setTimeout(() => { askCoach(question); }, 300);
+        }
     }
+}
+
+// ===================================================================
+// INSIGHT DEEP LINKS (5.7.4) — quiet dismissible chips into the coach.
+// Pull, not push: passive, dismissible, max one per surface, never notify.
+// ===================================================================
+
+/** Chip tap → prefilled plateau thread for that exercise. */
+export function coachChipAsk(exercise) {
+    showAICoach(exercise);
+}
+
+/**
+ * Dismissal is silent and final for THIS finding — the signature persists in
+ * settings so the same stall never re-renders; a new stall (different
+ * exercise) gets its own chip. List is capped so it can't grow unbounded.
+ */
+export function coachChipDismiss(event, sig) {
+    event?.stopPropagation?.();
+    event?.target?.closest?.('.coach-chip')?.remove();
+    const list = (AppState.settings?.dismissedCoachChips || []).filter(s => s !== sig).slice(-19);
+    list.push(sig);
+    if (AppState.settings) AppState.settings.dismissedCoachChips = list;
+    import('../ui/settings-ui.js')
+        .then(m => m.updateSetting('dismissedCoachChips', list))
+        .catch(() => { /* persists next session at worst */ });
+}
+
+/** Post-workout "Review this session" chip → coach with a session-review prompt. */
+export function reviewSessionWithCoach(workoutName) {
+    try { closeModal('workout-completion-modal'); } catch { /* modal may already be gone */ }
+    showAICoach({
+        question: `Review my ${workoutName || 'workout'} session from today — how did it go compared to recent sessions, and what should I change next time?`,
+    });
 }
 
 /**
@@ -451,8 +497,14 @@ export async function askCoach(question) {
         // it narrates actions it can't perform (live-tested: 'archive
         // everything else' fell back and nothing happened). An honest error
         // beats a silently lobotomized coach.
-        let recommendation = await streamCoachResponse(question.trim(), loadingBubble);
-        if (recommendation == null) {
+        //
+        // The retry is guarded on side effects: once the first attempt has
+        // rendered an action card or proposal, a server-side write already
+        // ran — re-driving the whole turn would execute it AGAIN (duplicate
+        // template, double advice log, double quota). Fail honestly instead.
+        const streamStats = { sideEffects: 0, partialText: '' };
+        let recommendation = await streamCoachResponse(question.trim(), loadingBubble, streamStats);
+        if (recommendation == null && streamStats.sideEffects === 0) {
             if (loadingBubble) {
                 loadingBubble.innerHTML = `
                     <div class="coach-loading">
@@ -461,10 +513,20 @@ export async function askCoach(question) {
                     </div>
                 `;
             }
-            recommendation = await streamCoachResponse(question.trim(), loadingBubble);
+            recommendation = await streamCoachResponse(question.trim(), loadingBubble, streamStats);
         }
         const streamed = recommendation != null;
         if (recommendation == null) {
+            if (streamStats.sideEffects > 0) {
+                // Keep the turn and record what did happen so a follow-up
+                // ("continue") has context instead of re-instructing the writes.
+                _coachConversation.push({
+                    role: 'assistant',
+                    content: streamStats.partialText
+                        || '[Answer interrupted — the actions shown above were already applied.]',
+                });
+                throw new Error('stream-died-after-actions');
+            }
             throw new Error('stream-failed');
         }
 
@@ -491,7 +553,9 @@ export async function askCoach(question) {
         const errorMessage = error.message || '';
         let errorHtml;
 
-        if (errorMessage.includes('resource-exhausted') || errorMessage.includes('limit') || errorMessage.includes('rate')) {
+        if (errorMessage === 'stream-died-after-actions') {
+            errorHtml = `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Connection dropped mid-answer — anything shown above was already applied. Ask me to continue for the rest.`;
+        } else if (errorMessage.includes('resource-exhausted') || errorMessage.includes('limit') || errorMessage.includes('rate')) {
             errorHtml = `<i class="fas fa-clock text-warning coach-msg-icon"></i> Daily coach limit reached — try again tomorrow. Your dashboard insights are always available.`;
         } else if (errorMessage.includes('not-found') || errorMessage.includes('internal')) {
             errorHtml = `<i class="fas fa-cloud text-muted coach-msg-icon"></i> AI Coach requires Cloud Functions to be deployed. The rules-based insights on your dashboard are always available.`;
@@ -507,13 +571,19 @@ export async function askCoach(question) {
 
 /**
  * Stream the coach's answer into `bubble` via the v2 SSE endpoint.
- * Returns the full response text, or null when the caller should fall back to
- * the buffered callable (endpoint missing, network error, stream died before
- * finishing). Throws ONLY for the rate-limit case — falling back would just
- * burn another quota unit on the same refusal.
+ * Returns the full response text, or null on failure (endpoint missing,
+ * network error, stream died before finishing) — the caller decides whether
+ * to retry. Throws ONLY for the rate-limit case — retrying would just burn
+ * another quota unit on the same refusal.
+ *
+ * `stats` (optional out-param): `sideEffects` counts action_card/proposal
+ * events seen (each means a server-side tool already ran — the caller must
+ * NOT silently re-drive the turn); `partialText` carries whatever text had
+ * streamed before a failure.
  */
-async function streamCoachResponse(question, bubble) {
+async function streamCoachResponse(question, bubble, stats = {}) {
     let acc = '';
+    const fail = () => { stats.partialText = acc; return null; };
     try {
         const token = await AppState.currentUser?.getIdToken?.();
         if (!token || !Config.COACH_STREAM_URL) return null;
@@ -566,8 +636,10 @@ async function streamCoachResponse(question, bubble) {
                     }
                     scrollCoachChatIfNearBottom();
                 } else if (ev.type === 'action_card' && ev.card) {
+                    stats.sideEffects = (stats.sideEffects || 0) + 1;
                     handleCoachActionCard(ev.card, bubble);
                 } else if (ev.type === 'proposal' && ev.proposal?.kind === 'session_adjustments') {
+                    stats.sideEffects = (stats.sideEffects || 0) + 1;
                     renderSessionAdjustmentCard(ev.proposal, bubble);
                 } else if (ev.type === 'delta') {
                     acc += ev.text || '';
@@ -580,16 +652,16 @@ async function streamCoachResponse(question, bubble) {
                     done = true;
                 } else if (ev.type === 'error') {
                     debugLog('coach stream error event:', ev.message);
-                    return null; // fall back to the callable
+                    return fail();
                 }
             }
         }
-        // Stream ended without a `done` event → treat as failure, fall back.
-        return done ? acc : null;
+        // Stream ended without a `done` event → treat as failure.
+        return done ? acc : fail();
     } catch (e) {
         if ((e.message || '').includes('resource-exhausted')) throw e;
-        debugLog('coach stream failed, falling back:', e);
-        return null;
+        debugLog('coach stream failed:', e);
+        return fail();
     }
 }
 
@@ -770,8 +842,19 @@ export async function undoProgramCreate(cardId) {
 const _pendingSessionAdj = new Map();
 let _sessionAdjSeq = 0;
 
-function renderSessionAdjustmentCard(proposal, streamingBubble) {
-    const template = (AppState.workoutPlans || []).find(t => t.id === proposal.templateId);
+async function renderSessionAdjustmentCard(proposal, streamingBubble) {
+    let template = (AppState.workoutPlans || []).find(t => t.id === proposal.templateId);
+    if (!template) {
+        // The proposal may target a template created earlier in this same
+        // turn — the fire-and-forget refresh after its action card can still
+        // be in flight. Fetch fresh before giving up so the card never
+        // silently drops.
+        try {
+            const mgr = new FirebaseWorkoutManager(AppState);
+            AppState.workoutPlans = await mgr.getUserWorkoutTemplates({ fromServer: true });
+            template = (AppState.workoutPlans || []).find(t => t.id === proposal.templateId);
+        } catch (e) { debugLog('session-adjustment template refresh failed:', e); }
+    }
     if (!template) {
         debugLog('session-adjustment proposal for unknown template:', proposal.templateId);
         return;
@@ -824,7 +907,19 @@ export async function applySessionAdjustments(id) {
 
         if (p.dropExercises?.length) {
             const drop = new Set(p.dropExercises.map(n => n.toLowerCase()));
-            cw.exercises = cw.exercises.filter(ex => !drop.has((ex.machine || ex.name || '').toLowerCase()));
+            // Filter and RE-KEY savedData in lockstep — savedData.exercises is
+            // keyed by index (exercise_N), so a raw filter of cw.exercises
+            // misaligns every exercise after the first dropped one (same
+            // re-key awDeleteExercise does).
+            const keep = [];
+            const newSaved = {};
+            cw.exercises.forEach((ex, i) => {
+                if (drop.has((ex.machine || ex.name || '').toLowerCase())) return;
+                newSaved[`exercise_${keep.length}`] = AppState.savedData?.exercises?.[`exercise_${i}`] || { sets: [] };
+                keep.push(ex);
+            });
+            cw.exercises = keep;
+            if (AppState.savedData?.exercises) AppState.savedData.exercises = newSaved;
         }
         if (p.weightPct != null) {
             const f = 1 + p.weightPct / 100;
@@ -833,6 +928,10 @@ export async function applySessionAdjustments(id) {
                     ex.weight = Math.max(step, Math.round((ex.weight * f) / step) * step);
                 }
             }
+            // Scale the autofilled per-set targets too — they're what the set
+            // rows render; ex.weight alone never reaches the screen when a
+            // last session exists.
+            scaleSessionSetTargets(f);
         }
         for (const add of (p.addExercises || [])) {
             cw.exercises.push({
@@ -970,9 +1069,21 @@ function buildTrainingContext(workouts, healthSummary = '', prList = []) {
     const templatesBlock = buildTemplatesContext(AppState.workoutPlans || []);
     if (templatesBlock) summary += `\n${templatesBlock}`;
 
-    // Week plan (5.5) — grounds "what should I do today/this week".
+    // Week plan (5.5) — grounds "what should I do today/this week", plus the
+    // adherence count (5.5.3) so mid-week answers know planned vs done without
+    // waiting for the Monday review.
     if (AppState._weekPlan) {
         summary += `\nWeek plan: ${summarizeWeekPlan(AppState._weekPlan, AppState.workoutPlans || [])}\n`;
+        try {
+            const plannedTotal = DAY_KEYS.filter(d => AppState._weekPlan.days?.[d]).length;
+            if (plannedTotal > 0) {
+                const dates = weekDates();
+                const todayStr = AppState.getTodayDateString();
+                const weekWorkouts = workouts.filter(w => w.completedAt && w.date >= dates.mon && w.date <= todayStr);
+                const done = satisfiedDays(AppState._weekPlan, weekWorkouts, AppState.workoutPlans || []);
+                summary += `This week so far: ${done.size} of ${plannedTotal} planned days done.\n`;
+            }
+        } catch { /* adherence line is best-effort */ }
     }
 
     // Training frequency

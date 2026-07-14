@@ -142,6 +142,10 @@ export async function addIdentifiedMachine(useAlt = false) {
     try {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const wm = new FirebaseWorkoutManager(AppState);
+        // Dual-write the stable location id alongside the gym name — same
+        // resolution getOrCreateEquipment does (empty when the gym has no doc
+        // yet; the name in locations[] stays the fallback).
+        const locationIds = gym ? wm._deriveLocationIds([gym]) : [];
         const saved = await wm.saveEquipment({
             name: pick.name,
             brand: pick.brand || null,
@@ -149,6 +153,7 @@ export async function addIdentifiedMachine(useAlt = false) {
             equipmentType: data.identified.equipmentType || 'Machine',
             exerciseTypes: (data.identified.exercises || []).slice(0, 6),
             locations: gym ? [gym] : [],
+            locationIds,
             createdVia: 'photo-id',
         });
         // Keep the in-memory cache honest without a full refetch.
@@ -159,6 +164,7 @@ export async function addIdentifiedMachine(useAlt = false) {
                 brand: pick.brand || null,
                 equipmentType: data.identified.equipmentType || 'Machine',
                 locations: gym ? [gym] : [],
+                locationIds,
             });
         }
         closeMachineIdSheet();
