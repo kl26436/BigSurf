@@ -233,23 +233,26 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// Notification click event - open or focus app
+// Notification click event - open or focus the app at the notification's
+// target (data.url set by the sender, e.g. the weekly review deep link)
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  // Open or focus the app
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // If app is already open, focus it
+        // If app is already open, focus it and let the page route itself
         for (let client of clientList) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
+            client.postMessage({ type: 'notification-click', url: targetUrl });
             return client.focus();
           }
         }
-        // Otherwise, open a new window
+        // Otherwise, open a new window at the deep link
         if (clients.openWindow) {
-          return clients.openWindow('/');
+          return clients.openWindow(targetUrl);
         }
       })
   );

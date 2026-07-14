@@ -1820,6 +1820,15 @@ export function clearSelectorCache() {
     _lastSessionCache.clear();
 }
 
+/** A coach action card just refetched AppState.workoutPlans from the server.
+ *  Accept that fetch as current — otherwise ensureSelectorContext's 30s
+ *  freshness guard can re-serve an older copy — and repaint whichever workout
+ *  surface is live so the cards reflect the coach's change immediately. */
+export function acceptCoachTemplateRefresh() {
+    _selectorFreshAt = Date.now();
+    refreshEditorOrList();
+}
+
 // ===================================================================
 // TEMPLATE CATEGORY MANAGEMENT
 // ===================================================================

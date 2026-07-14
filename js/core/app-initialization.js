@@ -598,6 +598,22 @@ export function setupAuthenticationListener() {
 
                     // Show onboarding if first login
                     checkOnboarding();
+
+                    // Notification deep link (cold start): the weekly-review
+                    // push opens /?open=weekly-review. Handle it only after
+                    // auth + dashboard so the coach page has data to render.
+                    try {
+                        const params = new URLSearchParams(window.location.search);
+                        if (params.get('open') === 'weekly-review') {
+                            params.delete('open');
+                            const qs = params.toString();
+                            window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
+                            const { openLatestWeeklyReview } = await import('./features/ai-coach-ui.js');
+                            openLatestWeeklyReview();
+                        }
+                    } catch (deepLinkErr) {
+                        console.error('❌ Notification deep link failed:', deepLinkErr);
+                    }
                 } catch (e) {
                     console.error('❌ Error showing dashboard:', e);
                     // Fallback to window.navigateTo if available
@@ -1189,6 +1205,14 @@ export function startApplication() {
 
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
+        // Notification taps while the app is open: the service worker focuses
+        // this window and posts the target instead of navigating a fresh one.
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            const url = String(event.data?.url || '');
+            if (event.data?.type === 'notification-click' && url.includes('open=weekly-review')) {
+                import('./features/ai-coach-ui.js').then((m) => m.openLatestWeeklyReview?.());
+            }
+        });
         window.addEventListener('load', () => {
             navigator.serviceWorker
                 .register('./service-worker.js')

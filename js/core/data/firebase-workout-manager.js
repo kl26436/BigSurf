@@ -693,7 +693,7 @@ export class FirebaseWorkoutManager {
         }
     }
 
-    async getUserWorkoutTemplates() {
+    async getUserWorkoutTemplates({ fromServer = false } = {}) {
         try {
             // Load global defaults
             const defaultTemplates = await this.getGlobalDefaultTemplates();
@@ -709,7 +709,13 @@ export class FirebaseWorkoutManager {
                     this.appState.currentUser.uid,
                     'workoutTemplates'
                 );
-                const customSnapshot = await withTimeout(getDocs(customTemplatesRef));
+                // fromServer bypasses the local Firestore cache. Needed after
+                // coach writes: those happen via the Admin SDK, so the client
+                // has no pending write and plain getDocs can hand back the
+                // pre-edit templates from cache (same trap deleteTemplate hit).
+                const customSnapshot = await withTimeout(
+                    (fromServer ? getDocsFromServer : getDocs)(customTemplatesRef)
+                );
 
                 customSnapshot.forEach((doc) => {
                     const data = doc.data();

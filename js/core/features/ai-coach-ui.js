@@ -167,7 +167,14 @@ export function renderAICoachSection() {
     if (!section) return;
 
     const prompts = getContextualPrompts();
-    const promptsHtml = prompts.map(p => `
+    // "Review my week" leads the list — the same review the Monday digest
+    // writes, but on demand, so it's reachable without waiting for the push.
+    const reviewCardHtml = `
+                        <div class="coach-prompt-card" onclick="requestWeeklyReviewNow()">
+                            <div class="coach-prompt-card__icon"><i class="fas fa-calendar-week"></i></div>
+                            <div class="coach-prompt-card__text">Review my week — how did my training go?</div>
+                        </div>`;
+    const promptsHtml = reviewCardHtml + prompts.map(p => `
                         <div class="coach-prompt-card" onclick="askCoach('${escapeAttr(p.text)}')">
                             <div class="coach-prompt-card__icon${p.iconClass ? ' ' + p.iconClass : ''}"><i class="fas ${p.icon}"></i></div>
                             <div class="coach-prompt-card__text">${p.html}</div>
@@ -670,9 +677,13 @@ function handleCoachActionCard(card, streamingBubble) {
     (async () => {
         try {
             const mgr = new FirebaseWorkoutManager(AppState);
-            AppState.workoutPlans = await mgr.getUserWorkoutTemplates();
-            const { clearSelectorCache } = await import('../ui/template-selection.js');
-            clearSelectorCache?.();
+            // fromServer: the write happened via the Admin SDK, so a cached
+            // read can return the pre-edit templates — the cards would then
+            // repaint stale and the coach's change looks like it didn't take.
+            AppState.workoutPlans = await mgr.getUserWorkoutTemplates({ fromServer: true });
+            const sel = await import('../ui/template-selection.js');
+            sel.clearSelectorCache?.();
+            sel.acceptCoachTemplateRefresh?.();
         } catch (e) { debugLog('coach: workoutPlans refresh failed', e); }
     })();
 }
@@ -1291,6 +1302,84 @@ export function showPastCoachSession(sessionId) {
     }
 }
 
+/**
+ * Manual "Review my week" — the same review the Monday digest writes,
+ * generated on demand via the requestWeeklyReview callable. Renders into the
+ * chat and seeds a thread so follow-ups work like any conversation.
+ */
+let _reviewNowPending = false;
+export async function requestWeeklyReviewNow() {
+    if (!AppState.currentUser || _reviewNowPending) return;
+    _reviewNowPending = true;
+
+    const emptyState = document.getElementById('coach-empty-state');
+    if (emptyState) emptyState.classList.add('hidden');
+    addChatBubble('user', 'Give me my weekly training review.');
+    const loadingBubble = addChatBubble('bot', `
+        <div class="coach-loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Reviewing your week…</span>
+        </div>
+    `);
+
+    try {
+        const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js');
+        const call = httpsCallable(getFunctions(), 'requestWeeklyReview');
+        const { data } = await call({});
+
+        if (data.status === 'ok' && data.review) {
+            _coachConversation = [
+                { role: 'user', content: 'Give me my weekly training review.' },
+                { role: 'assistant', content: data.review },
+            ];
+            _coachThreadId = data.sessionId || null;
+            _coachThreadTemplateNames = (AppState.workoutPlans || []).map(t => t.name || t.day).filter(Boolean);
+            if (loadingBubble) loadingBubble.innerHTML = formatCoachResponse(data.review);
+        } else if (data.status === 'no_workouts') {
+            if (loadingBubble) loadingBubble.innerHTML = 'No completed workouts in the last 7 days — finish a session and ask again.';
+        } else if (data.status === 'rate_limited') {
+            if (loadingBubble) loadingBubble.innerHTML = "You already got a review today — it's under Past reviews. Ask a follow-up instead.";
+        } else {
+            if (loadingBubble) loadingBubble.innerHTML = "Couldn't generate a review — try again.";
+        }
+    } catch (error) {
+        console.error('❌ Weekly review request failed:', error);
+        if (loadingBubble) loadingBubble.innerHTML = "Couldn't generate a review — try again.";
+    } finally {
+        _reviewNowPending = false;
+    }
+    scrollCoachChatIfNearBottom();
+}
+
+/**
+ * Deep-link target for the weekly-review push notification: open the coach
+ * and show the newest weekly review directly (the notification used to dump
+ * users on the dashboard with no path to the review it announced).
+ */
+export async function openLatestWeeklyReview() {
+    if (!AppState.currentUser) return;
+    showAICoach();
+    try {
+        const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
+        // Recent sessions filtered client-side — a where('type'...) would need
+        // a composite index for no real gain at this volume.
+        const snap = await getDocs(query(
+            collection(db, 'users', AppState.currentUser.uid, 'coachHistory'),
+            orderBy('timestamp', 'desc'), limit(15)
+        ));
+        const docs = [];
+        snap.forEach(d => docs.push({ id: d.id, ...d.data() }));
+        const review = docs.find(s => s.type === 'weekly_review');
+        if (!review) return;
+        const sessions = window._coachHistorySessions || [];
+        if (!sessions.some(s => s.id === review.id)) sessions.push(review);
+        window._coachHistorySessions = sessions;
+        showPastCoachSession(review.id);
+    } catch (e) {
+        debugLog('openLatestWeeklyReview failed:', e);
+    }
+}
+
 // ===================================================================
 // WORKOUT BUILDER
 // ===================================================================
@@ -1646,4 +1735,5 @@ window.applySessionAdjustments = applySessionAdjustments;
 window.dismissSessionAdjustments = dismissSessionAdjustments;
 window.rateCoachAnswer = rateCoachAnswer;
 window.undoProgramCreate = undoProgramCreate;
+window.requestWeeklyReviewNow = requestWeeklyReviewNow;
 

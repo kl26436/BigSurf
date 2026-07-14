@@ -1675,10 +1675,192 @@ exports.identifyMachine = functions.runWith({
 });
 
 /**
+ * Weekly review generation — shared by the Monday scheduled digest and the
+ * on-demand requestWeeklyReview callable. Builds a compact server-side
+ * summary, one cheap DIGEST_MODEL call, saves to coachHistory as
+ * {type:'weekly_review'}.
+ *
+ * @returns {Promise<{status: string, review?: string, sessionId?: string}>}
+ *   status: 'ok' | 'opted_out' | 'no_workouts' | 'already_reviewed' | 'api_error'
+ */
+async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sendPush = true } = {}) {
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const weekKey = new Date().toISOString().slice(0, 10);
+
+    // Opt-out (default on). A manual request is explicit consent — skip it.
+    if (!force) {
+        const settingsSnap = await userRef.collection('preferences').doc('settings').get();
+        if (settingsSnap.exists && settingsSnap.data().weeklyCoachReview === false) return { status: 'opted_out' };
+    }
+
+    // Active this week?
+    const workoutsSnap = await userRef.collection('workouts')
+        .where('date', '>=', weekAgo).orderBy('date', 'desc').limit(15).get();
+    const workouts = workoutsSnap.docs.map(d => d.data())
+        .filter(w => w.completedAt && !w.cancelledAt);
+    if (workouts.length === 0) return { status: 'no_workouts' };
+
+    // Once per week, retry-safe. Manual requests rate-limit separately
+    // (per-day, in the callable) so they never consume the Monday slot.
+    if (!force) {
+        const limitRef = userRef.collection('preferences').doc('aiRateLimits');
+        const limitSnap = await limitRef.get();
+        if (limitSnap.exists && limitSnap.data().weeklyReview?.weekKey === weekKey) return { status: 'already_reviewed' };
+        await limitRef.set({ weeklyReview: { weekKey } }, { merge: true });
+    }
+
+    // Week plan (5.5) — anchor the review to planned-vs-done, with an
+    // explicit adherence line (minimal adherence awareness: the review
+    // is the checkpoint that notices a broken week, not the user).
+    let planLine = '';
+    let adherenceLine = '';
+    try {
+        const planSnap = await userRef.collection('preferences').doc('weekPlan').get();
+        if (planSnap.exists) {
+            const { days = {}, restDays = [] } = planSnap.data();
+            const tSnap = await userRef.collection('workoutTemplates').get();
+            const names = new Map(tSnap.docs.map(d => [d.id, d.data().name || d.id]));
+            const parts = Object.entries(days)
+                .filter(([, tid]) => tid)
+                .map(([d, tid]) => `${d} ${names.get(tid) || tid}`);
+            if (restDays.length) parts.push(`rest ${restDays.join('/')}`);
+            if (parts.length) planLine = `Week plan: ${parts.join(' · ')}\n\n`;
+            // days values are templateId | 'rest' | null — only real
+            // workouts count as planned training days.
+            const plannedCount = Object.values(days).filter(tid => tid && tid !== 'rest').length;
+            if (plannedCount > 0) {
+                const trainedDays = new Set(workouts.map(w => w.date)).size;
+                adherenceLine = `Adherence: trained ${trainedDays} of ${plannedCount} planned days this week.\n\n`;
+            }
+        }
+    } catch (planErr) {
+        console.log(`weeklyCoachReview plan read skipped for ${userRef.id}:`, planErr.message);
+    }
+
+    // Active program (Phase 9) — the review must know the block it's
+    // reviewing. Week derived from startDate, never stored.
+    let programLine = '';
+    try {
+        const progSnap = await userRef.collection('programs')
+            .where('active', '==', true).limit(1).get();
+        if (!progSnap.empty) {
+            const prog = progSnap.docs[0].data();
+            const week = Math.floor(Math.round((new Date() - new Date(`${prog.startDate}T12:00:00`)) / 86400000) / 7) + 1;
+            if (week > (prog.weeks || 1)) {
+                programLine = `Program: "${prog.name}" (${prog.weeks} weeks, ${prog.goal}) FINISHED — acknowledge the block is done and invite planning the next one.\n\n`;
+            } else if (week >= 1) {
+                const target = (prog.weekTargets || []).find(t => t.week === week);
+                const next = (prog.weekTargets || []).find(t => t.week === week + 1);
+                programLine = `Program: "${prog.name}" (${prog.goal}) — week ${week} of ${prog.weeks}`
+                    + (target ? ` — this week: ${target.label}${target.weightPct ? ` (${target.weightPct > 0 ? '+' : ''}${target.weightPct}% weight)` : ''}` : '')
+                    + (next ? `; next week: ${next.label}` : '')
+                    + '.\n\n';
+            }
+        }
+    } catch (progErr) {
+        console.log(`weeklyCoachReview program read skipped for ${userRef.id}:`, progErr.message);
+    }
+
+    // Past advice outcomes (Phase 7) — the one proactive push should
+    // know whether earlier calls worked. Outcome windows need up to
+    // ~10 weeks of history; only read it when there's advice to score.
+    let outcomesBlock = '';
+    try {
+        const advSnap = await userRef.collection('coachAdvice')
+            .orderBy('date', 'desc').limit(15).get();
+        const advice = advSnap.docs.map(d => d.data());
+        if (advice.length) {
+            const historyStart = new Date(Date.now() - 70 * 86400000).toISOString().slice(0, 10);
+            const histSnap = await userRef.collection('workouts')
+                .where('date', '>=', historyStart).orderBy('date', 'desc').limit(120).get();
+            const history = histSnap.docs.map(d => d.data()).filter(w => w.completedAt && !w.cancelledAt);
+            const scored = buildOutcomesContext(advice, history, weekKey, { limit: 5 });
+            if (scored) outcomesBlock = `${scored}\n`;
+        }
+    } catch (outErr) {
+        console.log(`weeklyCoachReview outcomes skipped for ${userRef.id}:`, outErr.message);
+    }
+
+    // Compact summary — dates, types, top sets, readiness, notes.
+    const lines = [];
+    for (const w of workouts) {
+        const names = w.exerciseNames || {};
+        const ready = w.readiness?.score ? ` · felt ${w.readiness.score}/5` : '';
+        lines.push(`${w.date} — ${w.workoutType || 'Workout'}${ready}`);
+        for (const [key, ex] of Object.entries(w.exercises || {})) {
+            const name = names[key];
+            if (!name || !ex.sets?.length) continue;
+            const sets = ex.sets
+                .filter(s => s.type !== 'warmup' && (s.reps || s.weight))
+                .map(s => `${s.reps || '?'}×${s.weight || 'BW'}`).join(', ');
+            if (sets) lines.push(`  ${name}${ex.equipment ? ` [${ex.equipment}]` : ''}: ${sets}${ex.notes ? ` — "${ex.notes}"` : ''}`);
+        }
+    }
+
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+            model: DIGEST_MODEL,
+            max_tokens: 1500,
+            system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-5 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.',
+            messages: [{ role: 'user', content: `${programLine}${adherenceLine}${planLine}${outcomesBlock}This week's training log:\n\n${lines.join('\n')}` }],
+        }),
+    });
+    if (!upstream.ok) {
+        console.error(`❌ weeklyCoachReview API error for ${userRef.id}:`, upstream.status);
+        return { status: 'api_error' };
+    }
+    const resp = await upstream.json();
+    const review = resp.content?.find(b => b.type === 'text')?.text;
+    if (!review) return { status: 'api_error' };
+
+    const sessionRef = await userRef.collection('coachHistory').add({
+        type: 'weekly_review',
+        question: 'Weekly review',
+        response: review,
+        timestamp: new Date().toISOString(),
+        usage: {
+            inputTokens: resp.usage?.input_tokens || 0,
+            outputTokens: resp.usage?.output_tokens || 0,
+        },
+    });
+
+    // Push (best effort — web push infra). Skipped for manual requests:
+    // the user is already in the app looking at the result.
+    if (sendPush) {
+        try {
+            const subSnap = await userRef.collection('push_subscriptions').doc('current').get();
+            const sub = subSnap.exists ? subSnap.data().subscription : null;
+            if (sub) {
+                ensureVapidConfigured();
+                await webpush.sendNotification(sub, JSON.stringify({
+                    title: 'Big Surf',
+                    body: 'Your weekly training review is ready',
+                    icon: '/BigSurf.png',
+                    badge: '/BigSurf.png',
+                    tag: 'weekly-review',
+                    // Tap deep-links to the review (service worker routes on
+                    // data.url) instead of dumping the user on the dashboard.
+                    data: { url: '/?open=weekly-review' },
+                }));
+            }
+        } catch (pushErr) {
+            console.log(`weeklyCoachReview push skipped for ${userRef.id}:`, pushErr.message);
+        }
+    }
+
+    return { status: 'ok', review, sessionId: sessionRef.id };
+}
+
+/**
  * Weekly coach review (Phase 5) — proactive digest every Monday 14:00 UTC.
- * For each user active in the last 7 days: build a compact server-side
- * summary, one cheap DIGEST_MODEL call, save to coachHistory as
- * {type:'weekly_review'}, push "Your weekly training review is ready".
+ * For each user active in the last 7 days: generateWeeklyReviewForUser, push
+ * "Your weekly training review is ready".
  *
  * Spend guardrails: skip users with zero workouts in the window, per-user
  * 1/week via a weekKey (survives function retries), maxInstances 1, opt-out
@@ -1693,175 +1875,55 @@ exports.weeklyCoachReview = functions.runWith({
     const apiKey = anthropicApiKey.value();
     if (!apiKey) { console.error('❌ weeklyCoachReview: no API key'); return null; }
 
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-    const weekKey = new Date().toISOString().slice(0, 10); // this Monday
-
     const userRefs = await db.collection('users').listDocuments();
     let reviewed = 0;
     for (const userRef of userRefs) {
         try {
-            // Opt-out (default on).
-            const settingsSnap = await userRef.collection('preferences').doc('settings').get();
-            if (settingsSnap.exists && settingsSnap.data().weeklyCoachReview === false) continue;
-
-            // Active this week?
-            const workoutsSnap = await userRef.collection('workouts')
-                .where('date', '>=', weekAgo).orderBy('date', 'desc').limit(15).get();
-            const workouts = workoutsSnap.docs.map(d => d.data())
-                .filter(w => w.completedAt && !w.cancelledAt);
-            if (workouts.length === 0) continue;
-
-            // Once per week, retry-safe.
-            const limitRef = userRef.collection('preferences').doc('aiRateLimits');
-            const limitSnap = await limitRef.get();
-            if (limitSnap.exists && limitSnap.data().weeklyReview?.weekKey === weekKey) continue;
-            await limitRef.set({ weeklyReview: { weekKey } }, { merge: true });
-
-            // Week plan (5.5) — anchor the review to planned-vs-done, with an
-            // explicit adherence line (minimal adherence awareness: the review
-            // is the checkpoint that notices a broken week, not the user).
-            let planLine = '';
-            let adherenceLine = '';
-            try {
-                const planSnap = await userRef.collection('preferences').doc('weekPlan').get();
-                if (planSnap.exists) {
-                    const { days = {}, restDays = [] } = planSnap.data();
-                    const tSnap = await userRef.collection('workoutTemplates').get();
-                    const names = new Map(tSnap.docs.map(d => [d.id, d.data().name || d.id]));
-                    const parts = Object.entries(days)
-                        .filter(([, tid]) => tid)
-                        .map(([d, tid]) => `${d} ${names.get(tid) || tid}`);
-                    if (restDays.length) parts.push(`rest ${restDays.join('/')}`);
-                    if (parts.length) planLine = `Week plan: ${parts.join(' · ')}\n\n`;
-                    // days values are templateId | 'rest' | null — only real
-                    // workouts count as planned training days.
-                    const plannedCount = Object.values(days).filter(tid => tid && tid !== 'rest').length;
-                    if (plannedCount > 0) {
-                        const trainedDays = new Set(workouts.map(w => w.date)).size;
-                        adherenceLine = `Adherence: trained ${trainedDays} of ${plannedCount} planned days this week.\n\n`;
-                    }
-                }
-            } catch (planErr) {
-                console.log(`weeklyCoachReview plan read skipped for ${userRef.id}:`, planErr.message);
-            }
-
-            // Active program (Phase 9) — the review must know the block it's
-            // reviewing. Week derived from startDate, never stored.
-            let programLine = '';
-            try {
-                const progSnap = await userRef.collection('programs')
-                    .where('active', '==', true).limit(1).get();
-                if (!progSnap.empty) {
-                    const prog = progSnap.docs[0].data();
-                    const week = Math.floor(Math.round((new Date() - new Date(`${prog.startDate}T12:00:00`)) / 86400000) / 7) + 1;
-                    if (week > (prog.weeks || 1)) {
-                        programLine = `Program: "${prog.name}" (${prog.weeks} weeks, ${prog.goal}) FINISHED — acknowledge the block is done and invite planning the next one.\n\n`;
-                    } else if (week >= 1) {
-                        const target = (prog.weekTargets || []).find(t => t.week === week);
-                        const next = (prog.weekTargets || []).find(t => t.week === week + 1);
-                        programLine = `Program: "${prog.name}" (${prog.goal}) — week ${week} of ${prog.weeks}`
-                            + (target ? ` — this week: ${target.label}${target.weightPct ? ` (${target.weightPct > 0 ? '+' : ''}${target.weightPct}% weight)` : ''}` : '')
-                            + (next ? `; next week: ${next.label}` : '')
-                            + '.\n\n';
-                    }
-                }
-            } catch (progErr) {
-                console.log(`weeklyCoachReview program read skipped for ${userRef.id}:`, progErr.message);
-            }
-
-            // Past advice outcomes (Phase 7) — the one proactive push should
-            // know whether earlier calls worked. Outcome windows need up to
-            // ~10 weeks of history; only read it when there's advice to score.
-            let outcomesBlock = '';
-            try {
-                const advSnap = await userRef.collection('coachAdvice')
-                    .orderBy('date', 'desc').limit(15).get();
-                const advice = advSnap.docs.map(d => d.data());
-                if (advice.length) {
-                    const historyStart = new Date(Date.now() - 70 * 86400000).toISOString().slice(0, 10);
-                    const histSnap = await userRef.collection('workouts')
-                        .where('date', '>=', historyStart).orderBy('date', 'desc').limit(120).get();
-                    const history = histSnap.docs.map(d => d.data()).filter(w => w.completedAt && !w.cancelledAt);
-                    const scored = buildOutcomesContext(advice, history, weekKey, { limit: 5 });
-                    if (scored) outcomesBlock = `${scored}\n`;
-                }
-            } catch (outErr) {
-                console.log(`weeklyCoachReview outcomes skipped for ${userRef.id}:`, outErr.message);
-            }
-
-            // Compact summary — dates, types, top sets, readiness, notes.
-            const lines = [];
-            for (const w of workouts) {
-                const names = w.exerciseNames || {};
-                const ready = w.readiness?.score ? ` · felt ${w.readiness.score}/5` : '';
-                lines.push(`${w.date} — ${w.workoutType || 'Workout'}${ready}`);
-                for (const [key, ex] of Object.entries(w.exercises || {})) {
-                    const name = names[key];
-                    if (!name || !ex.sets?.length) continue;
-                    const sets = ex.sets
-                        .filter(s => s.type !== 'warmup' && (s.reps || s.weight))
-                        .map(s => `${s.reps || '?'}×${s.weight || 'BW'}`).join(', ');
-                    if (sets) lines.push(`  ${name}${ex.equipment ? ` [${ex.equipment}]` : ''}: ${sets}${ex.notes ? ` — "${ex.notes}"` : ''}`);
-                }
-            }
-
-            const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey,
-                    'anthropic-version': '2023-06-01',
-                },
-                body: JSON.stringify({
-                    model: DIGEST_MODEL,
-                    max_tokens: 1500,
-                    system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-5 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.',
-                    messages: [{ role: 'user', content: `${programLine}${adherenceLine}${planLine}${outcomesBlock}This week's training log:\n\n${lines.join('\n')}` }],
-                }),
-            });
-            if (!upstream.ok) {
-                console.error(`❌ weeklyCoachReview API error for ${userRef.id}:`, upstream.status);
-                continue;
-            }
-            const resp = await upstream.json();
-            const review = resp.content?.find(b => b.type === 'text')?.text;
-            if (!review) continue;
-
-            await userRef.collection('coachHistory').add({
-                type: 'weekly_review',
-                question: 'Weekly review',
-                response: review,
-                timestamp: new Date().toISOString(),
-                usage: {
-                    inputTokens: resp.usage?.input_tokens || 0,
-                    outputTokens: resp.usage?.output_tokens || 0,
-                },
-            });
-
-            // Push (best effort — web push infra).
-            try {
-                const subSnap = await userRef.collection('push_subscriptions').doc('current').get();
-                const sub = subSnap.exists ? subSnap.data().subscription : null;
-                if (sub) {
-                    ensureVapidConfigured();
-                    await webpush.sendNotification(sub, JSON.stringify({
-                        title: 'Big Surf',
-                        body: 'Your weekly training review is ready',
-                        icon: '/BigSurf.png',
-                        badge: '/BigSurf.png',
-                        tag: 'weekly-review',
-                    }));
-                }
-            } catch (pushErr) {
-                console.log(`weeklyCoachReview push skipped for ${userRef.id}:`, pushErr.message);
-            }
-            reviewed++;
+            const result = await generateWeeklyReviewForUser(userRef, apiKey);
+            if (result.status === 'ok') reviewed++;
         } catch (userErr) {
             console.error(`❌ weeklyCoachReview failed for ${userRef.id}:`, userErr);
         }
     }
     console.log(`✅ weeklyCoachReview: ${reviewed} review(s) generated`);
     return null;
+});
+
+/**
+ * On-demand weekly review — "Review my week" on the coach landing. Same
+ * generation as the Monday digest, but for the signed-in user right now.
+ *
+ * Spend guardrails: one manual review per user per day (separate from the
+ * Monday weekKey, so a manual Sunday review doesn't eat Monday's digest).
+ * No push — the user is in the app watching the result stream in.
+ */
+exports.requestWeeklyReview = functions.runWith({
+    secrets: [anthropicApiKey],
+    timeoutSeconds: 120,
+    memory: '512MB',
+}).https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Sign in to get a review');
+    }
+    const apiKey = anthropicApiKey.value();
+    if (!apiKey) {
+        throw new functions.https.HttpsError('failed-precondition', 'Coach unavailable');
+    }
+
+    const userRef = db.collection('users').doc(context.auth.uid);
+
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const limitRef = userRef.collection('preferences').doc('aiRateLimits');
+    const limitSnap = await limitRef.get();
+    if (limitSnap.exists && limitSnap.data().weeklyReview?.manualDate === todayKey) {
+        return { status: 'rate_limited' };
+    }
+
+    const result = await generateWeeklyReviewForUser(userRef, apiKey, { force: true, sendPush: false });
+    if (result.status === 'ok') {
+        await limitRef.set({ weeklyReview: { manualDate: todayKey } }, { merge: true });
+    }
+    return result;
 });
 
 /**

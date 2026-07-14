@@ -1179,12 +1179,17 @@ async function renderBodyCard(bwData) {
             `Fat ${fatPct}%`,
             dexaAgo ? `DEXA ${dexaAgo}` : null,
         ].filter(Boolean).join(' · ');
-        compHtml = `<div class="dash-body-card__comp${hasBw ? ' dash-body-card__comp--split' : ''}">${parts}${muscleDelta}</div>`;
+        // The composition line keeps its own tap → composition page, even
+        // though the card's weight tap now goes to the weight-first detail.
+        compHtml = `<div class="dash-body-card__comp${hasBw ? ' dash-body-card__comp--split' : ''}" onclick="event.stopPropagation(); showCompositionDetail()">${parts}${muscleDelta}</div>`;
     }
 
+    // Owner call: tapping your weight must never land on a DEXA-led view.
+    // With a weight logged, the card tap opens the weight-first detail page;
+    // the composition line and the Details link still open the composition page.
     return `
         <div class="dash-section-head"><h3>Body</h3><a onclick="showCompositionDetail()">Details →</a></div>
-        <div class="dash-body-card" onclick="showCompositionDetail()" role="button" tabindex="0">
+        <div class="dash-body-card" onclick="${hasBw ? "openMetricDetail('body-weight')" : 'showCompositionDetail()'}" role="button" tabindex="0">
             ${weightHtml}
             ${compHtml}
         </div>
