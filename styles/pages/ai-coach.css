@@ -534,6 +534,13 @@
     margin-top: 4px;
 }
 
+/* Pager under the history list — quiet, centered, tap-sized. */
+.coach-history-more {
+    display: block;
+    margin: 0 auto var(--space-8);
+    min-height: var(--tap-sm);
+}
+
 /* Freeform textarea (used in workout builder) */
 .coach-textarea {
     width: 100%;

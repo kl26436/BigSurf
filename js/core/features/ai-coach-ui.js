@@ -1292,7 +1292,13 @@ function getWeeksSpan(workouts) {
 
 /**
  * Load past coaching sessions and render in the modal.
+ *
+ * Shows `_historyShown` threads (5 until expanded — "Show more" pages by 20,
+ * sticky for the session). One extra doc is fetched to know whether the
+ * Show-more row should render at all.
  */
+let _historyShown = 5;
+
 async function loadCoachHistory() {
     if (!AppState.currentUser) return;
 
@@ -1304,14 +1310,15 @@ async function loadCoachHistory() {
         const q = query(
             collection(db, 'users', AppState.currentUser.uid, 'coachHistory'),
             orderBy('timestamp', 'desc'),
-            limit(5)
+            limit(_historyShown + 1)
         );
 
         const snapshot = await getDocs(q);
         if (snapshot.empty) return;
 
-        const sessions = [];
-        snapshot.forEach(doc => sessions.push({ id: doc.id, ...doc.data() }));
+        const hasMore = snapshot.docs.length > _historyShown;
+        const sessions = snapshot.docs.slice(0, _historyShown)
+            .map(doc => ({ id: doc.id, ...doc.data() }));
 
         historySection.classList.remove('hidden');
         historySection.innerHTML = `
@@ -1325,6 +1332,9 @@ async function loadCoachHistory() {
                     <div class="coach-history-date">${formatRelativeDate(s.timestamp, { daysAgo: true })}</div>
                 </div>
             `).join('')}
+            ${hasMore ? `
+                <button class="btn-text coach-history-more" onclick="loadMoreCoachHistory()">Show more</button>
+            ` : ''}
         `;
 
         // Store sessions for viewing
@@ -1332,6 +1342,11 @@ async function loadCoachHistory() {
     } catch (error) {
         debugLog('Failed to load coach history:', error);
     }
+}
+
+export function loadMoreCoachHistory() {
+    _historyShown += 20;
+    loadCoachHistory();
 }
 
 /**
@@ -1847,4 +1862,5 @@ window.dismissSessionAdjustments = dismissSessionAdjustments;
 window.rateCoachAnswer = rateCoachAnswer;
 window.undoProgramCreate = undoProgramCreate;
 window.requestWeeklyReviewNow = requestWeeklyReviewNow;
+window.loadMoreCoachHistory = loadMoreCoachHistory;
 
