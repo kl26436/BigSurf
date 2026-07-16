@@ -836,8 +836,15 @@ audits don't re-litigate them.
   infrequent lifts; keeping the code's value.
 - **5.6.0 migration**: the heuristic reclassification of pre-existing templates is entirely
   deferred (not just its review screen). Legacy templates read as `core`.
-- **5.7.3 increments** are fixed +5 lbs / +2.5 kg, not routed through plate-calculator
-  gym-plate awareness. Good enough until real plate data exists per gym.
+- ~~**5.7.3 increments** are fixed +5 lbs / +2.5 kg~~ — superseded 2026-07-15: increments and
+  all weight scaling are now plate-aware. `weightIncrement(unit, plates)` derives the smallest
+  real jump from the plate-calculator settings (no 2.5 lb plates → 10 lb jumps);
+  `scaleLoadableWeight` snaps program/deload scaling to whole jumps FROM the last real weight
+  (delta-snapped — bare multiples of the step aren't bar-loadable). Bumps are per-set relative,
+  preserving ramp structure (135/155/175 → +inc each, never a flat top weight). The nudge line,
+  the seeded targets, and the coach prompts (plates + smallest jump now in chat AND live
+  context; ramp + loadable-weights rules in both prompts) all share the same numbers, and the
+  nudge hides during adjusted sessions. Owner-reported 2026-07-15.
 
 ## Fixed 2026-07-13 (same-day sweep after the audit)
 

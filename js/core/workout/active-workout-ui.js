@@ -6,7 +6,7 @@ import { escapeHtml, escapeAttr, showNotification, convertWeight } from '../ui/u
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { getCategoryIcon, Config, debugLog } from '../utils/config.js';
 import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults, loadAllWorkouts } from '../data/data-manager.js';
-import { buildExerciseSessions, computeOverloadNudge, progressionTarget } from '../features/progression.js';
+import { buildExerciseSessions, computeOverloadNudge, progressionTarget, weightIncrement } from '../features/progression.js';
 import { getNextInGroup, isLastInGroupRound, groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import { haptic } from '../utils/haptics.js';
 import { navigateTo } from '../ui/navigation.js';
@@ -827,7 +827,8 @@ function nextTargetFor(lastSets, displayUnit) {
         if (lbs > topLbs) { topLbs = lbs; topSet = s; }
     }
     if (!topSet) return null;
-    const inc = displayUnit === 'kg' ? 2.5 : 5;
+    const inc = weightIncrement(displayUnit,
+        displayUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs);
     const topDisplay = convertWeight(topSet.weight, topSet.originalUnit || 'lbs', displayUnit);
     const next = Math.round((topDisplay + inc) * 10) / 10;
     return `Beat it — try ${next} ${displayUnit}`;
@@ -867,7 +868,9 @@ function renderLastSessionCard(exerciseName, idx) {
     // Overload nudge — only for weighted lifts (a bodyweight "try +5" is noise).
     // Prefer the smart multi-session coach hydrated by loadAutofillForExercise;
     // fall back to the simple last-session step until it's computed.
-    const nudge = isBodyweightExercise(exercise)
+    // No generic bump advice during an adjusted session (deload/heavy week) —
+    // the adjustment already set today's targets and the two would conflict.
+    const nudge = isBodyweightExercise(exercise) || AppState.savedData?.sessionLabel
         ? null
         : (exercise._overloadNudge || nextTargetFor(lastDefaults, displayUnit));
     const nudgeHtml = nudge
@@ -3737,11 +3740,17 @@ export async function loadAutofillForExercise(idx) {
                 const nudgeUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
                 const sessions = buildExerciseSessions(allWorkouts, exName, nudgeUnit);
                 const repTarget = exercise.defaultReps || exercise.reps || null;
-                exercise._overloadNudge = computeOverloadNudge(sessions, nudgeUnit, repTarget);
+                // Plate-aware jump: without 2.5s the smallest real barbell
+                // move is 10, not 5 — one increment feeds BOTH the advisory
+                // string and the seeded targets so they can never disagree.
+                const plates = nudgeUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs;
+                const progInc = weightIncrement(nudgeUnit, plates);
+                exercise._progressionInc = progInc;
+                exercise._overloadNudge = computeOverloadNudge(sessions, nudgeUnit, repTarget, progInc);
                 // 5.7.3 — structured target next to the advisory string: today's
                 // recommended weight/reps + a stall flag. The ↑ marker renders
                 // on the last-session card; the stall flag is read by the coach.
-                exercise._progression = progressionTarget(sessions, nudgeUnit, repTarget);
+                exercise._progression = progressionTarget(sessions, nudgeUnit, repTarget, progInc);
             } catch (e) {
                 debugLog('overload nudge failed', e);
             }
@@ -3777,13 +3786,23 @@ export async function loadAutofillForExercise(idx) {
                 const prog = exercise._progression;
                 const bump = prog && prog.bumped && prog.weight > 0;
                 const progUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
-                sx.sets = lastSession.sets.map(s => ({
-                    weight: bump ? prog.weight : ((s.weight && s.weight > 0) ? s.weight : null),
-                    reps: bump && prog.reps ? prog.reps : ((s.reps && s.reps > 0) ? s.reps : null),
-                    completed: false,
-                    originalUnit: bump ? progUnit : (s.originalUnit || AppState.globalUnit || 'lbs'),
-                    ...(bump ? { _suggested: true } : {}),
-                }));
+                const bumpInc = exercise._progressionInc || (progUnit === 'kg' ? 2.5 : 5);
+                // The bump is RELATIVE to each set's own last weight so a ramp
+                // keeps its shape (135/155/175 → +inc each, never a flat top
+                // weight across all sets). Warmups and unweighted sets are
+                // left exactly as last time.
+                sx.sets = lastSession.sets.map(s => {
+                    const bumpThis = bump && s.weight > 0 && (s.type || 'working') !== 'warmup';
+                    return {
+                        weight: bumpThis
+                            ? Math.round((convertWeight(s.weight, s.originalUnit || 'lbs', progUnit) + bumpInc) * 10) / 10
+                            : ((s.weight && s.weight > 0) ? s.weight : null),
+                        reps: bumpThis && prog.reps ? prog.reps : ((s.reps && s.reps > 0) ? s.reps : null),
+                        completed: false,
+                        originalUnit: bumpThis ? progUnit : (s.originalUnit || AppState.globalUnit || 'lbs'),
+                        ...(bumpThis ? { _suggested: true } : {}),
+                    };
+                });
             }
         } else {
             // No last session — initialize empty sets from template defaults

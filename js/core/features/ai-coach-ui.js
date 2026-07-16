@@ -16,6 +16,7 @@ import {
 } from './coach-context.js';
 import { summarizeWeekPlan, satisfiedDays, weekDates, DAY_KEYS } from './week-plan.js';
 import { scaleSessionSetTargets } from './program-session.js';
+import { weightIncrement, scaleLoadableWeight } from './progression.js';
 import { buildOutcomesContext, buildFeedbackContext, computeAdviceOutcome } from './coach-outcomes.js';
 import { micButtonHtml } from './coach-voice.js';
 
@@ -924,7 +925,8 @@ export async function applySessionAdjustments(id) {
         await window.startWorkout(template.name);
 
         const unit = AppState.globalUnit || 'lbs';
-        const step = unit === 'kg' ? 2.5 : 5;
+        const step = weightIncrement(unit,
+            unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs);
         const cw = AppState.currentWorkout;
         if (!cw?.exercises) return;
 
@@ -948,7 +950,7 @@ export async function applySessionAdjustments(id) {
             const f = 1 + p.weightPct / 100;
             for (const ex of cw.exercises) {
                 if (typeof ex.weight === 'number' && ex.weight > 0) {
-                    ex.weight = Math.max(step, Math.round((ex.weight * f) / step) * step);
+                    ex.weight = scaleLoadableWeight(ex.weight, f, step);
                 }
             }
             // Scale the autofilled per-set targets too — they're what the set
@@ -1091,6 +1093,14 @@ function buildTrainingContext(workouts, healthSummary = '', prList = []) {
     // Saved workouts — "plan my week" should adjust what exists, not reinvent.
     const templatesBlock = buildTemplatesContext(AppState.workoutPlans || []);
     if (templatesBlock) summary += `\n${templatesBlock}`;
+
+    // Plate inventory (from the plate-calculator settings) — the coach must
+    // never prescribe a load the gym can't actually build.
+    const ctxUnit = AppState.globalUnit || 'lbs';
+    const ctxPlates = ctxUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs;
+    if (Array.isArray(ctxPlates) && ctxPlates.length) {
+        summary += `\nPlates available (per side): ${[...ctxPlates].sort((a, b) => b - a).join(', ')} ${ctxUnit} — smallest real weight jump is ${weightIncrement(ctxUnit, ctxPlates)} ${ctxUnit}.\n`;
+    }
 
     // Week plan (5.5) — grounds "what should I do today/this week", plus the
     // adherence count (5.5.3) so mid-week answers know planned vs done without

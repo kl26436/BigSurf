@@ -344,3 +344,63 @@ describe('countLastWeekTrainingDaysThroughToday', () => {
         expect(countLastWeekTrainingDaysThroughToday(workouts, now)).toBe(1);
     });
 });
+
+// ── Plate-aware progression (2026-07-15: "gym has no 2.5s" fix) ─────────────
+
+describe('weightIncrement', () => {
+    it('defaults to the classic jump without plate data', async () => {
+        const { weightIncrement } = await import('../../js/core/features/progression.js');
+        expect(weightIncrement('lbs', null)).toBe(5);
+        expect(weightIncrement('lbs', [])).toBe(5);
+        expect(weightIncrement('kg', undefined)).toBe(2.5);
+    });
+
+    it('derives 2× the smallest plate — no 2.5s means 10 lb jumps', async () => {
+        const { weightIncrement } = await import('../../js/core/features/progression.js');
+        expect(weightIncrement('lbs', [45, 35, 25, 10, 5])).toBe(10);
+        expect(weightIncrement('lbs', [45, 35, 25, 10, 5, 2.5])).toBe(5);
+        expect(weightIncrement('kg', [20, 15, 10, 5, 2.5])).toBe(5);
+    });
+
+    it('never shrinks below the classic jump (microplates)', async () => {
+        const { weightIncrement } = await import('../../js/core/features/progression.js');
+        expect(weightIncrement('lbs', [45, 25, 10, 5, 2.5, 1.25])).toBe(5);
+        expect(weightIncrement('kg', [20, 10, 5, 2.5, 1.25, 0.5])).toBe(2.5);
+    });
+});
+
+describe('scaleLoadableWeight', () => {
+    it('snaps the CHANGE to whole steps so results stay bar-loadable', async () => {
+        const { scaleLoadableWeight } = await import('../../js/core/features/progression.js');
+        // 135 deloaded -40% with 10 lb jumps: 81 → snap change to -50 → 85
+        // (85 = 135 - 5×10, same ladder the bar was on; 80 would NOT be).
+        expect(scaleLoadableWeight(135, 0.6, 10)).toBe(85);
+        // Heavy +5% on 225 with 10 lb jumps: 236.25 → +10 → 235.
+        expect(scaleLoadableWeight(225, 1.05, 10)).toBe(235);
+    });
+
+    it('keeps the weight when the scaled change rounds to zero or below zero', async () => {
+        const { scaleLoadableWeight } = await import('../../js/core/features/progression.js');
+        expect(scaleLoadableWeight(5, 0.6, 10)).toBe(5);   // -2 rounds to 0 steps
+        expect(scaleLoadableWeight(15, 0.1, 100)).toBe(15); // absurd step → no change below zero guard
+    });
+});
+
+describe('plate-aware increments flow through the nudge and target', () => {
+    const ramp = [
+        { date: '2026-07-10', topWeight: 175, topReps: 10, maxReps: 10 },
+        { date: '2026-07-07', topWeight: 175, topReps: 8, maxReps: 8 },
+    ];
+
+    it('computeOverloadNudge suggests +10 when passed the coarser increment', async () => {
+        const { computeOverloadNudge } = await import('../../js/core/features/progression.js');
+        expect(computeOverloadNudge(ramp, 'lbs', 10, 10)).toContain('185');
+        expect(computeOverloadNudge(ramp, 'lbs', 10)).toContain('180'); // default 5 unchanged
+    });
+
+    it('progressionTarget bumps by the passed increment', async () => {
+        const { progressionTarget } = await import('../../js/core/features/progression.js');
+        expect(progressionTarget(ramp, 'lbs', 10, 10)).toMatchObject({ weight: 185, bumped: true });
+        expect(progressionTarget(ramp, 'lbs', 10)).toMatchObject({ weight: 180, bumped: true });
+    });
+});

@@ -129,6 +129,13 @@ function installKeyboardAwareFocusHandler() {
         // visualViewport on most modern engines.
         setTimeout(() => {
             try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { /* noop */ }
+            // iOS Safari's scrollIntoView silently no-ops inside top-layer
+            // <dialog> elements (7/15 report: workout-notes textarea in
+            // #workout-completion-modal, 278px overhang after scroll should
+            // have fired). Verify against the visualViewport and manually
+            // scroll the nearest scrollable ancestor if the input is still
+            // occluded.
+            requestAnimationFrame(() => forceScrollInputIntoView(t));
         }, 300);
 
         // Silent health check for the recurring "search results hidden under
@@ -139,6 +146,34 @@ function installKeyboardAwareFocusHandler() {
         // screen still fails despite the last round of fixes.
         setTimeout(() => scheduleKeyboardOcclusionCheck(t), 600);
     });
+}
+
+// Fallback for iOS Safari + top-layer <dialog>: walk up looking for the nearest
+// element that actually scrolls, then set its scrollTop so the input sits above
+// the keyboard with a small breathing pad.
+function forceScrollInputIntoView(input) {
+    if (!input || !input.isConnected) return;
+    if (document.activeElement !== input) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const rect = input.getBoundingClientRect();
+    const bottomPad = 16;
+    const overhang = Math.round(rect.bottom - vv.height + bottomPad);
+    if (overhang <= 0) return; // already visible; nothing to do
+
+    // Find the closest scrollable ancestor. A scrollable element has
+    // overflow-y auto|scroll AND scrollHeight > clientHeight. Fall back to
+    // the document element if nothing scrolls internally.
+    let el = input.parentElement;
+    while (el && el !== document.body) {
+        const cs = getComputedStyle(el);
+        const canScroll = /(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1;
+        if (canScroll) break;
+        el = el.parentElement;
+    }
+    const scroller = (el && el !== document.body) ? el : document.scrollingElement || document.documentElement;
+    if (!scroller) return;
+    scroller.scrollTop = scroller.scrollTop + overhang;
 }
 
 // Rate-limit the keyboard-occlusion detector to once per 5 minutes. Was

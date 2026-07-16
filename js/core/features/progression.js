@@ -14,6 +14,35 @@ import { convertWeight } from '../ui/ui-helpers.js';
 const INCREMENT = { lbs: 5, kg: 2.5 };
 
 /**
+ * The smallest REAL weight jump at this user's gym: plates load in pairs, so
+ * it's 2× the smallest plate they own (from the plate-calculator settings) —
+ * a gym with no 2.5 lb plates can't move a bar by 5. Floors at the classic
+ * default so microplates don't shrink the standard progression jump. Pure:
+ * callers pass the plate list (settings.plateLbs / settings.plateKg by unit).
+ */
+export function weightIncrement(unit, plates) {
+    const fallback = INCREMENT[unit] || 5;
+    if (!Array.isArray(plates) || plates.length === 0) return fallback;
+    const smallest = Math.min(...plates.filter(p => typeof p === 'number' && p > 0));
+    if (!Number.isFinite(smallest)) return fallback;
+    return Math.max(fallback, smallest * 2);
+}
+
+/**
+ * Scale a weight by `factor`, snapping the CHANGE to whole steps so the
+ * result stays loadable. The starting weight was real (it was lifted), and
+ * moving by multiples of the smallest jump keeps it real — rounding the
+ * scaled value to a bare multiple of the step would not (a 45 lb bar with
+ * 10 lb jumps lives on 95/105/115…, never 100). Pure.
+ */
+export function scaleLoadableWeight(weight, factor, step) {
+    if (typeof weight !== 'number' || weight <= 0 || !step) return weight;
+    const k = Math.round((weight * factor - weight) / step);
+    const out = weight + k * step;
+    return out > 0 ? Math.round(out * 10) / 10 : weight;
+}
+
+/**
  * Collapse a workout history into one entry per session for ONE exercise,
  * newest-first: { date, topWeight, topReps, maxReps } in the display unit.
  * Warmups excluded; a session with no working sets is skipped.
@@ -58,12 +87,12 @@ export function buildExerciseSessions(allWorkouts, exName, displayUnit) {
  *   5. Not enough signal → simple next-step suggestion.
  * Pure; returns the advisory string (or null).
  */
-export function computeOverloadNudge(sessions, displayUnit, repTarget) {
+export function computeOverloadNudge(sessions, displayUnit, repTarget, increment) {
     if (!Array.isArray(sessions) || sessions.length === 0) return null;
     const cur = sessions[0];
     const W = cur.topWeight;
     if (!W) return null;
-    const inc = INCREMENT[displayUnit] || 5;
+    const inc = increment || INCREMENT[displayUnit] || 5;
     const next = Math.round((W + inc) * 10) / 10;
     const rt = repTarget && repTarget > 0 ? repTarget : null;
     const R = cur.topReps || cur.maxReps || 0;
@@ -100,12 +129,12 @@ export function computeOverloadNudge(sessions, displayUnit, repTarget) {
  * @returns {{weight:number, reps:number|null, bumped:boolean, stalled:boolean,
  *            action:'bump'|'consolidate'|'chase-rep'|'stalled'|'start'}|null}
  */
-export function progressionTarget(sessions, displayUnit, repTarget) {
+export function progressionTarget(sessions, displayUnit, repTarget, increment) {
     if (!Array.isArray(sessions) || sessions.length === 0) return null;
     const cur = sessions[0];
     const W = cur.topWeight;
     if (!W) return null;
-    const inc = INCREMENT[displayUnit] || 5;
+    const inc = increment || INCREMENT[displayUnit] || 5;
     const next = Math.round((W + inc) * 10) / 10;
     const rt = repTarget && repTarget > 0 ? repTarget : null;
     const R = cur.topReps || cur.maxReps || 0;

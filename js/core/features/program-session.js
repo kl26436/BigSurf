@@ -19,6 +19,13 @@ import { showNotification, escapeHtml } from '../ui/ui-helpers.js';
 import { deriveProgramWeek } from './coach-context.js';
 import { debouncedSaveWorkoutData } from '../data/data-manager.js';
 import { DAY_KEYS, DAY_LABELS } from './week-plan.js';
+import { weightIncrement, scaleLoadableWeight } from './progression.js';
+
+/** Smallest real jump for a unit, from the user's plate-calculator inventory. */
+function stepFor(unit) {
+    return weightIncrement(unit,
+        unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs);
+}
 
 /**
  * Hydrate the active program once per session. null = fetched, none active.
@@ -185,8 +192,10 @@ export function scaleSessionSetTargets(factor) {
         for (const set of (saved?.sets || [])) {
             if (!set || set.completed || set._userEdited) continue;
             if (typeof set.weight !== 'number' || set.weight <= 0) continue;
-            const step = (set.originalUnit || AppState.globalUnit || 'lbs') === 'kg' ? 2.5 : 5;
-            set.weight = Math.max(step, Math.round((set.weight * factor) / step) * step);
+            // Snap the CHANGE to whole plate-jumps from the last real weight —
+            // keeps the result loadable at the user's gym (see progression.js).
+            set.weight = scaleLoadableWeight(set.weight, factor,
+                stepFor(set.originalUnit || AppState.globalUnit || 'lbs'));
             // A scaled target is the adjustment now, not the earned-bump hint.
             delete set._suggested;
         }
@@ -201,12 +210,12 @@ export function scaleSessionSetTargets(factor) {
  */
 function applyAdjustmentToCurrentSession(program, adj) {
     const unit = AppState.globalUnit || 'lbs';
-    const step = unit === 'kg' ? 2.5 : 5;
+    const step = stepFor(unit);
     const f = 1 + adj.weightPct / 100;
     let skippedBw = 0;
     for (const ex of (AppState.currentWorkout?.exercises || [])) {
         if (typeof ex.weight === 'number' && ex.weight > 0) {
-            ex.weight = Math.max(step, Math.round((ex.weight * f) / step) * step);
+            ex.weight = scaleLoadableWeight(ex.weight, f, step);
         } else {
             skippedBw++;
         }

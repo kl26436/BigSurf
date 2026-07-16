@@ -24,6 +24,7 @@ import {
     awSelectEquipment,
 } from '../workout/workout-core.js';
 import { micButtonHtml, ttsToggleHtml, speakCoachAnswer, stopSpeaking } from './coach-voice.js';
+import { weightIncrement } from './progression.js';
 
 // Ephemeral per-session thread (never saved to coachHistory).
 let _liveThread = [];
@@ -42,6 +43,7 @@ let _proposalSeq = 0;
  */
 export function buildLiveWorkoutContext({
     currentWorkout, savedData, globalUnit = 'lbs', equipment = [], elapsedMinutes = 0,
+    plates = null,
 } = {}) {
     if (!currentWorkout || !savedData) return 'No workout in progress.';
 
@@ -53,6 +55,9 @@ export function buildLiveWorkoutContext({
         lines.push(`Readiness today: ${savedData.readiness.score}/5${savedData.readiness.note ? ` ("${savedData.readiness.note}")` : ''}`);
     }
     lines.push(`Unit: ${globalUnit}`);
+    if (Array.isArray(plates) && plates.length) {
+        lines.push(`Plates (per side): ${[...plates].sort((a, b) => b - a).join(', ')} ${globalUnit} — smallest real jump ${weightIncrement(globalUnit, plates)} ${globalUnit}; only propose loadable weights`);
+    }
 
     // Per-exercise state — done sets vs plan; the first incomplete is "current".
     const exercises = currentWorkout.exercises || [];
@@ -290,6 +295,7 @@ export async function liveCoachSend() {
             globalUnit: AppState.globalUnit,
             equipment: AppState._cachedEquipment || [],
             elapsedMinutes,
+            plates: (AppState.globalUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs) || null,
         })}\n\nQuestion: ${text}`
         : text;
     _liveThread.push({ role: 'user', content: userTurn });
