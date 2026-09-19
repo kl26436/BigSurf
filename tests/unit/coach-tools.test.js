@@ -6,10 +6,83 @@ import { describe, it, expect } from 'vitest';
 import {
     validateCreateTemplateInput,
     applyTemplateChanges,
+    replaceTemplateExercises,
     normalizeExercise,
     validateProgramInput,
     TOOL_DEFINITIONS,
 } from '../../functions/coach-tools.js';
+
+describe('replaceTemplateExercises (CP-5 replace_day)', () => {
+    const template = {
+        name: 'Pull day', category: 'Pull',
+        exercises: [
+            { machine: 'Lat Pulldown', sets: 4, reps: 10, weight: 230, notes: 'wide grip', equipmentId: 'eq_1' },
+            { machine: 'Seated Row Machine', sets: 3, defaultReps: 12, weight: 220 },
+            { machine: 'Reverse Pec Deck', sets: 3, reps: 15, weight: 90 },
+        ],
+    };
+
+    it('classifies kept / changed / added / removed by name and writes the full new list', () => {
+        const r = replaceTemplateExercises(template, {
+            exercises: [
+                { name: 'Lat Pulldown', sets: 4, reps: 10, weight: 230 },
+                { name: 'Seated Row Machine', sets: 4, reps: 8 },
+                { name: 'Peck Back', sets: 3, reps: 12 },
+            ],
+        });
+        expect(r.ok).toBe(true);
+        expect(r.diff.kept).toEqual(['Lat Pulldown']);
+        expect(r.diff.changed).toEqual(['Seated Row Machine 3×12 → 4×8']);
+        expect(r.diff.added).toEqual(['Peck Back 3×12']);
+        expect(r.diff.removed).toEqual(['Reverse Pec Deck']);
+        expect(r.updated.exercises.map(e => e.machine)).toEqual(['Lat Pulldown', 'Seated Row Machine', 'Peck Back']);
+        expect(r.diffSummary).toContain('Added Peck Back');
+    });
+
+    it('carries forward fields the model does not resend (notes, equipmentId, defaultReps)', () => {
+        const r = replaceTemplateExercises(template, {
+            exercises: [
+                { name: 'Lat Pulldown', sets: 4, reps: 10 },
+                { name: 'Seated Row Machine', sets: 3, reps: 12, weight: 220 },
+            ],
+        });
+        expect(r.ok).toBe(true);
+        const [lat, row] = r.updated.exercises;
+        expect(lat.notes).toBe('wide grip');
+        expect(lat.equipmentId).toBe('eq_1');
+        expect(lat.weight).toBe(230);
+        expect(row.defaultReps).toBe(12);
+        expect(r.diff.kept).toEqual(['Lat Pulldown', 'Seated Row Machine']);
+        expect(r.diff.removed).toEqual(['Reverse Pec Deck']);
+    });
+
+    it('optionally renames and preserves untouched template fields', () => {
+        const r = replaceTemplateExercises({ ...template, kind: 'core', usageCount: 40 }, {
+            rename: 'Pull day — rotated',
+            exercises: [{ name: 'Lat Pulldown', sets: 4, reps: 10 }],
+        });
+        expect(r.ok).toBe(true);
+        expect(r.updated.name).toBe('Pull day — rotated');
+        expect(r.updated.kind).toBe('core');
+        expect(r.updated.usageCount).toBe(40);
+        expect(r.diffSummary).toMatch(/^Renamed/);
+    });
+
+    it('rejects an empty list, duplicates, nameless entries, and a no-op rewrite', () => {
+        expect(replaceTemplateExercises(template, { exercises: [] }).ok).toBe(false);
+        expect(replaceTemplateExercises(template, { exercises: [{ name: 'A', sets: 3, reps: 10 }, { name: 'a', sets: 3, reps: 10 }] }).ok).toBe(false);
+        expect(replaceTemplateExercises(template, { exercises: [{ sets: 3, reps: 10 }] }).ok).toBe(false);
+        const same = replaceTemplateExercises(template, {
+            exercises: [
+                { name: 'Lat Pulldown', sets: 4, reps: 10, weight: 230 },
+                { name: 'Seated Row Machine', sets: 3, reps: 12, weight: 220 },
+                { name: 'Reverse Pec Deck', sets: 3, reps: 15, weight: 90 },
+            ],
+        });
+        expect(same.ok).toBe(false);
+        expect(same.error).toMatch(/identical/);
+    });
+});
 
 describe('validateCreateTemplateInput', () => {
     it('accepts a sane workout and normalizes exercises', () => {
@@ -117,8 +190,8 @@ describe('TOOL_DEFINITIONS', () => {
         expect(names).toEqual([
             'adjust_program', 'archive_template', 'create_program',
             'create_workout_template', 'forget_fact', 'get_exercise_history',
-            'get_program', 'get_prs', 'get_week_plan', 'list_equipment', 'list_templates',
-            'log_advice', 'propose_session_adjustments', 'remember_fact',
+            'get_program', 'get_prs', 'get_week_plan', 'list_equipment', 'list_exercises', 'list_templates',
+            'log_advice', 'propose_session_adjustments', 'remember_fact', 'replace_day',
             'set_week_plan', 'update_workout_template',
         ]);
         for (const t of TOOL_DEFINITIONS) {

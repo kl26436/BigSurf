@@ -246,6 +246,35 @@ const TOOL_DEFINITIONS = [
             required: ['templateId', 'changes'],
         },
     },
+    {
+        name: 'replace_day',
+        description: 'Rewrite a saved workout in ONE step: pass the COMPLETE new exercise list (kept + changed + added; anything omitted is removed). Use this instead of update_workout_template whenever a request changes more than one exercise on a day — rotating accessories, restructuring a day, re-waving sets/reps across the board. Renders one diff card; the user can undo it. Call list_templates first for the templateId, and list_exercises / list_equipment for replacements.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                templateId: { type: 'string' },
+                exercises: {
+                    type: 'array',
+                    description: 'The full new exercise list, in order. Each: { name, sets, reps, weight?, equipment?, bodyPart?, equipmentType? }',
+                    items: { type: 'object' },
+                },
+                rename: { type: 'string', description: 'Optional new name for the workout' },
+                why: { type: 'string', description: 'One line on what changed and why — shown on the card' },
+            },
+            required: ['templateId', 'exercises'],
+        },
+    },
+    {
+        name: 'list_exercises',
+        description: "The user's full exercise library (built-in + custom, minus hidden), each with body part, equipment type, tags and lastUsed (null = never logged). Call before suggesting or swapping exercises — the first-message summary only shows what is already in their templates. Filter by bodyPart, or unusedOnly for variety material.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                bodyPart: { type: 'string', description: 'Optional body-part filter (substring, case-insensitive)' },
+                unusedOnly: { type: 'boolean', description: 'Only exercises never logged in a workout' },
+            },
+        },
+    },
 ];
 
 // ── Pure validation / transformation ────────────────────────────────
@@ -421,12 +450,163 @@ function validateProgramInput(input) {
     return { ok: true, normalized: { name, goal, weeks, startDate: input.startDate, weekTargets, split: input.split } };
 }
 
+/**
+ * replace_day (CP-5): swap a template's whole exercise list in one write and
+ * describe the change as a structured diff (pure — no I/O). Exercises are
+ * matched by name; a kept exercise with different sets/reps/weight is
+ * "changed", not removed+added, so the card reads like an edit.
+ * @returns {{ok:true, updated:object, diff:{kept:string[],changed:string[],added:string[],removed:string[]}, diffSummary:string} | {ok:false, error:string}}
+ */
+function replaceTemplateExercises(template, input) {
+    if (!template || typeof template !== 'object') return { ok: false, error: 'Template not found' };
+    if (!Array.isArray(input?.exercises) || input.exercises.length === 0) {
+        return { ok: false, error: 'exercises must be the complete new list (at least one)' };
+    }
+    if (input.exercises.length > 20) return { ok: false, error: 'Too many exercises (max 20)' };
+    const next = input.exercises.map(normalizeExercise).filter(Boolean);
+    if (next.length !== input.exercises.length) return { ok: false, error: 'Every exercise needs a name' };
+
+    const exName = (e) => e.machine || e.name || '';
+    const key = (e) => exName(e).trim().toLowerCase();
+    const prior = Array.isArray(template.exercises) ? template.exercises : [];
+    const priorByKey = new Map(prior.map(e => [key(e), e]));
+    const nextKeys = new Set(next.map(key));
+    if (nextKeys.size !== next.length) return { ok: false, error: 'Duplicate exercise names in the new list' };
+
+    const diff = { kept: [], changed: [], added: [], removed: [] };
+    for (const e of next) {
+        const old = priorByKey.get(key(e));
+        if (!old) { diff.added.push(`${exName(e)} ${e.sets}×${e.reps}`); continue; }
+        // Carry forward fields the model does not resend (notes, group,
+        // equipmentId…) so a rewrite never silently strips them.
+        const oldReps = old.defaultReps ?? old.reps;
+        const same = old.sets === e.sets && oldReps === e.reps
+            && (e.weight == null || old.weight === e.weight)
+            && (!e.equipment || old.equipment === e.equipment);
+        Object.assign(e, { ...old, ...e });
+        if ('defaultReps' in old) e.defaultReps = e.reps;
+        if (same) diff.kept.push(exName(e));
+        else diff.changed.push(`${exName(e)} ${old.sets ?? '—'}×${oldReps ?? '—'} → ${e.sets}×${e.reps}`);
+    }
+    for (const old of prior) {
+        if (!nextKeys.has(key(old))) diff.removed.push(exName(old));
+    }
+
+    const updated = { ...template, exercises: next };
+    const rename = typeof input.rename === 'string' ? input.rename.trim().slice(0, 60) : '';
+    let renamed = '';
+    if (rename && rename !== template.name) { updated.name = rename; renamed = `Renamed "${template.name}" → "${rename}"`; }
+
+    if (!diff.changed.length && !diff.added.length && !diff.removed.length && !renamed) {
+        return { ok: false, error: 'New list is identical to the current workout — nothing to change' };
+    }
+    const parts = [];
+    if (renamed) parts.push(renamed);
+    if (diff.added.length) parts.push(`Added ${diff.added.join(', ')}`);
+    if (diff.removed.length) parts.push(`Removed ${diff.removed.join(', ')}`);
+    if (diff.changed.length) parts.push(`Changed ${diff.changed.join(', ')}`);
+    if (diff.kept.length) parts.push(`Kept ${diff.kept.length}`);
+    return { ok: true, updated, diff, diffSummary: parts.join('; ') };
+}
+
 // ── Firestore executors (Admin SDK, scoped to users/{userId}) ───────
 
 function makeToolExecutors({ db, userId, source = 'chat' }) {
     const userDoc = () => db.collection('users').doc(userId);
 
     return {
+        // CP-5 — the chat coach previously had NO path to the exercise
+        // library (the client's buildExerciseLibraryContext only feeds the
+        // template generator), so it could only suggest what was already in
+        // the templates. The built-in library is a static JSON on the client;
+        // functions/data/exercises.json mirrors it (parity-tested).
+        async list_exercises(input) {
+            const builtIn = require('./data/exercises.json');
+            const [customSnap, overrideSnap, hiddenSnap, woSnap] = await Promise.all([
+                userDoc().collection('customExercises').get(),
+                userDoc().collection('exerciseOverrides').get(),
+                userDoc().collection('hiddenExercises').get(),
+                userDoc().collection('workouts').orderBy('date', 'desc').limit(300).get(),
+            ]);
+            const overrides = new Map();
+            for (const d of overrideSnap.docs) {
+                const o = d.data();
+                if (o.originalName) overrides.set(o.originalName.toLowerCase(), o);
+            }
+            const hidden = new Set();
+            for (const d of hiddenSnap.docs) {
+                const h = d.data();
+                if (h.originalName) hidden.add(h.originalName.toLowerCase());
+            }
+            const lastUsed = new Map();
+            for (const d of woSnap.docs) {
+                const w = d.data();
+                if (!w.completedAt || w.cancelledAt || !w.exercises) continue;
+                const names = w.exerciseNames || {};
+                for (const k of Object.keys(w.exercises)) {
+                    const n = (names[k] || w.exercises[k]?.name || w.exercises[k]?.machine || '').toLowerCase();
+                    if (n && !lastUsed.has(n)) lastUsed.set(n, w.date);
+                }
+            }
+            const merged = [
+                ...builtIn.map(e => ({ ...e, ...(overrides.get((e.name || '').toLowerCase()) || {}) })),
+                ...customSnap.docs.map(d => ({ ...d.data(), isCustom: true })),
+            ].filter(e => e.name && !hidden.has(e.name.toLowerCase()));
+
+            const partFilter = String(input?.bodyPart || '').trim().toLowerCase();
+            const unusedOnly = !!input?.unusedOnly;
+            const byPart = {};
+            let total = 0;
+            for (const e of merged) {
+                const part = e.bodyPart || 'Other';
+                if (partFilter && !part.toLowerCase().includes(partFilter)) continue;
+                const used = lastUsed.get(e.name.toLowerCase()) || null;
+                if (unusedOnly && used) continue;
+                if (!byPart[part]) byPart[part] = [];
+                byPart[part].push({
+                    name: e.name,
+                    equipmentType: e.equipmentType || null,
+                    tags: Array.isArray(e.tags) ? e.tags : [],
+                    lastUsed: used,
+                    ...(e.isCustom ? { custom: true } : {}),
+                });
+                total += 1;
+            }
+            for (const part of Object.keys(byPart)) {
+                // Never-used first, then stalest — the order a rotation wants.
+                byPart[part].sort((a, b) => (a.lastUsed || '').localeCompare(b.lastUsed || '') || a.name.localeCompare(b.name));
+            }
+            return { total, unused: merged.filter(e => !lastUsed.has(e.name.toLowerCase())).length, byBodyPart: byPart };
+        },
+
+        async replace_day(input) {
+            const templateId = String(input?.templateId || '').trim();
+            if (!templateId) return { error: 'templateId is required' };
+            const ref = userDoc().collection('workoutTemplates').doc(templateId);
+            const snap = await ref.get();
+            if (!snap.exists) return { error: `Template not found: ${templateId}. Call list_templates for valid ids.` };
+            const current = snap.data();
+            const applied = replaceTemplateExercises(current, input);
+            if (!applied.ok) return { error: applied.error };
+
+            applied.updated.lastUpdated = new Date().toISOString();
+            await ref.set(applied.updated);
+            return {
+                result: { templateId, diff: applied.diffSummary },
+                actionCard: {
+                    kind: 'template_replaced',
+                    templateId,
+                    name: applied.updated.name,
+                    category: applied.updated.category || null,
+                    exerciseCount: applied.updated.exercises.length,
+                    diff: applied.diff,
+                    diffSummary: applied.diffSummary,
+                    why: clip(input?.why, 140) || null,
+                    undo: { priorExercises: current.exercises || [], priorName: current.name || null },
+                },
+            };
+        },
+
         async get_exercise_history(input) {
             const target = String(input?.exercise || '').trim().toLowerCase();
             if (!target) return { error: 'exercise is required' };
@@ -1052,6 +1232,8 @@ const TOOL_STATUS = {
     list_equipment: 'Checking your gym…',
     create_workout_template: 'Creating your workout…',
     update_workout_template: 'Updating your workout…',
+    replace_day: 'Rewriting your workout…',
+    list_exercises: 'Checking your exercise library…',
     remember_fact: 'Noting that…',
     forget_fact: 'Forgetting that…',
     get_week_plan: 'Checking your week…',
@@ -1068,6 +1250,7 @@ module.exports = {
     TOOL_STATUS,
     validateCreateTemplateInput,
     applyTemplateChanges,
+    replaceTemplateExercises,
     normalizeExercise,
     makeToolExecutors,
     validateProposal,

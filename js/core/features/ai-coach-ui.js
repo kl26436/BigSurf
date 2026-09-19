@@ -761,6 +761,42 @@ function handleCoachActionCard(card, streamingBubble) {
         // (programs set the week plan too).
         AppState._weekPlan = undefined;
         AppState._activeProgram = undefined;
+    } else if (card.kind === 'template_replaced') {
+        // CP-5 — a whole-day rewrite lands as ONE receipt with a structured
+        // diff and an undo, instead of six single-field cards to tap.
+        const id = `rcard_${++_replaceCardSeq}`;
+        if (card.undo?.priorExercises) _pendingReplaceUndo.set(id, { templateId: card.templateId, ...card.undo });
+        const d = card.diff || {};
+        const row = (cls, icon, label, text) => `
+            <div class="coach-diff__row coach-diff__row--${cls}">
+                <i class="fas ${icon}" aria-hidden="true"></i>
+                <span class="coach-diff__label">${label}</span>
+                <span class="coach-diff__text">${escapeHtml(text)}</span>
+            </div>`;
+        const rows = [
+            ...(d.added || []).map(t => row('added', 'fa-plus', 'Added', t)),
+            ...(d.removed || []).map(t => row('removed', 'fa-minus', 'Removed', t)),
+            ...(d.changed || []).map(t => row('changed', 'fa-arrow-right-arrow-left', 'Changed', t)),
+            ...(d.kept?.length ? [row('kept', 'fa-check', 'Kept', d.kept.join(', '))] : []),
+        ].join('');
+        const catKey = (card.category || 'other').toLowerCase();
+        addChatBubble('bot', `
+            <div class="coach-action-card coach-action-card--receipt coach-program-card" id="${id}">
+                <div class="coach-program-card__head">
+                    <div class="coach-action-card__icon coach-action-card__icon--${catKey}"><i class="${getCategoryIcon(card.category)}"></i></div>
+                    <div class="coach-action-card__body">
+                        <div class="coach-program-card__title">${escapeHtml(card.name || 'Workout rewritten')}</div>
+                        <div class="coach-program-card__meta">${card.exerciseCount} exercise${card.exerciseCount === 1 ? '' : 's'}${card.why ? ` · ${escapeHtml(card.why)}` : ''}</div>
+                    </div>
+                    <span class="coach-receipt-tag">Applied</span>
+                </div>
+                <div class="coach-diff">${rows}</div>
+                <div class="coach-action-card__actions">
+                    <button class="live-proposal__apply" onclick="openCoachTemplate('${escapeAttr(card.templateId)}')">Open workout</button>
+                    ${card.undo?.priorExercises ? `<button class="live-proposal__dismiss" onclick="undoReplaceDay('${id}')">Undo</button>` : ''}
+                </div>
+            </div>
+        `);
     } else {
         const descLabel = card.kind === 'template_updated'
             ? (card.diffSummary ? truncate(card.diffSummary, 64) : 'Updated')
@@ -828,6 +864,44 @@ export async function rateCoachAnswer(btn, threadId, turnIdx, val) {
 
 const _pendingProgramUndo = new Map();
 let _programCardSeq = 0;
+
+// replace_day undo (CP-5) — restores the exercise list the rewrite replaced.
+const _pendingReplaceUndo = new Map();
+let _replaceCardSeq = 0;
+
+export async function undoReplaceDay(cardId) {
+    const u = _pendingReplaceUndo.get(cardId);
+    if (!u?.templateId || !Array.isArray(u.priorExercises) || !AppState.currentUser) return;
+    const card = document.getElementById(cardId);
+    try {
+        const { db, doc, setDoc } = await import('../data/firebase-config.js');
+        const patch = { exercises: u.priorExercises, lastUpdated: new Date().toISOString() };
+        if (u.priorName) patch.name = u.priorName;
+        await setDoc(doc(db, 'users', AppState.currentUser.uid, 'workoutTemplates', u.templateId), patch, { merge: true });
+        _pendingReplaceUndo.delete(cardId);
+        if (card) {
+            card.outerHTML = `
+                <div class="coach-action-card coach-action-card--undone">
+                    <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-rotate-left"></i></div>
+                    <div class="coach-action-card__body">
+                        <div class="coach-action-card__title">Rewrite undone</div>
+                        <div class="coach-action-card__desc">${escapeHtml(u.priorName || 'Workout')} restored to its previous exercises</div>
+                    </div>
+                </div>`;
+        }
+        showNotification('Workout restored', 'success');
+        try {
+            const mgr = new FirebaseWorkoutManager(AppState);
+            AppState.workoutPlans = await mgr.getUserWorkoutTemplates({ fromServer: true });
+            const sel = await import('../ui/template-selection.js');
+            sel.clearSelectorCache?.();
+            sel.acceptCoachTemplateRefresh?.();
+        } catch (e) { debugLog('coach: workoutPlans refresh after undo failed', e); }
+    } catch (e) {
+        console.error('❌ Rewrite undo failed:', e);
+        showNotification("Couldn't undo — ask the coach to revert it", 'error');
+    }
+}
 
 export async function undoProgramCreate(cardId) {
     const u = _pendingProgramUndo.get(cardId);
@@ -1930,6 +2004,7 @@ window.applySessionAdjustments = applySessionAdjustments;
 window.dismissSessionAdjustments = dismissSessionAdjustments;
 window.rateCoachAnswer = rateCoachAnswer;
 window.undoProgramCreate = undoProgramCreate;
+window.undoReplaceDay = undoReplaceDay;
 window.requestWeeklyReviewNow = requestWeeklyReviewNow;
 window.loadMoreCoachHistory = loadMoreCoachHistory;
 

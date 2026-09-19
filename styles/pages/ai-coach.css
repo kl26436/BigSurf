@@ -451,6 +451,41 @@
     margin-top: var(--space-8);
 }
 
+/* replace_day diff (CP-5) — one receipt lists what a whole-day rewrite did. */
+.coach-diff {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+}
+.coach-diff__row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-6);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    min-width: 0;
+}
+.coach-diff__row i {
+    flex-shrink: 0;
+    width: 12px;
+    text-align: center;
+    font-size: var(--font-2xs);
+}
+.coach-diff__label {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.coach-diff__text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.coach-diff__row--added i   { color: var(--success); }
+.coach-diff__row--removed i { color: var(--danger); }
+.coach-diff__row--changed i { color: var(--primary); }
+.coach-diff__row--kept i    { color: var(--text-muted); }
+
 /* Post-undo state — the receipt collapses to a quiet tombstone. */
 .coach-action-card--undone {
     opacity: 0.65;
