@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotation block — CP-4 mockup</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --success:#36c46b; --success-bg:rgba(54,196,107,0.12); --success-border:rgba(54,196,107,0.3);
+    --warning:#f0c24b; --danger:#e35d6a;
+    --cat-push:#4A90D9; --cat-push-bg:rgba(74,144,217,0.16);
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:0 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;text-align:center;max-width:880px;margin-left:auto;margin-right:auto;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .wrap-label{color:var(--text-strong);font-size:0.95rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.75rem;text-align:center;max-width:320px;}
+  .phone{width:340px;height:640px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;position:relative;padding:18px 12px;gap:12px;}
+
+  /* Chat bubble receipt card (extends coach-program-card) */
+  .bubble{background:var(--bg-surface);border-radius:var(--radius-md);padding:10px;}
+  .card{background:var(--bg-card);border:1px solid var(--border-light);border-left:3px solid var(--success-border);border-radius:var(--radius-sm);padding:12px;}
+  .head{display:flex;align-items:center;gap:10px;}
+  .icon{width:34px;height:34px;border-radius:10px;background:var(--bg-card-hi);display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0;}
+  .title{font-size:1rem;font-weight:700;color:var(--text-strong);}
+  .meta{font-size:0.75rem;color:var(--text-muted);margin-top:2px;}
+  .tag{margin-left:auto;font-size:0.65rem;font-weight:600;color:var(--success);background:var(--success-bg);border:1px solid var(--success-border);border-radius:var(--radius-pill);padding:2px 8px;}
+  .desc{font-size:0.75rem;color:var(--text-muted);margin-top:8px;}
+  .diff{display:flex;flex-direction:column;gap:4px;margin-top:8px;}
+  .diff__tpl{font-size:0.7rem;font-weight:600;color:var(--text-secondary);margin-top:4px;text-transform:uppercase;letter-spacing:.02em;}
+  .diff__row{display:flex;align-items:baseline;gap:6px;font-size:0.75rem;color:var(--text-muted);}
+  .diff__row i{width:12px;text-align:center;font-size:0.65rem;color:var(--primary);}
+  .diff__row b{color:var(--text-strong);font-weight:600;}
+  .diff__why{color:var(--text-muted);opacity:.8;}
+  .actions{display:flex;gap:8px;margin-top:10px;}
+  .btn{flex:1;padding:8px 10px;border-radius:var(--radius-pill);font-size:0.8rem;font-weight:600;border:1px solid var(--border-light);background:var(--bg-card-hi);color:var(--text-strong);text-align:center;}
+  .btn--primary{background:var(--primary-bg);border-color:var(--primary-border);color:var(--primary);}
+
+  /* Editor .te-row with rotated chip */
+  .te-row{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:10px;display:flex;align-items:center;gap:10px;}
+  .te-row__icon{width:32px;height:32px;border-radius:9px;background:var(--cat-push-bg);color:var(--cat-push);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .te-row__info{flex:1;min-width:0;}
+  .te-row__name{font-size:0.9rem;font-weight:600;color:var(--text-strong);}
+  .te-row__meta{font-size:0.75rem;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+  .chip{display:inline-flex;align-items:center;gap:4px;font-size:0.65rem;font-weight:600;padding:1px 7px;border-radius:var(--radius-pill);background:var(--primary-bg);color:var(--primary);border:1px solid var(--primary-border);white-space:nowrap;}
+  .chip i{font-size:0.6rem;}
+  .te-row__last{font-size:0.65rem;color:var(--text-secondary);margin-top:2px;}
+  .te-row__x{color:var(--text-muted);padding:6px;}
+  .sec-label{font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:4px 2px 0;}
+</style>
+</head>
+<body>
+<h1 class="sec">Rotation block (CP-4)</h1>
+<p class="desc">Two surfaces. Left: the program receipt card gains a per-template rotation list — one card, one undo, primaries visibly held. Right: a rotated accessory in the workout editor carries a quiet provenance chip so the swap is explainable and reversible from the row itself.</p>
+<div class="row">
+  <div class="wrap">
+    <div class="wrap-label">Program receipt with rotation</div>
+    <div class="phone">
+      <div class="bubble">
+        <div class="card">
+          <div class="head">
+            <div class="icon"><i class="fas fa-flag-checkered"></i></div>
+            <div>
+              <div class="title">Autumn block</div>
+              <div class="meta">6 weeks · through Nov 1 · hypertrophy · deload lands week 6</div>
+            </div>
+            <span class="tag">Applied</span>
+          </div>
+          <div class="desc">Mon push · Tue legs · Thu pull · Fri posterior · Sat arms — 8 accessories rotated, every primary held.</div>
+          <div class="diff">
+            <div class="diff__tpl">Upper push</div>
+            <div class="diff__row"><i class="fas fa-arrow-right-arrow-left"></i><span>Pec Deck → <b>Cable Chest Fly</b> <span class="diff__why">· Panatta Lower Chest Flight, idle since Apr</span></span></div>
+            <div class="diff__row"><i class="fas fa-arrow-right-arrow-left"></i><span>Lateral Raise Machine → <b>Cable Lateral Raise</b> <span class="diff__why">· Standing Lateral Raise, never used</span></span></div>
+            <div class="diff__tpl">Lower posterior</div>
+            <div class="diff__row"><i class="fas fa-arrow-right-arrow-left"></i><span>Back Extension Machine → <b>Hip Thrust Machine</b> <span class="diff__why">· Rogers Hip Press, idle since Dec</span></span></div>
+            <div class="diff__row"><i class="fas fa-check"></i><span>Seated Chest Press, Leg Press, Lat Pulldown held <span class="diff__why">· primaries</span></span></div>
+          </div>
+          <div class="actions">
+            <div class="btn btn--primary">Review week plan</div>
+            <div class="btn">Undo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap-sub">Undo restores the week plan, retires the program AND puts every rotated template back exactly as it was.</div>
+  </div>
+
+  <div class="wrap">
+    <div class="wrap-label">Editor row after rotation</div>
+    <div class="phone">
+      <div class="sec-label">Upper push · 7 exercises</div>
+      <div class="te-row">
+        <div class="te-row__icon"><i class="fas fa-dumbbell"></i></div>
+        <div class="te-row__info">
+          <div class="te-row__name">Seated Chest Press</div>
+          <div class="te-row__meta">4 × 10 · Hammer Chest Press</div>
+          <div class="te-row__last">Last: 10×290 · 8×290 · 3d ago</div>
+        </div>
+        <div class="te-row__x"><i class="fas fa-times"></i></div>
+      </div>
+      <div class="te-row">
+        <div class="te-row__icon"><i class="fas fa-dumbbell"></i></div>
+        <div class="te-row__info">
+          <div class="te-row__name">Cable Chest Fly</div>
+          <div class="te-row__meta">3 × 12 · Panatta Lower Chest Flight <span class="chip"><i class="fas fa-rotate"></i> was Pec Deck</span></div>
+          <div class="te-row__last">New this block — no weight yet</div>
+        </div>
+        <div class="te-row__x"><i class="fas fa-times"></i></div>
+      </div>
+      <div class="te-row">
+        <div class="te-row__icon"><i class="fas fa-dumbbell"></i></div>
+        <div class="te-row__info">
+          <div class="te-row__name">Cable Lateral Raise</div>
+          <div class="te-row__meta">3 × 15 · Standing Lateral Raise <span class="chip"><i class="fas fa-rotate"></i> was Lateral Raise Machine</span></div>
+          <div class="te-row__last">New this block — no weight yet</div>
+        </div>
+        <div class="te-row__x"><i class="fas fa-times"></i></div>
+      </div>
+    </div>
+    <div class="wrap-sub">The chip is informational only; the existing equipment picker and remove button stay the edit affordances.</div>
+  </div>
+</div>
+</body>
+</html>

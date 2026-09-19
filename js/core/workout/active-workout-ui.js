@@ -7,6 +7,7 @@ import { getExerciseName } from '../utils/workout-helpers.js';
 import { getCategoryIcon, Config, debugLog } from '../utils/config.js';
 import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults, loadAllWorkouts } from '../data/data-manager.js';
 import { buildExerciseSessions, computeOverloadNudge, progressionTarget, weightIncrement, scaleLoadableWeight } from '../features/progression.js';
+import { selectRotation } from '../features/exercise-rotation.js';
 import { getNextInGroup, isLastInGroupRound, groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import { haptic } from '../utils/haptics.js';
 import { navigateTo } from '../ui/navigation.js';
@@ -4028,6 +4029,23 @@ export async function loadAutofillForExercise(idx) {
                 // recommended weight/reps + a stall flag. The ↑ marker renders
                 // on the last-session card; the stall flag is read by the coach.
                 exercise._progression = progressionTarget(sessions, nudgeUnit, repTarget, progInc);
+                // CP-4 — stall rung 3 hands off to the variety engine: name
+                // the stalest same-pattern machine at this gym in the nudge.
+                // Equipment may not be cached yet; then the plain string stands.
+                if (exercise._progression?.rotate && Array.isArray(AppState._cachedEquipment)) {
+                    const sessionLoc = AppState.savedData?.location;
+                    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+                    const library = AppState.exerciseDatabase || [];
+                    const { swaps } = selectRotation({
+                        exercises: [{ machine: exName, role: 'accessory', equipment: AppState.savedData?.exercises?.[key]?.equipment || exercise.equipment }],
+                        equipment: AppState._cachedEquipment, location: locName || null,
+                        lookup: (n) => library.find(e => (e.name || e.machine) === n),
+                    });
+                    if (swaps[0]) {
+                        exercise._rotateSuggestion = swaps[0];
+                        exercise._overloadNudge = `${exercise._progression.weight} ${nudgeUnit} has had its run — swap in ${swaps[0].to} (${swaps[0].equipment}, ${swaps[0].reason})`;
+                    }
+                }
             } catch (e) {
                 debugLog('overload nudge failed', e);
             }

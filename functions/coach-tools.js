@@ -9,6 +9,7 @@
 
 const { applyPrescriptionFields } = require('./movement-patterns');
 const { normalizeWeekTarget, isDeloadTarget } = require('./week-targets');
+const { selectRotation, applyRotation } = require('./exercise-rotation');
 
 // Shared schema for a program week target (CP-3). A week can move load,
 // set counts, rep bands and effort — not just a percentage.
@@ -125,6 +126,10 @@ const TOOL_DEFINITIONS = [
                 split: {
                     type: 'object',
                     description: 'day → templateId | "rest" | null (same shape as set_week_plan)',
+                },
+                rotateAccessories: {
+                    type: 'boolean',
+                    description: "true = rotate every ACCESSORY exercise on the split's templates to the stalest same-pattern machine at the user's current gym (never-used first). Primaries and secondaries are never touched. Use when the user wants variety or a fresh block; the card lists every swap and undo restores the templates.",
                 },
             },
             required: ['name', 'goal', 'weeks', 'startDate', 'split'],
@@ -823,18 +828,73 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
                 createdAt: nowIso,
                 lastUpdated: nowIso,
             });
+            // CP-4 — variety engine: rotate the accessories on the split's
+            // templates at block creation. Runs AFTER the program write so a
+            // rotation failure never costs the program; the card and the undo
+            // payload carry every swap so one consent still covers the block.
+            let rotation = null;
+            const priorTemplates = [];
+            if (input.rotateAccessories === true) {
+                try {
+                    const [equipSnap, customSnap, woSnap] = await Promise.all([
+                        userDoc().collection('equipment').get(),
+                        userDoc().collection('customExercises').get(),
+                        userDoc().collection('workouts').orderBy('date', 'desc').limit(30).get(),
+                    ]);
+                    const equipment = equipSnap.docs.map(d => d.data()).filter(e => e && e.name);
+                    const byName = new Map(
+                        [...require('./data/exercises.json'), ...customSnap.docs.map(d => d.data())]
+                            .filter(e => e?.name).map(e => [e.name.toLowerCase(), e]));
+                    const lookup = (n) => byName.get(String(n || '').toLowerCase());
+                    // A template has no gym of its own: "current gym" is where
+                    // the user last trained.
+                    let location = null;
+                    for (const d of woSnap.docs) {
+                        const w = d.data();
+                        const loc = typeof w.location === 'object' ? w.location?.name : w.location;
+                        if (loc) { location = loc; break; }
+                    }
+                    const today = nowIso.slice(0, 10);
+                    const templateIds = [...new Set(Object.values(planOut.result.plan.days || {}).filter(v => v && v !== 'rest'))];
+                    rotation = [];
+                    for (const tid of templateIds) {
+                        const tref = userDoc().collection('workoutTemplates').doc(tid);
+                        const tsnap = await tref.get();
+                        if (!tsnap.exists) continue;
+                        const t = tsnap.data();
+                        const exercises = Array.isArray(t.exercises) ? t.exercises : [];
+                        const { swaps } = selectRotation({ exercises, equipment, location, lookup });
+                        if (!swaps.length) continue;
+                        priorTemplates.push({ templateId: tid, exercises });
+                        await tref.set({ exercises: applyRotation(exercises, swaps, { lookup, today }), lastUpdated: nowIso }, { merge: true });
+                        rotation.push({
+                            templateId: tid, name: t.name || tid,
+                            swaps: swaps.map(s => ({ from: s.from, to: s.to, equipment: s.equipment, reason: s.reason })),
+                        });
+                    }
+                } catch (e) {
+                    console.error('❌ accessory rotation failed (program still created):', e);
+                    rotation = null;
+                }
+            }
+            const rotatedCount = (rotation || []).reduce((n, r) => n + r.swaps.length, 0);
+
             // Deload callout for the card's landing moment — the week the
             // whole program exists for should be visible at creation.
             // A volume-only deload (negative setDelta, load unchanged) counts too (Bug 4).
             const deloadWeek = (weekTargets.find(isDeloadTarget) || {}).week || null;
             return {
-                result: { programId: id, name, weeks, weekPlan: planOut.result.summary },
+                result: {
+                    programId: id, name, weeks, weekPlan: planOut.result.summary,
+                    ...(rotation ? { rotation, rotatedCount } : {}),
+                    ...(input.rotateAccessories === true && !rotation ? { rotation: 'failed — templates unchanged' } : {}),
+                },
                 actionCard: {
                     kind: 'program_set',
                     name: `Program: ${name}`,
-                    summary: `${weeks} weeks · ${goal} · ${planOut.result.summary}`,
-                    program: { programId: id, name, goal, weeks, startDate, deloadWeek },
-                    undo: { newProgramId: id, priorProgramId, priorPlan },
+                    summary: `${weeks} weeks · ${goal} · ${planOut.result.summary}${rotatedCount ? ` · ${rotatedCount} accessor${rotatedCount === 1 ? 'y' : 'ies'} rotated` : ''}`,
+                    program: { programId: id, name, goal, weeks, startDate, deloadWeek, ...(rotation ? { rotation } : {}) },
+                    undo: { newProgramId: id, priorProgramId, priorPlan, ...(priorTemplates.length ? { priorTemplates } : {}) },
                 },
             };
         },

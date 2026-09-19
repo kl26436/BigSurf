@@ -459,6 +459,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* CP-4 — provenance chip on a rotated accessory ("was Pec Deck"). */
+.te-row__rotated {
+    vertical-align: middle;
+    margin-left: var(--space-4);
+}
+
 /* Phase 7 — async-hydrated last-session line under .te-row__meta. The element
    is rendered with [data-pending]; hydrateLastSession() fills it (or removes
    it if there's no history). */

@@ -481,6 +481,18 @@
     min-width: 0;
     overflow-wrap: anywhere;
 }
+.coach-diff__tpl {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-top: var(--space-4);
+}
+.coach-diff__text b {
+    color: var(--text-strong);
+    font-weight: 600;
+}
 .coach-diff__row--added i   { color: var(--success); }
 .coach-diff__row--removed i { color: var(--danger); }
 .coach-diff__row--changed i { color: var(--primary); }

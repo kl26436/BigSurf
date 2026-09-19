@@ -1229,9 +1229,14 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
     const isLast = idx === total - 1;
     const rowKey = `${templateId}_${idx}`;
 
-    const summary = equipment
+    // CP-4 — a rotated accessory says what it replaced (informational; the
+    // equipment picker and remove button stay the edit affordances).
+    const rotatedChip = ex.rotatedFrom
+        ? ` <span class="chip chip--sm te-row__rotated" title="Rotated in this block"><i class="fas fa-rotate" aria-hidden="true"></i> was ${escapeHtml(ex.rotatedFrom)}</span>`
+        : '';
+    const summary = (equipment
         ? `${sets} × ${reps} · ${escapeHtml(equipment)}`
-        : `${sets} × ${reps}${weight ? ` · ${weight} ${unit}` : ''}`;
+        : `${sets} × ${reps}${weight ? ` · ${weight} ${unit}` : ''}`) + rotatedChip;
 
     // Real tap targets around each value (mockup: workout-editor-ergonomics).
     // Tap the value itself for keyboard entry; +/− for one-handed adjustment.

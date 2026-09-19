@@ -16,8 +16,14 @@ export function toCommonJs(source, clientPath) {
     if (/^export\s/m.test(out)) {
         throw new Error('mirror-transform: only `export const/let/function/class` declarations are supported');
     }
+    // Named imports from a SIBLING mirrored module become requires — both
+    // copies live side by side in functions/, so './movement-patterns.js'
+    // resolves to the mirror. Anything else (deep paths, defaults, npm) is
+    // refused: the mirror must not reach outside the mirrored set.
+    out = out.replace(/^import \{([^}]+)\} from '\.\/([\w-]+)\.js';/gm, (_, names, mod) =>
+        `const {${names}} = require('./${mod}');`);
     if (/^import\s/m.test(out)) {
-        throw new Error('mirror-transform: mirrored modules must be import-free (pure)');
+        throw new Error('mirror-transform: only `import { a, b } from \'./sibling.js\'` is supported');
     }
     const header = `// GENERATED MIRROR of ${clientPath} — do not edit here.\n`
         + '// Edit the client module, then run: node scripts/sync-mirror.mjs '

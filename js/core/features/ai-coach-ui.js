@@ -722,6 +722,23 @@ function handleCoachActionCard(card, streamingBubble) {
                 throughStr = ` · through ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
             }
         }
+        // CP-4 — rotation receipt: every accessory swap per template, so the
+        // block's variety is visible and explainable at the landing moment.
+        let rotationHtml = '';
+        if (Array.isArray(p.rotation) && p.rotation.length) {
+            const rows = [];
+            for (const r of p.rotation) {
+                rows.push(`<div class="coach-diff__tpl">${escapeHtml(r.name || '')}</div>`);
+                for (const s of (r.swaps || [])) {
+                    rows.push(`
+                        <div class="coach-diff__row coach-diff__row--changed">
+                            <i class="fas fa-arrow-right-arrow-left" aria-hidden="true"></i>
+                            <span class="coach-diff__text">${escapeHtml(s.from)} → <b>${escapeHtml(s.to)}</b> · ${escapeHtml(s.equipment)}, ${escapeHtml(s.reason)}</span>
+                        </div>`);
+                }
+            }
+            rotationHtml = `<div class="coach-diff">${rows.join('')}</div>`;
+        }
         addChatBubble('bot', `
             <div class="coach-action-card coach-action-card--receipt coach-program-card" id="${id}">
                 <div class="coach-program-card__head">
@@ -733,6 +750,7 @@ function handleCoachActionCard(card, streamingBubble) {
                     <span class="coach-receipt-tag">Applied</span>
                 </div>
                 <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 140))}</div>
+                ${rotationHtml}
                 <div class="coach-action-card__actions">
                     <button class="live-proposal__apply" onclick="openWeekPlanSheet()">Review week plan</button>
                     ${card.undo?.newProgramId ? `<button class="live-proposal__dismiss" onclick="undoProgramCreate('${id}')">Undo</button>` : ''}
@@ -923,6 +941,13 @@ export async function undoProgramCreate(cardId) {
             await setDoc(doc(db, 'users', uid, 'programs', u.priorProgramId),
                 { active: true, state: 'active', lastUpdated: nowIso }, { merge: true });
         }
+        // CP-4 — a block that rotated accessories un-rotates them too.
+        const restored = Array.isArray(u.priorTemplates) ? u.priorTemplates : [];
+        for (const t of restored) {
+            if (!t?.templateId || !Array.isArray(t.exercises)) continue;
+            await setDoc(doc(db, 'users', uid, 'workoutTemplates', t.templateId),
+                { exercises: t.exercises, lastUpdated: nowIso }, { merge: true });
+        }
         _pendingProgramUndo.delete(cardId);
         AppState._weekPlan = undefined;
         AppState._activeProgram = undefined;
@@ -932,9 +957,18 @@ export async function undoProgramCreate(cardId) {
                     <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-rotate-left"></i></div>
                     <div class="coach-action-card__body">
                         <div class="coach-action-card__title">Program undone</div>
-                        <div class="coach-action-card__desc">Week plan restored${u.priorProgramId ? ' · previous program reactivated' : ''}</div>
+                        <div class="coach-action-card__desc">Week plan restored${u.priorProgramId ? ' · previous program reactivated' : ''}${restored.length ? ` · ${restored.length} workout${restored.length === 1 ? '' : 's'} un-rotated` : ''}</div>
                     </div>
                 </div>`;
+        }
+        if (restored.length) {
+            try {
+                const mgr = new FirebaseWorkoutManager(AppState);
+                AppState.workoutPlans = await mgr.getUserWorkoutTemplates({ fromServer: true });
+                const sel = await import('../ui/template-selection.js');
+                sel.clearSelectorCache?.();
+                sel.acceptCoachTemplateRefresh?.();
+            } catch (e) { debugLog('coach: workoutPlans refresh after program undo failed', e); }
         }
         showNotification('Program undone', 'success');
     } catch (e) {
