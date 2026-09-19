@@ -258,6 +258,73 @@ describe('checkDeloadNeeded', () => {
         expect(checkDeloadNeeded([])).toBeNull();
         expect(checkDeloadNeeded(null)).toBeNull();
     });
+
+    // CP-0 — recovery detection. Build N weeks of 5-day training with a
+    // per-week tonnage scale so load can be pulled back without changing
+    // frequency (the exact case the day-count rule was blind to).
+    function weeksOfTraining(scales, { labelWeek = null, label = 'Deload' } = {}) {
+        const workouts = [];
+        const startDate = new Date('2026-03-09T12:00:00'); // Monday
+        scales.forEach((scale, week) => {
+            for (let day = 0; day < 5; day++) {
+                const d = new Date(startDate);
+                d.setDate(d.getDate() + week * 7 + day);
+                const w = makeWorkout(d.toISOString().slice(0, 10), [
+                    makeExercise('Bench Press', [[10, 200 * scale], [10, 200 * scale], [10, 200 * scale]]),
+                    makeExercise('Squat', [[8, 300 * scale], [8, 300 * scale]]),
+                ]);
+                if (labelWeek === week) w.sessionLabel = label;
+                workouts.push(w);
+            }
+        });
+        return workouts;
+    }
+
+    it('a labelled deload week at full frequency resets the counter', () => {
+        const result = checkDeloadNeeded(weeksOfTraining([1, 1, 1, 1, 1], { labelWeek: 4 }));
+        expect(result.needed).toBe(false);
+        expect(result.consecutiveHardWeeks).toBe(0);
+        expect(result.inRecoveryWeek).toBe(true);
+    });
+
+    it('a full-frequency week 35% lighter than the trailing mean is a recovery week', () => {
+        const result = checkDeloadNeeded(weeksOfTraining([1, 1, 1, 1, 0.65]));
+        expect(result.needed).toBe(false);
+        expect(result.inRecoveryWeek).toBe(true);
+    });
+
+    it('five equal hard weeks still fire the deload insight', () => {
+        const result = checkDeloadNeeded(weeksOfTraining([1, 1, 1, 1, 1]));
+        expect(result.needed).toBe(true);
+        expect(result.consecutiveHardWeeks).toBe(5);
+        expect(result.inRecoveryWeek).toBe(false);
+    });
+
+    it('an older recovery week only counts the hard weeks after it', () => {
+        const result = checkDeloadNeeded(weeksOfTraining([1, 1, 1, 1, 1, 1], { labelWeek: 3, label: 'Recovery week' }));
+        expect(result.consecutiveHardWeeks).toBe(2);
+        expect(result.needed).toBe(false);
+        expect(result.inRecoveryWeek).toBe(false);
+    });
+
+    it('a normal progression week (slightly heavier) is never mistaken for recovery', () => {
+        const result = checkDeloadNeeded(weeksOfTraining([1, 1.02, 1.04, 1.06, 1.08]));
+        expect(result.needed).toBe(true);
+        expect(result.inRecoveryWeek).toBe(false);
+    });
+
+    it('kg-logged sessions are normalized before the tonnage comparison', () => {
+        const workouts = weeksOfTraining([1, 1, 1, 1, 1]);
+        // Re-log the final week in kg at the same real load (200 lbs ≈ 90.7 kg).
+        for (const w of workouts.slice(-5)) {
+            for (const ex of Object.values(w.exercises)) {
+                for (const s of ex.sets) { s.weight = Math.round(s.weight * 0.453592 * 10) / 10; s.originalUnit = 'kg'; }
+            }
+        }
+        const result = checkDeloadNeeded(workouts);
+        expect(result.inRecoveryWeek).toBe(false);
+        expect(result.consecutiveHardWeeks).toBe(5);
+    });
 });
 
 describe('analyzeFrequency', () => {

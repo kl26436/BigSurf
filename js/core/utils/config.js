@@ -41,6 +41,7 @@ export const Config = {
     PLATEAU_MIN_SESSIONS: 3,    // Sessions with no progression to flag plateau
     DELOAD_DAYS_PER_WEEK: 5,    // Days/week threshold for "hard week"
     DELOAD_CONSECUTIVE_WEEKS: 4, // Consecutive hard weeks before suggesting deload
+    DELOAD_TONNAGE_DROP: 0.25,  // A full-frequency week this far below the trailing 3-week tonnage mean is a recovery week
     INSIGHTS_MIN_WORKOUTS: 3,   // Minimum workouts needed to show insights
     COACH_RATE_LIMIT_HOURS: 24, // Hours between AI coach calls
     // 2nd-gen streaming coach endpoint (SSE) — canonical Cloud Run URL printed

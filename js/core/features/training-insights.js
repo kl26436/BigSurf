@@ -201,12 +201,40 @@ export function detectPlateaus(workouts, minSessions = Config.PLATEAU_MIN_SESSIO
 // DELOAD DETECTION
 // ===================================================================
 
+const RECOVERY_LABEL = /deload|recovery/i;
+
+/**
+ * Sum of weight × reps over completed working sets, unit-normalized so a
+ * kg-logged session compares honestly with an lbs one. Used only as a ratio
+ * between weeks, so the unit itself doesn't matter — just consistency.
+ */
+export function workoutTonnage(workout) {
+    let total = 0;
+    for (const exercise of withResolvedNames(workout)) {
+        for (const set of exercise.sets || []) {
+            if (!set || set.completed === false || (set.type || 'working') === 'warmup') continue;
+            const reps = Number(set.reps) || 0;
+            if (reps <= 0) continue;
+            total += normalizedWeight(set, 'lbs') * reps;
+        }
+    }
+    return total;
+}
+
 /**
  * If user has trained 5+ days/week for 4+ consecutive weeks,
  * suggest a deload week.
  *
+ * A "hard week" was historically 5+ unique training days and nothing else, so
+ * a deload trained at full frequency and −35% load counted as hard and the
+ * dashboard kept asking for a deload mid-deload (CP-0). A week is now a
+ * recovery week — and resets the counter — when any of its sessions carries a
+ * deload/recovery `sessionLabel` (written when a session starts from a program
+ * adjustment) or when a full-frequency week's tonnage falls
+ * `DELOAD_TONNAGE_DROP` below the trailing three-week mean.
+ *
  * @param {Array} workouts - Recent completed workouts (6+ weeks)
- * @returns {{ needed: boolean, consecutiveHardWeeks: number } | null}
+ * @returns {{ needed: boolean, consecutiveHardWeeks: number, inRecoveryWeek: boolean } | null}
  */
 export function checkDeloadNeeded(workouts) {
     if (!workouts || workouts.length === 0) return null;
@@ -217,18 +245,40 @@ export function checkDeloadNeeded(workouts) {
     for (const workout of workouts) {
         if (!workout.date) continue;
         const weekKey = getISOWeekKey(workout.date);
-        if (!weekMap[weekKey]) weekMap[weekKey] = new Set();
-        weekMap[weekKey].add(workout.date);
+        if (!weekMap[weekKey]) weekMap[weekKey] = { days: new Set(), tonnage: 0, labelled: false };
+        const wk = weekMap[weekKey];
+        wk.days.add(workout.date);
+        wk.tonnage += workoutTonnage(workout);
+        if (RECOVERY_LABEL.test(workout.sessionLabel || '')) wk.labelled = true;
     }
 
     // Sort weeks newest first
     const sortedWeeks = Object.entries(weekMap)
-        .sort((a, b) => b[0].localeCompare(a[0]));
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .map(([, wk]) => wk);
 
-    // Count consecutive weeks with 5+ unique workout days
+    const isRecoveryWeek = (i) => {
+        const wk = sortedWeeks[i];
+        if (wk.labelled) return true;
+        // Tonnage rule only for full-frequency weeks: a partial current week
+        // (Monday, one session) is low-tonnage for a different reason and the
+        // day-count rule already handles it.
+        if (wk.days.size < Config.DELOAD_DAYS_PER_WEEK || wk.tonnage <= 0) return false;
+        const prior = sortedWeeks.slice(i + 1, i + 4).filter(p => p.tonnage > 0);
+        if (prior.length < 2) return false;
+        const mean = prior.reduce((s, p) => s + p.tonnage, 0) / prior.length;
+        return wk.tonnage < mean * (1 - Config.DELOAD_TONNAGE_DROP);
+    };
+
+    // Count consecutive hard weeks, newest first; a recovery week ends the run.
     let consecutiveHardWeeks = 0;
-    for (const [, days] of sortedWeeks) {
-        if (days.size >= Config.DELOAD_DAYS_PER_WEEK) {
+    let inRecoveryWeek = false;
+    for (let i = 0; i < sortedWeeks.length; i++) {
+        if (isRecoveryWeek(i)) {
+            if (i === 0) inRecoveryWeek = true;
+            break;
+        }
+        if (sortedWeeks[i].days.size >= Config.DELOAD_DAYS_PER_WEEK) {
             consecutiveHardWeeks++;
         } else {
             break;
@@ -238,6 +288,7 @@ export function checkDeloadNeeded(workouts) {
     return {
         needed: consecutiveHardWeeks >= Config.DELOAD_CONSECUTIVE_WEEKS,
         consecutiveHardWeeks,
+        inRecoveryWeek,
     };
 }
 
