@@ -78,6 +78,7 @@ One queue across [ux-overhaul-plan-2026-07.md](ux-overhaul-plan-2026-07.md) and 
     modal consolidation, settings Locations/Equipment rows, consistency sweep
     (range-state, 44px back button), README/DESIGN-BACKLOG cleanup.
 
+- ☐ **Coach periodization + variety (CP-0…CP-7)** — the coach repeats workouts because no layer can express a week-to-week change; see [coach-periodization-plan.md](coach-periodization-plan.md) §10 for the per-phase plan. Order: CP-0 deload detector → CP-6 template cap → CP-5 replace_day + list_exercises → CP-1 schema → CP-2 stall ladder → CP-3 weekTargets v2 → CP-4 variety engine → CP-7 discovery. Two server validators (normalizeExercise, validateProgramInput) silently drop new fields and gate CP-1/CP-3 **[CC, mockups via CW for CP-1b/CP-4/CP-7]**
 - ☐ **Offline support** — Firestore offline persistence. Gyms have bad signal; this is table stakes before charging **[CC]**
 - ☐ Onboarding pass — a stranger's first 5 minutes, not yours. Test on someone who's never seen it **[You + CW critique]**
 - ☐ The travel-mode flagship features (copy-from-gym, "what can I do here") — these are the *reason to pay*, so they precede monetization **[CC, mockups via CW first]**
