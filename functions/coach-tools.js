@@ -7,6 +7,17 @@
  * users/{userId}/… — the model can never reach another user's data.
  */
 
+const { applyPrescriptionFields } = require('./movement-patterns');
+
+// Shared schema for the CP-1 prescription fields on a template exercise.
+const PRESCRIPTION_PROPS = {
+    repRange: { type: 'array', items: { type: 'number' }, description: 'Optional [low, high] rep band the block waves within, e.g. [8, 12]' },
+    rpeTarget: { type: 'number', description: 'Optional effort target on the 6–10 RPE scale (RIR = 10 − RPE)' },
+    role: { type: 'string', description: "primary = the lift progress is measured on (never rotated) · secondary = other compound · accessory = isolation (rotates freely) · core" },
+    pattern: { type: 'string', description: 'Movement pattern: horizontal-push, vertical-push, horizontal-pull, vertical-pull, knee-dominant, knee-flexion, hip-dominant, calf, lateral-delt, rear-delt, elbow-flex, elbow-ext, trunk-flex, trunk-ext, anti-rotation, anti-extension, abduction, adduction, cardio' },
+    progression: { type: 'string', description: 'double (reps then load, default) · load-only · rep-only · hold' },
+};
+
 // ── Tool definitions (Anthropic schema) ─────────────────────────────
 
 const TOOL_DEFINITIONS = [
@@ -65,6 +76,7 @@ const TOOL_DEFINITIONS = [
                             sets: { type: 'number' },
                             reps: { type: 'number' },
                             weight: { type: 'number', description: "Starting weight in the user's unit, from their history" },
+                            ...PRESCRIPTION_PROPS,
                         },
                         required: ['name'],
                     },
@@ -255,8 +267,21 @@ const TOOL_DEFINITIONS = [
                 templateId: { type: 'string' },
                 exercises: {
                     type: 'array',
-                    description: 'The full new exercise list, in order. Each: { name, sets, reps, weight?, equipment?, bodyPart?, equipmentType? }',
-                    items: { type: 'object' },
+                    description: 'The full new exercise list, in order. Each: { name, sets, reps, weight?, equipment?, bodyPart?, equipmentType?, repRange?, rpeTarget?, role?, pattern?, progression? }',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            name: { type: 'string' },
+                            sets: { type: 'number' },
+                            reps: { type: 'number' },
+                            weight: { type: 'number' },
+                            equipment: { type: 'string' },
+                            bodyPart: { type: 'string' },
+                            equipmentType: { type: 'string' },
+                            ...PRESCRIPTION_PROPS,
+                        },
+                        required: ['name'],
+                    },
                 },
                 rename: { type: 'string', description: 'Optional new name for the workout' },
                 why: { type: 'string', description: 'One line on what changed and why — shown on the card' },
@@ -303,6 +328,9 @@ function normalizeExercise(ex) {
     if (typeof ex.bodyPart === 'string' && ex.bodyPart.trim()) out.bodyPart = ex.bodyPart.trim();
     if (typeof ex.equipmentType === 'string' && ex.equipmentType.trim()) out.equipmentType = ex.equipmentType.trim();
     if (typeof ex.equipment === 'string' && ex.equipment.trim()) out.equipment = ex.equipment.trim();
+    // CP-1 prescription fields (repRange, rpeTarget, role, pattern,
+    // progression) — this whitelist used to drop them silently (Bug 7).
+    applyPrescriptionFields(out, ex);
     return out;
 }
 

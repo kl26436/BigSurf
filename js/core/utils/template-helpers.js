@@ -1,6 +1,8 @@
 // Pure helper functions for template management
 // Extracted for testability (no DOM or Firebase dependencies)
 
+import { PATTERNS, ROLES, PROGRESSIONS, normalizeRepRange, normalizeRpeTarget } from '../features/movement-patterns.js';
+
 /**
  * Reorder an exercise in a template's exercise array.
  * Returns a new array with the exercise moved.
@@ -166,6 +168,20 @@ export function validateTemplate(template) {
     if (!template) return { valid: false, error: 'Template is required' };
     if (!template.name || !template.name.trim()) return { valid: false, error: 'Template name is required' };
     if (!template.exercises || template.exercises.length === 0) return { valid: false, error: 'At least one exercise is required' };
+    // CP-1 prescription fields are optional; when present they must be sane,
+    // and the rule set is the same one the server normalizer applies.
+    for (const ex of template.exercises) {
+        if (!ex || typeof ex !== 'object') continue;
+        if (ex.repRange != null && !normalizeRepRange(ex.repRange)) {
+            return { valid: false, error: `Rep range for ${ex.machine || ex.name || 'an exercise'} must be [low, high] within 1–50` };
+        }
+        if (ex.rpeTarget != null && normalizeRpeTarget(ex.rpeTarget) == null) {
+            return { valid: false, error: `RPE target for ${ex.machine || ex.name || 'an exercise'} must be between 6 and 10` };
+        }
+        if (ex.role != null && !ROLES.includes(ex.role)) return { valid: false, error: `Unknown role "${ex.role}"` };
+        if (ex.pattern != null && !PATTERNS.includes(ex.pattern)) return { valid: false, error: `Unknown pattern "${ex.pattern}"` };
+        if (ex.progression != null && !PROGRESSIONS.includes(ex.progression)) return { valid: false, error: `Unknown progression "${ex.progression}"` };
+    }
     return { valid: true, error: null };
 }
 

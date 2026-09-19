@@ -9,6 +9,7 @@
       "push",
       "compound"
     ],
+    "pattern": "horizontal-push",
     "sets": 4,
     "reps": 10,
     "weight": 110,
@@ -25,6 +26,7 @@
       "upper chest",
       "compound"
     ],
+    "pattern": "horizontal-push",
     "sets": 4,
     "reps": 8,
     "weight": 45,
@@ -41,6 +43,7 @@
       "cable",
       "fly"
     ],
+    "pattern": "horizontal-push",
     "sets": 3,
     "reps": 12,
     "weight": 30,
@@ -56,6 +59,7 @@
       "isolation",
       "fly"
     ],
+    "pattern": "horizontal-push",
     "sets": 3,
     "reps": 12,
     "weight": 70,
@@ -72,6 +76,7 @@
       "lats",
       "compound"
     ],
+    "pattern": "vertical-pull",
     "sets": 4,
     "reps": 10,
     "weight": 130,
@@ -88,6 +93,7 @@
       "rows",
       "compound"
     ],
+    "pattern": "horizontal-pull",
     "sets": 4,
     "reps": 10,
     "weight": 35,
@@ -104,6 +110,7 @@
       "rows",
       "cable"
     ],
+    "pattern": "horizontal-pull",
     "sets": 4,
     "reps": 10,
     "weight": 100,
@@ -120,6 +127,7 @@
       "compound",
       "push"
     ],
+    "pattern": "knee-dominant",
     "sets": 4,
     "reps": 10,
     "weight": 300,
@@ -136,6 +144,7 @@
       "glutes",
       "compound"
     ],
+    "pattern": "knee-dominant",
     "sets": 3,
     "reps": 12,
     "weight": 35,
@@ -151,6 +160,7 @@
       "quads",
       "isolation"
     ],
+    "pattern": "knee-dominant",
     "sets": 3,
     "reps": 12,
     "weight": 80,
@@ -166,6 +176,7 @@
       "hamstrings",
       "isolation"
     ],
+    "pattern": "knee-flexion",
     "sets": 4,
     "reps": 12,
     "weight": 80,
@@ -181,6 +192,7 @@
       "push",
       "compound"
     ],
+    "pattern": "vertical-push",
     "sets": 4,
     "reps": 10,
     "weight": 100,
@@ -197,6 +209,7 @@
       "compound",
       "dumbbell"
     ],
+    "pattern": "vertical-push",
     "sets": 4,
     "reps": 10,
     "weight": 30,
@@ -212,6 +225,7 @@
       "isolation",
       "lateral delts"
     ],
+    "pattern": "lateral-delt",
     "sets": 3,
     "reps": 15,
     "weight": 30,
@@ -228,6 +242,7 @@
       "isolation",
       "curl"
     ],
+    "pattern": "elbow-flex",
     "sets": 3,
     "reps": 15,
     "weight": 75,
@@ -244,6 +259,7 @@
       "isolation",
       "dumbbell"
     ],
+    "pattern": "elbow-flex",
     "sets": 3,
     "reps": 12,
     "weight": 25,
@@ -260,6 +276,7 @@
       "isolation",
       "pushdown"
     ],
+    "pattern": "elbow-ext",
     "sets": 3,
     "reps": 15,
     "weight": 60,
@@ -276,6 +293,7 @@
       "isolation",
       "overhead"
     ],
+    "pattern": "elbow-ext",
     "sets": 3,
     "reps": 12,
     "weight": 20,
@@ -291,6 +309,7 @@
       "abs",
       "isolation"
     ],
+    "pattern": "trunk-flex",
     "sets": 3,
     "reps": 15,
     "weight": 60,
@@ -306,6 +325,7 @@
       "isometric",
       "bodyweight"
     ],
+    "pattern": "anti-extension",
     "sets": 3,
     "reps": 1,
     "weight": 0,
@@ -321,6 +341,7 @@
       "obliques",
       "rotation"
     ],
+    "pattern": "anti-rotation",
     "sets": 3,
     "reps": 20,
     "weight": 0,
@@ -336,6 +357,7 @@
       "calves",
       "isolation"
     ],
+    "pattern": "calf",
     "sets": 3,
     "reps": 20,
     "weight": 90,
@@ -352,6 +374,7 @@
       "obliques",
       "cable"
     ],
+    "pattern": "anti-rotation",
     "sets": 3,
     "reps": 12,
     "weight": 30,
@@ -368,6 +391,7 @@
       "kickback",
       "isolation"
     ],
+    "pattern": "hip-dominant",
     "sets": 3,
     "reps": 15,
     "weight": 55,
@@ -384,6 +408,7 @@
       "hip flexors",
       "cable"
     ],
+    "pattern": "trunk-flex",
     "sets": 3,
     "reps": 12,
     "weight": 0,
@@ -399,6 +424,7 @@
       "outer thigh",
       "isolation"
     ],
+    "pattern": "abduction",
     "sets": 3,
     "reps": 15,
     "weight": 55,
@@ -414,6 +440,7 @@
       "rear delts",
       "isolation"
     ],
+    "pattern": "rear-delt",
     "sets": 3,
     "reps": 12,
     "weight": 60,
@@ -430,6 +457,7 @@
       "hinge",
       "compound"
     ],
+    "pattern": "hip-dominant",
     "sets": 4,
     "reps": 10,
     "weight": 75,
@@ -445,6 +473,7 @@
       "rear delts",
       "isolation"
     ],
+    "pattern": "rear-delt",
     "sets": 3,
     "reps": 12,
     "weight": 35,
@@ -460,6 +489,7 @@
       "rows",
       "compound"
     ],
+    "pattern": "horizontal-pull",
     "sets": 4,
     "reps": 10,
     "weight": 130,
@@ -475,6 +505,7 @@
       "obliques",
       "isometric"
     ],
+    "pattern": "anti-rotation",
     "sets": 3,
     "reps": 1,
     "weight": 0,
@@ -490,6 +521,7 @@
       "push",
       "compound"
     ],
+    "pattern": "horizontal-push",
     "sets": 4,
     "reps": 10,
     "weight": 110,
@@ -505,6 +537,7 @@
       "push",
       "lower chest"
     ],
+    "pattern": "horizontal-push",
     "sets": 4,
     "reps": 10,
     "weight": 110,
@@ -520,6 +553,7 @@
       "isolation",
       "fly"
     ],
+    "pattern": "horizontal-push",
     "sets": 3,
     "reps": 12,
     "weight": 30,
@@ -536,6 +570,7 @@
       "isolation",
       "cable"
     ],
+    "pattern": "vertical-pull",
     "sets": 3,
     "reps": 12,
     "weight": 50,
@@ -551,6 +586,7 @@
       "pull",
       "compound"
     ],
+    "pattern": "vertical-pull",
     "sets": 3,
     "reps": 8,
     "weight": 100,
@@ -566,6 +602,7 @@
       "isolation",
       "lateral delts"
     ],
+    "pattern": "lateral-delt",
     "sets": 3,
     "reps": 15,
     "weight": 15,
@@ -581,6 +618,7 @@
       "rear delts",
       "isolation"
     ],
+    "pattern": "rear-delt",
     "sets": 3,
     "reps": 12,
     "weight": 20,
@@ -597,6 +635,7 @@
       "hammer",
       "cable"
     ],
+    "pattern": "elbow-flex",
     "sets": 3,
     "reps": 12,
     "weight": 50,
@@ -613,6 +652,7 @@
       "pushdown",
       "cable"
     ],
+    "pattern": "elbow-ext",
     "sets": 3,
     "reps": 15,
     "weight": 60,
@@ -628,6 +668,7 @@
       "hamstrings",
       "isolation"
     ],
+    "pattern": "knee-flexion",
     "sets": 3,
     "reps": 12,
     "weight": 50,
@@ -644,6 +685,7 @@
       "kickback",
       "isolation"
     ],
+    "pattern": "hip-dominant",
     "sets": 3,
     "reps": 15,
     "weight": 60,
@@ -660,6 +702,7 @@
       "upper chest",
       "compound"
     ],
+    "pattern": "horizontal-push",
     "sets": 4,
     "reps": 10,
     "weight": 100,
@@ -676,6 +719,7 @@
       "push",
       "compound"
     ],
+    "pattern": "horizontal-push",
     "sets": 4,
     "reps": 8,
     "weight": 135,
@@ -693,6 +737,7 @@
       "lower chest",
       "compound"
     ],
+    "pattern": "horizontal-push",
     "sets": 4,
     "reps": 10,
     "weight": 45,
@@ -709,6 +754,7 @@
       "push",
       "unilateral"
     ],
+    "pattern": "horizontal-push",
     "sets": 3,
     "reps": 12,
     "weight": 30,
@@ -725,6 +771,7 @@
       "pull",
       "compound"
     ],
+    "pattern": "horizontal-pull",
     "sets": 4,
     "reps": 10,
     "weight": 115,
@@ -741,6 +788,7 @@
       "rows",
       "unilateral"
     ],
+    "pattern": "horizontal-pull",
     "sets": 3,
     "reps": 12,
     "weight": 40,
@@ -757,6 +805,7 @@
       "rows",
       "compound"
     ],
+    "pattern": "horizontal-pull",
     "sets": 4,
     "reps": 10,
     "weight": 90,
@@ -773,6 +822,7 @@
       "lats",
       "pull"
     ],
+    "pattern": "vertical-pull",
     "sets": 4,
     "reps": 10,
     "weight": 120,
@@ -789,6 +839,7 @@
       "push",
       "compound"
     ],
+    "pattern": "vertical-push",
     "sets": 3,
     "reps": 10,
     "weight": 30,
@@ -805,6 +856,7 @@
       "traps",
       "compound"
     ],
+    "pattern": "lateral-delt",
     "sets": 3,
     "reps": 12,
     "weight": 65,
@@ -821,6 +873,7 @@
       "isolation",
       "front delts"
     ],
+    "pattern": "lateral-delt",
     "sets": 3,
     "reps": 15,
     "weight": 20,
@@ -837,6 +890,7 @@
       "biceps",
       "curl"
     ],
+    "pattern": "elbow-flex",
     "sets": 3,
     "reps": 12,
     "weight": 55,
@@ -853,6 +907,7 @@
       "biceps",
       "isolation"
     ],
+    "pattern": "elbow-flex",
     "sets": 3,
     "reps": 12,
     "weight": 45,
@@ -869,6 +924,7 @@
       "triceps",
       "overhead"
     ],
+    "pattern": "elbow-ext",
     "sets": 3,
     "reps": 15,
     "weight": 35,
@@ -886,6 +942,7 @@
       "kickback",
       "isolation"
     ],
+    "pattern": "elbow-ext",
     "sets": 3,
     "reps": 15,
     "weight": 25,
@@ -903,6 +960,7 @@
       "quads",
       "unilateral"
     ],
+    "pattern": "knee-dominant",
     "sets": 3,
     "reps": 10,
     "weight": 30,
@@ -920,6 +978,7 @@
       "hamstrings",
       "hinge"
     ],
+    "pattern": "hip-dominant",
     "sets": 4,
     "reps": 10,
     "weight": 115,
@@ -937,6 +996,7 @@
       "glutes",
       "compound"
     ],
+    "pattern": "knee-dominant",
     "sets": 4,
     "reps": 10,
     "weight": 135,
@@ -953,6 +1013,7 @@
       "glutes",
       "hinge"
     ],
+    "pattern": "hip-dominant",
     "sets": 3,
     "reps": 12,
     "weight": 45,
@@ -969,6 +1030,7 @@
       "abs",
       "hip flexors"
     ],
+    "pattern": "trunk-flex",
     "sets": 3,
     "reps": 12,
     "weight": 0,
@@ -985,6 +1047,7 @@
       "abs",
       "cable"
     ],
+    "pattern": "trunk-flex",
     "sets": 3,
     "reps": 15,
     "weight": 45,
@@ -1001,109 +1064,154 @@
       "abs",
       "stability"
     ],
+    "pattern": "trunk-flex",
     "sets": 3,
     "reps": 20,
     "weight": 0,
     "video": "https://www.youtube.com/watch?v=n6oxd7JhwFM",
     "difficulty": "easy"
   },
-{
-  "name": "Seated Leg Curl Machine",
-  "machine": "Seated Leg Curl Machine",
-  "bodyPart": "Legs",
-  "equipmentType": "Machine",
-  "tags": ["legs", "hamstrings", "isolation"],
-  "sets": 4,
-  "reps": 10,
-  "weight": 80,
-  "video": "https://www.youtube.com/watch?v=DWXBfXopnnY"
-},
-{
-  "name": "Hip Thrust Machine",
-  "machine": "Hip Thrust Machine",
-  "bodyPart": "Glutes",
-  "equipmentType": "Machine",
-  "tags": ["glutes", "hamstrings", "compound"],
-  "sets": 3,
-  "reps": 12,
-  "weight": 90,
-  "video": "https://www.youtube.com/watch?v=nME5wVVCfc4"
-},
-{
-  "name": "Back Extension Machine",
-  "machine": "Back Extension Machine",
-  "bodyPart": "Lower Back",
-  "equipmentType": "Machine",
-  "tags": ["lower back", "glutes", "hamstrings", "isolation"],
-  "sets": 3,
-  "reps": 12,
-  "weight": 45,
-  "video": "https://www.youtube.com/watch?v=ENXyYltB7CM"
-},
-{
-  "name": "Treadmill",
-  "machine": "Treadmill",
-  "bodyPart": "Cardio",
-  "equipmentType": "Cardio",
-  "tags": ["cardio", "conditioning", "running"],
-  "sets": 1,
-  "reps": 1,
-  "weight": 0,
-  "video": ""
-},
-{
-  "name": "Stationary Bike",
-  "machine": "Stationary Bike",
-  "bodyPart": "Cardio",
-  "equipmentType": "Cardio",
-  "tags": ["cardio", "conditioning", "cycling"],
-  "sets": 1,
-  "reps": 1,
-  "weight": 0,
-  "video": ""
-},
-{
-  "name": "Rowing Machine",
-  "machine": "Rowing Machine",
-  "bodyPart": "Cardio",
-  "equipmentType": "Cardio",
-  "tags": ["cardio", "conditioning", "rowing"],
-  "sets": 1,
-  "reps": 1,
-  "weight": 0,
-  "video": ""
-},
-{
-  "name": "Elliptical",
-  "machine": "Elliptical",
-  "bodyPart": "Cardio",
-  "equipmentType": "Cardio",
-  "tags": ["cardio", "conditioning"],
-  "sets": 1,
-  "reps": 1,
-  "weight": 0,
-  "video": ""
-},
-{
-  "name": "Stair Climber",
-  "machine": "Stair Climber",
-  "bodyPart": "Cardio",
-  "equipmentType": "Cardio",
-  "tags": ["cardio", "conditioning", "stairs"],
-  "sets": 1,
-  "reps": 1,
-  "weight": 0,
-  "video": ""
-},
-{
-  "name": "Jump Rope",
-  "machine": "Jump Rope",
-  "bodyPart": "Cardio",
-  "equipmentType": "Cardio",
-  "tags": ["cardio", "conditioning"],
-  "sets": 1,
-  "reps": 1,
-  "weight": 0,
-  "video": ""
-}
+  {
+    "name": "Seated Leg Curl Machine",
+    "machine": "Seated Leg Curl Machine",
+    "bodyPart": "Legs",
+    "equipmentType": "Machine",
+    "tags": [
+      "legs",
+      "hamstrings",
+      "isolation"
+    ],
+    "pattern": "knee-flexion",
+    "sets": 4,
+    "reps": 10,
+    "weight": 80,
+    "video": "https://www.youtube.com/watch?v=DWXBfXopnnY"
+  },
+  {
+    "name": "Hip Thrust Machine",
+    "machine": "Hip Thrust Machine",
+    "bodyPart": "Glutes",
+    "equipmentType": "Machine",
+    "tags": [
+      "glutes",
+      "hamstrings",
+      "compound"
+    ],
+    "pattern": "hip-dominant",
+    "sets": 3,
+    "reps": 12,
+    "weight": 90,
+    "video": "https://www.youtube.com/watch?v=nME5wVVCfc4"
+  },
+  {
+    "name": "Back Extension Machine",
+    "machine": "Back Extension Machine",
+    "bodyPart": "Lower Back",
+    "equipmentType": "Machine",
+    "tags": [
+      "lower back",
+      "glutes",
+      "hamstrings",
+      "isolation"
+    ],
+    "pattern": "trunk-ext",
+    "sets": 3,
+    "reps": 12,
+    "weight": 45,
+    "video": "https://www.youtube.com/watch?v=ENXyYltB7CM"
+  },
+  {
+    "name": "Treadmill",
+    "machine": "Treadmill",
+    "bodyPart": "Cardio",
+    "equipmentType": "Cardio",
+    "tags": [
+      "cardio",
+      "conditioning",
+      "running"
+    ],
+    "pattern": "cardio",
+    "sets": 1,
+    "reps": 1,
+    "weight": 0,
+    "video": ""
+  },
+  {
+    "name": "Stationary Bike",
+    "machine": "Stationary Bike",
+    "bodyPart": "Cardio",
+    "equipmentType": "Cardio",
+    "tags": [
+      "cardio",
+      "conditioning",
+      "cycling"
+    ],
+    "pattern": "cardio",
+    "sets": 1,
+    "reps": 1,
+    "weight": 0,
+    "video": ""
+  },
+  {
+    "name": "Rowing Machine",
+    "machine": "Rowing Machine",
+    "bodyPart": "Cardio",
+    "equipmentType": "Cardio",
+    "tags": [
+      "cardio",
+      "conditioning",
+      "rowing"
+    ],
+    "pattern": "cardio",
+    "sets": 1,
+    "reps": 1,
+    "weight": 0,
+    "video": ""
+  },
+  {
+    "name": "Elliptical",
+    "machine": "Elliptical",
+    "bodyPart": "Cardio",
+    "equipmentType": "Cardio",
+    "tags": [
+      "cardio",
+      "conditioning"
+    ],
+    "pattern": "cardio",
+    "sets": 1,
+    "reps": 1,
+    "weight": 0,
+    "video": ""
+  },
+  {
+    "name": "Stair Climber",
+    "machine": "Stair Climber",
+    "bodyPart": "Cardio",
+    "equipmentType": "Cardio",
+    "tags": [
+      "cardio",
+      "conditioning",
+      "stairs"
+    ],
+    "pattern": "cardio",
+    "sets": 1,
+    "reps": 1,
+    "weight": 0,
+    "video": ""
+  },
+  {
+    "name": "Jump Rope",
+    "machine": "Jump Rope",
+    "bodyPart": "Cardio",
+    "equipmentType": "Cardio",
+    "tags": [
+      "cardio",
+      "conditioning"
+    ],
+    "pattern": "cardio",
+    "sets": 1,
+    "reps": 1,
+    "weight": 0,
+    "video": ""
+  }
 ]

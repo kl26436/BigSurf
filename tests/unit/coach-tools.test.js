@@ -99,6 +99,18 @@ describe('validateCreateTemplateInput', () => {
         expect(v.normalized.exercises[1]).toMatchObject({ machine: 'Lat Pulldown', sets: 3, reps: 10, equipment: 'Cable Station' });
     });
 
+    // CP-1 / Bug 7 — the whitelist used to drop these silently, so a
+    // coach-written template lost every prescription field on the way in.
+    it('keeps valid prescription fields and drops invalid ones', () => {
+        const good = normalizeExercise({
+            name: 'Seated Chest Press', sets: 4, reps: 10,
+            repRange: [8, 12], rpeTarget: 8, role: 'primary', pattern: 'horizontal-push', progression: 'double',
+        });
+        expect(good).toMatchObject({ repRange: [8, 12], rpeTarget: 8, role: 'primary', pattern: 'horizontal-push', progression: 'double' });
+        const bad = normalizeExercise({ name: 'X', repRange: [12, 8], rpeTarget: 2, role: 'chief', pattern: 'fly', progression: 'never' });
+        expect(bad).toEqual({ machine: 'X', sets: 3, reps: 10 });
+    });
+
     it('rejects missing name, empty exercises, too many exercises', () => {
         expect(validateCreateTemplateInput({ exercises: [{ name: 'X' }] }).ok).toBe(false);
         expect(validateCreateTemplateInput({ name: 'A', exercises: [] }).ok).toBe(false);

@@ -250,4 +250,22 @@ describe('validateTemplate', () => {
     it('rejects template with no exercises array', () => {
         expect(validateTemplate({ name: 'Push Day' }).valid).toBe(false);
     });
+
+    // CP-1 — prescription fields are optional but must be sane when present,
+    // with the same rules the server normalizer applies.
+    it('accepts valid prescription fields and templates without them', () => {
+        expect(validateTemplate({ name: 'Push', exercises: [{ name: 'Bench' }] }).valid).toBe(true);
+        expect(validateTemplate({
+            name: 'Push',
+            exercises: [{ name: 'Bench', repRange: [8, 12], rpeTarget: 8, role: 'primary', pattern: 'horizontal-push', progression: 'double' }],
+        }).valid).toBe(true);
+    });
+
+    it('rejects an inverted rep range, out-of-scale RPE, and unknown enums', () => {
+        expect(validateTemplate({ name: 'P', exercises: [{ name: 'Bench', repRange: [12, 8] }] }).valid).toBe(false);
+        expect(validateTemplate({ name: 'P', exercises: [{ name: 'Bench', rpeTarget: 4 }] }).valid).toBe(false);
+        expect(validateTemplate({ name: 'P', exercises: [{ name: 'Bench', role: 'boss' }] }).valid).toBe(false);
+        expect(validateTemplate({ name: 'P', exercises: [{ name: 'Bench', pattern: 'fly' }] }).valid).toBe(false);
+        expect(validateTemplate({ name: 'P', exercises: [{ name: 'Bench', progression: 'yolo' }] }).valid).toBe(false);
+    });
 });
