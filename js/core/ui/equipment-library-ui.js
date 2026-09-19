@@ -21,6 +21,8 @@ import { suggestExercisesForMachine } from '../features/machine-exercise-matcher
 import { composeEquipmentName } from '../utils/equipment-name.js';
 import { resolveLocationId } from '../data/location-id-resolver.js';
 import { normalizeEquipName } from '../data/equipment-id-resolver.js';
+import { unmappedEquipment, lineGaps, branchScouting, PATTERN_LABELS } from '../features/equipment-discovery.js';
+import { patternsForEquipment } from '../features/movement-patterns.js';
 
 let workoutManager = null;
 let allEquipment = [];
@@ -2243,7 +2245,7 @@ function renderMyGymsTab() {
     backfillGymAddresses(stats);
 
     const cardsHTML = stats.map(renderGymCard).join('');
-    return stripHTML + scanBannerHTML + `
+    return stripHTML + renderBranchScoutingCard() + scanBannerHTML + `
         <div class="gym-card-list">${cardsHTML}</div>
         ${addGymBtn}
     `;
@@ -2529,8 +2531,130 @@ function renderLibraryTab() {
         listHTML = renderBodyPartView(filtered);
     }
 
-    return filterHTML + searchHTML +
+    // CP-7 discovery block — only on the unfiltered list; a search or gym
+    // filter means the user is looking for something specific.
+    const discoveryHTML = (!currentSearchTerm && !currentLocationFilter) ? renderDiscoveryBlock() : '';
+
+    return filterHTML + searchHTML + discoveryHTML +
         `<div class="equip-lib-list equip-lib-list--compact" id="equip-lib-list-wrap">${listHTML}</div>`;
+}
+
+// ===================================================================
+// CP-7 — DISCOVERY SURFACES (finish the map · line gaps · branch scouting)
+// Pure finders live in features/equipment-discovery.js; this is render +
+// three handlers. Mockup: mockups/equipment-discovery.html.
+// ===================================================================
+
+const DISCOVERY_MAX_UNMAPPED = 3;
+
+function renderDiscoveryBlock() {
+    const unmapped = unmappedEquipment(allEquipment);
+    const gaps = lineGaps(allEquipment, getCatalogSync(), { answered: AppState.settings?.lineGapAnswers || [] });
+    if (!unmapped.length && !gaps.length) return '';
+
+    let unmappedHTML = '';
+    if (unmapped.length) {
+        const rows = unmapped.slice(0, DISCOVERY_MAX_UNMAPPED).map((u) => `
+            <div class="row-card" onclick="discoveryOpenUnmapped('${escapeAttr(u.id)}')" role="button" tabindex="0">
+                <div class="row-card__icon"><i class="fas fa-cog"></i></div>
+                <div class="row-card__content">
+                    <div class="row-card__title">${u.name ? escapeHtml(u.name) : 'Unnamed machine'}</div>
+                    <div class="row-card__subtitle">${u.reason === 'no name' ? 'No name' : 'No exercises mapped'}</div>
+                </div>
+                <i class="fas fa-chevron-right eq-discover__chev"></i>
+            </div>
+        `).join('');
+        const more = unmapped.length > DISCOVERY_MAX_UNMAPPED
+            ? `<div class="eq-discover__more">+${unmapped.length - DISCOVERY_MAX_UNMAPPED} more</div>` : '';
+        unmappedHTML = `
+            <div class="eq-discover eq-discover--warn">
+                <div class="eq-discover__head">
+                    <div class="eq-discover__icon"><i class="fas fa-map"></i></div>
+                    <div>
+                        <div class="eq-discover__title">${unmapped.length} machine${unmapped.length === 1 ? ' isn\'t' : 's aren\'t'} mapped yet</div>
+                        <div class="eq-discover__sub">No picker can see ${unmapped.length === 1 ? 'it' : 'them'}, and ${unmapped.length === 1 ? 'it' : 'they'} can't rotate into a block. Tap one to map it.</div>
+                    </div>
+                </div>
+                <div class="eq-discover__list">${rows}${more}</div>
+            </div>
+        `;
+    }
+
+    const gapsHTML = gaps.map((g) => `
+        <div class="eq-discover">
+            <div class="eq-discover__head">
+                <div class="eq-discover__icon"><i class="fas fa-puzzle-piece"></i></div>
+                <div>
+                    <div class="eq-discover__title">${escapeHtml(g.brand)} ${escapeHtml(g.line)} — ${g.owned} pieces at ${escapeHtml(g.gym)}</div>
+                    <div class="eq-discover__sub">This line usually ships with these too. On the floor?</div>
+                </div>
+            </div>
+            <div class="eq-discover__list">
+                ${g.missing.map((m) => `
+                    <div class="eq-discover__gap">
+                        <div class="eq-discover__gap-name">${escapeHtml(m.name)}${m.bodyPart ? ` <span class="eq-discover__gap-part">· ${escapeHtml(m.bodyPart)}</span>` : ''}</div>
+                        <div class="eq-discover__chips">
+                            <button class="chip chip--sm active" onclick="discoveryAnswerLineGap('${escapeAttr(m.key)}', 'yes', '${escapeAttr(g.gym)}', '${escapeAttr(m.id)}')">Yes, add it</button>
+                            <button class="chip chip--sm" onclick="discoveryAnswerLineGap('${escapeAttr(m.key)}', 'no', '${escapeAttr(g.gym)}', '${escapeAttr(m.id)}')">No</button>
+                            <button class="chip chip--sm" onclick="discoveryAnswerLineGap('${escapeAttr(m.key)}', 'unsure', '${escapeAttr(g.gym)}', '${escapeAttr(m.id)}')">Not sure</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+
+    return unmappedHTML + gapsHTML;
+}
+
+/**
+ * My gyms tab — one line when another mapped gym covers a movement pattern
+ * the home gym barely has. Silent with a single gym (D6).
+ */
+function renderBranchScoutingCard() {
+    const { homeGym, gaps } = branchScouting(allEquipment, null, { patternsFor: (doc) => patternsForEquipment(doc) });
+    if (!gaps.length || !homeGym) return '';
+    const g = gaps[0];
+    const label = PATTERN_LABELS[g.pattern] || g.pattern;
+    const homeTxt = g.home === 0 ? `${escapeHtml(homeGym)} has none` : `${escapeHtml(homeGym)} has ${g.home}`;
+    return `
+        <div class="eq-discover eq-discover--scout" onclick="discoveryScoutGym('${escapeAttr(g.gym)}')" role="button" tabindex="0">
+            <div class="eq-discover__icon"><i class="fas fa-route"></i></div>
+            <div class="eq-discover__scout-txt"><b>${escapeHtml(g.gym)}</b> has ${g.count} ${escapeHtml(label)} machine${g.count === 1 ? '' : 's'} — ${homeTxt}. Worth a visit.</div>
+            <i class="fas fa-chevron-right eq-discover__chev"></i>
+        </div>
+    `;
+}
+
+export function discoveryOpenUnmapped(id) {
+    if (id) openEquipmentDetail(id);
+}
+
+/**
+ * Any answer is final for that machine at that gym (D10 — never ask twice).
+ * "Yes" promotes the catalog machine through the same write path quick-add
+ * uses, so it lands mapped and tagged to the gym.
+ */
+export async function discoveryAnswerLineGap(key, answer, gym, catalogRef) {
+    const list = [...new Set([...(AppState.settings?.lineGapAnswers || []), key])].slice(-200);
+    if (AppState.settings) AppState.settings.lineGapAnswers = list;
+    import('./settings-ui.js').then((m) => m.updateSetting('lineGapAnswers', list)).catch(() => {});
+    if (answer === 'yes') {
+        try {
+            const eq = await promoteCatalogToEquipment(catalogRef, gym);
+            if (eq) showNotification(`${eq.name} added to ${gym}`, 'success');
+            else showNotification("Couldn't add that machine", 'error');
+        } catch (e) {
+            console.error('❌ Line-gap add failed:', e);
+            showNotification("Couldn't add that machine", 'error');
+        }
+    }
+    renderEquipmentLibrary();
+}
+
+export function discoveryScoutGym(gym) {
+    setEquipmentTab('library');
+    filterEquipmentByLocation(gym);
 }
 
 /**
@@ -4525,3 +4649,7 @@ window.openEquipmentExerciseSheet = openEquipmentExerciseSheet;
 window.closeEquipmentExerciseSheet = closeEquipmentExerciseSheet;
 window.removeExerciseFromEquipSheet = removeExerciseFromEquipSheet;
 window.addGymPrompt = addGymPrompt;
+// CP-7 discovery handlers — referenced only from this module's templates.
+window.discoveryOpenUnmapped = discoveryOpenUnmapped;
+window.discoveryAnswerLineGap = discoveryAnswerLineGap;
+window.discoveryScoutGym = discoveryScoutGym;

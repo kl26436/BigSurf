@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equipment discovery — CP-7 mockup</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app:#05070b; --bg-surface:#0d1218; --bg-card:#111820; --bg-card-hi:#172030;
+    --border-subtle:rgba(255,255,255,0.04); --border-light:rgba(255,255,255,0.08);
+    --text-strong:#f6f9ff; --text-main:#c4cad4; --text-secondary:#9aa3ad; --text-muted:#6b7785;
+    --primary:#1dd3b0; --primary-bg:rgba(29,211,176,0.12); --primary-border:rgba(29,211,176,0.3);
+    --warning:#f0c24b; --warning-bg:rgba(240,194,75,0.12); --warning-border:rgba(240,194,75,0.3);
+    --radius-sm:12px; --radius-md:16px; --radius-pill:999px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;background:#000;padding:24px;color:var(--text-main);}
+  h1.sec{color:var(--text-strong);font-size:1.4rem;margin:0 0 6px;font-weight:700;text-align:center;}
+  p.desc{color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;text-align:center;max-width:880px;margin-left:auto;margin-right:auto;}
+  .row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .wrap-label{color:var(--text-strong);font-size:0.95rem;font-weight:600;text-align:center;}
+  .wrap-sub{color:var(--text-muted);font-size:0.75rem;text-align:center;max-width:320px;}
+  .phone{width:340px;height:640px;background:var(--bg-app);border-radius:36px;border:8px solid #1a1f26;overflow:hidden;display:flex;flex-direction:column;padding:18px 12px;gap:10px;}
+  .tabs{display:flex;gap:6px;margin-bottom:4px;}
+  .tab{font-size:0.75rem;padding:5px 10px;border-radius:var(--radius-pill);color:var(--text-muted);border:1px solid var(--border-light);}
+  .tab.on{color:var(--primary);background:var(--primary-bg);border-color:var(--primary-border);}
+
+  .disc{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:12px;}
+  .disc--warn{background:var(--warning-bg);border-color:var(--warning-border);}
+  .disc__head{display:flex;align-items:center;gap:10px;}
+  .disc__icon{width:30px;height:30px;border-radius:9px;background:var(--bg-card-hi);display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0;}
+  .disc--warn .disc__icon{color:var(--warning);}
+  .disc__title{font-size:0.9rem;font-weight:600;color:var(--text-strong);}
+  .disc__sub{font-size:0.72rem;color:var(--text-muted);margin-top:2px;}
+  .disc__list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .rowc{display:flex;align-items:center;gap:8px;background:var(--bg-card-hi);border-radius:var(--radius-sm);padding:8px 10px;font-size:0.8rem;color:var(--text-strong);}
+  .rowc small{color:var(--text-muted);font-size:0.7rem;margin-left:auto;}
+  .rowc i.chev{color:var(--text-muted);font-size:0.65rem;}
+  .gap{display:flex;flex-direction:column;gap:6px;background:var(--bg-card-hi);border-radius:var(--radius-sm);padding:8px 10px;}
+  .gap__name{font-size:0.8rem;color:var(--text-strong);}
+  .gap__name small{color:var(--text-muted);font-size:0.7rem;}
+  .chips{display:flex;gap:6px;}
+  .chip{font-size:0.7rem;font-weight:600;padding:3px 9px;border-radius:var(--radius-pill);border:1px solid var(--border-light);color:var(--text-main);background:var(--bg-card);}
+  .chip--yes{color:var(--primary);border-color:var(--primary-border);background:var(--primary-bg);}
+  .scout{display:flex;align-items:center;gap:10px;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:10px 12px;}
+  .scout__txt{font-size:0.78rem;color:var(--text-main);}
+  .scout__txt b{color:var(--text-strong);}
+  .strip{display:flex;gap:6px;}
+  .strip div{flex:1;background:var(--bg-card);border-radius:var(--radius-sm);padding:8px;text-align:center;}
+  .strip b{display:block;color:var(--text-strong);font-size:1rem;}
+  .strip span{font-size:0.65rem;color:var(--text-muted);}
+</style>
+</head>
+<body>
+<h1 class="sec">Equipment discovery (CP-7)</h1>
+<p class="desc">Three quiet surfaces that feed the rotation engine. Library tab: a "finish the map" card for rows no picker can see, and one line-gap card per owned line with yes / no / not sure — an answer is final (never asked twice). My gyms tab: a one-line scouting note that only appears with a second mapped gym.</p>
+<div class="row">
+  <div class="wrap">
+    <div class="wrap-label">Library tab — discovery block above the list</div>
+    <div class="phone">
+      <div class="tabs"><span class="tab">My gyms</span><span class="tab on">Library</span><span class="tab">Catalog</span></div>
+      <div class="disc disc--warn">
+        <div class="disc__head">
+          <div class="disc__icon"><i class="fas fa-map"></i></div>
+          <div><div class="disc__title">5 machines aren't mapped yet</div><div class="disc__sub">No picker can see them, and they can't rotate in. Tap one to map it.</div></div>
+        </div>
+        <div class="disc__list">
+          <div class="rowc"><i class="fas fa-cog"></i> Arsenal ISO Multi Row <small>no exercises</small> <i class="fas fa-chevron-right chev"></i></div>
+          <div class="rowc"><i class="fas fa-cog"></i> Newtech Incline Chest Press 2 <small>no exercises</small> <i class="fas fa-chevron-right chev"></i></div>
+          <div class="rowc"><i class="fas fa-cog"></i> Unnamed machine <small>no name</small> <i class="fas fa-chevron-right chev"></i></div>
+          <div class="rowc" style="justify-content:center;color:var(--text-muted);font-size:0.72rem;">+2 more</div>
+        </div>
+      </div>
+      <div class="disc">
+        <div class="disc__head">
+          <div class="disc__icon"><i class="fas fa-puzzle-piece"></i></div>
+          <div><div class="disc__title">Panatta Fit Evo — 4 pieces at Absolute Recomp</div><div class="disc__sub">This line usually ships with these too. On the floor?</div></div>
+        </div>
+        <div class="disc__list">
+          <div class="gap">
+            <div class="gap__name">Super Horizontal Row <small>· Back</small></div>
+            <div class="chips"><span class="chip chip--yes">Yes, add it</span><span class="chip">No</span><span class="chip">Not sure</span></div>
+          </div>
+          <div class="gap">
+            <div class="gap__name">Pullover <small>· Back</small></div>
+            <div class="chips"><span class="chip chip--yes">Yes, add it</span><span class="chip">No</span><span class="chip">Not sure</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="rowc" style="opacity:.5">Chest · 12 machines <i class="fas fa-chevron-down chev" style="margin-left:auto"></i></div>
+    </div>
+    <div class="wrap-sub">"Yes" promotes the catalog machine to the gym through the existing quick-add write path. Any answer records the key so the row never returns.</div>
+  </div>
+
+  <div class="wrap">
+    <div class="wrap-label">My gyms tab — branch scouting</div>
+    <div class="phone">
+      <div class="tabs"><span class="tab on">My gyms</span><span class="tab">Library</span><span class="tab">Catalog</span></div>
+      <div class="strip"><div><b>2</b><span>Gyms</span></div><div><b>104</b><span>Machines</span></div><div><b>9</b><span>Brands</span></div><div><b>0</b><span>Orphans</span></div></div>
+      <div class="scout">
+        <div class="disc__icon"><i class="fas fa-route"></i></div>
+        <div class="scout__txt"><b>Hurst</b> has 3 hip hinge / thrust machines — Absolute Recomp has none. Worth a visit on a posterior day.</div>
+        <i class="fas fa-chevron-right chev" style="color:var(--text-muted);font-size:.65rem"></i>
+      </div>
+      <div class="rowc" style="opacity:.5">Absolute Recomp · 99 machines</div>
+      <div class="rowc" style="opacity:.5">Hurst · 5 machines</div>
+    </div>
+    <div class="wrap-sub">Hidden entirely with one mapped gym. Tap filters the Library tab to that gym.</div>
+  </div>
+</div>
+</body>
+</html>

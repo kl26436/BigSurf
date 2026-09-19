@@ -70,6 +70,9 @@ const DEFAULT_SETTINGS = {
     // Dismissed coach insight-chip signatures (e.g. 'plateau:bench press') —
     // dismissal is final per finding; capped at 20 in coachChipDismiss.
     dismissedCoachChips: [],
+    // CP-7 line-gap answers (`${gym}|${catalogMachineId}`) — yes/no/not sure
+    // are all final for that machine at that gym; capped at 200.
+    lineGapAnswers: [],
 
     // Migration flags (set true after one-time migrations have run).
     // Not user-configurable — checked by app-initialization.js on login.

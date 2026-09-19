@@ -411,6 +411,105 @@
     color: var(--text-muted);
     margin-top: var(--space-2);
 }
+/* CP-7 — discovery cards (finish the map · line gaps · branch scouting).
+   Mockup: mockups/equipment-discovery.html */
+.eq-discover {
+    margin: var(--space-8) var(--pad-page);
+    padding: var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+}
+.eq-discover--warn {
+    background: var(--warning-bg);
+    border-color: var(--warning-border);
+}
+.eq-discover--scout {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    cursor: pointer;
+}
+.eq-discover__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+}
+.eq-discover__icon {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card-hi);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.eq-discover--warn .eq-discover__icon {
+    color: var(--warning);
+}
+.eq-discover__title {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.eq-discover__sub {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.eq-discover__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    margin-top: var(--space-10);
+}
+.eq-discover__chev {
+    color: var(--text-muted);
+    font-size: var(--font-2xs);
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.eq-discover__more {
+    text-align: center;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.eq-discover__gap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    padding: var(--space-8) var(--space-10);
+    background: var(--bg-card-hi);
+    border-radius: var(--radius-sm);
+}
+.eq-discover__gap-name {
+    font-size: var(--font-sm);
+    color: var(--text-strong);
+}
+.eq-discover__gap-part {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.eq-discover__chips {
+    display: flex;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+}
+.eq-discover__chips .chip {
+    cursor: pointer;
+}
+.eq-discover__scout-txt {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-xs);
+    color: var(--text-main);
+}
+.eq-discover__scout-txt b {
+    color: var(--text-strong);
+}
+
 .scan-banner__btn {
     appearance: none;
     padding: var(--space-6) var(--space-12);
