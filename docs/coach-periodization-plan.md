@@ -1,7 +1,10 @@
 # Coach periodization + variety engine — design (Workstream CP)
 
-Status: **design, not built.** Written 2026-09-18, revised same day after a
-source review caught five wrong claims in the first draft. Phase numbers 0–19
+Status: **built — all eight phases (CP-0…CP-7) on dev as of 2026-09-18**, one
+commit per phase (d7b30f5 → CP-7), functions deployed after CP-5/CP-1/CP-3/CP-4.
+Not yet promoted to prod: verify on dev first (see §10 gates). Written
+2026-09-18, revised same day after a source review caught five wrong claims in
+the first draft. Phase numbers 0–19
 are all taken (ROADMAP.md, ai-coach-agent-plan.md), so this workstream uses the
 `CP-n` prefix, matching the `UX-n` / `T3-n` convention in
 `launch-roadmap.md` §4.
@@ -528,7 +531,18 @@ The first draft also miscounted twice ("three specific ways" over four items;
 
 ---
 
-## 10. Implementation plan (2026-09-18)
+## 10. Implementation plan (2026-09-18) — shipped to dev same day
+
+What landed differs from the plan in four places, recorded so the doc stays
+true: (1) CP-2 rung 3 hands off to CP-4 **client-side** in the active workout
+(`selectRotation` over the cached equipment names the replacement in the
+nudge) — no `propose_rotation` server tool was needed; (2) mirrors are
+**generated** by `scripts/sync-mirror.mjs` (ESM → CommonJS, sibling imports
+allowed) and parity-tested, rather than hand-copied; (3) the pattern
+vocabulary is 19 values, not 16 — `knee-flexion`, `anti-extension` and
+`cardio` were needed to classify the whole built-in library; (4) CP-1b (the
+editor UI for role / rep range) was NOT built — rows accept the fields, the
+coach writes them, the editor does not yet expose them.
 
 One phase per Claude Code session, one PR each, dev-deploy gate before prod.
 Quality bar per CLAUDE.md: `npm test` + `npm run lint` + `npm run audit:design`
