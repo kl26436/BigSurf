@@ -8,6 +8,23 @@
  */
 
 const { applyPrescriptionFields } = require('./movement-patterns');
+const { normalizeWeekTarget, isDeloadTarget } = require('./week-targets');
+
+// Shared schema for a program week target (CP-3). A week can move load,
+// set counts, rep bands and effort — not just a percentage.
+const WEEK_TARGET_ITEM = {
+    type: 'object',
+    properties: {
+        week: { type: 'number' },
+        label: { type: 'string', description: 'e.g. "accumulate", "intensify", "deload"' },
+        weightPct: { type: 'number', description: 'vs baseline, e.g. -35 for a deload' },
+        setDelta: { type: 'number', description: 'Sets added (+) or removed (−) per exercise, −3…+3. The app caps additions at each muscle\'s MRV.' },
+        repRange: { type: 'array', items: { type: 'number' }, description: '[low, high] rep band for the week, e.g. [8, 12]' },
+        rpeTarget: { type: 'number', description: 'Effort target on the 6–10 RPE scale' },
+        note: { type: 'string' },
+    },
+    required: ['week', 'label'],
+};
 
 // Shared schema for the CP-1 prescription fields on a template exercise.
 const PRESCRIPTION_PROPS = {
@@ -102,17 +119,8 @@ const TOOL_DEFINITIONS = [
                 startDate: { type: 'string', description: 'YYYY-MM-DD, the Monday of week 1' },
                 weekTargets: {
                     type: 'array',
-                    description: 'One entry per week that differs from baseline',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            week: { type: 'number' },
-                            label: { type: 'string', description: 'e.g. "heavy", "deload"' },
-                            weightPct: { type: 'number', description: 'vs baseline, e.g. -40 for deload' },
-                            note: { type: 'string' },
-                        },
-                        required: ['week', 'label'],
-                    },
+                    description: 'One entry per week that differs from baseline. Give the block a SHAPE: volume ramps (setDelta), reps descend (repRange), effort tightens (rpeTarget), then a deload (negative setDelta and/or weightPct).',
+                    items: WEEK_TARGET_ITEM,
                 },
                 split: {
                     type: 'object',
@@ -134,7 +142,7 @@ const TOOL_DEFINITIONS = [
                         name: { type: 'string' },
                         weeks: { type: 'number' },
                         startDate: { type: 'string' },
-                        weekTargets: { type: 'array', items: { type: 'object' } },
+                        weekTargets: { type: 'array', items: WEEK_TARGET_ITEM, description: 'Replaces the whole weekTargets list' },
                         split: { type: 'object' },
                         trustLevel: { type: 'string', description: "'propose' (default — everything is a card) or 'auto_confirm' (the dashboard pre-builds each week's adjusted session; starting it is the confirmation). Switch ONLY on an explicit user request; always reversible." },
                     },
@@ -464,15 +472,14 @@ function validateProgramInput(input) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '')) {
         return { ok: false, error: 'startDate must be YYYY-MM-DD' };
     }
+    // CP-3: the whitelist here used to keep only week/label/weightPct/note,
+    // silently discarding every richer lever (Bug 3). normalizeWeekTarget is
+    // the single rule set, shared with the client via functions/week-targets.js.
     const weekTargets = [];
     for (const t of (Array.isArray(input.weekTargets) ? input.weekTargets : [])) {
-        const week = intIn(t?.week, 1, weeks, null);
-        const label = clip(t?.label, 20);
-        if (week == null || !label) return { ok: false, error: 'each weekTarget needs week (within program) + label' };
-        const entry = { week, label };
-        if (typeof t.weightPct === 'number' && t.weightPct >= -90 && t.weightPct <= 100) entry.weightPct = Math.round(t.weightPct);
-        if (t.note) entry.note = clip(t.note, 80);
-        weekTargets.push(entry);
+        const n = normalizeWeekTarget(t, weeks);
+        if (!n.ok) return { ok: false, error: n.error };
+        weekTargets.push(n.target);
     }
     if (!input.split || typeof input.split !== 'object') return { ok: false, error: 'split is required' };
     return { ok: true, normalized: { name, goal, weeks, startDate: input.startDate, weekTargets, split: input.split } };
@@ -818,7 +825,8 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
             });
             // Deload callout for the card's landing moment — the week the
             // whole program exists for should be visible at creation.
-            const deloadWeek = (weekTargets.find(t => (t.weightPct || 0) < 0) || {}).week || null;
+            // A volume-only deload (negative setDelta, load unchanged) counts too (Bug 4).
+            const deloadWeek = (weekTargets.find(isDeloadTarget) || {}).week || null;
             return {
                 result: { programId: id, name, weeks, weekPlan: planOut.result.summary },
                 actionCard: {

@@ -3,6 +3,8 @@
 // to say — callers just concatenate). Kept out of ai-coach-ui.js so they're
 // unit-testable without mocking the UI import graph.
 
+import { describeWeekTarget } from './week-targets.js';
+
 /**
  * `User profile:` block — goal, experience, injuries, notes, height, weekly
  * goal. Injuries are safety-critical: the server-side system prompt instructs
@@ -138,8 +140,9 @@ export function buildProgramContext(program, today) {
     if (finished) {
         return `Program: "${program.name}" (${program.weeks} weeks, ${program.goal}) FINISHED — only propose a next block if the user asks.\n`;
     }
+    const desc = target ? describeWeekTarget(target) : '';
     const targetStr = target
-        ? ` — this week: ${target.label}${target.weightPct ? ` (${target.weightPct > 0 ? '+' : ''}${target.weightPct}% weight)` : ''}${target.note ? `, ${target.note}` : ''}`
+        ? ` — this week: ${target.label}${desc ? ` (${desc})` : ''}${target.note ? `, ${target.note}` : ''}`
         : '';
     return `Active program: "${program.name}" (${program.goal}) — week ${week} of ${program.weeks}${targetStr}. Session-shaped asks should honor this via propose_session_adjustments; trust level is propose-only (cards, never silent writes).\n`;
 }

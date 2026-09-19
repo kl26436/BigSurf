@@ -189,4 +189,9 @@ describe('deriveProgramWeek / buildProgramContext (Phase 9)', () => {
         expect(buildProgramContext(program, '2026-08-10')).toContain('FINISHED');
         expect(buildProgramContext(null, '2026-07-07')).toBe('');
     });
+
+    it('CP-3: the context line carries set / rep / RPE levers, not just weightPct', () => {
+        const shaped = { ...program, weekTargets: [{ week: 2, label: 'intensify', setDelta: 2, repRange: [6, 8], rpeTarget: 9 }] };
+        expect(buildProgramContext(shaped, '2026-07-07')).toContain('intensify (+2 sets · 6–8 reps · RPE 9)');
+    });
 });

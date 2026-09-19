@@ -226,6 +226,22 @@ describe('validateProgramInput (Phase 9)', () => {
         expect(v.normalized.weekTargets[0]).toMatchObject({ week: 4, label: 'deload', weightPct: -40 });
     });
 
+    // CP-3 / Bug 3 — the validator used to keep only week/label/weightPct/note.
+    it('keeps setDelta / repRange / rpeTarget and drops out-of-range values', () => {
+        const v = validateProgramInput({
+            ...good(),
+            weekTargets: [
+                { week: 2, label: 'accumulate', setDelta: 1, repRange: [10, 12], rpeTarget: 7.5 },
+                { week: 3, label: 'sloppy', setDelta: 9, repRange: [12, 8], rpeTarget: 3, weightPct: 500 },
+                { week: 4, label: 'deload', setDelta: -2, weightPct: -35 },
+            ],
+        });
+        expect(v.ok).toBe(true);
+        expect(v.normalized.weekTargets[0]).toEqual({ week: 2, label: 'accumulate', setDelta: 1, repRange: [10, 12], rpeTarget: 7.5 });
+        expect(v.normalized.weekTargets[1]).toEqual({ week: 3, label: 'sloppy' });
+        expect(v.normalized.weekTargets[2]).toEqual({ week: 4, label: 'deload', setDelta: -2, weightPct: -35 });
+    });
+
     it('rejects missing name/split, bad weeks, bad dates, out-of-range targets', () => {
         expect(validateProgramInput({ ...good(), name: '' }).ok).toBe(false);
         expect(validateProgramInput({ ...good(), split: null }).ok).toBe(false);

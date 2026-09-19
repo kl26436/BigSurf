@@ -8,6 +8,7 @@ import { toCommonJs } from '../../scripts/mirror-transform.mjs';
 
 const MIRRORS = [
     ['js/core/features/movement-patterns.js', 'functions/movement-patterns.js'],
+    ['js/core/features/week-targets.js', 'functions/week-targets.js'],
 ];
 
 describe('functions/ mirrors of pure client modules', () => {

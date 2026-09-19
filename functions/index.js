@@ -25,6 +25,7 @@ const {
     validateProposal, liveToolDefinitions,
 } = require('./coach-tools');
 const { buildOutcomesContext } = require('./coach-outcomes');
+const { describeWeekTarget } = require('./week-targets');
 
 // ── Model routing ────────────────────────────────────────────────────
 // Coach chat + template building + DEXA extraction use the flagship model
@@ -1081,7 +1082,7 @@ TOOLS — you can act in the app, not just talk:
 - USAGE HONESTY: usageCount can undercount (workouts logged under a template's pre-rename name aren't attributed). NEVER declare a template dead/unused from usageCount alone — cross-check the recent-workouts context first, and when unsure say what you actually know.
 - remember_fact: when the user shares DURABLE information — injuries, goals, schedule, equipment quirks, preferences — store it (short, one sentence). Never store measurements the app already tracks. Use forget_fact when the user corrects or retracts something you remembered.
 - log_advice: whenever you give a concrete CHECKABLE recommendation (a weight target, a deload, a volume change, an exercise swap), silently log it — one call per recommendation. Your context shows what happened after past recommendations; reference that track record when relevant, as correlation not causation.
-- PROGRAMS (get_program / create_program / adjust_program): a program = a multi-week direction (goal, length, per-week targets like "week 4: deload -40%") layered over the week plan. "Build me a program" → create the templates first if needed, then create_program (which also sets the week plan — one consent covers both). The current week derives from startDate; honor the active program's week target when proposing sessions (via propose_session_adjustments — the deload week NEVER edits templates). Trust levels: 'propose' (default — everything is a card) or 'auto_confirm' (the dashboard pre-builds each program week's adjusted session and starting it is the confirmation). Switch levels ONLY when the user explicitly asks ("turn on auto mode" → adjust_program {trustLevel:'auto_confirm'}); it is always reversible and you should mention that. Neither level ever writes a workout without a user tap. "I can only train 3 days next week" → adjust_program with a reshaped split. VARIETY: a block that runs one identical template per muscle group all program long is a weak program — build A/B variants of the main days (same core lifts for progression, different accessory picks; kind='variation') and schedule both across the week, pulling fresh movements from list_equipment with preference for machines the user owns but has never used. Between blocks, rotate the accessories.
+- PROGRAMS (get_program / create_program / adjust_program): a program = a multi-week direction (goal, length, per-week targets) layered over the week plan. A week target can move FOUR levers — weightPct, setDelta (sets per exercise, ±3; the app caps additions at each muscle's MRV), repRange [low, high], rpeTarget (6–10) — so give the block a SHAPE: e.g. wk1 accumulate 10–12 reps RPE 7 · wk2 +1 set · wk3 8–10 reps RPE 8 · wk4 +2 sets · wk5 6–8 reps RPE 9 · wk6 deload −2 sets, −35% weight, 12–15 reps. A deload = negative setDelta and/or weightPct. Never a block of identical weeks with one percentage. "Build me a program" → create the templates first if needed, then create_program (which also sets the week plan — one consent covers both). The current week derives from startDate; honor the active program's week target when proposing sessions (via propose_session_adjustments — the deload week NEVER edits templates). Trust levels: 'propose' (default — everything is a card) or 'auto_confirm' (the dashboard pre-builds each program week's adjusted session and starting it is the confirmation). Switch levels ONLY when the user explicitly asks ("turn on auto mode" → adjust_program {trustLevel:'auto_confirm'}); it is always reversible and you should mention that. Neither level ever writes a workout without a user tap. "I can only train 3 days next week" → adjust_program with a reshaped split. VARIETY: a block that runs one identical template per muscle group all program long is a weak program — build A/B variants of the main days (same core lifts for progression, different accessory picks; kind='variation') and schedule both across the week, pulling fresh movements from list_equipment with preference for machines the user owns but has never used. Between blocks, rotate the accessories.
 - If a tool fails, say so briefly and give your best text answer instead — never claim an action succeeded when it didn't.`;
 
 // Live-mode addendum (Phase 6): the coach is IN the workout, speed + brevity.
@@ -1775,8 +1776,9 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
             } else if (week >= 1) {
                 const target = (prog.weekTargets || []).find(t => t.week === week);
                 const next = (prog.weekTargets || []).find(t => t.week === week + 1);
+                const desc = target ? describeWeekTarget(target) : '';
                 programLine = `Program: "${prog.name}" (${prog.goal}) — week ${week} of ${prog.weeks}`
-                    + (target ? ` — this week: ${target.label}${target.weightPct ? ` (${target.weightPct > 0 ? '+' : ''}${target.weightPct}% weight)` : ''}` : '')
+                    + (target ? ` — this week: ${target.label}${desc ? ` (${desc})` : ''}` : '')
                     + (next ? `; next week: ${next.label}` : '')
                     + '.\n\n';
             }

@@ -21,6 +21,7 @@ import {
     programNoticeForToday, programCompletionForToday,
     programHeartbeat, programBlockStats, trailingWeekLight,
 } from '../features/program-session.js';
+import { describeWeekTarget } from '../features/week-targets.js';
 
 import {
     aggregateBodyPartStats, getTemplatesForDayOfWeek, aggregateExerciseStats,
@@ -834,17 +835,17 @@ function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByT
     // a secondary link opens the coach for anyone who wants to discuss.
     let programHook = '';
     if (!programSession && programNotice) {
-        const pct = `${programNotice.weightPct > 0 ? '+' : ''}${programNotice.weightPct}%`;
+        const desc = describeWeekTarget(programNotice);
         const label = capitalize(programNotice.label);
         programHook = `
             <div class="dash-today-hero__program">
                 <div class="dash-today-hero__program-head">
                     <i class="fas fa-flag-checkered"></i>
-                    <div class="dash-today-hero__program-txt"><b>${escapeHtml(label)} week (${pct})</b> — weights adjust for you</div>
+                    <div class="dash-today-hero__program-txt"><b>${escapeHtml(label)} week</b> — ${escapeHtml(desc)} · applied for you</div>
                 </div>
                 <div class="dash-today-hero__program-actions">
                     <button class="dash-today-hero__program-apply" onclick="applyProgramWeekAndStart('${startArg}')">
-                        Apply ${pct} &amp; start
+                        Apply &amp; start
                     </button>
                     <button class="dash-today-hero__program-ask" onclick="askCoachAboutProgramWeek()">Ask coach</button>
                 </div>

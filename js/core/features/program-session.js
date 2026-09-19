@@ -17,9 +17,12 @@ import { AppState } from '../utils/app-state.js';
 import { debugLog } from '../utils/config.js';
 import { showNotification, escapeHtml } from '../ui/ui-helpers.js';
 import { deriveProgramWeek } from './coach-context.js';
-import { debouncedSaveWorkoutData } from '../data/data-manager.js';
+import { debouncedSaveWorkoutData, loadAllWorkouts } from '../data/data-manager.js';
 import { DAY_KEYS, DAY_LABELS } from './week-plan.js';
 import { weightIncrement, scaleLoadableWeight } from './progression.js';
+import { weekTargetEffects, describeWeekTarget } from './week-targets.js';
+import { governSetDelta } from './volume-governor.js';
+import { analyzeWeeklyVolume, getISOWeekKey } from './training-insights.js';
 
 /** Smallest real jump for a unit, from the user's plate-calculator inventory. */
 function stepFor(unit) {
@@ -62,21 +65,26 @@ export function programSessionForToday(program, today) {
     const { week, target, finished } = deriveProgramWeek(program, today);
     if (!Number.isFinite(week) || finished || !target) return null;
     // Only surface weeks that actually CHANGE the session — a baseline week
-    // starts like any normal day, no special chrome.
-    if (target.weightPct == null || target.weightPct === 0) return null;
+    // starts like any normal day, no special chrome. CP-3: any lever counts
+    // (sets, reps, RPE), not just weightPct — a volume-only week used to be
+    // invisible here (Bug 8).
+    const fx = weekTargetEffects(target);
+    if (!fx.changesSession) return null;
     return {
         label: target.label,
-        weightPct: target.weightPct,
+        weightPct: fx.weightPct,
+        setDelta: fx.setDelta,
+        repRange: fx.repRange,
+        rpeTarget: fx.rpeTarget,
         week,
         note: target.note || null,
     };
 }
 
-/** "Heavy · +5% · from your program" hero meta line. */
+/** "Heavy · +5% weight · +1 set · from your program" hero meta line. */
 export function programSessionMeta(session) {
     if (!session) return '';
-    const pct = `${session.weightPct > 0 ? '+' : ''}${session.weightPct}%`;
-    return `${session.label} · ${pct} weight · week ${session.week} of your program`;
+    return `${session.label} · ${describeWeekTarget(session)} · week ${session.week} of your program`;
 }
 
 /**
@@ -90,8 +98,13 @@ export function programNoticeForToday(program, today) {
     if (!program?.startDate) return null;
     const { week, target, finished } = deriveProgramWeek(program, today);
     if (!Number.isFinite(week) || finished || !target) return null;
-    if (target.weightPct == null || target.weightPct === 0) return null;
-    return { label: target.label, weightPct: target.weightPct, week, weeks: program.weeks || 1 };
+    const fx = weekTargetEffects(target);
+    if (!fx.changesSession) return null;
+    return {
+        label: target.label,
+        weightPct: fx.weightPct, setDelta: fx.setDelta, repRange: fx.repRange, rpeTarget: fx.rpeTarget,
+        week, weeks: program.weeks || 1,
+    };
 }
 
 /**
@@ -203,31 +216,115 @@ export function scaleSessionSetTargets(factor) {
 }
 
 /**
- * Apply an adjustment {label, weightPct} to the in-flight session copy:
- * plate-rounded weight scale on weighted moves only, template untouched,
- * history honest (basedOn + sessionLabel). Returns the count of bodyweight
- * moves left unscaled so callers can footnote it. Assumes startWorkout ran.
+ * Add or trim sets on one session exercise (CP-3 setDelta). The template
+ * count moves so the set grid renders the new number; the autofilled rows
+ * follow — added sets copy the last row's targets, trimmed sets come off the
+ * end and never touch a completed or user-edited row. Floors at one set.
+ * Pure over its two arguments — exported for tests.
  */
-function applyAdjustmentToCurrentSession(program, adj) {
+export function applySetDeltaToExercise(ex, saved, delta) {
+    if (!ex || !delta) return;
+    ex.sets = Math.max(1, (Number(ex.sets) || 3) + delta);
+    const rows = saved?.sets;
+    if (!Array.isArray(rows)) return;
+    if (delta > 0) {
+        const last = rows[rows.length - 1];
+        for (let k = 0; k < delta; k++) {
+            rows.push(last
+                ? { weight: last.weight ?? null, reps: last.reps ?? null, completed: false, originalUnit: last.originalUnit, ...(last.type && last.type !== 'warmup' ? { type: last.type } : {}) }
+                : { weight: null, reps: null, completed: false });
+        }
+        return;
+    }
+    let n = -delta;
+    for (let i = rows.length - 1; i >= 0 && n > 0 && rows.length > 1; i--) {
+        if (rows[i]?.completed || rows[i]?._userEdited) continue;
+        rows.splice(i, 1);
+        n--;
+    }
+}
+
+/**
+ * Clamp an exercise's rep targets into the week's band (CP-3 repRange):
+ * template default and every uncompleted, un-edited autofilled row.
+ * Exported for tests.
+ */
+export function clampRepsToRange(ex, saved, repRange) {
+    if (!ex || !Array.isArray(repRange) || repRange.length !== 2) return;
+    const [lo, hi] = repRange;
+    const clamp = (r) => Math.min(hi, Math.max(lo, r));
+    if (typeof ex.defaultReps === 'number' && ex.defaultReps > 0) ex.defaultReps = clamp(ex.defaultReps);
+    if (typeof ex.reps === 'number' && ex.reps > 0) ex.reps = clamp(ex.reps);
+    for (const set of (saved?.sets || [])) {
+        if (!set || set.completed || set._userEdited) continue;
+        if (typeof set.reps === 'number' && set.reps > 0) set.reps = clamp(set.reps);
+    }
+}
+
+/**
+ * Apply an adjustment {label, weightPct, setDelta, repRange, rpeTarget} to
+ * the in-flight session copy: plate-rounded weight scale on weighted moves
+ * only, MRV-governed set deltas, rep clamping, RPE target on the exercise;
+ * template untouched, history honest (basedOn + sessionLabel). Returns the
+ * bodyweight-skip count and the muscles the governor clamped so callers can
+ * footnote both. Assumes startWorkout ran.
+ */
+function applyAdjustmentToCurrentSession(program, adj, { weeklyVolume = [] } = {}) {
     const unit = AppState.globalUnit || 'lbs';
     const step = stepFor(unit);
-    const f = 1 + adj.weightPct / 100;
+    const exercises = AppState.currentWorkout?.exercises || [];
+    const savedFor = (i) => AppState.savedData?.exercises?.[`exercise_${i}`];
     let skippedBw = 0;
-    for (const ex of (AppState.currentWorkout?.exercises || [])) {
-        if (typeof ex.weight === 'number' && ex.weight > 0) {
-            ex.weight = scaleLoadableWeight(ex.weight, f, step);
-        } else {
-            skippedBw++;
+    if (adj.weightPct) {
+        const f = 1 + adj.weightPct / 100;
+        for (const ex of exercises) {
+            if (typeof ex.weight === 'number' && ex.weight > 0) {
+                ex.weight = scaleLoadableWeight(ex.weight, f, step);
+            } else {
+                skippedBw++;
+            }
         }
+        // The visible set targets (autofilled from last session) scale too —
+        // without this the "-40%" toast shows but the rows still say last week.
+        scaleSessionSetTargets(f);
     }
-    // The visible set targets (autofilled from last session) scale too —
-    // without this the "-40%" toast shows but the rows still say last week.
-    scaleSessionSetTargets(f);
+    let clamped = [];
+    if (adj.setDelta) {
+        const gov = governSetDelta({
+            setDelta: adj.setDelta, exercises, weeklyVolume,
+            exerciseDatabase: AppState.exerciseDatabase || [],
+        });
+        exercises.forEach((ex, i) => applySetDeltaToExercise(ex, savedFor(i), gov.deltas[i]));
+        clamped = gov.clamped;
+    }
+    if (adj.repRange) {
+        exercises.forEach((ex, i) => clampRepsToRange(ex, savedFor(i), adj.repRange));
+    }
+    if (adj.rpeTarget) {
+        for (const ex of exercises) ex._rpeTarget = adj.rpeTarget;
+    }
     if (AppState.savedData) {
         AppState.savedData.basedOn = program.id;
         AppState.savedData.sessionLabel = adj.label;
     }
-    return skippedBw;
+    return { skippedBw, clamped };
+}
+
+/**
+ * This ISO week's completed workouts, aggregated to sets per muscle — the
+ * governor's view of what has already been trained. Non-fatal: an empty
+ * list just means "no landmark to clamp against".
+ */
+async function weeklyVolumeSoFar(today) {
+    try {
+        const all = await loadAllWorkouts(AppState);
+        const wk = getISOWeekKey(today);
+        const thisWeek = (all || []).filter(w => w?.date && w.completedAt && !w.cancelledAt && getISOWeekKey(w.date) === wk);
+        return analyzeWeeklyVolume(thisWeek, AppState.exerciseDatabase || []);
+    } catch (e) {
+        debugLog('weekly volume for governor failed (ungoverned):', e);
+        return [];
+    }
 }
 
 /**
@@ -239,12 +336,18 @@ function applyAdjustmentToCurrentSession(program, adj) {
 async function startWithAdjustment(templateName, program, adj) {
     await window.startWorkout(templateName);
     if (!adj || !program) return; // plain start — program had nothing for today
-    const skippedBw = applyAdjustmentToCurrentSession(program, adj);
+    const weeklyVolume = adj.setDelta > 0 ? await weeklyVolumeSoFar(AppState.getTodayDateString()) : [];
+    const { skippedBw, clamped } = applyAdjustmentToCurrentSession(program, adj, { weeklyVolume });
     const { renderActiveWorkout } = await import('../workout/workout-core.js');
     renderActiveWorkout();
     debouncedSaveWorkoutData(AppState);
-    // Unchanged dips on a "+5%" week read as a bug — say the skip out loud.
-    showNotification(`${adj.label} week — weights adjusted ${adj.weightPct > 0 ? '+' : ''}${adj.weightPct}%${skippedBw ? ' · bodyweight moves unchanged' : ''}`, 'success');
+    // Unchanged dips on a "+5%" week read as a bug — say the skip out loud;
+    // same for a muscle the governor held at MRV.
+    const parts = [describeWeekTarget(adj)];
+    if (skippedBw && adj.weightPct) parts.push('bodyweight moves unchanged');
+    const held = [...new Set(clamped.map(c => c.bodyPart.toLowerCase()))];
+    if (held.length) parts.push(`${held.join(', ')} at MRV — no extra set`);
+    showNotification(`${adj.label} week — ${parts.join(' · ')}`, 'success');
 }
 
 /**
@@ -351,8 +454,7 @@ export function openProgramDetailSheet() {
         const wk = i + 1;
         const t = (program.weekTargets || []).find(x => x.week === wk);
         const label = t?.label || 'Baseline';
-        const pct = t?.weightPct ? `${t.weightPct > 0 ? '+' : ''}${t.weightPct}% weight` : '';
-        const detail = [pct, t?.note].filter(Boolean).join(' · ') || 'Normal volume';
+        const detail = [t ? describeWeekTarget(t) : '', t?.note].filter(Boolean).join(' · ') || 'Normal volume';
         const isCur = wk === curWeek;
         return `
             <div class="program-detail__week${isCur ? ' program-detail__week--current' : ''}">

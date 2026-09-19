@@ -1063,7 +1063,7 @@ function buildSetRows(exercise, idx, savedEx, unit, baseWeight = 0) {
         const showRpe = !!AppState.settings?.trackRpe && set.completed;
         const rpeRow = showRpe
             ? `<div class="aw-rpe-row">
-                <span class="aw-rpe-row__label">RPE</span>
+                <span class="aw-rpe-row__label">RPE${exercise._rpeTarget ? ` · aim ${exercise._rpeTarget}` : ''}</span>
                 ${[6, 7, 8, 9, 10].map(v => `<button class="aw-rpe-chip${set.rpe === v ? ' active' : ''}" onclick="awSetRpe(${idx}, ${si}, ${v})" aria-label="RPE ${v}">${v}</button>`).join('')}
             </div>`
             : '';

@@ -7,6 +7,7 @@ import { describe, it, expect, vi } from 'vitest';
 // mock the edges per repo convention; the selector under test is pure.
 vi.mock('../../js/core/data/data-manager.js', () => ({
     debouncedSaveWorkoutData: vi.fn(),
+    loadAllWorkouts: vi.fn(async () => []),
 }));
 vi.mock('../../js/core/ui/ui-helpers.js', () => ({
     showNotification: vi.fn(),
@@ -16,7 +17,62 @@ import {
     programSessionForToday, programSessionMeta,
     programNoticeForToday, programCompletionForToday,
     programHeartbeat, programBlockStats, trailingWeekLight,
+    applySetDeltaToExercise, clampRepsToRange,
 } from '../../js/core/features/program-session.js';
+
+describe('CP-3 — week targets beyond weightPct', () => {
+    const richProgram = (trustLevel = 'auto_confirm') => ({
+        id: 'program_2', name: 'Shaped block', goal: 'hypertrophy', weeks: 6, startDate: '2026-09-21',
+        trustLevel,
+        weekTargets: [
+            { week: 2, label: 'accumulate', setDelta: 1 },
+            { week: 3, label: 'accumulate', repRange: [8, 10], rpeTarget: 8 },
+            { week: 6, label: 'deload', setDelta: -2, repRange: [12, 15], rpeTarget: 6, weightPct: -35 },
+        ],
+    });
+
+    it('a volume-only week pre-builds in auto-confirm and notices in propose (Bug 8)', () => {
+        expect(programSessionForToday(richProgram(), '2026-09-29')).toMatchObject({ label: 'accumulate', setDelta: 1, weightPct: null, week: 2 });
+        expect(programNoticeForToday(richProgram('propose'), '2026-09-29')).toMatchObject({ label: 'accumulate', setDelta: 1, week: 2, weeks: 6 });
+        expect(programSessionForToday(richProgram(), '2026-10-06')).toMatchObject({ repRange: [8, 10], rpeTarget: 8, week: 3 });
+    });
+
+    it('meta line describes every lever in one honest string', () => {
+        const s = programSessionForToday(richProgram(), '2026-10-26');
+        expect(programSessionMeta(s)).toBe('deload · -35% weight · -2 sets · 12–15 reps · RPE 6 · week 6 of your program');
+        expect(programSessionMeta(programSessionForToday(richProgram(), '2026-09-29'))).toBe('accumulate · +1 set · week 2 of your program');
+    });
+
+    it('applySetDeltaToExercise adds copies of the last row and trims uncompleted rows from the end', () => {
+        const ex = { machine: 'Leg Press', sets: 3 };
+        const saved = { sets: [
+            { weight: 400, reps: 10, completed: true, originalUnit: 'lbs' },
+            { weight: 420, reps: 8, completed: false, originalUnit: 'lbs' },
+        ] };
+        applySetDeltaToExercise(ex, saved, 2);
+        expect(ex.sets).toBe(5);
+        expect(saved.sets).toHaveLength(4);
+        expect(saved.sets[3]).toMatchObject({ weight: 420, reps: 8, completed: false, originalUnit: 'lbs' });
+
+        applySetDeltaToExercise(ex, saved, -3);
+        expect(ex.sets).toBe(2);
+        // Completed row is never removed; floor is one row.
+        expect(saved.sets).toEqual([{ weight: 400, reps: 10, completed: true, originalUnit: 'lbs' }]);
+    });
+
+    it('clampRepsToRange moves template defaults and open rows into the band, leaves done/edited rows alone', () => {
+        const ex = { machine: 'Pec Deck', defaultReps: 15 };
+        const saved = { sets: [
+            { reps: 15, completed: true },
+            { reps: 15, _userEdited: true },
+            { reps: 15 },
+            { reps: 5 },
+        ] };
+        clampRepsToRange(ex, saved, [8, 12]);
+        expect(ex.defaultReps).toBe(12);
+        expect(saved.sets.map(s => s.reps)).toEqual([15, 15, 12, 8]);
+    });
+});
 
 const program = (overrides = {}) => ({
     id: 'program_1', name: 'Strength block', goal: 'strength',
