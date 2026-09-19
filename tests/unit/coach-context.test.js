@@ -103,6 +103,40 @@ describe('buildTemplatesContext', () => {
     it('empty → empty string', () => {
         expect(buildTemplatesContext([])).toBe('');
     });
+
+    // CP-6 — the cap used to bite in array order, silently hiding whichever
+    // templates happened to be last; "edit my Thursday pull day" could name a
+    // template the model had never seen.
+    it('on-plan templates come first with a day tag, the rest by lastUpdated desc', () => {
+        const plans = [
+            { id: 'old', name: 'Old Push', lastUpdated: '2026-01-01', exercises: [] },
+            { id: 'pull', name: 'Thursday Pull', lastUpdated: '2026-02-01', exercises: [] },
+            { id: 'new', name: 'New Legs', lastUpdated: '2026-09-01', exercises: [] },
+        ];
+        const ctx = buildTemplatesContext(plans, { weekPlan: { days: { thu: 'pull', fri: 'rest' } } });
+        const lines = ctx.split('\n').filter(l => l.startsWith('- '));
+        expect(lines[0]).toContain('Thursday Pull [Thu]');
+        expect(lines[1]).toContain('New Legs');
+        expect(lines[2]).toContain('Old Push');
+        expect(ctx).not.toContain('…+');
+    });
+
+    it('caps at 20 by default and names the tool that has the rest', () => {
+        const plans = Array.from({ length: 23 }, (_, i) => ({ id: `t${i}`, name: `T${i}`, lastUpdated: `2026-01-${String(i + 1).padStart(2, '0')}`, exercises: [] }));
+        const ctx = buildTemplatesContext(plans);
+        expect(ctx).toContain('…+3 more (list_templates has all)');
+        expect(ctx).toContain('T22'); // newest survives
+        expect(ctx).not.toContain('- T0:'); // oldest is what gets cut
+    });
+
+    it('an on-plan template survives the cap even when it is the stalest', () => {
+        const plans = Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, name: `T${i}`, lastUpdated: `2026-01-${String(i + 1).padStart(2, '0')}`, exercises: [] }));
+        const ctx = buildTemplatesContext(plans, { capTemplates: 3, weekPlan: { days: { mon: 't0' } } });
+        expect(ctx).toContain('T0 [Mon]');
+        expect(ctx).toContain('T11');
+        expect(ctx).toContain('T10');
+        expect(ctx).not.toContain('- T9:');
+    });
 });
 
 describe('setTypeMarker', () => {

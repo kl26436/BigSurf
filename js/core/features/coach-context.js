@@ -60,15 +60,34 @@ export function buildPRContext(prList = [], { limit = 15 } = {}) {
     return rows.length ? `Personal records (best sets, most recent first):\n${rows.join('\n')}\n` : '';
 }
 
+const DAY_TAGS = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+
 /**
  * `User's saved workouts:` block from AppState.workoutPlans — so "plan my
  * week" answers reference what already exists instead of reinventing it.
  * Template shape: { name|day, category, exercises: [{machine|name, sets, reps|defaultReps}] }
+ *
+ * Ordering (CP-6): templates on the week plan first, tagged with their day,
+ * then the rest by lastUpdated desc — so when the cap bites it drops the
+ * stalest template, never the one the user calls "my Thursday pull day".
+ * A truncation line names the tool that has the full list.
  */
-export function buildTemplatesContext(plans = [], { capTemplates = 10, capExercises = 12 } = {}) {
-    const rows = (plans || []).slice(0, capTemplates).map((t) => {
+export function buildTemplatesContext(plans = [], { capTemplates = 20, capExercises = 12, weekPlan = null } = {}) {
+    const dayOf = {};
+    for (const [day, id] of Object.entries(weekPlan?.days || {})) {
+        if (id && id !== 'rest' && DAY_TAGS[day] && !dayOf[id]) dayOf[id] = DAY_TAGS[day];
+    }
+    const stamp = (t) => t.lastUpdated || t.updatedAt || t.createdAt || '';
+    const ordered = [...(plans || [])].sort((a, b) => {
+        const aOn = dayOf[a.id] ? 1 : 0;
+        const bOn = dayOf[b.id] ? 1 : 0;
+        if (aOn !== bOn) return bOn - aOn;
+        return stamp(b).localeCompare(stamp(a));
+    });
+    const rows = ordered.slice(0, capTemplates).map((t) => {
         const name = t.name || t.day || 'Workout';
         const cat = t.category ? ` [${t.category}]` : '';
+        const onPlan = dayOf[t.id] ? ` [${dayOf[t.id]}]` : '';
         const exercises = Array.isArray(t.exercises) ? t.exercises : [];
         const exList = exercises.slice(0, capExercises).map((e) => {
             const exName = e.machine || e.name || '?';
@@ -77,9 +96,12 @@ export function buildTemplatesContext(plans = [], { capTemplates = 10, capExerci
             return `${exName} ${sets}×${reps}`;
         }).join(', ');
         const more = exercises.length > capExercises ? ` +${exercises.length - capExercises} more` : '';
-        return `- ${name}${cat}: ${exList}${more}`;
+        return `- ${name}${cat}${onPlan}: ${exList}${more}`;
     });
-    return rows.length ? `User's saved workouts (templates they can start with one tap):\n${rows.join('\n')}\n` : '';
+    if (!rows.length) return '';
+    const hidden = ordered.length - rows.length;
+    const tail = hidden > 0 ? `…+${hidden} more (list_templates has all)\n` : '';
+    return `User's saved workouts (templates they can start with one tap; [Mon] = on the week plan that day):\n${rows.join('\n')}\n${tail}`;
 }
 
 /**

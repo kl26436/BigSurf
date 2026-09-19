@@ -1112,7 +1112,7 @@ function buildTrainingContext(workouts, healthSummary = '', prList = []) {
     if (prBlock) summary += `\n${prBlock}`;
 
     // Saved workouts — "plan my week" should adjust what exists, not reinvent.
-    const templatesBlock = buildTemplatesContext(AppState.workoutPlans || []);
+    const templatesBlock = buildTemplatesContext(AppState.workoutPlans || [], { weekPlan: AppState._weekPlan || null });
     if (templatesBlock) summary += `\n${templatesBlock}`;
 
     // Plate inventory (from the plate-calculator settings) — the coach must
