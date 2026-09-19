@@ -15,6 +15,8 @@ import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from
 import { convertYouTubeUrl } from './exercise-ui.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
+import { augmentStaticCatalog } from '../data/equipment-catalog-helpers.js';
+import { equipNameKey, ownedEquipmentKeys, searchCatalogMachines, inferEquipmentType } from '../data/catalog-search.js';
 import { suggestMachinesForExercise } from '../features/exercise-machine-matcher.js';
 import { getEquipmentAtLocation, getExercisesAtLocation } from '../features/equipment-planner.js';
 import { programHeartbeat } from '../features/program-session.js';
@@ -431,7 +433,7 @@ function clearRestTimer() {
 // Restart the tick interval from the persisted endsAt when we re-enter the
 // page after a dashboard side-trip. Elapsed-during-away → immediately shows
 // the "Ready" state. No-op unless a rest is actually still armed.
-function resumeRestTimerIfActive() {
+export function resumeRestTimerIfActive() {
     if (!restTimerActive || restTimerEndsAt <= 0) return;
     if (restTimerInterval) return; // already ticking (defensive)
 
@@ -536,7 +538,7 @@ function renderExerciseView(exercise, idx, savedEx) {
     }
 
     // Same set table for ALL exercise types — always Reps | Weight | ✓
-    const sets = buildSetRows(exercise, idx, savedEx, unit);
+    const sets = buildSetRows(exercise, idx, savedEx, unit, hasBaseWeight ? equipDoc.baseWeight : 0);
 
     // Autofill hint: shown once per USER (persisted in settings), not once per
     // exercise name — after you've learned what the dashed numbers mean, the
@@ -857,22 +859,41 @@ function renderLastSessionCard(exerciseName, idx) {
     // Convert each set's weight to the user's display unit so a kg-logged
     // session shows correctly when the user is now in lb mode (and vice versa).
     const displayUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
-    const summary = lastDefaults.map(s => {
+
+    // Plate-relative on base-weight gear: history stores totals, but the
+    // number the user needs at the rack is what to load (8/12 report). The
+    // nudge uses the same plate-relative sets so "+10" lands on 280, not 390.
+    const savedExForCard = AppState.savedData?.exercises?.[`exercise_${idx}`];
+    const cardEquip = getEquipmentDoc(
+        savedExForCard?.equipment || exercise.equipment || null,
+        savedExForCard?.equipmentId || exercise.equipmentId || null
+    );
+    const base = (!isBodyweightExercise(exercise) && cardEquip?.baseWeight > 0) ? cardEquip.baseWeight : 0;
+    const plateSets = base > 0
+        ? lastDefaults.map(s => ({ ...s, weight: Math.max(0, (s.weight || 0) - base) }))
+        : lastDefaults;
+
+    const summary = plateSets.map(s => {
         const w = s.weight || 0;
         const r = s.reps || 0;
         const from = s.originalUnit || 'lbs';
         const dw = w > 0 ? convertWeight(w, from, displayUnit) : 0;
         return `${r}×${dw}`;
     }).join(' · ');
+    const unitTag = base > 0 ? `${displayUnit} plates` : displayUnit;
 
     // Overload nudge — only for weighted lifts (a bodyweight "try +5" is noise).
     // Prefer the smart multi-session coach hydrated by loadAutofillForExercise;
     // fall back to the simple last-session step until it's computed.
     // No generic bump advice during an adjusted session (deload/heavy week) —
     // the adjustment already set today's targets and the two would conflict.
+    // The multi-session nudge is computed on totals, so on base-weight gear
+    // use the plate-relative single-session step instead.
     const nudge = isBodyweightExercise(exercise) || AppState.savedData?.sessionLabel
         ? null
-        : (exercise._overloadNudge || nextTargetFor(lastDefaults, displayUnit));
+        : (base > 0
+            ? nextTargetFor(plateSets, displayUnit)
+            : (exercise._overloadNudge || nextTargetFor(lastDefaults, displayUnit)));
     const nudgeHtml = nudge
         ? `<div class="aw-last__nudge"><i class="fas fa-bolt" aria-hidden="true"></i> ${nudge}</div>`
         : '';
@@ -885,7 +906,7 @@ function renderLastSessionCard(exerciseName, idx) {
                 aria-label="View ${escapeAttr(exerciseName)} progress">
             <i class="fas fa-history" aria-hidden="true"></i>
             <div class="aw-last__info">
-                <div class="aw-last__val">Last: ${summary} ${displayUnit} · ${daysLabel}</div>
+                <div class="aw-last__val">Last: ${summary} ${unitTag} · ${daysLabel}</div>
                 ${nudgeHtml}
             </div>
             <i class="fas fa-chevron-right aw-last__chev" aria-hidden="true"></i>
@@ -1001,7 +1022,12 @@ function beatBadgeFor(set, lastSet, displayUnit) {
     return null;
 }
 
-function buildSetRows(exercise, idx, savedEx, unit) {
+// `baseWeight` (> 0 only for plate-loaded gear with a recorded bar/base) makes
+// the weight column show what's ON the machine, not the stored total. Storage
+// stays total (PRs/volume/history compare like-for-like); only display and the
+// entered→stored conversion in awToggleSet are plate-relative. 8/12 report:
+// "machine base is 90, I did 270 — show me 270 next week, not 380".
+function buildSetRows(exercise, idx, savedEx, unit, baseWeight = 0) {
     const targetSets = exercise.sets || 3;
     const persistent = ensurePersistentSets(idx, targetSets);
     const sets = persistent.sets;
@@ -1053,7 +1079,16 @@ function buildSetRows(exercise, idx, savedEx, unit) {
             if (from === unitLabel) return Math.round(raw * 10) / 10;
             return convertWeight(raw, from, unitLabel);
         };
-        const weightShown = displayWeight(set.weight);
+        // Plate-relative view: an autofilled (un-edited) value is a stored
+        // TOTAL from history → subtract the base; a completed set remembers
+        // what was typed in _plateWeight; a value the user typed this
+        // session is already plate weight.
+        let rawForDisplay = set.weight;
+        if (baseWeight > 0 && rawForDisplay != null) {
+            if (set.completed) rawForDisplay = set._plateWeight ?? Math.max(0, rawForDisplay - baseWeight);
+            else if (!set._userEdited) rawForDisplay = Math.max(0, rawForDisplay - baseWeight);
+        }
+        const weightShown = displayWeight(rawForDisplay);
         const weightVal = set._userEdited || set.completed ? (weightShown ?? '') : '';
         const repsVal = set._userEdited || set.completed ? (set.reps ?? '') : '';
         const weightPlaceholder = !set._userEdited && !set.completed && weightShown != null ? weightShown : unitLabel;
@@ -1391,12 +1426,19 @@ export function awToggleSet(exerciseIdx, setIdx) {
             set.weight = set.bodyWeight + enteredWeight; // store the TOTAL
         }
 
-        // Equipment with base weight: total = base + entered (plate) weight
+        // Equipment with base weight: total = base + entered (plate) weight.
+        // `enteredWeight` is plate weight when the user typed it (or when the
+        // row was un-completed, which restores _plateWeight). An untouched
+        // autofill value is a stored TOTAL from history — subtract the base
+        // first, or confirming "380" re-adds 90 and logs 470 (the 8/12 confusion).
         if (!isBW && equipDoc?.baseWeight > 0) {
             const baseWeight = equipDoc.baseWeight || 0;
-            set._plateWeight = enteredWeight; // remember what user typed
+            const plateWeight = (userTypedWeight || set._plateWeight != null)
+                ? enteredWeight
+                : Math.max(0, enteredWeight - baseWeight);
+            set._plateWeight = plateWeight; // remember what user typed
             set._equipBaseWeight = baseWeight;
-            set.weight = enteredWeight + baseWeight; // store the TOTAL
+            set.weight = plateWeight + baseWeight; // store the TOTAL
         }
 
         haptic('tap');
@@ -1635,7 +1677,59 @@ export async function awReplaceExercise(idx) {
         alreadyAdded: (AppState.currentWorkout.exercises || []).map(getExerciseName),
         gymSection,
         onSelect: (exerciseRecord) => commitReplaceExercise(idx, exerciseRecord),
+        onCreateRequested: (query) => awCreateAndReplaceExercise(idx, query),
     });
+}
+
+/**
+ * Create a brand-new library exercise from the Replace sheet and swap it
+ * straight into the slot. The Add sheet has had this since Phase 4; Replace
+ * did not, so a machine the user had never logged before dead-ended the swap
+ * ("need to add new exercises easily from swap / active exercise menu",
+ * 8/20). Mirrors awCreateAndInsertExercise, then reuses commitReplaceExercise
+ * so the swap semantics stay in exactly one place.
+ */
+export async function awCreateAndReplaceExercise(idx, rawName) {
+    const name = (rawName || '').trim();
+    if (!name) return;
+    if (!AppState.currentUser) {
+        showNotification('Sign in to add custom exercises', 'warning');
+        return;
+    }
+
+    // Inherit the body part of the exercise being replaced — a swap is
+    // almost always like-for-like, so this lands the new entry in the right
+    // bucket without asking.
+    const current = AppState.currentWorkout?.exercises?.[idx];
+    const bodyPart = current?.bodyPart || current?.category || 'Chest';
+
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        await mgr.saveCustomExercise({
+            name,
+            machine: name,
+            bodyPart,
+            equipmentType: 'Machine',
+            sets: current?.sets || 3,
+            reps: current?.defaultReps || current?.reps || 10,
+            weight: 0,
+            video: '',
+        });
+
+        const refreshed = await mgr.getExerciseLibrary();
+        if (Array.isArray(refreshed)) AppState.exerciseDatabase = refreshed;
+
+        const record = (AppState.exerciseDatabase || [])
+            .find(ex => (ex.name || ex.machine) === name) || { name };
+
+        awCloseSheet();
+        commitReplaceExercise(idx, record);
+        showNotification(`Created "${name}"`, 'success');
+    } catch (err) {
+        console.error('awCreateAndReplaceExercise failed:', err);
+        showNotification("Couldn't create exercise — try again", 'error');
+    }
 }
 
 /** Swap the exercise at `idx` — same semantics as the legacy confirmExerciseReplace. */
@@ -1857,6 +1951,7 @@ let equipSheetShowAll = false;
 // lowest-friction options get the best real estate (traveler-flow D0).
 let equipFreeWeightsOpen = false;   // "Free weights" revealed Dumbbells/Barbell
 let awMachineSuggestions = [];      // last-rendered reverse-matcher results
+let awCatalogSearchResults = [];    // last-rendered inline catalog search results
 
 /**
  * Fast-path chip row rendered at the top of the equipment sheets.
@@ -2038,24 +2133,8 @@ export async function awPickSuggestedMachine(exerciseIdx, suggestionIdx) {
     const s = awMachineSuggestions[suggestionIdx];
     if (!s) return;
     try {
-        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-        const mgr = new FirebaseWorkoutManager(AppState);
-        const name = s.brandName && s.lineName ? `${s.brandName} ${s.lineName} — ${s.name}`
-            : s.brandName ? `${s.brandName} — ${s.name}`
-            : s.name;
-        const eq = await mgr.getOrCreateEquipment(name, {
-            brand: s.brandName,
-            line: s.lineName,
-            function: s.name,
-            equipmentType: s.type,
-            catalogRef: s.catalogRef,
-        }, null);
+        const eq = await addCatalogMachineDoc(s);
         if (!eq) { showNotification("Couldn't save — try again", 'error'); return; }
-
-        // awSelectEquipment below auto-associates this machine with the session
-        // gym on the equipment doc (the single source of truth — Phase 8b step 4;
-        // the old location.equipment[] mirror was removed).
-        AppState._cachedEquipment = await mgr.getUserEquipment();
         await awSelectEquipment(exerciseIdx, eq.name, eq.id || null);
     } catch (e) {
         console.error('Suggested machine add failed:', e);
@@ -2098,7 +2177,66 @@ export async function awOpenEquipmentSheet(exerciseIdx) {
     renderEquipmentSheet(exerciseIdx);
 }
 
-function renderEquipmentSheet(exerciseIdx) {
+// ── Inline catalog search (the mid-workout "add the machine I'm standing at") ──
+// The picker used to search only equipment you already own, so searching for a
+// machine you hadn't added yet dead-ended on "No matches" — and the add path
+// was a SEPARATE sheet behind a footer button, with its own search box you had
+// to retype the query into, a checkbox, and a commit button. These helpers put
+// the catalog in the SAME search box: one query finds owned + addable, and one
+// tap creates, gym-tags, exercise-links and selects the machine. The search
+// itself lives in data/catalog-search.js (pure, unit-tested).
+
+/**
+ * Catalog in the AUGMENTED shape — stable machine ids and a brand `name`,
+ * matching what the library's getCatalogSync serves. The raw EQUIPMENT_CATALOG
+ * export uses `brand:` and gives machines no id, so reading it directly here
+ * silently produced undefined catalogRefs and brand names on every suggestion
+ * row. Memoized: augmenting ~1.4k machines on each keystroke isn't free.
+ */
+let _augmentedCatalog = null;
+function awCatalog() {
+    if (AppState.equipmentCatalog) return AppState.equipmentCatalog;
+    if (!_augmentedCatalog) _augmentedCatalog = augmentStaticCatalog(EQUIPMENT_CATALOG);
+    return _augmentedCatalog;
+}
+
+/** One-tap "add this and use it" row for a catalog machine. */
+function catalogAddRowHTML(machine, onclick) {
+    const meta = [machine.brandName, machine.type].filter(Boolean).join(' · ');
+    return `
+        <div class="js-row" onclick="${onclick}">
+            <div class="js-row__icon js-row__icon--add"><i class="fas fa-plus"></i></div>
+            <div class="js-row__info">
+                <div class="js-row__name">${escapeHtml(machine.name)}</div>
+                <div class="js-row__meta">${escapeHtml(meta)} · Tap to add</div>
+            </div>
+        </div>
+    `;
+}
+
+/** Escape hatch when the catalog doesn't have it: create exactly what was typed. */
+function createEquipRowHTML(query, locName, onclick) {
+    const name = (query || '').trim();
+    return `
+        <div class="js-row" onclick="${onclick}">
+            <div class="js-row__icon js-row__icon--add"><i class="fas fa-plus"></i></div>
+            <div class="js-row__info">
+                <div class="js-row__name">Create “${escapeHtml(name)}”</div>
+                <div class="js-row__meta">${escapeHtml(inferEquipmentType(name))}${locName ? ` · adds to ${escapeHtml(locName)}` : ''}</div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build the scrollable list for the active-workout equipment picker.
+ *
+ * Split out of renderEquipmentSheet so SEARCH re-renders the same markup: the
+ * old search path had its own stripped-down renderer that dropped the
+ * sections, the "None" row and every add affordance, which is exactly what
+ * made "search for the machine → No matches → stuck" the default experience.
+ */
+function buildEquipListHTML(exerciseIdx) {
     const exercise = AppState.currentWorkout.exercises[exerciseIdx];
     const exName = getExerciseName(exercise);
     const currentEquip = AppState.savedData?.exercises?.[`exercise_${exerciseIdx}`]?.equipment || exercise.equipment;
@@ -2106,6 +2244,7 @@ function renderEquipmentSheet(exerciseIdx) {
     const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
 
     const allEquipment = AppState._cachedEquipment || [];
+    const searching = !!(equipSearchQuery || '').trim();
 
     // Categorize equipment into sections
     const forThisExercise = [];
@@ -2197,31 +2336,68 @@ function renderEquipmentSheet(exerciseIdx) {
 
     // Reverse-matcher suggestions (F2): when nothing is mapped to this
     // exercise yet, suggest likely catalog machines as one-tap adds instead
-    // of shrugging. Machines already in the library are excluded.
+    // of shrugging. Machines already in the library are excluded. Suppressed
+    // while searching — the catalog section below answers the query directly.
     let matchesSection = '';
-    if (forThisExercise.length === 0) {
+    if (!searching && forThisExercise.length === 0) {
         const have = new Set(allEquipment.map(eq => eq.catalogRef).filter(Boolean));
-        awMachineSuggestions = suggestMachinesForExercise(exName, EQUIPMENT_CATALOG)
+        awMachineSuggestions = suggestMachinesForExercise(exName, awCatalog())
             .filter(s => !have.has(s.catalogRef));
         if (awMachineSuggestions.length > 0) {
             matchesSection = `
                 <div class="aw-equip-section">
                     <div class="aw-equip-section__title">Matches for ${escapeHtml(exName)}</div>
-                    ${awMachineSuggestions.map((s, i) => `
-                        <div class="js-row" onclick="awPickSuggestedMachine(${exerciseIdx}, ${i})">
-                            <div class="js-row__icon js-row__icon--equip"><i class="fas fa-plus"></i></div>
-                            <div class="js-row__info">
-                                <div class="js-row__name">${escapeHtml(s.name)}</div>
-                                <div class="js-row__meta">${escapeHtml(s.brandName)} · ${escapeHtml(s.type)} · from catalog</div>
-                            </div>
-                        </div>
-                    `).join('')}
+                    ${awMachineSuggestions.map((s, i) => catalogAddRowHTML(s, `awPickSuggestedMachine(${exerciseIdx}, ${i})`)).join('')}
                 </div>
             `;
         }
     } else {
         awMachineSuggestions = [];
     }
+
+    // The point of the whole change: the same query that filters your library
+    // also searches the catalog, and every result is a single tap away from
+    // being created, gym-tagged, linked to this exercise and selected.
+    let catalogSection = '';
+    let createSection = '';
+    if (searching) {
+        const owned = ownedEquipmentKeys(allEquipment);
+        awCatalogSearchResults = searchCatalogMachines(equipSearchQuery, awCatalog(), { owned });
+        if (awCatalogSearchResults.length > 0) {
+            catalogSection = `
+                <div class="aw-equip-section">
+                    <div class="aw-equip-section__title">Add from catalog</div>
+                    ${awCatalogSearchResults.map((m, i) => catalogAddRowHTML(m, `awAddCatalogMachine(${exerciseIdx}, ${i})`)).join('')}
+                </div>
+            `;
+        }
+        // Suppressed when the query already names something you own — that row
+        // is right there above, and "Create" would read like a duplicate.
+        if (!owned.names.has(equipNameKey(equipSearchQuery))) {
+            createSection = `
+                <div class="aw-equip-section">
+                    ${createEquipRowHTML(equipSearchQuery, locName, `awCreateEquipmentFromSearch(${exerciseIdx})`)}
+                </div>
+            `;
+        }
+    } else {
+        awCatalogSearchResults = [];
+    }
+
+    return `
+        ${renderSection(`For ${escapeHtml(exName)}`, forThisExercise, 'No equipment assigned to this exercise yet')}
+        ${matchesSection}
+        ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, `No equipment saved at ${escapeHtml(locName)} yet`) : ''}
+        ${otherSectionHTML}
+        ${catalogSection}
+        ${createSection}
+        ${searching ? '' : noneRow}
+    `;
+}
+
+function renderEquipmentSheet(exerciseIdx) {
+    const exercise = AppState.currentWorkout.exercises[exerciseIdx];
+    const exName = getExerciseName(exercise);
 
     const body = `
         ${renderEquipFastPathsHTML({
@@ -2233,14 +2409,10 @@ function renderEquipmentSheet(exerciseIdx) {
         })}
         <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
-            <input type="text" placeholder="Search equipment…" value="${escapeAttr(equipSearchQuery)}" oninput="awEquipSearch(${exerciseIdx}, this.value)">
+            <input type="text" placeholder="Search your gear or the catalog…" value="${escapeAttr(equipSearchQuery)}" oninput="awEquipSearch(${exerciseIdx}, this.value)">
         </div>
         <div id="aw-equip-list">
-            ${renderSection(`For ${escapeHtml(exName)}`, forThisExercise, 'No equipment assigned to this exercise yet')}
-            ${matchesSection}
-            ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, `No equipment saved at ${escapeHtml(locName)} yet`) : ''}
-            ${otherSectionHTML}
-            ${noneRow}
+            ${buildEquipListHTML(exerciseIdx)}
         </div>
     `;
 
@@ -2249,13 +2421,78 @@ function renderEquipmentSheet(exerciseIdx) {
         subtitle: exName,
         body,
         actions: [
-            // Opens the catalog quick-add sheet inline, parameterized with the
-            // session gym — the added machine is created, gym-tagged,
-            // exercise-linked, and selected without leaving the workout.
-            { label: '<i class="fas fa-plus"></i> Add from catalog', onClick: `awOpenCatalogQuickAdd(${exerciseIdx})` },
+            // Browse-by-body-part path. The inline search above covers the
+            // "I know what it's called" case in one tap; this stays for
+            // "show me what this brand's line has".
+            { label: '<i class="fas fa-plus"></i> Browse catalog', onClick: `awOpenCatalogQuickAdd(${exerciseIdx})` },
             { label: 'Done', onClick: 'awCloseSheet()', primary: true },
         ],
     });
+}
+
+/**
+ * Find-or-create the equipment doc for a catalog machine and refresh the
+ * picker's cache. Shared by the reverse-matcher suggestions and the inline
+ * catalog search results. getOrCreateEquipment does the dedup, so a machine
+ * that already exists under a slightly different spelling is reused.
+ */
+async function addCatalogMachineDoc(machine) {
+    const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+    const mgr = new FirebaseWorkoutManager(AppState);
+    const name = machine.brandName && machine.lineName ? `${machine.brandName} ${machine.lineName} — ${machine.name}`
+        : machine.brandName ? `${machine.brandName} — ${machine.name}`
+        : machine.name;
+    const eq = await mgr.getOrCreateEquipment(name, {
+        brand: machine.brandName,
+        line: machine.lineName,
+        function: machine.name,
+        equipmentType: machine.type,
+        catalogRef: machine.catalogRef,
+    }, null);
+    if (!eq) return null;
+    AppState._cachedEquipment = await mgr.getUserEquipment();
+    return eq;
+}
+
+/**
+ * One-tap add for an inline catalog search result: create the doc, then
+ * select it — awSelectEquipment gym-tags it and links it to this exercise,
+ * so "type three letters, tap, lift" is the whole flow.
+ */
+export async function awAddCatalogMachine(exerciseIdx, resultIdx) {
+    const m = awCatalogSearchResults[resultIdx];
+    if (!m) return;
+    try {
+        haptic('tap');
+        const eq = await addCatalogMachineDoc(m);
+        if (!eq) { showNotification("Couldn't save — try again", 'error'); return; }
+        await awSelectEquipment(exerciseIdx, eq.name, eq.id || null);
+    } catch (e) {
+        console.error('Catalog machine add failed:', e);
+        showNotification("Couldn't save — try again", 'error');
+    }
+}
+
+/**
+ * The catalog doesn't have it: create equipment named exactly what was typed,
+ * with a guessed type, and select it. getOrCreateEquipment dedupes, so a
+ * near-miss re-selects the existing doc instead of spawning a twin.
+ */
+export async function awCreateEquipmentFromSearch(exerciseIdx) {
+    const name = (equipSearchQuery || '').trim();
+    if (!name) return;
+    try {
+        haptic('tap');
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        const eq = await mgr.getOrCreateEquipment(name, { equipmentType: inferEquipmentType(name) }, null);
+        if (!eq) { showNotification("Couldn't save — try again", 'error'); return; }
+        AppState._cachedEquipment = await mgr.getUserEquipment();
+        await awSelectEquipment(exerciseIdx, eq.name, eq.id || null);
+    } catch (e) {
+        console.error('Custom equipment add failed:', e);
+        showNotification("Couldn't save — try again", 'error');
+    }
 }
 
 /**
@@ -2353,9 +2590,15 @@ export async function openSharedEquipmentSheet({ exerciseName, currentEquipment,
     renderSharedEquipmentSheet();
 }
 
-function renderSharedEquipmentSheet() {
+/**
+ * Build the scrollable list for the shared (template / edit-history) picker.
+ * Mirrors buildEquipListHTML so search re-renders the real markup instead of
+ * the old stripped-down "No matches" dead end — same wall, same fix, but kept
+ * as a parallel path per the active-workout safety rule.
+ */
+function buildSharedEquipListHTML() {
     const ctx = _sharedEquipmentContext;
-    if (!ctx) return;
+    if (!ctx) return '';
 
     const exName = ctx.exerciseName;
     const currentEquip = ctx.currentEquipment;
@@ -2365,6 +2608,7 @@ function renderSharedEquipmentSheet() {
     const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
 
     const allEquipment = AppState._cachedEquipment || [];
+    const searching = !!(equipSearchQuery || '').trim();
 
     const forThisExercise = [];
     const atThisGym = [];
@@ -2420,17 +2664,60 @@ function renderSharedEquipmentSheet() {
         </div>
     `;
 
-    // Catalog quick-add needs a gym to tag machines to — only offer it when
-    // a session location is known (footer stays two-button either way).
+    // Catalog quick-add needs a gym to tag machines to — only offer the browse
+    // row when a session location is known.
     const catalogRow = locName ? `
         <div class="js-row" onclick="awSharedOpenCatalogQuickAdd()">
-            <div class="js-row__icon js-row__icon--equip"><i class="fas fa-plus"></i></div>
+            <div class="js-row__icon js-row__icon--add"><i class="fas fa-plus"></i></div>
             <div class="js-row__info">
-                <div class="js-row__name">Add from catalog</div>
-                <div class="js-row__meta">Search machines · adds to ${escapeHtml(locName)}</div>
+                <div class="js-row__name">Browse catalog</div>
+                <div class="js-row__meta">By body part · adds to ${escapeHtml(locName)}</div>
             </div>
         </div>
     ` : '';
+
+    // Same inline catalog search as the workout picker: a template edit hits
+    // the identical "I don't own this machine yet" wall.
+    let catalogSection = '';
+    let createSection = '';
+    if (searching) {
+        const owned = ownedEquipmentKeys(allEquipment);
+        awCatalogSearchResults = searchCatalogMachines(equipSearchQuery, awCatalog(), { owned });
+        if (awCatalogSearchResults.length > 0) {
+            catalogSection = `
+                <div class="aw-equip-section">
+                    <div class="aw-equip-section__title">Add from catalog</div>
+                    ${awCatalogSearchResults.map((m, i) => catalogAddRowHTML(m, `awSharedAddCatalogMachine(${i})`)).join('')}
+                </div>
+            `;
+        }
+        if (!owned.names.has(equipNameKey(equipSearchQuery))) {
+            createSection = `
+                <div class="aw-equip-section">
+                    ${createEquipRowHTML(equipSearchQuery, null, 'awSharedCreateEquipmentFromSearch()')}
+                </div>
+            `;
+        }
+    } else {
+        awCatalogSearchResults = [];
+    }
+
+    return `
+        ${renderSection(`For ${escapeHtml(exName)}`, forThisExercise, 'No equipment assigned to this exercise yet')}
+        ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, `No equipment saved at ${escapeHtml(locName)} yet`) : ''}
+        ${renderSection('Other equipment', otherEquipment, 'No other equipment saved')}
+        ${catalogSection}
+        ${createSection}
+        ${searching ? '' : noneRow}
+        ${searching ? '' : catalogRow}
+    `;
+}
+
+function renderSharedEquipmentSheet() {
+    const ctx = _sharedEquipmentContext;
+    if (!ctx) return;
+
+    const exName = ctx.exerciseName;
 
     const body = `
         ${renderEquipFastPathsHTML({
@@ -2443,14 +2730,10 @@ function renderSharedEquipmentSheet() {
         })}
         <div class="field-search field-search--sticky">
             <i class="fas fa-search"></i>
-            <input type="text" placeholder="Search equipment…" value="${escapeAttr(equipSearchQuery)}" oninput="awSharedEquipSearch(this.value)">
+            <input type="text" placeholder="Search your gear or the catalog…" value="${escapeAttr(equipSearchQuery)}" oninput="awSharedEquipSearch(this.value)">
         </div>
         <div id="aw-equip-list">
-            ${renderSection(`For ${escapeHtml(exName)}`, forThisExercise, 'No equipment assigned to this exercise yet')}
-            ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, `No equipment saved at ${escapeHtml(locName)} yet`) : ''}
-            ${renderSection('Other equipment', otherEquipment, 'No other equipment saved')}
-            ${noneRow}
-            ${catalogRow}
+            ${buildSharedEquipListHTML()}
         </div>
     `;
 
@@ -2467,34 +2750,53 @@ function renderSharedEquipmentSheet() {
 
 export function awSharedEquipSearch(query) {
     equipSearchQuery = query;
+    // Re-render through the SAME builder the sheet uses — the search input
+    // lives outside #aw-equip-list, so focus and caret survive.
     const listEl = document.getElementById('aw-equip-list');
     if (!listEl || !_sharedEquipmentContext) return;
+    listEl.innerHTML = buildSharedEquipListHTML();
+}
 
-    const ctx = _sharedEquipmentContext;
-    const sessionLoc = AppState.savedData?.location;
-    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
-    const allEquipment = AppState._cachedEquipment || [];
-    const q = query.toLowerCase();
-    const matches = allEquipment.filter(eq =>
-        eq.name?.toLowerCase().includes(q) || (eq.equipmentType || '').toLowerCase().includes(q)
-    );
-    const renderRow = (eq) => {
-        const isCurrent = eq.name === ctx.currentEquipment;
-        const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
-        const locStr = equipLocationCue(eq, locName);
-        return `
-            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSharedSelectEquipment('${escapeAttr(eq.name)}')">
-                <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
-                <div class="js-row__info">
-                    <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
-                    <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__meta-pin"></i> ${escapeHtml(locStr)}` : ''}</div>
-                </div>
-            </div>
-        `;
-    };
-    listEl.innerHTML = matches.length > 0
-        ? matches.map(renderRow).join('')
-        : '<div class="aw-sheet__empty">No matches</div>';
+/**
+ * One-tap add for an inline catalog search result in the shared picker:
+ * create the equipment doc, then hand its name back through onSelect exactly
+ * as if the row had already been in the list.
+ */
+export async function awSharedAddCatalogMachine(resultIdx) {
+    const m = awCatalogSearchResults[resultIdx];
+    if (!_sharedEquipmentContext || !m) return;
+    try {
+        haptic('tap');
+        const eq = await addCatalogMachineDoc(m);
+        if (!eq) { showNotification("Couldn't save — try again", 'error'); return; }
+        await awSharedSelectEquipment(eq.name);
+    } catch (e) {
+        console.error('Catalog machine add failed:', e);
+        showNotification("Couldn't save — try again", 'error');
+    }
+}
+
+/**
+ * Shared-picker escape hatch: create equipment named exactly what was typed
+ * and select it. No gym tag here — the shared sheet is mostly used away from
+ * the gym (template editing, fixing history), and awSelectEquipment's
+ * auto-associate is the workout-side path for that.
+ */
+export async function awSharedCreateEquipmentFromSearch() {
+    const name = (equipSearchQuery || '').trim();
+    if (!_sharedEquipmentContext || !name) return;
+    try {
+        haptic('tap');
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        const mgr = new FirebaseWorkoutManager(AppState);
+        const eq = await mgr.getOrCreateEquipment(name, { equipmentType: inferEquipmentType(name) }, null);
+        if (!eq) { showNotification("Couldn't save — try again", 'error'); return; }
+        AppState._cachedEquipment = await mgr.getUserEquipment();
+        await awSharedSelectEquipment(eq.name);
+    } catch (e) {
+        console.error('Custom equipment add failed:', e);
+        showNotification("Couldn't save — try again", 'error');
+    }
 }
 
 export async function awSharedSelectEquipment(equipName) {
@@ -2552,40 +2854,11 @@ export function awEquipShowAll(exerciseIdx) {
 
 export function awEquipSearch(exerciseIdx, query) {
     equipSearchQuery = query;
-    // Re-render just the list content, preserving the search input focus
+    // Re-render through the SAME builder the sheet uses — the search input
+    // lives outside #aw-equip-list, so focus and caret survive.
     const listEl = document.getElementById('aw-equip-list');
     if (!listEl) return;
-
-    const exercise = AppState.currentWorkout.exercises[exerciseIdx];
-    const currentEquip = AppState.savedData?.exercises?.[`exercise_${exerciseIdx}`]?.equipment || exercise.equipment;
-    const sessionLoc = AppState.savedData?.location;
-    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
-    const allEquipment = AppState._cachedEquipment || [];
-    const q = query.toLowerCase();
-
-    // Filter all equipment by search
-    const matches = allEquipment.filter(eq =>
-        eq.name?.toLowerCase().includes(q) || (eq.equipmentType || '').toLowerCase().includes(q)
-    );
-
-    const renderRow = (eq) => {
-        const isCurrent = eq.name === currentEquip;
-        const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
-        const locStr = equipLocationCue(eq, locName);
-        return `
-            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}', '${escapeAttr(eq.id || '')}' || null)">
-                <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
-                <div class="js-row__info">
-                    <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
-                    <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__meta-pin"></i> ${escapeHtml(locStr)}` : ''}</div>
-                </div>
-            </div>
-        `;
-    };
-
-    listEl.innerHTML = matches.length > 0
-        ? matches.map(renderRow).join('')
-        : '<div class="aw-sheet__empty">No matches</div>';
+    listEl.innerHTML = buildEquipListHTML(exerciseIdx);
 }
 
 export async function awSelectEquipment(exerciseIdx, equipName, equipId = null) {
@@ -3185,9 +3458,13 @@ function renderSharedAddListBody() {
         ? `<div class="aw-add-ex-truncated">Showing 50 of ${filtered.length} — refine your search</div>`
         : '';
 
-    // "Create [query]" row when the search returned nothing AND a query is set.
+    // "Create [query]" row whenever a query is typed and the caller supports
+    // creation — not only on zero results. Gating it on an empty result set
+    // meant any partial match ("Cable row" while typing "Cable row wide")
+    // hid the row, which read as "no way to save the exercise I created"
+    // (8/20 swap-menu reports).
     let createRow = '';
-    if (filtered.length === 0 && _sharedAddSearch && ctx.onCreateRequested) {
+    if (_sharedAddSearch && ctx.onCreateRequested) {
         createRow = `<div class="aw-add-ex-row aw-add-ex-row--create" onclick="awSharedAddCreate('${escapeAttr(_sharedAddSearch)}')">
             <span class="aw-add-ex-row__name"><i class="fas fa-plus"></i> Create &quot;${escapeHtml(_sharedAddSearch)}&quot;</span>
         </div>`;
@@ -3770,7 +4047,13 @@ export async function loadAutofillForExercise(idx) {
             // If the user hasn't picked equipment AND there's no template
             // default, but the last session at this gym used something, adopt
             // that. Makes "no equipment set" workflows pull through cleanly.
-            if (!sx.equipment && lastSession.equipment && lastSession.location === locName) {
+            // Only adopt history equipment that still resolves to a real
+            // library doc. An unresolvable name is exactly the "started as
+            // the wrong machine" leak: on 7/21 "Pec Deck" surfaced "Gymleco",
+            // which matched nothing in the library (missingFromLibrary), yet
+            // was written onto the exercise as though the user had picked it.
+            if (!sx.equipment && lastSession.equipment && lastSession.location === locName
+                && getEquipmentDoc(lastSession.equipment)) {
                 sx.equipment = lastSession.equipment;
             }
             if (exercise.group) sx.group = exercise.group;
@@ -3929,6 +4212,10 @@ window.awEquipFastPath = awEquipFastPath;
 window.awSharedEquipFreeWeights = awSharedEquipFreeWeights;
 window.awSharedEquipFastPath = awSharedEquipFastPath;
 window.awPickSuggestedMachine = awPickSuggestedMachine;
+window.awAddCatalogMachine = awAddCatalogMachine;
+window.awCreateEquipmentFromSearch = awCreateEquipmentFromSearch;
+window.awSharedAddCatalogMachine = awSharedAddCatalogMachine;
+window.awSharedCreateEquipmentFromSearch = awSharedCreateEquipmentFromSearch;
 window.awQuickEditEquipment = awQuickEditEquipment;
 window.awOpenSettingsSheet = awOpenSettingsSheet;
 window.awSettingsField = awSettingsField;

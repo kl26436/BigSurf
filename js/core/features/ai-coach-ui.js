@@ -294,7 +294,7 @@ export function showAICoach(prefillContext) {
     // actual gym inventory in the prompt. Fire-and-forget — if it lands
     // before the first askCoach call, great; if not, the next call picks it up.
     if (!AppState._cachedEquipment || AppState._cachedEquipment.length === 0) {
-        (async () => {
+        AppState._equipmentWarmPromise = (async () => {
             try {
                 const wm = new FirebaseWorkoutManager(AppState);
                 AppState._cachedEquipment = await wm.getUserEquipment();
@@ -450,6 +450,16 @@ export async function askCoach(question) {
     `);
 
     try {
+        // The first turn is the only one that carries the equipment block —
+        // wait briefly for the warm kicked off by showAICoach rather than
+        // silently omitting the library the user spent time building.
+        if (AppState._equipmentWarmPromise && (!AppState._cachedEquipment || AppState._cachedEquipment.length === 0)) {
+            await Promise.race([
+                AppState._equipmentWarmPromise,
+                new Promise((resolve) => setTimeout(resolve, 2500)),
+            ]);
+        }
+
         // Build training context locally. We pull the FULL workout history
         // (cached for 5 min via data-manager) so the coach can spot trends
         // over months instead of just the last 8 weeks. loadInsightsData's
@@ -880,7 +890,18 @@ async function renderSessionAdjustmentCard(proposal, streamingBubble) {
         } catch (e) { debugLog('session-adjustment template refresh failed:', e); }
     }
     if (!template) {
-        debugLog('session-adjustment proposal for unknown template:', proposal.templateId);
+        // Surface this to errorLogs — 9/15 + 7/25: "coach gave me a workout
+        // card but it never showed up in my workouts". No template doc existed
+        // for that session, and a debugLog left no trail to tell whether the
+        // tool write failed or the proposal targeted an id that was never
+        // created.
+        import('../utils/error-handler.js')
+            .then(({ captureWarning }) => captureWarning(
+                'Coach proposal targets a template that does not exist',
+                'ai-coach-ui.sessionAdjustment',
+                { templateId: proposal.templateId, proposalKind: proposal.kind || null, name: proposal.name || null }
+            ))
+            .catch(() => {});
         return;
     }
     const id = `sadj_${++_sessionAdjSeq}`;
@@ -1168,18 +1189,26 @@ function buildTrainingContext(workouts, healthSummary = '', prList = []) {
     // chest press" if it doesn't know which machines exist at the user's gym.
     const equipment = AppState._cachedEquipment || [];
     if (equipment.length > 0) {
-        summary += `\nAvailable equipment (${equipment.length} pieces):\n`;
+        summary += `\nAvailable equipment (${equipment.length} pieces; [unused] = never in a logged workout — good variety material; full inventory via list_equipment):\n`;
         // Group by gym so the coach can suggest gym-specific routines.
         const byLocation = {};
         for (const eq of equipment) {
             const locs = (eq.locations && eq.locations.length > 0) ? eq.locations : ['Unspecified'];
+            const label = `${eq.name}${eq.equipmentType ? ` (${eq.equipmentType})` : ''}${eq.lastUsed ? '' : ' [unused]'}`;
             for (const loc of locs) {
-                if (!byLocation[loc]) byLocation[loc] = [];
-                byLocation[loc].push(`${eq.name}${eq.equipmentType ? ` (${eq.equipmentType})` : ''}`);
+                if (!byLocation[loc]) byLocation[loc] = { used: [], unused: [] };
+                byLocation[loc][eq.lastUsed ? 'used' : 'unused'].push(label);
             }
         }
-        for (const [loc, items] of Object.entries(byLocation)) {
-            summary += `  @ ${loc}: ${items.slice(0, 40).join(', ')}${items.length > 40 ? `, …+${items.length - 40} more` : ''}\n`;
+        // The source sort is lastUsed DESC, so a flat slice cuts exactly the
+        // never-used gear the user catalogued by hand. Split the budget
+        // instead so both staples and untouched machines survive truncation.
+        const CAP = 60;
+        for (const [loc, g] of Object.entries(byLocation)) {
+            const total = g.used.length + g.unused.length;
+            const unusedTake = Math.min(g.unused.length, Math.max(CAP - g.used.length, Math.floor(CAP / 2)));
+            const items = [...g.used.slice(0, CAP - unusedTake), ...g.unused.slice(0, unusedTake)];
+            summary += `  @ ${loc}: ${items.join(', ')}${total > items.length ? `, …+${total - items.length} more (list_equipment has all)` : ''}\n`;
         }
     }
 
@@ -1821,6 +1850,13 @@ export async function saveGeneratedTemplate() {
     } catch (error) {
         console.error('Error saving generated template:', error);
         showNotification("Couldn't save workout", 'error');
+        import('../utils/error-handler.js')
+            .then(({ captureWarning }) => captureWarning(
+                'Coach-generated template failed to save',
+                'ai-coach-ui.saveGeneratedTemplate',
+                { name: _pendingTemplate?.name || null, error: error?.message || String(error) }
+            ))
+            .catch(() => {});
     }
 }
 

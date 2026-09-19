@@ -309,7 +309,13 @@ dialog.modal {
     height: 100%;
     max-height: 100%;
     border: none;
-    padding: 0;
+    /* padding-bottom carries the keyboard inset, exactly like .modal above.
+       A flat `padding: 0` here outranks .modal's rule (dialog.modal is the
+       more specific selector), which silently dropped the inset for every
+       top-layer <dialog>. The workout-notes textarea in
+       #workout-completion-modal logged 12 occlusion warnings between 7/07
+       and 9/04 for this reason. */
+    padding: 0 0 var(--kb-inset, 0px);
     margin: 0;
     background: transparent;
     color: var(--text-primary);
@@ -989,7 +995,7 @@ dialog.modal[open] .modal-content {
    ============================================================================ */
 
 .equip-detail-body {
-    padding: var(--space-12) var(--space-16) var(--space-80);
+    padding: var(--space-12) var(--space-16) var(--nav-clearance);
 }
 .equip-locations-chips { margin-bottom: var(--space-8); }
 .equip-locations-empty {

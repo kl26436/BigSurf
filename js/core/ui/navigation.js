@@ -289,6 +289,14 @@ function showActiveWorkout() {
     if (activeWorkout) {
         activeWorkout.classList.remove('hidden');
     }
+    // Re-entry can happen without a re-render — this route only un-hides the
+    // section — so the resume hook inside renderActiveWorkout is not
+    // guaranteed to run. Ask for it directly: it no-ops when the interval is
+    // already ticking, and revives a countdown whose interval was cleared
+    // while the user was off on another tab (7/22 "froze at 1:28").
+    import('../workout/active-workout-ui.js')
+        .then(m => m.resumeRestTimerIfActive?.())
+        .catch(() => {});
     // Hide BOTH the main header (no logo during workouts) AND the bottom nav.
     // The active workout has its own footer (All / Next exercise / Finish)
     // so a second bar underneath is redundant. The 7/8 "nav bar came back

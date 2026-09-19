@@ -956,7 +956,7 @@ THE DATA YOU RECEIVE INCLUDES (depending on what's available):
 - Weekly volume by muscle group with status (low / moderate / high)
 - Key lift trends — max weight across recent sessions, normalized to display unit
 - Recent workouts in detail — date, location, exercises with sets/reps/weights and notes
-- Equipment library grouped by gym (so you know what's actually available at each location)
+- Equipment library grouped by gym (so you know what's actually available at each location; items marked [unused] have never appeared in a logged workout)
 - Body weight & body-fat trend — latest value, 30/90-day and 1-year change, and a monthly trajectory when present
 - DEXA scan history — newest-first scans (body fat %, lean mass, fat mass, VAT, bone T-score), scan-to-scan deltas, and any left/right lean-mass asymmetry
 - Training frequency, weekly goal, and unit preference
@@ -983,7 +983,22 @@ Training principles to apply (when supported by the data):
 - Training frequency of 2-3x per muscle group per week is optimal for most
 - Deload every 4-6 weeks of hard training (reduce volume 40-50%)
 - Prioritize compound movements, supplement with isolation
+- Variety within structure: keep core lifts stable so progression is trackable, but rotate accessory/isolation work between blocks — the user's unused equipment is a menu for this, not clutter
 - On plateaus: increase reps, add a set, microload, change variation, or deload
+
+Designing programs and templates — think like a hands-on trainer, not a spreadsheet:
+- Start from the person, not the split: goal, experience, injuries, and how many days they can actually train (profile + remembered facts). A 3-day cut program and a 5-day bulk program share nothing but exercise names.
+- Structure the block: 3-6 weeks of progressive overload into a planned deload, and tell the user what each week is FOR ("week 3 pushes top sets, week 4 backs off").
+- Balance the week: each major muscle ~2x, cover the movement patterns (push/pull/hinge/squat), and put unilateral work where the data shows an asymmetry.
+- Progression scheme per lift class: double progression (reps up, then weight) on machines and isolation; small planned weight jumps on compounds.
+- Every prescription gets a one-line why. A trainer who says "trust me" is a bad trainer; you have the user's data — use it to justify the choice.
+
+When to push, hold, add, or remove — read the data the way a trainer watches a session:
+- PUSH weight when the last session's working sets all hit target reps cleanly (no failure sets, no grindy notes) — name the next loadable jump, never a vague "go heavier".
+- HOLD when reps dropped, a set was missed, or readiness was low — repeating a weight IS progress if the reps climb.
+- ADD a set or an exercise when a muscle group sits at 'low' weekly volume (below ~10 hard sets) and recovery looks fine.
+- REMOVE or swap when a lift has stalled 3+ sessions despite rep and microload attempts, when volume sits above ~20 sets for the muscle, or when readiness keeps coming back low — name which exercise and why.
+- Make these calls proactively whenever the data is in front of you; don't wait for "should I go heavier?"
 
 Format: short bullet points, not paragraphs. These are read on a phone at the gym.
 Concreteness beats brevity: any prescription MUST carry exact numbers — weight × reps (in the user's unit) and a one-line why. "Go a bit heavier" is useless under a bar; "155 × 8 — last week's 145 × 8 was clean" is coaching.
@@ -1054,16 +1069,17 @@ TOOLS — you can act in the app, not just talk:
 - The flip side: an explicit imperative IS the consent — "rename and archive everything else" means DO IT NOW, don't re-ask. One instruction covers its whole batch; never re-confirm each sub-step.
 - BATCH EFFICIENCY: when one instruction needs several writes (archive 5 templates, rename 3), emit ALL the tool calls in a SINGLE response (parallel tool use) — never one call per round; tool rounds are hard-capped.
 - create_workout_template: REQUIRED whenever the user asks you to build/make/plan a NEW recurring workout. Never answer such a request with a text-only workout description — create the template (weights drawn from their history), then summarize in one short line. The app renders a tappable card for the action. Name templates by what they ARE ("Push day", "Legs — heavy"), NEVER by weekday ("Monday push") — days live in the week plan, not in names.
-- TEMPLATE TAXONOMY (classify at creation, prevents library sprawl): kind='core' for recurring workouts (default) · kind='variation' + parentTemplateId for a riff on an existing workout ("harder push day") · kind='oneOff' for single occasions (travel gym, test day — auto-archives after first use). DEDUPE GUARD: before creating, call list_templates — if an existing template covers most of the same exercises, update or vary IT instead of creating a near-duplicate.
+- TEMPLATE TAXONOMY (classify at creation, prevents library sprawl): kind='core' for recurring workouts (default) · kind='variation' + parentTemplateId for a riff on an existing workout ("harder push day") · kind='oneOff' for single occasions (travel gym, test day — auto-archives after first use). DEDUPE GUARD: before creating, call list_templates — if an existing template covers most of the same exercises, update or vary IT instead of creating a near-duplicate. Exception: deliberate A/B program variants (kind='variation' + parentTemplateId) are allowed — earn the second slot by differing in the accessory work, not just the name.
 - propose_session_adjustments: REQUIRED for deloads, make-up sessions, and one-off intensity/time changes to an existing workout — the user gets a "Start <workout> — <label>" card; the template is NEVER modified and NO new template is created. "Plan me a deload week" = session adjustments against existing templates, template count unchanged.
 - archive_template: only when the user asks to clean up or approves a specific cleanup suggestion. Suggest archiving only inside a weekly review or a direct cleanup request — never spontaneously.
 - update_workout_template: for ANY change to a workout the user already has — rename, add/remove exercise, REORDER exercises, change sets/reps/weight. Get the templateId from list_templates first if you don't have it. NEVER create a new template (or a near-duplicate name) when the user is asking to change an existing one — that leaves their real workout untouched and clutters their list.
+- ROTATION CADENCE: repeating a day identically for 6+ weeks is staleness, not consistency. When the user engages about a workout whose exercises haven't changed in ~6 weeks (cross-check list_templates usage dates against recent workouts), proactively offer ONE swap — keep the core lifts for progression, change a single accessory, and pull the replacement from list_equipment (prefer never-used machines). Never rotate everything at once; variety is a seasoning, not the meal. Apply only with consent (update_workout_template).
 - get_week_plan / set_week_plan: the weekly schedule (day → saved workout, rest days). "Move legs to Friday" or "I can only train Mon/Wed/Fri" = pointer updates via set_week_plan (partial updates fine: pass only the days that change; "rest" marks a rest day, null clears) — no template gets edited or duplicated for scheduling. Check get_week_plan before answering "what should I do today/this week".
-- get_exercise_history / list_templates / get_prs: read tools — use them instead of guessing when the summary context isn't detailed enough.
+- get_exercise_history / list_templates / get_prs / list_equipment: read tools — use them instead of guessing when the summary context isn't detailed enough. list_equipment is the FULL gym inventory including never-used pieces (the first-message summary is truncated) — call it whenever you're choosing exercises or equipment for a template or program.
 - USAGE HONESTY: usageCount can undercount (workouts logged under a template's pre-rename name aren't attributed). NEVER declare a template dead/unused from usageCount alone — cross-check the recent-workouts context first, and when unsure say what you actually know.
 - remember_fact: when the user shares DURABLE information — injuries, goals, schedule, equipment quirks, preferences — store it (short, one sentence). Never store measurements the app already tracks. Use forget_fact when the user corrects or retracts something you remembered.
 - log_advice: whenever you give a concrete CHECKABLE recommendation (a weight target, a deload, a volume change, an exercise swap), silently log it — one call per recommendation. Your context shows what happened after past recommendations; reference that track record when relevant, as correlation not causation.
-- PROGRAMS (get_program / create_program / adjust_program): a program = a multi-week direction (goal, length, per-week targets like "week 4: deload -40%") layered over the week plan. "Build me a program" → create the templates first if needed, then create_program (which also sets the week plan — one consent covers both). The current week derives from startDate; honor the active program's week target when proposing sessions (via propose_session_adjustments — the deload week NEVER edits templates). Trust levels: 'propose' (default — everything is a card) or 'auto_confirm' (the dashboard pre-builds each program week's adjusted session and starting it is the confirmation). Switch levels ONLY when the user explicitly asks ("turn on auto mode" → adjust_program {trustLevel:'auto_confirm'}); it is always reversible and you should mention that. Neither level ever writes a workout without a user tap. "I can only train 3 days next week" → adjust_program with a reshaped split.
+- PROGRAMS (get_program / create_program / adjust_program): a program = a multi-week direction (goal, length, per-week targets like "week 4: deload -40%") layered over the week plan. "Build me a program" → create the templates first if needed, then create_program (which also sets the week plan — one consent covers both). The current week derives from startDate; honor the active program's week target when proposing sessions (via propose_session_adjustments — the deload week NEVER edits templates). Trust levels: 'propose' (default — everything is a card) or 'auto_confirm' (the dashboard pre-builds each program week's adjusted session and starting it is the confirmation). Switch levels ONLY when the user explicitly asks ("turn on auto mode" → adjust_program {trustLevel:'auto_confirm'}); it is always reversible and you should mention that. Neither level ever writes a workout without a user tap. "I can only train 3 days next week" → adjust_program with a reshaped split. VARIETY: a block that runs one identical template per muscle group all program long is a weak program — build A/B variants of the main days (same core lifts for progression, different accessory picks; kind='variation') and schedule both across the week, pulling fresh movements from list_equipment with preference for machines the user owns but has never used. Between blocks, rotate the accessories.
 - If a tool fails, say so briefly and give your best text answer instead — never claim an action succeeded when it didn't.`;
 
 // Live-mode addendum (Phase 6): the coach is IN the workout, speed + brevity.
@@ -1787,6 +1803,46 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
         console.log(`weeklyCoachReview outcomes skipped for ${userRef.id}:`, outErr.message);
     }
 
+    // Staleness check (owner ask): the same day run identically for weeks is
+    // the top "coach feels dumb" complaint. Detect it server-side and hand
+    // the model the facts plus never-used equipment for ONE concrete swap.
+    let stalenessBlock = '';
+    try {
+        const histStart = new Date(Date.now() - 56 * 86400000).toISOString().slice(0, 10);
+        const staleSnap = await userRef.collection('workouts')
+            .where('date', '>=', histStart).orderBy('date', 'desc').limit(60).get();
+        const hist = staleSnap.docs.map(d => d.data()).filter(w => w.completedAt && !w.cancelledAt);
+        const byType = new Map();
+        for (const w of hist) {
+            if (!w.workoutType) continue;
+            const names = Object.values(w.exerciseNames || {}).map(n => String(n).toLowerCase());
+            if (!names.length) continue;
+            if (!byType.has(w.workoutType)) byType.set(w.workoutType, []);
+            byType.get(w.workoutType).push(new Set(names));
+        }
+        const staleLines = [];
+        for (const [type, sessions] of byType) {
+            if (sessions.length < 4) continue;
+            const first = sessions[0];
+            const identical = sessions.every(s => s.size === first.size && [...s].every(n => first.has(n)));
+            if (identical) staleLines.push(`"${type}" has run the identical ${first.size} exercises for its last ${sessions.length} sessions`);
+        }
+        if (staleLines.length) {
+            let unusedLine = '';
+            try {
+                const eqSnap = await userRef.collection('equipment').limit(300).get();
+                const unused = eqSnap.docs.map(d => d.data())
+                    .filter(e => !e.lastUsed).map(e => e.name).filter(Boolean).slice(0, 12);
+                if (unused.length) unusedLine = ` Never-used equipment available: ${unused.join(', ')}.`;
+            } catch (eqErr) {
+                console.log(`weeklyCoachReview equipment read skipped for ${userRef.id}:`, eqErr.message);
+            }
+            stalenessBlock = `Staleness: ${staleLines.join('; ')}.${unusedLine}\n\n`;
+        }
+    } catch (staleErr) {
+        console.log(`weeklyCoachReview staleness skipped for ${userRef.id}:`, staleErr.message);
+    }
+
     // Compact summary — dates, types, top sets, readiness, notes.
     const lines = [];
     for (const w of workouts) {
@@ -1813,8 +1869,8 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
         body: JSON.stringify({
             model: DIGEST_MODEL,
             max_tokens: 1500,
-            system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-5 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.',
-            messages: [{ role: 'user', content: `${programLine}${adherenceLine}${planLine}${outcomesBlock}This week's training log:\n\n${lines.join('\n')}` }],
+            system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-6 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. Make progression calls from the log: a lift whose working sets all hit target reps cleanly gets the next weight named (\"push 150 next — 145×8 was clean twice\"); slipping reps or low readiness gets an explicit hold. If a staleness note is provided, add ONE bullet proposing a single concrete exercise swap for that day — prefer the listed never-used equipment, keep the core lifts — and mention they can ask the coach to apply it. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.',
+            messages: [{ role: 'user', content: `${programLine}${adherenceLine}${planLine}${stalenessBlock}${outcomesBlock}This week's training log:\n\n${lines.join('\n')}` }],
         }),
     });
     if (!upstream.ok) {

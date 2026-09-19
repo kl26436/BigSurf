@@ -158,7 +158,10 @@ function forceScrollInputIntoView(input) {
     if (!vv) return;
     const rect = input.getBoundingClientRect();
     const bottomPad = 16;
-    const overhang = Math.round(rect.bottom - vv.height + bottomPad);
+    // Visible band in layout-viewport coords is [offsetTop, offsetTop+height]
+    // — iOS scrolls the layout viewport when it brings an input into view, so
+    // ignoring offsetTop flagged (and tried to scroll) inputs that were fine.
+    const overhang = Math.round(rect.bottom - (vv.offsetTop + vv.height) + bottomPad);
     if (overhang <= 0) return; // already visible; nothing to do
 
     // Find the closest scrollable ancestor. A scrollable element has
@@ -197,7 +200,9 @@ async function scheduleKeyboardOcclusionCheck(input) {
     // more than a hair. On iOS Safari, when the keyboard covers the input,
     // rect.bottom stays at its layout-viewport position but vv.height
     // shrinks — the diff is the occluded distance.
-    const overhang = Math.round(rect.bottom - vv.height);
+    // Same offsetTop-aware band as forceScrollInputIntoView — three of the
+    // Aug/Sep "occlusion" hits had offsetTop 119–236 and were false positives.
+    const overhang = Math.round(rect.bottom - (vv.offsetTop + vv.height));
     if (overhang <= 8) return;
 
     // Rate-limit: 5 minutes between captures per session.
@@ -284,9 +289,15 @@ function installKeyboardInsetTracker() {
             const el = document.activeElement;
             if (!el || !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
             const rect = el.getBoundingClientRect();
-            if (rect.bottom > vv.height - 8) {
+            if (rect.bottom > vv.offsetTop + vv.height - 8) {
                 _lastFollowupAt = now;
-                try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { /* noop */ }
+                // This is the pass that actually lands after the keyboard
+                // finishes animating (the focusin one-shot at 300ms often
+                // runs before the viewport has shrunk). It must use the manual
+                // scroller: scrollIntoView no-ops inside top-layer <dialog>s,
+                // which is why the completion-modal notes box kept firing the
+                // occlusion detector Jul–Sep despite the 7/15 fix.
+                forceScrollInputIntoView(el);
             }
         });
     };
@@ -958,23 +969,42 @@ async function checkForInProgressWorkoutEnhanced() {
         const todaysData = await loadTodaysWorkout(AppState);
 
         if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
-            // Validate workout plan exists
-            const workoutPlan = AppState.workoutPlans.find(
+            const workoutPlan = (AppState.workoutPlans || []).find(
                 (plan) =>
                     plan.day === todaysData.workoutType ||
                     plan.name === todaysData.workoutType ||
                     plan.id === todaysData.workoutType
             );
 
-            if (!workoutPlan) {
-                return;
+            // The saved doc carries its own exercise list (originalWorkout);
+            // the template lookup is only a fallback for very old docs. This
+            // used to `return` when no template matched, which silently
+            // stranded every session whose name isn't a saved template —
+            // coach-generated names, freestyle, renamed templates. Dashboard
+            // then showed "Start workout" (→ the "Keep current workout?"
+            // prompt that leads nowhere) and the FAB routed to the workout
+            // list (9/18 report).
+            let originalWorkout = todaysData.originalWorkout || workoutPlan || null;
+            if (!originalWorkout || !Array.isArray(originalWorkout.exercises)) {
+                const names = todaysData.exerciseNames || {};
+                const exercises = Object.entries(todaysData.exercises || {})
+                    .sort(([a], [b]) => (parseInt(a.split('_')[1], 10) || 0) - (parseInt(b.split('_')[1], 10) || 0))
+                    .map(([key, ex]) => ({
+                        machine: names[key] || ex?.name || ex?.machine || 'Exercise',
+                        name: names[key] || ex?.name || ex?.machine || 'Exercise',
+                        equipment: ex?.equipment || null,
+                        equipmentId: ex?.equipmentId || null,
+                        sets: Array.isArray(ex?.sets) && ex.sets.length ? ex.sets.length : 3,
+                        reps: 10,
+                    }));
+                if (exercises.length === 0) return; // nothing to resume
+                originalWorkout = { workoutType: todaysData.workoutType, name: todaysData.workoutType, exercises };
             }
 
             // Store in-progress workout globally
-            // Use todaysData.originalWorkout if it exists (contains modified exercise list)
             window.inProgressWorkout = {
                 ...todaysData,
-                originalWorkout: todaysData.originalWorkout || workoutPlan,
+                originalWorkout,
             };
 
             // Activate FAB animation to signal active workout

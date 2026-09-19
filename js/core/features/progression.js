@@ -10,6 +10,7 @@
 // layer imports buildExerciseSessions/computeOverloadNudge from here now.
 
 import { convertWeight } from '../ui/ui-helpers.js';
+import { plateRelativeWeight } from '../utils/weight-calculations.js';
 
 const INCREMENT = { lbs: 5, kg: 2.5 };
 
@@ -58,15 +59,20 @@ export function buildExerciseSessions(allWorkouts, exName, displayUnit) {
             const working = (ex.sets || []).filter(s =>
                 s && s.completed !== false && s.weight && (s.type || 'working') !== 'warmup');
             if (working.length === 0) break;
+            // Plate-relative: on a base-weight machine the advisory has to
+            // talk in the same number the set row asks for, or "bump to 385"
+            // sits above a field the user types 270 into.
+            const wOf = (s) => convertWeight(
+                plateRelativeWeight(s), s.originalUnit || 'lbs', displayUnit);
             let topWeight = 0;
             for (const s of working) {
-                topWeight = Math.max(topWeight, convertWeight(s.weight, s.originalUnit || 'lbs', displayUnit));
+                topWeight = Math.max(topWeight, wOf(s));
             }
             topWeight = Math.round(topWeight * 10) / 10;
             let topReps = 0, maxReps = 0;
             for (const s of working) {
                 maxReps = Math.max(maxReps, s.reps || 0);
-                const w2 = Math.round(convertWeight(s.weight, s.originalUnit || 'lbs', displayUnit) * 10) / 10;
+                const w2 = Math.round(wOf(s) * 10) / 10;
                 if (w2 === topWeight) topReps = Math.max(topReps, s.reps || 0);
             }
             sessions.push({ date: w.date, topWeight, topReps, maxReps });

@@ -19,24 +19,9 @@
     transition: padding-bottom 0.15s ease;
 }
 
-/* Header */
-.main-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-12) var(--space-16);
-    padding-top: calc(var(--space-12) + env(safe-area-inset-top, 0px));
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 200;
-}
-.main-header h1 {
-    font-size: var(--font-lg);
-    font-weight: 700;
-    margin: 0;
-}
+/* Header — the logo header is `.header` (utilities.css). A stale `.main-header`
+   block used to live here; it matched nothing (the element only carries
+   id="main-header") and silently hid the safe-area-inset-top rule. */
 
 /* Bottom Nav — 5-tab with elevated center FAB */
 .bottom-nav {

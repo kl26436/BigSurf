@@ -33,6 +33,16 @@ const TOOL_DEFINITIONS = [
         input_schema: { type: 'object', properties: {} },
     },
     {
+        name: 'list_equipment',
+        description: "The user's full equipment library grouped by gym, INCLUDING pieces never used in a logged workout (lastUsed: null). Call before picking exercises or equipment for a template or program — the first-message summary is truncated, this is the complete inventory, and never-used machines are prime variety material.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                location: { type: 'string', description: 'Optional gym-name filter (substring match)' },
+            },
+        },
+    },
+    {
         name: 'create_workout_template',
         description: 'Create a saved workout template in the app. Use this whenever the user asks you to build/make/plan a workout — never answer such requests with a text-only workout description. Weights should come from their history when known.',
         input_schema: {
@@ -452,6 +462,37 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
                 }
             }
             return { exercise: input.exercise, sessions, found: sessions.length };
+        },
+
+        async list_equipment(input) {
+            const snap = await userDoc().collection('equipment').get();
+            const locFilter = String(input?.location || '').trim().toLowerCase();
+            const byLocation = {};
+            let total = 0;
+            for (const doc of snap.docs) {
+                const eq = doc.data();
+                const locs = (Array.isArray(eq.locations) && eq.locations.length > 0)
+                    ? eq.locations
+                    : (eq.location ? [eq.location] : ['Unspecified']);
+                if (locFilter && !locs.some(l => String(l).toLowerCase().includes(locFilter))) continue;
+                total++;
+                const item = {
+                    name: eq.name || doc.id,
+                    type: eq.equipmentType || null,
+                    // Date only — enough to spot staples vs never-touched.
+                    lastUsed: eq.lastUsed ? String(eq.lastUsed).slice(0, 10) : null,
+                };
+                for (const loc of locs) {
+                    if (locFilter && !String(loc).toLowerCase().includes(locFilter)) continue;
+                    (byLocation[loc] = byLocation[loc] || []).push(item);
+                }
+            }
+            // Never-used first within each gym — that's the inventory the user
+            // catalogued by hand and the part the coach otherwise never sees.
+            for (const items of Object.values(byLocation)) {
+                items.sort((a, b) => ((a.lastUsed ? 1 : 0) - (b.lastUsed ? 1 : 0)) || a.name.localeCompare(b.name));
+            }
+            return { totalPieces: total, byLocation };
         },
 
         async list_templates() {
@@ -1008,6 +1049,7 @@ const TOOL_STATUS = {
     get_exercise_history: 'Reading your history…',
     list_templates: 'Checking your workouts…',
     get_prs: 'Checking your records…',
+    list_equipment: 'Checking your gym…',
     create_workout_template: 'Creating your workout…',
     update_workout_template: 'Updating your workout…',
     remember_fact: 'Noting that…',

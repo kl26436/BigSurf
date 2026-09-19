@@ -234,6 +234,12 @@ dialog[open] > .modal-content {
     align-items: center;
     justify-content: center;
     padding: var(--space-10) var(--space-16);
+    /* viewport-fit=cover + black-translucent status bar: content extends under
+       the status bar / Dynamic Island, so the top edge must reserve the inset.
+       The rule that carried this lived under a dead `.main-header` selector
+       (element class is `header`) — 9/18: "logo is high up and blocked by the
+       active bar when music or a workout is going". */
+    padding-top: calc(var(--space-10) + env(safe-area-inset-top, 0px));
     background: var(--bg-app);
     border-bottom: 1px solid var(--border);
     position: relative;

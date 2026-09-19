@@ -255,7 +255,7 @@
 /* .profile-card cursor:pointer consolidated into components/page-header.css */
 .profile-card__chev { color: var(--text-muted); }
 
-.profile-detail { padding: var(--space-12) var(--space-16) var(--space-80); }
+.profile-detail { padding: var(--space-12) var(--space-16) var(--nav-clearance); }
 
 .profile-hero {
     text-align: center;

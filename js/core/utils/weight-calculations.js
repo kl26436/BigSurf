@@ -16,6 +16,28 @@ import { convertWeight } from '../ui/ui-helpers.js';
 export const BW_STALENESS_DAYS = 14;
 
 /**
+ * The number the user actually TYPED for a set.
+ *
+ * On equipment with a base weight (a machine's starting stack, a bar), the
+ * set row is labelled "Plates" and logging stores the TOTAL in `set.weight`
+ * while keeping the typed value in `_plateWeight`. Anything that feeds a
+ * weight input or a "last session" readout has to use the typed value, or
+ * the user sees 380 where they loaded 270 and next week's pre-fill adds the
+ * base a second time.
+ *
+ * Falls back to `set.weight` for sets logged without a base, and for all
+ * history predating the field, so it is safe on every set shape.
+ */
+export function plateRelativeWeight(set) {
+    if (!set) return 0;
+    if (typeof set._plateWeight === 'number' && set._equipBaseWeight > 0) {
+        return set._plateWeight;
+    }
+    return set.weight || 0;
+}
+
+
+/**
  * Get the total weight per rep for a single set, including equipment
  * base weight or bodyweight as appropriate.
  *

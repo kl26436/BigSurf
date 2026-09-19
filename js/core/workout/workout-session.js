@@ -106,8 +106,24 @@ export async function startWorkout(workoutType) {
             });
 
             if (!confirmed) {
-                // Navigate back to dashboard
-                navigateTo('dashboard');
+                // "Keep current workout" means resume it, not bounce to the
+                // dashboard. If the load-time check didn't register the
+                // session (e.g. its name isn't a saved template), rebuild the
+                // in-progress state from the doc here so Continue works.
+                if (!window.inProgressWorkout) {
+                    const plan = (AppState.workoutPlans || []).find(
+                        (p) => p.day === todaysWorkout.workoutType || p.name === todaysWorkout.workoutType || p.id === todaysWorkout.workoutType
+                    );
+                    const original = todaysWorkout.originalWorkout || plan || null;
+                    if (original && Array.isArray(original.exercises)) {
+                        window.inProgressWorkout = { ...todaysWorkout, originalWorkout: original };
+                    }
+                }
+                if (window.inProgressWorkout) {
+                    continueInProgressWorkout();
+                } else {
+                    navigateTo('dashboard');
+                }
                 return;
             }
 

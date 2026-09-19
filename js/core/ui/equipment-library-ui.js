@@ -4234,7 +4234,7 @@ function renderAddFlow() {
                 <div class="field-label">Function</div>
                 <button class="field-picker-row" onclick="openAddFlowFunctionPicker()" aria-haspopup="dialog">
                     <span class="field-picker-row__value ${!func ? 'field-picker-row__value--placeholder' : ''}">
-                        ${escapeHtml(func || (brand ? 'Select a function…' : 'Pick brand first'))}
+                        ${escapeHtml(func || 'What it does — optional')}
                     </span>
                     <i class="fas fa-chevron-down field-picker-row__chevron"></i>
                 </button>
@@ -4295,8 +4295,12 @@ export async function confirmAddEquipment(addAnother = false) {
     const { brand, line, func, type } = addFlowState;
     const cleanFunc = (func || '').trim();
 
-    if (!cleanFunc) {
-        showNotification('Enter a function name (e.g., Leg Press)', 'error', 2000);
+    // A typed name is enough on its own. Requiring "function" blocked adding
+    // anything that isn't a single-purpose machine — 7/28: "I wanted to add a
+    // multi functional rack, why is it telling me to choose an exercise type?"
+    const typedName = (addFlowState.name || '').trim();
+    if (!cleanFunc && !typedName) {
+        showNotification('Add a name, or pick what the machine does', 'error', 2500);
         return;
     }
 

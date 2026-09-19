@@ -16,6 +16,10 @@
 .aw-header {
     background: var(--bg-app);
     padding: 8px 14px;
+    /* Sticky at top:0 means this header, not the app container, must carry
+       the status-bar inset — otherwise the back button and exercise name sit
+       under the Dynamic Island / Live Activity bar (9/10 + 9/18 reports). */
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
     display: flex;
     align-items: center;
     gap: 8px;
@@ -33,7 +37,14 @@
     flex-shrink: 0;
     cursor: pointer;
 }
-.aw-back { background: var(--bg-card); color: var(--text-main); }
+/* Full 44px tap target — it's the only way out of the workout and it sits at
+   the top edge where sweaty thumbs are least accurate. */
+.aw-back {
+    background: var(--bg-card);
+    color: var(--text-main);
+    width: var(--tap);
+    height: var(--tap);
+}
 .aw-menu { background: transparent; color: var(--text-muted); }
 /* Live coach entry (Phase 6) — primary-tinted so it reads as a feature, not
    chrome, and FULL 44px: it's the only door into live coaching, sweaty-thumb
@@ -1057,6 +1068,8 @@
     flex-shrink: 0;
 }
 .js-row__icon--equip { background: var(--bg-card-hi); color: var(--text-muted); }
+/* Add/create rows in the equipment picker read as actions, not inventory. */
+.js-row__icon--add { background: var(--primary-bg); color: var(--primary); }
 .js-row__loc-icon { font-size: var(--font-2xs); opacity: 0.8; }
 .js-row__info { flex: 1; min-width: 0; }
 .js-row__name {

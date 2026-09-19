@@ -246,6 +246,12 @@
     --space-40: 40px;
     --space-48: 48px;
     --space-80: 80px;
+    /* Clearance for the fixed bottom nav. The nav is 60px tall PLUS the
+       device's home-indicator inset, so a flat 80px leaves the last element
+       on a page — usually a save button — partly underneath it on any phone
+       with a safe-area inset. Reported 9/06: "the save button was hidden
+       under the nav bar and wouldn't let me save". */
+    --nav-clearance: calc(80px + env(safe-area-inset-bottom, 0px));
 
     /* Layout spacing */
     --pad-page: 18px;

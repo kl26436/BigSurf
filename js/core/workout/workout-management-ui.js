@@ -828,13 +828,19 @@ let _createExSelectedCategory = '';
 let _createExSelectedEquipment = '';
 let _createExMoreDetailsOpen = false;
 
+// The Save buttons stay ENABLED at all times and createNewExercise reports
+// what is missing. A disabled Save with no explanation reads as "this app
+// won't let me save" — reported twice (7/14 and 8/20) as "appears to be no
+// way to save a new exercise that I created". A hint line carries the
+// requirement instead of the button going dead.
 function updateCreateExerciseSaveState() {
     const name = document.getElementById('new-exercise-name')?.value.trim();
-    const headerSave = document.getElementById('create-ex-header-save');
-    const footerSave = document.getElementById('create-ex-footer-save');
-    const canSave = !!(name && _createExSelectedCategory);
-    if (headerSave) headerSave.disabled = !canSave;
-    if (footerSave) footerSave.disabled = !canSave;
+    const hint = document.getElementById('create-ex-hint');
+    if (!hint) return;
+    const missing = [];
+    if (!name) missing.push('a name');
+    if (!_createExSelectedCategory) missing.push('a category');
+    hint.textContent = missing.length ? `Add ${missing.join(' and ')} to save` : '';
 }
 
 function selectCreateExCategory(key) {
@@ -892,7 +898,7 @@ export function showCreateExerciseForm() {
                 <button class="page-header__back" aria-label="Back" onclick="closeCreateExerciseModal()"><i class="fas fa-chevron-left"></i></button>
                 <div class="page-header__title">New exercise</div>
             </div>
-            <button class="page-header__save" id="create-ex-header-save" disabled onclick="createNewExercise(event)">Save</button>
+            <button class="page-header__save" id="create-ex-header-save" onclick="createNewExercise(event)">Save</button>
         </div>
         <div class="create-ex-form-body">
             <div class="field">
@@ -946,7 +952,8 @@ export function showCreateExerciseForm() {
             </div>
         </div>
         <div class="page-footer">
-            <button class="btn-redesign" id="create-ex-footer-save" disabled onclick="createNewExercise(event)"><i class="fas fa-check"></i> Save Exercise</button>
+            <div class="create-ex-hint" id="create-ex-hint">Add a name and a category to save</div>
+            <button class="btn-redesign" id="create-ex-footer-save" onclick="createNewExercise(event)"><i class="fas fa-check"></i> Save exercise</button>
         </div>
     `;
 

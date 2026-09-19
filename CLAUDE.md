@@ -50,6 +50,7 @@ js/
     │   ├── equipment-catalog.js    # Equipment catalog seed data
     │   ├── equipment-catalog-firestore.js  # Catalog Firestore reads/writes
     │   ├── equipment-catalog-helpers.js    # Catalog lookup/normalization helpers
+    │   ├── catalog-search.js       # Pure catalog free-text search + type inference (equipment pickers)
     │   ├── equipment-migration.js  # Legacy equipment → catalog migration
     │   ├── equipment-id-resolver.js    # Equipment name → stable doc id (exact/alias/fuzzy + confidence gate)
     │   ├── equipment-id-migration.js   # Pure planners: equipmentId backfill + PR re-key (field-wise merge)

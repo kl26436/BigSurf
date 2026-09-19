@@ -19,6 +19,7 @@ import {
 } from './firebase-config.js';
 import { showNotification, convertWeight, escapeHtml } from '../ui/ui-helpers.js';
 import { validateWorkoutData } from '../utils/validation.js';
+import { plateRelativeWeight } from '../utils/weight-calculations.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { confidentEquipmentId } from './equipment-id-resolver.js';
 import { AppState } from '../utils/app-state.js';
@@ -299,7 +300,15 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
                 const equipMatches = !!equipment && !!exEquipment && equipment === exEquipment;
 
                 const result = {
-                    sets: exData.sets.filter(s => s && (s.reps || s.weight)),
+                    // Weights come back as the number the user TYPED. On a
+                    // base-weight machine that is the plate load, not the
+                    // total — every consumer of this function feeds a weight
+                    // input or a "last session" line, and that input is
+                    // labelled "Plates". Returning the total made next
+                    // week's pre-fill add the base a second time.
+                    sets: exData.sets
+                        .filter(s => s && (s.reps || s.weight))
+                        .map(s => ({ ...s, weight: plateRelativeWeight(s) })),
                     date: data.date,
                     // Surface the source equipment so the active-workout card
                     // can show "from <equipment>" when this is a fallback
