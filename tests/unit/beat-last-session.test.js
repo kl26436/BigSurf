@@ -161,8 +161,9 @@ describe('computeOverloadNudge (smart coach)', () => {
 
     it('flags a plateau (3 sessions same weight, reps flat)', () => {
         const s = [SS(135, 8), SS(135, 8), SS(135, 8)];
+        // CP-2: a detected stall never offers MORE load — rung 1 chases a rep.
         expect(computeOverloadNudge(s, 'lbs', 10))
-            .toBe('Stalled at 135 lbs for 3 sessions — try 140 or a back-off set');
+            .toBe('3rd session at 135 lbs — hold it and chase 9');
     });
 
     it('recognizes a plateau where reps are climbing', () => {
@@ -219,7 +220,7 @@ describe('progressionTarget (5.7.3 structured recommendation)', () => {
     it('flags a true stall — 3 flat sessions, reps not climbing', () => {
         const s = [SS(135, 8), SS(135, 8), SS(135, 8)];
         expect(progressionTarget(s, 'lbs', 10))
-            .toMatchObject({ weight: 135, bumped: false, stalled: true, action: 'stalled' });
+            .toMatchObject({ weight: 135, bumped: false, stalled: true, action: 'chase-rep', rung: 1 });
     });
 
     it('a plateau with climbing reps is a bump, not a stall', () => {

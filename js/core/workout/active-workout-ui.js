@@ -6,7 +6,7 @@ import { escapeHtml, escapeAttr, showNotification, convertWeight } from '../ui/u
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { getCategoryIcon, Config, debugLog } from '../utils/config.js';
 import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults, loadAllWorkouts } from '../data/data-manager.js';
-import { buildExerciseSessions, computeOverloadNudge, progressionTarget, weightIncrement } from '../features/progression.js';
+import { buildExerciseSessions, computeOverloadNudge, progressionTarget, weightIncrement, scaleLoadableWeight } from '../features/progression.js';
 import { getNextInGroup, isLastInGroupRound, groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import { haptic } from '../utils/haptics.js';
 import { navigateTo } from '../ui/navigation.js';
@@ -4068,22 +4068,32 @@ export async function loadAutofillForExercise(idx) {
                 // placeholder, same as any autofill.
                 const prog = exercise._progression;
                 const bump = prog && prog.bumped && prog.weight > 0;
+                // CP-2 stall rung 2: the coach says drop and rebuild, so the
+                // reduced load IS the target — seed it. Rung 1 (chase a rep)
+                // and rung 3 (rotate) stay advice-only like hold/consolidate.
+                const backOff = prog && prog.backOff && prog.weight > 0;
                 const progUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
                 const bumpInc = exercise._progressionInc || (progUnit === 'kg' ? 2.5 : 5);
                 // The bump is RELATIVE to each set's own last weight so a ramp
                 // keeps its shape (135/155/175 → +inc each, never a flat top
                 // weight across all sets). Warmups and unweighted sets are
-                // left exactly as last time.
+                // left exactly as last time. Back-off scales each set the
+                // same way, snapped to loadable plate jumps.
                 sx.sets = lastSession.sets.map(s => {
-                    const bumpThis = bump && s.weight > 0 && (s.type || 'working') !== 'warmup';
+                    const weighted = s.weight > 0 && (s.type || 'working') !== 'warmup';
+                    const bumpThis = bump && weighted;
+                    const backThis = !bumpThis && backOff && weighted;
+                    const lastW = weighted ? convertWeight(s.weight, s.originalUnit || 'lbs', progUnit) : 0;
                     return {
                         weight: bumpThis
-                            ? Math.round((convertWeight(s.weight, s.originalUnit || 'lbs', progUnit) + bumpInc) * 10) / 10
-                            : ((s.weight && s.weight > 0) ? s.weight : null),
+                            ? Math.round((lastW + bumpInc) * 10) / 10
+                            : backThis
+                                ? scaleLoadableWeight(lastW, 0.9, bumpInc)
+                                : ((s.weight && s.weight > 0) ? s.weight : null),
                         reps: bumpThis && prog.reps ? prog.reps : ((s.reps && s.reps > 0) ? s.reps : null),
                         completed: false,
-                        originalUnit: bumpThis ? progUnit : (s.originalUnit || AppState.globalUnit || 'lbs'),
-                        ...(bumpThis ? { _suggested: true } : {}),
+                        originalUnit: (bumpThis || backThis) ? progUnit : (s.originalUnit || AppState.globalUnit || 'lbs'),
+                        ...((bumpThis || backThis) ? { _suggested: true } : {}),
                     };
                 });
             }

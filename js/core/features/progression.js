@@ -83,10 +83,39 @@ export function buildExerciseSessions(allWorkouts, exName, displayUnit) {
     return sessions;
 }
 
+/** Back-off factor for stall rung 2 — drop a step and rebuild. */
+const BACK_OFF_FACTOR = 0.9;
+/** Sessions per rung: 3 flat → chase reps, 6 → back off, 9 → rotate. */
+const STALL_SESSIONS_PER_RUNG = 3;
+
+/**
+ * Stall ladder state (CP-2). A stall is a run of consecutive sessions
+ * (newest first) at the same top weight with reps NOT climbing across the
+ * run. Nothing is stored: the rung derives from history alone, so a
+ * back-off session (different top weight) naturally resets the count.
+ *
+ * @returns {{run:number, repsClimbing:boolean, rung:0|1|2|3}}
+ *   run   — sessions at the newest top weight (≥1)
+ *   rung  — 0 = no stall · 1 chase-rep · 2 back-off · 3 rotate
+ */
+export function stallState(sessions) {
+    if (!Array.isArray(sessions) || sessions.length === 0) return { run: 0, repsClimbing: false, rung: 0 };
+    const W = sessions[0].topWeight;
+    let run = 1;
+    while (run < sessions.length && sessions[run].topWeight === W) run++;
+    // "Climbing" compares the newest session against the start of the flat
+    // run, so a slow grind (8 → 8 → 9 reps) still counts as progress.
+    const repsClimbing = run >= 3 && (sessions[0].maxReps || 0) > (sessions[run - 1].maxReps || 0);
+    const rung = run >= 3 && !repsClimbing ? Math.min(3, Math.floor(run / STALL_SESSIONS_PER_RUNG)) : 0;
+    return { run, repsClimbing, rung };
+}
+
 /**
  * Smart progressive-overload coach for the last-session card. Reads the
  * multi-session history and applies double-progression logic:
- *   1. Plateau (3+ sessions at the same top weight) → add weight / back-off.
+ *   1. Plateau (3+ sessions at the same top weight) → the stall ladder:
+ *      rung 1 chase a rep · rung 2 back off −10% · rung 3 rotate the movement.
+ *      Reps climbing through the plateau → add weight instead.
  *   2. Hit the rep target at this weight → add weight.
  *   3. Just went up last session → consolidate before pushing again.
  *   4. Below the rep target → chase a rep first.
@@ -104,11 +133,16 @@ export function computeOverloadNudge(sessions, displayUnit, repTarget, increment
     const R = cur.topReps || cur.maxReps || 0;
 
     // 1) Plateau — same top weight three sessions running.
-    if (sessions.length >= 3 && sessions[1].topWeight === W && sessions[2].topWeight === W) {
-        const repsClimbing = (sessions[0].maxReps || 0) > (sessions[2].maxReps || 0);
-        return repsClimbing
-            ? `3 sessions at ${W} ${displayUnit} — reps are climbing, go ${next} next`
-            : `Stalled at ${W} ${displayUnit} for 3 sessions — try ${next} or a back-off set`;
+    const stall = stallState(sessions);
+    if (stall.run >= 3) {
+        if (stall.repsClimbing) return `${stall.run} sessions at ${W} ${displayUnit} — reps are climbing, go ${next} next`;
+        // Never offer MORE load at a detected stall (the old string did).
+        if (stall.rung === 1) return `${ordinal(stall.run)} session at ${W} ${displayUnit} — hold it and chase ${R + 1}`;
+        if (stall.rung === 2) {
+            const back = scaleLoadableWeight(W, BACK_OFF_FACTOR, inc);
+            return `${stall.run} sessions at ${W} ${displayUnit} — drop to ${back} for two sessions, then back at it`;
+        }
+        return `${W} ${displayUnit} has had its run (${stall.run} sessions flat) — swap in a similar movement this block`;
     }
     // 2) Double progression — hit the rep target, time to add weight.
     if (rt && R >= rt) {
@@ -126,14 +160,28 @@ export function computeOverloadNudge(sessions, displayUnit, repTarget, increment
     return `Beat it — try ${next} ${displayUnit}`;
 }
 
+function ordinal(n) {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+}
+
 /**
  * Structured recommendation for the same rule matrix (5.7.3): today's target
  * weight/reps, whether it's a bump (↑ marker), and a stall flag the coach
  * context can read. Kept separate from computeOverloadNudge so the advisory
  * string and the machine-readable target never drift.
  *
+ * Stall rungs (CP-2) all carry `stalled: true` plus `rung` and `stallRun`:
+ *   rung 1 `chase-rep` — hold W, reps R+1 (advice only; nothing is seeded)
+ *   rung 2 `back-off`  — weight = plate-rounded 90% of W, `backOff: true`
+ *                        (the set rows seed the reduced load)
+ *   rung 3 `rotate`    — hold W, `rotate: true` (hand-off to the variety
+ *                        engine; until then a swap suggestion)
+ *
  * @returns {{weight:number, reps:number|null, bumped:boolean, stalled:boolean,
- *            action:'bump'|'consolidate'|'chase-rep'|'stalled'|'start'}|null}
+ *            action:'bump'|'consolidate'|'chase-rep'|'back-off'|'rotate'|'start',
+ *            rung?:number, stallRun?:number, backOff?:boolean, rotate?:boolean}|null}
  */
 export function progressionTarget(sessions, displayUnit, repTarget, increment) {
     if (!Array.isArray(sessions) || sessions.length === 0) return null;
@@ -145,13 +193,18 @@ export function progressionTarget(sessions, displayUnit, repTarget, increment) {
     const rt = repTarget && repTarget > 0 ? repTarget : null;
     const R = cur.topReps || cur.maxReps || 0;
 
-    const flat3 = sessions.length >= 3 && sessions[1].topWeight === W && sessions[2].topWeight === W;
-    const repsClimbing = flat3 && (sessions[0].maxReps || 0) > (sessions[2].maxReps || 0);
+    const stall = stallState(sessions);
+    const repsClimbing = stall.run >= 3 && stall.repsClimbing;
 
-    // Stall: three sessions at the same weight with reps NOT climbing — a true
-    // plateau the coach should be told about.
-    if (flat3 && !repsClimbing) {
-        return { weight: W, reps: rt || R || null, bumped: false, stalled: true, action: 'stalled' };
+    // Stall: three+ sessions at the same weight with reps NOT climbing — a
+    // true plateau, answered by the rung rather than a terminal flag.
+    if (stall.rung >= 1) {
+        const base = { bumped: false, stalled: true, rung: stall.rung, stallRun: stall.run };
+        if (stall.rung === 1) return { ...base, weight: W, reps: R + 1, action: 'chase-rep' };
+        if (stall.rung === 2) {
+            return { ...base, weight: scaleLoadableWeight(W, BACK_OFF_FACTOR, inc), reps: rt || R || null, action: 'back-off', backOff: true };
+        }
+        return { ...base, weight: W, reps: rt || R || null, action: 'rotate', rotate: true };
     }
     // Earned the bump: hit the rep target (or reps climbed through a plateau).
     if ((rt && R >= rt) || repsClimbing) {
