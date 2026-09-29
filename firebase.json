@@ -14,7 +14,19 @@
         "tests/**",
         "scripts/**",
         "mockups/**",
-        "specs/**"
+        "specs/**",
+        "coverage/**",
+        "backups/**",
+        "package.json",
+        "package-lock.json",
+        "eslint.config.mjs",
+        "**/.*/**",
+        ".git/**",
+        ".firebase/**",
+        ".claude/**",
+        "*.rules",
+        "firestore.indexes.json",
+        "vitest.config.mjs"
       ],
       "rewrites": [
         {
@@ -61,7 +73,19 @@
         "tests/**",
         "scripts/**",
         "mockups/**",
-        "specs/**"
+        "specs/**",
+        "coverage/**",
+        "backups/**",
+        "package.json",
+        "package-lock.json",
+        "eslint.config.mjs",
+        "**/.*/**",
+        ".git/**",
+        ".firebase/**",
+        ".claude/**",
+        "*.rules",
+        "firestore.indexes.json",
+        "vitest.config.mjs"
       ],
       "rewrites": [
         {
