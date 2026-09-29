@@ -928,12 +928,29 @@ export async function validateUserData() {
     }
 }
 
+// Retries after a fallback load, bounded so a genuinely offline session
+// doesn't poll forever: 30 s, then 2 min.
+const LIBRARY_RETRY_DELAYS_MS = [30000, 120000];
+let _libraryRetryCount = 0;
+
 export async function refreshExerciseDatabase() {
     try {
         if (AppState.currentUser) {
-            const { FirebaseWorkoutManager } = await import('./data/firebase-workout-manager.js');
+            const { FirebaseWorkoutManager, defaultLibraryFellBack } = await import('./data/firebase-workout-manager.js');
             const workoutManager = new FirebaseWorkoutManager(AppState);
-            AppState.exerciseDatabase = await workoutManager.getExerciseLibrary();
+            const library = await workoutManager.getExerciseLibrary();
+            // Never replace a good library with a worse one: a refresh that
+            // fell back keeps whatever fuller list is already loaded.
+            const fellBack = typeof defaultLibraryFellBack === 'function' && defaultLibraryFellBack();
+            const current = AppState.exerciseDatabase;
+            if (!fellBack || !Array.isArray(current) || current.length <= library.length) {
+                AppState.exerciseDatabase = library;
+            }
+            if (fellBack && _libraryRetryCount < LIBRARY_RETRY_DELAYS_MS.length) {
+                setTimeout(() => { refreshExerciseDatabase(); }, LIBRARY_RETRY_DELAYS_MS[_libraryRetryCount++]);
+            } else if (!fellBack) {
+                _libraryRetryCount = 0;
+            }
         } else {
             const exerciseResponse = await fetch('./data/exercises.json');
             if (exerciseResponse.ok) {

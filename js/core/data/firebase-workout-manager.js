@@ -27,11 +27,21 @@ import {
 import { Config, debugLog } from '../utils/config.js';
 import { confidentEquipmentId } from './equipment-id-resolver.js';
 import { resolveLocationId } from './location-id-resolver.js';
+import { captureWarning } from '../utils/error-handler.js';
 
 // One-shot guard for the legacy `location` → `locations[]` write sweep in
 // getUserEquipment. Module-scoped (not per-instance) because the manager is
 // instantiated fresh at most call sites.
 let legacyLocationSweepStarted = false;
+
+// True when the most recent default-library read timed out and the bundled
+// data/exercises.json stood in. That copy is a snapshot (73 entries) and
+// lags the live `exercises` collection, so a session that fell back can be
+// missing exercises the user logs every week — "nor was it in my library,
+// I'm worried my library is fucked" (9/29). The init path reads this to
+// schedule a retry instead of running stale all night.
+let _defaultLibraryFellBack = false;
+export function defaultLibraryFellBack() { return _defaultLibraryFellBack; }
 
 /**
  * Wrap a promise with a timeout — rejects if it doesn't resolve within ms
@@ -432,9 +442,15 @@ export class FirebaseWorkoutManager {
                     }
                 }
             });
+            _defaultLibraryFellBack = false;
             return exercises;
         } catch (error) {
             console.error('❌ Error loading default exercises from Firebase:', error);
+            // Not silent any more: a fallback here shrinks the library for the
+            // whole session, so it has to show up in the bug log.
+            _defaultLibraryFellBack = true;
+            captureWarning('Default exercise library read failed — using bundled copy',
+                'getDefaultExercises', { error: String(error?.message || error) });
             return await this.getDefaultExercisesOnly();
         }
     }
