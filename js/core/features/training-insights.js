@@ -550,7 +550,7 @@ export function getTopInsight(recentWorkouts, allWorkouts, exerciseDatabase) {
  * Load workouts for insights analysis.
  * Returns { recentWorkouts (1 week), allWorkouts (8 weeks) }.
  */
-export async function loadInsightsData() {
+export async function loadInsightsData(workoutsIn = null) {
     if (!AppState.currentUser) return { recentWorkouts: [], allWorkouts: [] };
 
     try {
@@ -569,19 +569,25 @@ export async function loadInsightsData() {
         eightWeeksAgo.setDate(now.getDate() - 56);
         const eightWeeksStr = getDateString(eightWeeksAgo);
 
-        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        const q = query(
-            workoutsRef,
-            where('date', '>=', eightWeeksStr),
-            orderBy('date', 'desc')
-        );
-
-        const snapshot = await getDocs(q);
+        // Prefer the caller's already-loaded list (the dashboard's shared
+        // cache) over a fresh range query — see calculateStreaks.
+        let records;
+        if (Array.isArray(workoutsIn)) {
+            records = workoutsIn.filter((w) => w && w.date >= eightWeeksStr);
+        } else {
+            const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+            const q = query(
+                workoutsRef,
+                where('date', '>=', eightWeeksStr),
+                orderBy('date', 'desc')
+            );
+            const snapshot = await getDocs(q);
+            records = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        }
         const allWorkouts = [];
         const recentWorkouts = [];
 
-        snapshot.forEach(doc => {
-            const data = { id: doc.id, ...doc.data() };
+        records.forEach((data) => {
 
             // Only completed, non-cancelled workouts
             if (!data.completedAt || data.cancelledAt) return;

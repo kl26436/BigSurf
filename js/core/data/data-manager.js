@@ -181,6 +181,12 @@ export async function saveWorkoutData(state) {
         };
         await withRetry(() => withTimeout(setDoc(docRef, savedDoc)));
 
+        // A completed session (a finish, or an edit to history) changes what
+        // every cached reader — dashboard, last-session prefill — should see.
+        // In-progress autosaves (completedAt null) leave the cache alone so a
+        // workout's own saves never force a refetch per exercise.
+        if (savedDoc.completedAt && !savedDoc.cancelledAt) clearAllWorkoutsCache();
+
         // CRITICAL: Update window.inProgressWorkout so exercise changes persist on resume
         // This ensures added/deleted exercises are retained when closing and reopening workout
         if (window.inProgressWorkout && !state.savedData.completedAt && !state.savedData.cancelledAt) {
@@ -233,20 +239,15 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
     if (!state.currentUser) return null;
 
     try {
-        // Order by the actual workout date (not completedAt) — editing a
-        // historical workout rewrites completedAt to "now", which pushes
-        // stale edits to the top of this query and can starve out the
-        // actually-most-recent session within the limit.
-        //
-        // Limit is 90 (not 30) because cancelled/junk workout docs share
-        // this window: a testing-heavy week (see 2026-07-01..07 with ~20
-        // cancelled attempts) can push the actual last-session out of a
-        // 30-doc fetch. Server-side filtering on cancelledAt isn't safe
-        // without a backfill — legacy completed docs don't have the field,
-        // and Firestore `== null` only matches docs where the field exists.
-        const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
-        const q = query(workoutsRef, orderBy('date', 'desc'), limit(90));
-        const snapshot = await withTimeout(getDocs(q));
+        // One shared read. loadAllWorkouts is the same 5-minute cache the
+        // dashboard fills — sorted by the actual workout date (not
+        // completedAt, which an edit rewrites), already filtered to
+        // completed, non-cancelled sessions. This used to run its own 90-doc
+        // query per exercise behind a 10 s timeout, so a slow connection
+        // meant N timeouts and "no prefilled suggestions in several
+        // exercises" (9/29). No 90-doc window any more either, so a
+        // cancelled-heavy week can't starve out the real last session.
+        const allWorkouts = await loadAllWorkouts(state);
 
         const today = state.getTodayDateString();
         const locLC = (location || '').toLowerCase();
@@ -264,8 +265,7 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
         let bestLocationOnly = null;
         let bestNameOnly = null;
 
-        for (const docSnap of snapshot.docs) {
-            const data = docSnap.data();
+        for (const data of allWorkouts) {
             if (data.date === today) continue;
             if (!data.completedAt || data.cancelledAt) continue;
             if (!data.exercises) continue;

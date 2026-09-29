@@ -92,19 +92,26 @@ async function renderDashboard() {
 
     try {
         const wm = new FirebaseWorkoutManager(AppState);
-        const [streaks, weeklyStats, allWorkouts, insightsData] =
-            await Promise.all([
-                StreakTracker.calculateStreaks(),
-                StatsTracker.getWeeklyStats(),
-                loadAllWorkouts(AppState),
-                TrainingInsights.loadInsightsData().catch(() => ({ recentWorkouts: [], allWorkouts: [] })),
-                // Week plan (5.5): hydrate once per session (null = none set).
-                AppState._weekPlan === undefined ? loadWeekPlan().catch(() => null) : Promise.resolve(),
-                // Active program (Phase 9 rung 2): same hydrate-once pattern.
-                AppState._activeProgram === undefined ? loadActiveProgram().catch(() => null) : Promise.resolve(),
-            ]);
-
-        await PRTracker.loadPRData();
+        // ONE workout read. Streaks, weekly stats and insights each ran their
+        // own full-collection query in parallel with loadAllWorkouts — four
+        // copies of the same history over the network on every dashboard
+        // open, and the skeleton stayed up until the slowest landed ("takes
+        // forever… every time I open the app", 9/29). They now derive from
+        // the shared 5-minute cache; the PR doc and week plan / program are
+        // small single-doc reads and stay parallel with it.
+        const [allWorkouts] = await Promise.all([
+            loadAllWorkouts(AppState),
+            PRTracker.loadPRData(),
+            // Week plan (5.5): hydrate once per session (null = none set).
+            AppState._weekPlan === undefined ? loadWeekPlan().catch(() => null) : Promise.resolve(),
+            // Active program (Phase 9 rung 2): same hydrate-once pattern.
+            AppState._activeProgram === undefined ? loadActiveProgram().catch(() => null) : Promise.resolve(),
+        ]);
+        const [streaks, weeklyStats, insightsData] = await Promise.all([
+            StreakTracker.calculateStreaks(allWorkouts),
+            StatsTracker.getWeeklyStats(allWorkouts),
+            TrainingInsights.loadInsightsData(allWorkouts).catch(() => ({ recentWorkouts: [], allWorkouts: [] })),
+        ]);
         const recentPRs = PRTracker.getRecentPRs(3);
 
         const weekCount = weeklyStats.uniqueDays || weeklyStats.workouts.length;

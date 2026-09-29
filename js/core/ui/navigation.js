@@ -295,7 +295,13 @@ function showActiveWorkout() {
     // already ticking, and revives a countdown whose interval was cleared
     // while the user was off on another tab (7/22 "froze at 1:28").
     import('../workout/active-workout-ui.js')
-        .then(m => m.resumeRestTimerIfActive?.())
+        .then(m => {
+            m.resumeRestTimerIfActive?.();
+            // Same story for the elapsed clock: cleanup() on the way out
+            // clears its interval and only a full re-render restarted it
+            // (9/29 "timer stopped when I left the active workout").
+            m.startDurationTimer?.();
+        })
         .catch(() => {});
     // Hide BOTH the main header (no logo during workouts) AND the bottom nav.
     // The active workout has its own footer (All / Next exercise / Finish)

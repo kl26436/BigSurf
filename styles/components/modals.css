@@ -345,7 +345,11 @@ dialog.modal:not([open]) {
        the keyboard even after scrollIntoView. Cap by the layout viewport
        minus --kb-inset so we get the correct height whether dvh lags or
        not. Reported 2026-07-09 as 243px overhang on error-log modal. */
-    max-height: calc(100vh - var(--kb-inset, 0px) - 20px);
+    /* …and by the status-bar inset: a near-full sheet otherwise starts 20px
+       from the top, putting its header (and the close ✕) under the Dynamic
+       Island — "has an X up top and can't close, several popups have this"
+       (9/29). The error log, bug report and other tall modals all hit it. */
+    max-height: calc(100vh - var(--kb-inset, 0px) - 20px - env(safe-area-inset-top, 0px));
     overflow-y: auto;
     border: 1px solid var(--border-subtle);
     border-bottom: none;

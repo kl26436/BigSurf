@@ -13,21 +13,26 @@ import { getDateString } from '../utils/date-helpers.js';
  * Calculate streaks from workout history
  * Returns: { currentStreak, longestStreak, totalWorkouts, workoutsThisWeek, workoutsThisMonth }
  */
-export async function calculateStreaks() {
+export async function calculateStreaks(workouts = null) {
     if (!AppState.currentUser) {
         return null;
     }
 
     try {
-        // Get all completed workouts
-        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        const snapshot = await getDocs(workoutsRef);
+        // Callers that already hold the workout list (the dashboard's shared
+        // loadAllWorkouts cache) pass it in; this was one of four separate
+        // full-collection reads on every dashboard open.
+        let records = workouts;
+        if (!Array.isArray(records)) {
+            const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+            const snapshot = await getDocs(workoutsRef);
+            records = snapshot.docs.map((d) => d.data());
+        }
 
         // Extract and sort workout dates
         // Use workout.date field (not doc.id which may have timestamp suffix in Schema v3.0)
         const workoutDatesSet = new Set(); // Use Set to dedupe multiple workouts per day
-        for (const docSnap of snapshot.docs) {
-            const workout = docSnap.data();
+        for (const workout of records) {
             if (workout.completedAt && workout.date && !workout.cancelledAt) {
                 // workout.date is YYYY-MM-DD format
                 workoutDatesSet.add(workout.date);

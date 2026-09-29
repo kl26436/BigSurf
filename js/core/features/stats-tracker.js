@@ -139,7 +139,7 @@ export async function getLastWorkout() {
  * Get detailed stats for this week
  * @returns {Promise<{sets: number, exercises: number, minutes: number, workouts: Array}>}
  */
-export async function getWeeklyStats() {
+export async function getWeeklyStats(allWorkouts = null) {
     if (!AppState.currentUser) return { sets: 0, exercises: 0, minutes: 0, workouts: [], uniqueDays: 0 };
 
     try {
@@ -151,21 +151,26 @@ export async function getWeeklyStats() {
 
         const startOfWeekStr = getDateString(startOfWeek);
 
-        const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
-        // Query by date field (when workout occurred), not completedAt (when it was saved)
-        // This ensures edited historical workouts count on their actual date
-        const q = query(workoutsRef, where('date', '>=', startOfWeekStr), orderBy('date', 'desc'));
-
-        const snapshot = await getDocs(q);
+        // Prefer the caller's already-loaded list (the dashboard's shared
+        // cache) over a fresh range query — see calculateStreaks.
+        let records;
+        if (Array.isArray(allWorkouts)) {
+            records = allWorkouts.filter((w) => w && w.date >= startOfWeekStr);
+        } else {
+            const workoutsRef = collection(db, 'users', AppState.currentUser.uid, 'workouts');
+            // Query by date field (when workout occurred), not completedAt (when it was saved)
+            // This ensures edited historical workouts count on their actual date
+            const q = query(workoutsRef, where('date', '>=', startOfWeekStr), orderBy('date', 'desc'));
+            const snapshot = await getDocs(q);
+            records = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        }
         const workouts = [];
         const workoutDays = new Set(); // Track unique days
         let totalSets = 0;
         let totalExercises = 0;
         let totalMinutes = 0;
 
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-
+        records.forEach((data) => {
             // Skip workouts without completedAt (not finished)
             if (!data.completedAt) return;
 
@@ -187,10 +192,7 @@ export async function getWeeklyStats() {
             }
 
             // Add to workouts list (any completed workout counts)
-            workouts.push({
-                id: doc.id,
-                ...data,
-            });
+            workouts.push({ ...data });
 
             // Track unique workout days (use date string for deduplication)
             if (data.date) {

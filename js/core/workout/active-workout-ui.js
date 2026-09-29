@@ -3,7 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification, convertWeight } from '../ui/ui-helpers.js';
-import { getExerciseName } from '../utils/workout-helpers.js';
+import { getExerciseName, exerciseNameMatches } from '../utils/workout-helpers.js';
 import { getCategoryIcon, Config, debugLog } from '../utils/config.js';
 import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults, loadAllWorkouts } from '../data/data-manager.js';
 import { buildExerciseSessions, computeOverloadNudge, progressionTarget, weightIncrement, scaleLoadableWeight } from '../features/progression.js';
@@ -871,7 +871,12 @@ function renderLastSessionCard(exerciseName, idx) {
     );
     const base = (!isBodyweightExercise(exercise) && cardEquip?.baseWeight > 0) ? cardEquip.baseWeight : 0;
     const plateSets = base > 0
-        ? lastDefaults.map(s => ({ ...s, weight: Math.max(0, (s.weight || 0) - base) }))
+        ? lastDefaults.map(s => {
+            // getLastSessionDefaults already returns the typed plate load for
+            // sets that recorded one; only legacy totals need the base removed.
+            const alreadyPlates = typeof s._plateWeight === 'number' && s._equipBaseWeight > 0;
+            return alreadyPlates ? s : { ...s, weight: Math.max(0, (s.weight || 0) - base) };
+        })
         : lastDefaults;
 
     const summary = plateSets.map(s => {
@@ -899,6 +904,16 @@ function renderLastSessionCard(exerciseName, idx) {
         ? `<div class="aw-last__nudge"><i class="fas fa-bolt" aria-hidden="true"></i> ${nudge}</div>`
         : '';
 
+    // History that came from a DIFFERENT machine (the strict match fell back
+    // to name-only) says so. Unlabeled, a freshly created machine showed its
+    // predecessor's numbers as its own — "it loaded my old equipment with it"
+    // (9/29).
+    const currentEquipName = savedExForCard?.equipment || exercise.equipment || '';
+    const fromEquip = exercise._lastSessionEquipment || '';
+    const fromTag = fromEquip && fromEquip.toLowerCase() !== currentEquipName.toLowerCase()
+        ? ` · from ${escapeHtml(fromEquip)}`
+        : '';
+
     // One read-only fact, one tap target: the whole row opens the exercise's
     // progress detail. The unit pill (duplicate of the sets-header toggle) and
     // the cross-equipment info glyph earned their keep less than the calm.
@@ -907,7 +922,7 @@ function renderLastSessionCard(exerciseName, idx) {
                 aria-label="View ${escapeAttr(exerciseName)} progress">
             <i class="fas fa-history" aria-hidden="true"></i>
             <div class="aw-last__info">
-                <div class="aw-last__val">Last: ${summary} ${unitTag} · ${daysLabel}</div>
+                <div class="aw-last__val">Last: ${summary} ${unitTag} · ${daysLabel}${fromTag}</div>
                 ${nudgeHtml}
             </div>
             <i class="fas fa-chevron-right aw-last__chev" aria-hidden="true"></i>
@@ -2486,10 +2501,26 @@ export async function awCreateEquipmentFromSearch(exerciseIdx) {
         haptic('tap');
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const mgr = new FirebaseWorkoutManager(AppState);
-        const eq = await mgr.getOrCreateEquipment(name, { equipmentType: inferEquipmentType(name) }, null);
+        // Tag the gym and link the exercise AT creation. Leaving both to the
+        // select step meant a second write racing the cache refresh, and a
+        // session with no gym produced a doc with no location at all — it then
+        // lived only under the Library tab, never under My gyms ("where did it
+        // go? Why wasn't it in my library?", 9/29).
+        const exName = getExerciseName(AppState.currentWorkout?.exercises?.[exerciseIdx]);
+        const sessionLoc = AppState.savedData?.location;
+        const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+        const eq = await mgr.getOrCreateEquipment(name, {
+            equipmentType: inferEquipmentType(name),
+            ...(locName ? { locations: [locName] } : {}),
+            ...(exName ? { exerciseTypes: [exName] } : {}),
+        }, null);
         if (!eq) { showNotification("Couldn't save — try again", 'error'); return; }
         AppState._cachedEquipment = await mgr.getUserEquipment();
+        if (locName) AppState._sessionMappedEquipment?.add(eq.name);
         await awSelectEquipment(exerciseIdx, eq.name, eq.id || null);
+        // Say what happened — the sheet closes and the only trace was the
+        // equipment pill quietly changing.
+        showNotification(locName ? `Created ${eq.name} · added to ${locName}` : `Created ${eq.name}`, 'success', 2500);
     } catch (e) {
         console.error('Custom equipment add failed:', e);
         showNotification("Couldn't save — try again", 'error');
@@ -3087,6 +3118,31 @@ let addExerciseFilterSession = null;
 // `category`), so we filter + label on body part and fold sub-parts into the
 // seven canonical buckets. Both add-exercise sheets in this file share this.
 const AW_EX_CATEGORIES = ['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'];
+/**
+ * Library plus every exercise name that only lives in the user's templates or
+ * logged history. Coach-built templates name exercises freely, so a lift the
+ * user does every week can be absent from exerciseDatabase — and then the
+ * swap/add sheets couldn't find it ("I've used that exercise every week, now
+ * I can't find it", 9/29). Extras bucket as Other and search like any row.
+ */
+function withWorkoutOnlyExercises(library) {
+    const have = new Set(library.map((ex) => (ex.name || ex.machine || '').toLowerCase()));
+    const extras = new Map();
+    const consider = (name, category) => {
+        const n = (name || '').trim();
+        const k = n.toLowerCase();
+        if (!n || have.has(k) || extras.has(k)) return;
+        extras.set(k, { name: n, machine: n, bodyPart: category || '', _workoutOnly: true });
+    };
+    for (const t of AppState.workoutPlans || []) {
+        for (const ex of t.exercises || []) consider(ex.machine || ex.name, ex.category || t.category);
+    }
+    for (const w of AppState.workouts || []) {
+        for (const n of Object.values(w.exerciseNames || {})) consider(n, null);
+    }
+    return extras.size ? [...library, ...extras.values()] : library;
+}
+
 function awExerciseBucket(ex) {
     const bp = (ex.bodyPart || ex.category || '').toLowerCase();
     if (bp.includes('chest') || bp.includes('pec')) return 'Chest';
@@ -3159,7 +3215,7 @@ export function awAddExercise(seedFilter = null) {
  *   3. The filtered library (capped at 50).
  */
 function buildAddExerciseListHTML() {
-    const library = AppState.exerciseDatabase || [];
+    const library = withWorkoutOnlyExercises(AppState.exerciseDatabase || []);
     let filtered = library;
 
     if (addExerciseFilter !== 'All') {
@@ -3168,7 +3224,7 @@ function buildAddExerciseListHTML() {
     if (addExerciseSearch) {
         const q = addExerciseSearch.toLowerCase();
         filtered = filtered.filter(ex =>
-            (ex.name || ex.machine || '').toLowerCase().includes(q)
+            exerciseNameMatches(ex, q)
         );
     }
 
@@ -3407,14 +3463,14 @@ function renderSharedAddExerciseSheet() {
 }
 
 function getFilteredSharedAddExercises() {
-    const library = AppState.exerciseDatabase || [];
+    const library = withWorkoutOnlyExercises(AppState.exerciseDatabase || []);
     let filtered = library;
     if (_sharedAddFilter !== 'All') {
         filtered = filtered.filter(ex => awExerciseBucket(ex) === _sharedAddFilter);
     }
     if (_sharedAddSearch) {
         const q = _sharedAddSearch.toLowerCase();
-        filtered = filtered.filter(ex => (ex.name || ex.machine || '').toLowerCase().includes(q));
+        filtered = filtered.filter(ex => exerciseNameMatches(ex, q));
     }
     return filtered;
 }
@@ -4102,16 +4158,25 @@ export async function loadAutofillForExercise(idx) {
                     const bumpThis = bump && weighted;
                     const backThis = !bumpThis && backOff && weighted;
                     const lastW = weighted ? convertWeight(s.weight, s.originalUnit || 'lbs', progUnit) : 0;
+                    const weight = bumpThis
+                        ? Math.round((lastW + bumpInc) * 10) / 10
+                        : backThis
+                            ? scaleLoadableWeight(lastW, 0.9, bumpInc)
+                            : ((s.weight && s.weight > 0) ? s.weight : null);
+                    // A source set that recorded its plate load comes back
+                    // plate-relative (getLastSessionDefaults), so the seeded
+                    // number IS plates. Say so on the new set: completion keys
+                    // on _plateWeight to skip the "untouched autofill is a
+                    // total, subtract the base" correction — without it, 270
+                    // seeded on a 90 lb machine logged as 180 + 90.
+                    const platesKnown = typeof s._plateWeight === 'number' && s._equipBaseWeight > 0;
                     return {
-                        weight: bumpThis
-                            ? Math.round((lastW + bumpInc) * 10) / 10
-                            : backThis
-                                ? scaleLoadableWeight(lastW, 0.9, bumpInc)
-                                : ((s.weight && s.weight > 0) ? s.weight : null),
+                        weight,
                         reps: bumpThis && prog.reps ? prog.reps : ((s.reps && s.reps > 0) ? s.reps : null),
                         completed: false,
                         originalUnit: (bumpThis || backThis) ? progUnit : (s.originalUnit || AppState.globalUnit || 'lbs'),
                         ...((bumpThis || backThis) ? { _suggested: true } : {}),
+                        ...((platesKnown && weight != null) ? { _plateWeight: weight } : {}),
                     };
                 });
             }
@@ -4190,7 +4255,7 @@ function isBodyweightExercise(exercise) {
     return BODYWEIGHT_PATTERNS.test(name);
 }
 
-function startDurationTimer() {
+export function startDurationTimer() {
     clearDurationTimer();
 
     // Recompute elapsed from AppState.workoutStartTime on every tick instead

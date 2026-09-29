@@ -1375,6 +1375,12 @@ export class FirebaseWorkoutManager {
                 exerciseTypes: exerciseName ? [exerciseName] : [],
                 ...extraFields,
             };
+            // Options-form callers may pass locations[] (the active-workout
+            // "Create <typed name>" path tags the session gym at creation);
+            // keep locationIds[] dual-written for them like the string form.
+            if (Array.isArray(extraFields.locations) && !extraFields.locationIds) {
+                newEquipment.locationIds = this._deriveLocationIds(extraFields.locations);
+            }
 
             const videoMap = { ...(extraFields.exerciseVideos || {}) };
             if (videoUrl && exerciseName && !videoMap[exerciseName]) {

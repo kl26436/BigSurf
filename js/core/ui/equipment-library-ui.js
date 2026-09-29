@@ -172,6 +172,19 @@ export async function openEquipmentLibrary() {
     section.classList.remove('hidden');
     scanReviewActive = false; // always land on the normal list, not the review view
 
+    // First paint is a skeleton, not an empty section. The reads below can
+    // take seconds on a slow connection and until they landed the page was
+    // blank — worst when routed straight to a detail ("opened equipment to
+    // edit and just got a blank page", 9/29). Only when nothing is showing.
+    const contentEl = document.getElementById('equipment-library-content');
+    if (contentEl && !contentEl.innerHTML.trim()) {
+        contentEl.innerHTML = `
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+        `;
+    }
+
     // Parallel-load equipment + locations + catalog so the My gyms tab has
     // everything it needs on first paint. Catalog has its own internal cache,
     // so the second call (if any) is a no-op.
@@ -3138,7 +3151,10 @@ export async function openEquipmentDetail(equipmentId) {
         equipment = allEquipment.find(e => e.id === equipmentId);
     }
     if (!equipment) {
+        // Land on the list, not on whatever was (or wasn't) painted — a
+        // skeleton or an empty container read as "a blank page" (9/29).
         showNotification('Equipment not found', 'error');
+        restoreEquipmentLibraryListView();
         return;
     }
 
