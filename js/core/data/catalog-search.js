@@ -15,6 +15,18 @@ export function equipNameKey(name) {
 }
 
 /**
+ * Every word of the query appears somewhere in `hay`, in any order —
+ * "hammer chest" finds "Hammer Strength — Chest Press". A contiguous-substring
+ * miss here is how a machine you already own got created a second time.
+ */
+export function matchesAllTokens(hay, query) {
+    const tokens = equipNameKey(query).split(' ').filter(Boolean);
+    if (tokens.length === 0) return false;
+    const h = equipNameKey(hay);
+    return tokens.every((t) => h.includes(t));
+}
+
+/**
  * Keys for equipment the user already owns — catalogRefs plus normalized
  * name/function strings — so a machine already in the library never renders
  * again as an "add" row underneath itself.
@@ -67,6 +79,7 @@ export function searchCatalogMachines(query, catalog, { owned = null, max = 6 } 
                 if (mName.startsWith(q)) rank = 0;
                 else if (mName.includes(q)) rank = 1;
                 else if (ctx.includes(q)) rank = 2;
+                else if (matchesAllTokens(`${ctx} ${mName}`, q)) rank = 3;
                 else continue;
                 hits.push({
                     rank,

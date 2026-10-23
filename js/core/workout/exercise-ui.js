@@ -2301,7 +2301,7 @@ export function confirmExerciseReplace(exerciseData) {
     // and-forget — loadAutofillForExercise calls renderAll() itself once the
     // data lands so v2 picks it up too.
     if (typeof window.loadAutofillForExercise === 'function') {
-        window.loadAutofillForExercise(replaceIndex);
+        window.loadAutofillForExercise(replaceIndex, { reseed: true });
     }
 
     // Clean up

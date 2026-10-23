@@ -13,6 +13,7 @@ import {
     ownedEquipmentKeys,
     searchCatalogMachines,
     inferEquipmentType,
+    matchesAllTokens,
 } from '../../js/core/data/catalog-search.js';
 import { EQUIPMENT_CATALOG } from '../../js/core/data/equipment-catalog.js';
 import { augmentStaticCatalog } from '../../js/core/data/equipment-catalog-helpers.js';
@@ -77,7 +78,21 @@ describe('ownedEquipmentKeys', () => {
     });
 });
 
+describe('matchesAllTokens', () => {
+    it('matches every word in any order, ignoring separators', () => {
+        expect(matchesAllTokens('Hammer Strength — Chest Press', 'hammer chest')).toBe(true);
+        expect(matchesAllTokens('Hammer Strength — Chest Press', 'chest hammer')).toBe(true);
+        expect(matchesAllTokens('Hammer Strength — Chest Press', 'hammer row')).toBe(false);
+        expect(matchesAllTokens('Anything', '  ')).toBe(false);
+    });
+});
+
 describe('searchCatalogMachines', () => {
+    it('finds a machine from words spread across brand and name', () => {
+        const hits = searchCatalogMachines('hammer row', CATALOG);
+        expect(hits.map((h) => h.catalogRef)).toEqual(['hs-iso-row']);
+    });
+
     it('finds a machine by name substring', () => {
         const hits = searchCatalogMachines('hack', CATALOG);
         expect(hits.map((h) => h.catalogRef)).toEqual(['lf-hack']);

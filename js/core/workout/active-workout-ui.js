@@ -17,7 +17,8 @@ import { convertYouTubeUrl } from './exercise-ui.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
 import { augmentStaticCatalog } from '../data/equipment-catalog-helpers.js';
-import { equipNameKey, ownedEquipmentKeys, searchCatalogMachines, inferEquipmentType } from '../data/catalog-search.js';
+import { equipNameKey, ownedEquipmentKeys, searchCatalogMachines, inferEquipmentType, matchesAllTokens } from '../data/catalog-search.js';
+import { mergeSeededSets, isBlankSet, historyFromSameMachine } from './set-seeding.js';
 import { suggestMachinesForExercise } from '../features/exercise-machine-matcher.js';
 import { getEquipmentAtLocation, getExercisesAtLocation } from '../features/equipment-planner.js';
 import { programHeartbeat } from '../features/program-session.js';
@@ -895,7 +896,8 @@ function renderLastSessionCard(exerciseName, idx) {
     // the adjustment already set today's targets and the two would conflict.
     // The multi-session nudge is computed on totals, so on base-weight gear
     // use the plate-relative single-session step instead.
-    const nudge = isBodyweightExercise(exercise) || AppState.savedData?.sessionLabel
+    // A different machine's numbers get no "go heavier" — you've never used this one.
+    const nudge = isBodyweightExercise(exercise) || AppState.savedData?.sessionLabel || exercise._lastSessionOtherMachine
         ? null
         : (base > 0
             ? nextTargetFor(plateSets, displayUnit)
@@ -1770,7 +1772,7 @@ function commitReplaceExercise(idx, exercise) {
 
     saveWorkoutData(AppState);
     renderAll();
-    loadAutofillForExercise(idx);
+    loadAutofillForExercise(idx, { reseed: true });
     showNotification(`Replaced with ${exerciseName}`, 'success');
 }
 
@@ -2177,10 +2179,13 @@ export async function awOpenEquipmentSheet(exerciseIdx) {
     equipSheetShowAll = false;
     equipFreeWeightsOpen = false;
 
-    // Always refresh equipment from Firestore on open — the user may have
-    // promoted catalog equipment via the library mid-workout. Without this
-    // the picker keeps showing the stale cache and the just-added machine
-    // doesn't appear ("never showed up nor came up in search" was the bug).
+    // Open instantly from the cache when there is one — on gym signal the
+    // sheet used to sit on a Firestore read with no feedback. Still refresh
+    // (the user may have added a machine via the library mid-workout, the
+    // "never showed up nor came up in search" bug) and redraw the list when
+    // it lands, as long as this exercise's picker is still the one open.
+    const hadCache = Array.isArray(AppState._cachedEquipment) && AppState._cachedEquipment.length > 0;
+    if (hadCache) renderEquipmentSheet(exerciseIdx);
     try {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const mgr = new FirebaseWorkoutManager(AppState);
@@ -2190,7 +2195,14 @@ export async function awOpenEquipmentSheet(exerciseIdx) {
         if (!AppState._cachedEquipment) AppState._cachedEquipment = [];
     }
 
-    renderEquipmentSheet(exerciseIdx);
+    if (!hadCache) {
+        renderEquipmentSheet(exerciseIdx);
+        return;
+    }
+    const listEl = document.getElementById('aw-equip-list');
+    if (listEl && listEl.dataset.exerciseIdx === String(exerciseIdx)) {
+        listEl.innerHTML = buildEquipListHTML(exerciseIdx);
+    }
 }
 
 // ── Inline catalog search (the mid-workout "add the machine I'm standing at") ──
@@ -2230,7 +2242,7 @@ function catalogAddRowHTML(machine, onclick) {
     `;
 }
 
-/** Escape hatch when the catalog doesn't have it: create exactly what was typed. */
+/** Escape hatch when the catalog doesn't have it: create what was typed. */
 function createEquipRowHTML(query, locName, onclick) {
     const name = (query || '').trim();
     return `
@@ -2284,7 +2296,8 @@ function buildEquipListHTML(exerciseIdx) {
     const applySearch = (list) => {
         if (!equipSearchQuery) return list;
         const q = equipSearchQuery.toLowerCase();
-        return list.filter(eq => eq.name?.toLowerCase().includes(q) || (eq.equipmentType || '').toLowerCase().includes(q));
+        return list.filter(eq => eq.name?.toLowerCase().includes(q) || (eq.equipmentType || '').toLowerCase().includes(q)
+            || matchesAllTokens(`${eq.name || ''} ${eq.brand || ''} ${eq.equipmentType || ''}`, q));
     };
 
     const renderRow = (eq) => {
@@ -2389,10 +2402,12 @@ function buildEquipListHTML(exerciseIdx) {
         }
         // Suppressed when the query already names something you own — that row
         // is right there above, and "Create" would read like a duplicate.
-        if (!owned.names.has(equipNameKey(equipSearchQuery))) {
+        // Opens the new-machine form prefilled (name, type, base weight →
+        // save → back to the set) rather than creating blind.
+        if (equipSearchQuery.trim().length >= 2 && !owned.names.has(equipNameKey(equipSearchQuery))) {
             createSection = `
                 <div class="aw-equip-section">
-                    ${createEquipRowHTML(equipSearchQuery, locName, `awCreateEquipmentFromSearch(${exerciseIdx})`)}
+                    ${createEquipRowHTML(equipSearchQuery, locName, `awQuickAddEquipment(${exerciseIdx})`)}
                 </div>
             `;
         }
@@ -2400,14 +2415,36 @@ function buildEquipListHTML(exerciseIdx) {
         awCatalogSearchResults = [];
     }
 
+    // Nothing you own matches → the create row leads, instead of trailing
+    // six catalog hits off the bottom of the sheet.
+    const ownedHits = searching
+        ? applySearch(forThisExercise).length + applySearch(atThisGym).length + applySearch(otherEquipment).length
+        : 0;
+    const createFirst = searching && ownedHits === 0;
+
+    // Brand → line browsing lives on as a row; it needs a gym to tag.
+    const browseRow = !searching && locName ? `
+        <div class="aw-equip-section">
+            <div class="js-row" onclick="awOpenCatalogQuickAdd(${exerciseIdx})">
+                <div class="js-row__icon js-row__icon--add"><i class="fas fa-list"></i></div>
+                <div class="js-row__info">
+                    <div class="js-row__name">Browse catalog</div>
+                    <div class="js-row__meta">Pick by brand and line</div>
+                </div>
+            </div>
+        </div>
+    ` : '';
+
     return `
+        ${createFirst ? createSection : ''}
         ${renderSection(`For ${escapeHtml(exName)}`, forThisExercise, 'No equipment assigned to this exercise yet')}
         ${matchesSection}
         ${locName ? renderSection(`At ${escapeHtml(locName)}`, atThisGym, `No equipment saved at ${escapeHtml(locName)} yet`) : ''}
         ${otherSectionHTML}
         ${catalogSection}
-        ${createSection}
+        ${createFirst ? '' : createSection}
         ${searching ? '' : noneRow}
+        ${browseRow}
     `;
 }
 
@@ -2427,7 +2464,7 @@ function renderEquipmentSheet(exerciseIdx) {
             <i class="fas fa-search"></i>
             <input type="text" placeholder="Search your gear or the catalog…" value="${escapeAttr(equipSearchQuery)}" oninput="awEquipSearch(${exerciseIdx}, this.value)">
         </div>
-        <div id="aw-equip-list">
+        <div id="aw-equip-list" data-exercise-idx="${exerciseIdx}">
             ${buildEquipListHTML(exerciseIdx)}
         </div>
     `;
@@ -2437,10 +2474,10 @@ function renderEquipmentSheet(exerciseIdx) {
         subtitle: exName,
         body,
         actions: [
-            // Browse-by-body-part path. The inline search above covers the
-            // "I know what it's called" case in one tap; this stays for
-            // "show me what this brand's line has".
-            { label: '<i class="fas fa-plus"></i> Browse catalog', onClick: `awOpenCatalogQuickAdd(${exerciseIdx})` },
+            // The always-visible door for "this machine's stale, I'm on a new
+            // one": name it, save, straight back to the set. No typing needed
+            // to find it, no leaving the workout.
+            { label: '<i class="fas fa-plus"></i> New machine', onClick: `awQuickAddEquipment(${exerciseIdx})` },
             { label: 'Done', onClick: 'awCloseSheet()', primary: true },
         ],
     });
@@ -2541,8 +2578,11 @@ export function awOpenCatalogQuickAdd(exerciseIdx) {
     // window.* rather than an import: openQuickAddSheet has been window-wired
     // since the quick-add shipped, so this can't version-skew against a
     // cached equipment-library-ui.js the way a new named import could.
+    // No gym (or no quick-add): stay in the workout — the new-machine form
+    // works without one. Navigating to the Library here tore the workout
+    // down mid-set and created a doc with no gym tag.
     if (!locName || typeof window.openQuickAddSheet !== 'function') {
-        awGoToEquipmentLibrary();
+        awQuickAddEquipment(exerciseIdx);
         return;
     }
     awCloseSheet();
@@ -2657,7 +2697,8 @@ function buildSharedEquipListHTML() {
     const applySearch = (list) => {
         if (!equipSearchQuery) return list;
         const q = equipSearchQuery.toLowerCase();
-        return list.filter(eq => eq.name?.toLowerCase().includes(q) || (eq.equipmentType || '').toLowerCase().includes(q));
+        return list.filter(eq => eq.name?.toLowerCase().includes(q) || (eq.equipmentType || '').toLowerCase().includes(q)
+            || matchesAllTokens(`${eq.name || ''} ${eq.brand || ''} ${eq.equipmentType || ''}`, q));
     };
 
     const renderRow = (eq) => {
@@ -2971,55 +3012,89 @@ export async function awSelectEquipment(exerciseIdx, equipName, equipId = null) 
     // the new equipment's history (the cache key is equipment-specific, so
     // this triggers a fresh fetch). renderAll inside loadAutofillForExercise
     // handles the second redraw once data lands.
-    loadAutofillForExercise(exerciseIdx);
+    loadAutofillForExercise(exerciseIdx, { reseed: true });
 }
+
+// ── New machine (mid-workout) ──
+// The "this machine's stale, I'm trying a new one" flow: one visible button
+// on the equipment sheet → name + type (+ optional base weight) → save →
+// selected for this exercise, tagged to the gym, and straight back to the set
+// with fresh rows. Never leaves the workout.
+const NEW_EQUIP_TYPES = ['Plate-Loaded', 'Selectorized', 'Machine', 'Cable', 'Barbell', 'Dumbbell', 'Bench', 'Other'];
+let _newEquipType = 'Machine';
+let _newEquipSaving = false;
 
 export function awQuickAddEquipment(exerciseIdx) {
     const exercise = AppState.currentWorkout.exercises[exerciseIdx];
+    if (!exercise) return;
     const exName = getExerciseName(exercise);
     const sessionLoc = AppState.savedData?.location;
     const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+    const unit = AppState.exerciseUnits?.[exerciseIdx] || AppState.globalUnit || 'lbs';
 
-    const types = ['Machine', 'Barbell', 'Dumbbell', 'Cable', 'Bench', 'Rack', 'Bodyweight', 'Other'];
-    const defaultType = guessEquipmentType(exercise);
+    // Coming from the search's create row: carry what was typed.
+    const prefill = (equipSearchQuery || '').trim();
+    const guess = prefill ? inferEquipmentType(prefill) : guessEquipmentType(exercise);
+    _newEquipType = NEW_EQUIP_TYPES.includes(guess) ? guess : 'Machine';
 
     const body = `
         <div class="field">
             <div class="field-label">Name</div>
-            <input id="aw-new-equip-name" class="field-input" type="text" placeholder="e.g. Hammer Strength Incline">
+            <input id="aw-new-equip-name" class="field-input" type="text" autocomplete="off" enterkeyhint="done"
+                   placeholder="e.g. Hammer Strength incline press" value="${escapeAttr(prefill)}"
+                   onkeydown="awNewEquipKeydown(event, ${exerciseIdx})">
         </div>
         <div class="field">
             <div class="field-label">Type</div>
-            <div class="aw-sheet__chips" id="aw-new-equip-type">
-                ${types.map(t => `<button class="aw-sheet__chip ${t === defaultType ? 'active' : ''}" onclick="document.querySelectorAll('#aw-new-equip-type .aw-sheet__chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')" data-type="${t}">${t}</button>`).join('')}
+            <div class="chips" id="aw-new-equip-type">
+                ${NEW_EQUIP_TYPES.map(t => `<button type="button" class="chip${t === _newEquipType ? ' active' : ''}" data-type="${t}" aria-pressed="${t === _newEquipType}" onclick="awNewEquipSetType('${t}')">${t}</button>`).join('')}
             </div>
         </div>
         <div class="field">
-            <div class="field-label">Base weight (empty bar/carriage)</div>
+            <div class="field-label">Base weight (empty sled or bar) · optional</div>
             <div class="aw-new-equip__base-row">
                 <input id="aw-new-equip-base" class="field-input aw-new-equip__base-input" type="number" inputmode="decimal" step="0.5" placeholder="0" value="">
-                <span class="aw-new-equip__base-unit">lb</span>
+                <span class="aw-new-equip__base-unit">${escapeHtml(unit)}</span>
             </div>
         </div>
-        ${locName ? `<div class="aw-new-equip__location-hint"><i class="fas fa-map-marker-alt"></i> Will be added to ${escapeHtml(locName)}</div>` : ''}
+        ${locName ? `<div class="aw-new-equip__location-hint"><i class="fas fa-map-marker-alt"></i> Adds to ${escapeHtml(locName)}</div>` : ''}
     `;
 
     openSheet({
-        title: 'New equipment',
-        subtitle: `For ${exName}`,
+        title: 'New machine',
+        subtitle: `For ${escapeHtml(exName)}`,
         body,
         actions: [
             { label: 'Cancel', onClick: `awOpenEquipmentSheet(${exerciseIdx})` },
-            { label: '<i class="fas fa-check"></i> Create & use', onClick: `awSaveNewEquipment(${exerciseIdx})`, primary: true },
+            { label: '<i class="fas fa-check"></i> Save & use', onClick: `awSaveNewEquipment(${exerciseIdx})`, primary: true },
         ],
     });
 
-    // Focus name input
-    setTimeout(() => document.getElementById('aw-new-equip-name')?.focus(), 300);
+    // Focus inside the tap's call stack so iOS actually raises the keyboard
+    // (a delayed focus() is ignored outside a user gesture). Naming the
+    // machine is the one place this flow needs typing — and when the name
+    // came over from the search, it doesn't: no keyboard, just Save.
+    if (!prefill) document.getElementById('aw-new-equip-name')?.focus({ preventScroll: true });
+}
+
+export function awNewEquipSetType(type) {
+    if (!NEW_EQUIP_TYPES.includes(type)) return;
+    _newEquipType = type;
+    document.querySelectorAll('#aw-new-equip-type .chip').forEach(btn => {
+        const on = btn.dataset.type === type;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-pressed', String(on));
+    });
+}
+
+export function awNewEquipKeydown(event, exerciseIdx) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    awSaveNewEquipment(exerciseIdx);
 }
 
 // Best-guess default equipment-type based on the exercise's name/category.
-// Used by the "New equipment" form so the user doesn't have to re-pick the chip.
+// Used by the "New machine" form so the user doesn't have to re-pick the chip.
 function guessEquipmentType(exercise) {
     const name = (exercise?.name || exercise?.machine || '').toLowerCase();
     const cat = (exercise?.category || '').toLowerCase();
@@ -3034,69 +3109,84 @@ function guessEquipmentType(exercise) {
 }
 
 export async function awSaveNewEquipment(exerciseIdx) {
+    if (_newEquipSaving) return;
     const nameInput = document.getElementById('aw-new-equip-name');
     const baseInput = document.getElementById('aw-new-equip-base');
-    const activeType = document.querySelector('#aw-new-equip-type .aw-sheet__chip.active');
 
     const name = nameInput?.value?.trim();
     if (!name) {
         nameInput?.classList.add('input-error');
         setTimeout(() => nameInput?.classList.remove('input-error'), 600);
-        // Inline error message so users know *why* the pulse happened.
-        let errEl = document.getElementById('aw-new-equip-name-error');
-        if (!errEl) {
-            errEl = document.createElement('div');
+        if (!document.getElementById('aw-new-equip-name-error')) {
+            const errEl = document.createElement('div');
             errEl.id = 'aw-new-equip-name-error';
             errEl.className = 'field__error';
-            errEl.textContent = 'Name required';
+            errEl.textContent = 'Add a name';
             nameInput?.parentElement?.appendChild(errEl);
         }
         nameInput?.focus();
         return;
     }
-    // Clear any existing error message on success
     document.getElementById('aw-new-equip-name-error')?.remove();
 
-    const equipType = activeType?.dataset?.type || 'Machine';
-    const baseWeight = parseFloat(baseInput?.value) || 0;
     const exercise = AppState.currentWorkout.exercises[exerciseIdx];
     const exName = getExerciseName(exercise);
     const sessionLoc = AppState.savedData?.location;
     const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+    const unit = AppState.exerciseUnits?.[exerciseIdx] || AppState.globalUnit || 'lbs';
+    const baseWeight = Math.max(0, parseFloat(baseInput?.value) || 0);
 
+    const saveBtn = document.querySelector('#aw-sheet .aw-sheet__action.primary');
+    _newEquipSaving = true;
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.setAttribute('aria-busy', 'true'); saveBtn.textContent = 'Saving…'; }
+
+    // saveEquipment nulls the shared cache; keep what we had so the new doc
+    // can be dropped straight in instead of re-reading every machine.
+    const prior = Array.isArray(AppState._cachedEquipment) ? AppState._cachedEquipment : [];
     try {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-        const workoutManager = new FirebaseWorkoutManager(AppState);
-
-        // Route through getOrCreateEquipment (exact + fuzzy dedup) instead of
-        // saveEquipment directly — this bare form was the app's prime duplication
-        // vector: typing a name that already existed minted a second doc. Now it
-        // reuses the existing record. The gym tag is applied idempotently after,
-        // so it lands whether the record was found or freshly created.
-        const eq = await workoutManager.getOrCreateEquipment(name, {
-            equipmentType: equipType,
+        const mgr = new FirebaseWorkoutManager(AppState);
+        // getOrCreateEquipment dedupes (exact + separator-insensitive), so a
+        // name you already own re-selects that machine instead of a twin.
+        // Gym + exercise are tagged at creation, in the same write.
+        const eq = await mgr.getOrCreateEquipment(name, {
+            equipmentType: _newEquipType || 'Machine',
             baseWeight,
-            baseWeightUnit: 'lb',
-        }, exName);
+            baseWeightUnit: unit,
+            ...(locName ? { locations: [locName] } : {}),
+            ...(exName ? { exerciseTypes: [exName] } : {}),
+        }, null);
         if (!eq) {
-            showNotification("Couldn't create equipment", 'error');
+            showNotification("Couldn't save — try again", 'error');
             return;
         }
-        if (locName) {
-            await workoutManager.addLocationToEquipment(eq.id, locName);
-            AppState._sessionMappedEquipment?.add(name);
+        const current = Array.isArray(AppState._cachedEquipment) ? AppState._cachedEquipment : prior;
+        const existed = current.some(e => e.id === eq.id) || prior.some(e => e.id === eq.id);
+        if (current.length === 0) {
+            AppState._cachedEquipment = await mgr.getUserEquipment();
+        } else if (!current.some(e => e.id === eq.id)) {
+            AppState._cachedEquipment = [...current, eq];
+        } else {
+            AppState._cachedEquipment = current;
         }
+        if (locName && !existed) AppState._sessionMappedEquipment?.add(eq.name);
 
-        // Reload the shared cache so the equipment line + sheet render the item
-        // under its real doc id.
-        AppState._cachedEquipment = await workoutManager.getUserEquipment();
-
-        // Select it for this exercise
-        awSelectEquipment(exerciseIdx, name, eq.id || null);
-        showNotification(`${name} created`, 'success');
+        equipSearchQuery = '';
+        await awSelectEquipment(exerciseIdx, eq.name, eq.id || null);
+        showNotification(
+            existed ? `Using ${eq.name}` : (locName ? `${eq.name} added to ${locName}` : `${eq.name} added`),
+            'success', 2500
+        );
     } catch (err) {
-        console.error('Error creating equipment:', err);
-        showNotification("Couldn't create equipment", 'error');
+        console.error('❌ Error creating equipment:', err);
+        showNotification("Couldn't save — try again", 'error');
+    } finally {
+        _newEquipSaving = false;
+        if (saveBtn?.isConnected) {
+            saveBtn.disabled = false;
+            saveBtn.removeAttribute('aria-busy');
+            saveBtn.innerHTML = '<i class="fas fa-check"></i> Save & use';
+        }
     }
 }
 
@@ -3339,7 +3429,7 @@ export function awInsertExercise(exerciseName) {
     AppState.savedData.exercises[`exercise_${idx}`] = { sets: [] };
 
     // Load autofill for the new exercise
-    loadAutofillForExercise(idx);
+    loadAutofillForExercise(idx, { reseed: true });
 
     debouncedSaveWorkoutData(AppState);
     awCloseSheet();
@@ -3984,9 +4074,26 @@ async function maybeLogEquipmentLeak({
     }
 }
 
-export async function loadAutofillForExercise(idx) {
+// Per-slot generation counter: a newer autofill for the same exercise slot
+// supersedes an older one still waiting on the network. Without it, quick
+// A→B→C taps let the last resolver own the card and the first own the rows.
+const _autofillGen = new Map();
+
+/**
+ * Load last-session history for one exercise and seed its set rows.
+ *
+ * `reseed` is for paths that CHANGE what the slot is (replace, add, switch
+ * machine): render has already padded blank rows by then, so every untouched
+ * row is replaced from the new history. Start/resume leave it off — there a
+ * row with numbers in it may be a program adjustment (deload scaling) that
+ * re-seeding from raw history would undo, so only all-blank rows get filled.
+ */
+export async function loadAutofillForExercise(idx, { reseed = false } = {}) {
     const exercise = AppState.currentWorkout.exercises[idx];
     if (!exercise) return;
+    const gen = (_autofillGen.get(idx) || 0) + 1;
+    _autofillGen.set(idx, gen);
+    const superseded = () => _autofillGen.get(idx) !== gen;
     const exName = getExerciseName(exercise);
     const key = `exercise_${idx}`;
     const savedEx = AppState.savedData?.exercises?.[key];
@@ -3996,6 +4103,7 @@ export async function loadAutofillForExercise(idx) {
     // overwrote whatever the user just chose — and on a reordered exercise it
     // could point to a machine that wasn't even at the current gym.
     const equipName = savedEx?.equipment || exercise.equipment || null;
+    const equipId = savedEx?.equipment ? (savedEx.equipmentId || null) : (exercise.equipmentId || null);
     // Location-aware autofill: prefer last-session matches at the current gym
     // so users on multiple gyms get the right numbers for "this exercise here".
     const sessionLoc = AppState.savedData?.location;
@@ -4011,6 +4119,7 @@ export async function loadAutofillForExercise(idx) {
             const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
             AppState._cachedEquipment = await new FirebaseWorkoutManager(AppState).getUserEquipment();
         } catch (e) { debugLog('equipment cache load failed', e); }
+        if (superseded()) return;
     }
 
     // Equipment-change call sites pass a stale `_lastSessionSets` from the
@@ -4021,6 +4130,9 @@ export async function loadAutofillForExercise(idx) {
     delete exercise._lastSessionDaysAgo;
     delete exercise._lastSessionEquipment;
     delete exercise._overloadNudge;
+    delete exercise._progression;
+    delete exercise._rotateSuggestion;
+    delete exercise._lastSessionOtherMachine;
     delete exercise._formVideoUrl;
 
     // Resolve the form video for this exercise+equipment combo so the hero
@@ -4035,9 +4147,15 @@ export async function loadAutofillForExercise(idx) {
     } catch {
         exercise._formVideoUrl = null;
     }
+    if (superseded()) return;
 
     try {
-        const lastSession = await getLastSessionDefaults(exName, equipName, locName);
+        const lastSession = await getLastSessionDefaults(exName, equipName, locName, equipId);
+        if (superseded()) return;
+        // History from a DIFFERENT machine stays on the card as a labelled
+        // reference ("from X") but never seeds the rows or a bump target —
+        // a new machine starts fresh (10/23: "for prefill, I'd just start fresh").
+        const sameMachine = historyFromSameMachine(equipName, equipId, lastSession);
         // Silent health check: if the surfaced last-session equipment
         // doesn't exist in the user's library, or came from an exercise
         // history record that never actually linked this equipment, that's
@@ -4058,6 +4176,7 @@ export async function loadAutofillForExercise(idx) {
             // Capture the source equipment so the card can show "from <other
             // machine>" when the strict-match-failed fallback fired.
             exercise._lastSessionEquipment = lastSession.equipment || null;
+            exercise._lastSessionOtherMachine = !sameMachine;
             // Calculate days ago from the date string (YYYY-MM-DD)
             if (lastSession.date) {
                 const sessionDate = new Date(lastSession.date + 'T12:00:00');
@@ -4066,138 +4185,135 @@ export async function loadAutofillForExercise(idx) {
                 exercise._lastSessionDaysAgo = Math.round((today - sessionDate) / (1000 * 60 * 60 * 24));
             }
 
-            // Smart overload nudge — multi-session progression coaching for the
-            // last-session card. Reads the cached workout log (cheap); a failure
-            // just leaves the simple last-session fallback in renderLastSessionCard.
-            try {
-                const allWorkouts = await loadAllWorkouts(AppState);
-                const nudgeUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
-                const sessions = buildExerciseSessions(allWorkouts, exName, nudgeUnit);
-                const repTarget = exercise.defaultReps || exercise.reps || null;
-                // Plate-aware jump: without 2.5s the smallest real barbell
-                // move is 10, not 5 — one increment feeds BOTH the advisory
-                // string and the seeded targets so they can never disagree.
-                const plates = nudgeUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs;
-                const progInc = weightIncrement(nudgeUnit, plates);
-                exercise._progressionInc = progInc;
-                exercise._overloadNudge = computeOverloadNudge(sessions, nudgeUnit, repTarget, progInc);
-                // 5.7.3 — structured target next to the advisory string: today's
-                // recommended weight/reps + a stall flag. The ↑ marker renders
-                // on the last-session card; the stall flag is read by the coach.
-                exercise._progression = progressionTarget(sessions, nudgeUnit, repTarget, progInc);
-                // CP-4 — stall rung 3 hands off to the variety engine: name
-                // the stalest same-pattern machine at this gym in the nudge.
-                // Equipment may not be cached yet; then the plain string stands.
-                if (exercise._progression?.rotate && Array.isArray(AppState._cachedEquipment)) {
-                    const sessionLoc = AppState.savedData?.location;
-                    const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
-                    const library = AppState.exerciseDatabase || [];
-                    const { swaps } = selectRotation({
-                        exercises: [{ machine: exName, role: 'accessory', equipment: AppState.savedData?.exercises?.[key]?.equipment || exercise.equipment }],
-                        equipment: AppState._cachedEquipment, location: locName || null,
-                        lookup: (n) => library.find(e => (e.name || e.machine) === n),
-                    });
-                    if (swaps[0]) {
-                        exercise._rotateSuggestion = swaps[0];
-                        exercise._overloadNudge = `${exercise._progression.weight} ${nudgeUnit} has had its run — swap in ${swaps[0].to} (${swaps[0].equipment}, ${swaps[0].reason})`;
+            // No progression target off another machine's numbers.
+            if (sameMachine) {
+                // Smart overload nudge — multi-session progression coaching for the
+                // last-session card. Reads the cached workout log (cheap); a failure
+                // just leaves the simple last-session fallback in renderLastSessionCard.
+                try {
+                    const allWorkouts = await loadAllWorkouts(AppState);
+                    const nudgeUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
+                    const sessions = buildExerciseSessions(allWorkouts, exName, nudgeUnit);
+                    const repTarget = exercise.defaultReps || exercise.reps || null;
+                    // Plate-aware jump: without 2.5s the smallest real barbell
+                    // move is 10, not 5 — one increment feeds BOTH the advisory
+                    // string and the seeded targets so they can never disagree.
+                    const plates = nudgeUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs;
+                    const progInc = weightIncrement(nudgeUnit, plates);
+                    exercise._progressionInc = progInc;
+                    exercise._overloadNudge = computeOverloadNudge(sessions, nudgeUnit, repTarget, progInc);
+                    // 5.7.3 — structured target next to the advisory string: today's
+                    // recommended weight/reps + a stall flag. The ↑ marker renders
+                    // on the last-session card; the stall flag is read by the coach.
+                    exercise._progression = progressionTarget(sessions, nudgeUnit, repTarget, progInc);
+                    // CP-4 — stall rung 3 hands off to the variety engine: name
+                    // the stalest same-pattern machine at this gym in the nudge.
+                    // Equipment may not be cached yet; then the plain string stands.
+                    if (exercise._progression?.rotate && Array.isArray(AppState._cachedEquipment)) {
+                        const sessionLoc = AppState.savedData?.location;
+                        const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
+                        const library = AppState.exerciseDatabase || [];
+                        const { swaps } = selectRotation({
+                            exercises: [{ machine: exName, role: 'accessory', equipment: AppState.savedData?.exercises?.[key]?.equipment || exercise.equipment }],
+                            equipment: AppState._cachedEquipment, location: locName || null,
+                            lookup: (n) => library.find(e => (e.name || e.machine) === n),
+                        });
+                        if (swaps[0]) {
+                            exercise._rotateSuggestion = swaps[0];
+                            exercise._overloadNudge = `${exercise._progression.weight} ${nudgeUnit} has had its run — swap in ${swaps[0].to} (${swaps[0].equipment}, ${swaps[0].reason})`;
+                        }
                     }
+                } catch (e) {
+                    debugLog('overload nudge failed', e);
                 }
-            } catch (e) {
-                debugLog('overload nudge failed', e);
             }
+            if (superseded()) return;
+        }
 
-            // Pre-fill saved data sets if not already filled
-            if (!AppState.savedData.exercises[key]) {
-                AppState.savedData.exercises[key] = { sets: [] };
-            }
-            const sx = AppState.savedData.exercises[key];
+        if (!AppState.savedData.exercises[key]) {
+            AppState.savedData.exercises[key] = { sets: [] };
+        }
+        const sx = AppState.savedData.exercises[key];
 
-            // Copy equipment from template ONLY if the user hasn't already
-            // chosen something. Overwriting sx.equipment unconditionally was
-            // the source of the "machines linked to exercises that don't have
-            // them" report after a reorder — autofill clobbered the user's
-            // pick with the template's default.
-            if (!sx.equipment && exercise.equipment) sx.equipment = exercise.equipment;
-            // If the user hasn't picked equipment AND there's no template
-            // default, but the last session at this gym used something, adopt
-            // that. Makes "no equipment set" workflows pull through cleanly.
-            // Only adopt history equipment that still resolves to a real
-            // library doc. An unresolvable name is exactly the "started as
-            // the wrong machine" leak: on 7/21 "Pec Deck" surfaced "Gymleco",
-            // which matched nothing in the library (missingFromLibrary), yet
-            // was written onto the exercise as though the user had picked it.
-            if (!sx.equipment && lastSession.equipment && lastSession.location === locName
-                && getEquipmentDoc(lastSession.equipment)) {
-                sx.equipment = lastSession.equipment;
-            }
-            if (exercise.group) sx.group = exercise.group;
+        // Copy equipment from template ONLY if the user hasn't already
+        // chosen something. Overwriting sx.equipment unconditionally was
+        // the source of the "machines linked to exercises that don't have
+        // them" report after a reorder — autofill clobbered the user's
+        // pick with the template's default.
+        if (!sx.equipment && exercise.equipment) sx.equipment = exercise.equipment;
+        // If the user hasn't picked equipment AND there's no template
+        // default, but the last session at this gym used something, adopt
+        // that. Makes "no equipment set" workflows pull through cleanly.
+        // Only adopt history equipment that still resolves to a real
+        // library doc. An unresolvable name is exactly the "started as
+        // the wrong machine" leak: on 7/21 "Pec Deck" surfaced "Gymleco",
+        // which matched nothing in the library (missingFromLibrary), yet
+        // was written onto the exercise as though the user had picked it.
+        if (!sx.equipment && lastSession?.equipment && lastSession.location === locName
+            && getEquipmentDoc(lastSession.equipment)) {
+            sx.equipment = lastSession.equipment;
+        }
+        if (exercise.group) sx.group = exercise.group;
 
-            if (!sx.sets || sx.sets.length === 0) {
-                // 5.7.3 — progression pre-fill: when a bump is EARNED (hit the
-                // rep target last session), suggest the progressed weight/reps
-                // instead of last session's numbers, flagged _suggested so the
-                // row shows a ↑. Only on an earned bump — hold/chase/consolidate
-                // keep last session's exact per-set values (never silently seed
-                // a number the user didn't earn). The suggestion is an editable
-                // placeholder, same as any autofill.
-                const prog = exercise._progression;
-                const bump = prog && prog.bumped && prog.weight > 0;
-                // CP-2 stall rung 2: the coach says drop and rebuild, so the
-                // reduced load IS the target — seed it. Rung 1 (chase a rep)
-                // and rung 3 (rotate) stay advice-only like hold/consolidate.
-                const backOff = prog && prog.backOff && prog.weight > 0;
-                const progUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
-                const bumpInc = exercise._progressionInc || (progUnit === 'kg' ? 2.5 : 5);
-                // The bump is RELATIVE to each set's own last weight so a ramp
-                // keeps its shape (135/155/175 → +inc each, never a flat top
-                // weight across all sets). Warmups and unweighted sets are
-                // left exactly as last time. Back-off scales each set the
-                // same way, snapped to loadable plate jumps.
-                sx.sets = lastSession.sets.map(s => {
-                    const weighted = s.weight > 0 && (s.type || 'working') !== 'warmup';
-                    const bumpThis = bump && weighted;
-                    const backThis = !bumpThis && backOff && weighted;
-                    const lastW = weighted ? convertWeight(s.weight, s.originalUnit || 'lbs', progUnit) : 0;
-                    const weight = bumpThis
-                        ? Math.round((lastW + bumpInc) * 10) / 10
-                        : backThis
-                            ? scaleLoadableWeight(lastW, 0.9, bumpInc)
-                            : ((s.weight && s.weight > 0) ? s.weight : null);
-                    // A source set that recorded its plate load comes back
-                    // plate-relative (getLastSessionDefaults), so the seeded
-                    // number IS plates. Say so on the new set: completion keys
-                    // on _plateWeight to skip the "untouched autofill is a
-                    // total, subtract the base" correction — without it, 270
-                    // seeded on a 90 lb machine logged as 180 + 90.
-                    const platesKnown = typeof s._plateWeight === 'number' && s._equipBaseWeight > 0;
-                    return {
-                        weight,
-                        reps: bumpThis && prog.reps ? prog.reps : ((s.reps && s.reps > 0) ? s.reps : null),
-                        completed: false,
-                        originalUnit: (bumpThis || backThis) ? progUnit : (s.originalUnit || AppState.globalUnit || 'lbs'),
-                        ...((bumpThis || backThis) ? { _suggested: true } : {}),
-                        ...((platesKnown && weight != null) ? { _plateWeight: weight } : {}),
-                    };
-                });
-            }
-        } else {
-            // No last session — initialize empty sets from template defaults
-            if (!AppState.savedData.exercises[key]) {
-                AppState.savedData.exercises[key] = { sets: [] };
-            }
-            const sx = AppState.savedData.exercises[key];
-            // Same as the lastSession branch: preserve user-picked equipment.
-            if (!sx.equipment && exercise.equipment) sx.equipment = exercise.equipment;
-            if (exercise.group) sx.group = exercise.group;
-
-            if (!sx.sets || sx.sets.length === 0) {
-                const targetSets = exercise.sets || 3;
-                sx.sets = Array.from({ length: targetSets }, () => ({
-                    weight: exercise.defaultWeight || null,
-                    reps: exercise.defaultReps || null,
+        let seeded;
+        if (lastSession && lastSession.sets && sameMachine) {
+            // 5.7.3 — progression pre-fill: when a bump is EARNED (hit the
+            // rep target last session), suggest the progressed weight/reps
+            // instead of last session's numbers, flagged _suggested so the
+            // row shows a ↑. Only on an earned bump — hold/chase/consolidate
+            // keep last session's exact per-set values (never silently seed
+            // a number the user didn't earn). The suggestion is an editable
+            // placeholder, same as any autofill.
+            const prog = exercise._progression;
+            const bump = prog && prog.bumped && prog.weight > 0;
+            // CP-2 stall rung 2: the coach says drop and rebuild, so the
+            // reduced load IS the target — seed it. Rung 1 (chase a rep)
+            // and rung 3 (rotate) stay advice-only like hold/consolidate.
+            const backOff = prog && prog.backOff && prog.weight > 0;
+            const progUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
+            const bumpInc = exercise._progressionInc || (progUnit === 'kg' ? 2.5 : 5);
+            // The bump is RELATIVE to each set's own last weight so a ramp
+            // keeps its shape (135/155/175 → +inc each, never a flat top
+            // weight across all sets). Warmups and unweighted sets are
+            // left exactly as last time. Back-off scales each set the
+            // same way, snapped to loadable plate jumps.
+            seeded = lastSession.sets.map(s => {
+                const weighted = s.weight > 0 && (s.type || 'working') !== 'warmup';
+                const bumpThis = bump && weighted;
+                const backThis = !bumpThis && backOff && weighted;
+                const lastW = weighted ? convertWeight(s.weight, s.originalUnit || 'lbs', progUnit) : 0;
+                const weight = bumpThis
+                    ? Math.round((lastW + bumpInc) * 10) / 10
+                    : backThis
+                        ? scaleLoadableWeight(lastW, 0.9, bumpInc)
+                        : ((s.weight && s.weight > 0) ? s.weight : null);
+                // A source set that recorded its plate load comes back
+                // plate-relative (getLastSessionDefaults), so the seeded
+                // number IS plates. Say so on the new set: completion keys
+                // on _plateWeight to skip the "untouched autofill is a
+                // total, subtract the base" correction — without it, 270
+                // seeded on a 90 lb machine logged as 180 + 90.
+                const platesKnown = typeof s._plateWeight === 'number' && s._equipBaseWeight > 0;
+                return {
+                    weight,
+                    reps: bumpThis && prog.reps ? prog.reps : ((s.reps && s.reps > 0) ? s.reps : null),
                     completed: false,
-                }));
-            }
+                    originalUnit: (bumpThis || backThis) ? progUnit : (s.originalUnit || AppState.globalUnit || 'lbs'),
+                    ...((bumpThis || backThis) ? { _suggested: true } : {}),
+                    ...((platesKnown && weight != null) ? { _plateWeight: weight } : {}),
+                };
+            });
+        } else {
+            // No history on this machine — start fresh from template defaults.
+            const targetSets = exercise.sets || 3;
+            seeded = Array.from({ length: targetSets }, () => ({
+                weight: exercise.defaultWeight || null,
+                reps: exercise.defaultReps || null,
+                completed: false,
+            }));
+        }
+        if (reseed || (sx.sets || []).every(isBlankSet)) {
+            sx.sets = mergeSeededSets(sx.sets, seeded);
         }
     } catch (err) {
         debugLog('Autofill failed for', exName, err);
@@ -4307,6 +4423,10 @@ window.awSharedEquipFastPath = awSharedEquipFastPath;
 window.awPickSuggestedMachine = awPickSuggestedMachine;
 window.awAddCatalogMachine = awAddCatalogMachine;
 window.awCreateEquipmentFromSearch = awCreateEquipmentFromSearch;
+window.awQuickAddEquipment = awQuickAddEquipment;
+window.awSaveNewEquipment = awSaveNewEquipment;
+window.awNewEquipSetType = awNewEquipSetType;
+window.awNewEquipKeydown = awNewEquipKeydown;
 window.awSharedAddCatalogMachine = awSharedAddCatalogMachine;
 window.awSharedCreateEquipmentFromSearch = awSharedCreateEquipmentFromSearch;
 window.awQuickEditEquipment = awQuickEditEquipment;

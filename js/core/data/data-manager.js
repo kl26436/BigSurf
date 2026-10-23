@@ -229,10 +229,10 @@ export function clearLastSessionCache() {
  * Matches by exercise name AND equipment to get equipment-specific history.
  * Returns { sets, date } from the last session, or null if no history.
  */
-export async function getLastSessionDefaults(exerciseName, equipment = null, location = null) {
+export async function getLastSessionDefaults(exerciseName, equipment = null, location = null, equipmentId = null) {
     if (!exerciseName) return null;
 
-    const cacheKey = `${exerciseName}__${equipment || ''}__${location || ''}`;
+    const cacheKey = `${exerciseName}__${equipment || ''}__${location || ''}__${equipmentId || ''}`;
     if (_lastSessionCache[cacheKey] !== undefined) return _lastSessionCache[cacheKey];
 
     const state = (await import('../utils/app-state.js')).AppState;
@@ -251,6 +251,7 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
 
         const today = state.getTodayDateString();
         const locLC = (location || '').toLowerCase();
+        const equipLC = (equipment || '').trim().toLowerCase();
 
         // Tiered match preference (most → least specific):
         //   1. same exercise + same equipment + same location  → exact
@@ -297,7 +298,13 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
                 const exEquipment = exData.equipment
                     || (originalNameMatches ? originalAtIdx?.equipment : null)
                     || null;
-                const equipMatches = !!equipment && !!exEquipment && equipment === exEquipment;
+                // Id first (survives a quick-edit rename), then name ignoring
+                // case/whitespace — "same machine" must not hinge on spelling.
+                const exEquipmentId = exData.equipmentId
+                    || (originalNameMatches ? originalAtIdx?.equipmentId : null)
+                    || null;
+                const equipMatches = (!!equipmentId && exEquipmentId === equipmentId)
+                    || (!!equipLC && !!exEquipment && exEquipment.trim().toLowerCase() === equipLC);
 
                 const result = {
                     // Weights come back as the number the user TYPED. On a
@@ -314,6 +321,7 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
                     // can show "from <equipment>" when this is a fallback
                     // (different equipment than the user's current selection).
                     equipment: exEquipment,
+                    equipmentId: exEquipmentId,
                     location: wLoc || null,
                 };
 
