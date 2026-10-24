@@ -66,7 +66,37 @@ export function generateWorkoutId(date) {
     return `${date}_${timestamp}_${random}`;
 }
 
+// AP-15i — saves still in flight. completeWorkout fires its save without
+// awaiting (the summary shouldn't wait on Firestore), so a reader that must
+// see the just-finished session — the coach's "Review this session" — waits
+// here first instead of reading history the write hasn't reached yet.
+const _inflightSaves = new Set();
+
 export async function saveWorkoutData(state) {
+    const p = writeWorkoutData(state);
+    _inflightSaves.add(p);
+    try {
+        return await p;
+    } finally {
+        _inflightSaves.delete(p);
+    }
+}
+
+/**
+ * Resolve once every in-flight saveWorkoutData has settled (or after
+ * `timeoutMs` — a stuck write must not hang the caller).
+ */
+export async function settleWorkoutSaves(timeoutMs = 6000) {
+    if (_inflightSaves.size === 0) return;
+    let timer;
+    await Promise.race([
+        Promise.allSettled([..._inflightSaves]),
+        new Promise((resolve) => { timer = setTimeout(resolve, timeoutMs); }),
+    ]);
+    clearTimeout(timer);
+}
+
+async function writeWorkoutData(state) {
     if (!state.currentUser) return;
 
     // Ensure proper date handling to prevent timezone issues
@@ -891,8 +921,16 @@ let _allWorkoutsCache = null;
 // Shape: { uid: string, fetchedAt: number, data: Workout[] }
 const ALL_WORKOUTS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes — re-fetch if user lingers across that boundary
 
+// Bumped on every invalidation. A load that STARTED before an invalidation
+// must not store its result: the completion summary's history read can begin
+// while the finish-save is in flight and resolve after the save cleared the
+// cache — which re-pinned pre-workout history for five minutes, so the
+// coach's session review answered "no Push session logged today" (AP-15i).
+let _allWorkoutsGen = 0;
+
 export function clearAllWorkoutsCache() {
     _allWorkoutsCache = null;
+    _allWorkoutsGen += 1;
 }
 
 export async function loadAllWorkouts(state) {
@@ -906,6 +944,7 @@ export async function loadAllWorkouts(state) {
     ) {
         return _allWorkoutsCache.data;
     }
+    const gen = _allWorkoutsGen;
     try {
         const workoutsRef = collection(db, 'users', uid, 'workouts');
         const q = query(workoutsRef, orderBy('date', 'desc'));
@@ -915,7 +954,7 @@ export async function loadAllWorkouts(state) {
             const data = { id: docSnap.id, ...docSnap.data() };
             if (data.completedAt && !data.cancelledAt) workouts.push(data);
         });
-        _allWorkoutsCache = { uid, fetchedAt: now, data: workouts };
+        if (gen === _allWorkoutsGen) _allWorkoutsCache = { uid, fetchedAt: now, data: workouts };
         return workouts;
     } catch (error) {
         console.error('❌ Error loading all workouts:', error);

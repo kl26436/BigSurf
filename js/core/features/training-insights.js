@@ -6,7 +6,12 @@ import { AppState } from '../utils/app-state.js';
 import { Config } from '../utils/config.js';
 import { formatBodyPart } from '../utils/workout-helpers.js';
 import { buildExerciseSessions, stallState, scaleLoadableWeight, weightIncrement } from './progression.js';
-import { isRecoveryWorkout } from './session-intent.js';
+import {
+    getBodyPartForExercise, workoutTonnage, getISOWeekKey,
+    analyzeWeeklyVolume as rulesWeeklyVolume,
+    averageWeeklyVolume as rulesAverageVolume,
+    checkDeloadNeeded as rulesCheckDeload,
+} from './training-rules.js';
 
 /**
  * Iterate a workout's exercises with `name` resolved from the workout-level
@@ -45,130 +50,20 @@ function currentDisplayUnit() {
 }
 
 // ===================================================================
-// BODY PART MAPPING
+// BODY PART MAPPING + WEEKLY VOLUME (AP-16: pure rules in training-rules.js)
 // ===================================================================
 
-/**
- * Map exercise name to body part using the exercise database.
- * Falls back to keyword matching if not found in database.
- */
-export function getBodyPartForExercise(exerciseName, exerciseDatabase) {
-    if (!exerciseName) return null;
+// The algorithms live in training-rules.js (mirrored to functions/ so the
+// coach's server-side verdicts run the same math); these wrappers keep the
+// existing API and feed in the runtime Config thresholds.
+export { getBodyPartForExercise, workoutTonnage, getISOWeekKey };
 
-    // Check database first
-    if (exerciseDatabase && exerciseDatabase.length > 0) {
-        const match = exerciseDatabase.find(
-            ex => (ex.name || ex.machine || '').toLowerCase() === exerciseName.toLowerCase()
-        );
-        if (match && match.bodyPart) return match.bodyPart;
-    }
-
-    // Keyword fallback
-    const name = exerciseName.toLowerCase();
-    if (name.includes('bench') || name.includes('chest') || name.includes('fly') || name.includes('pec')) return 'Chest';
-    if (name.includes('row') || name.includes('pull') || name.includes('lat') || name.includes('back')) return 'Back';
-    if (name.includes('shoulder') || name.includes('press') || name.includes('delt') || name.includes('lateral raise')) return 'Shoulders';
-    if (name.includes('squat') || name.includes('leg') || name.includes('lunge') || name.includes('hamstring') || name.includes('quad') || name.includes('calf')) return 'Legs';
-    if (name.includes('bicep') || name.includes('curl') || name.includes('tricep') || name.includes('arm') || name.includes('extension')) return 'Arms';
-    if (name.includes('core') || name.includes('ab') || name.includes('crunch') || name.includes('plank')) return 'Core';
-    if (name.includes('deadlift')) return 'Back';
-    if (name.includes('glute') || name.includes('hip thrust')) return 'Glutes';
-
-    return null;
-}
-
-// ===================================================================
-// WEEKLY VOLUME ANALYSIS
-// ===================================================================
-
-/**
- * Calculate weekly volume (working sets) per muscle group from recent workouts.
- * Compare against evidence-based landmarks:
- * - Minimum Effective Volume (MEV): ~6-8 sets/muscle/week
- * - Maximum Recoverable Volume (MRV): ~15-25 sets/muscle/week
- * - Sweet spot for most: 10-20 sets/muscle/week
- *
- * AP-15a — the count is divided by `weeks`, the number of weeks the input
- * window spans. Callers that pass one week (dashboard, governor) leave it at
- * 1; the coach passes 28 days and weeks:4. Before this the coach summed four
- * weeks and labelled it "weekly", so 12 real chest sets/week read as 48
- * (high) against MRV 22 — phantom overtraining.
- *
- * @param {Array} workouts - Completed workouts inside the window
- * @param {Array} exerciseDatabase - Exercise library with bodyPart fields
- * @param {{weeks?: number}} [opts] - weeks the window spans (default 1)
- * @returns {Array<{bodyPart:string, totalSets:number, weeks:number,
- *   avgWeeklySets:number, weeklySets:number, status:string, recommendation:string|null}>}
- *   `weeklySets` is kept as an alias of `avgWeeklySets` for existing callers.
- */
 export function analyzeWeeklyVolume(workouts, exerciseDatabase, { weeks = 1 } = {}) {
-    const span = Number(weeks) > 0 ? Number(weeks) : 1;
-    const volumeByPart = {};
-
-    for (const workout of workouts) {
-        if (!workout.exercises) continue;
-
-        for (const exercise of withResolvedNames(workout)) {
-            const bodyPart = exercise.bodyPart || getBodyPartForExercise(exercise.name, exerciseDatabase);
-            if (!bodyPart) continue;
-
-            const completedSets = (exercise.sets || []).filter(s =>
-                s.completed !== false && (s.type || 'working') !== 'warmup'
-            ).length;
-
-            volumeByPart[bodyPart] = (volumeByPart[bodyPart] || 0) + completedSets;
-        }
-    }
-
-    return Object.entries(volumeByPart).map(([part, totalSets]) => {
-        const avg = Math.round((totalSets / span) * 10) / 10;
-        return {
-            bodyPart: part,
-            totalSets,
-            weeks: span,
-            avgWeeklySets: avg,
-            weeklySets: avg,
-            status: avg < Config.VOLUME_MEV ? 'low' : avg > Config.VOLUME_MRV ? 'high' : 'good',
-            recommendation: avg < Config.VOLUME_MEV
-                ? `Add ${Math.ceil(Config.VOLUME_MEV - avg)} more this week`
-                : avg > Config.VOLUME_MRV
-                    ? `Consider reducing ${part} volume to aid recovery`
-                    : null,
-        };
-    });
+    return rulesWeeklyVolume(workouts, exerciseDatabase, { weeks, mev: Config.VOLUME_MEV, mrv: Config.VOLUME_MRV });
 }
 
-const shiftDay = (dateStr, days) => {
-    const d = new Date(`${dateStr}T12:00:00`);
-    d.setDate(d.getDate() + days);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-/**
- * AP-15a — true per-week average volume over the last `days` days (default
- * 28) ending `today`. Shared by the coach's chat context and its prompt
- * cards so both say the same number. When the user's history starts inside
- * the window, the divisor is the weeks actually covered (rounded up, never
- * below 1) — a two-week-old account isn't averaged over four.
- *
- * @param {Array} allWorkouts - workout history (any order; cancelled skipped)
- * @param {Array} exerciseDatabase
- * @param {{today: string, days?: number}} opts - today = YYYY-MM-DD
- * @returns {{weeks:number, days:number, volume:Array}} volume = analyzeWeeklyVolume rows
- */
 export function averageWeeklyVolume(allWorkouts, exerciseDatabase, { today, days = 28 } = {}) {
-    const valid = (allWorkouts || []).filter(w => w?.date && !w.cancelledAt && (!today || w.date <= today));
-    if (!today || valid.length === 0) return { weeks: 1, days, volume: [] };
-    const cutoff = shiftDay(today, -(days - 1));
-    const inWindow = valid.filter(w => w.date >= cutoff);
-    const first = valid.reduce((min, w) => (w.date < min ? w.date : min), valid[0].date);
-    const maxWeeks = Math.max(1, Math.round(days / 7));
-    let weeks = maxWeeks;
-    if (first > cutoff) {
-        const covered = Math.round((new Date(`${today}T12:00:00`) - new Date(`${first}T12:00:00`)) / 86400000) + 1;
-        weeks = Math.min(maxWeeks, Math.max(1, Math.ceil(covered / 7)));
-    }
-    return { weeks, days, volume: analyzeWeeklyVolume(inWindow, exerciseDatabase, { weeks }) };
+    return rulesAverageVolume(allWorkouts, exerciseDatabase, { today, days, mev: Config.VOLUME_MEV, mrv: Config.VOLUME_MRV });
 }
 
 // ===================================================================
@@ -220,115 +115,19 @@ export function detectPlateaus(workouts, minSessions = Config.PLATEAU_MIN_SESSIO
 }
 
 // ===================================================================
-// DELOAD DETECTION
+// DELOAD DETECTION (AP-16: pure rule in training-rules.js)
 // ===================================================================
 
 /**
- * Sum of weight × reps over completed working sets, unit-normalized so a
- * kg-logged session compares honestly with an lbs one. Used only as a ratio
- * between weeks, so the unit itself doesn't matter — just consistency.
- */
-export function workoutTonnage(workout) {
-    let total = 0;
-    for (const exercise of withResolvedNames(workout)) {
-        for (const set of exercise.sets || []) {
-            if (!set || set.completed === false || (set.type || 'working') === 'warmup') continue;
-            const reps = Number(set.reps) || 0;
-            if (reps <= 0) continue;
-            total += normalizedWeight(set, 'lbs') * reps;
-        }
-    }
-    return total;
-}
-
-/**
- * If user has trained 5+ days/week for 4+ consecutive weeks,
- * suggest a deload week.
- *
- * A "hard week" was historically 5+ unique training days and nothing else, so
- * a deload trained at full frequency and −35% load counted as hard and the
- * dashboard kept asking for a deload mid-deload (CP-0). A week is now a
- * recovery week — and resets the counter — when any of its sessions carries a
- * deload/recovery `sessionLabel` (written when a session starts from a program
- * adjustment) or when a full-frequency week's tonnage falls
- * `DELOAD_TONNAGE_DROP` below the trailing three-week mean.
- *
- * @param {Array} workouts - Recent completed workouts (6+ weeks)
+ * If user has trained 5+ days/week for 4+ consecutive weeks, suggest a
+ * deload week — see training-rules.js#checkDeloadNeeded for the recovery-week
+ * rules. Runs on the live Config thresholds.
  * @returns {{ needed: boolean, consecutiveHardWeeks: number, inRecoveryWeek: boolean } | null}
  */
 export function checkDeloadNeeded(workouts) {
-    if (!workouts || workouts.length === 0) return null;
-
-    // Group workouts by ISO week
-    const weekMap = {};
-
-    for (const workout of workouts) {
-        if (!workout.date) continue;
-        const weekKey = getISOWeekKey(workout.date);
-        if (!weekMap[weekKey]) weekMap[weekKey] = { days: new Set(), tonnage: 0, labelled: false };
-        const wk = weekMap[weekKey];
-        wk.days.add(workout.date);
-        wk.tonnage += workoutTonnage(workout);
-        if (isRecoveryWorkout(workout)) wk.labelled = true;
-    }
-
-    // Sort weeks newest first
-    const sortedWeeks = Object.entries(weekMap)
-        .sort((a, b) => b[0].localeCompare(a[0]))
-        .map(([, wk]) => wk);
-
-    const isRecoveryWeek = (i) => {
-        const wk = sortedWeeks[i];
-        if (wk.labelled) return true;
-        // Tonnage rule only for full-frequency weeks: a partial current week
-        // (Monday, one session) is low-tonnage for a different reason and the
-        // day-count rule already handles it.
-        if (wk.days.size < Config.DELOAD_DAYS_PER_WEEK || wk.tonnage <= 0) return false;
-        const prior = sortedWeeks.slice(i + 1, i + 4).filter(p => p.tonnage > 0);
-        if (prior.length < 2) return false;
-        const mean = prior.reduce((s, p) => s + p.tonnage, 0) / prior.length;
-        return wk.tonnage < mean * (1 - Config.DELOAD_TONNAGE_DROP);
-    };
-
-    // Count consecutive hard weeks, newest first; a recovery week ends the run.
-    let consecutiveHardWeeks = 0;
-    let inRecoveryWeek = false;
-    for (let i = 0; i < sortedWeeks.length; i++) {
-        if (isRecoveryWeek(i)) {
-            if (i === 0) inRecoveryWeek = true;
-            break;
-        }
-        if (sortedWeeks[i].days.size >= Config.DELOAD_DAYS_PER_WEEK) {
-            consecutiveHardWeeks++;
-        } else {
-            break;
-        }
-    }
-
-    return {
-        needed: consecutiveHardWeeks >= Config.DELOAD_CONSECUTIVE_WEEKS,
-        consecutiveHardWeeks,
-        inRecoveryWeek,
-    };
-}
-
-/**
- * Get ISO week key (YYYY-WXX) for a date string.
- */
-export function getISOWeekKey(dateStr) {
-    const parts = dateStr.split('-');
-    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-    // ISO week calculation
-    const temp = new Date(d.valueOf());
-    const dayNum = (d.getDay() + 6) % 7;
-    temp.setDate(temp.getDate() - dayNum + 3);
-    const firstThursday = temp.valueOf();
-    temp.setMonth(0, 1);
-    if (temp.getDay() !== 4) {
-        temp.setMonth(0, 1 + ((4 - temp.getDay()) + 7) % 7);
-    }
-    const weekNum = 1 + Math.ceil((firstThursday - temp) / 604800000);
-    return `${temp.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+    const unit = currentDisplayUnit();
+    const inc = weightIncrement(unit, unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs);
+    return rulesCheckDeload(workouts, Config, { unit, inc });
 }
 
 // ===================================================================
@@ -478,6 +277,29 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase, { 
             icon: 'fa-bed',
             message: `You've trained hard for ${deload.consecutiveHardWeeks} weeks straight. Consider a deload week — reduce volume 40-50%.`,
         });
+    }
+
+    // 1b. AP-22 — leading fatigue signs: effort climbing at the same load,
+    // or a run of low readiness check-ins. Advisory (phase 1): the targets
+    // don't change; the dashboard just says it before the reps drop.
+    if (deload && !inDeload) {
+        const f = deload.fatigue?.[0];
+        if (f) {
+            insights.push({
+                type: 'fatigue',
+                severity: 'warning',
+                icon: 'fa-gauge-high',
+                message: `Effort creeping on ${f.exercise} at ${f.load} ${currentDisplayUnit()} — consider pulling the deload forward.`,
+                exerciseName: f.exercise,
+            });
+        } else if (deload.readinessLow) {
+            insights.push({
+                type: 'readiness',
+                severity: 'warning',
+                icon: 'fa-battery-quarter',
+                message: 'Readiness has been low across recent check-ins — go lighter today or pull the deload forward.',
+            });
+        }
     }
 
     // 2. Volume warnings (low volume)

@@ -30,6 +30,8 @@ import {
 import { analyzeWeeklyVolume } from '../features/training-insights.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
 import { chartLine } from '../features/charts/chart-line.js';
+import { buildScoreboard } from '../features/progress-scoreboard.js';
+import { weightIncrement } from '../features/progression.js';
 
 // ===================================================================
 // CONSTANTS
@@ -191,6 +193,7 @@ async function renderDashboard() {
                 ${renderProgramCompleteBanner(allWorkouts)}
                 ${renderForToday(allWorkouts)}
                 ${renderTodayPRBanner(recentPRs)}
+                ${renderScoreboardCard(allWorkouts)}
                 ${renderThisWeekCard(allWorkouts, recentPRs, todaysPRKeys, topInsight)}
                 ${await renderBodyCard(bwData)}
             `;
@@ -1049,7 +1052,12 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
             }
         }
 
-        if (low) {
+        // AP-22 — a leading fatigue sign outranks a volume gap: it's the
+        // one that says "back off" before the numbers do.
+        if (topInsight?.type === 'fatigue' || topInsight?.type === 'readiness') {
+            headline = topInsight.message;
+            headIcon = topInsight.icon;
+        } else if (low) {
             headline = `${capitalize(low.bodyPart)} is low — ${low.weeklySets} set${low.weeklySets === 1 ? '' : 's'} in the last 7 days`;
             headIcon = 'fa-exclamation-triangle';
         } else if (topInsight?.message && !coachChip) {
@@ -1070,6 +1078,103 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
         <div class="dash-week-card">${rows.join('')}</div>
         ${coachChip}
     `;
+}
+
+// ===================================================================
+// MAIN LIFTS SCOREBOARD (AP-21) — "am I progressing?" in one glance
+// ===================================================================
+
+const SB_TREND_ICON = {
+    up: 'fa-caret-up', down: 'fa-caret-down', flat: 'fa-equals', new: 'fa-seedling', idle: 'fa-pause',
+};
+const SB_TREND_LABEL = {
+    up: 'Up', down: 'Down', flat: 'Holding', new: 'New this month', idle: 'Not trained in 4 weeks',
+};
+const SB_PATTERN_CHIP = { under: 'low', 'in-range': 'good', over: 'high', recovery: 'muted' };
+
+/**
+ * Best estimated 1RM per main lift, this 4-week window vs the one before
+ * (progress-scoreboard.js — the coach and the weekly review quote the same
+ * object). Placed under For Today: the hero stays the page's one primary
+ * action; this card is the answer to "is it working?".
+ */
+function renderScoreboardCard(allWorkouts) {
+    const unit = AppState.globalUnit || 'lbs';
+    let sb;
+    try {
+        const plates = unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs;
+        const templates = (AppState.templates && AppState.templates.length) ? AppState.templates : (AppState.workoutPlans || []);
+        sb = buildScoreboard({
+            workouts: allWorkouts,
+            templates,
+            unit,
+            today: AppState.getTodayDateString(),
+            config: { patternTarget: Config.PATTERN_TARGET_SETS, mrv: Config.VOLUME_MRV, increment: weightIncrement(unit, plates) },
+        });
+    } catch (e) {
+        debugLog('scoreboard failed', e);
+        return '';
+    }
+
+    const head = `
+        <div class="dash-section-head">
+            <h3>Main lifts</h3>
+            <a onclick="openPrimaryLiftsSheet()">Edit</a>
+        </div>`;
+
+    if (!sb.primaries.length) {
+        return `${head}
+            <div class="dash-week-card">
+                <div class="sb-card__empty">
+                    <b>No main-lift trend yet</b>
+                    Log your compound lifts for a few weeks and the 4-week trend shows up here.
+                </div>
+            </div>`;
+    }
+
+    const rows = sb.primaries.map((p) => {
+        const trend = p.trend || 'idle';
+        const value = p.e1rmNow ?? p.e1rmPrev;
+        let deltaStr = '±0';
+        if (p.delta > 0) deltaStr = `+${p.delta}`;
+        else if (p.delta < 0) deltaStr = `−${Math.abs(p.delta)}`;
+        const delta = (trend === 'up' || trend === 'down' || trend === 'flat') && p.delta != null
+            ? `<span class="sb-row__delta sb-row__delta--${trend}">${deltaStr}</span>`
+            : '';
+        const chips = [
+            p.repPR ? `<span class="vol-chip vol-chip--pr" aria-label="Rep PR ${p.repPR.weight} by ${p.repPR.reps}">Rep PR ${p.repPR.weight}×${p.repPR.reps}</span>` : '',
+            p.rung > 0 ? `<span class="vol-chip vol-chip--rung" aria-label="Stalled, rung ${p.rung}">Stall ${p.rung}</span>` : '',
+            // AP-22 — effort climbing at the same load: a leading fatigue sign.
+            p.fatigue ? `<span class="vol-chip vol-chip--rung" aria-label="${escapeAttr(`Effort rising: ${p.fatigue}`)}">Effort ↑</span>` : '',
+        ].join('');
+        const valueStr = value != null ? `${value} ${unit}` : '—';
+        return `
+            <div class="dash-week-row sb-row" onclick="showExerciseDetail('${escapeAttr(p.name)}')" role="button" tabindex="0"
+                 aria-label="${escapeAttr(`${p.name}: ${SB_TREND_LABEL[trend]}, estimated max ${valueStr}`)}">
+                <i class="fas ${SB_TREND_ICON[trend]} sb-row__trend sb-row__trend--${trend}" aria-hidden="true"></i>
+                <div class="dash-week-row__txt"><b>${escapeHtml(p.name)}</b> · ${valueStr}${delta}${chips}</div>
+                <i class="fas fa-chevron-right dash-chev"></i>
+            </div>`;
+    }).join('');
+
+    const patterns = sb.patterns.map(pt => `
+        <span class="vol-chip vol-chip--${SB_PATTERN_CHIP[pt.status] || 'muted'}"
+              aria-label="${escapeAttr(`${pt.label}: ${pt.setsThisWeek} sets in the last 7 days`)}">${escapeHtml(pt.label)} ${pt.setsThisWeek}</span>`).join('');
+
+    const debug = Config.DEBUG_MODE
+        ? `<div class="sb-card__debug">now ${sb.window.from}→${sb.window.to} · prev ${sb.window.prevFrom}→${sb.window.prevTo}</div>`
+        : '';
+
+    return `${head}
+        <div class="dash-week-card">
+            <div class="sb-card__headline sb-card__headline--${sb.headlineKind}">
+                ${escapeHtml(sb.headline)}
+                <span class="sb-card__sub">Best estimated 1RM, last 4 weeks vs the 4 before</span>
+            </div>
+            ${rows}
+            <div class="sb-patterns" aria-label="Sets per movement pattern, last 7 days">${patterns}</div>
+            ${debug}
+        </div>`;
 }
 
 // ===================================================================

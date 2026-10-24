@@ -7,8 +7,10 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-// progression.js imports convertWeight from ui-helpers (DOM-heavy at import) —
-// mock it with the real math so the REAL module is under test.
+// progression.js no longer imports ui-helpers (AP-16: it is mirrored to
+// functions/, so it inlines convertWeight's rules on the mirrored converter).
+// weight-calculations.js still does, for the parity block at the bottom —
+// mock it with ui-helpers' real math (DOM-heavy at import).
 vi.mock('../../js/core/ui/ui-helpers.js', () => ({
     convertWeight: (weight, fromUnit, toUnit) => {
         if (!weight || isNaN(weight) || weight <= 0 || weight > 1000) return 0;
@@ -194,5 +196,28 @@ describe('buildExerciseSessions — recovery sessions', () => {
 
     it('can include them on request', () => {
         expect(buildExerciseSessions(history, 'Bench Press', 'lbs', { excludeRecovery: false })).toHaveLength(3);
+    });
+});
+
+describe('mirror-safe helpers match the app originals (AP-16)', () => {
+    it('plate-relative sessions read the typed plates, same as weight-calculations#plateRelativeWeight', async () => {
+        const { plateRelativeWeight } = await import('../../js/core/utils/weight-calculations.js');
+        const s1 = { weight: 270, _plateWeight: 180, _equipBaseWeight: 90, reps: 8, originalUnit: 'lbs' };
+        const s2 = { weight: 200, reps: 8, originalUnit: 'lbs' };
+        const history = [
+            { date: '2026-10-01', completedAt: 'x', exerciseNames: { e0: 'Leg Press' }, exercises: { e0: { sets: [s1] } } },
+            { date: '2026-10-08', completedAt: 'x', exerciseNames: { e0: 'Leg Press' }, exercises: { e0: { sets: [s2] } } },
+        ];
+        const sessions = buildExerciseSessions(history, 'Leg Press', 'lbs');
+        expect(sessions.map(x => x.topWeight)).toEqual([plateRelativeWeight(s2), plateRelativeWeight(s1)]);
+    });
+
+    it('unit conversion keeps convertWeight semantics, including the >1000 corrupted-entry guard', () => {
+        const history = [
+            { date: '2026-10-01', completedAt: 'x', exerciseNames: { e0: 'Squat' }, exercises: { e0: { sets: [{ weight: 100, reps: 5, originalUnit: 'kg' }] } } },
+            { date: '2026-10-08', completedAt: 'x', exerciseNames: { e0: 'Squat' }, exercises: { e0: { sets: [{ weight: 1500, reps: 5, originalUnit: 'lbs' }, { weight: 225, reps: 5, originalUnit: 'lbs' }] } } },
+        ];
+        expect(buildExerciseSessions(history, 'Squat', 'lbs').map(x => x.topWeight)).toEqual([225, 220.5]);
+        expect(buildExerciseSessions(history, 'Squat', 'kg').map(x => x.topWeight)).toEqual([102.1, 100]);
     });
 });

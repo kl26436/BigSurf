@@ -84,6 +84,22 @@ export function isDeloadTarget(target) {
 }
 
 /**
+ * Program week derivation (Phase 9) — NEVER stored, always derived from
+ * startDate so nothing rots and no cron advances state. Lives here (not in
+ * coach-context.js, which re-exports it) so session-intent.js and the
+ * server mirrors can derive the week without the UI import graph.
+ * @returns {{week:number, target:object|null, finished:boolean}}
+ */
+export function deriveProgramWeek(program, today) {
+    const start = new Date(`${program.startDate}T12:00:00`);
+    const now = new Date(`${today}T12:00:00`);
+    const week = Math.floor(Math.round((now - start) / 86400000) / 7) + 1;
+    const finished = week > (program.weeks || 1) || week < 1;
+    const target = (program.weekTargets || []).find(t => t.week === week) || null;
+    return { week, target, finished };
+}
+
+/**
  * One human line for a target's levers: "-35% weight · -2 sets · 12–15 reps
  * · RPE 6". Empty string for a baseline week. Shared by the coach context,
  * the weekly review, the hero meta line and the program detail sheet so the

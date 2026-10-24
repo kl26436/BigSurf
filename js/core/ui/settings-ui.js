@@ -9,6 +9,8 @@ import { navigateTo } from './navigation.js';
 import { db, doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from '../data/firebase-config.js';
 import { exportWorkoutData } from '../data/data-manager.js';
 import { isManualDeloadActive, manualDeloadEnd, MANUAL_DELOAD_WEIGHT_PCT } from '../features/session-intent.js';
+import { pickPrimaries, applyPrimaryChoice, PATTERN_LABELS } from '../features/progress-scoreboard.js';
+import { inferPattern } from '../features/movement-patterns.js';
 import { isFCMAvailable, getPushSubscription, initializeFCM, scheduleRestNotification } from '../utils/push-notification-manager.js';
 
 // Default settings — merged with user overrides on load
@@ -361,6 +363,14 @@ export function renderSettings() {
                     ${toggleBtn('trackRpe', s.trackRpe)}
                 </div>
                 ${manualDeloadRowHTML(s)}
+                <div class="srow srow--clickable" onclick="openPrimaryLiftsSheet()">
+                    <div class="srow-icon ic-primary"><i class="fas fa-chart-line"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Main lifts</div>
+                        <div class="srow-desc">${escapeHtml(primaryLiftsDesc())}</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
                 <div class="srow">
                     <div class="srow-icon ic-purple"><i class="fas fa-map-marker-alt"></i></div>
                     <div class="srow-info">
@@ -1051,6 +1061,167 @@ export function closeCoachMemorySheet(immediate = false) {
     setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
 }
 
+// ── Main lifts picker (AP-21) ───────────────────────────────────────
+// The dashboard scoreboard tracks the exercises tagged role:'primary' in the
+// user's templates (else it picks the most-trained compound per movement
+// pattern). This sheet makes the tag a choice, not a guess. A primary is
+// also never rotated by the variety engine — the same meaning, one field.
+
+const MAX_MAIN_LIFTS = 8;
+const normName = (s) => String(s || '').trim().toLowerCase();
+
+/** Active templates the user owns (defaults can't carry a role). */
+function editableTemplates() {
+    return (AppState.workoutPlans || []).filter(t => t?.isCustom && !t.isDefault && !t.archived && Array.isArray(t.exercises));
+}
+
+function taggedPrimaryNames() {
+    const out = new Set();
+    for (const t of editableTemplates()) {
+        for (const ex of t.exercises) if (ex?.role === 'primary') out.add(normName(ex.machine || ex.name));
+    }
+    return out;
+}
+
+function primaryLiftsDesc() {
+    const n = taggedPrimaryNames().size;
+    return n ? `${n} picked — the dashboard trend tracks these` : 'Picked automatically from your training';
+}
+
+export function openPrimaryLiftsSheet() {
+    closePrimaryLiftsSheet(true);
+    const lifts = new Map();
+    for (const t of editableTemplates()) {
+        for (const ex of t.exercises) {
+            const name = ex?.machine || ex?.name;
+            if (!name) continue;
+            const key = normName(name);
+            const row = lifts.get(key) || { name, pattern: inferPattern({ ...ex, name }), templates: [] };
+            row.templates.push(t.name || t.day || 'Workout');
+            lifts.set(key, row);
+        }
+    }
+    // Nothing tagged yet → pre-check what the scoreboard picks today, so the
+    // user confirms rather than builds from zero.
+    let checked = taggedPrimaryNames();
+    if (!checked.size) {
+        checked = new Set(pickPrimaries({ workouts: AppState.workouts || [], today: AppState.getTodayDateString() })
+            .map(p => normName(p.name)));
+    }
+    const rows = [...lifts.entries()]
+        .sort((a, b) => (checked.has(b[0]) - checked.has(a[0])) || a[1].name.localeCompare(b[1].name))
+        .map(([key, l]) => {
+            const on = checked.has(key);
+            const meta = [l.pattern && PATTERN_LABELS[l.pattern], [...new Set(l.templates)].slice(0, 2).join(', ')]
+                .filter(Boolean).join(' · ');
+            return `
+                <div class="js-row ${on ? 'current' : ''}" role="checkbox" aria-checked="${on}" tabindex="0"
+                     data-lift="${escapeAttr(key)}" onclick="togglePrimaryLift(this)">
+                    <div class="js-row__info">
+                        <div class="js-row__name">${escapeHtml(l.name)}</div>
+                        <div class="js-row__meta">${escapeHtml(meta)}</div>
+                    </div>
+                    <i class="${on ? 'fas fa-check-circle' : 'far fa-circle'} js-row__status ${on ? 'done' : ''}" aria-hidden="true"></i>
+                </div>`;
+        }).join('');
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'aw-sheet-backdrop';
+    backdrop.id = 'primary-lifts-backdrop';
+    backdrop.onclick = () => closePrimaryLiftsSheet();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'aw-sheet';
+    sheet.id = 'primary-lifts-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Main lifts');
+    sheet.innerHTML = `
+        <div class="aw-sheet__handle"></div>
+        <div class="aw-sheet__header">
+            <div class="aw-sheet__title">Main lifts</div>
+            <div class="aw-sheet__subtitle">Your progress trend tracks these — up to ${MAX_MAIN_LIFTS}</div>
+        </div>
+        <div class="aw-sheet__body" id="primary-lifts-body">${rows || `
+            <div class="empty-state-compact">
+                <i class="fas fa-dumbbell"></i>
+                <p>No saved workouts yet</p>
+                <p class="empty-state-hint">Save a workout and its lifts show up here to pick from.</p>
+            </div>`}</div>
+        <div class="aw-sheet__actions">
+            <button class="aw-sheet__action" onclick="closePrimaryLiftsSheet()">Cancel</button>
+            ${rows ? '<button class="aw-sheet__action primary" onclick="savePrimaryLifts()">Save main lifts</button>' : ''}
+        </div>
+    `;
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+}
+
+export function togglePrimaryLift(row) {
+    if (!row) return;
+    const turnOn = row.getAttribute('aria-checked') !== 'true';
+    if (turnOn && document.querySelectorAll('#primary-lifts-body [aria-checked="true"]').length >= MAX_MAIN_LIFTS) {
+        showNotification(`Pick up to ${MAX_MAIN_LIFTS} main lifts`, 'warning');
+        return;
+    }
+    row.setAttribute('aria-checked', String(turnOn));
+    row.classList.toggle('current', turnOn);
+    const icon = row.querySelector('.js-row__status');
+    if (icon) icon.className = `${turnOn ? 'fas fa-check-circle' : 'far fa-circle'} js-row__status ${turnOn ? 'done' : ''}`;
+}
+
+export async function savePrimaryLifts() {
+    if (!AppState.currentUser) return;
+    const chosen = new Set([...document.querySelectorAll('#primary-lifts-body [aria-checked="true"]')]
+        .map(r => r.dataset.lift));
+    const now = new Date().toISOString();
+    const writes = [];
+    for (const t of editableTemplates()) {
+        const exercises = applyPrimaryChoice(t.exercises, chosen);
+        if (!exercises) continue;
+        // Merge-write only the exercises array: every other template field
+        // (kind, parentTemplateId, usage counts) stays as it is.
+        writes.push(setDoc(doc(db, 'users', AppState.currentUser.uid, 'workoutTemplates', t.id),
+            { exercises, lastUpdated: now }, { merge: true })
+            .then(() => {
+                t.exercises = exercises;
+                t.lastUpdated = now;
+                const twin = (AppState.templates || []).find(x => x.id === t.id);
+                if (twin && twin !== t) {
+                    twin.exercises = exercises;
+                    twin.lastUpdated = now;
+                }
+            }));
+    }
+    try {
+        await Promise.all(writes);
+        closePrimaryLiftsSheet();
+        showNotification(chosen.size ? 'Main lifts saved' : 'Main lifts back to automatic', 'success', 2000);
+        if (document.getElementById('settings-content')?.offsetParent) renderSettings();
+        const dash = document.getElementById('dashboard');
+        if (dash && !dash.classList.contains('hidden')) {
+            import('./dashboard-ui.js').then(m => m.showDashboard()).catch(() => {});
+        }
+    } catch (e) {
+        console.error('❌ Main lifts save failed:', e);
+        showNotification("Couldn't save — try again", 'error');
+    }
+}
+
+export function closePrimaryLiftsSheet(immediate = false) {
+    const backdrop = document.getElementById('primary-lifts-backdrop');
+    const sheet = document.getElementById('primary-lifts-sheet');
+    if (immediate) {
+        backdrop?.remove();
+        sheet?.remove();
+        return;
+    }
+    backdrop?.classList.remove('visible');
+    sheet?.classList.remove('visible');
+    setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
+}
+
 // ── Week plan editor (Phase 5.5) ────────────────────────────────────
 // One workout per weekday, rest days explicit. Seeds from the day chips
 // templates already carry so the user confirms rather than builds from zero.
@@ -1548,3 +1719,7 @@ window.settingsProgramRowTap = settingsProgramRowTap;
 window.saveWeekPlanFromSheet = saveWeekPlanFromSheet;
 window.closeWeekPlanSheet = closeWeekPlanSheet;
 window.toggleManualDeload = toggleManualDeload;
+window.openPrimaryLiftsSheet = openPrimaryLiftsSheet;
+window.togglePrimaryLift = togglePrimaryLift;
+window.savePrimaryLifts = savePrimaryLifts;
+window.closePrimaryLiftsSheet = closePrimaryLiftsSheet;

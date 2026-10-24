@@ -779,6 +779,60 @@
 .vol-chip--low  { background: var(--warning-bg-subtle); color: var(--warning-moderate); border: 1px solid var(--warning-border); }
 .vol-chip--good { background: var(--success-bg-subtle); color: var(--success); border: 1px solid var(--success-border); }
 .vol-chip--high { background: var(--danger-moderate-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+/* Scoreboard tags (AP-21): rep PR, stall rung, deload-week pattern */
+.vol-chip--pr    { background: var(--badge-gold-bg); color: var(--badge-gold); border: 1px solid var(--badge-gold-border); }
+.vol-chip--rung  { background: var(--warning-bg-subtle); color: var(--warning-moderate); border: 1px solid var(--warning-border); }
+.vol-chip--muted { background: var(--bg-card-hover); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+/* ── Main lifts scoreboard (AP-21): headline, one row per main lift,
+   movement-pattern strip — rides inside a .dash-week-card ── */
+.sb-card__headline {
+    padding: var(--space-10) var(--space-12);
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text-strong);
+    line-height: 1.35;
+}
+.sb-card__headline--down,
+.sb-card__headline--under { color: var(--warning-moderate); }
+.sb-card__sub {
+    display: block;
+    margin-top: var(--space-2);
+    font-size: var(--font-2xs);
+    font-weight: 500;
+    color: var(--text-muted);
+}
+.sb-card__empty {
+    padding: var(--space-12);
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+.sb-card__empty b { display: block; color: var(--text-main); font-weight: 600; margin-bottom: var(--space-2); }
+.sb-row__trend { width: 18px; text-align: center; font-size: var(--font-md); flex-shrink: 0; color: var(--text-muted); }
+.sb-row__trend--up   { color: var(--success); }
+.sb-row__trend--down { color: var(--danger); }
+.sb-row__trend--new  { color: var(--primary); font-size: var(--font-sm); }
+.sb-row__trend--flat,
+.sb-row__trend--idle { font-size: var(--font-sm); }
+.sb-row__delta { margin-left: var(--space-6); font-weight: 700; }
+.sb-row__delta--up   { color: var(--success); }
+.sb-row__delta--down { color: var(--danger); }
+.sb-row__delta--flat { color: var(--text-muted); }
+.sb-patterns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+    padding: var(--space-10) var(--space-12);
+}
+.sb-patterns .vol-chip { margin-left: 0; }
+.sb-card__debug {
+    padding: 0 var(--space-12) var(--space-8);
+    font-family: monospace;
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+}
 
 /* ===== RECENT PR ROW ===== */
 .pr-row {

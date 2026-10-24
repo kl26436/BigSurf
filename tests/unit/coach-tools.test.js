@@ -202,7 +202,7 @@ describe('TOOL_DEFINITIONS', () => {
         expect(names).toEqual([
             'adjust_program', 'archive_template', 'create_program',
             'create_workout_template', 'forget_fact', 'get_exercise_history',
-            'get_program', 'get_prs', 'get_week_plan', 'list_equipment', 'list_exercises', 'list_templates',
+            'get_program', 'get_prs', 'get_verdicts', 'get_week_plan', 'list_equipment', 'list_exercises', 'list_templates',
             'log_advice', 'propose_session_adjustments', 'remember_fact', 'replace_day',
             'set_week_plan', 'update_workout_template',
         ]);

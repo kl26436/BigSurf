@@ -1,5 +1,7 @@
 // js/core/utils/config.js
 
+import { RULE_THRESHOLDS } from '../features/training-rules.js';
+
 // App version — single source of truth for the settings footer and any "About"
 // surface. Keep in sync with package.json#version. The service-worker cache key
 // tracks deploy-tier (feature-scoped), not marketing version, so those can drift.
@@ -35,13 +37,10 @@ export const Config = {
     FIREBASE_TIMEOUT_MS: 10000,
     MAX_STREAK_QUERY_LIMIT: 100,
 
-    // Training Insights (Phase 17)
-    VOLUME_MEV: 8,              // Minimum Effective Volume (sets/muscle/week)
-    VOLUME_MRV: 22,             // Maximum Recoverable Volume (sets/muscle/week)
-    PLATEAU_MIN_SESSIONS: 3,    // Sessions with no progression to flag plateau
-    DELOAD_DAYS_PER_WEEK: 5,    // Days/week threshold for "hard week"
-    DELOAD_CONSECUTIVE_WEEKS: 4, // Consecutive hard weeks before suggesting deload
-    DELOAD_TONNAGE_DROP: 0.25,  // A full-frequency week this far below the trailing 3-week tonnage mean is a recovery week
+    // Training Insights (Phase 17) — VOLUME_MEV/MRV, PLATEAU_MIN_SESSIONS and
+    // the DELOAD_* thresholds come from training-rules.js#RULE_THRESHOLDS,
+    // the one copy the server's coach verdicts also read (AP-16).
+    ...RULE_THRESHOLDS,
     INSIGHTS_MIN_WORKOUTS: 3,   // Minimum workouts needed to show insights
     COACH_RATE_LIMIT_HOURS: 24, // Hours between AI coach calls
     // 2nd-gen streaming coach endpoint (SSE) — canonical Cloud Run URL printed

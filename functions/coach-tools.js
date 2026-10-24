@@ -11,6 +11,7 @@ const { applyPrescriptionFields } = require('./movement-patterns');
 const { normalizeWeekTarget, isDeloadTarget } = require('./week-targets');
 const { selectRotation, applyRotation } = require('./exercise-rotation');
 const { convertToUnit } = require('./coach-outcomes');
+const { computeVerdicts } = require('./coach-rules');
 
 // Shared schema for a program week target (CP-3). A week can move load,
 // set counts, rep bands and effort — not just a percentage.
@@ -195,6 +196,11 @@ const TOOL_DEFINITIONS = [
             },
             required: ['templateId', 'label'],
         },
+    },
+    {
+        name: 'get_verdicts',
+        description: "The app's rules-engine verdicts, computed fresh with the SAME rules as the set rows and the dashboard: today's session intent (deload / peak / build), a progression target per exercise for today's and this week's planned workouts (action bump / consolidate / chase-rep / back-off / rotate / deload, weight × reps in the user's unit, stall rung), whether a deload is due, this week's sets per muscle vs MRV, and the progress scoreboard (best estimated 1RM per 4-week window per main lift, rep PRs, movement-pattern coverage). Authoritative: explain these, don't override them. The first message's Rules verdicts block is this same data — call this when that block is missing, from an earlier day, or the user just logged a session.",
+        input_schema: { type: 'object', properties: {} },
     },
     {
         name: 'get_week_plan',
@@ -614,6 +620,54 @@ function exerciseHistorySession(w, ex, unit) {
         })),
         notes: ex.notes || null,
     };
+}
+
+// ── Rules verdicts (AP-16) ──────────────────────────────────────────
+
+/**
+ * The server's run of the client's rules — functions/coach-rules.js is the
+ * generated mirror of js/core/features/coach-rules.js. Reads the same inputs
+ * the client's context block reads, so `get_verdicts`, the weekly review and
+ * the chat's Rules verdicts block can't say different things.
+ *
+ * @param {object} args
+ * @param {object} args.db - Admin Firestore
+ * @param {string} args.userId
+ * @param {string} [args.today] - user's local YYYY-MM-DD
+ * @param {string|null} [args.unit] - display unit; defaults to the settings unit
+ */
+async function computeUserVerdicts({ db, userId, today = null, unit = null }) {
+    const userDoc = db.collection('users').doc(userId);
+    const date = todayInfo(today).date;
+    const [woSnap, tSnap, planSnap, progSnap, settingsSnap, customSnap] = await Promise.all([
+        // 250 docs ≈ a year at 5/week — the scoreboard needs 12 weeks, the
+        // stall ladder a run of sessions per lift.
+        userDoc.collection('workouts').orderBy('date', 'desc').limit(250).get(),
+        userDoc.collection('workoutTemplates').get(),
+        userDoc.collection('preferences').doc('weekPlan').get(),
+        userDoc.collection('programs').where('active', '==', true).limit(1).get(),
+        userDoc.collection('preferences').doc('settings').get(),
+        userDoc.collection('customExercises').get(),
+    ]);
+    const settings = settingsSnap.exists ? (settingsSnap.data() || {}) : {};
+    const u = normalizeUnit(unit || settings.weightUnit);
+    const all = woSnap.docs.map(d => d.data());
+    // An in-progress session today carries its own intent (manual deload,
+    // legacy label) — the same precedence the client uses.
+    const live = all.find(w => w.date === date && !w.completedAt && !w.cancelledAt && w.sessionIntent);
+    const plan = planSnap.exists ? (planSnap.data() || null) : null;
+    return computeVerdicts({
+        workouts: all.filter(w => w.completedAt && !w.cancelledAt),
+        templates: tSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        weekPlan: plan ? { days: plan.days || {}, restDays: plan.restDays || [] } : null,
+        program: progSnap.empty ? null : progSnap.docs[0].data(),
+        manualDeload: settings.manualDeload || null,
+        intent: live?.sessionIntent || null,
+        unit: u,
+        plates: u === 'kg' ? settings.plateKg : settings.plateLbs,
+        today: date,
+        exerciseDatabase: [...require('./data/exercises.json'), ...customSnap.docs.map(d => d.data())],
+    });
 }
 
 // ── Firestore executors (Admin SDK, scoped to users/{userId}) ───────
@@ -1147,6 +1201,10 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             };
         },
 
+        async get_verdicts() {
+            return computeUserVerdicts({ db, userId, today, unit });
+        },
+
         async get_week_plan() {
             const t = todayInfo(today);
             const snap = await userDoc().collection('preferences').doc('weekPlan').get();
@@ -1411,6 +1469,7 @@ const TOOL_STATUS = {
     remember_fact: 'Noting that…',
     forget_fact: 'Forgetting that…',
     get_week_plan: 'Checking your week…',
+    get_verdicts: 'Checking your numbers…',
     set_week_plan: 'Updating your week…',
     archive_template: 'Archiving…',
     propose_session_adjustments: 'Building your session…',
@@ -1427,6 +1486,7 @@ module.exports = {
     replaceTemplateExercises,
     normalizeExercise,
     makeToolExecutors,
+    computeUserVerdicts,
     validateProposal,
     liveToolDefinitions,
     LIVE_PROPOSAL_TOOLS,

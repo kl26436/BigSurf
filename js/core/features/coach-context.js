@@ -3,8 +3,12 @@
 // to say — callers just concatenate). Kept out of ai-coach-ui.js so they're
 // unit-testable without mocking the UI import graph.
 
-import { describeWeekTarget, isDeloadTarget } from './week-targets.js';
+import { describeWeekTarget, isDeloadTarget, deriveProgramWeek } from './week-targets.js';
 import { DAY_KEYS, DAY_LABELS, satisfiedDays, todayCard } from './week-plan.js';
+
+// deriveProgramWeek moved to week-targets.js (mirrored to functions/) —
+// re-exported so existing importers keep working.
+export { deriveProgramWeek };
 
 /**
  * `User profile:` block — goal, experience, injuries, notes, height, weekly
@@ -115,20 +119,6 @@ export function setTypeMarker(set) {
     const t = set?.type;
     if (!t || t === 'working') return '';
     return ` (${t})`;
-}
-
-/**
- * Program week derivation (Phase 9) — NEVER stored, always derived from
- * startDate so nothing rots and no cron advances state.
- * @returns {{week:number, target:object|null, finished:boolean}}
- */
-export function deriveProgramWeek(program, today) {
-    const start = new Date(`${program.startDate}T12:00:00`);
-    const now = new Date(`${today}T12:00:00`);
-    const week = Math.floor(Math.round((now - start) / 86400000) / 7) + 1;
-    const finished = week > (program.weeks || 1) || week < 1;
-    const target = (program.weekTargets || []).find(t => t.week === week) || null;
-    return { week, target, finished };
 }
 
 /**
@@ -286,6 +276,66 @@ export function visibleQuestion(content) {
     const s = String(content || '');
     const i = s.lastIndexOf(marker);
     return i === -1 ? s : s.slice(i + marker.length);
+}
+
+/**
+ * First sentence of a coach answer, markdown stripped, for one-line recall.
+ * Ends at the first . ! ? followed by a space (or the end), or at a line
+ * break, whichever comes first; long sentences are clipped with an ellipsis.
+ */
+export function firstSentence(text, max = 160) {
+    const line = String(text || '')
+        .split('\n')
+        .map(l => l.replace(/^\s*(?:#+|[-*•]|\d+[.)])\s+/, '').replace(/\*\*|__|`/g, '').trim())
+        .find(Boolean) || '';
+    const m = line.match(/^.*?[.!?](?=\s|$)/);
+    const s = (m ? m[0] : line).trim();
+    return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
+}
+
+/** ~400 tokens — this is recall, not a transcript. */
+const RECENT_THREADS_MAX_CHARS = 1600;
+
+/**
+ * AP-15h — `Recent conversations:` block. Each thread used to be a fresh
+ * start: the coach had no idea you'd asked about bench three weeks running.
+ * One line per recent thread: date, the question that opened it, and the
+ * first sentence of how the coach answered.
+ *
+ * @param {Array} historyDocs - coachHistory docs, newest first:
+ *   {question, response, timestamp, type?, threadId?, messages?[]}
+ * @param {object} [opts]
+ * @param {number} [opts.limit] - threads to include (default 5)
+ * @param {string|null} [opts.excludeThreadId] - the thread being continued
+ * @returns {string} '' when there's nothing to recall
+ */
+export function buildRecentThreadsContext(historyDocs = [], { limit = 5, excludeThreadId = null } = {}) {
+    const lines = [];
+    let chars = 0;
+    for (const d of historyDocs || []) {
+        if (lines.length >= limit) break;
+        if (!d || (excludeThreadId && (d.threadId === excludeThreadId || d.id === excludeThreadId))) continue;
+        const date = String(d.timestamp || '').slice(0, 10);
+        const firstAnswer = Array.isArray(d.messages)
+            ? d.messages.find(m => m?.role === 'assistant' && typeof m.content === 'string')?.content
+            : null;
+        const answer = firstSentence(firstAnswer || d.response);
+        let line;
+        if (d.type === 'weekly_review') {
+            if (!answer) continue;
+            line = `- ${date} · weekly review → "${answer}"`;
+        } else {
+            const q = visibleQuestion(d.question).replace(/\s+/g, ' ').trim();
+            if (!q) continue;
+            const qClip = q.length > 120 ? `${q.slice(0, 119).trimEnd()}…` : q;
+            line = `- ${date} · "${qClip}"${answer ? ` → "${answer}"` : ''}`;
+        }
+        if (chars + line.length > RECENT_THREADS_MAX_CHARS) break;
+        lines.push(line);
+        chars += line.length;
+    }
+    if (!lines.length) return '';
+    return `Recent conversations (newest first — what the user asked and how you opened; build on it, don't repeat it):\n${lines.join('\n')}\n`;
 }
 
 /**

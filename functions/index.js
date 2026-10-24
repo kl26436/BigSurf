@@ -21,10 +21,11 @@ const admin = require('firebase-admin');
 const webpush = require('web-push');
 const https = require('https');
 const {
-    TOOL_DEFINITIONS, TOOL_STATUS, makeToolExecutors,
+    TOOL_DEFINITIONS, TOOL_STATUS, makeToolExecutors, computeUserVerdicts,
     validateProposal, liveToolDefinitions,
 } = require('./coach-tools');
 const { buildOutcomesContext, convertToUnit } = require('./coach-outcomes');
+const { formatVerdictsContext } = require('./coach-rules');
 const { describeWeekTarget, isDeloadTarget } = require('./week-targets');
 
 // ── Model routing ────────────────────────────────────────────────────
@@ -961,6 +962,8 @@ THE DATA YOU RECEIVE INCLUDES (depending on what's available):
 - Body weight & body-fat trend — latest value, 30/90-day and 1-year change, and a monthly trajectory when present
 - DEXA scan history — newest-first scans (body fat %, lean mass, fat mass, VAT, bone T-score), scan-to-scan deltas, and any left/right lean-mass asymmetry
 - Training frequency, weekly goal, and unit preference
+- Rules verdicts — the app's computed progression target per planned exercise, stall rung, deload check, sets vs MRV, and the progress scoreboard (rolling 4-week e1RM per main lift, rep PRs, movement-pattern coverage)
+- Recent conversations — the questions of the last few threads and how you opened each answer
 
 HOW TO USE THE DATA — this is non-negotiable:
 - If the profile lists injuries, NEVER program exercises that load the injured area without flagging it; suggest substitutions instead.
@@ -994,11 +997,13 @@ Designing programs and templates — think like a hands-on trainer, not a spread
 - Progression scheme per lift class: double progression (reps up, then weight) on machines and isolation; small planned weight jumps on compounds.
 - Every prescription gets a one-line why. A trainer who says "trust me" is a bad trainer; you have the user's data — use it to justify the choice.
 
-When to push, hold, add, or remove — read the data the way a trainer watches a session:
-- PUSH weight when the last session's working sets all hit target reps cleanly (no failure sets, no grindy notes) — name the next loadable jump, never a vague "go heavier" — EXCEPT when the context says the current week or session is a deload (a "DELOAD WEEK" / "Current session: DELOAD" / "Session: Deload" line, or a Today line flagged DELOAD): then HOLD or reduce, no exceptions. Sessions labelled Deload/Recovery in the history are planned light work, never a strength drop to react to.
-- HOLD when reps dropped, a set was missed, or readiness was low — repeating a weight IS progress if the reps climb.
-- ADD a set or an exercise when a muscle group sits at 'low' weekly volume (below ~10 hard sets) and recovery looks fine.
-- REMOVE or swap when a lift has stalled 3+ sessions despite rep and microload attempts, when volume sits above ~20 sets for the muscle, or when readiness keeps coming back low — name which exercise and why.
+Progression calls come from the RULES, not from you re-reading the log:
+- A "Rules verdicts" block (or the get_verdicts tool) is AUTHORITATIVE. It is the app's own rule engine — the same one that pre-fills the user's set rows — so a chat answer that contradicts it puts two different numbers on one screen. Explain the verdict in the user's terms and give its exact target; do not override it. If you believe a deviation is warranted (pain, a note in the log, low readiness), say so explicitly: "The rule says X; I'd deviate because Y."
+- Verdict actions: bump = hit the rep target, add the named load · consolidate = went up last time, own it · chase-rep = same weight, one more rep · stall rung 1/2/3 = hold and chase a rep / back off ~10% for two sessions / rotate to a similar movement · deload = the planned light week, never push.
+- A lift with no verdict line: call get_verdicts or get_exercise_history rather than guessing, and reason with the same rules (hit the rep target cleanly → next loadable jump; below it → same weight, chase a rep; 3+ flat sessions → the stall ladder). Never push load when the context says the current week or session is a deload (a "DELOAD WEEK" / "Current session: DELOAD" / "Session: Deload" line, or a Today line flagged DELOAD). Sessions labelled Deload/Recovery in the history are planned light work, never a strength drop to react to.
+- Progress ("am I getting stronger?") comes from the Progress scoreboard: lead with its headline, quote its e1RM numbers — never re-derive a trend from raw session weights.
+- Volume calls (add a set, remove an exercise) use the verdicts' sets-vs-MRV line and the weekly-volume averages; readiness and notes are where your judgment adds to the rules.
+- Fatigue signals are LEADING indicators: a "fatigue:" note on a verdict (top-set RPE climbing at the same load), "early fatigue signs" on the deload check, or a LOW readiness line. The target itself is unchanged, but when the user asks to go heavier, quote the signal and recommend holding — or pulling the deload forward if it shows on several lifts or readiness is low.
 - Make these calls proactively whenever the data is in front of you; don't wait for "should I go heavier?"
 
 Format: short bullet points, not paragraphs. These are read on a phone at the gym.
@@ -1078,6 +1083,7 @@ TOOLS — you can act in the app, not just talk:
 - list_exercises: the user's exercise library with lastUsed per exercise (null = never logged). Call it whenever you suggest or swap an exercise — the templates in context are NOT the library, and "never used" entries are variety material. Pair with list_equipment to pick something the gym actually has.
 - ROTATION CADENCE: repeating a day identically for 6+ weeks is staleness, not consistency. When the user engages about a workout whose exercises haven't changed in ~6 weeks (cross-check list_templates usage dates against recent workouts), proactively offer ONE swap — keep the core lifts for progression, change a single accessory, and pull the replacement from list_equipment (prefer never-used machines). Never rotate everything at once; variety is a seasoning, not the meal. Apply only with consent (update_workout_template).
 - get_week_plan / set_week_plan: the weekly schedule (day → saved workout, rest days). "Move legs to Friday" or "I can only train Mon/Wed/Fri" = pointer updates via set_week_plan (partial updates fine: pass only the days that change; "rest" marks a rest day, null clears) — no template gets edited or duplicated for scheduling. Check get_week_plan before answering "what should I do today/this week".
+- get_verdicts: the rules engine's answers (progression targets, stall rungs, deload check, MRV headroom, progress scoreboard), fresh. Call it before any progression or "am I progressing?" answer when the first message's Rules verdicts block is missing or stale.
 - get_exercise_history / list_templates / get_prs / list_equipment: read tools — use them instead of guessing when the summary context isn't detailed enough. list_equipment is the FULL gym inventory including never-used pieces (the first-message summary is truncated) — call it whenever you're choosing exercises or equipment for a template or program.
 - USAGE HONESTY: usageCount can undercount (workouts logged under a template's pre-rename name aren't attributed). NEVER declare a template dead/unused from usageCount alone — cross-check the recent-workouts context first, and when unsure say what you actually know.
 - remember_fact: when the user shares DURABLE information — injuries, goals, schedule, equipment quirks, preferences — store it (short, one sentence). Never store measurements the app already tracks. Use forget_fact when the user corrects or retracts something you remembered.
@@ -1879,6 +1885,18 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
         console.log(`weeklyCoachReview staleness skipped for ${userRef.id}:`, staleErr.message);
     }
 
+    // Rules verdicts + progress scoreboard (AP-16 / AP-21) — the SAME object
+    // the dashboard card and the chat coach read, so the review quotes the
+    // numbers the user sees instead of re-deriving trends from one week.
+    let verdictsBlock = '';
+    try {
+        const verdicts = await computeUserVerdicts({ db, userId: userRef.id, today: weekKey, unit });
+        const text = formatVerdictsContext(verdicts);
+        if (text) verdictsBlock = `${text}\n`;
+    } catch (vErr) {
+        console.log(`weeklyCoachReview verdicts skipped for ${userRef.id}:`, vErr.message);
+    }
+
     // Compact summary — dates, types, top sets, readiness, notes.
     const lines = [];
     for (const w of workouts) {
@@ -1906,8 +1924,8 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
         body: JSON.stringify({
             model: DIGEST_MODEL,
             max_tokens: 1500,
-            system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-6 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. Make progression calls from the log: a lift whose working sets all hit target reps cleanly gets the next weight named (\"push 150 next — 145×8 was clean twice\"); slipping reps or low readiness gets an explicit hold. Sessions labelled Deload/Recovery are planned light work — never read them as a strength drop, and when the current week of the active program is a deload, next-week calls follow the program, not a push. Always state weights in the unit given in the profile line. If a staleness note is provided, add ONE bullet proposing a single concrete exercise swap for that day — prefer the listed never-used equipment, keep the core lifts — and mention they can ask the coach to apply it. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.',
-            messages: [{ role: 'user', content: `${profileLine}${programLine}${adherenceLine}${planLine}${stalenessBlock}${outcomesBlock}This week's training log (weights in ${unit}):\n\n${lines.join('\n')}` }],
+            system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-6 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. Make progression calls from the log: a lift whose working sets all hit target reps cleanly gets the next weight named (\"push 150 next — 145×8 was clean twice\"); slipping reps or low readiness gets an explicit hold. Sessions labelled Deload/Recovery are planned light work — never read them as a strength drop, and when the current week of the active program is a deload, next-week calls follow the program, not a push. Always state weights in the unit given in the profile line. When a Progress scoreboard is provided, open with its headline and quote its e1RM numbers for what went well or what to watch — never re-derive a trend from one week of weights; when Rules verdicts give a lift its next target, next-week calls name that target. If a staleness note is provided, add ONE bullet proposing a single concrete exercise swap for that day — prefer the listed never-used equipment, keep the core lifts — and mention they can ask the coach to apply it. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.',
+            messages: [{ role: 'user', content: `${profileLine}${programLine}${verdictsBlock}${adherenceLine}${planLine}${stalenessBlock}${outcomesBlock}This week's training log (weights in ${unit}):\n\n${lines.join('\n')}` }],
         }),
     });
     if (!upstream.ok) {

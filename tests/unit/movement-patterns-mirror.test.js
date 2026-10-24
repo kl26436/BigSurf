@@ -13,6 +13,13 @@ const MIRRORS = [
     // AP-15c — was a hand-kept copy; now generated so the server's unit
     // converter and outcome math can't drift from the client's.
     ['js/core/features/coach-outcomes.js', 'functions/coach-outcomes.js'],
+    // AP-16 / AP-21 — the rules the server's get_verdicts tool and weekly
+    // review run must be the client's rules, byte for byte.
+    ['js/core/features/session-intent.js', 'functions/session-intent.js'],
+    ['js/core/features/progression.js', 'functions/progression.js'],
+    ['js/core/features/training-rules.js', 'functions/training-rules.js'],
+    ['js/core/features/progress-scoreboard.js', 'functions/progress-scoreboard.js'],
+    ['js/core/features/coach-rules.js', 'functions/coach-rules.js'],
 ];
 
 describe('functions/ mirrors of pure client modules', () => {

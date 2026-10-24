@@ -13,9 +13,10 @@ import { formatCoachResponse } from './coach-markdown.js';
 import {
     buildProfileContext, buildPRContext, buildTemplatesContext,
     setTypeMarker, templatesChangedNote, buildProgramContext,
-    buildSessionIntentContext, buildTodayContext,
+    buildSessionIntentContext, buildTodayContext, buildRecentThreadsContext,
     contextRefreshReason, contextTurn, visibleQuestion,
 } from './coach-context.js';
+import { computeVerdicts, formatVerdictsContext } from './coach-rules.js';
 import { summarizeWeekPlan, satisfiedDays, weekDates, DAY_KEYS, loadWeekPlan } from './week-plan.js';
 import { scaleSessionSetTargets } from './program-session.js';
 import { weightIncrement, scaleLoadableWeight } from './progression.js';
@@ -477,7 +478,10 @@ export async function askCoach(question) {
         // (cached for 5 min via data-manager) so the coach can spot trends
         // over months instead of just the last 8 weeks. loadInsightsData's
         // 8-week window is too narrow once a user has any meaningful history.
-        const { loadAllWorkouts } = await import('../data/data-manager.js');
+        const { loadAllWorkouts, settleWorkoutSaves } = await import('../data/data-manager.js');
+        // AP-15i — "Review this session" opens while the finish-save may
+        // still be in flight; read history only after it lands.
+        await settleWorkoutSaves();
         const allWorkouts = await loadAllWorkouts(AppState);
         let healthSummary = '';
         try {
@@ -498,6 +502,7 @@ export async function askCoach(question) {
         // All non-fatal if unavailable.
         let outcomesBlock = '';
         let feedbackBlock = '';
+        let threadsBlock = '';
         let programBlock = '';
         let program = null;
         const todayStr = AppState.getTodayDateString();
@@ -513,6 +518,10 @@ export async function askCoach(question) {
             outcomesBlock = buildOutcomesContext(advice, allWorkouts, todayStr, { unit: AppState.globalUnit || 'lbs' });
             const recentFeedback = histSnap.docs.flatMap(d => Object.values(d.data().feedback || {}));
             feedbackBlock = buildFeedbackContext(recentFeedback);
+            // AP-15h — what was asked and answered in recent threads.
+            threadsBlock = buildRecentThreadsContext(
+                histSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+                { excludeThreadId: _coachThreadId });
             if (!progSnap.empty) {
                 program = progSnap.docs[0].data();
                 programBlock = buildProgramContext(program, todayStr);
@@ -538,12 +547,47 @@ export async function askCoach(question) {
         });
         const intentBlock = programBlock.includes('DELOAD WEEK') ? '' : buildSessionIntentContext(intent);
 
-        const context = todayLine
-            + buildTrainingContext(allWorkouts, healthSummary, prList)
-            + (programBlock ? `\n${programBlock}` : '')
-            + (intentBlock ? `\n${intentBlock}` : '')
-            + (outcomesBlock ? `\n${outcomesBlock}` : '')
-            + (feedbackBlock ? `\n${feedbackBlock}` : '');
+        // AP-16 — the rules engine's verdicts, handed over as facts: today's
+        // target per exercise, stall rung, deload check, MRV headroom and the
+        // progress scoreboard (AP-21, the same object the dashboard card shows).
+        let verdictsBlock = '';
+        try {
+            const unit = AppState.globalUnit || 'lbs';
+            verdictsBlock = formatVerdictsContext(computeVerdicts({
+                workouts: allWorkouts,
+                templates: AppState.workoutPlans || [],
+                weekPlan: AppState._weekPlan || null,
+                program,
+                manualDeload: AppState.settings?.manualDeload || null,
+                intent,
+                unit,
+                plates: unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs,
+                today: todayStr,
+                exerciseDatabase: AppState.exerciseDatabase || [],
+                thresholds: Config,
+            }));
+        } catch (e) { debugLog('coach: verdicts unavailable', e); }
+
+        // Order is priority: what day it is and what this week IS (program /
+        // deload directive) sit directly under the Today line, then the
+        // verdicts; raw evidence comes after (AP-16 — the DELOAD line used to
+        // sit below thirty workouts).
+        const sections = {
+            today: todayLine,
+            program: programBlock,
+            intent: intentBlock,
+            verdicts: verdictsBlock,
+            training: buildTrainingContext(allWorkouts, healthSummary, prList),
+            outcomes: outcomesBlock,
+            threads: threadsBlock,
+            feedback: feedbackBlock,
+        };
+        const context = Object.values(sections).filter(Boolean)
+            .map((block, i) => (i === 0 ? block : `\n${block}`)).join('');
+        if (Config.DEBUG_MODE) {
+            const size = Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, (v || '').length]));
+            debugLog(`coach context: ${context.length} chars (~${Math.round(context.length / 4)} tokens)`, size);
+        }
 
         // Append the user's turn to the running conversation. The first user
         // turn gets the training context prepended so Claude grounds its
@@ -1313,8 +1357,10 @@ function buildTrainingContext(workouts, healthSummary = '', prList = []) {
     // recommendations in, not just aggregates. Notes are included because
     // that's where struggles, pain, and form cues live. 30 workouts covers
     // ~6-8 weeks at typical training frequency, enough to spot real trends
-    // without burning unbounded tokens on multi-year histories.
-    const RECENT_DETAIL_CAP = 30;
+    // without burning unbounded tokens on multi-year histories. AP-16: the
+    // verdicts block now carries the computed answers and
+    // get_exercise_history serves depth, so 12 sessions is enough evidence.
+    const RECENT_DETAIL_CAP = 12;
     const recent = [...workouts]
         .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
         .slice(0, RECENT_DETAIL_CAP);

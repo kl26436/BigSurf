@@ -87,6 +87,9 @@ js/
     │   ├── manual-workout.js       # Manual workout entry
     │   ├── plate-calculator.js     # Plate breakdown algorithm + standalone page
     │   ├── pr-tracker.js           # Personal record detection (segmented per exercise+equipment)
+    │   ├── progress-scoreboard.js  # AP-21: rolling 4-wk e1RM per main lift, rep PRs, pattern coverage (dashboard card + coach + weekly review)
+    │   ├── coach-rules.js          # AP-16: computeVerdicts/formatVerdictsContext — the rules' answers handed to the coach as facts
+    │   ├── training-rules.js       # Pure volume/deload rules + RULE_THRESHOLDS (Config spreads them); training-insights wraps these
     │   ├── progression.js          # Pure double-progression + stall ladder; takes the session intent (deload never bumps)
     │   ├── session-intent.js       # getSessionIntent(): deload / peak / build for TODAY (program week > manual > legacy label); stamped on savedData.sessionIntent at start/resume
     │   ├── stats-tracker.js        # Weekly stats (delegates streaks to streak-tracker)
@@ -426,6 +429,10 @@ requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList
 Sheet chrome classes live in [styles/pages/active-workout-v2.css](styles/pages/active-workout-v2.css); list rows inside sheets use the `.js-row` pattern. Note `navigateTo()` force-removes `#aw-sheet`/`#aw-sheet-backdrop` on navigation — use unique ids for your sheet and clean up on close.
 
 For add-exercise / equipment / similar shared flows, prefer the parameterized helpers (`openSharedAddExerciseSheet`, `openSharedEquipmentSheet` in [active-workout-ui.js](js/core/workout/active-workout-ui.js)) — they take an `onSelect` callback so the same sheet works from any context.
+
+### Mirrored rule modules (client ↔ functions/)
+
+`functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-outcomes, week-targets, movement-patterns, exercise-rotation. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
 
 ### Touching active-workout code
 

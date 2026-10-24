@@ -15,7 +15,10 @@ import {
     contextTurn,
     visibleQuestion,
     CONTEXT_STALE_MS,
+    firstSentence,
+    buildRecentThreadsContext,
 } from '../../js/core/features/coach-context.js';
+import { deriveProgramWeek as deriveFromWeekTargets } from '../../js/core/features/week-targets.js';
 
 describe('buildProfileContext', () => {
     it('includes goal, experience, injuries, notes, height, weekly goal', () => {
@@ -324,5 +327,84 @@ describe('AP-15e — context freshness', () => {
         }
         expect(contextTurn('X', 'Q', 'stale')).toContain('over a day old');
         expect(visibleQuestion('plain follow-up')).toBe('plain follow-up');
+    });
+});
+
+describe('deriveProgramWeek moved to week-targets.js', () => {
+    it('coach-context re-exports the same function', () => {
+        expect(deriveProgramWeek).toBe(deriveFromWeekTargets);
+    });
+});
+
+describe('firstSentence (AP-15h)', () => {
+    it('takes the first sentence, markdown stripped', () => {
+        expect(firstSentence('**Hold 185 lbs.** Then chase a ninth rep.')).toBe('Hold 185 lbs.');
+        expect(firstSentence('- Bump to 205 next time\n- Keep the ramp')).toBe('Bump to 205 next time');
+        expect(firstSentence('## Verdict\nYour bench is up 6 lbs.')).toBe('Verdict');
+    });
+    it("doesn't split on decimals and clips long sentences", () => {
+        expect(firstSentence('Go 102.5 kg for 5. Then rest.')).toBe('Go 102.5 kg for 5.');
+        const long = firstSentence('x'.repeat(300), 50);
+        expect(long).toHaveLength(50);
+        expect(long.endsWith('…')).toBe(true);
+    });
+    it('is empty for empty input', () => {
+        expect(firstSentence('')).toBe('');
+        expect(firstSentence(null)).toBe('');
+    });
+});
+
+describe('buildRecentThreadsContext (AP-15h)', () => {
+    const thread = (id, ts, question, firstAnswer, extra = {}) => ({
+        id, threadId: id, timestamp: ts, question,
+        response: 'latest answer. more.',
+        messages: [
+            { role: 'user', content: `Here is my recent training data:\n\nCTX\n\nQuestion: ${question}` },
+            { role: 'assistant', content: firstAnswer },
+            { role: 'user', content: 'follow-up' },
+            { role: 'assistant', content: 'latest answer. more.' },
+        ],
+        ...extra,
+    });
+
+    it('one line per thread: date, opening question, first sentence of the FIRST answer', () => {
+        const ctx = buildRecentThreadsContext([
+            thread('t2', '2026-10-20T18:00:00Z', 'Should I go heavier on bench?', '**Hold 185 and chase 9.** You have been flat.'),
+            thread('t1', '2026-10-13T18:00:00Z', 'Is my bench stalling?', 'Yes — three sessions at 185. Hold it.'),
+        ]);
+        expect(ctx).toBe('Recent conversations (newest first — what the user asked and how you opened; build on it, don\'t repeat it):\n'
+            + '- 2026-10-20 · "Should I go heavier on bench?" → "Hold 185 and chase 9."\n'
+            + '- 2026-10-13 · "Is my bench stalling?" → "Yes — three sessions at 185."\n');
+    });
+
+    it("strips a context block left in an older doc's question", () => {
+        const ctx = buildRecentThreadsContext([{
+            timestamp: '2026-10-01T00:00:00Z',
+            question: 'Here is my recent training data:\n\nLOTS\n\nQuestion: How is my squat?',
+            response: 'Climbing.',
+        }]);
+        expect(ctx).toContain('"How is my squat?" → "Climbing."');
+        expect(ctx).not.toContain('LOTS');
+    });
+
+    it('includes weekly reviews and skips the thread being continued', () => {
+        const ctx = buildRecentThreadsContext([
+            thread('current', '2026-10-23T00:00:00Z', 'This one', 'Answer.'),
+            { id: 'r1', type: 'weekly_review', question: 'Weekly review', timestamp: '2026-10-20T14:00:00Z', response: '- Bench up 6 lbs over 4 weeks\n- Watch hinge volume' },
+        ], { excludeThreadId: 'current' });
+        expect(ctx).not.toContain('This one');
+        expect(ctx).toContain('- 2026-10-20 · weekly review → "Bench up 6 lbs over 4 weeks"');
+    });
+
+    it('caps at the limit and the character budget', () => {
+        const docs = Array.from({ length: 9 }, (_, i) => thread(`t${i}`, `2026-10-${10 + i}T00:00:00Z`, `Question ${i}`, 'Answer.'));
+        expect(buildRecentThreadsContext(docs).match(/^- /gm)).toHaveLength(5);
+        const long = Array.from({ length: 5 }, (_, i) => thread(`l${i}`, '2026-10-10T00:00:00Z', 'q'.repeat(400), 'a'.repeat(400)));
+        expect(buildRecentThreadsContext(long).length).toBeLessThan(1800);
+    });
+
+    it('empty → empty string', () => {
+        expect(buildRecentThreadsContext([])).toBe('');
+        expect(buildRecentThreadsContext([{ question: '', response: '' }])).toBe('');
     });
 });

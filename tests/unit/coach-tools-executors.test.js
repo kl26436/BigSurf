@@ -17,15 +17,17 @@ function fakeAdminDb(seed = {}) {
         exists: docs.has(path),
         data: () => docs.get(path),
     });
-    const collectionRef = (path, order = null, max = Infinity) => ({
+    const collectionRef = (path, order = null, max = Infinity, filters = []) => ({
         doc: (id) => docRef(`${path}/${id}`),
-        orderBy: (field, dir = 'asc') => collectionRef(path, { field, dir }, max),
-        limit: (n) => collectionRef(path, order, n),
+        orderBy: (field, dir = 'asc') => collectionRef(path, { field, dir }, max, filters),
+        limit: (n) => collectionRef(path, order, n, filters),
+        where: (field, op, value) => collectionRef(path, order, max, [...filters, { field, value }]),
         add: async (data) => { docs.set(`${path}/auto_${++autoId}`, data); return { id: `auto_${autoId}` }; },
         get: async () => {
             let list = [...docs.keys()]
                 .filter(k => k.startsWith(`${path}/`) && !k.slice(path.length + 1).includes('/'))
-                .map(snapOf);
+                .map(snapOf)
+                .filter(snap => filters.every(f => snap.data()[f.field] === f.value));
             if (order) {
                 list.sort((a, b) => String(a.data()[order.field]).localeCompare(String(b.data()[order.field])));
                 if (order.dir === 'desc') list.reverse();
@@ -148,5 +150,54 @@ describe('log_advice (AP-15c)', () => {
         const saved = [...db._docs.values()];
         expect(saved[0]).toMatchObject({ targetValue: 102.5, unit: 'kg' });
         expect(saved[1].unit).toBeUndefined();
+    });
+});
+
+describe('get_verdicts (AP-16)', () => {
+    const set = (weight, reps, extra = {}) => ({ weight, reps, originalUnit: 'lbs', type: 'working', completed: true, ...extra });
+    const seed = (extra = {}) => ({
+        [`${U}/workouts/a`]: workout('2026-10-14', [set(190, 8)]),
+        [`${U}/workouts/b`]: workout('2026-10-21', [set(200, 8)]),
+        [`${U}/workoutTemplates/push`]: { name: 'Push Day', exercises: [{ machine: 'Bench Press', defaultReps: 8 }] },
+        [`${U}/preferences/weekPlan`]: { days: { sat: 'push' }, restDays: [] },
+        [`${U}/preferences/settings`]: { weightUnit: 'lbs', plateLbs: [45, 25, 10, 5] },
+        ...extra,
+    });
+
+    it("runs the client's rules server-side: plate-aware bump for today's workout", async () => {
+        const ex = makeToolExecutors({ db: fakeAdminDb(seed()), userId: 'u1', unit: 'lbs', today: '2026-10-24' });
+        const v = await ex.get_verdicts();
+        expect(v.today).toBe('2026-10-24');
+        expect(v.increment).toBe(10);
+        expect(v.exercises).toEqual([expect.objectContaining({
+            name: 'Bench Press', template: 'Push Day', today: true, action: 'bump', weight: 210, reps: 8,
+        })]);
+        expect(v.scoreboard.primaries.map(p => p.name)).toEqual(['Bench Press']);
+    });
+
+    it('an active program deload week turns targets into deload targets', async () => {
+        const db = fakeAdminDb(seed({
+            [`${U}/programs/p1`]: {
+                name: 'Block', active: true, startDate: '2026-10-19', weeks: 4,
+                weekTargets: [{ week: 1, label: 'Deload', weightPct: -35 }],
+            },
+        }));
+        const v = await makeToolExecutors({ db, userId: 'u1', today: '2026-10-24' }).get_verdicts();
+        expect(v.intent.mode).toBe('deload');
+        expect(v.exercises[0]).toMatchObject({ action: 'deload', bumped: false });
+    });
+
+    it("an in-progress session's stored intent wins (manual deload, no program)", async () => {
+        const db = fakeAdminDb(seed({
+            [`${U}/workouts/live`]: { date: '2026-10-24', workoutType: 'Push Day', sessionIntent: { mode: 'deload', weightPct: -30, source: 'manual' } },
+        }));
+        const v = await makeToolExecutors({ db, userId: 'u1', today: '2026-10-24' }).get_verdicts();
+        expect(v.exercises[0].action).toBe('deload');
+    });
+
+    it('speaks the display unit', async () => {
+        const v = await makeToolExecutors({ db: fakeAdminDb(seed()), userId: 'u1', unit: 'kg', today: '2026-10-24' }).get_verdicts();
+        expect(v.unit).toBe('kg');
+        expect(v.exercises[0].last.weight).toBe(90.7); // 200 lbs
     });
 });
