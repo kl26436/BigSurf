@@ -9,6 +9,12 @@ import {
     templatesChangedNote,
     deriveProgramWeek,
     buildProgramContext,
+    buildSessionIntentContext,
+    buildTodayContext,
+    contextRefreshReason,
+    contextTurn,
+    visibleQuestion,
+    CONTEXT_STALE_MS,
 } from '../../js/core/features/coach-context.js';
 
 describe('buildProfileContext', () => {
@@ -193,5 +199,130 @@ describe('deriveProgramWeek / buildProgramContext (Phase 9)', () => {
     it('CP-3: the context line carries set / rep / RPE levers, not just weightPct', () => {
         const shaped = { ...program, weekTargets: [{ week: 2, label: 'intensify', setDelta: 2, repRange: [6, 8], rpeTarget: 9 }] };
         expect(buildProgramContext(shaped, '2026-07-07')).toContain('intensify (+2 sets · 6–8 reps · RPE 9)');
+    });
+});
+
+describe('AP-9 — the coach learns the deload', () => {
+    const program = {
+        name: 'Hypertrophy block', goal: 'hypertrophy', weeks: 6, startDate: '2026-06-29',
+        weekTargets: [
+            { week: 2, label: 'Volume', setDelta: 1 },
+            { week: 6, label: 'Deload', weightPct: -35, setDelta: -2, repRange: [12, 15] },
+        ],
+    };
+
+    it('buildProgramContext emits the DELOAD WEEK directive in a deload week', () => {
+        const ctx = buildProgramContext(program, '2026-08-05'); // week 6
+        expect(ctx).toContain('week 6 of 6');
+        expect(ctx).toContain('DELOAD WEEK: do NOT prescribe heavier loads this week; hold or reduce. Session targets are already set by the app.');
+    });
+
+    it('a volume-only deload (negative setDelta) counts too', () => {
+        const volOnly = { ...program, weekTargets: [{ week: 6, label: 'Back-off', setDelta: -2 }] };
+        expect(buildProgramContext(volOnly, '2026-08-05')).toContain('DELOAD WEEK');
+    });
+
+    it('no directive in a build week or a baseline week', () => {
+        expect(buildProgramContext(program, '2026-07-07')).not.toContain('DELOAD'); // week 2, +1 set
+        expect(buildProgramContext(program, '2026-07-14')).not.toContain('DELOAD'); // week 3, baseline
+    });
+
+    it('buildSessionIntentContext: one line for a deload intent from any source', () => {
+        const manual = buildSessionIntentContext({ mode: 'deload', weightPct: -30, setDelta: null, repRange: null, rpeTarget: null, source: 'manual' });
+        expect(manual).toBe('Current session: DELOAD (manual deload · -30% weight) — do NOT prescribe heavier loads for this session; hold or reduce. Session targets are already set by the app.\n');
+        const prog = buildSessionIntentContext({ mode: 'deload', weightPct: -35, repRange: [12, 15], week: 6, weeks: 6, source: 'program' });
+        expect(prog).toContain('program week 6 of 6 · -35% weight · 12–15 reps');
+        const label = buildSessionIntentContext({ mode: 'deload', weightPct: null, source: 'label' });
+        expect(label).toContain('Current session: DELOAD (labelled deload)');
+    });
+
+    it("buildSessionIntentContext: '' for build / peak / freestyle / missing", () => {
+        expect(buildSessionIntentContext({ mode: 'build', source: 'none' })).toBe('');
+        expect(buildSessionIntentContext({ mode: 'peak', weightPct: 5, source: 'program' })).toBe('');
+        expect(buildSessionIntentContext({ mode: 'freestyle', source: 'none' })).toBe('');
+        expect(buildSessionIntentContext(null)).toBe('');
+    });
+});
+
+describe('AP-15b — buildTodayContext', () => {
+    // 2026-07-08 is a Wednesday.
+    const templates = [{ id: 'push', name: 'Push Day' }, { id: 'pull', name: 'Pull Day' }];
+    const plan = { days: { mon: 'push', tue: null, wed: 'pull', thu: null, fri: null, sat: null, sun: null }, restDays: ['sun'] };
+    const done = (date, templateId, location) => ({ date, templateId, workoutType: templateId, completedAt: `${date}T18:00:00Z`, location });
+
+    it("date, weekday, planned template, and the last workout's gym", () => {
+        const line = buildTodayContext({
+            today: '2026-07-08', weekPlan: plan, templates,
+            workouts: [done('2026-07-06', 'push', 'Iron Temple'), done('2026-06-30', 'pull', 'Home')],
+        });
+        expect(line).toBe('Today: Wednesday 2026-07-08 · planned: Pull Day · gym: Iron Temple\n');
+    });
+
+    it('rest day, already-done day, and no plan', () => {
+        expect(buildTodayContext({ today: '2026-07-12', weekPlan: plan, templates })).toContain('planned: rest day');
+        expect(buildTodayContext({ today: '2026-07-08', weekPlan: plan, templates, workouts: [done('2026-07-06', 'push'), done('2026-07-08', 'pull')] }))
+            .toContain('planned: Pull Day (already done)');
+        expect(buildTodayContext({ today: '2026-07-08' })).toBe('Today: Wednesday 2026-07-08 · no week plan\n');
+    });
+
+    it('a missed day reflows onto today (the dashboard Today card rules)', () => {
+        // Monday's push was missed and Tuesday is open → it reflows to Tuesday.
+        expect(buildTodayContext({ today: '2026-07-07', weekPlan: plan, templates })).toContain('planned: Push Day');
+    });
+
+    it('program week + target + DELOAD flag', () => {
+        const program = {
+            name: 'Block', goal: 'strength', weeks: 4, startDate: '2026-06-15',
+            weekTargets: [{ week: 4, label: 'Deload', weightPct: -35 }],
+        };
+        const line = buildTodayContext({ today: '2026-07-08', weekPlan: plan, templates, program });
+        expect(line).toContain('program week 4 of 4 — Deload (-35% weight)');
+        expect(line).toContain('· DELOAD');
+        const baseline = buildTodayContext({ today: '2026-06-16', program });
+        expect(baseline).toContain('program week 1 of 4 — baseline');
+        expect(baseline).not.toContain('DELOAD');
+    });
+
+    it('an in-progress deload intent flags DELOAD with no program; current location wins', () => {
+        const line = buildTodayContext({
+            today: '2026-07-08', intent: { mode: 'deload', source: 'manual' },
+            currentLocation: { name: 'Hotel Gym' }, workouts: [done('2026-07-06', 'push', 'Iron Temple')],
+        });
+        expect(line).toContain('DELOAD');
+        expect(line).toContain('gym: Hotel Gym');
+        expect(line).not.toContain('Iron Temple');
+    });
+
+    it("bad or missing date → ''", () => {
+        expect(buildTodayContext({})).toBe('');
+        expect(buildTodayContext({ today: 'nope' })).toBe('');
+    });
+});
+
+describe('AP-15e — context freshness', () => {
+    const now = Date.parse('2026-07-08T12:00:00Z');
+
+    it('first turn and context-less threads (review seeds) attach a block', () => {
+        expect(contextRefreshReason({ turns: 0, contextAt: 0, now })).toBe('first');
+        expect(contextRefreshReason({ turns: 2, contextAt: 0, now })).toBe('missing');
+    });
+
+    it('a write since the last block, or a block >24 h old, re-sends it', () => {
+        expect(contextRefreshReason({ turns: 2, contextAt: now - 60000, wroteSinceContext: true, now })).toBe('write');
+        expect(contextRefreshReason({ turns: 4, contextAt: now - CONTEXT_STALE_MS - 1, now })).toBe('stale');
+    });
+
+    it('a fresh block with no writes → no block this turn', () => {
+        expect(contextRefreshReason({ turns: 2, contextAt: now - 3600000, now })).toBeNull();
+    });
+
+    it('every context turn strips back to the typed question', () => {
+        for (const reason of ['first', 'missing', 'write', 'stale']) {
+            const turn = contextTurn('Today: Wednesday 2026-07-08\nUnit: lbs', 'What today?', reason);
+            expect(turn).toContain('Unit: lbs');
+            expect(visibleQuestion(turn)).toBe('What today?');
+        }
+        expect(contextTurn('X', 'Q', 'stale')).toContain('over a day old');
+        expect(visibleQuestion('plain follow-up')).toBe('plain follow-up');
     });
 });

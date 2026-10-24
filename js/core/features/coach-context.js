@@ -3,7 +3,8 @@
 // to say — callers just concatenate). Kept out of ai-coach-ui.js so they're
 // unit-testable without mocking the UI import graph.
 
-import { describeWeekTarget } from './week-targets.js';
+import { describeWeekTarget, isDeloadTarget } from './week-targets.js';
+import { DAY_KEYS, DAY_LABELS, satisfiedDays, todayCard } from './week-plan.js';
 
 /**
  * `User profile:` block — goal, experience, injuries, notes, height, weekly
@@ -144,7 +145,147 @@ export function buildProgramContext(program, today) {
     const targetStr = target
         ? ` — this week: ${target.label}${desc ? ` (${desc})` : ''}${target.note ? `, ${target.note}` : ''}`
         : '';
-    return `Active program: "${program.name}" (${program.goal}) — week ${week} of ${program.weeks}${targetStr}. Session-shaped asks should honor this via propose_session_adjustments; trust level is propose-only (cards, never silent writes).\n`;
+    // AP-9 — the week line alone ("this week: deload (-35%)") read as
+    // background; the model still applied the "hit reps → push weight"
+    // doctrine. A deload week gets an explicit directive.
+    const deload = target && isDeloadTarget(target)
+        ? 'DELOAD WEEK: do NOT prescribe heavier loads this week; hold or reduce. Session targets are already set by the app.\n'
+        : '';
+    return `Active program: "${program.name}" (${program.goal}) — week ${week} of ${program.weeks}${targetStr}. Session-shaped asks should honor this via propose_session_adjustments; trust level is propose-only (cards, never silent writes).\n${deload}`;
+}
+
+/**
+ * AP-9 — directive line for the session in progress when its stored
+ * `sessionIntent` (AP-6) is a deload from ANY source: a program week, a
+ * manual deload with no program, or a legacy "Deload" label on resume.
+ * @param {object|null} intent - savedData.sessionIntent
+ * @returns {string} '' unless intent.mode === 'deload'
+ */
+export function buildSessionIntentContext(intent) {
+    if (intent?.mode !== 'deload') return '';
+    const desc = describeWeekTarget(intent);
+    let src = 'labelled deload';
+    if (intent.source === 'program') src = intent.week ? `program week ${intent.week}${intent.weeks ? ` of ${intent.weeks}` : ''}` : 'program deload';
+    else if (intent.source === 'manual') src = 'manual deload';
+    return `Current session: DELOAD (${src}${desc ? ` · ${desc}` : ''}) — do NOT prescribe heavier loads for this session; hold or reduce. Session targets are already set by the app.\n`;
+}
+
+const gymName = (loc) => (loc && typeof loc === 'object' ? loc.name : loc) || '';
+
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * AP-15b — the `Today:` header line. The coach had no idea what day it was,
+ * what was planned, or where the user trains, so "what should I do today?"
+ * was answered without the one fact it hinges on.
+ *
+ * @param {object} args
+ * @param {string} args.today - YYYY-MM-DD (local)
+ * @param {object|null} [args.weekPlan] - {days:{mon:templateId|null,…}, restDays}
+ * @param {Array} [args.templates] - [{id, name}]
+ * @param {Array} [args.workouts] - history (any order): this week's completed
+ *   workouts mark planned days done; the newest with a location is the gym
+ * @param {object|null} [args.program] - active program doc
+ * @param {object|null} [args.intent] - in-progress savedData.sessionIntent
+ * @param {object|string|null} [args.currentLocation] - in-progress workout's location
+ * @returns {string} one line ending in a newline ('' without a valid date)
+ */
+export function buildTodayContext({
+    today, weekPlan = null, templates = [], workouts = [], program = null,
+    intent = null, currentLocation = null,
+} = {}) {
+    if (!today) return '';
+    const date = new Date(`${today}T12:00:00`);
+    if (Number.isNaN(date.getTime())) return '';
+    const dayKey = DAY_KEYS[(date.getDay() + 6) % 7];
+    const parts = [`${DAY_LABELS[dayKey]} ${today}`];
+
+    const nameOf = (id) => (templates || []).find(t => t.id === id)?.name || id;
+    if (weekPlan) {
+        const monday = new Date(date);
+        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+        const mondayStr = ymd(monday);
+        const weekDone = (workouts || []).filter(w => w?.completedAt && !w.cancelledAt && w.date >= mondayStr && w.date <= today);
+        const card = todayCard(weekPlan, satisfiedDays(weekPlan, weekDone, templates || []), date);
+        if (card.kind === 'workout') parts.push(`planned: ${nameOf(card.templateId)}`);
+        else if (card.kind === 'rest') parts.push('planned: rest day');
+        else if (card.kind === 'done') parts.push(`planned: ${nameOf(weekPlan.days?.[dayKey])} (already done)`);
+        else if (card.kind === 'open') parts.push('planned: nothing (open day)');
+        else parts.push('no week plan');
+    } else {
+        parts.push('no week plan');
+    }
+
+    let deload = intent?.mode === 'deload';
+    if (program?.startDate) {
+        const { week, target, finished } = deriveProgramWeek(program, today);
+        if (finished) {
+            parts.push(`program "${program.name}" finished`);
+        } else {
+            const desc = target ? describeWeekTarget(target) : '';
+            parts.push(`program week ${week} of ${program.weeks}${target ? ` — ${target.label}${desc ? ` (${desc})` : ''}` : ' — baseline'}`);
+            if (target && isDeloadTarget(target)) deload = true;
+        }
+    }
+    if (deload) parts.push('DELOAD');
+
+    let gym = gymName(currentLocation);
+    if (!gym) {
+        const newest = [...(workouts || [])]
+            .filter(w => w?.date && gymName(w.location))
+            .sort((a, b) => b.date.localeCompare(a.date))[0];
+        gym = gymName(newest?.location);
+    }
+    if (gym) parts.push(`gym: ${gym}`);
+
+    return `Today: ${parts.join(' · ')}\n`;
+}
+
+/** A thread's context block older than this is re-sent whole (AP-15e). */
+export const CONTEXT_STALE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * AP-15e — does this user turn carry a full training-context block?
+ * Context used to ride only on turn 1 and be replayed on reopen, so a
+ * thread continued two weeks later reasoned from two-week-old data, and a
+ * turn after a coach write still saw the pre-write templates/plan.
+ *
+ * @param {object} args
+ * @param {number} args.turns - messages already in the thread
+ * @param {number|null} args.contextAt - ms epoch the last block was attached
+ *   (null/0 = never, e.g. a review-seeded thread)
+ * @param {boolean} [args.wroteSinceContext] - a coach write landed since then
+ * @param {number} [args.now]
+ * @returns {'first'|'missing'|'write'|'stale'|null} null = no block this turn
+ *   ('missing' = the thread has turns but never carried a block, e.g. a
+ *   weekly review seeded as a thread)
+ */
+export function contextRefreshReason({ turns, contextAt, wroteSinceContext = false, now = Date.now() }) {
+    if (!turns) return 'first';
+    if (!contextAt) return 'missing';
+    if (wroteSinceContext) return 'write';
+    if (now - contextAt > CONTEXT_STALE_MS) return 'stale';
+    return null;
+}
+
+/**
+ * The user-turn text carrying a context block. Every variant ends with
+ * `\nQuestion: <q>` so history views (and the server's thread title) can
+ * strip the block with one marker.
+ */
+export function contextTurn(context, question, reason = 'first') {
+    let lead = 'Here is my recent training data:';
+    if (reason === 'write') lead = '(Fresh training data — the app changed since the last block; use this one instead of any earlier block.)';
+    else if (reason === 'stale') lead = '(Fresh training data — this conversation is over a day old; use this one instead of any earlier block.)';
+    return `${lead}\n\n${context}\n\nQuestion: ${question}`;
+}
+
+/** The question the user typed, without any context block (history display). */
+export function visibleQuestion(content) {
+    const marker = '\nQuestion: ';
+    const s = String(content || '');
+    const i = s.lastIndexOf(marker);
+    return i === -1 ? s : s.slice(i + marker.length);
 }
 
 /**

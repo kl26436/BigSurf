@@ -88,11 +88,21 @@ export function getBodyPartForExercise(exerciseName, exerciseDatabase) {
  * - Maximum Recoverable Volume (MRV): ~15-25 sets/muscle/week
  * - Sweet spot for most: 10-20 sets/muscle/week
  *
- * @param {Array} workouts - Recent completed workouts (1 week)
+ * AP-15a — the count is divided by `weeks`, the number of weeks the input
+ * window spans. Callers that pass one week (dashboard, governor) leave it at
+ * 1; the coach passes 28 days and weeks:4. Before this the coach summed four
+ * weeks and labelled it "weekly", so 12 real chest sets/week read as 48
+ * (high) against MRV 22 — phantom overtraining.
+ *
+ * @param {Array} workouts - Completed workouts inside the window
  * @param {Array} exerciseDatabase - Exercise library with bodyPart fields
- * @returns {Array} Volume analysis per body part
+ * @param {{weeks?: number}} [opts] - weeks the window spans (default 1)
+ * @returns {Array<{bodyPart:string, totalSets:number, weeks:number,
+ *   avgWeeklySets:number, weeklySets:number, status:string, recommendation:string|null}>}
+ *   `weeklySets` is kept as an alias of `avgWeeklySets` for existing callers.
  */
-export function analyzeWeeklyVolume(workouts, exerciseDatabase) {
+export function analyzeWeeklyVolume(workouts, exerciseDatabase, { weeks = 1 } = {}) {
+    const span = Number(weeks) > 0 ? Number(weeks) : 1;
     const volumeByPart = {};
 
     for (const workout of workouts) {
@@ -110,16 +120,55 @@ export function analyzeWeeklyVolume(workouts, exerciseDatabase) {
         }
     }
 
-    return Object.entries(volumeByPart).map(([part, sets]) => ({
-        bodyPart: part,
-        weeklySets: sets,
-        status: sets < Config.VOLUME_MEV ? 'low' : sets > Config.VOLUME_MRV ? 'high' : 'good',
-        recommendation: sets < Config.VOLUME_MEV
-            ? `Add ${Config.VOLUME_MEV - sets} more this week`
-            : sets > Config.VOLUME_MRV
-                ? `Consider reducing ${part} volume to aid recovery`
-                : null,
-    }));
+    return Object.entries(volumeByPart).map(([part, totalSets]) => {
+        const avg = Math.round((totalSets / span) * 10) / 10;
+        return {
+            bodyPart: part,
+            totalSets,
+            weeks: span,
+            avgWeeklySets: avg,
+            weeklySets: avg,
+            status: avg < Config.VOLUME_MEV ? 'low' : avg > Config.VOLUME_MRV ? 'high' : 'good',
+            recommendation: avg < Config.VOLUME_MEV
+                ? `Add ${Math.ceil(Config.VOLUME_MEV - avg)} more this week`
+                : avg > Config.VOLUME_MRV
+                    ? `Consider reducing ${part} volume to aid recovery`
+                    : null,
+        };
+    });
+}
+
+const shiftDay = (dateStr, days) => {
+    const d = new Date(`${dateStr}T12:00:00`);
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/**
+ * AP-15a — true per-week average volume over the last `days` days (default
+ * 28) ending `today`. Shared by the coach's chat context and its prompt
+ * cards so both say the same number. When the user's history starts inside
+ * the window, the divisor is the weeks actually covered (rounded up, never
+ * below 1) — a two-week-old account isn't averaged over four.
+ *
+ * @param {Array} allWorkouts - workout history (any order; cancelled skipped)
+ * @param {Array} exerciseDatabase
+ * @param {{today: string, days?: number}} opts - today = YYYY-MM-DD
+ * @returns {{weeks:number, days:number, volume:Array}} volume = analyzeWeeklyVolume rows
+ */
+export function averageWeeklyVolume(allWorkouts, exerciseDatabase, { today, days = 28 } = {}) {
+    const valid = (allWorkouts || []).filter(w => w?.date && !w.cancelledAt && (!today || w.date <= today));
+    if (!today || valid.length === 0) return { weeks: 1, days, volume: [] };
+    const cutoff = shiftDay(today, -(days - 1));
+    const inWindow = valid.filter(w => w.date >= cutoff);
+    const first = valid.reduce((min, w) => (w.date < min ? w.date : min), valid[0].date);
+    const maxWeeks = Math.max(1, Math.round(days / 7));
+    let weeks = maxWeeks;
+    if (first > cutoff) {
+        const covered = Math.round((new Date(`${today}T12:00:00`) - new Date(`${first}T12:00:00`)) / 86400000) + 1;
+        weeks = Math.min(maxWeeks, Math.max(1, Math.ceil(covered / 7)));
+    }
+    return { weeks, days, volume: analyzeWeeklyVolume(inWindow, exerciseDatabase, { weeks }) };
 }
 
 // ===================================================================
@@ -402,7 +451,8 @@ export function detectPositiveTrends(workouts) {
  * Get the top 1-3 most actionable insights for the dashboard.
  * Requires at least 3 workouts in the last 2 weeks to show anything.
  *
- * @param {Array} recentWorkouts - Workouts from last 2 weeks (for volume)
+ * @param {Array} recentWorkouts - Workouts from the last 7 days (loadInsightsData) —
+ *   the volume figures below are one week's sets, so the copy says "last 7 days"
  * @param {Array} allWorkouts - Workouts from last 6-8 weeks (for plateaus, deload, frequency)
  * @param {Array} exerciseDatabase - Exercise library
  * @returns {Array} Top insights with type, severity, and message
@@ -441,7 +491,7 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase, { 
             type: 'volume-high',
             severity: 'warning',
             icon: 'fa-exclamation-triangle',
-            message: `${parts} volume is very high this week. Consider reducing to aid recovery.`,
+            message: `${parts} volume is very high over the last 7 days. Consider reducing to aid recovery.`,
         });
     }
 
@@ -451,7 +501,7 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase, { 
             type: 'volume-low',
             severity: 'info',
             icon: 'fa-chart-bar',
-            message: `${formatBodyPart(top.bodyPart)} volume is low — ${top.weeklySets} set${top.weeklySets === 1 ? '' : 's'}. ${top.recommendation}`,
+            message: `${formatBodyPart(top.bodyPart)} volume is low — ${top.weeklySets} set${top.weeklySets === 1 ? '' : 's'} in the last 7 days. ${top.recommendation}`,
         });
     }
 
@@ -589,6 +639,7 @@ export async function loadInsightsData(workoutsIn = null) {
 
 export const TrainingInsights = {
     analyzeWeeklyVolume,
+    averageWeeklyVolume,
     detectPlateaus,
     checkDeloadNeeded,
     analyzeFrequency,

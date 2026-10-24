@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-    computeAdviceOutcome, buildOutcomesContext, buildFeedbackContext,
+    computeAdviceOutcome, buildOutcomesContext, buildFeedbackContext, convertToUnit,
 } from '../../js/core/features/coach-outcomes.js';
 
 const TODAY = '2026-07-07';
@@ -47,6 +47,43 @@ describe('computeAdviceOutcome — weight_target', () => {
     });
 });
 
+describe('AP-15c — units: outcomes compare in one unit', () => {
+    const kgSession = (date, exercise, kg) => ({
+        date,
+        completedAt: `${date}T11:00:00.000Z`,
+        exerciseNames: { exercise_0: exercise },
+        exercises: { exercise_0: { sets: [{ reps: 8, weight: kg, originalUnit: 'kg', completed: true }] } },
+    });
+
+    it('convertToUnit rounds to 1 decimal and passes same-unit through', () => {
+        expect(convertToUnit(100, 'kg', 'lbs')).toBe(220.5);
+        expect(convertToUnit(225, 'lbs', 'kg')).toBe(102.1);
+        expect(convertToUnit(135, 'lbs', 'lbs')).toBe(135);
+        expect(convertToUnit(0, 'kg', 'lbs')).toBe(0);
+        expect(convertToUnit(2050, 'lbs', 'kg')).toBe(929.9); // volumes too (no 1000 cap)
+    });
+
+    it('a 70 kg session hits a 155 lbs target (raw 70 < 155 used to read "not hit")', () => {
+        const advice = { date: '2026-06-15', type: 'weight_target', exercise: 'Bench Press', targetValue: 155 };
+        const line = computeAdviceOutcome(advice, [kgSession('2026-06-25', 'Bench Press', 72)], TODAY, { unit: 'lbs' });
+        expect(line).toContain('target 155 lbs');
+        expect(line).toContain('hit (best since: 158.7)');
+    });
+
+    it("the advice's stamped unit wins over the display unit", () => {
+        const advice = { date: '2026-06-15', type: 'weight_target', exercise: 'Bench Press', targetValue: 70, unit: 'kg' };
+        const line = computeAdviceOutcome(advice, [wo('2026-06-25', 'Bench Press', [155])], TODAY, { unit: 'lbs' });
+        expect(line).toContain('target 70 kg');
+        expect(line).toContain('hit (best since: 70.3)');
+    });
+
+    it('buildOutcomesContext threads the unit through', () => {
+        const advice = [{ date: '2026-06-15', type: 'weight_target', exercise: 'Bench Press', targetValue: 70 }];
+        const ctx = buildOutcomesContext(advice, [wo('2026-06-25', 'Bench Press', [155])], TODAY, { unit: 'kg' });
+        expect(ctx).toContain('target 70 kg; hit (best since: 70.3)');
+    });
+});
+
 describe('computeAdviceOutcome — timing gates', () => {
     it('too fresh (<14d) and stale (>70d) return null', () => {
         const mk = (date) => ({ date, type: 'weight_target', exercise: 'Squat', targetValue: 100 });
@@ -68,7 +105,7 @@ describe('computeAdviceOutcome — deload', () => {
         const line = computeAdviceOutcome(advice, workouts, TODAY);
         expect(line).toContain('suggested deload for Bench Press');
         expect(line).toContain('volume -67% that week');
-        expect(line).toContain('185→195 in the 4 weeks after');
+        expect(line).toContain('185→195 lbs in the 4 weeks after');
     });
 });
 

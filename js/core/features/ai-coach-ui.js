@@ -13,8 +13,10 @@ import { formatCoachResponse } from './coach-markdown.js';
 import {
     buildProfileContext, buildPRContext, buildTemplatesContext,
     setTypeMarker, templatesChangedNote, buildProgramContext,
+    buildSessionIntentContext, buildTodayContext,
+    contextRefreshReason, contextTurn, visibleQuestion,
 } from './coach-context.js';
-import { summarizeWeekPlan, satisfiedDays, weekDates, DAY_KEYS } from './week-plan.js';
+import { summarizeWeekPlan, satisfiedDays, weekDates, DAY_KEYS, loadWeekPlan } from './week-plan.js';
 import { scaleSessionSetTargets } from './program-session.js';
 import { weightIncrement, scaleLoadableWeight } from './progression.js';
 import { buildOutcomesContext, buildFeedbackContext, computeAdviceOutcome } from './coach-outcomes.js';
@@ -47,6 +49,11 @@ let _coachThreadTemplateNames = null;
 // One coachHistory doc per conversation (server updates it each turn), so
 // past sessions restore with full context. Generated on the first turn.
 let _coachThreadId = null;
+// AP-15e — when the thread's last full context block was attached (ms
+// epoch; 0 = never, e.g. a review-seeded thread) and whether a coach write
+// has landed since. Either one stale → the next turn re-sends the block.
+let _coachContextAt = 0;
+let _coachWroteSinceContext = false;
 
 // ===================================================================
 // AI COACH MODAL
@@ -83,21 +90,23 @@ function getContextualPrompts() {
         } catch (e) { debugLog('coach prompts: plateau check failed', e); }
 
         try {
-            const volumes = TrainingInsights.analyzeWeeklyVolume(workouts.slice(0, 20), exerciseDatabase);
+            // AP-15a — same per-week average the chat context sends (the old
+            // slice(0, 20) summed ~4 weeks of workouts and called it "per week").
+            const { volume: volumes } = TrainingInsights.averageWeeklyVolume(workouts, exerciseDatabase, { today: AppState.getTodayDateString() });
             const low = volumes.find(v => v.status === 'low');
             const high = volumes.find(v => v.status === 'high');
             if (low) {
                 prompts.push({
                     icon: 'fa-balance-scale',
                     iconClass: 'coach-prompt-card__icon--warning',
-                    text: `My ${low.bodyPart} volume is only ${low.weeklySets} working sets per week. How should I rebalance my program to hit all muscle groups?`,
+                    text: `My ${low.bodyPart} volume is only ${low.avgWeeklySets} working sets per week (average over the last ${low.weeks} week${low.weeks === 1 ? '' : 's'}). How should I rebalance my program to hit all muscle groups?`,
                     html: `My <strong>${escapeHtml(low.bodyPart)}</strong> volume is low — how do I rebalance?`,
                 });
             } else if (high) {
                 prompts.push({
                     icon: 'fa-balance-scale',
                     iconClass: 'coach-prompt-card__icon--warning',
-                    text: `My ${high.bodyPart} volume is ${high.weeklySets} sets per week. Am I overtraining? How should I adjust?`,
+                    text: `My ${high.bodyPart} volume is ${high.avgWeeklySets} sets per week (average over the last ${high.weeks} week${high.weeks === 1 ? '' : 's'}). Am I overtraining? How should I adjust?`,
                     html: `Am I overtraining <strong>${escapeHtml(high.bodyPart)}</strong>?`,
                 });
             }
@@ -449,6 +458,10 @@ export async function askCoach(question) {
         </div>
     `);
 
+    // Freshness state before this turn — restored if the turn fails, so a
+    // dropped refresh turn re-sends its block on the retry (AP-15e).
+    const freshnessBefore = { at: _coachContextAt, wrote: _coachWroteSinceContext };
+
     try {
         // The first turn is the only one that carries the equipment block —
         // wait briefly for the warm kicked off by showAICoach rather than
@@ -486,6 +499,8 @@ export async function askCoach(question) {
         let outcomesBlock = '';
         let feedbackBlock = '';
         let programBlock = '';
+        let program = null;
+        const todayStr = AppState.getTodayDateString();
         try {
             const { db, collection, query, orderBy, limit, getDocs, where } = await import('../data/firebase-config.js');
             const uid = AppState.currentUser.uid;
@@ -495,30 +510,60 @@ export async function askCoach(question) {
                 getDocs(query(collection(db, 'users', uid, 'programs'), where('active', '==', true), limit(1))),
             ]);
             const advice = advSnap.docs.map(d => d.data());
-            outcomesBlock = buildOutcomesContext(advice, allWorkouts, AppState.getTodayDateString());
+            outcomesBlock = buildOutcomesContext(advice, allWorkouts, todayStr, { unit: AppState.globalUnit || 'lbs' });
             const recentFeedback = histSnap.docs.flatMap(d => Object.values(d.data().feedback || {}));
             feedbackBlock = buildFeedbackContext(recentFeedback);
             if (!progSnap.empty) {
-                programBlock = buildProgramContext(progSnap.docs[0].data(), AppState.getTodayDateString());
+                program = progSnap.docs[0].data();
+                programBlock = buildProgramContext(program, todayStr);
             }
         } catch (e) { debugLog('coach: outcomes/program unavailable', e); }
 
-        const context = buildTrainingContext(allWorkouts, healthSummary, prList)
+        // AP-15b — the Today line needs the week plan; hydrate it if the
+        // dashboard hasn't (undefined = never fetched, null = none set).
+        if (AppState._weekPlan === undefined) {
+            try { await loadWeekPlan(); } catch (e) { debugLog('coach: week plan unavailable', e); }
+        }
+        // AP-9 — an in-progress session's intent (AP-6) covers deloads the
+        // program line can't see (manual deload, legacy label on resume).
+        const intent = AppState.savedData?.sessionIntent || null;
+        const todayLine = buildTodayContext({
+            today: todayStr,
+            weekPlan: AppState._weekPlan || null,
+            templates: AppState.workoutPlans || [],
+            workouts: allWorkouts,
+            program,
+            intent,
+            currentLocation: AppState.savedData?.location || null,
+        });
+        const intentBlock = programBlock.includes('DELOAD WEEK') ? '' : buildSessionIntentContext(intent);
+
+        const context = todayLine
+            + buildTrainingContext(allWorkouts, healthSummary, prList)
             + (programBlock ? `\n${programBlock}` : '')
+            + (intentBlock ? `\n${intentBlock}` : '')
             + (outcomesBlock ? `\n${outcomesBlock}` : '')
             + (feedbackBlock ? `\n${feedbackBlock}` : '');
 
         // Append the user's turn to the running conversation. The first user
         // turn gets the training context prepended so Claude grounds its
-        // answers in real numbers; subsequent turns just carry the question —
-        // plus a one-line freshness note when the template list changed since
-        // the thread started (context is never resent whole).
+        // answers in real numbers. Later turns carry just the question — plus
+        // a one-line note when the template list changed — UNLESS the block is
+        // stale (thread reopened >24 h later, or a coach write landed since
+        // the last block): then the whole block is re-sent (AP-15e).
         const templateNames = (AppState.workoutPlans || []).map(t => t.name || t.day).filter(Boolean);
+        const refresh = contextRefreshReason({
+            turns: _coachConversation.length,
+            contextAt: _coachContextAt,
+            wroteSinceContext: _coachWroteSinceContext,
+        });
         let userTurn;
-        if (_coachConversation.length === 0) {
+        if (refresh) {
             _coachThreadTemplateNames = templateNames;
             _coachThreadId = _coachThreadId || `thread_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-            userTurn = `Here is my recent training data:\n\n${context}\n\nQuestion: ${question.trim()}`;
+            userTurn = contextTurn(context, question.trim(), refresh);
+            _coachContextAt = Date.now();
+            _coachWroteSinceContext = false;
         } else {
             const note = templatesChangedNote(_coachThreadTemplateNames || [], templateNames);
             if (note) _coachThreadTemplateNames = templateNames;
@@ -582,6 +627,8 @@ export async function askCoach(question) {
         // send a double question.
         if (_coachConversation[_coachConversation.length - 1]?.role === 'user') {
             _coachConversation.pop();
+            _coachContextAt = freshnessBefore.at;
+            _coachWroteSinceContext = freshnessBefore.wrote || _coachWroteSinceContext;
         }
 
         const errorMessage = error.message || '';
@@ -628,7 +675,12 @@ async function streamCoachResponse(question, bubble, stats = {}) {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ messages: _coachConversation, question, threadId: _coachThreadId }),
+            // unit + today (AP-15b/c): the server's read tools convert to the
+            // user's unit and answer "today" in the user's timezone.
+            body: JSON.stringify({
+                messages: _coachConversation, question, threadId: _coachThreadId,
+                unit: AppState.globalUnit || 'lbs', today: AppState.getTodayDateString(),
+            }),
         });
         if (resp.status === 429) throw new Error('resource-exhausted');
         if (!resp.ok || !resp.body) return null;
@@ -705,6 +757,8 @@ async function streamCoachResponse(question, bubble, stats = {}) {
  * so the created/updated template is live without a reload.
  */
 function handleCoachActionCard(card, streamingBubble) {
+    // A server-side write landed — the next turn's context block is stale.
+    _coachWroteSinceContext = true;
     if (card.kind === 'program_set' && card.program) {
         // Program creation is the biggest commitment the coach can make —
         // it gets a landing moment (hero-weight receipt with review + undo),
@@ -1140,6 +1194,8 @@ export function resetCoachUI() {
     _coachConversation = [];
     _coachThreadTemplateNames = null;
     _coachThreadId = null;
+    _coachContextAt = 0;
+    _coachWroteSinceContext = false;
 }
 
 // ===================================================================
@@ -1164,18 +1220,14 @@ function buildTrainingContext(workouts, healthSummary = '', prList = []) {
     let summary = buildProfileContext(AppState.settings || {});
     if (summary) summary += '\n';
 
-    // Volume by muscle group (last 4 weeks worth)
-    const fourWeekWorkouts = workouts.filter(w => {
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - 28);
-        return w.date >= cutoff.toISOString().slice(0, 10);
-    });
-
-    const volume = TrainingInsights.analyzeWeeklyVolume(fourWeekWorkouts, exerciseDatabase);
+    // Volume by muscle group — a TRUE per-week average over the last 4 weeks
+    // (AP-15a: this used to be the 4-week sum labelled "weekly avg", ~4×
+    // inflated against MEV/MRV → phantom overtraining calls).
+    const { volume, weeks: volWeeks } = TrainingInsights.averageWeeklyVolume(workouts, exerciseDatabase, { today: AppState.getTodayDateString(), days: 28 });
     if (volume.length > 0) {
-        summary += 'Weekly volume (sets/muscle, last 4 weeks avg):\n';
+        summary += `Weekly volume (avg working sets/muscle/week over the last ${volWeeks} week${volWeeks === 1 ? '' : 's'}; MEV ${Config.VOLUME_MEV}, MRV ${Config.VOLUME_MRV}):\n`;
         volume.forEach(v => {
-            summary += `${v.bodyPart}: ${v.weeklySets} sets (${v.status})\n`;
+            summary += `${v.bodyPart}: ${v.avgWeeklySets} sets/week (${v.status})\n`;
         });
     }
 
@@ -1276,7 +1328,10 @@ function buildTrainingContext(workouts, healthSummary = '', prList = []) {
             const ready = w.readiness?.score
                 ? ` · felt ${w.readiness.score}/5${w.readiness.note ? ` ("${w.readiness.note}")` : ''}`
                 : '';
-            summary += `\n${w.date} · ${wName}${loc ? ` @ ${loc}` : ''}${ready}\n`;
+            // Session label (AP-9): a planned −35% "Deload" session must not
+            // read as a strength crash.
+            const label = w.sessionLabel ? ` · ${w.sessionLabel}` : '';
+            summary += `\n${w.date} · ${wName}${loc ? ` @ ${typeof loc === 'object' ? (loc.name || '') : loc}` : ''}${label}${ready}\n`;
             for (const ex of withResolvedNames(w)) {
                 if (!ex.name) continue;
                 const equip = ex.equipment ? ` [${ex.equipment}]` : '';
@@ -1284,7 +1339,8 @@ function buildTrainingContext(workouts, healthSummary = '', prList = []) {
                     .filter(s => s.completed !== false && (s.reps || s.weight))
                     .map(s => {
                         const wt = s.weight ? convertWeight(s.weight, s.originalUnit || unit, unit) : 0;
-                        return `${s.reps || '?'}×${wt || 'BW'}${setTypeMarker(s)}`;
+                        // AP-15g — RPE when logged ("8×135 @RPE 9").
+                        return `${s.reps || '?'}×${wt || 'BW'}${s.rpe ? ` @RPE ${s.rpe}` : ''}${setTypeMarker(s)}`;
                     })
                     .join(', ');
                 const notes = ex.notes ? ` — note: "${ex.notes}"` : '';
@@ -1541,15 +1597,16 @@ export function showPastCoachSession(sessionId) {
             .map(m => ({ role: m.role, content: m.content }));
         _coachThreadId = session.threadId || session.id;
         _coachThreadTemplateNames = (AppState.workoutPlans || []).map(t => t.name || t.day).filter(Boolean);
+        // The thread's newest block is as old as its last turn — reopening a
+        // day later re-sends a fresh one on the next question (AP-15e).
+        _coachContextAt = Date.parse(session.timestamp) || 0;
+        _coachWroteSinceContext = false;
 
-        let first = true;
         for (const m of _coachConversation) {
             if (m.role === 'user') {
-                // The first turn carries the big training-context block —
-                // show just the question the user actually typed.
-                const visible = first ? (m.content.split('\nQuestion: ').pop() || m.content) : m.content;
-                addChatBubble('user', escapeHtml(visible));
-                first = false;
+                // Context-carrying turns (the first, and any refresh) hold the
+                // big training-context block — show just the typed question.
+                addChatBubble('user', escapeHtml(visibleQuestion(m.content) || m.content));
             } else {
                 addChatBubble('bot', formatCoachResponse(m.content));
             }
@@ -1573,6 +1630,10 @@ export function showPastCoachSession(sessionId) {
         ];
         _coachThreadId = session.id;
         _coachThreadTemplateNames = (AppState.workoutPlans || []).map(t => t.name || t.day).filter(Boolean);
+        // A review thread never carried the context block (profile,
+        // injuries, unit) — the first follow-up attaches it (AP-15f).
+        _coachContextAt = 0;
+        _coachWroteSinceContext = false;
         const reviewBubble = addChatBubble('bot', formatCoachResponse(session.response));
         if (reviewBubble) {
             const label = document.createElement('div');
@@ -1630,6 +1691,8 @@ export async function requestWeeklyReviewNow() {
             ];
             _coachThreadId = data.sessionId || null;
             _coachThreadTemplateNames = (AppState.workoutPlans || []).map(t => t.name || t.day).filter(Boolean);
+            _coachContextAt = 0; // first follow-up attaches the full context (AP-15f)
+            _coachWroteSinceContext = false;
             if (loadingBubble) loadingBubble.innerHTML = formatCoachResponse(data.review);
         } else if (data.status === 'no_workouts') {
             if (loadingBubble) loadingBubble.innerHTML = 'No completed workouts in the last 7 days — finish a session and ask again.';
