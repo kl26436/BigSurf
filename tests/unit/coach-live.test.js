@@ -19,7 +19,8 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({
     escapeAttr: (s) => String(s ?? ''),
 }));
 
-import { buildLiveWorkoutContext } from '../../js/core/features/coach-live.js';
+import { buildLiveWorkoutContext, buildLiveSessionLine, applyNextTarget } from '../../js/core/features/coach-live.js';
+import { AppState } from '../../js/core/utils/app-state.js';
 import { validateProposal, liveToolDefinitions } from '../../functions/coach-tools.js';
 
 describe('buildLiveWorkoutContext', () => {
@@ -77,6 +78,75 @@ describe('buildLiveWorkoutContext', () => {
 
     it('no workout → honest fallback', () => {
         expect(buildLiveWorkoutContext({})).toBe('No workout in progress.');
+    });
+
+    // AP-9 — the live coach must know a deload session from a build session.
+    const deloadIntent = {
+        mode: 'deload', weightPct: -35, setDelta: null, repRange: [12, 15], rpeTarget: null,
+        label: 'Deload', week: 6, weeks: 6, source: 'program', reason: 'program week 6',
+    };
+
+    it('AP-9: a deload intent adds ONE Session line with the levers and the cap', () => {
+        const ctx = buildLiveWorkoutContext({ ...state(), sessionIntent: deloadIntent });
+        expect(ctx).toContain('Session: Deload week, week 6 of 6 (-35% weight · 12–15 reps) — propose_next_target must not exceed the targets already on the set rows.');
+        expect((ctx.match(/^Session:/gm) || []).length).toBe(1);
+    });
+
+    it('AP-9: a manual deload reads as a session, peak gets its own line, build gets none', () => {
+        expect(buildLiveSessionLine({ ...deloadIntent, source: 'manual', week: null, weeks: null, repRange: null, weightPct: -30 }))
+            .toBe('Session: Deload session (-30% weight) — propose_next_target must not exceed the targets already on the set rows.');
+        expect(buildLiveSessionLine({ mode: 'peak', weightPct: 5, rpeTarget: 9, week: 5, weeks: 6, source: 'program' }))
+            .toContain('Session: Peak week, week 5 of 6 (+5% weight · RPE 9)');
+        expect(buildLiveSessionLine({ mode: 'build', source: 'none' })).toBe('');
+        expect(buildLiveWorkoutContext(state())).not.toContain('Session:');
+    });
+
+    it('AP-15d: session label, injuries, RPE, last-session top set and the rule verdict', () => {
+        const s = state();
+        s.savedData.sessionLabel = 'Deload';
+        s.savedData.exercises.exercise_0.sets[1].rpe = 9;
+        s.currentWorkout.exercises[0]._lastSessionSets = [
+            { reps: 10, weight: 95, type: 'warmup', originalUnit: 'lbs' },
+            { reps: 8, weight: 225, originalUnit: 'lbs' },
+            { reps: 6, weight: 100, originalUnit: 'kg' }, // 220.5 lbs — 225 stays the top
+        ];
+        s.currentWorkout.exercises[0]._lastSessionDaysAgo = 3;
+        s.currentWorkout.exercises[0]._progression = { weight: 145, reps: 9, action: 'chase-rep', stalled: true, rung: 1 };
+        const ctx = buildLiveWorkoutContext({ ...s, injuries: 'left shoulder' });
+        expect(ctx).toContain('Workout: Push Day · Deload · 23 min elapsed');
+        expect(ctx).toContain('Injuries / limitations: left shoulder');
+        expect(ctx).toContain('8×145 @RPE 9');
+        expect(ctx).toContain('last: 8×225 (3d ago)');
+        expect(ctx).toContain('rule: chase-rep (stall rung 1) → 145×9 lbs');
+    });
+});
+
+describe('applyNextTarget (AP-9)', () => {
+    it("drops the app's _suggested marker instead of carrying it through the spread", () => {
+        AppState.globalUnit = 'lbs';
+        AppState.currentWorkout = { exercises: [{ machine: 'Bench Press', sets: 3 }] };
+        AppState.savedData = {
+            exercises: {
+                exercise_0: { sets: [
+                    { reps: 8, weight: 145, completed: true },
+                    { reps: 8, weight: 155, _suggested: true, completed: false },
+                ] },
+            },
+        };
+        const msg = applyNextTarget({ exercise: 'Bench Press', weight: 150, reps: 8 });
+        expect(msg).toContain('Bench Press next set: 150 lbs × 8 reps');
+        const set = AppState.savedData.exercises.exercise_0.sets[1];
+        expect(set).toMatchObject({ weight: 150, reps: 8, completed: false });
+        expect(set._suggested).toBeUndefined();
+    });
+
+    it('keeps a deload _adjusted flag when only reps change; drops it with a new weight', () => {
+        AppState.currentWorkout = { exercises: [{ machine: 'Row', sets: 2 }] };
+        AppState.savedData = { exercises: { exercise_0: { sets: [{ reps: 12, weight: 90, _adjusted: 'deload', completed: false }] } } };
+        applyNextTarget({ exercise: 'Row', reps: 13 });
+        expect(AppState.savedData.exercises.exercise_0.sets[0]._adjusted).toBe('deload');
+        applyNextTarget({ exercise: 'Row', weight: 95 });
+        expect(AppState.savedData.exercises.exercise_0.sets[0]._adjusted).toBeUndefined();
     });
 });
 

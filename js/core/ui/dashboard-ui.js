@@ -1012,7 +1012,11 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
     let headIcon = 'fa-chart-line';
     let coachChip = '';
     try {
-        const weekStart = new Date(getDateString());
+        // `new Date(getDateString())` was Invalid Date (getDateString() with
+        // no arg returns ''), so weekStartStr was '' and this "this week"
+        // count silently summed the ENTIRE history (AP-15a). Same fix as
+        // weeklyVolumeByBodyPart below.
+        const weekStart = new Date();
         weekStart.setDate(weekStart.getDate() - 7);
         const weekStartStr = getDateString(weekStart);
         const weekWorkouts = (allWorkouts || []).filter(w => w.date >= weekStartStr && w.completedAt);
@@ -1036,7 +1040,7 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
         }
 
         if (low) {
-            headline = `${capitalize(low.bodyPart)} is low this week — ${low.weeklySets} set${low.weeklySets === 1 ? '' : 's'}`;
+            headline = `${capitalize(low.bodyPart)} is low — ${low.weeklySets} set${low.weeklySets === 1 ? '' : 's'} in the last 7 days`;
             headIcon = 'fa-exclamation-triangle';
         } else if (topInsight?.message && !coachChip) {
             headline = topInsight.message;

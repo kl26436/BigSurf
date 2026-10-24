@@ -10,6 +10,7 @@
 const { applyPrescriptionFields } = require('./movement-patterns');
 const { normalizeWeekTarget, isDeloadTarget } = require('./week-targets');
 const { selectRotation, applyRotation } = require('./exercise-rotation');
+const { convertToUnit } = require('./coach-outcomes');
 
 // Shared schema for a program week target (CP-3). A week can move load,
 // set counts, rep bands and effort — not just a percentage.
@@ -41,7 +42,7 @@ const PRESCRIPTION_PROPS = {
 const TOOL_DEFINITIONS = [
     {
         name: 'get_exercise_history',
-        description: 'Full session history for ONE exercise: date, sets/reps/weights, equipment, notes. Use when discussing a specific lift in depth — the context summary only carries an 8-point max-weight trend.',
+        description: "Full session history for ONE exercise: date, sets/reps/weights (already in the user's display unit), RPE when logged, equipment, notes, and the session label (e.g. 'Deload' — a planned light session, not a regression). Use when discussing a specific lift in depth — the context summary only carries an 8-point max-weight trend.",
         input_schema: {
             type: 'object',
             properties: {
@@ -58,7 +59,7 @@ const TOOL_DEFINITIONS = [
     },
     {
         name: 'get_prs',
-        description: "The user's personal records store — best weight/reps/volume per exercise+equipment with dates.",
+        description: "The user's personal records store — best weight/reps/volume per exercise+equipment with dates, in the user's display unit.",
         input_schema: { type: 'object', properties: {} },
     },
     {
@@ -197,7 +198,7 @@ const TOOL_DEFINITIONS = [
     },
     {
         name: 'get_week_plan',
-        description: "The user's weekly schedule: which saved workout is planned for each day, plus rest days. Call before discussing scheduling or 'what should I do today/this week'.",
+        description: "The user's weekly schedule: which saved workout is planned for each day, plus rest days, plus `today` (date + weekday in the user's timezone) and `todayPlanned` (today's planned workout, rest, or open). Call before discussing scheduling or 'what should I do today/this week'.",
         input_schema: { type: 'object', properties: {} },
     },
     {
@@ -549,10 +550,87 @@ function replaceTemplateExercises(template, input) {
     return { ok: true, updated, diff, diffSummary: parts.join('; ') };
 }
 
+// ── Unit + date helpers for executors (AP-15b/c) ────────────────────
+
+const WEEK_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const WEEKDAY_NAMES = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
+
+/** 'lbs' | 'kg' — anything else is lbs (the app default). */
+function normalizeUnit(unit) {
+    return unit === 'kg' ? 'kg' : 'lbs';
+}
+
+/**
+ * Today's date + weekday. `today` comes from the client (the user's local
+ * date); the server clock is UTC, so a 9pm Pacific question would otherwise
+ * be answered as tomorrow.
+ */
+function todayInfo(today) {
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(today || '')) ? today : new Date().toISOString().slice(0, 10);
+    const dow = new Date(`${date}T12:00:00Z`).getUTCDay(); // 0 = Sun
+    const day = WEEK_DAYS[(dow + 6) % 7];
+    return { date, day, weekday: WEEKDAY_NAMES[day] };
+}
+
+/**
+ * What the week plan says for today: a workout (with its name), a rest
+ * day, or open. Plan values are templateId | null; rest days live in
+ * restDays (older docs may carry 'rest' as a value).
+ */
+function plannedForDay(plan, day, templateNames = new Map()) {
+    const tid = plan?.days?.[day];
+    if (tid && tid !== 'rest') return { kind: 'workout', templateId: tid, name: templateNames.get(tid) || tid };
+    if (tid === 'rest' || (plan?.restDays || []).includes(day)) return { kind: 'rest' };
+    return { kind: 'open' };
+}
+
+/** A PR record ({weight, reps, volume?, unit}) converted to `unit`. */
+function prRecordInUnit(rec, unit) {
+    if (!rec || typeof rec !== 'object') return null;
+    const from = normalizeUnit(rec.unit);
+    const out = { ...rec, unit };
+    if (rec.weight != null) out.weight = convertToUnit(rec.weight, from, unit);
+    if (rec.volume != null) out.volume = convertToUnit(rec.volume, from, unit);
+    return out;
+}
+
+/**
+ * One get_exercise_history session from a workout doc's exercise, weights
+ * in `unit`. `label` is the session label ('Deload', …) so a planned −35%
+ * session reads as a deload, not a strength crash (AP-9).
+ */
+function exerciseHistorySession(w, ex, unit) {
+    return {
+        date: w.date,
+        workout: w.workoutType || '',
+        label: w.sessionLabel || null,
+        equipment: ex.equipment || null,
+        sets: (ex.sets || []).map(s => ({
+            reps: s.reps,
+            weight: s.weight ? convertToUnit(s.weight, normalizeUnit(s.originalUnit), unit) : s.weight,
+            unit,
+            type: s.type || 'working',
+            ...(s.rpe ? { rpe: s.rpe } : {}),
+        })),
+        notes: ex.notes || null,
+    };
+}
+
 // ── Firestore executors (Admin SDK, scoped to users/{userId}) ───────
 
-function makeToolExecutors({ db, userId, source = 'chat' }) {
+/**
+ * @param {object} args
+ * @param {object} args.db - Admin Firestore
+ * @param {string} args.userId
+ * @param {'chat'|'live'} [args.source]
+ * @param {string} [args.unit] - user's display unit; every weight a read tool
+ *   returns is converted to it (AP-15c — mixed-unit logs read raw used to
+ *   look like "225 → 100 → 225")
+ * @param {string} [args.today] - user's local YYYY-MM-DD (AP-15b)
+ */
+function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs', today = null }) {
     const userDoc = () => db.collection('users').doc(userId);
+    const unit = normalizeUnit(rawUnit);
 
     return {
         // CP-5 — the chat coach previously had NO path to the exercise
@@ -666,22 +744,11 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
                     // Exact first, then containment either way — the model says
                     // "Chest Press" where the log says "Seated Chest Press".
                     if (lower !== target && !lower.includes(target) && !target.includes(lower)) continue;
-                    const ex = w.exercises[key];
-                    sessions.push({
-                        date: w.date,
-                        workout: w.workoutType || '',
-                        equipment: ex.equipment || null,
-                        sets: (ex.sets || []).map(s => ({
-                            reps: s.reps, weight: s.weight,
-                            unit: s.originalUnit || 'lbs',
-                            type: s.type || 'working',
-                        })),
-                        notes: ex.notes || null,
-                    });
+                    sessions.push(exerciseHistorySession(w, w.exercises[key], unit));
                     break;
                 }
             }
-            return { exercise: input.exercise, sessions, found: sessions.length };
+            return { exercise: input.exercise, unit, sessions, found: sessions.length };
         },
 
         async list_equipment(input) {
@@ -983,6 +1050,9 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
             if (typeof input?.targetValue === 'number' || (typeof input?.targetValue === 'string' && input.targetValue.trim())) {
                 doc.targetValue = typeof input.targetValue === 'number' ? input.targetValue : clip(input.targetValue, 80);
             }
+            // A numeric target is in the user's unit at the time — stamp it so
+            // the outcome check compares like with like after a unit switch.
+            if (typeof doc.targetValue === 'number') doc.unit = unit;
             await userDoc().collection('coachAdvice').add(doc);
             return { result: { logged: true } };
         },
@@ -1017,14 +1087,14 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
                     entries.push({
                         exercise,
                         equipment: prs.equipmentName || (key.startsWith('equipment_') ? 'Unknown equipment' : key),
-                        maxWeight: prs.maxWeight || null,
-                        maxReps: prs.maxReps || null,
-                        maxVolume: prs.maxVolume || null,
+                        maxWeight: prRecordInUnit(prs.maxWeight, unit),
+                        maxReps: prRecordInUnit(prs.maxReps, unit),
+                        maxVolume: prRecordInUnit(prs.maxVolume, unit),
                     });
                 }
             }
             entries.sort((a, b) => ((b.maxWeight?.date || '')).localeCompare(a.maxWeight?.date || ''));
-            return { prs: entries.slice(0, 50), count: entries.length };
+            return { unit, prs: entries.slice(0, 50), count: entries.length };
         },
 
         async create_workout_template(input) {
@@ -1078,10 +1148,18 @@ function makeToolExecutors({ db, userId, source = 'chat' }) {
         },
 
         async get_week_plan() {
+            const t = todayInfo(today);
             const snap = await userDoc().collection('preferences').doc('weekPlan').get();
-            if (!snap.exists) return { plan: null, note: 'No week plan set yet.' };
+            if (!snap.exists) return { plan: null, note: 'No week plan set yet.', today: t, todayPlanned: null };
             const { days = {}, restDays = [] } = snap.data();
-            return { days, restDays };
+            let names = new Map();
+            if (days[t.day] && days[t.day] !== 'rest') {
+                try {
+                    const tSnap = await userDoc().collection('workoutTemplates').doc(days[t.day]).get();
+                    if (tSnap.exists) names = new Map([[days[t.day], tSnap.data().name || days[t.day]]]);
+                } catch { /* id stands in for the name */ }
+            }
+            return { days, restDays, today: t, todayPlanned: plannedForDay({ days, restDays }, t.day, names) };
         },
 
         async set_week_plan(input) {
@@ -1353,4 +1431,9 @@ module.exports = {
     liveToolDefinitions,
     LIVE_PROPOSAL_TOOLS,
     validateProgramInput,
+    normalizeUnit,
+    todayInfo,
+    plannedForDay,
+    prRecordInUnit,
+    exerciseHistorySession,
 };

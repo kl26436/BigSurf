@@ -24,8 +24,8 @@ const {
     TOOL_DEFINITIONS, TOOL_STATUS, makeToolExecutors,
     validateProposal, liveToolDefinitions,
 } = require('./coach-tools');
-const { buildOutcomesContext } = require('./coach-outcomes');
-const { describeWeekTarget } = require('./week-targets');
+const { buildOutcomesContext, convertToUnit } = require('./coach-outcomes');
+const { describeWeekTarget, isDeloadTarget } = require('./week-targets');
 
 // ── Model routing ────────────────────────────────────────────────────
 // Coach chat + template building + DEXA extraction use the flagship model
@@ -995,7 +995,7 @@ Designing programs and templates — think like a hands-on trainer, not a spread
 - Every prescription gets a one-line why. A trainer who says "trust me" is a bad trainer; you have the user's data — use it to justify the choice.
 
 When to push, hold, add, or remove — read the data the way a trainer watches a session:
-- PUSH weight when the last session's working sets all hit target reps cleanly (no failure sets, no grindy notes) — name the next loadable jump, never a vague "go heavier".
+- PUSH weight when the last session's working sets all hit target reps cleanly (no failure sets, no grindy notes) — name the next loadable jump, never a vague "go heavier" — EXCEPT when the context says the current week or session is a deload (a "DELOAD WEEK" / "Current session: DELOAD" / "Session: Deload" line, or a Today line flagged DELOAD): then HOLD or reduce, no exceptions. Sessions labelled Deload/Recovery in the history are planned light work, never a strength drop to react to.
 - HOLD when reps dropped, a set was missed, or readiness was low — repeating a weight IS progress if the reps climb.
 - ADD a set or an exercise when a muscle group sits at 'low' weekly volume (below ~10 hard sets) and recovery looks fine.
 - REMOVE or swap when a lift has stalled 3+ sessions despite rep and microload attempts, when volume sits above ~20 sets for the muscle, or when readiness keeps coming back low — name which exercise and why.
@@ -1094,6 +1094,7 @@ LIVE MODE — you are mid-workout with the user, between sets:
 - Concrete suggestions go through proposal tools (propose_next_target / propose_swap / propose_add_exercise / propose_rest) — the app renders a card the user can Apply with one tap. Nothing you propose applies itself; still ground it and keep it singular.
 - Swaps must use equipment from the current gym's list. Never propose equipment that isn't there.
 - Weights must be loadable: when the live state lists plates, propose only weights buildable from them — whole multiples of the stated smallest jump from a weight already lifted this session or last.
+- Deload: when the live state has a "Session: Deload" line, HOLD or reduce, no exceptions — propose_next_target never goes above the targets already on the set rows, however easy the sets look.
 - Pain or a tweak: NEVER coach through it. Propose a swap that unloads the area, or ending the session — and say why in one line.
 - get_exercise_history / get_prs are available when you need more than the live state shows.
 - log_advice: silently log concrete checkable recommendations (weight targets, swaps) — one call each.`;
@@ -1400,7 +1401,7 @@ exports.coachChatStream = onRequest({
         return;
     }
 
-    const { messages, question, threadId: rawThreadId } = req.body || {};
+    const { messages, question, threadId: rawThreadId, unit: rawUnit, today: rawToday } = req.body || {};
     const apiMessages = (Array.isArray(messages) ? messages : [])
         .filter(m => m && m.role && m.content)
         .map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : m.content }));
@@ -1447,7 +1448,21 @@ exports.coachChatStream = onRequest({
             console.error('coach memory load failed (continuing without):', e);
         }
 
-        const executors = makeToolExecutors({ db, userId, source: isLive ? 'live' : 'chat' });
+        // AP-15b/c — tools return weights in the user's display unit and know
+        // the user's local date. Current clients send both; older cached
+        // clients don't, so fall back to the settings doc (unit) and the
+        // server's UTC date (today).
+        let unit = rawUnit === 'kg' || rawUnit === 'lbs' ? rawUnit : null;
+        if (!unit) {
+            try {
+                const sSnap = await db.collection('users').doc(userId).collection('preferences').doc('settings').get();
+                unit = sSnap.exists && sSnap.data().weightUnit === 'kg' ? 'kg' : 'lbs';
+            } catch (e) {
+                unit = 'lbs';
+            }
+        }
+        const today = typeof rawToday === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawToday) ? rawToday : null;
+        const executors = makeToolExecutors({ db, userId, source: isLive ? 'live' : 'chat', unit, today });
         let msgs = withPromptCaching(apiMessages);
         let fullText = '';
         const usage = { inputTokens: 0, outputTokens: 0 };
@@ -1712,11 +1727,26 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     const weekKey = new Date().toISOString().slice(0, 10);
 
-    // Opt-out (default on). A manual request is explicit consent — skip it.
-    if (!force) {
+    // Settings: opt-out (default on — a manual request is explicit consent,
+    // so it skips the check) plus the profile + unit the review must speak
+    // in (AP-15f: it used to print bare numbers with no unit and knew
+    // nothing about injuries).
+    let settings = {};
+    try {
         const settingsSnap = await userRef.collection('preferences').doc('settings').get();
-        if (settingsSnap.exists && settingsSnap.data().weeklyCoachReview === false) return { status: 'opted_out' };
+        settings = settingsSnap.exists ? (settingsSnap.data() || {}) : {};
+    } catch (settingsErr) {
+        if (!force) throw settingsErr;
+        console.log(`weeklyCoachReview settings read skipped for ${userRef.id}:`, settingsErr.message);
     }
+    if (!force && settings.weeklyCoachReview === false) return { status: 'opted_out' };
+    const unit = settings.weightUnit === 'kg' ? 'kg' : 'lbs';
+    const profileParts = [];
+    if (settings.coachGoal) profileParts.push(`goal: ${settings.coachGoal}`);
+    if (settings.profileExperience) profileParts.push(`experience: ${settings.profileExperience}`);
+    if (settings.coachInjuries) profileParts.push(`injuries / limitations: ${settings.coachInjuries}`);
+    if (settings.coachNotes) profileParts.push(`notes: ${settings.coachNotes}`);
+    const profileLine = `User profile: ${profileParts.length ? profileParts.join(' · ') : 'none given'} · unit: ${unit}\n\n`;
 
     // Active this week?
     const workoutsSnap = await userRef.collection('workouts')
@@ -1780,7 +1810,9 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
                 programLine = `Program: "${prog.name}" (${prog.goal}) — week ${week} of ${prog.weeks}`
                     + (target ? ` — this week: ${target.label}${desc ? ` (${desc})` : ''}` : '')
                     + (next ? `; next week: ${next.label}` : '')
-                    + '.\n\n';
+                    + '.\n'
+                    + (target && isDeloadTarget(target) ? 'DELOAD WEEK: lighter numbers this week are the plan, not a regression; do not push weight.\n' : '')
+                    + '\n';
             }
         }
     } catch (progErr) {
@@ -1800,7 +1832,7 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
             const histSnap = await userRef.collection('workouts')
                 .where('date', '>=', historyStart).orderBy('date', 'desc').limit(120).get();
             const history = histSnap.docs.map(d => d.data()).filter(w => w.completedAt && !w.cancelledAt);
-            const scored = buildOutcomesContext(advice, history, weekKey, { limit: 5 });
+            const scored = buildOutcomesContext(advice, history, weekKey, { limit: 5, unit });
             if (scored) outcomesBlock = `${scored}\n`;
         }
     } catch (outErr) {
@@ -1852,14 +1884,15 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
     for (const w of workouts) {
         const names = w.exerciseNames || {};
         const ready = w.readiness?.score ? ` · felt ${w.readiness.score}/5` : '';
-        lines.push(`${w.date} — ${w.workoutType || 'Workout'}${ready}`);
+        const label = w.sessionLabel ? ` · ${w.sessionLabel}` : '';
+        lines.push(`${w.date} — ${w.workoutType || 'Workout'}${label}${ready}`);
         for (const [key, ex] of Object.entries(w.exercises || {})) {
             const name = names[key];
             if (!name || !ex.sets?.length) continue;
             const sets = ex.sets
                 .filter(s => s.type !== 'warmup' && (s.reps || s.weight))
-                .map(s => `${s.reps || '?'}×${s.weight || 'BW'}`).join(', ');
-            if (sets) lines.push(`  ${name}${ex.equipment ? ` [${ex.equipment}]` : ''}: ${sets}${ex.notes ? ` — "${ex.notes}"` : ''}`);
+                .map(s => `${s.reps || '?'}×${s.weight ? convertToUnit(s.weight, s.originalUnit === 'kg' ? 'kg' : 'lbs', unit) : 'BW'}${s.rpe ? ` @RPE ${s.rpe}` : ''}`).join(', ');
+            if (sets) lines.push(`  ${name}${ex.equipment ? ` [${ex.equipment}]` : ''}: ${sets} ${unit}${ex.notes ? ` — "${ex.notes}"` : ''}`);
         }
     }
 
@@ -1873,8 +1906,8 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
         body: JSON.stringify({
             model: DIGEST_MODEL,
             max_tokens: 1500,
-            system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-6 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. Make progression calls from the log: a lift whose working sets all hit target reps cleanly gets the next weight named (\"push 150 next — 145×8 was clean twice\"); slipping reps or low readiness gets an explicit hold. If a staleness note is provided, add ONE bullet proposing a single concrete exercise swap for that day — prefer the listed never-used equipment, keep the core lifts — and mention they can ask the coach to apply it. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.',
-            messages: [{ role: 'user', content: `${programLine}${adherenceLine}${planLine}${stalenessBlock}${outcomesBlock}This week's training log:\n\n${lines.join('\n')}` }],
+            system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-6 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. Make progression calls from the log: a lift whose working sets all hit target reps cleanly gets the next weight named (\"push 150 next — 145×8 was clean twice\"); slipping reps or low readiness gets an explicit hold. Sessions labelled Deload/Recovery are planned light work — never read them as a strength drop, and when the current week of the active program is a deload, next-week calls follow the program, not a push. Always state weights in the unit given in the profile line. If a staleness note is provided, add ONE bullet proposing a single concrete exercise swap for that day — prefer the listed never-used equipment, keep the core lifts — and mention they can ask the coach to apply it. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.',
+            messages: [{ role: 'user', content: `${profileLine}${programLine}${adherenceLine}${planLine}${stalenessBlock}${outcomesBlock}This week's training log (weights in ${unit}):\n\n${lines.join('\n')}` }],
         }),
     });
     if (!upstream.ok) {

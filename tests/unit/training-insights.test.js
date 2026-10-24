@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import {
     getBodyPartForExercise,
     analyzeWeeklyVolume,
+    averageWeeklyVolume,
     detectPlateaus,
     getISOWeekKey,
     checkDeloadNeeded,
@@ -141,6 +142,52 @@ describe('analyzeWeeklyVolume', () => {
 
     it('returns empty array for empty workouts', () => {
         expect(analyzeWeeklyVolume([], exerciseDb)).toEqual([]);
+    });
+});
+
+describe('AP-15a — weekly volume is a true per-week average', () => {
+    // 12 chest sets every week for 4 weeks: the coach used to see the 4-week
+    // SUM (48 → "high" vs MRV 22) labelled "weekly".
+    const fourWeeks = ['2026-03-17', '2026-03-24', '2026-03-31', '2026-04-07'].map(d =>
+        makeWorkout(d, [makeExercise('Bench Press', Array(12).fill([10, 135]))]));
+
+    it('analyzeWeeklyVolume divides by weeks and keeps the total', () => {
+        const chest = analyzeWeeklyVolume(fourWeeks, exerciseDb, { weeks: 4 }).find(r => r.bodyPart === 'Chest');
+        expect(chest).toMatchObject({ totalSets: 48, weeks: 4, avgWeeklySets: 12, weeklySets: 12, status: 'good' });
+    });
+
+    it('default weeks = 1 keeps the one-week callers (dashboard, governor) unchanged', () => {
+        const chest = analyzeWeeklyVolume(fourWeeks.slice(-1), exerciseDb).find(r => r.bodyPart === 'Chest');
+        expect(chest).toMatchObject({ totalSets: 12, weeks: 1, weeklySets: 12 });
+    });
+
+    it('status + recommendation are judged on the average (fractional rounds to 0.1)', () => {
+        const thin = [makeWorkout('2026-04-07', [makeExercise('Bench Press', Array(10).fill([10, 135]))])];
+        const chest = analyzeWeeklyVolume(thin, exerciseDb, { weeks: 4 }).find(r => r.bodyPart === 'Chest');
+        expect(chest.avgWeeklySets).toBe(2.5);
+        expect(chest.status).toBe('low');
+        expect(chest.recommendation).toBe('Add 6 more this week');
+    });
+
+    it('averageWeeklyVolume: last 28 days ÷ 4 when history predates the window', () => {
+        const old = makeWorkout('2026-01-05', [makeExercise('Bench Press', Array(30).fill([10, 135]))]);
+        const { weeks, volume } = averageWeeklyVolume([old, ...fourWeeks], exerciseDb, { today: '2026-04-10' });
+        expect(weeks).toBe(4);
+        expect(volume.find(r => r.bodyPart === 'Chest').avgWeeklySets).toBe(12); // January excluded
+    });
+
+    it('averageWeeklyVolume: a newer account divides by the weeks it actually has', () => {
+        const recent = fourWeeks.slice(-2); // 03-31 and 04-07 only
+        const { weeks, volume } = averageWeeklyVolume(recent, exerciseDb, { today: '2026-04-10' });
+        expect(weeks).toBe(2); // 11 days covered → ceil(11/7)
+        expect(volume.find(r => r.bodyPart === 'Chest').avgWeeklySets).toBe(12);
+    });
+
+    it('averageWeeklyVolume skips cancelled and future-dated workouts; empty → no rows', () => {
+        const cancelled = { ...fourWeeks[3], cancelledAt: '2026-04-07T13:00:00Z' };
+        const { volume } = averageWeeklyVolume([...fourWeeks.slice(0, 3), cancelled], exerciseDb, { today: '2026-04-10' });
+        expect(volume.find(r => r.bodyPart === 'Chest').totalSets).toBe(36); // 3 kept × 12
+        expect(averageWeeklyVolume([], exerciseDb, { today: '2026-04-10' }).volume).toEqual([]);
     });
 });
 
