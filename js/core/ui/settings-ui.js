@@ -8,6 +8,7 @@ import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { navigateTo } from './navigation.js';
 import { db, doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from '../data/firebase-config.js';
 import { exportWorkoutData } from '../data/data-manager.js';
+import { isManualDeloadActive, manualDeloadEnd, MANUAL_DELOAD_WEIGHT_PCT } from '../features/session-intent.js';
 import { isFCMAvailable, getPushSubscription, initializeFCM, scheduleRestNotification } from '../utils/push-notification-manager.js';
 
 // Default settings — merged with user overrides on load
@@ -21,6 +22,10 @@ const DEFAULT_SETTINGS = {
     // Log RPE (rate of perceived exertion, 6–10) per completed set. Off by
     // default so casual users aren't taxed; opt-in shows a chip row per set.
     trackRpe: false,
+    // Manual deload week (AP-10) — { from: 'YYYY-MM-DD', weeks: 1, weightPct: -30 }
+    // or null. Expires by its date window; no cleanup job. A program's own
+    // week target wins when both exist (session-intent.js).
+    manualDeload: null,
     // Active-workout autofill hint ("Pre-filled from last session…") is shown
     // once per user, ever — flipped true the first time it renders.
     autofillHintSeen: false,
@@ -166,6 +171,43 @@ function segmented(settingKey, options, currentValue, parseType) {
         `<button class="${o.value === currentValue ? 'active' : ''}" data-val="${o.value}"
             onclick="updateSetting('${settingKey}', ${parseType === 'int' ? o.value : `'${o.value}'`}); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">${escapeHtml(o.label)}</button>`
     ).join('')}</div>`;
+}
+
+/** "Deload week" settings row (AP-10). */
+function manualDeloadRowHTML(s) {
+    const today = AppState.getTodayDateString();
+    const on = isManualDeloadActive(s.manualDeload, today);
+    return `
+                <div class="srow">
+                    <div class="srow-icon ic-primary"><i class="fas fa-feather"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Deload week</div>
+                        <div class="srow-desc" id="manual-deload-desc">${escapeHtml(manualDeloadDesc(s.manualDeload, on))}</div>
+                    </div>
+                    <button class="toggle ${on ? 'on' : ''}" onclick="toggleManualDeload(this)" aria-label="Deload week" aria-pressed="${on}"></button>
+                </div>`;
+}
+
+function manualDeloadDesc(manualDeload, on) {
+    const pct = Math.abs(manualDeload?.weightPct ?? MANUAL_DELOAD_WEIGHT_PCT);
+    if (!on) return `${pct}% lighter for one week — no program needed`;
+    const end = manualDeloadEnd(manualDeload);
+    const endLabel = end ? new Date(`${end}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+    return `On through ${endLabel} · ${pct}% lighter`;
+}
+
+/** Toggle the manual deload week; the next workouts start lighter. */
+export function toggleManualDeload(btn) {
+    const turnOn = !btn?.classList.contains('on');
+    const value = turnOn
+        ? { from: AppState.getTodayDateString(), weeks: 1, weightPct: MANUAL_DELOAD_WEIGHT_PCT }
+        : null;
+    updateSetting('manualDeload', value);
+    btn?.classList.toggle('on', turnOn);
+    btn?.setAttribute('aria-pressed', String(turnOn));
+    const desc = document.getElementById('manual-deload-desc');
+    if (desc) desc.textContent = manualDeloadDesc(value, turnOn);
+    showNotification(turnOn ? 'Deload week on — workouts you start this week begin lighter' : 'Deload week off', 'success', 2500);
 }
 
 /**
@@ -318,6 +360,7 @@ export function renderSettings() {
                     </div>
                     ${toggleBtn('trackRpe', s.trackRpe)}
                 </div>
+                ${manualDeloadRowHTML(s)}
                 <div class="srow">
                     <div class="srow-icon ic-purple"><i class="fas fa-map-marker-alt"></i></div>
                     <div class="srow-info">
@@ -1504,3 +1547,4 @@ window.openWeekPlanSheet = openWeekPlanSheet;
 window.settingsProgramRowTap = settingsProgramRowTap;
 window.saveWeekPlanFromSheet = saveWeekPlanFromSheet;
 window.closeWeekPlanSheet = closeWeekPlanSheet;
+window.toggleManualDeload = toggleManualDeload;

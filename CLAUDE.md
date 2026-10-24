@@ -87,6 +87,8 @@ js/
     │   ├── manual-workout.js       # Manual workout entry
     │   ├── plate-calculator.js     # Plate breakdown algorithm + standalone page
     │   ├── pr-tracker.js           # Personal record detection (segmented per exercise+equipment)
+    │   ├── progression.js          # Pure double-progression + stall ladder; takes the session intent (deload never bumps)
+    │   ├── session-intent.js       # getSessionIntent(): deload / peak / build for TODAY (program week > manual > legacy label); stamped on savedData.sessionIntent at start/resume
     │   ├── stats-tracker.js        # Weekly stats (delegates streaks to streak-tracker)
     │   ├── streak-tracker.js       # Canonical streak calculation
     │   ├── superset-manager.js     # Exercise grouping for supersets/circuits
@@ -130,6 +132,7 @@ js/
         ├── active-workout-ui.js    # V2 wizard-style active workout + bottom sheets (awAddExercise, awOpenEquipmentSheet, openSharedAddExerciseSheet, openSharedEquipmentSheet)
         ├── edit-history-inline.js  # Inline editing of historical workouts
         ├── rest-timer.js           # Rest timer (modal + header)
+        ├── set-seeding.js          # Pure prefill rules: mergeSeededSets, seedSetsFromLastSession (bump/back-off/deload), same-machine check
         ├── workout-core.js         # Top-level lifecycle re-exports
         ├── workout-history.js      # Calendar, history data
         ├── workout-management-ui.js # Equipment picker + create-exercise modal (template editor was retired in Phase 9; editTemplate / createNewTemplate now route to the workout-selector)
@@ -429,6 +432,8 @@ For add-exercise / equipment / similar shared flows, prefer the parameterized he
 Active workout is the most user-critical surface. Two safety patterns:
 - When changing the equipment picker or add-exercise sheet, prefer adding a parallel `openShared*` API rather than refactoring `awOpenEquipmentSheet` / `awAddExercise` directly. Yes, this means some duplication — it's a deliberate tradeoff.
 - After any change, verify: change-equipment, replace-exercise, add-exercise from menu, and complete-workout flows. The auto-save path is `debouncedSaveWorkoutData` — confirm it still fires.
+- Render pads blank rows before autofill lands. Any path that changes what an exercise slot IS (exercise, equipment, intent) must call `loadAutofillForExercise(idx, { reseed: true, trigger })` so untouched rows refill (`mergeSeededSets`); start/resume use fill-only-if-blank so program adjustments aren't undone. Every autofill emits a quiet `autofill_trace` (Error Log page, session-only); `?debug` adds an overlay line on the last-session card and an `autofill_mismatch` warning when untouched rows don't match the card.
+- Today's deload/peak/build lives on `savedData.sessionIntent` (session-intent.js). Progression, seeding, the card nudge and dashboard insights read it — don't re-derive "is this a deload" from labels or the program elsewhere; use `isRecoveryWorkout(w)` for completed docs.
 
 ## Debugging
 

@@ -503,3 +503,34 @@ describe('getISOWeekKey', () => {
         expect(week1).not.toBe(week2);
     });
 });
+
+// AP-8 — one plateau definition (progression.js stall ladder) and no
+// "add weight" insights in a deload.
+describe('AP-8 — plateau = stall ladder', () => {
+    const flat = (label) => [
+        makeWorkout('2026-04-01', [makeExercise('Bench Press', [[8, 185]])]),
+        makeWorkout('2026-04-04', [makeExercise('Bench Press', [[8, 185]])]),
+        makeWorkout('2026-04-07', [makeExercise('Bench Press', [[8, 185]])]),
+        ...(label ? [{ ...makeWorkout('2026-04-10', [makeExercise('Bench Press', [[8, 120]])]), sessionLabel: label }] : []),
+    ];
+
+    it('rung 1 advice holds the weight — never "add 5 lbs"', () => {
+        const [p] = detectPlateaus(flat());
+        expect(p).toMatchObject({ exercise: 'Bench Press', weight: 185, sessions: 3, rung: 1 });
+        expect(p.suggestion).toMatch(/^Hold 185 lbs and chase 9 reps$/);
+        expect(p.suggestion).not.toMatch(/add/i);
+    });
+
+    it('a deload session does not break or extend the run', () => {
+        expect(detectPlateaus(flat('Deload'))[0]).toMatchObject({ weight: 185, sessions: 3 });
+    });
+
+    it('getTopInsights drops plateau and deload-needed insights during a deload', async () => {
+        const { getTopInsights } = await import('../../js/core/features/training-insights.js');
+        const workouts = flat();
+        const plain = getTopInsights(workouts, workouts, []);
+        expect(plain.some(i => i.type === 'plateau')).toBe(true);
+        const muted = getTopInsights(workouts, workouts, [], { intent: { mode: 'deload' } });
+        expect(muted.some(i => i.type === 'plateau' || i.type === 'deload')).toBe(false);
+    });
+});

@@ -156,8 +156,18 @@ async function renderDashboard() {
 
             // Top insight (uses 8-week data from insightsData, not full history)
             const exerciseDatabase = AppState.exerciseDatabase || [];
+            // AP-8: a deload week (program or manual) mutes "add weight" insights.
+            let insightIntent = null;
+            try {
+                const { getSessionIntent } = await import('../features/session-intent.js');
+                insightIntent = getSessionIntent({
+                    program: AppState._activeProgram || null,
+                    today: AppState.getTodayDateString(),
+                    manualDeload: AppState.settings?.manualDeload || null,
+                });
+            } catch { /* plain insights */ }
             const topInsight = TrainingInsights.getTopInsight(
-                insightsData.recentWorkouts, insightsData.allWorkouts, exerciseDatabase
+                insightsData.recentWorkouts, insightsData.allWorkouts, exerciseDatabase, { intent: insightIntent }
             );
 
             // Body weight data

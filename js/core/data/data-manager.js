@@ -22,6 +22,7 @@ import { validateWorkoutData } from '../utils/validation.js';
 import { plateRelativeWeight } from '../utils/weight-calculations.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { confidentEquipmentId } from './equipment-id-resolver.js';
+import { isRecoveryWorkout } from '../features/session-intent.js';
 import { AppState } from '../utils/app-state.js';
 import { Config } from '../utils/config.js';
 
@@ -229,10 +230,10 @@ export function clearLastSessionCache() {
  * Matches by exercise name AND equipment to get equipment-specific history.
  * Returns { sets, date } from the last session, or null if no history.
  */
-export async function getLastSessionDefaults(exerciseName, equipment = null, location = null, equipmentId = null) {
+export async function getLastSessionDefaults(exerciseName, equipment = null, location = null, equipmentId = null, { preferBuild = false } = {}) {
     if (!exerciseName) return null;
 
-    const cacheKey = `${exerciseName}__${equipment || ''}__${location || ''}__${equipmentId || ''}`;
+    const cacheKey = `${exerciseName}__${equipment || ''}__${location || ''}__${equipmentId || ''}__${preferBuild ? 'b' : ''}`;
     if (_lastSessionCache[cacheKey] !== undefined) return _lastSessionCache[cacheKey];
 
     const state = (await import('../utils/app-state.js')).AppState;
@@ -265,6 +266,10 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
         let bestEquipOnly = null;
         let bestLocationOnly = null;
         let bestNameOnly = null;
+        // preferBuild (AP-7): a deload/recovery session is a last resort —
+        // seeding from it put 65% weights on next week's build day, and
+        // scaling it again on a second deload day compounded to 0.65².
+        const rec = { exact: null, equip: null, loc: null, name: null };
 
         for (const data of allWorkouts) {
             if (data.date === today) continue;
@@ -272,6 +277,7 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
             if (!data.exercises) continue;
 
             const wLoc = (typeof data.location === 'object' ? data.location?.name : data.location) || '';
+            const recovery = isRecoveryWorkout(data);
             const locMatches = !!locLC && wLoc.toLowerCase() === locLC;
 
             for (const [key, exData] of Object.entries(data.exercises)) {
@@ -323,8 +329,16 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
                     equipment: exEquipment,
                     equipmentId: exEquipmentId,
                     location: wLoc || null,
+                    recovery,
                 };
 
+                if (preferBuild && recovery) {
+                    if (equipMatches && locMatches && !rec.exact) rec.exact = result;
+                    if (equipMatches && !rec.equip) rec.equip = result;
+                    if (locMatches && !rec.loc) rec.loc = result;
+                    if (!rec.name) rec.name = result;
+                    continue;
+                }
                 if (equipMatches && locMatches && !bestExact) {
                     bestExact = result;
                     // Best possible — short-circuit.
@@ -337,7 +351,8 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
             }
         }
 
-        const finalResult = bestExact || bestEquipOnly || bestLocationOnly || bestNameOnly || null;
+        const finalResult = bestExact || bestEquipOnly || bestLocationOnly || bestNameOnly
+            || rec.exact || rec.equip || rec.loc || rec.name || null;
         _lastSessionCache[cacheKey] = finalResult;
         return finalResult;
     } catch (error) {

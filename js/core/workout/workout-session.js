@@ -21,6 +21,7 @@ import { haptic } from '../utils/haptics.js';
 import { Config } from '../utils/config.js';
 import { cancelRestNotification } from '../utils/push-notification-manager.js';
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
+import { getSessionIntent } from '../features/session-intent.js';
 
 // ===================================================================
 // TEMPLATE CHANGE DETECTION
@@ -65,6 +66,39 @@ window.addEventListener('exerciseRenamed', (event) => {
 // ===================================================================
 // CORE WORKOUT LIFECYCLE
 // ===================================================================
+
+/**
+ * AP-6 — decide once what this session is for (deload / heavy / build) and
+ * stamp it on savedData BEFORE autofill, so every seed, nudge and marker —
+ * from any entry path (hero, Workouts tab, history repeat, freestyle) — reads
+ * the same answer. Persisted with the doc (saveWorkoutData deep-clones
+ * savedData), so resume sees it too. A deload also writes the sessionLabel
+ * the deload detector, history chip and completion chip already read.
+ * Never blocks a start: on any failure the session is a plain build.
+ */
+async function stampSessionIntent({ freestyle = false } = {}) {
+    try {
+        if (AppState._activeProgram === undefined) {
+            const { loadActiveProgram } = await import('../features/program-session.js');
+            await loadActiveProgram();
+        }
+        const program = AppState._activeProgram || null;
+        const intent = getSessionIntent({
+            program,
+            today: AppState.savedData.date,
+            manualDeload: AppState.settings?.manualDeload || null,
+            sessionLabel: AppState.savedData.sessionLabel || null,
+            freestyle,
+        });
+        AppState.savedData.sessionIntent = intent;
+        if (intent.mode === 'deload') {
+            if (!AppState.savedData.sessionLabel) AppState.savedData.sessionLabel = intent.label || 'Deload';
+            if (intent.source === 'program' && program?.id && !AppState.savedData.basedOn) AppState.savedData.basedOn = program.id;
+        }
+    } catch (e) {
+        console.error('❌ Session intent failed (plain session):', e);
+    }
+}
 
 export async function startWorkout(workoutType) {
     if (!AppState.currentUser) {
@@ -220,6 +254,8 @@ export async function startWorkout(workoutType) {
 
     // Initialize exercise units
     AppState.exerciseUnits = {};
+
+    await stampSessionIntent();
 
     const workoutNameElement = document.getElementById('current-workout-name');
     if (workoutNameElement) {
@@ -381,6 +417,7 @@ export async function startFreestyleWorkout(focus = null, seedExercises = null) 
     AppState.savedData.initialTemplateSnapshot = { exercises: [] };
     window._initialTemplateSnapshot = AppState.savedData.initialTemplateSnapshot;
     AppState.exerciseUnits = {};
+    await stampSessionIntent({ freestyle: true });
 
     // Show the active-workout section (mirrors startWorkout).
     document.getElementById('workout-selector')?.classList.add('hidden');
@@ -781,7 +818,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                 <i class="fas fa-check-circle completion-header__icon"></i>
                 <h2>Workout complete</h2>
                 <p class="completion-workout-name">${escapeHtml(workoutData.workoutType || 'Workout')}</p>
-                ${workoutData.sessionLabel ? `<span class="chip chip--sm completion-session-chip"><i class="fas fa-flag-checkered"></i> ${escapeHtml(workoutData.sessionLabel)} · from your program</span>` : ''}
+                ${workoutData.sessionLabel ? `<span class="chip chip--sm completion-session-chip"><i class="fas fa-flag-checkered"></i> ${escapeHtml(workoutData.sessionLabel)}${workoutData.basedOn ? ' · from your program' : ''}</span>` : ''}
             </div>
 
             ${prsHtml}
@@ -1491,8 +1528,14 @@ export function continueInProgressWorkout() {
     // Resume timer (v1 — v2 has its own)
     startWorkoutTimer();
 
-    // V2 wizard UI
-    loadAutofillForAllExercises().then(() => renderActiveWorkout());
+    // V2 wizard UI. A doc saved before intents existed gets one now (legacy
+    // deload label → deload) — before autofill, so the card reads it.
+    const intentReady = AppState.savedData.sessionIntent
+        ? Promise.resolve()
+        : stampSessionIntent({ freestyle: !!AppState.savedData.isFreestyle });
+    intentReady
+        .then(() => loadAutofillForAllExercises({ trigger: 'resume' }))
+        .then(() => renderActiveWorkout());
 
     // Restore location from saved data
     if (window.inProgressWorkout.location) {
@@ -1697,7 +1740,7 @@ export async function editHistoricalWorkout(docIdOrDate) {
     displayStaticDuration(workoutData.totalDuration);
 
     // V2 wizard UI for editing
-    loadAutofillForAllExercises().then(() => renderActiveWorkout());
+    loadAutofillForAllExercises({ trigger: 'edit' }).then(() => renderActiveWorkout());
 }
 
 /**

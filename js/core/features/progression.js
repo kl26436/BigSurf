@@ -11,6 +11,7 @@
 
 import { convertWeight } from '../ui/ui-helpers.js';
 import { plateRelativeWeight } from '../utils/weight-calculations.js';
+import { isRecoveryWorkout } from './session-intent.js';
 
 const INCREMENT = { lbs: 5, kg: 2.5 };
 
@@ -47,12 +48,18 @@ export function scaleLoadableWeight(weight, factor, step) {
  * Collapse a workout history into one entry per session for ONE exercise,
  * newest-first: { date, topWeight, topReps, maxReps } in the display unit.
  * Warmups excluded; a session with no working sets is skipped.
+ *
+ * Deload/recovery sessions are excluded by default (AP-7): a −35% week is
+ * not a strength signal. Left in, the week AFTER a deload read sessions[0]
+ * as the light session and "earned" a bump off it (0.65·W + 5), and a deload
+ * at full reps looked like a fresh plateau start.
  */
-export function buildExerciseSessions(allWorkouts, exName, displayUnit) {
+export function buildExerciseSessions(allWorkouts, exName, displayUnit, { excludeRecovery = true } = {}) {
     if (!Array.isArray(allWorkouts) || !exName) return [];
     const sessions = [];
     for (const w of allWorkouts) {
         if (!w || !w.exercises || !w.date || !w.completedAt || w.cancelledAt) continue;
+        if (excludeRecovery && isRecoveryWorkout(w)) continue;
         for (const [k, ex] of Object.entries(w.exercises)) {
             const name = w.exerciseNames?.[k] || ex?.name || ex?.machine;
             if (name !== exName) continue;
@@ -81,6 +88,28 @@ export function buildExerciseSessions(allWorkouts, exName, displayUnit) {
     }
     sessions.sort((a, b) => b.date.localeCompare(a.date));
     return sessions;
+}
+
+/**
+ * Today's deload target off the last BUILD session: weight scaled by the
+ * intent's percentage (plate-loadable), reps at the bottom of the deload rep
+ * band. Without a percentage (a volume-only deload, or a legacy labelled
+ * session already scaled at start) the weight holds.
+ */
+export function deloadTarget(W, R, rt, intent, inc) {
+    const pct = typeof intent?.weightPct === 'number' ? intent.weightPct : null;
+    const weight = pct ? scaleLoadableWeight(W, 1 + pct / 100, inc) : W;
+    const reps = intent?.repRange?.[0] ?? (rt || R || null);
+    return { weight, reps };
+}
+
+/** The deload line for the last-session card. */
+export function deloadNudgeText(W, R, rt, intent, displayUnit, inc) {
+    const t = deloadTarget(W, R, rt, intent, inc);
+    const repsStr = t.reps ? ` for ${t.reps}` : '';
+    return t.weight !== W
+        ? `Deload week — ${t.weight} ${displayUnit}${repsStr}, two reps in the tank`
+        : `Deload week — hold ${W} ${displayUnit}, stop two reps short`;
 }
 
 /** Back-off factor for stall rung 2 — drop a step and rebuild. */
@@ -122,7 +151,7 @@ export function stallState(sessions) {
  *   5. Not enough signal → simple next-step suggestion.
  * Pure; returns the advisory string (or null).
  */
-export function computeOverloadNudge(sessions, displayUnit, repTarget, increment) {
+export function computeOverloadNudge(sessions, displayUnit, repTarget, increment, intent = null) {
     if (!Array.isArray(sessions) || sessions.length === 0) return null;
     const cur = sessions[0];
     const W = cur.topWeight;
@@ -131,6 +160,9 @@ export function computeOverloadNudge(sessions, displayUnit, repTarget, increment
     const next = Math.round((W + inc) * 10) / 10;
     const rt = repTarget && repTarget > 0 ? repTarget : null;
     const R = cur.topReps || cur.maxReps || 0;
+
+    // 0) Deload session — never "go heavier", whatever history says.
+    if (intent?.mode === 'deload') return deloadNudgeText(W, R, rt, intent, displayUnit, inc);
 
     // 1) Plateau — same top weight three sessions running.
     const stall = stallState(sessions);
@@ -179,11 +211,13 @@ function ordinal(n) {
  *   rung 3 `rotate`    — hold W, `rotate: true` (hand-off to the variety
  *                        engine; until then a swap suggestion)
  *
+ * A deload intent (AP-7) short-circuits to `action:'deload', deload:true`.
+ *
  * @returns {{weight:number, reps:number|null, bumped:boolean, stalled:boolean,
- *            action:'bump'|'consolidate'|'chase-rep'|'back-off'|'rotate'|'start',
+ *            action:'bump'|'consolidate'|'chase-rep'|'back-off'|'rotate'|'start'|'deload',
  *            rung?:number, stallRun?:number, backOff?:boolean, rotate?:boolean}|null}
  */
-export function progressionTarget(sessions, displayUnit, repTarget, increment) {
+export function progressionTarget(sessions, displayUnit, repTarget, increment, intent = null) {
     if (!Array.isArray(sessions) || sessions.length === 0) return null;
     const cur = sessions[0];
     const W = cur.topWeight;
@@ -192,6 +226,13 @@ export function progressionTarget(sessions, displayUnit, repTarget, increment) {
     const next = Math.round((W + inc) * 10) / 10;
     const rt = repTarget && repTarget > 0 ? repTarget : null;
     const R = cur.topReps || cur.maxReps || 0;
+
+    // Deload session: the stall ladder doesn't run (a planned light week is
+    // not a plateau) and nothing is a bump.
+    if (intent?.mode === 'deload') {
+        const t = deloadTarget(W, R, rt, intent, inc);
+        return { weight: t.weight, reps: t.reps, bumped: false, stalled: false, action: 'deload', deload: true };
+    }
 
     const stall = stallState(sessions);
     const repsClimbing = stall.run >= 3 && stall.repsClimbing;

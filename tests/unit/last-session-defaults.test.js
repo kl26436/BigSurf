@@ -24,9 +24,10 @@ import { AppState } from '../../js/core/utils/app-state.js';
 
 const UID = 'test-user';
 
-function putWorkout(id, { date, location = 'Downtown Gym', equipment, equipmentId, weight }) {
+function putWorkout(id, { date, location = 'Downtown Gym', equipment, equipmentId, weight, sessionLabel }) {
     store.set(`users/${UID}/workouts/${id}`, {
         date,
+        ...(sessionLabel ? { sessionLabel } : {}),
         completedAt: `${date}T12:00:00.000Z`,
         cancelledAt: null,
         location,
@@ -70,5 +71,24 @@ describe('getLastSessionDefaults', () => {
         const last = await getLastSessionDefaults('Incline Press', 'Brand New Machine', 'Downtown Gym', 'eq_new');
         expect(last.equipment).toBe('Hammer Strength Incline');
         expect(last.equipmentId).toBe('eq_1');
+    });
+
+    it('preferBuild skips a deload session when a build session exists', async () => {
+        putWorkout('w2', { date: '2026-10-21', equipment: 'Hammer Strength Incline', weight: 120, sessionLabel: 'Deload' });
+        putWorkout('w1', { date: '2026-10-14', equipment: 'Hammer Strength Incline', weight: 180 });
+        const plain = await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym');
+        expect(plain.sets[0].weight).toBe(120);
+        expect(plain.recovery).toBe(true);
+        clearLastSessionCache();
+        const build = await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym', null, { preferBuild: true });
+        expect(build.sets[0].weight).toBe(180);
+        expect(build.recovery).toBe(false);
+    });
+
+    it('preferBuild still falls back to a deload session when it is all there is', async () => {
+        putWorkout('w2', { date: '2026-10-21', equipment: 'Hammer Strength Incline', weight: 120, sessionLabel: 'Deload' });
+        const last = await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym', null, { preferBuild: true });
+        expect(last.sets[0].weight).toBe(120);
+        expect(last.recovery).toBe(true);
     });
 });

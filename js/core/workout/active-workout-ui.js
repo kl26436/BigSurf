@@ -6,7 +6,7 @@ import { escapeHtml, escapeAttr, showNotification, convertWeight } from '../ui/u
 import { getExerciseName, exerciseNameMatches } from '../utils/workout-helpers.js';
 import { getCategoryIcon, Config, debugLog } from '../utils/config.js';
 import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults, loadAllWorkouts } from '../data/data-manager.js';
-import { buildExerciseSessions, computeOverloadNudge, progressionTarget, weightIncrement, scaleLoadableWeight } from '../features/progression.js';
+import { buildExerciseSessions, computeOverloadNudge, progressionTarget, weightIncrement, deloadNudgeText } from '../features/progression.js';
 import { selectRotation } from '../features/exercise-rotation.js';
 import { getNextInGroup, isLastInGroupRound, groupExercises, ungroupExercise } from '../features/superset-manager.js';
 import { haptic } from '../utils/haptics.js';
@@ -18,7 +18,7 @@ import { confirmSheet } from '../ui/confirm-sheet.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
 import { augmentStaticCatalog } from '../data/equipment-catalog-helpers.js';
 import { equipNameKey, ownedEquipmentKeys, searchCatalogMachines, inferEquipmentType, matchesAllTokens } from '../data/catalog-search.js';
-import { mergeSeededSets, isBlankSet, historyFromSameMachine } from './set-seeding.js';
+import { mergeSeededSets, isBlankSet, isTouchedSet, historyFromSameMachine, seedSetsFromLastSession, seedSetsFromTemplate } from './set-seeding.js';
 import { suggestMachinesForExercise } from '../features/exercise-machine-matcher.js';
 import { getEquipmentAtLocation, getExercisesAtLocation } from '../features/equipment-planner.js';
 import { programHeartbeat } from '../features/program-session.js';
@@ -221,6 +221,9 @@ function renderWorkoutHeader() {
         const hb = programHeartbeat(AppState._activeProgram, AppState.getTodayDateString());
         if (hb) programMeta = ` · week ${hb.week} of ${hb.weeks}`;
     } catch { /* no program, no line */ }
+    // AP-6: say what kind of session this is, so "week 6 of 6" never sits
+    // above a card that disagrees with it.
+    const intentMeta = AppState.savedData?.sessionIntent?.mode === 'deload' ? ' · deload' : '';
 
     return `
         <div class="aw-header">
@@ -230,7 +233,7 @@ function renderWorkoutHeader() {
             <div class="aw-title">
                 <div class="aw-title__name">${escapeHtml(workoutName)}${locName ? ` <span class="aw-title__loc"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(locName)}</span>` : ''}</div>
                 <div class="aw-title__elapsed">${elapsed}</div>
-                ${exerciseCount > 0 ? `<div class="aw-title__meta">Exercise ${currentExerciseIdx + 1}/${exerciseCount}${programMeta}</div>` : ''}
+                ${exerciseCount > 0 ? `<div class="aw-title__meta">Exercise ${currentExerciseIdx + 1}/${exerciseCount}${programMeta}${intentMeta}</div>` : ''}
             </div>
             ${Config.LIVE_COACH_ENABLED ? `
             <button class="aw-coach" onclick="openLiveCoach()" aria-label="Ask your coach" title="Ask your coach">
@@ -245,10 +248,14 @@ function renderWorkoutHeader() {
 }
 
 function renderWorkoutMenu() {
+    const isDeload = AppState.savedData?.sessionIntent?.mode === 'deload';
     return `
         <div class="aw-workout-menu">
             <button class="aw-ex-menu__item" onclick="awAddExercise()">
                 <i class="fas fa-plus"></i> Add exercise
+            </button>
+            <button class="aw-ex-menu__item" onclick="awCloseMenus(); awToggleSessionDeload();">
+                <i class="fas fa-feather"></i> ${isDeload ? 'Back to a normal session' : 'Make this a deload session'}
             </button>
             <button class="aw-ex-menu__item" onclick="saveActiveWorkoutAsTemplate(); awCloseMenus();">
                 <i class="fas fa-bookmark"></i> Save as template
@@ -499,6 +506,48 @@ export function awRestDismiss() {
 // EXERCISE VIEW (single exercise)
 // ===================================================================
 
+/**
+ * ?debug only (AP-2): untouched rows should be exactly what the seeder makes
+ * of the card's history. When they aren't, log autofill_mismatch (persisted
+ * warning, deduped per session) with both arrays so the report carries data.
+ * Skipped for sessions whose rows are deliberately reshaped after autofill
+ * (a program heavy week / coach-applied adjustment).
+ */
+const _mismatchLogged = new Set();
+function checkAutofillMismatch(exercise, idx, savedEx) {
+    try {
+        const dbg = exercise._autofillDebug;
+        if (!dbg || dbg.source !== 'history' || !Array.isArray(exercise._lastSessionSets)) return;
+        const intent = AppState.savedData?.sessionIntent || null;
+        if (AppState.savedData?.sessionLabel && intent?.mode !== 'deload') return;
+        const expected = seedSetsFromLastSession(
+            exercise._lastSessionSets, exercise._progression, intent, dbg.seedUnit,
+            exercise._progressionInc || (dbg.seedUnit === 'kg' ? 2.5 : 5),
+            { alreadyLight: dbg.recovery, fallbackUnit: AppState.globalUnit || 'lbs' });
+        const diffs = [];
+        (savedEx.sets || []).forEach((row, i) => {
+            const want = expected[i];
+            if (!want || isTouchedSet(row)) return;
+            if ((row.weight ?? null) !== (want.weight ?? null) || (row.reps ?? null) !== (want.reps ?? null)) {
+                diffs.push({ i, row: { weight: row.weight ?? null, reps: row.reps ?? null }, expected: { weight: want.weight ?? null, reps: want.reps ?? null } });
+            }
+        });
+        if (diffs.length === 0) return;
+        const exName = getExerciseName(exercise);
+        const sig = `${idx}|${exName}|${JSON.stringify(diffs)}`;
+        if (_mismatchLogged.has(sig)) return;
+        _mismatchLogged.add(sig);
+        import('../utils/error-handler.js').then(({ captureWarning }) => captureWarning(
+            `autofill_mismatch: ${exName}`, 'renderExerciseView', {
+                exerciseIdx: idx, exerciseName: exName, diffs,
+                card: exercise._lastSessionSets.map(s => ({ weight: s.weight ?? null, reps: s.reps ?? null, originalUnit: s.originalUnit || null })),
+                autofill: dbg,
+            })).catch(() => { /* diagnostic only */ });
+    } catch {
+        // diagnostic must never break render
+    }
+}
+
 function renderExerciseView(exercise, idx, savedEx) {
     const category = getCategory(exercise);
     const iconClass = getCategoryIcon(exercise.category || category) || 'fas fa-dumbbell';
@@ -541,6 +590,7 @@ function renderExerciseView(exercise, idx, savedEx) {
 
     // Same set table for ALL exercise types — always Reps | Weight | ✓
     const sets = buildSetRows(exercise, idx, savedEx, unit, hasBaseWeight ? equipDoc.baseWeight : 0);
+    if (Config.DEBUG_MODE) checkAutofillMismatch(exercise, idx, savedEx);
 
     // Autofill hint: shown once per USER (persisted in settings), not once per
     // exercise name — after you've learned what the dashed numbers mean, the
@@ -821,6 +871,22 @@ function getEquipmentDoc(equipmentName, equipmentId = null) {
  * stays synchronous and self-contained. Pure; mirrored in
  * tests/unit/beat-last-session.test.js.
  */
+/** Deload line off last session's top working set (fallback when the multi-session nudge is missing). */
+function deloadLineFor(lastSets, displayUnit, exercise, intent) {
+    let top = null, topLbs = 0;
+    for (const s of lastSets || []) {
+        if (!s || !s.weight || (s.type || 'working') === 'warmup') continue;
+        const lbs = convertWeight(s.weight, s.originalUnit || 'lbs', 'lbs');
+        if (lbs > topLbs) { topLbs = lbs; top = s; }
+    }
+    if (!top) return null;
+    const W = Math.round(convertWeight(top.weight, top.originalUnit || 'lbs', displayUnit) * 10) / 10;
+    const inc = exercise._progressionInc || weightIncrement(displayUnit,
+        displayUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs);
+    const rt = exercise.defaultReps || exercise.reps || null;
+    return deloadNudgeText(W, top.reps || 0, rt, intent, displayUnit, inc);
+}
+
 function nextTargetFor(lastSets, displayUnit) {
     if (!Array.isArray(lastSets) || lastSets.length === 0) return null;
     let topLbs = 0, topSet = null;
@@ -889,19 +955,31 @@ function renderLastSessionCard(exerciseName, idx) {
     }).join(' · ');
     const unitTag = base > 0 ? `${displayUnit} plates` : displayUnit;
 
-    // Overload nudge — only for weighted lifts (a bodyweight "try +5" is noise).
-    // Prefer the smart multi-session coach hydrated by loadAutofillForExercise;
-    // fall back to the simple last-session step until it's computed.
-    // No generic bump advice during an adjusted session (deload/heavy week) —
-    // the adjustment already set today's targets and the two would conflict.
-    // The multi-session nudge is computed on totals, so on base-weight gear
-    // use the plate-relative single-session step instead.
-    // A different machine's numbers get no "go heavier" — you've never used this one.
-    const nudge = isBodyweightExercise(exercise) || AppState.savedData?.sessionLabel || exercise._lastSessionOtherMachine
-        ? null
-        : (base > 0
-            ? nextTargetFor(plateSets, displayUnit)
-            : (exercise._overloadNudge || nextTargetFor(lastDefaults, displayUnit)));
+    // Overload nudge — only for weighted lifts (a bodyweight "try +5" is noise),
+    // and never off a different machine's numbers.
+    //   · Deload session (AP-7): the deload line, from every entry path — the
+    //     smart nudge carries it; the fallback is computed here, never "Beat it".
+    //   · Other adjusted session (heavy week): no generic bump advice — the
+    //     adjustment set today's targets and the two would conflict.
+    //   · Base-weight gear: the multi-session nudge is plate-relative when the
+    //     last session recorded its plate load (so the stall ladder applies);
+    //     legacy totals fall back to the plate-relative single-session step.
+    const intent = AppState.savedData?.sessionIntent || null;
+    const lastPlatesKnown = plateSets.length > 0
+        && plateSets.every(s => typeof s._plateWeight === 'number' && s._equipBaseWeight > 0);
+    let nudge;
+    if (isBodyweightExercise(exercise) || exercise._lastSessionOtherMachine) {
+        nudge = null;
+    } else if (intent?.mode === 'deload') {
+        nudge = (base > 0 && !lastPlatesKnown ? null : exercise._overloadNudge)
+            || deloadLineFor(plateSets, displayUnit, exercise, intent);
+    } else if (AppState.savedData?.sessionLabel) {
+        nudge = null;
+    } else if (base > 0) {
+        nudge = (lastPlatesKnown && exercise._overloadNudge) || nextTargetFor(plateSets, displayUnit);
+    } else {
+        nudge = exercise._overloadNudge || nextTargetFor(lastDefaults, displayUnit);
+    }
     const nudgeHtml = nudge
         ? `<div class="aw-last__nudge"><i class="fas fa-bolt" aria-hidden="true"></i> ${nudge}</div>`
         : '';
@@ -919,6 +997,20 @@ function renderLastSessionCard(exerciseName, idx) {
     // One read-only fact, one tap target: the whole row opens the exercise's
     // progress detail. The unit pill (duplicate of the sets-header toggle) and
     // the cross-equipment info glyph earned their keep less than the calm.
+    // ?debug overlay (AP-2): screenshot this line when card and rows disagree.
+    const dbg = Config.DEBUG_MODE ? exercise._autofillDebug : null;
+    const debugHtml = dbg
+        ? `<div class="aw-last__debug">${escapeHtml([
+            dbg.sameMachine ? 'same machine' : 'other machine',
+            `query=${dbg.query || '—'}`,
+            `from=${dbg.from || '—'}`,
+            `seeded=${dbg.seeded}/${dbg.total} (${dbg.source})`,
+            `intent=${dbg.intent}${dbg.recovery ? ' · src deload' : ''}`,
+            `gen=${dbg.gen}`,
+            dbg.trigger,
+        ].join(' · '))}</div>`
+        : '';
+
     return `
         <button type="button" class="aw-last" onclick="showExerciseDetail('${escapeAttr(exerciseName)}')"
                 aria-label="View ${escapeAttr(exerciseName)} progress">
@@ -926,6 +1018,7 @@ function renderLastSessionCard(exerciseName, idx) {
             <div class="aw-last__info">
                 <div class="aw-last__val">Last: ${summary} ${unitTag} · ${daysLabel}${fromTag}</div>
                 ${nudgeHtml}
+                ${debugHtml}
             </div>
             <i class="fas fa-chevron-right aw-last__chev" aria-hidden="true"></i>
         </button>
@@ -1114,9 +1207,12 @@ function buildSetRows(exercise, idx, savedEx, unit, baseWeight = 0) {
 
         // 5.7.3 — ↑ marker on an earned-bump suggestion (until the user edits it).
         const suggestBump = set._suggested && !set._userEdited && !set.completed;
+        const lighter = !!set._adjusted && !set._userEdited && !set.completed;
         const suggestMarker = suggestBump
             ? '<span class="aw-set-row__suggest" aria-label="Suggested progression — heavier than last time" title="Suggested — you hit your reps last time">↑</span>'
-            : '';
+            : lighter
+                ? `<span class="aw-set-row__suggest aw-set-row__suggest--lighter" aria-label="${set._adjusted === 'deload' ? 'Deload — lighter than last time' : 'Back-off — lighter than last time'}" title="${set._adjusted === 'deload' ? 'Deload — lighter than last time' : 'Back-off — drop and rebuild'}">↓</span>`
+                : '';
 
         return `
             <div class="${classes.join(' ')}" data-set-idx="${si}">
@@ -1772,7 +1868,7 @@ function commitReplaceExercise(idx, exercise) {
 
     saveWorkoutData(AppState);
     renderAll();
-    loadAutofillForExercise(idx, { reseed: true });
+    loadAutofillForExercise(idx, { reseed: true, trigger: 'replace' });
     showNotification(`Replaced with ${exerciseName}`, 'success');
 }
 
@@ -3012,7 +3108,7 @@ export async function awSelectEquipment(exerciseIdx, equipName, equipId = null) 
     // the new equipment's history (the cache key is equipment-specific, so
     // this triggers a fresh fetch). renderAll inside loadAutofillForExercise
     // handles the second redraw once data lands.
-    loadAutofillForExercise(exerciseIdx, { reseed: true });
+    loadAutofillForExercise(exerciseIdx, { reseed: true, trigger: 'equipment' });
 }
 
 // ── New machine (mid-workout) ──
@@ -3429,7 +3525,7 @@ export function awInsertExercise(exerciseName) {
     AppState.savedData.exercises[`exercise_${idx}`] = { sets: [] };
 
     // Load autofill for the new exercise
-    loadAutofillForExercise(idx, { reseed: true });
+    loadAutofillForExercise(idx, { reseed: true, trigger: 'insert' });
 
     debouncedSaveWorkoutData(AppState);
     awCloseSheet();
@@ -3958,10 +4054,10 @@ export function awCloseSheet() {
 // AUTOFILL — load last session defaults for all exercises
 // ===================================================================
 
-export async function loadAutofillForAllExercises() {
+export async function loadAutofillForAllExercises({ trigger = 'start', reseed = false } = {}) {
     const exercises = AppState.currentWorkout.exercises;
     for (let i = 0; i < exercises.length; i++) {
-        await loadAutofillForExercise(i);
+        await loadAutofillForExercise(i, { trigger, reseed });
     }
 }
 
@@ -4079,24 +4175,49 @@ async function maybeLogEquipmentLeak({
 // A→B→C taps let the last resolver own the card and the first own the rows.
 const _autofillGen = new Map();
 
+/** Which path asked for an autofill — rides on every autofill_trace (AP-2). */
+const AUTOFILL_TRIGGERS = ['start', 'resume', 'edit', 'equipment', 'replace', 'insert', 'location', 'coach', 'intent'];
+
+/**
+ * One structured autofill_trace per prefill (AP-2): what was asked, what the
+ * history lookup returned, and whether rows were seeded (and if not, why).
+ * Quiet + session-only, so it lands on the Error Log page for "screenshot
+ * this when it looks wrong" without touching the badge or the persisted
+ * store. Diagnostic must never break autofill.
+ */
+async function logAutofillTrace(trace) {
+    try {
+        const { captureTrace } = await import('../utils/error-handler.js');
+        captureTrace(`autofill_trace: ${trace.exerciseName} · ${trace.trigger}`, 'loadAutofillForExercise', trace);
+    } catch {
+        // never break autofill
+    }
+}
+
 /**
  * Load last-session history for one exercise and seed its set rows.
  *
  * `reseed` is for paths that CHANGE what the slot is (replace, add, switch
  * machine): render has already padded blank rows by then, so every untouched
  * row is replaced from the new history. Start/resume leave it off — there a
- * row with numbers in it may be a program adjustment (deload scaling) that
- * re-seeding from raw history would undo, so only all-blank rows get filled.
+ * row with numbers in it may be a program adjustment that re-seeding from raw
+ * history would undo, so only all-blank rows get filled.
+ *
+ * `trigger` names the path (AUTOFILL_TRIGGERS) for the trace.
  */
-export async function loadAutofillForExercise(idx, { reseed = false } = {}) {
+export async function loadAutofillForExercise(idx, { reseed = false, trigger = null } = {}) {
     const exercise = AppState.currentWorkout.exercises[idx];
     if (!exercise) return;
+    const t0 = Date.now();
     const gen = (_autofillGen.get(idx) || 0) + 1;
     _autofillGen.set(idx, gen);
     const superseded = () => _autofillGen.get(idx) !== gen;
     const exName = getExerciseName(exercise);
     const key = `exercise_${idx}`;
     const savedEx = AppState.savedData?.exercises?.[key];
+    // AP-6: what today's session is for (deload / heavy / build). Set once at
+    // start or resume; every seed and nudge below reads it.
+    const intent = AppState.savedData?.sessionIntent || null;
     // Prefer the equipment the USER actually picked for this exercise (which
     // lives on savedEx after awSelectEquipment) over the template's default.
     // Without this, autofill ran with the template's stale equipment and
@@ -4109,6 +4230,35 @@ export async function loadAutofillForExercise(idx, { reseed = false } = {}) {
     const sessionLoc = AppState.savedData?.location;
     const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
 
+    const trace = {
+        exerciseIdx: idx,
+        exerciseName: exName,
+        trigger: AUTOFILL_TRIGGERS.includes(trigger) ? trigger : (trigger || 'unknown'),
+        gen,
+        reseed,
+        superseded: false,
+        queryEquipment: equipName,
+        queryEquipmentId: equipId,
+        queryLocation: locName || null,
+        queryLocationType: typeof sessionLoc,
+        intent: intent ? { mode: intent.mode, source: intent.source, weightPct: intent.weightPct ?? null } : null,
+        resolved: null,
+        seed: null,
+        unit: {
+            exerciseUnit: AppState.exerciseUnits?.[idx] || null,
+            globalUnit: AppState.globalUnit || null,
+        },
+        durationMs: null,
+    };
+    const finishTrace = () => {
+        trace.durationMs = Date.now() - t0;
+        logAutofillTrace(trace);
+    };
+    const bail = () => {
+        trace.superseded = true;
+        finishTrace();
+    };
+
     // Ensure the equipment cache is loaded so the hero can resolve base weight /
     // plate-loaded type on the very first render. Without this the plate button
     // (and base-weight label) were missing until the user opened the equipment
@@ -4119,7 +4269,7 @@ export async function loadAutofillForExercise(idx, { reseed = false } = {}) {
             const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
             AppState._cachedEquipment = await new FirebaseWorkoutManager(AppState).getUserEquipment();
         } catch (e) { debugLog('equipment cache load failed', e); }
-        if (superseded()) return;
+        if (superseded()) return bail();
     }
 
     // Equipment-change call sites pass a stale `_lastSessionSets` from the
@@ -4147,15 +4297,30 @@ export async function loadAutofillForExercise(idx, { reseed = false } = {}) {
     } catch {
         exercise._formVideoUrl = null;
     }
-    if (superseded()) return;
+    if (superseded()) return bail();
 
     try {
-        const lastSession = await getLastSessionDefaults(exName, equipName, locName, equipId);
-        if (superseded()) return;
+        // preferBuild: seed from the last NON-deload session when one exists
+        // (a deload's 65% rows must not become next week's starting point).
+        const lastSession = await getLastSessionDefaults(exName, equipName, locName, equipId, { preferBuild: true });
+        if (superseded()) return bail();
         // History from a DIFFERENT machine stays on the card as a labelled
         // reference ("from X") but never seeds the rows or a bump target —
         // a new machine starts fresh (10/23: "for prefill, I'd just start fresh").
         const sameMachine = historyFromSameMachine(equipName, equipId, lastSession);
+        trace.resolved = lastSession ? {
+            found: true,
+            sameMachine,
+            equipment: lastSession.equipment || null,
+            equipmentId: lastSession.equipmentId || null,
+            location: lastSession.location || null,
+            date: lastSession.date || null,
+            recovery: !!lastSession.recovery,
+            setsCount: (lastSession.sets || []).length,
+            sourceUnits: [...new Set((lastSession.sets || []).map(s => s.originalUnit || 'lbs'))],
+            platesKnownCount: (lastSession.sets || []).filter(s => typeof s._plateWeight === 'number' && s._equipBaseWeight > 0).length,
+        } : { found: false };
+        trace.baseWeight = getEquipmentDoc(equipName, equipId)?.baseWeight || 0;
         // Silent health check: if the surfaced last-session equipment
         // doesn't exist in the user's library, or came from an exercise
         // history record that never actually linked this equipment, that's
@@ -4192,7 +4357,9 @@ export async function loadAutofillForExercise(idx, { reseed = false } = {}) {
                 // just leaves the simple last-session fallback in renderLastSessionCard.
                 try {
                     const allWorkouts = await loadAllWorkouts(AppState);
+                    trace.allWorkoutsCount = Array.isArray(allWorkouts) ? allWorkouts.length : null;
                     const nudgeUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
+                    // Deload sessions are left out (AP-7) — a light week isn't a strength signal.
                     const sessions = buildExerciseSessions(allWorkouts, exName, nudgeUnit);
                     const repTarget = exercise.defaultReps || exercise.reps || null;
                     // Plate-aware jump: without 2.5s the smallest real barbell
@@ -4201,17 +4368,15 @@ export async function loadAutofillForExercise(idx, { reseed = false } = {}) {
                     const plates = nudgeUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs;
                     const progInc = weightIncrement(nudgeUnit, plates);
                     exercise._progressionInc = progInc;
-                    exercise._overloadNudge = computeOverloadNudge(sessions, nudgeUnit, repTarget, progInc);
+                    exercise._overloadNudge = computeOverloadNudge(sessions, nudgeUnit, repTarget, progInc, intent);
                     // 5.7.3 — structured target next to the advisory string: today's
-                    // recommended weight/reps + a stall flag. The ↑ marker renders
-                    // on the last-session card; the stall flag is read by the coach.
-                    exercise._progression = progressionTarget(sessions, nudgeUnit, repTarget, progInc);
+                    // recommended weight/reps + a stall flag. A deload intent
+                    // short-circuits to action 'deload' (no bump, no stall rung).
+                    exercise._progression = progressionTarget(sessions, nudgeUnit, repTarget, progInc, intent);
                     // CP-4 — stall rung 3 hands off to the variety engine: name
                     // the stalest same-pattern machine at this gym in the nudge.
                     // Equipment may not be cached yet; then the plain string stands.
                     if (exercise._progression?.rotate && Array.isArray(AppState._cachedEquipment)) {
-                        const sessionLoc = AppState.savedData?.location;
-                        const locName = typeof sessionLoc === 'object' ? sessionLoc?.name : sessionLoc;
                         const library = AppState.exerciseDatabase || [];
                         const { swaps } = selectRotation({
                             exercises: [{ machine: exName, role: 'accessory', equipment: AppState.savedData?.exercises?.[key]?.equipment || exercise.equipment }],
@@ -4227,7 +4392,7 @@ export async function loadAutofillForExercise(idx, { reseed = false } = {}) {
                     debugLog('overload nudge failed', e);
                 }
             }
-            if (superseded()) return;
+            if (superseded()) return bail();
         }
 
         if (!AppState.savedData.exercises[key]) {
@@ -4254,70 +4419,54 @@ export async function loadAutofillForExercise(idx, { reseed = false } = {}) {
             sx.equipment = lastSession.equipment;
         }
         if (exercise.group) sx.group = exercise.group;
+        // A deload week's effort cap shows as the RPE "aim" whatever path started it.
+        if (intent?.mode === 'deload' && intent.rpeTarget && !exercise._rpeTarget) exercise._rpeTarget = intent.rpeTarget;
 
-        let seeded;
-        if (lastSession && lastSession.sets && sameMachine) {
-            // 5.7.3 — progression pre-fill: when a bump is EARNED (hit the
-            // rep target last session), suggest the progressed weight/reps
-            // instead of last session's numbers, flagged _suggested so the
-            // row shows a ↑. Only on an earned bump — hold/chase/consolidate
-            // keep last session's exact per-set values (never silently seed
-            // a number the user didn't earn). The suggestion is an editable
-            // placeholder, same as any autofill.
-            const prog = exercise._progression;
-            const bump = prog && prog.bumped && prog.weight > 0;
-            // CP-2 stall rung 2: the coach says drop and rebuild, so the
-            // reduced load IS the target — seed it. Rung 1 (chase a rep)
-            // and rung 3 (rotate) stay advice-only like hold/consolidate.
-            const backOff = prog && prog.backOff && prog.weight > 0;
-            const progUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
-            const bumpInc = exercise._progressionInc || (progUnit === 'kg' ? 2.5 : 5);
-            // The bump is RELATIVE to each set's own last weight so a ramp
-            // keeps its shape (135/155/175 → +inc each, never a flat top
-            // weight across all sets). Warmups and unweighted sets are
-            // left exactly as last time. Back-off scales each set the
-            // same way, snapped to loadable plate jumps.
-            seeded = lastSession.sets.map(s => {
-                const weighted = s.weight > 0 && (s.type || 'working') !== 'warmup';
-                const bumpThis = bump && weighted;
-                const backThis = !bumpThis && backOff && weighted;
-                const lastW = weighted ? convertWeight(s.weight, s.originalUnit || 'lbs', progUnit) : 0;
-                const weight = bumpThis
-                    ? Math.round((lastW + bumpInc) * 10) / 10
-                    : backThis
-                        ? scaleLoadableWeight(lastW, 0.9, bumpInc)
-                        : ((s.weight && s.weight > 0) ? s.weight : null);
-                // A source set that recorded its plate load comes back
-                // plate-relative (getLastSessionDefaults), so the seeded
-                // number IS plates. Say so on the new set: completion keys
-                // on _plateWeight to skip the "untouched autofill is a
-                // total, subtract the base" correction — without it, 270
-                // seeded on a 90 lb machine logged as 180 + 90.
-                const platesKnown = typeof s._plateWeight === 'number' && s._equipBaseWeight > 0;
-                return {
-                    weight,
-                    reps: bumpThis && prog.reps ? prog.reps : ((s.reps && s.reps > 0) ? s.reps : null),
-                    completed: false,
-                    originalUnit: (bumpThis || backThis) ? progUnit : (s.originalUnit || AppState.globalUnit || 'lbs'),
-                    ...((bumpThis || backThis) ? { _suggested: true } : {}),
-                    ...((platesKnown && weight != null) ? { _plateWeight: weight } : {}),
-                };
-            });
-        } else {
+        const fromHistory =!!(lastSession && lastSession.sets && sameMachine);
+        const progUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
+        const seeded = fromHistory
+            ? seedSetsFromLastSession(
+                lastSession.sets, exercise._progression, intent, progUnit,
+                exercise._progressionInc || (progUnit === 'kg' ? 2.5 : 5),
+                { alreadyLight: !!lastSession.recovery, fallbackUnit: AppState.globalUnit || 'lbs' })
             // No history on this machine — start fresh from template defaults.
-            const targetSets = exercise.sets || 3;
-            seeded = Array.from({ length: targetSets }, () => ({
-                weight: exercise.defaultWeight || null,
-                reps: exercise.defaultReps || null,
-                completed: false,
-            }));
-        }
-        if (reseed || (sx.sets || []).every(isBlankSet)) {
+            : seedSetsFromTemplate(exercise, intent);
+
+        const before = sx.sets || [];
+        const allBlank = before.every(isBlankSet);
+        trace.seed = {
+            source: fromHistory ? 'history' : 'template',
+            setsBefore: before.length,
+            untouchedBefore: before.filter(s => !isTouchedSet(s)).length,
+            attempted: reseed || allBlank,
+            setsSeeded: 0,
+            reasonNotSeeded: null,
+        };
+        if (reseed || allBlank) {
             sx.sets = mergeSeededSets(sx.sets, seeded);
+            trace.seed.setsSeeded = sx.sets.filter(s => !isTouchedSet(s)).length;
+        } else {
+            trace.seed.reasonNotSeeded = 'rows already hold numbers (start/resume keeps them)';
         }
+        // ?debug overlay + mismatch check read this (AP-2).
+        exercise._autofillDebug = {
+            trigger: trace.trigger, gen,
+            query: equipName || null,
+            from: lastSession?.equipment || null,
+            sameMachine,
+            source: trace.seed.source,
+            seeded: trace.seed.setsSeeded,
+            total: (sx.sets || []).length,
+            recovery: !!lastSession?.recovery,
+            seedUnit: progUnit,
+            intent: intent?.mode || 'build',
+        };
     } catch (err) {
         debugLog('Autofill failed for', exName, err);
+        trace.error = err?.message || String(err);
     }
+
+    finishTrace();
 
     // Re-render so the exercise that's currently in view picks up the freshly
     // loaded last-session card / placeholders. Fire-and-forget callers don't
@@ -4408,6 +4557,35 @@ function cleanup() {
 // Real location helpers are in features/location-service.js.
 
 // Export current index for external use
+/**
+ * AP-10 — flag THIS session as a deload (or undo it) without a program.
+ * Rewrites the intent, then re-seeds every untouched row so the numbers on
+ * screen follow: lighter with ↓ markers, or back to last time's targets.
+ * Logged and typed sets are never touched.
+ */
+export async function awToggleSessionDeload() {
+    if (!AppState.savedData) return;
+    const { sessionOnlyDeloadIntent, MANUAL_DELOAD_WEIGHT_PCT } = await import('../features/session-intent.js');
+    const wasDeload = AppState.savedData.sessionIntent?.mode === 'deload';
+    if (wasDeload) {
+        AppState.savedData.sessionIntent = {
+            mode: 'build', weightPct: null, setDelta: null, repRange: null, rpeTarget: null,
+            label: null, week: null, weeks: null, source: 'none', reason: 'Deload turned off for this session',
+        };
+        if (/deload|recovery/i.test(AppState.savedData.sessionLabel || '')) delete AppState.savedData.sessionLabel;
+    } else {
+        AppState.savedData.sessionIntent = sessionOnlyDeloadIntent();
+        AppState.savedData.sessionLabel = 'Deload';
+    }
+    haptic('tap');
+    await loadAutofillForAllExercises({ trigger: 'intent', reseed: true });
+    renderAll();
+    debouncedSaveWorkoutData(AppState);
+    showNotification(wasDeload
+        ? 'Back to a normal session'
+        : `Deload session — open sets are ${Math.abs(MANUAL_DELOAD_WEIGHT_PCT)}% lighter`, 'success', 2500);
+}
+
 export function getCurrentExerciseIdx() { return currentExerciseIdx; }
 export function setCurrentExerciseIdx(idx) { currentExerciseIdx = idx; }
 
@@ -4427,6 +4605,7 @@ window.awQuickAddEquipment = awQuickAddEquipment;
 window.awSaveNewEquipment = awSaveNewEquipment;
 window.awNewEquipSetType = awNewEquipSetType;
 window.awNewEquipKeydown = awNewEquipKeydown;
+window.awToggleSessionDeload = awToggleSessionDeload;
 window.awSharedAddCatalogMachine = awSharedAddCatalogMachine;
 window.awSharedCreateEquipmentFromSearch = awSharedCreateEquipmentFromSearch;
 window.awQuickEditEquipment = awQuickEditEquipment;

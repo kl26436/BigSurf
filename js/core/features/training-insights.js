@@ -5,6 +5,8 @@
 import { AppState } from '../utils/app-state.js';
 import { Config } from '../utils/config.js';
 import { formatBodyPart } from '../utils/workout-helpers.js';
+import { buildExerciseSessions, stallState, scaleLoadableWeight, weightIncrement } from './progression.js';
+import { isRecoveryWorkout } from './session-intent.js';
 
 /**
  * Iterate a workout's exercises with `name` resolved from the workout-level
@@ -125,83 +127,52 @@ export function analyzeWeeklyVolume(workouts, exerciseDatabase) {
 // ===================================================================
 
 /**
- * Detect exercises where the user has plateaued (no weight increase
- * over the last N sessions).
+ * Detect exercises where the user has plateaued — the SAME definition the
+ * active-workout card uses (AP-8): progression.js#stallState over
+ * buildExerciseSessions (deload sessions excluded). This used to be a
+ * parallel 3-session model that told a stalled lift "Try adding 5 lbs" —
+ * the opposite of stall rung 1 (hold the weight, chase a rep).
  *
  * @param {Array} workouts - Recent completed workouts (multi-week)
- * @param {number} minSessions - Minimum sessions needed to detect plateau
- * @returns {Array} Plateaued exercises
+ * @param {number} minSessions - Minimum flat sessions to report
+ * @returns {Array<{exercise, weight, sessions, rung, equipment, suggestion}>}
  */
 export function detectPlateaus(workouts, minSessions = Config.PLATEAU_MIN_SESSIONS) {
-    // Build per-exercise session history (most recent first)
-    const exerciseHistory = {};
     const unit = currentDisplayUnit();
+    const inc = weightIncrement(unit, unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs);
 
-    for (const workout of workouts) {
-        if (!workout.exercises || !workout.date) continue;
-
+    // Latest equipment per exercise name, newest workout first.
+    const names = new Map();
+    const sorted = [...(workouts || [])].filter(w => w && w.date)
+        .sort((x, y) => y.date.localeCompare(x.date));
+    for (const workout of sorted) {
+        if (!workout.exercises) continue;
         for (const exercise of withResolvedNames(workout)) {
-            const name = exercise.name;
-            if (!name) continue;
-
-            const workingSets = (exercise.sets || []).filter(s =>
-                s.completed !== false && s.weight && (s.type || 'working') !== 'warmup'
-            );
-            if (workingSets.length === 0) continue;
-
-            // Normalize to user unit + round to 1 decimal so "flat" comparisons
-            // survive floating-point from the unit conversion.
-            const normalizedMax = Math.round(
-                Math.max(...workingSets.map(s => normalizedWeight(s, unit))) * 10
-            ) / 10;
-
-            if (!exerciseHistory[name]) exerciseHistory[name] = [];
-            exerciseHistory[name].push({
-                date: workout.date,
-                maxWeight: normalizedMax,
-                maxReps: Math.max(...workingSets.map(s => s.reps || 0)),
-                equipment: exercise.equipment,
-            });
+            if (exercise.name && !names.has(exercise.name)) names.set(exercise.name, exercise.equipment || null);
         }
     }
 
     const plateaus = [];
-
-    for (const [exerciseName, sessions] of Object.entries(exerciseHistory)) {
-        // Sort by date descending
-        sessions.sort((a, b) => b.date.localeCompare(a.date));
-
-        if (sessions.length < minSessions) continue;
-
-        const recent = sessions.slice(0, minSessions);
-        const maxWeights = recent.map(s => s.maxWeight);
-        const isFlat = maxWeights.every(w => w === maxWeights[0]);
-
-        if (isFlat && maxWeights[0] > 0) {
-            // Also check reps — if reps are increasing, not a true plateau
-            const maxReps = recent.map(s => s.maxReps);
-            const repsIncreasing = maxReps[0] > maxReps[maxReps.length - 1];
-
-            if (!repsIncreasing) {
-                plateaus.push({
-                    exercise: exerciseName,
-                    weight: maxWeights[0],
-                    sessions: minSessions,
-                    equipment: recent[0].equipment,
-                    suggestion: 'Try adding 5 lbs or an extra rep per set',
-                });
-            }
-        }
+    for (const [exerciseName, equipment] of names) {
+        const sessions = buildExerciseSessions(sorted, exerciseName, unit);
+        const stall = stallState(sessions);
+        if (stall.rung < 1 || stall.run < minSessions) continue;
+        const W = sessions[0].topWeight;
+        const R = sessions[0].topReps || sessions[0].maxReps || 0;
+        const suggestion = stall.rung === 1
+            ? `Hold ${W} ${unit} and chase ${R + 1} reps`
+            : stall.rung === 2
+                ? `Drop to ${scaleLoadableWeight(W, 0.9, inc)} ${unit} for two sessions, then rebuild`
+                : 'Swap in a similar movement this block';
+        plateaus.push({ exercise: exerciseName, weight: W, sessions: stall.run, rung: stall.rung, equipment, suggestion });
     }
-
+    plateaus.sort((x, y) => y.sessions - x.sessions);
     return plateaus;
 }
 
 // ===================================================================
 // DELOAD DETECTION
 // ===================================================================
-
-const RECOVERY_LABEL = /deload|recovery/i;
 
 /**
  * Sum of weight × reps over completed working sets, unit-normalized so a
@@ -249,7 +220,7 @@ export function checkDeloadNeeded(workouts) {
         const wk = weekMap[weekKey];
         wk.days.add(workout.date);
         wk.tonnage += workoutTonnage(workout);
-        if (RECOVERY_LABEL.test(workout.sessionLabel || '')) wk.labelled = true;
+        if (isRecoveryWorkout(workout)) wk.labelled = true;
     }
 
     // Sort weeks newest first
@@ -436,7 +407,7 @@ export function detectPositiveTrends(workouts) {
  * @param {Array} exerciseDatabase - Exercise library
  * @returns {Array} Top insights with type, severity, and message
  */
-export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
+export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase, { intent = null } = {}) {
     const insights = [];
 
     // Need minimum data to produce insights
@@ -444,9 +415,13 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
         return insights;
     }
 
-    // 1. Deload check (highest priority — health/recovery)
+    // AP-8: in a deload (planned, manual, or already logged this week) the
+    // dashboard doesn't ask for more load — or for the deload you're in.
     const deload = checkDeloadNeeded(allWorkouts);
-    if (deload && deload.needed) {
+    const inDeload = intent?.mode === 'deload' || !!deload?.inRecoveryWeek;
+
+    // 1. Deload check (highest priority — health/recovery)
+    if (deload && deload.needed && !inDeload) {
         insights.push({
             type: 'deload',
             severity: 'warning',
@@ -480,16 +455,18 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
         });
     }
 
-    // 3. Plateau detection
-    const plateaus = detectPlateaus(allWorkouts);
+    // 3. Plateau detection — same stall ladder as the workout card.
+    const plateaus = inDeload ? [] : detectPlateaus(allWorkouts);
     if (plateaus.length > 0) {
         const top = plateaus[0];
         insights.push({
             type: 'plateau',
             severity: 'info',
             icon: 'fa-equals',
-            message: `Add weight to ${top.exercise} — stuck at ${top.weight} ${currentDisplayUnit()} for ${top.sessions} sessions.`,
+            message: `${top.exercise} has been at ${top.weight} ${currentDisplayUnit()} for ${top.sessions} sessions — ${top.suggestion.charAt(0).toLowerCase()}${top.suggestion.slice(1)}.`,
             exerciseName: top.exercise,
+            suggestion: top.suggestion,
+            sessions: top.sessions,
         });
     }
 
@@ -521,8 +498,8 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase) {
  * @param {Array} exerciseDatabase - Exercise library
  * @returns {Object|null} Top insight or null
  */
-export function getTopInsight(recentWorkouts, allWorkouts, exerciseDatabase) {
-    const all = getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase);
+export function getTopInsight(recentWorkouts, allWorkouts, exerciseDatabase, options = {}) {
+    const all = getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase, options);
     if (all.length === 0) return null;
 
     const insight = all[0];
@@ -532,7 +509,7 @@ export function getTopInsight(recentWorkouts, allWorkouts, exerciseDatabase) {
         'deload': `Take a deload week — you've trained hard for ${insight.message.match(/(\d+) weeks/)?.[1] || 'several'} weeks straight. Cut volume 40-50%.`,
         'volume-high': `Ease up on ${insight.message.match(/^(.+?) volume/)?.[1] || 'that muscle group'} this week to aid recovery.`,
         'volume-low': insight.message, // Already has recommendation text
-        'plateau': `Try a drop set or add 5 lbs to ${insight.exerciseName || 'that exercise'} — it's been flat for ${insight.message.match(/(\d+) sessions/)?.[1] || 'a few'} sessions.`,
+        'plateau': `${insight.suggestion || 'Hold the weight and chase a rep'} on ${insight.exerciseName || 'that exercise'} — it's been flat for ${insight.sessions || 'a few'} sessions.`,
         'trend': insight.message, // Positive trends are already good
     };
 

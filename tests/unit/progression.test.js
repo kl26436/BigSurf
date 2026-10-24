@@ -21,6 +21,7 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({
 
 import {
     computeOverloadNudge, progressionTarget, stallState, scaleLoadableWeight,
+    buildExerciseSessions, deloadTarget, deloadNudgeText,
 } from '../../js/core/features/progression.js';
 
 // Newest-first session stubs: [topWeight, maxReps]
@@ -135,5 +136,63 @@ describe('stall ladder', () => {
             if (t.action === 'back-off') expect(n).toMatch(/drop to/);
             if (t.action === 'rotate') expect(n).toMatch(/had its run/);
         }
+    });
+});
+
+// AP-7 — progression consumes the session intent.
+describe('deload intent', () => {
+    const deload = { mode: 'deload', weightPct: -35, repRange: [12, 15] };
+
+    it('never bumps — scales the last build weight and takes the band floor', () => {
+        const s = S([190, 10], [190, 8]); // would be a bump
+        expect(progressionTarget(s, 'lbs', 10, 10, deload)).toEqual({
+            weight: scaleLoadableWeight(190, 0.65, 10), reps: 12, bumped: false, stalled: false, action: 'deload', deload: true,
+        });
+        expect(computeOverloadNudge(s, 'lbs', 10, 10, deload))
+            .toBe(`Deload week — ${scaleLoadableWeight(190, 0.65, 10)} lbs for 12, two reps in the tank`);
+    });
+
+    it('skips the stall ladder on a flat run', () => {
+        const flat = S([190, 8], [190, 8], [190, 8], [190, 8], [190, 8], [190, 8]);
+        expect(progressionTarget(flat, 'lbs', 10, 10).rung).toBe(2); // baseline: rung 2 back-off
+        const t = progressionTarget(flat, 'lbs', 10, 10, deload);
+        expect(t.stalled).toBe(false);
+        expect(t.rung).toBeUndefined();
+        expect(t.action).toBe('deload');
+    });
+
+    it('without a percentage it holds the weight', () => {
+        const label = { mode: 'deload', weightPct: null };
+        expect(deloadTarget(190, 8, 10, label, 10)).toEqual({ weight: 190, reps: 10 });
+        expect(deloadNudgeText(190, 8, 10, label, 'lbs', 10)).toBe('Deload week — hold 190 lbs, stop two reps short');
+    });
+
+    it('peak and build intents leave the matrix alone', () => {
+        const s = S([190, 10], [190, 8]);
+        expect(progressionTarget(s, 'lbs', 10, 10, { mode: 'peak', weightPct: 5 }).action).toBe('bump');
+        expect(computeOverloadNudge(s, 'lbs', 10, 10, { mode: 'build' })).toBe('10 reps at 190 lbs — bump to 200');
+    });
+});
+
+describe('buildExerciseSessions — recovery sessions', () => {
+    const w = (date, weight, extra = {}) => ({
+        date, completedAt: `${date}T12:00:00Z`, ...extra,
+        exerciseNames: { exercise_0: 'Bench Press' },
+        exercises: { exercise_0: { sets: [{ reps: 10, weight, completed: true, originalUnit: 'lbs' }] } },
+    });
+    const history = [
+        w('2026-10-27', 125, { sessionLabel: 'Deload' }),
+        w('2026-10-28', 125, { sessionIntent: { mode: 'deload' } }),
+        w('2026-10-20', 190),
+    ];
+
+    it('excludes deload sessions by default so next week progresses from the build session', () => {
+        const sessions = buildExerciseSessions(history, 'Bench Press', 'lbs');
+        expect(sessions.map(x => x.topWeight)).toEqual([190]);
+        expect(progressionTarget(sessions, 'lbs', 10, 10)).toMatchObject({ weight: 200, action: 'bump' });
+    });
+
+    it('can include them on request', () => {
+        expect(buildExerciseSessions(history, 'Bench Press', 'lbs', { excludeRecovery: false })).toHaveLength(3);
     });
 });

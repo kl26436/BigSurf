@@ -5,13 +5,28 @@
 // showed the new "Last:" card above blank or stale rows, because render pads
 // blank rows before autofill lands and autofill only seeded an EMPTY list.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// set-seeding imports convertWeight from ui-helpers — real math, mocked module.
+vi.mock('../../js/core/ui/ui-helpers.js', () => ({
+    convertWeight: (weight, fromUnit, toUnit) => {
+        if (!weight || isNaN(weight) || weight <= 0) return 0;
+        if (fromUnit === toUnit) return Math.round(weight * 10) / 10;
+        if (fromUnit === 'lbs' && toUnit === 'kg') return Math.round(weight * 0.453592 * 10) / 10;
+        if (fromUnit === 'kg' && toUnit === 'lbs') return Math.round(weight * 2.20462 * 10) / 10;
+        return Math.round(weight * 10) / 10;
+    },
+}));
+
 import {
     isTouchedSet,
     isBlankSet,
     mergeSeededSets,
     historyFromSameMachine,
+    seedSetsFromLastSession,
+    seedSetsFromTemplate,
 } from '../../js/core/workout/set-seeding.js';
+import { scaleLoadableWeight } from '../../js/core/features/progression.js';
 
 // The exact shape ensurePersistentSets pads in during render.
 const blank = () => ({ reps: null, weight: null, completed: false });
@@ -27,6 +42,7 @@ describe('isTouchedSet / isBlankSet', () => {
     it('blank = untouched and empty', () => {
         expect(isBlankSet(blank())).toBe(true);
         expect(isBlankSet(undefined)).toBe(true);
+        expect(isBlankSet({ weight: 0, reps: 0, completed: false })).toBe(true); // saved blank row
         expect(isBlankSet({ weight: 100, reps: null, completed: false })).toBe(false);
         expect(isBlankSet({ weight: null, reps: null, _userEdited: true })).toBe(false);
     });
@@ -112,5 +128,71 @@ describe('historyFromSameMachine', () => {
 
     it('no history is not a match', () => {
         expect(historyFromSameMachine('Panatta Incline', null, null)).toBe(false);
+    });
+});
+
+describe('seedSetsFromLastSession', () => {
+    const last = [
+        { weight: 95, reps: 10, type: 'warmup', originalUnit: 'lbs' },
+        { weight: 180, reps: 10, originalUnit: 'lbs' },
+        { weight: 190, reps: 8, originalUnit: 'lbs' },
+    ];
+
+    it('copies last session exactly when nothing is earned', () => {
+        const out = seedSetsFromLastSession(last, { bumped: false, weight: 190 }, null, 'lbs', 10);
+        expect(out.map(s => [s.weight, s.reps])).toEqual([[95, 10], [180, 10], [190, 8]]);
+        expect(out.some(s => s._suggested || s._adjusted)).toBe(false);
+    });
+
+    it('an earned bump moves each working set by the increment and flags the up marker', () => {
+        const out = seedSetsFromLastSession(last, { bumped: true, weight: 200, reps: 10 }, null, 'lbs', 10);
+        expect(out.map(s => s.weight)).toEqual([95, 190, 200]);
+        expect(out[0]._suggested).toBeUndefined();
+        expect(out[1]._suggested).toBe(true);
+    });
+
+    it('a stall back-off lowers each working set and flags lighter, not heavier', () => {
+        const out = seedSetsFromLastSession(last, { backOff: true, weight: 170 }, null, 'lbs', 10);
+        expect(out[2].weight).toBe(scaleLoadableWeight(190, 0.9, 10));
+        expect(out[2]._adjusted).toBe('back-off');
+        expect(out[2]._suggested).toBeUndefined();
+    });
+
+    it('a deload never bumps: scales working sets, clamps reps into the band, flags lighter', () => {
+        const deload = { mode: 'deload', weightPct: -35, repRange: [12, 15] };
+        const out = seedSetsFromLastSession(last, { bumped: true, weight: 200, reps: 10 }, deload, 'lbs', 10);
+        expect(out[0]).toMatchObject({ weight: 95, reps: 10 }); // warmup untouched
+        expect(out[1]).toMatchObject({ weight: scaleLoadableWeight(180, 0.65, 10), reps: 12, _adjusted: 'deload' });
+        expect(out[2]).toMatchObject({ weight: scaleLoadableWeight(190, 0.65, 10), reps: 12, _adjusted: 'deload' });
+        expect(out.some(s => s._suggested)).toBe(false);
+    });
+
+    it('does not scale a source that was already a deload session', () => {
+        const deload = { mode: 'deload', weightPct: -35 };
+        const out = seedSetsFromLastSession(last, null, deload, 'lbs', 10, { alreadyLight: true });
+        expect(out.map(s => s.weight)).toEqual([95, 180, 190]);
+        expect(out.some(s => s._adjusted)).toBe(false);
+    });
+
+    it('keeps plate-relative seeds marked as plates', () => {
+        const plates = [{ weight: 270, reps: 10, originalUnit: 'lbs', _plateWeight: 270, _equipBaseWeight: 90 }];
+        const out = seedSetsFromLastSession(plates, null, { mode: 'deload', weightPct: -30 }, 'lbs', 10);
+        expect(out[0]._plateWeight).toBe(out[0].weight);
+        expect(out[0].weight).toBe(scaleLoadableWeight(270, 0.7, 10));
+    });
+
+    it('converts to the exercise unit when it changes a number', () => {
+        const out = seedSetsFromLastSession([{ weight: 100, reps: 10, originalUnit: 'kg' }], { bumped: true, weight: 105 }, null, 'kg', 2.5);
+        expect(out[0]).toMatchObject({ weight: 102.5, originalUnit: 'kg', _suggested: true });
+    });
+});
+
+describe('seedSetsFromTemplate', () => {
+    it('uses template defaults, clamping reps into a deload band', () => {
+        expect(seedSetsFromTemplate({ sets: 2, defaultReps: 8 }, null)).toEqual([
+            { weight: null, reps: 8, completed: false }, { weight: null, reps: 8, completed: false },
+        ]);
+        expect(seedSetsFromTemplate({ sets: 1, defaultReps: 8 }, { mode: 'deload', repRange: [12, 15] })[0].reps).toBe(12);
+        expect(seedSetsFromTemplate({}, null)).toHaveLength(3);
     });
 });

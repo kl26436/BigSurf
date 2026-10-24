@@ -169,9 +169,12 @@ function logError(entry) {
         errorLogEntries.shift();
     }
 
-    // Bump unread count and notify badge
-    unreadErrorCount++;
-    if (onBadgeUpdate) onBadgeUpdate(unreadErrorCount);
+    // Bump unread count and notify badge — not for quiet diagnostic traces,
+    // which would turn the badge into noise on every workout start.
+    if (!entry.quiet) {
+        unreadErrorCount++;
+        if (onBadgeUpdate) onBadgeUpdate(unreadErrorCount);
+    }
 
     // Persist errors and warnings to Firestore (non-blocking)
     if (record.severity === 'error' || record.severity === 'warn') {
@@ -210,6 +213,22 @@ export function captureWarning(message, source, context) {
         source,
         severity: 'warn',
         shownToUser: false,
+        context,
+    });
+}
+
+/**
+ * Public API: a quiet diagnostic trace (AP-2). Session-only (in-memory ring
+ * buffer — shown on the Error Log page, never persisted, no badge), so a
+ * per-exercise trace can't evict real errors from the 200-entry store.
+ */
+export function captureTrace(message, source, context) {
+    return logError({
+        message,
+        source,
+        severity: 'info',
+        shownToUser: false,
+        quiet: true,
         context,
     });
 }

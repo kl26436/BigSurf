@@ -479,6 +479,14 @@
     color: var(--primary);
 }
 .aw-last__nudge > i { margin-right: 3px; }
+/* ?debug-only autofill overlay line (AP-2). */
+.aw-last__debug {
+    margin-top: 3px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: var(--font-2xs);
+    color: var(--text-muted);
+    word-break: break-word;
+}
 .aw-last__chev {
     flex-shrink: 0;
     color: var(--text-muted);
@@ -574,6 +582,12 @@
     border-radius: var(--radius-pill);
     padding: 1px 7px;
     pointer-events: none;
+}
+/* ↓ — a deliberately lighter target (deload week, stall back-off). Muted so
+   it reads as "planned", not as a warning. */
+.aw-set-row__suggest--lighter {
+    color: var(--text-muted);
+    border-color: var(--border-light);
 }
 
 /* RPE row (opt-in) — effort chips tucked under a completed set. */

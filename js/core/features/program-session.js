@@ -286,7 +286,12 @@ function applyAdjustmentToCurrentSession(program, adj, { weeklyVolume = [] } = {
         }
         // The visible set targets (autofilled from last session) scale too —
         // without this the "-40%" toast shows but the rows still say last week.
-        scaleSessionSetTargets(f);
+        // Unless autofill already seeded this deload (AP-7: the session intent
+        // carries the same week's percentage into every entry path) — scaling
+        // again here would apply −35% twice.
+        const seededByIntent = AppState.savedData?.sessionIntent?.mode === 'deload'
+            && typeof AppState.savedData.sessionIntent.weightPct === 'number';
+        if (!seededByIntent) scaleSessionSetTargets(f);
     }
     let clamped = [];
     if (adj.setDelta) {
