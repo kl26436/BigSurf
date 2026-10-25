@@ -4443,11 +4443,14 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
                     const progInc = weightIncrement(nudgeUnit, plates);
                     exercise._progressionInc = progInc;
                     exercise._progressionSessions = sessions; // AU-3: plate-relative card nudge
-                    exercise._overloadNudge = computeOverloadNudge(sessions, nudgeUnit, repTarget, progInc, intent);
+                    // AU-11 (2/2) — set rows (and live mode, which reads _progression) pass today:
+                    // a lift untouched for 6+ weeks restarts at its last weight.
+                    const todayStr = AppState.getTodayDateString?.() || null;
+                    exercise._overloadNudge = computeOverloadNudge(sessions, nudgeUnit, repTarget, progInc, intent, todayStr);
                     // 5.7.3 — structured target next to the advisory string: today's
                     // recommended weight/reps + a stall flag. A deload intent
                     // short-circuits to action 'deload' (no bump, no stall rung).
-                    exercise._progression = progressionTarget(sessions, nudgeUnit, repTarget, progInc, intent);
+                    exercise._progression = progressionTarget(sessions, nudgeUnit, repTarget, progInc, intent, todayStr);
                     // CP-4 — stall rung 3 hands off to the variety engine: name
                     // the stalest same-pattern machine at this gym in the nudge.
                     // Equipment may not be cached yet; then the plain string stands.
