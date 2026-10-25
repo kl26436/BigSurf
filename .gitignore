@@ -77,3 +77,6 @@ file structure.txt
 *.py
 !setup.py
 !deploy.py
+
+# Coach eval run outputs (AP-20); tests/coach-eval/baseline.json is committed
+tests/coach-eval/results/

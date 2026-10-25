@@ -17,7 +17,8 @@
     "audit:design": "node scripts/design-audit.js",
     "audit:design:strict": "node scripts/design-audit.js --strict",
     "audit:shell": "node scripts/shell-audit.js",
-    "audit:shell:strict": "node scripts/shell-audit.js --strict"
+    "audit:shell:strict": "node scripts/shell-audit.js --strict",
+    "eval:coach": "vitest run --config vitest.eval.config.js"
   },
   "repository": {
     "type": "git",

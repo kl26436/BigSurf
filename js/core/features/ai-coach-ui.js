@@ -11,33 +11,17 @@ import { Config, debugLog, getCategoryIcon } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { formatCoachResponse } from './coach-markdown.js';
 import {
-    buildProfileContext, buildPRContext, buildTemplatesContext,
-    setTypeMarker, templatesChangedNote, buildProgramContext,
-    buildSessionIntentContext, buildTodayContext, buildRecentThreadsContext,
+    templatesChangedNote, buildRecentThreadsContext,
     contextRefreshReason, contextTurn, visibleQuestion,
 } from './coach-context.js';
-import { computeVerdicts, formatVerdictsContext } from './coach-rules.js';
+import { buildChatContext, buildTrainingContext as buildTrainingContextPure } from './coach-context-builder.js';
 import { weekOverrideOf } from './session-intent.js';
-import { summarizeWeekPlan, satisfiedDays, weekDates, DAY_KEYS, loadWeekPlan } from './week-plan.js';
+import { loadWeekPlan } from './week-plan.js';
 import { scaleSessionSetTargets } from './program-session.js';
 import { weightIncrement, scaleLoadableWeight } from './progression.js';
 import { buildOutcomesContext, buildFeedbackContext, computeAdviceOutcome } from './coach-outcomes.js';
 import { micButtonHtml } from './coach-voice.js';
 
-/**
- * Iterate a workout's exercises with `name` resolved from the workout-level
- * `exerciseNames` map (persisted exercises carry no inline name). Inlined
- * rather than imported from aggregators.js: prod pins JS for a year, so a
- * cross-module export would crash on version skew. Keep in sync with the
- * copies in aggregators.js / training-insights.js.
- */
-function withResolvedNames(workout) {
-    const exercises = workout?.exercises || {};
-    return Object.entries(exercises).map(([key, ex]) => ({
-        ...ex,
-        name: ex?.name || ex?.machine || workout?.exerciseNames?.[key] || null,
-    }));
-}
 
 // Conversation history for the current chat session. Each entry is
 // { role: 'user' | 'assistant', content: string }. The Cloud Function
@@ -511,7 +495,6 @@ export async function askCoach(question) {
         let outcomesBlock = '';
         let feedbackBlock = '';
         let threadsBlock = '';
-        let programBlock = '';
         let program = null;
         const todayStr = AppState.getTodayDateString();
         try {
@@ -530,10 +513,7 @@ export async function askCoach(question) {
             threadsBlock = buildRecentThreadsContext(
                 histSnap.docs.map(d => ({ id: d.id, ...d.data() })),
                 { excludeThreadId: _coachThreadId });
-            if (!progSnap.empty) {
-                program = progSnap.docs[0].data();
-                programBlock = buildProgramContext(program, todayStr);
-            }
+            if (!progSnap.empty) program = progSnap.docs[0].data();
         } catch (e) { debugLog('coach: outcomes/program unavailable', e); }
 
         // AP-15b — the Today line needs the week plan; hydrate it if the
@@ -541,57 +521,33 @@ export async function askCoach(question) {
         if (AppState._weekPlan === undefined) {
             try { await loadWeekPlan(); } catch (e) { debugLog('coach: week plan unavailable', e); }
         }
-        // AP-9 — an in-progress session's intent (AP-6) covers deloads the
-        // program line can't see (manual deload, legacy label on resume).
-        const intent = AppState.savedData?.sessionIntent || null;
-        const todayLine = buildTodayContext({
+        // AP-20c — the block is built by the pure coach-context-builder.js
+        // (the eval runner builds the same block from scenario fixtures).
+        // Order is priority: Today line, program / deload directive, the
+        // rules' verdicts (AP-16), then evidence.
+        const unitForCtx = AppState.globalUnit || 'lbs';
+        const { context, sections } = buildChatContext({
             today: todayStr,
-            weekPlan: AppState._weekPlan || null,
-            templates: AppState.workoutPlans || [],
             workouts: allWorkouts,
+            templates: AppState.workoutPlans || [],
+            weekPlan: AppState._weekPlan || null,
             program,
-            intent,
+            // AP-9 — an in-progress session's intent (AP-6) covers deloads the
+            // program line can't see (manual deload, legacy label on resume).
+            intent: AppState.savedData?.sessionIntent || null,
             currentLocation: AppState.savedData?.location || null,
+            settings: AppState.settings || {},
+            unit: unitForCtx,
+            exerciseDatabase: AppState.exerciseDatabase || [],
+            thresholds: Config,
+            manualDeload: weekOverrideOf(AppState.settings),
+            prList,
+            equipment: AppState._cachedEquipment || [],
+            healthSummary,
+            outcomesBlock,
+            threadsBlock,
+            feedbackBlock,
         });
-        const intentBlock = programBlock.includes('DELOAD WEEK') ? '' : buildSessionIntentContext(intent);
-
-        // AP-16 — the rules engine's verdicts, handed over as facts: today's
-        // target per exercise, stall rung, deload check, MRV headroom and the
-        // progress scoreboard (AP-21, the same object the dashboard card shows).
-        let verdictsBlock = '';
-        try {
-            const unit = AppState.globalUnit || 'lbs';
-            verdictsBlock = formatVerdictsContext(computeVerdicts({
-                workouts: allWorkouts,
-                templates: AppState.workoutPlans || [],
-                weekPlan: AppState._weekPlan || null,
-                program,
-                manualDeload: weekOverrideOf(AppState.settings),
-                intent,
-                unit,
-                plates: unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs,
-                today: todayStr,
-                exerciseDatabase: AppState.exerciseDatabase || [],
-                thresholds: Config,
-            }));
-        } catch (e) { debugLog('coach: verdicts unavailable', e); }
-
-        // Order is priority: what day it is and what this week IS (program /
-        // deload directive) sit directly under the Today line, then the
-        // verdicts; raw evidence comes after (AP-16 — the DELOAD line used to
-        // sit below thirty workouts).
-        const sections = {
-            today: todayLine,
-            program: programBlock,
-            intent: intentBlock,
-            verdicts: verdictsBlock,
-            training: buildTrainingContext(allWorkouts, healthSummary, prList),
-            outcomes: outcomesBlock,
-            threads: threadsBlock,
-            feedback: feedbackBlock,
-        };
-        const context = Object.values(sections).filter(Boolean)
-            .map((block, i) => (i === 0 ? block : `\n${block}`)).join('');
         if (Config.DEBUG_MODE) {
             const size = Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, (v || '').length]));
             debugLog(`coach context: ${context.length} chars (~${Math.round(context.length / 4)} tokens)`, size);
@@ -1374,180 +1330,20 @@ export function resetCoachUI() {
  * @returns {string} Compact training summary
  */
 function buildTrainingContext(workouts, healthSummary = '', prList = []) {
-    if (!workouts || workouts.length === 0) return 'No workout data available.';
-
-    const weeks = getWeeksSpan(workouts);
-    const exerciseDatabase = AppState.exerciseDatabase || [];
-
-    // Who the coach is talking to comes first — goal/experience/injuries
-    // reframe everything below it.
-    let summary = buildProfileContext(AppState.settings || {});
-    if (summary) summary += '\n';
-
-    // Volume by muscle group — a TRUE per-week average over the last 4 weeks
-    // (AP-15a: this used to be the 4-week sum labelled "weekly avg", ~4×
-    // inflated against MEV/MRV → phantom overtraining calls).
-    const { volume, weeks: volWeeks } = TrainingInsights.averageWeeklyVolume(workouts, exerciseDatabase, { today: AppState.getTodayDateString(), days: 28 });
-    if (volume.length > 0) {
-        summary += `Weekly volume (avg working sets/muscle/week over the last ${volWeeks} week${volWeeks === 1 ? '' : 's'}; MEV ${Config.VOLUME_MEV}, MRV ${Config.VOLUME_MRV}):\n`;
-        volume.forEach(v => {
-            summary += `${v.bodyPart}: ${v.avgWeeklySets} sets/week (${v.status})\n`;
-        });
-    }
-
-    // Key lift trends (max weight per exercise, last 5 sessions).
-    // Normalize every set to the user's display unit so a mixed-unit log
-    // doesn't read as "225 -> 100 -> 225" when the 100 is actually kg.
-    const unit = AppState.globalUnit || 'lbs';
-    const liftTrends = {};
-    for (const workout of workouts) {
-        if (!workout.exercises) continue;
-        for (const ex of withResolvedNames(workout)) {
-            if (!ex.name || !ex.sets) continue;
-            const normalized = ex.sets
-                // Warmups out — a 45 lb warmup polluting a max-weight trend
-                // reads as a strength crash that never happened.
-                .filter(s => s.weight && s.type !== 'warmup')
-                .map(s => convertWeight(s.weight, s.originalUnit || 'lbs', unit));
-            const maxW = Math.max(...normalized, 0);
-            if (maxW === 0) continue;
-            if (!liftTrends[ex.name]) liftTrends[ex.name] = [];
-            liftTrends[ex.name].push(maxW);
-        }
-    }
-
-    // Show top 12 most-trained exercises with up to 8 recent max-weight points
-    // each. Enough resolution for the coach to spot a plateau or steady climb
-    // without overwhelming the prompt with every PR in history.
-    const topLifts = Object.entries(liftTrends)
-        .sort((a, b) => b[1].length - a[1].length)
-        .slice(0, 12);
-
-    if (topLifts.length > 0) {
-        summary += `\nKey lift trends (max weight in ${unit}, recent sessions, newest first):\n`;
-        topLifts.forEach(([name, weights]) => {
-            const recent = weights.slice(0, 8);
-            summary += `${name}: ${recent.join(' -> ')} ${unit}\n`;
-        });
-    }
-
-    // Personal records — lets the coach anchor advice to all-time bests.
-    const prBlock = buildPRContext(prList);
-    if (prBlock) summary += `\n${prBlock}`;
-
-    // Saved workouts — "plan my week" should adjust what exists, not reinvent.
-    const templatesBlock = buildTemplatesContext(AppState.workoutPlans || [], { weekPlan: AppState._weekPlan || null });
-    if (templatesBlock) summary += `\n${templatesBlock}`;
-
-    // Plate inventory (from the plate-calculator settings) — the coach must
-    // never prescribe a load the gym can't actually build.
-    const ctxUnit = AppState.globalUnit || 'lbs';
-    const ctxPlates = ctxUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs;
-    if (Array.isArray(ctxPlates) && ctxPlates.length) {
-        summary += `\nPlates available (per side): ${[...ctxPlates].sort((a, b) => b - a).join(', ')} ${ctxUnit} — smallest real weight jump is ${weightIncrement(ctxUnit, ctxPlates)} ${ctxUnit}.\n`;
-    }
-
-    // Week plan (5.5) — grounds "what should I do today/this week", plus the
-    // adherence count (5.5.3) so mid-week answers know planned vs done without
-    // waiting for the Monday review.
-    if (AppState._weekPlan) {
-        summary += `\nWeek plan: ${summarizeWeekPlan(AppState._weekPlan, AppState.workoutPlans || [])}\n`;
-        try {
-            const plannedTotal = DAY_KEYS.filter(d => AppState._weekPlan.days?.[d]).length;
-            if (plannedTotal > 0) {
-                const dates = weekDates();
-                const todayStr = AppState.getTodayDateString();
-                const weekWorkouts = workouts.filter(w => w.completedAt && w.date >= dates.mon && w.date <= todayStr);
-                const done = satisfiedDays(AppState._weekPlan, weekWorkouts, AppState.workoutPlans || []);
-                summary += `This week so far: ${done.size} of ${plannedTotal} planned days done.\n`;
-            }
-        } catch { /* adherence line is best-effort */ }
-    }
-
-    // Training frequency
-    const avgDaysPerWeek = weeks > 0 ? (workouts.length / weeks).toFixed(1) : workouts.length;
-    summary += `\nAvg training days/week: ${avgDaysPerWeek}\n`;
-    summary += `Total workouts analyzed: ${workouts.length} over ${weeks} weeks\n`;
-
-    // User preferences
-    const goal = AppState.settings?.weeklyGoal || 5;
-    summary += `\nUnit: ${unit} | Weekly goal: ${goal} days\n`;
-
-    // Recent workout details — gives the coach actual sets/reps to ground
-    // recommendations in, not just aggregates. Notes are included because
-    // that's where struggles, pain, and form cues live. 30 workouts covers
-    // ~6-8 weeks at typical training frequency, enough to spot real trends
-    // without burning unbounded tokens on multi-year histories. AP-16: the
-    // verdicts block now carries the computed answers and
-    // get_exercise_history serves depth, so 12 sessions is enough evidence.
-    const RECENT_DETAIL_CAP = 12;
-    const recent = [...workouts]
-        .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
-        .slice(0, RECENT_DETAIL_CAP);
-    if (recent.length > 0) {
-        summary += `\nRecent workouts (most recent first):\n`;
-        for (const w of recent) {
-            const wName = w.workoutType || 'Workout';
-            const loc = w.location || '';
-            // Readiness check-in (Phase 5) — lets the coach auto-regulate
-            // ("you felt 2/5 and volume still climbed — back off today").
-            const ready = w.readiness?.score
-                ? ` · felt ${w.readiness.score}/5${w.readiness.note ? ` ("${w.readiness.note}")` : ''}`
-                : '';
-            // Session label (AP-9): a planned −35% "Deload" session must not
-            // read as a strength crash.
-            const label = w.sessionLabel ? ` · ${w.sessionLabel}` : '';
-            summary += `\n${w.date} · ${wName}${loc ? ` @ ${typeof loc === 'object' ? (loc.name || '') : loc}` : ''}${label}${ready}\n`;
-            for (const ex of withResolvedNames(w)) {
-                if (!ex.name) continue;
-                const equip = ex.equipment ? ` [${ex.equipment}]` : '';
-                const sets = (ex.sets || [])
-                    .filter(s => s.completed !== false && (s.reps || s.weight))
-                    .map(s => {
-                        const wt = s.weight ? convertWeight(s.weight, s.originalUnit || unit, unit) : 0;
-                        // AP-15g — RPE when logged ("8×135 @RPE 9").
-                        return `${s.reps || '?'}×${wt || 'BW'}${s.rpe ? ` @RPE ${s.rpe}` : ''}${setTypeMarker(s)}`;
-                    })
-                    .join(', ');
-                const notes = ex.notes ? ` — note: "${ex.notes}"` : '';
-                summary += `  • ${ex.name}${equip}: ${sets || '(no sets)'}${notes}\n`;
-            }
-        }
-    }
-
-    // Equipment library — the coach can't recommend "use the Hammer Strength
-    // chest press" if it doesn't know which machines exist at the user's gym.
-    const equipment = AppState._cachedEquipment || [];
-    if (equipment.length > 0) {
-        summary += `\nAvailable equipment (${equipment.length} pieces; [unused] = never in a logged workout — good variety material; full inventory via list_equipment):\n`;
-        // Group by gym so the coach can suggest gym-specific routines.
-        const byLocation = {};
-        for (const eq of equipment) {
-            const locs = (eq.locations && eq.locations.length > 0) ? eq.locations : ['Unspecified'];
-            const label = `${eq.name}${eq.equipmentType ? ` (${eq.equipmentType})` : ''}${eq.lastUsed ? '' : ' [unused]'}`;
-            for (const loc of locs) {
-                if (!byLocation[loc]) byLocation[loc] = { used: [], unused: [] };
-                byLocation[loc][eq.lastUsed ? 'used' : 'unused'].push(label);
-            }
-        }
-        // The source sort is lastUsed DESC, so a flat slice cuts exactly the
-        // never-used gear the user catalogued by hand. Split the budget
-        // instead so both staples and untouched machines survive truncation.
-        const CAP = 60;
-        for (const [loc, g] of Object.entries(byLocation)) {
-            const total = g.used.length + g.unused.length;
-            const unusedTake = Math.min(g.unused.length, Math.max(CAP - g.used.length, Math.floor(CAP / 2)));
-            const items = [...g.used.slice(0, CAP - unusedTake), ...g.unused.slice(0, unusedTake)];
-            summary += `  @ ${loc}: ${items.join(', ')}${total > items.length ? `, …+${total - items.length} more (list_equipment has all)` : ''}\n`;
-        }
-    }
-
-    // Body composition — weight/body-fat trend + full DEXA history with
-    // scan-to-scan deltas and lean-mass imbalances. Built async (hits
-    // Firestore) and passed in so this function stays synchronous.
-    if (healthSummary) summary += healthSummary;
-
-    return summary;
+    // AP-20c — pure builder; this wrapper only supplies AppState.
+    return buildTrainingContextPure({
+        workouts,
+        settings: AppState.settings || {},
+        unit: AppState.globalUnit || 'lbs',
+        exerciseDatabase: AppState.exerciseDatabase || [],
+        today: AppState.getTodayDateString(),
+        templates: AppState.workoutPlans || [],
+        weekPlan: AppState._weekPlan || null,
+        equipment: AppState._cachedEquipment || [],
+        prList,
+        healthSummary,
+        thresholds: Config,
+    });
 }
 
 /**
@@ -1657,16 +1453,6 @@ async function buildHealthSummary(unit) {
     return out;
 }
 
-/**
- * Calculate the number of weeks spanned by workouts.
- */
-function getWeeksSpan(workouts) {
-    if (workouts.length === 0) return 0;
-    const dates = workouts.map(w => w.date).filter(Boolean).sort();
-    const first = new Date(dates[0]);
-    const last = new Date(dates[dates.length - 1]);
-    return Math.max(1, Math.ceil((last - first) / (7 * 24 * 60 * 60 * 1000)));
-}
 
 // ===================================================================
 // RESPONSE FORMATTING
