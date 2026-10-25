@@ -20,21 +20,18 @@ const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
 const https = require('https');
-const { makeToolExecutors, computeUserVerdicts, deriveTemplateUsage } = require('./coach-tools');
-const { buildOutcomesContext, convertToUnit } = require('./coach-outcomes');
-const { formatVerdictsContext } = require('./coach-rules');
+const { makeToolExecutors, deriveTemplateUsage } = require('./coach-tools');
 const { routeCoachTurn, buildTraceDoc } = require('./coach-routing');
 const {
     COACH_MODEL, TRAINING_SCIENCE_PROMPT, NO_ACTIONS_NOTE, memoryBlockFor, buildModeRequest,
 } = require('./coach-prompts');
 const { withPromptCaching, runCoachToolLoop } = require('./coach-loop');
-const { describeWeekTarget, isDeloadTarget } = require('./week-targets');
+const { buildWeeklyReviewRequest } = require('./weekly-review');
 
 // ── Model routing ────────────────────────────────────────────────────
 // Coach chat + template building + DEXA extraction use the flagship model
 // (quality is the product). High-volume/digest paths (weekly review) use the
 // cheaper model. Centralized so switching is a one-line change.
-const DIGEST_MODEL = 'claude-sonnet-5'; // scheduled digests (weekly review)
 const VISION_MODEL = 'claude-haiku-4-5-20251001'; // machine photo ID: cheap + vision-capable
 
 // Withings API secrets (stored via: firebase functions:secrets:set)
@@ -1584,189 +1581,9 @@ exports.backfillTemplateUsage = functions.runWith({
  *   status: 'ok' | 'opted_out' | 'no_workouts' | 'already_reviewed' | 'api_error'
  */
 async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sendPush = true } = {}) {
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-    const weekKey = new Date().toISOString().slice(0, 10);
-
-    // Settings: opt-out (default on — a manual request is explicit consent,
-    // so it skips the check) plus the profile + unit the review must speak
-    // in (AP-15f: it used to print bare numbers with no unit and knew
-    // nothing about injuries).
-    let settings = {};
-    try {
-        const settingsSnap = await userRef.collection('preferences').doc('settings').get();
-        settings = settingsSnap.exists ? (settingsSnap.data() || {}) : {};
-    } catch (settingsErr) {
-        if (!force) throw settingsErr;
-        console.log(`weeklyCoachReview settings read skipped for ${userRef.id}:`, settingsErr.message);
-    }
-    if (!force && settings.weeklyCoachReview === false) return { status: 'opted_out' };
-    const unit = settings.weightUnit === 'kg' ? 'kg' : 'lbs';
-    const profileParts = [];
-    if (settings.coachGoal) profileParts.push(`goal: ${settings.coachGoal}`);
-    if (settings.profileExperience) profileParts.push(`experience: ${settings.profileExperience}`);
-    if (settings.coachInjuries) profileParts.push(`injuries / limitations: ${settings.coachInjuries}`);
-    if (settings.coachNotes) profileParts.push(`notes: ${settings.coachNotes}`);
-    const profileLine = `User profile: ${profileParts.length ? profileParts.join(' · ') : 'none given'} · unit: ${unit}\n\n`;
-
-    // Active this week?
-    const workoutsSnap = await userRef.collection('workouts')
-        .where('date', '>=', weekAgo).orderBy('date', 'desc').limit(15).get();
-    const workouts = workoutsSnap.docs.map(d => d.data())
-        .filter(w => w.completedAt && !w.cancelledAt);
-    if (workouts.length === 0) return { status: 'no_workouts' };
-
-    // Once per week, retry-safe. Manual requests rate-limit separately
-    // (per-day, in the callable) so they never consume the Monday slot.
-    if (!force) {
-        const limitRef = userRef.collection('preferences').doc('aiRateLimits');
-        const limitSnap = await limitRef.get();
-        if (limitSnap.exists && limitSnap.data().weeklyReview?.weekKey === weekKey) return { status: 'already_reviewed' };
-        await limitRef.set({ weeklyReview: { weekKey } }, { merge: true });
-    }
-
-    // Week plan (5.5) — anchor the review to planned-vs-done, with an
-    // explicit adherence line (minimal adherence awareness: the review
-    // is the checkpoint that notices a broken week, not the user).
-    let planLine = '';
-    let adherenceLine = '';
-    try {
-        const planSnap = await userRef.collection('preferences').doc('weekPlan').get();
-        if (planSnap.exists) {
-            const { days = {}, restDays = [] } = planSnap.data();
-            const tSnap = await userRef.collection('workoutTemplates').get();
-            const names = new Map(tSnap.docs.map(d => [d.id, d.data().name || d.id]));
-            const parts = Object.entries(days)
-                .filter(([, tid]) => tid)
-                .map(([d, tid]) => `${d} ${names.get(tid) || tid}`);
-            if (restDays.length) parts.push(`rest ${restDays.join('/')}`);
-            if (parts.length) planLine = `Week plan: ${parts.join(' · ')}\n\n`;
-            // days values are templateId | 'rest' | null — only real
-            // workouts count as planned training days.
-            const plannedCount = Object.values(days).filter(tid => tid && tid !== 'rest').length;
-            if (plannedCount > 0) {
-                const trainedDays = new Set(workouts.map(w => w.date)).size;
-                adherenceLine = `Adherence: trained ${trainedDays} of ${plannedCount} planned days this week.\n\n`;
-            }
-        }
-    } catch (planErr) {
-        console.log(`weeklyCoachReview plan read skipped for ${userRef.id}:`, planErr.message);
-    }
-
-    // Active program (Phase 9) — the review must know the block it's
-    // reviewing. Week derived from startDate, never stored.
-    let programLine = '';
-    try {
-        const progSnap = await userRef.collection('programs')
-            .where('active', '==', true).limit(1).get();
-        if (!progSnap.empty) {
-            const prog = progSnap.docs[0].data();
-            const week = Math.floor(Math.round((new Date() - new Date(`${prog.startDate}T12:00:00`)) / 86400000) / 7) + 1;
-            if (week > (prog.weeks || 1)) {
-                programLine = `Program: "${prog.name}" (${prog.weeks} weeks, ${prog.goal}) FINISHED — acknowledge the block is done and invite planning the next one.\n\n`;
-            } else if (week >= 1) {
-                const target = (prog.weekTargets || []).find(t => t.week === week);
-                const next = (prog.weekTargets || []).find(t => t.week === week + 1);
-                const desc = target ? describeWeekTarget(target) : '';
-                programLine = `Program: "${prog.name}" (${prog.goal}) — week ${week} of ${prog.weeks}`
-                    + (target ? ` — this week: ${target.label}${desc ? ` (${desc})` : ''}` : '')
-                    + (next ? `; next week: ${next.label}` : '')
-                    + '.\n'
-                    + (target && isDeloadTarget(target) ? 'DELOAD WEEK: lighter numbers this week are the plan, not a regression; do not push weight.\n' : '')
-                    + '\n';
-            }
-        }
-    } catch (progErr) {
-        console.log(`weeklyCoachReview program read skipped for ${userRef.id}:`, progErr.message);
-    }
-
-    // Past advice outcomes (Phase 7) — the one proactive push should
-    // know whether earlier calls worked. Outcome windows need up to
-    // ~10 weeks of history; only read it when there's advice to score.
-    let outcomesBlock = '';
-    try {
-        const advSnap = await userRef.collection('coachAdvice')
-            .orderBy('date', 'desc').limit(15).get();
-        const advice = advSnap.docs.map(d => d.data());
-        if (advice.length) {
-            const historyStart = new Date(Date.now() - 70 * 86400000).toISOString().slice(0, 10);
-            const histSnap = await userRef.collection('workouts')
-                .where('date', '>=', historyStart).orderBy('date', 'desc').limit(120).get();
-            const history = histSnap.docs.map(d => d.data()).filter(w => w.completedAt && !w.cancelledAt);
-            const scored = buildOutcomesContext(advice, history, weekKey, { limit: 5, unit });
-            if (scored) outcomesBlock = `${scored}\n`;
-        }
-    } catch (outErr) {
-        console.log(`weeklyCoachReview outcomes skipped for ${userRef.id}:`, outErr.message);
-    }
-
-    // Staleness check (owner ask): the same day run identically for weeks is
-    // the top "coach feels dumb" complaint. Detect it server-side and hand
-    // the model the facts plus never-used equipment for ONE concrete swap.
-    let stalenessBlock = '';
-    try {
-        const histStart = new Date(Date.now() - 56 * 86400000).toISOString().slice(0, 10);
-        const staleSnap = await userRef.collection('workouts')
-            .where('date', '>=', histStart).orderBy('date', 'desc').limit(60).get();
-        const hist = staleSnap.docs.map(d => d.data()).filter(w => w.completedAt && !w.cancelledAt);
-        const byType = new Map();
-        for (const w of hist) {
-            if (!w.workoutType) continue;
-            const names = Object.values(w.exerciseNames || {}).map(n => String(n).toLowerCase());
-            if (!names.length) continue;
-            if (!byType.has(w.workoutType)) byType.set(w.workoutType, []);
-            byType.get(w.workoutType).push(new Set(names));
-        }
-        const staleLines = [];
-        for (const [type, sessions] of byType) {
-            if (sessions.length < 4) continue;
-            const first = sessions[0];
-            const identical = sessions.every(s => s.size === first.size && [...s].every(n => first.has(n)));
-            if (identical) staleLines.push(`"${type}" has run the identical ${first.size} exercises for its last ${sessions.length} sessions`);
-        }
-        if (staleLines.length) {
-            let unusedLine = '';
-            try {
-                const eqSnap = await userRef.collection('equipment').limit(300).get();
-                const unused = eqSnap.docs.map(d => d.data())
-                    .filter(e => !e.lastUsed).map(e => e.name).filter(Boolean).slice(0, 12);
-                if (unused.length) unusedLine = ` Never-used equipment available: ${unused.join(', ')}.`;
-            } catch (eqErr) {
-                console.log(`weeklyCoachReview equipment read skipped for ${userRef.id}:`, eqErr.message);
-            }
-            stalenessBlock = `Staleness: ${staleLines.join('; ')}.${unusedLine}\n\n`;
-        }
-    } catch (staleErr) {
-        console.log(`weeklyCoachReview staleness skipped for ${userRef.id}:`, staleErr.message);
-    }
-
-    // Rules verdicts + progress scoreboard (AP-16 / AP-21) — the SAME object
-    // the dashboard card and the chat coach read, so the review quotes the
-    // numbers the user sees instead of re-deriving trends from one week.
-    let verdictsBlock = '';
-    try {
-        const verdicts = await computeUserVerdicts({ db, userId: userRef.id, today: weekKey, unit });
-        const text = formatVerdictsContext(verdicts);
-        if (text) verdictsBlock = `${text}\n`;
-    } catch (vErr) {
-        console.log(`weeklyCoachReview verdicts skipped for ${userRef.id}:`, vErr.message);
-    }
-
-    // Compact summary — dates, types, top sets, readiness, notes.
-    const lines = [];
-    for (const w of workouts) {
-        const names = w.exerciseNames || {};
-        const ready = w.readiness?.score ? ` · felt ${w.readiness.score}/5` : '';
-        const label = w.sessionLabel ? ` · ${w.sessionLabel}` : '';
-        lines.push(`${w.date} — ${w.workoutType || 'Workout'}${label}${ready}`);
-        for (const [key, ex] of Object.entries(w.exercises || {})) {
-            const name = names[key];
-            if (!name || !ex.sets?.length) continue;
-            const sets = ex.sets
-                .filter(s => s.type !== 'warmup' && (s.reps || s.weight))
-                .map(s => `${s.reps || '?'}×${s.weight ? convertToUnit(s.weight, s.originalUnit === 'kg' ? 'kg' : 'lbs', unit) : 'BW'}${s.rpe ? ` @RPE ${s.rpe}` : ''}`).join(', ');
-            if (sets) lines.push(`  ${name}${ex.equipment ? ` [${ex.equipment}]` : ''}: ${sets} ${unit}${ex.notes ? ` — "${ex.notes}"` : ''}`);
-        }
-    }
+    // Request building lives in weekly-review.js (AP-20 — the eval grades it).
+    const built = await buildWeeklyReviewRequest(userRef, { db, force });
+    if (built.status) return { status: built.status };
 
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -1775,12 +1592,7 @@ async function generateWeeklyReviewForUser(userRef, apiKey, { force = false, sen
             'x-api-key': apiKey,
             'anthropic-version': '2023-06-01',
         },
-        body: JSON.stringify({
-            model: DIGEST_MODEL,
-            max_tokens: 1500,
-            system: 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-6 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. Make progression calls from the log: a lift whose working sets all hit target reps cleanly gets the next weight named (\"push 150 next — 145×8 was clean twice\"); slipping reps or low readiness gets an explicit hold. Sessions labelled Deload/Recovery are planned light work — never read them as a strength drop, and when the current week of the active program is a deload, next-week calls follow the program, not a push. Always state weights in the unit given in the profile line. When a Progress scoreboard is provided, open with its headline and quote its e1RM numbers for what went well or what to watch — never re-derive a trend from one week of weights; when Rules verdicts give a lift its next target, next-week calls name that target. If a staleness note is provided, add ONE bullet proposing a single concrete exercise swap for that day — prefer the listed never-used equipment, keep the core lifts — and mention they can ask the coach to apply it. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.',
-            messages: [{ role: 'user', content: `${profileLine}${programLine}${verdictsBlock}${adherenceLine}${planLine}${stalenessBlock}${outcomesBlock}This week's training log (weights in ${unit}):\n\n${lines.join('\n')}` }],
-        }),
+        body: JSON.stringify(built.request),
     });
     if (!upstream.ok) {
         console.error(`❌ weeklyCoachReview API error for ${userRef.id}:`, upstream.status);

@@ -18,7 +18,9 @@
     "audit:design:strict": "node scripts/design-audit.js --strict",
     "audit:shell": "node scripts/shell-audit.js",
     "audit:shell:strict": "node scripts/shell-audit.js --strict",
-    "eval:coach": "vitest run --config vitest.eval.config.js"
+    "eval:coach": "vitest run --config vitest.eval.config.js",
+    "eval:coach:check": "node scripts/check-coach-eval.js",
+    "hooks:install": "git config core.hooksPath .githooks"
   },
   "repository": {
     "type": "git",

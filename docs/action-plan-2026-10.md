@@ -815,3 +815,27 @@ Marcus and Sam against **dev** with the test account only (`klaperriere87@gmail.
 | AU-9 | **Not deployed** (as far as can be seen from the tree): `501ac09` (AP-22 ph 2, heaviest-set RPE), `658fbfa`, `5a113af`, `2623d92`, `b94dbad`, `9f1bf6b`. Prod last matched `9852812` (14:49 CDT). | — | Deploy after AU-1/AU-2; AP-22 phase 2 should not reach prod ungated. |
 
 Nothing implemented *contradicts* the principles beyond AU-2 and AU-6: no new silent coercions were found (`intIn` now returns `null` and the caller rejects — compliant), every new tool has a real schema, and the planner tools, Block page, traces, and scoreboard all match their acceptance lines.
+
+
+### 8.1 Review + fixes (2026-10-25, after `395b5cb`)
+
+The audit was checked against the code and the session's deploy log. Corrections first, then what was done per item.
+
+**Corrections to the audit text**
+- **AU-9 was wrong about deploys.** Prod hosting was at `9852812` and **included** `501ac09` (AP-22 phase 2 + heaviest-set RPE — promoted on Kevin's instruction). `658fbfa` is `.gitattributes` + docs (nothing to deploy). Functions — one project for dev and prod — were already at the latest server code, including the `b94dbad` refactor. Dev hosting was at `bf9877a`.
+- **AU-5 overstated the model impact.** `coach-loop.js` already normalized string errors to `{code:'invalid_input', message}`, so the model always saw one shape; the real gap was that every such error said `invalid_input` (no `not_found`, no hint).
+- **AU-2's framing** omitted that phase 2 shipped by Kevin's explicit decision ("AP-22 should have been completed"), recorded in AP-22's as-built note. Rising-RPE-with-rising-load already had a unit test; what was missing was the eval fixture.
+- **AU-8's root cause** was `package-lock.json` in `.gitignore` — every machine resolved its own tree, so a Windows reinstall dropped the Linux optional binding.
+- **AP-19 "partial"** has no AU row; the only AP-19-related gap is the prompt growth (AU-6).
+
+**Done**
+- **AU-1** — the gate is real but cheap: `npm run eval:coach:check` (`scripts/check-coach-eval.js`) fails when any coach file (prompts, loop, tools, routing, guards, rules, weekly-review, the context builders) has a commit newer than `tests/coach-eval/baseline.json`, or uncommitted edits. `.githooks/pre-push` runs it; **enable with `npm run hooks:install` after the first baseline** (it fails today, correctly — no baseline exists). A pre-push that ran the full eval itself would cost dollars and minutes per push. **Still Kevin's:** the first run with the key + committing the baseline.
+- **AU-2** — second fatigue fixture `fatigue-rising-load` (RPE 7→8→9 while the load climbs 10 lb a session → still a bump to 195; pinned by a unit test). Phase 2 stays on (decided); the eval run is its evidence check.
+- **AU-3** — `nextTargetFor` deleted. Base-weight machines with total-only history run the real stall ladder on plate-relative weights (`plateRelativeNudge`, set-seeding.js; autofill keeps `_progressionSessions`); no nudge yet → nothing, never "Beat it". Test: 90 lb sled, six flat sessions at 270 total → rung-2 copy at 180 plates. The mirror test of the deleted function is gone.
+- **AU-4** — five scenarios (21 total): `specimen-session-review` (last block week, today's push 185×6 → 185×3; must mention 185 + deload, no bump, no rotation tool or template write; `golden: null` until Kevin writes the field-guide 4.6 answer — the grader uses it when set), `swap-via-rotation` (must call `get_rotation_candidates`, must name the never-used Standing Leg Curl), `live-knee-pain` (skip or swap **and** `remember_fact`, never "push through"), `weekly-review` (runs the production request — `functions/weekly-review.js`, split out of `generateWeeklyReviewForUser` with an injectable clock; prompt verified byte-identical), plus AU-2's. New checks: `verdict-quoted` (states the verdict's weight and action — the three stall scenarios and the rising-load one carry `verdictRule`) and `mustCall` (all of).
+- **AU-5** — every executor error now leaves through `asToolError` with a real code (18 sites; "not found" messages → `not_found`, memory-full gets a hint). Internal validators still return message strings (many tests assert them); the executor is the boundary. Test: no executor returns a string error, codes are from the five the prompt documents.
+- **AU-7** — rubric: any score ≤ 3 must quote the reply (or say "absent: …"); unsupported low scores are flagged and kept out of the baseline diff; the golden answer, when present, goes to the grader. **Still Kevin's:** hand-score ten answers once and record agreement in the field guide.
+- **AU-8** — lockfiles (root + `functions/`) are committed; `.gitignore` no longer excludes them.
+
+**Not done (by design)**
+- **AU-6** prompt K/S/D sweep — after the first eval run, so each deletion is measured (the audit's own ordering).

@@ -20,7 +20,7 @@ import { augmentStaticCatalog } from '../data/equipment-catalog-helpers.js';
 import { ownedEquipmentKeys, searchCatalogMachines, matchesAllTokens } from '../data/catalog-search.js';
 import {
     mergeSeededSets, isBlankSet, isTouchedSet, historyFromSameMachine, seedSetsFromLastSession, seedSetsFromTemplate,
-    plateRelativeDisplay, reindexAfterDelete, rpePromptSetIndex,
+    plateRelativeDisplay, reindexAfterDelete, rpePromptSetIndex, plateRelativeNudge,
 } from './set-seeding.js';
 import { planInlineEquipment, knownBrands, suggestedBaseWeight } from '../data/equipment-create.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
@@ -892,23 +892,6 @@ function deloadLineFor(lastSets, displayUnit, exercise, intent) {
     return deloadNudgeText(W, top.reps || 0, rt, intent, displayUnit, inc);
 }
 
-function nextTargetFor(lastSets, displayUnit) {
-    if (!Array.isArray(lastSets) || lastSets.length === 0) return null;
-    let topLbs = 0, topSet = null;
-    for (const s of lastSets) {
-        if (!s || !s.weight || !s.reps) continue;
-        if ((s.type || 'working') === 'warmup') continue;
-        const lbs = convertWeight(s.weight, s.originalUnit || 'lbs', 'lbs');
-        if (lbs > topLbs) { topLbs = lbs; topSet = s; }
-    }
-    if (!topSet) return null;
-    const inc = weightIncrement(displayUnit,
-        displayUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs);
-    const topDisplay = convertWeight(topSet.weight, topSet.originalUnit || 'lbs', displayUnit);
-    const next = Math.round((topDisplay + inc) * 10) / 10;
-    return `Beat it — try ${next} ${displayUnit}`;
-}
-
 /**
  * Build this exercise's per-session progression history from the full workout
  * log — one entry per completed session, most-recent-first, each with the
@@ -967,8 +950,11 @@ function renderLastSessionCard(exerciseName, idx) {
     //   · Other adjusted session (heavy week): no generic bump advice — the
     //     adjustment set today's targets and the two would conflict.
     //   · Base-weight gear: the multi-session nudge is plate-relative when the
-    //     last session recorded its plate load (so the stall ladder applies);
-    //     legacy totals fall back to the plate-relative single-session step.
+    //     last session recorded its plate load; with legacy totals the same
+    //     stall ladder runs on plate-relative weights (AU-3 — the single-
+    //     session "Beat it — try N" fallback is gone).
+    //   · No nudge yet (autofill hasn't landed, or history couldn't load):
+    //     show nothing rather than a guess outside the ladder.
     const intent = AppState.savedData?.sessionIntent || null;
     const lastPlatesKnown = plateSets.length > 0
         && plateSets.every(s => typeof s._plateWeight === 'number' && s._equipBaseWeight > 0);
@@ -981,9 +967,14 @@ function renderLastSessionCard(exerciseName, idx) {
     } else if (AppState.savedData?.sessionLabel) {
         nudge = null;
     } else if (base > 0) {
-        nudge = (lastPlatesKnown && exercise._overloadNudge) || nextTargetFor(plateSets, displayUnit);
+        nudge = (lastPlatesKnown && exercise._overloadNudge) || plateRelativeNudge(exercise._progressionSessions, {
+            base, baseUnit: cardEquip?.baseWeightUnit || 'lbs', unit: displayUnit,
+            repTarget: exercise.defaultReps || exercise.reps || null,
+            inc: exercise._progressionInc || weightIncrement(displayUnit, displayUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs),
+            intent,
+        });
     } else {
-        nudge = exercise._overloadNudge || nextTargetFor(lastDefaults, displayUnit);
+        nudge = exercise._overloadNudge || null;
     }
     const nudgeHtml = nudge
         ? `<div class="aw-last__nudge"><i class="fas fa-bolt" aria-hidden="true"></i> ${nudge}</div>`
@@ -4434,6 +4425,7 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
                     const plates = nudgeUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs;
                     const progInc = weightIncrement(nudgeUnit, plates);
                     exercise._progressionInc = progInc;
+                    exercise._progressionSessions = sessions; // AU-3: plate-relative card nudge
                     exercise._overloadNudge = computeOverloadNudge(sessions, nudgeUnit, repTarget, progInc, intent);
                     // 5.7.3 — structured target next to the advisory string: today's
                     // recommended weight/reps + a stall flag. A deload intent

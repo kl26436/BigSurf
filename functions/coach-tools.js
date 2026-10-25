@@ -949,6 +949,19 @@ async function computeUserVerdicts({ db, userId, today = null, unit = null, scop
  *   look like "225 → 100 → 225")
  * @param {string} [args.today] - user's local YYYY-MM-DD (AP-15b)
  */
+/**
+ * AU-5 — every executor error leaves in ONE shape, {error:{code, message,
+ * hint?}}, with a real code (the internal validators keep returning plain
+ * message strings; this is the boundary). "not found" messages get
+ * not_found so the model looks the id up instead of re-sending the input.
+ */
+function asToolError(err, code = null, hint = null) {
+    if (err && typeof err === 'object') return { error: err };
+    const message = String(err || 'Invalid input');
+    const c = code || (/not found|^No (exercise|fact|template|workout)\b|^No exercise named/i.test(message) ? 'not_found' : 'invalid_input');
+    return toolError(c, message, hint);
+}
+
 function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs', today = null }) {
     const userDoc = () => db.collection('users').doc(userId);
     const unit = normalizeUnit(rawUnit);
@@ -1187,7 +1200,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
 
         async replace_day(input) {
             const templateId = String(input?.templateId || '').trim();
-            if (!templateId) return { error: 'templateId is required' };
+            if (!templateId) return asToolError('templateId is required');
             const ref = userDoc().collection('workoutTemplates').doc(templateId);
             const snap = await ref.get();
             if (!snap.exists) return toolError('not_found', `Template not found: ${templateId}.`, 'Call list_templates for valid ids.');
@@ -1195,7 +1208,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const locked = await checkDeloadLock('replace_day', input);
             if (locked) return locked;
             const applied = replaceTemplateExercises(current, input);
-            if (!applied.ok) return { error: applied.error };
+            if (!applied.ok) return asToolError(applied.error);
             // Guard only what the model sent: carried-forward fields (an old
             // equipment name, last block's weight) aren't this call's claim.
             const byName = new Map(applied.updated.exercises.map(e => [String(e.machine).toLowerCase(), e]));
@@ -1237,7 +1250,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
 
         async get_exercise_history(input) {
             const target = String(input?.exercise || '').trim().toLowerCase();
-            if (!target) return { error: 'exercise is required' };
+            if (!target) return asToolError('exercise is required');
             const limit = intIn(input?.limit, 1, 20, 8);
             const snap = await userDoc().collection('workouts')
                 .orderBy('date', 'desc').limit(80).get();
@@ -1361,7 +1374,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
 
         async create_program(input) {
             const v = validateProgramInput(input);
-            if (!v.ok) return { error: v.error };
+            if (!v.ok) return asToolError(v.error);
             const { name, goal, weeks, startDate, weekTargets, split, rationale } = v.normalized;
             // AP-17 — split-level shape warnings need the templates.
             const ctxForShape = await loadCtx();
@@ -1481,7 +1494,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
 
         async adjust_program(input) {
             const changes = input?.changes;
-            if (!changes || typeof changes !== 'object') return { error: 'changes is required' };
+            if (!changes || typeof changes !== 'object') return asToolError('changes is required');
             const snap = await userDoc().collection('programs').where('active', '==', true).limit(1).get();
             if (snap.empty) return toolError('not_found', 'No active program.', 'create_program first.');
             const ref = snap.docs[0].ref;
@@ -1504,12 +1517,12 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             }
             if (changes.weeks != null) {
                 const w = intIn(changes.weeks, 1, 16, null);
-                if (w == null) return { error: 'weeks must be 1-16' };
+                if (w == null) return asToolError('weeks must be 1-16');
                 updated.weeks = w;
                 diffs.push(`${w} weeks`);
             }
             if (changes.startDate) {
-                if (!/^\d{4}-\d{2}-\d{2}$/.test(changes.startDate)) return { error: 'startDate must be YYYY-MM-DD' };
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(changes.startDate)) return asToolError('startDate must be YYYY-MM-DD');
                 updated.startDate = changes.startDate;
                 diffs.push(`starts ${changes.startDate}`);
             }
@@ -1521,7 +1534,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                     weekTargets: changes.weekTargets, split: current.split || {},
                     _skipRationale: true,
                 });
-                if (!check.ok) return { error: check.error };
+                if (!check.ok) return asToolError(check.error);
                 updated.weekTargets = check.normalized.weekTargets;
                 diffs.push('week targets updated');
                 shapeWarnings.push(...check.warnings);
@@ -1540,7 +1553,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             }
             if (changes.trustLevel != null) {
                 if (!['propose', 'auto_confirm'].includes(changes.trustLevel)) {
-                    return { error: "trustLevel must be 'propose' or 'auto_confirm'" };
+                    return asToolError("trustLevel must be 'propose' or 'auto_confirm'");
                 }
                 if (changes.trustLevel !== (current.trustLevel || 'propose')) {
                     updated.trustLevel = changes.trustLevel;
@@ -1549,7 +1562,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                         : 'back to propose-only');
                 }
             }
-            if (!diffs.length) return { error: 'No supported changes (name, weeks, startDate, weekTargets, split)' };
+            if (!diffs.length) return asToolError('No supported changes (name, weeks, startDate, weekTargets, split)');
 
             updated.lastUpdated = new Date().toISOString();
             await ref.set(updated, { merge: true });
@@ -1567,7 +1580,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const type = String(input?.type || '').trim();
             const detail = clip(input?.detail, 200);
             if (!ADVICE_TYPES.includes(type)) return toolError('invalid_input', `type must be one of: ${ADVICE_TYPES.join(', ')} (got ${JSON.stringify(input?.type)})`);
-            if (!detail) return { error: 'detail is required' };
+            if (!detail) return asToolError('detail is required');
             const doc = {
                 date: new Date().toISOString().slice(0, 10),
                 type,
@@ -1588,7 +1601,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
 
         async archive_template(input) {
             const templateId = String(input?.templateId || '').trim();
-            if (!templateId) return { error: 'templateId is required' };
+            if (!templateId) return asToolError('templateId is required');
             const ref = userDoc().collection('workoutTemplates').doc(templateId);
             const snap = await ref.get();
             if (!snap.exists) return toolError('not_found', `Template not found: ${templateId}`, 'Call list_templates for valid ids.');
@@ -1628,7 +1641,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
 
         async create_workout_template(input) {
             const v = validateCreateTemplateInput(input);
-            if (!v.ok) return { error: v.error };
+            if (!v.ok) return asToolError(v.error);
             const { name, category, exercises } = v.normalized;
 
             // 5.6.0 — classify at birth. Variations must point at a real parent.
@@ -1820,7 +1833,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
         async set_week_plan(input) {
             const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
             const incoming = input?.days;
-            if (!incoming || typeof incoming !== 'object') return { error: 'days is required' };
+            if (!incoming || typeof incoming !== 'object') return asToolError('days is required');
 
             const ref = userDoc().collection('preferences').doc('weekPlan');
             const snap = await ref.get();
@@ -1833,7 +1846,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const templateNames = new Map(tSnap.docs.map(d => [d.id, d.data().name || d.id]));
 
             for (const [day, val] of Object.entries(incoming)) {
-                if (!DAYS.includes(day)) return { error: `Invalid day key: ${day} (use mon…sun)` };
+                if (!DAYS.includes(day)) return asToolError(`Invalid day key: ${day} (use mon…sun)`);
                 if (val === 'rest') { days[day] = null; restDays.add(day); }
                 else if (val == null || val === '') { days[day] = null; restDays.delete(day); }
                 else {
@@ -1859,12 +1872,12 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
 
         async remember_fact(input) {
             const text = String(input?.text || '').trim().slice(0, 200);
-            if (!text) return { error: 'text is required' };
+            if (!text) return asToolError('text is required');
             const ref = userDoc().collection('preferences').doc('coachMemory');
             const snap = await ref.get();
             const facts = snap.exists ? (snap.data().facts || []) : [];
             if (facts.length >= 40) {
-                return { error: 'Memory is full (40 facts) — forget something first or ask the user to prune it in Settings.' };
+                return asToolError('Memory is full (40 facts)', 'invalid_input', 'forget_fact an outdated one first, or ask the user to prune memory in Settings');
             }
             const fact = {
                 id: `fact_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -1878,19 +1891,19 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
 
         async forget_fact(input) {
             const id = String(input?.id || '').trim();
-            if (!id) return { error: 'id is required' };
+            if (!id) return asToolError('id is required');
             const ref = userDoc().collection('preferences').doc('coachMemory');
             const snap = await ref.get();
             const facts = snap.exists ? (snap.data().facts || []) : [];
             const next = facts.filter(f => f.id !== id);
-            if (next.length === facts.length) return { error: `No fact with id ${id}` };
+            if (next.length === facts.length) return asToolError(`No fact with id ${id}`);
             await ref.set({ facts: next }, { merge: true });
             return { result: { forgotten: id } };
         },
 
         async update_workout_template(input) {
             const templateId = String(input?.templateId || '').trim();
-            if (!templateId) return { error: 'templateId is required' };
+            if (!templateId) return asToolError('templateId is required');
             const ref = userDoc().collection('workoutTemplates').doc(templateId);
             const snap = await ref.get();
             if (!snap.exists) return toolError('not_found', `Template not found: ${templateId}.`, 'Call list_templates for valid ids.');
@@ -1898,7 +1911,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             if (locked) return locked;
 
             const applied = applyTemplateChanges(snap.data(), input.changes);
-            if (!applied.ok) return { error: applied.error };
+            if (!applied.ok) return asToolError(applied.error);
             // Guard the exercises this call adds and the weight it sets.
             const priorNames = new Set((snap.data().exercises || []).map(e => String(e.machine || e.name || '').toLowerCase()));
             const added = applied.updated.exercises.filter(e => !priorNames.has(String(e.machine || e.name || '').toLowerCase()));

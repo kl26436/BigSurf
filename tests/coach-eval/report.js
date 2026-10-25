@@ -35,7 +35,9 @@ export function compareToBaseline(baseline, current) {
         for (const id of s.failed) if (!b.failed.includes(id)) regressions.push(`${s.id}: ${id} now fails`);
         for (const id of b.failed) if (!s.failed.includes(id)) improvements.push(`${s.id}: ${id} now passes`);
         if (s.error && !b.error) regressions.push(`${s.id}: errored (${s.error.slice(0, 80)})`);
-        if (b.grade?.mean != null && s.grade?.mean != null) {
+        // AU-7 — a grade whose low scores carry no evidence isn't trusted for the diff.
+        const trusted = (g) => g?.mean != null && !(g.unsupported || []).length;
+        if (trusted(b.grade) && trusted(s.grade)) {
             const d = Math.round((s.grade.mean - b.grade.mean) * 100) / 100;
             if (d <= -1) regressions.push(`${s.id}: grade ${b.grade.mean} → ${s.grade.mean}`);
             else if (d >= 1) improvements.push(`${s.id}: grade ${b.grade.mean} → ${s.grade.mean}`);

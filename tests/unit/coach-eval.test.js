@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildScenarios } from '../fixtures/coach-scenarios/scenarios.js';
 import { runScenario } from '../coach-eval/runner.js';
-import { runChecks, weightsInText, isLoadable, wordCount } from '../coach-eval/checks.js';
+import { runChecks, weightsInText, isLoadable, wordCount, verdictQuoted } from '../coach-eval/checks.js';
 import { parseGrade, verdictsExcerpt } from '../coach-eval/grader.js';
 import { toRecord, compareToBaseline, formatReport } from '../coach-eval/report.js';
 
@@ -149,6 +149,9 @@ describe('grader + report (AP-20e)', () => {
             .toMatchObject({ grounded: 5, mean: 4.5, note: 'good' });
         expect(parseGrade('{"grounded":7,"oneRecommendation":4,"explainsWhy":4,"consistentWithVerdict":5}')).toBeNull();
         expect(parseGrade('no json')).toBeNull();
+        // AU-7 — low scores need evidence, else they're flagged.
+        expect(parseGrade('{"grounded":2,"oneRecommendation":4,"explainsWhy":4,"consistentWithVerdict":5}').unsupported).toEqual(['grounded']);
+        expect(parseGrade('{"grounded":2,"oneRecommendation":4,"explainsWhy":4,"consistentWithVerdict":5,"evidence":{"grounded":"absent: no numbers"}}').unsupported).toEqual([]);
         expect(verdictsExcerpt('Today: x\n\nRules verdicts (computed):\n- Bench: hold\n\nTraining')).toMatch(/^Rules verdicts[\s\S]*Bench: hold$/);
     });
 
@@ -166,5 +169,55 @@ describe('grader + report (AP-20e)', () => {
         expect(formatReport(now, diff)).toContain('Checks: 11/12');
         const rec = toRecord(byId['rest-day'], { model: 'm', route: { tier: 'deep' }, text: 'Rest today.', toolCalls: [], rounds: 1, usage: {}, ms: 5 }, [{ id: 'x', pass: true }], null);
         expect(rec).toMatchObject({ id: 'rest-day', passed: 1, total: 1, failed: [], words: 2 });
+    });
+});
+
+describe('audit additions (AU-2, AU-4)', () => {
+    it('AU-2: rising RPE on a rising load is still a bump', () => {
+        expect(byId['fatigue-rising-load'].expect.verdictRule).toMatchObject({ action: 'bump', weight: 195 });
+        expect(byId['fatigue-rising-load'].expect.verdictRule.fatigued).toBeUndefined();
+    });
+
+    it("the specimen: last block week is a deload, and today's push is in the context", async () => {
+        const ctx = await contextOf('specimen-session-review');
+        expect(ctx).toMatch(/DELOAD/);
+        expect(ctx).toMatch(/2026-10-23 · Push day[\s\S]*Flat Barbell Bench Press \[Flat Bench\]: 3×185/);
+    });
+
+    it('swap-via-rotation: the engine offers the never-used standing curl', async () => {
+        const run = await runScenario(byId['swap-via-rotation'], {
+            callRound: scripted([tool('get_rotation_candidates', { exercise: 'Seated Leg Curl Machine' })], [say('Swap in the Standing Leg Curl Machine — never used.')]).callRound,
+        });
+        expect(JSON.stringify(run.toolCalls[0].output)).toContain('Standing Leg Curl');
+        expect(runChecks(byId['swap-via-rotation'], run).filter(c => !c.pass)).toEqual([]);
+    });
+
+    it('live-knee-pain: skip + remember passes; a swap without remembering fails', async () => {
+        const good = await runScenario(byId['live-knee-pain'], {
+            callRound: scripted([tool('propose_skip_exercise', { exercise: 'Leg Press', why: 'left knee pain' }), tool('remember_fact', { text: 'Left knee pain on leg press (2026-10-23)' }, 'tu_mem')], [say('Skip leg press today — noted the knee.')]).callRound,
+        });
+        expect(good.proposals[0]).toMatchObject({ kind: 'skip_exercise', exercise: 'Leg Press' });
+        expect(runChecks(byId['live-knee-pain'], good).filter(c => !c.pass)).toEqual([]);
+        const bad = { mode: 'live', route: { tier: 'live' }, text: 'Push through it.', writes: [], toolCalls: [] };
+        expect(runChecks(byId['live-knee-pain'], bad).filter(c => !c.pass).map(c => c.id))
+            .toEqual(expect.arrayContaining(['must-call', 'must-call:remember_fact', 'not-mentions:push (through|it)']));
+    });
+
+    it('weekly-review: the production request, built from the seeded data', async () => {
+        const run = await runScenario(byId['weekly-review'], { callRound: scripted([say('- Bench held 185.')]).callRound });
+        expect(run.error).toBeNull();
+        expect(run.model).toBe('claude-sonnet-5');
+        expect(run.messages[0].content).toMatch(/^User profile: goal: strength/);
+        expect(run.messages[0].content).toContain("This week's training log (weights in lbs)");
+        expect(run.messages[0].content).toContain('Rules verdicts');
+        expect(run.writes).toEqual([]);
+        expect(run.text).toBe('- Bench held 185.');
+    });
+
+    it('verdict-quoted: weight and action, both', () => {
+        expect(verdictQuoted('Hold 185 and chase a 7th rep.', { action: 'chase-rep', weight: 185 }).pass).toBe(true);
+        expect(verdictQuoted('Hold steady and chase a rep.', { action: 'chase-rep', weight: 185 }).pass).toBe(false);
+        expect(verdictQuoted('Go up to 195 next time.', { action: 'bump', weight: 195 }).pass).toBe(true);
+        expect(verdictQuoted('Swap it for the T-bar row.', { action: 'rotate', weight: 185 }).pass).toBe(true);
     });
 });

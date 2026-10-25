@@ -13,7 +13,10 @@ Score each 1–5 (5 = excellent):
 - explainsWhy: says briefly why, in terms of the user's data.
 - consistentWithVerdict: agrees with the rules verdicts, or explicitly says it is deviating and why. Score 5 if no verdict applies.
 
-Return ONLY JSON: {"grounded":n,"oneRecommendation":n,"explainsWhy":n,"consistentWithVerdict":n,"note":"one sentence"}`;
+Evidence rule: for EVERY score of 3 or lower, quote the exact words from the reply that earned it (or write "absent: <what is missing>"). A low score without evidence is not allowed.
+If a REFERENCE ANSWER is given, it shows what good looks like for this question — grade against it, not against your own taste.
+
+Return ONLY JSON: {"grounded":n,"oneRecommendation":n,"explainsWhy":n,"consistentWithVerdict":n,"evidence":{"<criterion>":"quote"},"note":"one sentence"}`;
 
 /** The verdicts section of the context the coach saw (what "consistent" means). */
 export function verdictsExcerpt(firstUserMessage, max = 2500) {
@@ -31,6 +34,7 @@ export function buildGraderRequest(scenario, run, { model }) {
         `MODE: ${scenario.mode}`,
         `FACTS (rules verdicts):\n${verdictsExcerpt(run.messages?.[0]?.content)}`,
         `TOOLS CALLED:\n${tools}`,
+        ...(scenario.expect?.golden ? [`REFERENCE ANSWER:\n${scenario.expect.golden}`] : []),
         `REPLY:\n${run.text || '(empty)'}`,
     ].join('\n\n');
     return { model, max_tokens: 400, system: GRADER_SYSTEM, messages: [{ role: 'user', content: user }] };
@@ -49,5 +53,10 @@ export function parseGrade(text) {
         out[k] = Math.round(n);
     }
     out.mean = Math.round((RUBRIC.reduce((s, k) => s + out[k], 0) / RUBRIC.length) * 100) / 100;
+    // AU-7 — a low score must point at the reply; one that doesn't is
+    // flagged (and kept out of the baseline diff) rather than trusted.
+    const evidence = j.evidence && typeof j.evidence === 'object' ? j.evidence : {};
+    out.evidence = evidence;
+    out.unsupported = RUBRIC.filter(k => out[k] <= 3 && !(typeof evidence[k] === 'string' && evidence[k].trim()));
     return out;
 }

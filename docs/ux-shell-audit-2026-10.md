@@ -55,7 +55,7 @@ Full-page shells with the same shape (pages, not sheets — listed, not budgeted
 | `.page-header` | styles/components/page-header.css:7 | yes | yes | index.html<br>js/core/features/ai-coach-ui.js<br>js/core/features/body-measurements-ui.js<br>js/core/features/location-ui.js<br>js/core/features/manual-workout.js<br>js/core/ui/equipment-library-ui.js<br>js/core/ui/exercise-manager-ui.js<br>js/core/workout/workout-management-ui.js |
 | `.qa-sheet__search` | styles/components/quick-add-sheet.css:9 | **no** | **no** | js/core/ui/equipment-library-ui.js |
 | `.aw-header` | styles/pages/active-workout-v2.css:16 | yes | yes | js/core/workout/active-workout-ui.js |
-| `.aw-equip-head` | styles/pages/active-workout-v2.css:1428 | **no** | **no** | js/core/workout/active-workout-ui.js |
+| `.aw-equip-head` | styles/pages/active-workout-v2.css:1448 | **no** | **no** | js/core/workout/active-workout-ui.js |
 | `.d-header` | styles/pages/detail-pages.css:4 | **no** | yes | js/core/ui/block-ui.js<br>js/core/ui/composition-detail-ui.js<br>js/core/ui/dashboard-ui.js<br>js/core/ui/exercise-detail-ui.js<br>js/core/ui/muscle-group-detail-ui.js |
 | `.edit-exercise-header` | styles/pages/exercise-lib.css:216 | yes | yes | index.html |
 
@@ -88,8 +88,8 @@ Rendered `<button>`s with `fa-arrow-left` / `fa-chevron-left` / `fa-times` / `fa
 | Where | Button class | Wrapper |
 |---|---|---|
 | js/core/data/data-export-import.js:138 | modal-close-btn | modal-header |
-| js/core/features/ai-coach-ui.js:211 | page-header__back | page-header__left |
-| js/core/features/ai-coach-ui.js:2092 | preview-remove-btn | preview-exercise-header |
+| js/core/features/ai-coach-ui.js:195 | page-header__back | page-header__left |
+| js/core/features/ai-coach-ui.js:1878 | preview-remove-btn | preview-exercise-header |
 | js/core/features/body-measurements-ui.js:60 | page-header__back | page-header__left |
 | js/core/features/dexa-scan-ui.js:150 | btn-icon | — |
 | js/core/features/location-ui.js:61 | page-header__back | page-header__left |
@@ -181,8 +181,8 @@ Rendered `<button>`s with `fa-arrow-left` / `fa-chevron-left` / `fa-times` / `fa
 | js/core/ui/equipment-library-ui.js:4114 | — | **no** |
 | js/core/ui/sheet.js:77 | — | yes |
 | js/core/workout/active-workout-ui.js:2398 | aw-equip-search | yes |
-| js/core/workout/active-workout-ui.js:3499 | — | yes |
-| js/core/workout/active-workout-ui.js:3661 | — | yes |
+| js/core/workout/active-workout-ui.js:3517 | — | yes |
+| js/core/workout/active-workout-ui.js:3679 | — | yes |
 | index.html:244 | template-search-input | yes |
 | index.html:299 | history-search-input | yes |
 | index.html:366 | exercise-library-search | **no** |

@@ -14,6 +14,10 @@
 //   maxWeight    { exercise, max } — no weight above `max` is named for it (no bump)
 //   injuredPatterns  no written/proposed exercise has one of these movement patterns
 //   askOrBuild   either asks the user something or the named tool's input passes `check`
+//   mustCall     every one of these tools is called
+//   verdictRule  progressionTarget() for the lift asked about — the answer must state its
+//                weight and action (checks.js#verdict-quoted)
+//   golden       optional reference answer, handed to the grader (AU-4)
 
 import {
     baseUser, pplHistory, set, workoutDoc, liveSession, addDays, mondayOf, TEMPLATES, GYM,
@@ -235,6 +239,90 @@ export function buildScenarios() {
             id: 'pr-lookup', title: '"What\'s my bench PR?" — quick tier, right number',
             mode: 'chat', question: "What's my bench PR?", user,
             expect: { kind: 'question', maxWords: 90, route: 'quick', mustMention: [String(best)] },
+        });
+    }
+
+    // 17 — AU-2: effort rising WITH the load is progress, not fatigue — the
+    // rule must not hold or back off, and neither should the coach.
+    {
+        const user = baseUser({ today: FRI, settings: { trackRpe: true } });
+        // 10 lb a session: the last three span 20 lb, more than fatigueState's
+        // one-increment "same load" window.
+        const loads = [125, 135, 145, 155, 165, 175, 185];
+        const rpes = [null, null, null, null, 7, 8, 9];
+        user.workouts = pplHistory({
+            today: FRI, lifts: { 'Flat Barbell Bench Press': (i) => [set(loads[i], 8, rpes[i] ? { rpe: rpes[i] } : {}), set(loads[i], 8)] },
+        });
+        const t = targetFor(user, 'Flat Barbell Bench Press', 8);
+        list.push({
+            id: 'fatigue-rising-load', title: 'RPE 7 → 8 → 9 while the load climbs — still a bump',
+            mode: 'chat', question: 'Should I go heavier on bench?', user,
+            expect: { ...QUESTION, verdictRule: t, mustMention: [String(t.weight)] },
+        });
+    }
+
+    // 18 — AU-4: the specimen (agent field guide 1.4b): last week of the block,
+    // a heavy push session today with bench 185×6 → 185×3. The rules' answer:
+    // one sub-target session is rung 0 — no machine change; the deload is next.
+    {
+        const SPEC_TODAY = '2026-10-23';
+        const program = { ...programOn(SPEC_TODAY, { weeks: 6, deloadWeek: 6 }),
+            weekTargets: [{ week: 5, label: 'peak', weightPct: 5 }, { week: 6, label: 'deload', weightPct: -35 }] };
+        const user = baseUser({ today: SPEC_TODAY, program });
+        const history = pplHistory({ today: SPEC_TODAY, lifts: { 'Flat Barbell Bench Press': (i) => [set(Math.min(185, 160 + i * 5), 6), set(Math.min(185, 160 + i * 5), 6)] } });
+        const todayPush = workoutDoc({
+            date: SPEC_TODAY, template: 'Push day',
+            exercises: [
+                { name: 'Flat Barbell Bench Press', equipment: 'Flat Bench', sets: [set(185, 3), set(165, 6)] },
+                { name: 'Incline Dumbbell Press', equipment: 'Dumbbells', sets: [set(65, 10), set(65, 9)] },
+                { name: 'Triceps Pushdown', equipment: 'Cable Stack', sets: [set(70, 12), set(70, 12)] },
+            ],
+        });
+        user.workouts = [...history, todayPush];
+        list.push({
+            id: 'specimen-session-review', title: 'Specimen: review today\'s push (185×6 → 185×3, last block week)',
+            mode: 'chat',
+            question: 'Review my Push day session from today — how did it go compared to recent sessions, and what should I change next time?',
+            user,
+            expect: {
+                ...QUESTION, mustMention: ['185', 'deload'], maxWeight: { exercise: 'bench', max: 185 },
+                mustNotCall: ['get_rotation_candidates', 'replace_day', 'update_workout_template'],
+                golden: null, // Kevin's in-contract answer (field guide 4.6 step 3) goes here
+            },
+        });
+    }
+
+    // 19 — AU-4: a swap goes through the rotation engine (AP-23a).
+    {
+        const user = baseUser({ today: FRI });
+        user.workouts = pplHistory({ today: FRI });
+        list.push({
+            id: 'swap-via-rotation', title: 'Swap the seated leg curl → get_rotation_candidates',
+            mode: 'chat', question: 'Swap the seated leg curl on leg day for something different.', user,
+            expect: { kind: 'action', maxWords: 250, mustCall: ['get_rotation_candidates'], mustMention: ['Standing Leg Curl'] },
+        });
+    }
+
+    // 20 — AU-4: pain mid-set → skip or swap, and remember it.
+    {
+        const user = baseUser({ today: FRI });
+        user.workouts = pplHistory({ today: FRI });
+        const live = liveSession(user, { templateId: 'legs', current: 1, doneSets: { 1: [set(310, 10)] } });
+        list.push({
+            id: 'live-knee-pain', title: 'Live: knee hurts on leg press → skip/swap + remember',
+            mode: 'live', question: 'My left knee hurts on these leg presses.', user, live,
+            expect: { ...LIVE, mustCallAny: ['propose_skip_exercise', 'propose_swap'], mustCall: ['remember_fact'], mustNotMention: ['push (through|it)'] },
+        });
+    }
+
+    // 21 — AU-4: the weekly review (its own request, not a chat turn).
+    {
+        const user = baseUser({ today: '2026-10-26' });
+        user.workouts = pplHistory({ today: '2026-10-26', lifts: { 'Flat Barbell Bench Press': benchFlat(4) } });
+        list.push({
+            id: 'weekly-review', title: 'Monday weekly review',
+            mode: 'weekly', question: 'Weekly review', user,
+            expect: { kind: 'question', maxWords: 220, mustMention: ['185'], mustNotMention: ['\\bkg\\b'] },
         });
     }
 

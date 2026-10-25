@@ -27,6 +27,7 @@ import {
     seedSetsFromTemplate,
     plateRelativeDisplay,
     reindexAfterDelete,
+    plateRelativeNudge,
 } from '../../js/core/workout/set-seeding.js';
 import { scaleLoadableWeight } from '../../js/core/features/progression.js';
 
@@ -247,5 +248,27 @@ describe('reindexAfterDelete (AP-5 / D10)', () => {
     });
     it('leaves non-index keys alone', () => {
         expect(reindexAfterDelete({ note: 'x', 1: 'kg' }, 0)).toEqual({ note: 'x', 0: 'kg' });
+    });
+});
+
+describe('plateRelativeNudge (AU-3 — base-weight gear runs the stall ladder)', () => {
+    // Leg press, 90 lb sled, history in TOTALS: 6 sessions flat at 270 total.
+    const flat = Array.from({ length: 6 }, (_, i) => ({ date: `2026-10-${String(20 - i * 2).padStart(2, '0')}`, topWeight: 270, topReps: 8, maxReps: 8 }));
+    const opts = { base: 90, baseUnit: 'lb', unit: 'lbs', repTarget: 10, inc: 10 };
+
+    it('6 flat sessions → the rung copy on the plate load, never "Beat it"', () => {
+        const nudge = plateRelativeNudge(flat, opts);
+        expect(nudge).not.toMatch(/Beat it/);
+        expect(nudge).toMatch(/^6 sessions at 180 lbs — drop to \d+ for two sessions/); // rung 2, plate-relative
+    });
+
+    it('hit the rep target → bump the plates', () => {
+        const nudge = plateRelativeNudge([{ date: '2026-10-20', topWeight: 270, topReps: 10, maxReps: 10 }], opts);
+        expect(nudge).toBe('10 reps at 180 lbs — bump to 190');
+    });
+
+    it('nothing to say without history or a base', () => {
+        expect(plateRelativeNudge(null, opts)).toBeNull();
+        expect(plateRelativeNudge(flat, { ...opts, base: 0 })).toBeNull();
     });
 });

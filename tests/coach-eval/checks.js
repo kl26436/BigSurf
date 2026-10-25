@@ -123,6 +123,11 @@ export function runChecks(scenario, run) {
         check('must-call', hit.length > 0, hit.length ? hit.join(', ') : `none of ${expect.mustCallAny.join(', ')}`);
     }
     for (const n of expect.mustNotCall || []) check(`must-not-call:${n}`, !called.has(n));
+    for (const n of expect.mustCall || []) check(`must-call:${n}`, called.has(n));
+    if (expect.verdictRule) {
+        const v = verdictQuoted(text, expect.verdictRule);
+        check('verdict-quoted', v.pass, v.detail);
+    }
 
     for (const pat of expect.mustMention || []) {
         check(`mentions:${pat}`, new RegExp(pat, 'i').test(text));
@@ -153,6 +158,23 @@ export function runChecks(scenario, run) {
     }
 
     return results;
+}
+
+/**
+ * AU-4 — the answer states the rules' verdict for the lift: its weight and
+ * the action in words (hold/chase, back off, rotate, bump, deload).
+ */
+export function verdictQuoted(text, rule) {
+    if (!rule?.action) return { pass: true, detail: 'no verdict' };
+    const t = text || '';
+    const words = {
+        'chase-rep': /\b(rep|hold|stay)\b/i, consolidate: /\b(hold|stay|own|repeat)\b/i,
+        'back-off': /\b(back off|drop|lighter|reset|deload)\b/i, rotate: /\b(swap|rotat|switch|replace|variation|change)/i,
+        bump: /\b(bump|add|go (up|to)|increase|heavier|move up)\b/i, deload: /\b(deload|light|easy)\b/i, start: /\w/,
+    };
+    const weightOk = rule.action === 'rotate' || rule.weight == null || new RegExp(`\\b${rule.weight}\\b`).test(t);
+    const actionOk = (words[rule.action] || /\w/).test(t);
+    return { pass: weightOk && actionOk, detail: `${rule.action} ${rule.weight ?? ''}`.trim() + (weightOk ? '' : ' — weight not stated') + (actionOk ? '' : ' — action not stated') };
 }
 
 /** One line per scenario for the report. */

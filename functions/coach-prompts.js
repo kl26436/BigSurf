@@ -10,6 +10,7 @@ const { TOOL_DEFINITIONS, liveToolDefinitions } = require('./coach-tools');
 const COACH_MODEL = 'claude-opus-4-8';
 const LIVE_COACH_MODEL = 'claude-sonnet-5'; // mid-workout: speed IS the feature
 const QUICK_COACH_MODEL = 'claude-sonnet-5'; // AP-19: chat fact lookups ("what's my bench PR")
+const DIGEST_MODEL = 'claude-sonnet-5'; // scheduled digests (weekly review)
 
 const TRAINING_SCIENCE_PROMPT = `You are an expert strength and conditioning coach integrated into the Big Surf workout tracker app. You analyze the user's specific training data and give actionable, individualized recommendations.
 
@@ -147,6 +148,9 @@ Rules you never break:
 - Concrete suggestions go through the proposal tools (propose_next_target / propose_swap / propose_add_exercise / propose_skip_exercise / propose_rest) — the user taps Apply; nothing applies itself.
 - log_advice silently for any checkable recommendation (a weight target, a swap).`;
 
+// Weekly review (weekly-review.js builds the request around it).
+const WEEKLY_REVIEW_SYSTEM = 'You are a strength coach writing a SHORT weekly training review for a phone screen. Format: 3-6 bullet points — what went well (with real numbers), one thing to watch, one concrete focus for next week. Make progression calls from the log: a lift whose working sets all hit target reps cleanly gets the next weight named (\"push 150 next — 145×8 was clean twice\"); slipping reps or low readiness gets an explicit hold. Sessions labelled Deload/Recovery are planned light work — never read them as a strength drop, and when the current week of the active program is a deload, next-week calls follow the program, not a push. Always state weights in the unit given in the profile line. When a Progress scoreboard is provided, open with its headline and quote its e1RM numbers for what went well or what to watch — never re-derive a trend from one week of weights; when Rules verdicts give a lift its next target, next-week calls name that target. If a staleness note is provided, add ONE bullet proposing a single concrete exercise swap for that day — prefer the listed never-used equipment, keep the core lifts — and mention they can ask the coach to apply it. When a week plan is provided, compare planned vs completed factually (never guilt) and make the next-week focus concrete against it. When an active program is provided, frame the review against it — which week of the block this was, what next week brings. If the user trained fewer days than planned, offer once, without guilt, that they can ask the coach to reflow the program. When past recommendation outcomes are provided, reference at most one relevant fact (numbers only, correlation not causation). No preamble, no sign-off. Ground every claim in the data provided.';
+
 /** The coach-memory block appended to every system prompt (cap 30 facts). */
 function memoryBlockFor(facts = []) {
     if (!facts.length) return '';
@@ -184,7 +188,7 @@ function buildModeRequest({ isLive, route = null, memoryBlock = '' }) {
 }
 
 module.exports = {
-    COACH_MODEL, LIVE_COACH_MODEL, QUICK_COACH_MODEL,
+    COACH_MODEL, LIVE_COACH_MODEL, QUICK_COACH_MODEL, DIGEST_MODEL, WEEKLY_REVIEW_SYSTEM,
     TRAINING_SCIENCE_PROMPT, NO_ACTIONS_NOTE, COACH_TOOLS_PROMPT, LIVE_SYSTEM_PROMPT,
     memoryBlockFor, buildModeRequest,
 };

@@ -11,6 +11,7 @@ import { buildModeRequest, memoryBlockFor } from '../../functions/coach-prompts.
 import { runCoachToolLoop, withPromptCaching } from '../../functions/coach-loop.js';
 import { routeCoachTurn } from '../../functions/coach-routing.js';
 import { buildGraderRequest, parseGrade } from './grader.js';
+import { buildWeeklyReviewRequest } from '../../functions/weekly-review.js';
 
 const API = 'https://api.anthropic.com/v1/messages';
 
@@ -39,6 +40,7 @@ export function anthropicRound(apiKey) {
  * @param {string} [opts.model] - override the tier's model (cheap runs)
  */
 export async function runScenario(scenario, { callRound, model = null } = {}) {
+    if (scenario.mode === 'weekly') return runWeeklyReview(scenario, { callRound, model });
     const { user, mode, question } = scenario;
     const isLive = mode === 'live';
     const db = fakeAdminDb(seedDocs(user, { live: scenario.live }));
@@ -76,4 +78,34 @@ export async function gradeRun(scenario, run, { apiKey, model }) {
     const body = buildGraderRequest(scenario, run, { model });
     const round = await anthropicRound(apiKey)(body);
     return parseGrade(round.blocks.filter(b => b.type === 'text').map(b => b.text).join(''));
+}
+
+/**
+ * AU-4 — the weekly review: built by functions/weekly-review.js from the
+ * seeded data (clock pinned to the scenario's today), one API round, no tools.
+ */
+async function runWeeklyReview(scenario, { callRound, model = null }) {
+    const { user } = scenario;
+    const db = fakeAdminDb(seedDocs(user));
+    const t0 = Date.now();
+    const built = await buildWeeklyReviewRequest(db.collection('users').doc(UID), {
+        db, force: true, now: new Date(`${user.today}T18:00:00Z`),
+    });
+    const base = { id: scenario.id, mode: 'weekly', route: { tier: 'weekly', reason: 'weekly review' }, toolCalls: [], proposals: [], actionCards: [], events: [], rounds: 0 };
+    if (built.status) return { ...base, model: null, messages: [{ role: 'user', content: '' }], contextChars: 0, text: '', writes: db.writes, usage: {}, ms: 0, error: `review skipped: ${built.status}` };
+    const request = model ? { ...built.request, model } : built.request;
+    let text = '';
+    let usage = {};
+    let error = null;
+    try {
+        const round = await callRound(request);
+        text = (round.blocks || []).filter(b => b.type === 'text').map(b => b.text).join('');
+        usage = round.usage;
+    } catch (e) {
+        error = e.message || String(e);
+    }
+    return {
+        ...base, model: request.model, messages: request.messages, contextChars: request.messages[0].content.length,
+        text, writes: db.writes, rounds: 1, stopReason: null, usage, ms: Date.now() - t0, error,
+    };
 }

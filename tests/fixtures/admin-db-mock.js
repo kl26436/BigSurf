@@ -1,8 +1,18 @@
 // Admin-SDK-shaped in-memory Firestore for server code (functions/*.js) —
-// collection/doc/get/set(merge)/add, where('==')/orderBy/limit, snapshot
+// collection/doc/get/set(merge)/add, where(== != >= <= > < in)/orderBy/limit, snapshot
 // .ref/.size/.empty. Docs are keyed by full path ('users/u1/workouts/w1').
 // Every write is recorded in `writes` so a test can assert "this turn wrote
 // nothing" independently of which tools were called (AP-20d).
+
+const OPS = {
+    '==': (a, b) => a === b,
+    '!=': (a, b) => a !== b,
+    '>=': (a, b) => a != null && a >= b,
+    '<=': (a, b) => a != null && a <= b,
+    '>': (a, b) => a != null && a > b,
+    '<': (a, b) => a != null && a < b,
+    in: (a, b) => Array.isArray(b) && b.includes(a),
+};
 
 export function fakeAdminDb(seed = {}) {
     const docs = new Map(Object.entries(seed).map(([k, v]) => [k, structuredClone(v)]));
@@ -21,8 +31,8 @@ export function fakeAdminDb(seed = {}) {
             id: path.split('/').pop(),
             doc: (id) => docRef(`${path}/${id ?? `auto_${++autoId}`}`),
             where: (field, op, value) => {
-                if (op !== '==') throw new Error(`fakeAdminDb: where op ${op} not supported`);
-                return collectionRef(path, { order, max, filters: [...filters, { field, value }] });
+                if (!OPS[op]) throw new Error(`fakeAdminDb: where op ${op} not supported`);
+                return collectionRef(path, { order, max, filters: [...filters, { field, op, value }] });
             },
             orderBy: (field, dir = 'asc') => collectionRef(path, { order: { field, dir }, max, filters }),
             limit: (n) => collectionRef(path, { order, max: n, filters }),
@@ -36,7 +46,7 @@ export function fakeAdminDb(seed = {}) {
                 let list = [...docs.keys()]
                     .filter(k => k.startsWith(`${path}/`) && !k.slice(path.length + 1).includes('/'))
                     .map(snapOf)
-                    .filter(s => filters.every(f => s.data()[f.field] === f.value));
+                    .filter(s => filters.every(f => OPS[f.op](s.data()[f.field], f.value)));
                 if (order) {
                     list.sort((a, b) => String(a.data()[order.field] ?? '').localeCompare(String(b.data()[order.field] ?? '')));
                     if (order.dir === 'desc') list.reverse();

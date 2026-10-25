@@ -311,7 +311,7 @@ describe('write guards in the executors (AP-17 / AP-18)', () => {
     it('create_program: a 4+ week block without a deload is rejected; split frequency warns', async () => {
         const db = base();
         const noDeload = await exec(db).create_program({ name: 'Block', goal: 'strength', weeks: 4, startDate: '2026-10-26', split: { mon: 'push_day' } });
-        expect(noDeload.error).toMatch(/needs a deload week/);
+        expect(noDeload.error).toMatchObject({ code: 'invalid_input', message: expect.stringMatching(/needs a deload week/) });
         const ok = await exec(db).create_program({
             name: 'Block', goal: 'strength', weeks: 4, startDate: '2026-10-26', split: { mon: 'push_day' },
             weekTargets: [{ week: 2, label: 'more', setDelta: 1 }, { week: 4, label: 'deload', weightPct: -35 }],
@@ -436,5 +436,28 @@ describe('planner tools (AP-23)', () => {
         expect(ok.proposal.exercise).toBe('Bench Press');
         const miss = await exec(fakeAdminDb(seed(live))).checkProposal('propose_skip_exercise', { ...p, exercise: 'Squat' });
         expect(miss.error.hint).toMatch(/Today's exercises: Bench Press, Pec Deck/);
+    });
+});
+
+describe('one error shape (AU-5)', () => {
+    it('no executor returns a plain-string error — every error has a code', async () => {
+        const db = fakeAdminDb({ [`${U}/workoutTemplates/push`]: { name: 'Push Day', exercises: [{ machine: 'Bench Press' }] } });
+        const ex = makeToolExecutors({ db, userId: 'u1', unit: 'lbs', today: '2026-10-24' });
+        const bad = [
+            ['update_workout_template', {}], ['update_workout_template', { templateId: 'push', changes: { removeExercises: ['Nope'] } }],
+            ['replace_day', {}], ['archive_template', {}], ['create_workout_template', {}], ['create_program', {}],
+            ['adjust_program', {}], ['set_week_plan', {}], ['set_week_plan', { days: { funday: 'push' } }],
+            ['remember_fact', {}], ['forget_fact', {}], ['forget_fact', { id: 'missing' }], ['log_advice', {}],
+            ['get_exercise_history', {}], ['get_rotation_candidates', {}], ['set_primary_lifts', {}], ['get_workouts', {}],
+            ['get_verdicts', { scope: 'month' }],
+        ];
+        for (const [name, input] of bad) {
+            const out = await ex[name](input);
+            if (!out?.error) continue; // some tools treat {} as "list everything"
+            expect(typeof out.error, `${name} returned a string error: ${JSON.stringify(out.error)}`).toBe('object');
+            expect(out.error.code, name).toMatch(/^(invalid_input|not_found|near_duplicate|locked|internal)$/);
+        }
+        expect((await ex.forget_fact({ id: 'missing' })).error.code).toBe('not_found');
+        expect((await ex.update_workout_template({ templateId: 'push', changes: { removeExercises: ['Nope'] } })).error.code).toBe('not_found');
     });
 });

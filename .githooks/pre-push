@@ -1,0 +1,4 @@
+#!/bin/sh
+# Coach eval gate (AU-1): block a push that changes the coach without a
+# fresh eval baseline. Bypass a single push with: git push --no-verify
+node scripts/check-coach-eval.js || exit 1

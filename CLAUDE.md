@@ -224,7 +224,8 @@ styles/
 Tests use Vitest and IMPORT THE REAL SOURCE MODULES — do not re-implement logic in tests. Conventions (2026-07 conversion):
 - Pure modules (config.js, streak-tracker, training-insights, ui-helpers math) import directly.
 - Modules whose import graph pulls Firebase use `vi.mock('../../js/core/data/firebase-config.js', ...)` backed by the shared in-memory factory in [tests/fixtures/firestore-mock.js](tests/fixtures/firestore-mock.js) (supports doc/collection/getDocs/setDoc/query/where/orderBy). Mock `ui-helpers.js` when the graph touches the DOM at import time.
-- Server code (`functions/*.js`) gets [tests/fixtures/admin-db-mock.js](tests/fixtures/admin-db-mock.js) — an Admin-SDK fake (set/merge, where, orderBy, limit, `snap.ref`) that records every write in `db.writes`.
+- Server code (`functions/*.js`) gets [tests/fixtures/admin-db-mock.js](tests/fixtures/admin-db-mock.js) — an Admin-SDK fake (set/merge, where `== != >= <= > < in`, orderBy, limit, `snap.ref`) that records every write in `db.writes`.
+- Coach executors return errors via `asToolError` / `toolError` only — `{error:{code, message, hint?}}`, never a bare string (tested).
 - DOM tests opt into jsdom per file with a first-line `// @vitest-environment jsdom` (see page-lock / sheet tests); the default environment stays node.
 - A few tests still mirror logic that only exists inline in render functions (or in deliberately-unexported active-workout functions). Those carry a `// MIRRORS: <file>#<function> (lines N-M)` header — keep them in sync when touching the source, or better, extract+export the function and convert the test.
 - Adding `export` to an existing internal function purely for testability is allowed (zero runtime impact — nothing in the app imports it).
@@ -447,7 +448,7 @@ For add-exercise / equipment / similar shared flows, prefer the parameterized he
 
 ### Mirrored rule modules (client ↔ functions/)
 
-Server-only (not mirrored): `functions/coach-routing.js` — model routing per turn + `coachTraces` doc builder (top-level collection, admin-only read); `functions/coach-prompts.js` — system prompts, model per tier, `buildModeRequest`; `functions/coach-loop.js` — `runCoachToolLoop`, THE tool loop (coachChatStream and the AP-20 eval both call it — change the loop there, never inline).
+Server-only (not mirrored): `functions/coach-routing.js` — model routing per turn + `coachTraces` doc builder (top-level collection, admin-only read); `functions/coach-prompts.js` — system prompts, model per tier, `buildModeRequest`; `functions/coach-loop.js` — `runCoachToolLoop`, THE tool loop (coachChatStream and the AP-20 eval both call it — change the loop there, never inline). `functions/weekly-review.js` — `buildWeeklyReviewRequest` (the review's prompt + data; index.js only sends/saves/pushes).
 
 `functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-guards, fuzzy-match, coach-outcomes, week-targets, movement-patterns, exercise-rotation. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
 
@@ -655,7 +656,7 @@ After meaningful changes, run the relevant subset before saying a task is comple
 | CSS-only (tokens, components, restyle) | `npm run audit:design` (catches raw colors, untokenized font sizes, duplicate classes) |
 | HTML structure | `npm run audit:design` + manual smoke test |
 | Sheets, overlays, headers, back/close buttons | `npm run audit:shell:strict` (budgets in scripts/shell-audit.js only go down) |
-| Coach prompt, tool, context or loop change | `npm run eval:coach` (needs `ANTHROPIC_API_KEY`; `EVAL_ONLY=id1,id2` to iterate) — no new regressions vs tests/coach-eval/baseline.json |
+| Coach prompt, tool, context or loop change | `npm run eval:coach` (needs `ANTHROPIC_API_KEY`; `EVAL_ONLY=id1,id2` to iterate) — no new regressions vs tests/coach-eval/baseline.json; then `EVAL_UPDATE_BASELINE=1` and commit the baseline. `npm run eval:coach:check` (also the pre-push hook — `npm run hooks:install`) fails while the coach is newer than the baseline |
 
 `npm run audit:design --strict` is the must-pass variant. Lint baseline: 20 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 20` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
 

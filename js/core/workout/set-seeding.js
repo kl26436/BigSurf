@@ -11,7 +11,7 @@
 
 import { equipNameKey } from '../data/catalog-search.js';
 import { convertWeight } from '../ui/ui-helpers.js';
-import { scaleLoadableWeight } from '../features/progression.js';
+import { scaleLoadableWeight, computeOverloadNudge } from '../features/progression.js';
 
 /** Back-off factor for CP-2 stall rung 2 (mirrors progression.js). */
 const BACK_OFF_FACTOR = 0.9;
@@ -200,4 +200,20 @@ export function rpePromptSetIndex(sets) {
         if (w >= bestW) { bestW = w; best = i; }
     });
     return best;
+}
+
+/**
+ * AU-3 — the multi-session nudge for base-weight gear whose history stores
+ * TOTALS (no recorded plate load): the same stall ladder as every other lift,
+ * on plate-relative weights, so the card says "hold 140 and chase a rep",
+ * never a single-session "Beat it — try N". `sessions` is
+ * buildExerciseSessions() output in `unit`; `base` is the machine's base
+ * weight in `baseUnit`.
+ * @returns {string|null}
+ */
+export function plateRelativeNudge(sessions, { base, baseUnit = 'lbs', unit = 'lbs', repTarget = null, inc, intent = null } = {}) {
+    if (!Array.isArray(sessions) || !sessions.length || !(base > 0)) return null;
+    const b = convertWeight(base, /^kg/i.test(baseUnit) ? 'kg' : 'lbs', unit);
+    const rel = sessions.map(x => ({ ...x, topWeight: Math.max(0, Math.round((x.topWeight - b) * 10) / 10) }));
+    return computeOverloadNudge(rel, unit, repTarget, inc, intent);
 }
