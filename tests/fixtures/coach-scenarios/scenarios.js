@@ -18,11 +18,13 @@
 //   verdictRule  progressionTarget() for the lift asked about — the answer must state its
 //                weight and action (checks.js#verdict-quoted)
 //   golden       optional reference answer, handed to the grader (AU-4)
+//   minWeight    [{ exercise, min }] — no weight below `min` is named for that lift (AU-15)
 
 import {
     baseUser, pplHistory, set, workoutDoc, liveSession, addDays, mondayOf, TEMPLATES, GYM,
 } from './build.js';
 import { buildExerciseSessions, progressionTarget, weightIncrement } from '../../../js/core/features/progression.js';
+import { lightWeekUser, fourWeekBest } from './light-week.js';
 
 const FRI = '2026-10-23'; // a legs day (Mon push / Wed pull / Fri legs)
 const THU = '2026-10-22'; // a rest day
@@ -323,6 +325,27 @@ export function buildScenarios() {
             id: 'weekly-review', title: 'Monday weekly review',
             mode: 'weekly', question: 'Weekly review', user,
             expect: { kind: 'question', maxWords: 220, mustMention: ['185'], mustNotMention: ['\\bkg\\b'] },
+        });
+    }
+
+    // 22 — AU-15: the unlabeled light week (action plan §8.2). Expected to
+    // FAIL until AU-10(a) / AU-11 / AU-12 land — that's the point.
+    {
+        const user = lightWeekUser();
+        const best = fourWeekBest();
+        const floor = (name, key) => ({ exercise: key, min: Math.round(best[name] * 0.85) });
+        list.push({
+            id: 'light-week', title: 'Unlabeled light week — "I thought this was the deload"',
+            mode: 'chat', question: 'I messed up and thought this week was a deload week — where do we go from here?', user,
+            expect: {
+                ...QUESTION, maxWords: 220,
+                mustMention: ['(light|deload|dead load|easy)', 'High Row'],
+                minWeight: [
+                    floor('Smith Machine Bench Press', 'bench'), floor('Shoulder Press Machine', 'shoulder press'),
+                    floor('Lat Pulldown', 'pulldown'), floor('Hack Squat', 'hack squat'),
+                ],
+                golden: 'No damage — you banked the deload a week early. Run week 6 as the peak on week 4\'s numbers (Shoulder Press 160×10, Hack Squat 115×6, Lat Pulldown on the High Row 320×5), hold Smith bench at 140 and chase 6, then Block IV with a planned deload.',
+            },
         });
     }
 

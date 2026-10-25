@@ -144,6 +144,11 @@ export function runChecks(scenario, run) {
         check('no-bump', !over.length && !overProp.length, [...over.map(w => w.match), ...overProp].join(', ') || `≤ ${max}`);
     }
 
+    for (const { exercise, min } of expect.minWeight || []) {
+        const under = weightsInText(text).filter(w => w.weight < min && nearby(text, w.at, 60).includes(exercise.toLowerCase()));
+        check(`min-weight:${exercise}`, !under.length, under.map(w => w.match).join(', ') || `≥ ${min}`);
+    }
+
     if (expect.injuredPatterns) {
         const bad = calls.flatMap(exercisesIn)
             .filter(x => expect.injuredPatterns.includes(x.pattern || inferPattern({ name: x.name })))
