@@ -2412,7 +2412,23 @@ function refreshEquipAddSlot() {
 function equipAddSlotHTML() {
     if (_equipAddForm) return equipAddFormHTML();
     const query = (equipSearchQuery || '').trim();
-    if (query.length < 2) return '';
+    if (query.length < 2) {
+        // Always-visible door (10/25: the AP-11 rewrite only showed the add
+        // row after typing, so mid-workout there was no visible way to add a
+        // machine). One tap opens the in-place form with the keyboard up.
+        const { locName } = equipAddContext();
+        return `
+            <div class="aw-equip-add">
+                <div class="js-row aw-equip-add__row" id="aw-equip-add-new" role="button" tabindex="0" onclick="awEquipAddExpand()">
+                    <div class="js-row__icon js-row__icon--add"><i class="fas fa-plus" aria-hidden="true"></i></div>
+                    <div class="js-row__info">
+                        <div class="js-row__name">Add a new machine${locName ? ` at ${escapeHtml(locName)}` : ''}</div>
+                        <div class="js-row__meta">Or type its name above</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
     const plan = planFromSearch();
     if (plan.action === 'invalid') return '';
     if (plan.action === 'use-existing') {
@@ -2601,6 +2617,8 @@ export function awEquipAddExpand() {
         base: d?.baseWeight ? String(d.baseWeight) : '',
     };
     refreshEquipAddSlot();
+    const name = document.getElementById('aw-equip-add-name');
+    if (name && !name.value) name.focus();
 }
 
 export function awEquipAddCollapse() {

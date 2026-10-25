@@ -263,6 +263,8 @@
 
     /* Sizing */
     --tap: 44px;
+    /* Status-bar inset, defined once (SH-4) — use var(--safe-top), never env() in pages. */
+    --safe-top: env(safe-area-inset-top, 0px);
     --tap-sm: 36px;
     --input-height: 44px;
     --input-padding: 12px 16px;
