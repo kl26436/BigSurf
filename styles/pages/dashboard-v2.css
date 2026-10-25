@@ -838,7 +838,12 @@
     color: var(--text-strong);
 }
 .dash-todays-prs__close {
-    width: 32px; height: 32px;
+    /* SH-2a — 44px hit area, same 32px visual: padding grows the box, the
+       background stays clipped to the circle, the negative margin keeps layout. */
+    width: var(--tap); height: var(--tap);
+    padding: 6px;
+    margin: -6px;
+    background-clip: content-box;
     border: none;
     background: var(--bg-card);
     color: var(--text-muted);

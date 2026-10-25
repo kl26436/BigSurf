@@ -267,6 +267,8 @@ function installKeyboardInsetTracker() {
     const updateInset = () => {
         const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
         document.documentElement.style.setProperty('--kb-inset', `${Math.round(inset)}px`);
+        // SH-2b — sheet footers step aside while the keyboard is up.
+        document.documentElement.classList.toggle('kb-open', inset > 40);
     };
 
     // If the focused input is now behind the keyboard, re-scroll it into
@@ -350,6 +352,14 @@ export function initializeWorkoutApp() {
     // results from rendering under the on-screen keyboard.
     installKeyboardAwareFocusHandler();
     installKeyboardInsetTracker();
+
+    // SH-0 — ?debug shell HUD (lazy: never loaded without ?debug).
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('debug')) {
+        import('./utils/shell-hud.js')
+            .then(m => m.installShellHud({ autoSnap: params.has('snap') }))
+            .catch(() => { /* debug aid only */ });
+    }
 
     try {
         updateLoadingMessage('Loading exercise library…');

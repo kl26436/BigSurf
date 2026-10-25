@@ -111,6 +111,7 @@
     flex-direction: column;
     padding: 20px 20px 0;
     overflow-y: auto;
+    overscroll-behavior: contain; /* SH-2a — never chain to the page */
 }
 
 /* Bail-out for a stranger's first run — always reachable, never the loud path */

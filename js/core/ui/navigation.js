@@ -1,6 +1,9 @@
 // Navigation Module - core/navigation.js
 // Handles bottom nav navigation and view switching
 
+import { resetPageLock } from './page-lock.js';
+import { closeAllSheets } from './sheet.js';
+
 // ===================================================================
 // NAVIGATION ROUTING
 // ===================================================================
@@ -88,6 +91,11 @@ export function navigateTo(view) {
     // top of the next screen until dismissed by their own close button.
     document.getElementById('plate-calc-popover')?.remove();
     document.getElementById('aw-form-video-overlay')?.remove();
+    // SH-2b sheets close with the page they belong to. SH-2a — the lock is
+    // derived from what's open, so removing the sheets above releases it;
+    // this also drops any explicit lockPage() hold.
+    closeAllSheets();
+    resetPageLock();
 
     // The bottom-nav more menu (#more-menu) lives outside the section system,
     // so hiding the source section doesn't dismiss it. bottomNavTo() already

@@ -1,0 +1,115 @@
+/* ===========================================
+   SHEET PRIMITIVE (SH-2b — js/core/ui/sheet.js)
+   The one bottom sheet: above the keyboard (--kb-inset), clear of the home
+   indicator, pinned search outside the scrolling body, contained scroll.
+   Existing aw-sheet / qa-sheet overlays migrate onto this in SH-3.
+   =========================================== */
+.sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-modal) + var(--sheet-depth, 1) * 2 - 1);
+    background: var(--overlay-heavy);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    opacity: 0;
+    transition: opacity var(--anim-normal);
+    touch-action: none;
+    overscroll-behavior: contain;
+}
+.sheet-backdrop.visible {
+    opacity: 1;
+}
+/* A sheet over a sheet: one dim layer is enough. */
+.sheet-backdrop--stacked {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--kb-inset, 0px);
+    z-index: calc(var(--z-modal) + var(--sheet-depth, 1) * 2);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(85vh - var(--kb-inset, 0px)); /* fallback */
+    max-height: calc(85dvh - var(--kb-inset, 0px));
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    transform: translateY(100%);
+    transition: transform var(--anim-slow) var(--ease-out-expo), bottom 0.15s ease, max-height 0.15s ease;
+    overscroll-behavior: contain;
+    outline: none;
+}
+.sheet.visible {
+    transform: translateY(var(--sheet-drag, 0px));
+}
+.sheet--dragging {
+    transition: none;
+}
+.sheet--tall {
+    height: calc(85vh - var(--kb-inset, 0px)); /* fallback */
+    height: calc(85dvh - var(--kb-inset, 0px));
+}
+.sheet--full {
+    height: calc(100vh - var(--kb-inset, 0px) - env(safe-area-inset-top, 0px)); /* fallback */
+    height: calc(100dvh - var(--kb-inset, 0px) - env(safe-area-inset-top, 0px));
+    max-height: none;
+    border-radius: 0;
+}
+
+.sheet__handle {
+    flex-shrink: 0;
+    width: 36px;
+    height: 4px;
+    margin: var(--space-10) auto 0;
+    border-radius: var(--radius-xs);
+    background: var(--border-medium);
+    touch-action: none;
+}
+.sheet__header {
+    flex-shrink: 0;
+    padding: var(--space-12) var(--space-16) var(--space-10);
+    touch-action: pan-x;
+}
+.sheet__title {
+    font-size: var(--font-lg);
+    font-weight: 800;
+    color: var(--text-strong);
+}
+.sheet__subtitle {
+    margin-top: var(--space-2);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.sheet__search {
+    flex-shrink: 0;
+    margin: 0 var(--space-16) var(--space-8);
+    touch-action: pan-x;
+}
+.sheet__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 0 var(--space-16) var(--space-12);
+}
+.sheet__footer {
+    flex-shrink: 0;
+    display: flex;
+    gap: var(--space-8);
+    padding: var(--space-12) var(--space-16) calc(var(--space-12) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border-subtle);
+    touch-action: pan-x;
+}
+.sheet__footer[hidden],
+.kb-open .sheet__footer {
+    display: none;
+}
+/* With no footer, the body keeps the home indicator clear itself. */
+.sheet:has(.sheet__footer[hidden]) .sheet__body {
+    padding-bottom: calc(var(--space-12) + env(safe-area-inset-bottom, 0px));
+}

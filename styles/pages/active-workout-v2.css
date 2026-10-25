@@ -29,7 +29,12 @@
     z-index: var(--z-sticky);
 }
 .aw-back, .aw-menu, .aw-coach {
-    width: 32px; height: 32px;
+    /* SH-2a — 44px hit area, same 32px visual: padding grows the box, the
+       background stays clipped to the circle, the negative margin keeps layout. */
+    width: var(--tap); height: var(--tap);
+    padding: 6px;
+    margin: -6px;
+    background-clip: content-box;
     border-radius: 50%;
     border: none;
     display: flex; align-items: center; justify-content: center;
@@ -37,12 +42,13 @@
     flex-shrink: 0;
     cursor: pointer;
 }
-/* Full 44px tap target — it's the only way out of the workout and it sits at
-   the top edge where sweaty thumbs are least accurate. */
+/* Full 44px visual — it's the only way out of the workout and it sits at
+   the top edge where sweaty thumbs are least accurate. (Hit area 44x44 now
+   that the shared rule above pads to --tap.) */
 .aw-back {
     background: var(--bg-card);
     color: var(--text-main);
-    width: var(--tap);
+    width: calc(var(--tap) + 12px);
     height: var(--tap);
 }
 .aw-menu { background: transparent; color: var(--text-muted); }
@@ -370,7 +376,12 @@
     white-space: nowrap;
 }
 .aw-form-video__close {
-    width: 32px; height: 32px;
+    /* SH-2a — 44px hit area, same 32px visual: padding grows the box, the
+       background stays clipped to the circle, the negative margin keeps layout. */
+    width: var(--tap); height: var(--tap);
+    padding: 6px;
+    margin: -6px;
+    background-clip: content-box;
     border: none;
     background: var(--bg-card);
     color: var(--text-muted);
@@ -878,6 +889,8 @@
     opacity: 0;
     transition: opacity var(--anim-normal);
     pointer-events: none;
+    /* SH-2a — a swipe on the backdrop scrolls nothing. */
+    touch-action: none;
 }
 .aw-sheet-backdrop.visible {
     opacity: 1;
@@ -903,11 +916,13 @@
     z-index: var(--z-modal);
     transform: translateY(100%);
     transition: transform var(--anim-slow) var(--ease-out-expo), bottom 0.15s ease, max-height 0.15s ease;
+    overscroll-behavior: contain;
 }
 .aw-sheet.visible {
     transform: translateY(0);
 }
 .aw-sheet__handle {
+    touch-action: none;
     width: 36px; height: 4px;
     border-radius: var(--radius-xs);
     background: var(--border-medium);
@@ -915,6 +930,9 @@
 }
 .aw-sheet__header {
     padding: 14px 16px 10px;
+    /* SH-2a — vertical swipes on the header don't chain to the page;
+       horizontal chip rows in a header still pan. */
+    touch-action: pan-x;
 }
 .aw-sheet__title {
     font-size: var(--font-lg);
@@ -931,6 +949,9 @@
     overflow-y: auto;
     flex: 1;
     min-height: 0;
+    /* SH-2a — reaching the end of a short list (keyboard up) stops here
+       instead of scrolling the page behind the sheet. */
+    overscroll-behavior: contain;
 }
 .aw-sheet__actions {
     padding: 12px 16px;

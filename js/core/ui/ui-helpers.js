@@ -1,5 +1,6 @@
 // UI utility functions
 import { registerRestDisplayUpdater, unregisterRestDisplayUpdater } from '../utils/rest-display-manager.js';
+import { installPageLock } from './page-lock.js';
 
 // Escape HTML to prevent XSS — use for any user-controlled string rendered in innerHTML
 export function escapeHtml(text) {
@@ -369,17 +370,9 @@ export function closeModal(modal) {
     }
 }
 
-// Lock body scroll when any modal is visible, unlock when all are hidden
+// Lock the page behind any open modal, sheet or overlay (SH-2a — see
+// page-lock.js; the old body.style.overflow toggle only knew .modal and iOS
+// ignores it for touch scrolling anyway).
 export function initModalScrollLock() {
-    const updateBodyScroll = () => {
-        const anyDivModal = document.querySelector('.modal:not(.hidden):not(dialog)');
-        const anyDialogOpen = document.querySelector('dialog.modal[open]');
-        document.body.style.overflow = (anyDivModal || anyDialogOpen) ? 'hidden' : '';
-    };
-
-    const observer = new MutationObserver(() => {
-        updateBodyScroll();
-    });
-
-    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class', 'open'] });
+    installPageLock();
 }

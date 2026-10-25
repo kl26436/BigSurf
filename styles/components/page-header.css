@@ -26,10 +26,15 @@
     flex: 1;
 }
 
-/* 36x36 circle back button. Replaces legacy `.back-btn` and `.btn-back`. */
+/* 36x36 circle back button (44x44 hit area). Replaces legacy `.back-btn` and `.btn-back`. */
 .page-header__back {
-    width: 36px;
-    height: 36px;
+    /* SH-2a — 44px hit area, same 36px visual: padding grows the box, the
+       background stays clipped to the circle, the negative margin keeps layout. */
+    width: var(--tap);
+    height: var(--tap);
+    padding: 4px;
+    margin: -4px;
+    background-clip: content-box;
     border-radius: 50%;
     background: var(--bg-card);
     color: var(--text-main);

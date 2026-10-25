@@ -482,3 +482,20 @@ dialog[open] > .modal-content {
     color: var(--primary);
     border-color: var(--primary-border);
 }
+
+/* ===========================================
+   PAGE LOCK (SH-2a — js/core/ui/page-lock.js)
+   While a sheet/overlay/modal is open: pin the body (iOS ignores
+   overflow:hidden on body for touch) at its saved scroll offset, and freeze
+   the inner scroller of any visible full-page section.
+   =========================================== */
+body.page-locked {
+    position: fixed;
+    top: var(--page-lock-top, 0);
+    left: 0;
+    right: 0;
+    width: 100%;
+}
+.page-lock-frozen {
+    overflow: hidden !important;
+}
