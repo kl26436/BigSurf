@@ -164,10 +164,19 @@ describe('validateProposal', () => {
         expect(validateProposal('propose_swap', { fromExercise: 'Row Machine' }).ok).toBe(false);
     });
 
-    it('add_exercise clamps sets/reps to sane defaults', () => {
-        const v = validateProposal('propose_add_exercise', { exercise: 'Face Pull', sets: 99, reps: -3 });
-        expect(v.ok).toBe(true);
-        expect(v.proposal).toMatchObject({ kind: 'add_exercise', sets: 3, reps: 10 });
+    it('add_exercise rejects out-of-range sets/reps instead of clamping (AP-18); absent → 3×10', () => {
+        expect(validateProposal('propose_add_exercise', { exercise: 'Face Pull', sets: 99 }))
+            .toEqual({ ok: false, error: 'Face Pull: sets must be a whole number 1-10 (got 99)' });
+        const v = validateProposal('propose_add_exercise', { exercise: 'Face Pull' });
+        expect(v.proposal).toMatchObject({ kind: 'add_exercise', sets: 3, reps: 10, weight: null });
+    });
+
+    it('next_target and session adjustments reject bad values (AP-18)', () => {
+        expect(validateProposal('propose_next_target', { exercise: 'Bench', reps: 0 }).error).toMatch(/reps must be 1-50/);
+        expect(validateProposal('propose_session_adjustments', { templateId: 't', label: 'Deload', weightPct: -95 }).error)
+            .toMatch(/weightPct must be a number from -90 to 100/);
+        expect(validateProposal('propose_session_adjustments', { templateId: 't', label: 'X', addExercises: [{ name: 'Dips', reps: 80 }] }).error)
+            .toBe('addExercises: Dips: reps must be a whole number 1-50 (got 80)');
     });
 
     it('rest bounds 15-600 seconds', () => {

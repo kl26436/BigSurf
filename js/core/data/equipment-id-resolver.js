@@ -7,7 +7,7 @@
 // ambiguous is flagged `needsReview` and routed to the scan-review UI instead
 // of auto-writing a bad ID.
 
-import { diceSimilarity } from './fuzzy-match.js';
+import { diceSimilarity } from '../features/fuzzy-match.js';
 
 /** Same normalization diceSimilarity uses internally, exposed for exact/alias
  *  equality checks: lowercase, non-alphanumerics → single space, trimmed. */

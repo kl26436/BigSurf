@@ -173,6 +173,9 @@ function computeVerdicts({
         deload: checkDeloadNeeded(done, t, { today, unit: u, inc: increment }),
         readiness: readinessState(done, { today, days: t.READINESS_WINDOW_DAYS, lowCount: t.READINESS_LOW_COUNT }),
         volume,
+        // AP-17 — the app's thresholds, stated to the model (the prompt no
+        // longer carries textbook MEV/MRV ranges that disagreed with these).
+        landmarks: { mev: t.VOLUME_MEV, mrv: t.VOLUME_MRV },
         scoreboard: buildScoreboard({
             workouts: done, templates, unit: u, today,
             config: { patternTarget: t.PATTERN_TARGET_SETS, mrv: t.VOLUME_MRV, increment },
@@ -231,6 +234,7 @@ function formatVerdictsContext(v) {
             lines.push(`- ${e.name} (${e.template}${e.today ? ', today' : ''}): ${verdictLine(e, v.unit)}${fatigue}`);
         }
     }
+    if (v.landmarks) lines.push(`Volume landmarks: MEV ${v.landmarks.mev} · MRV ${v.landmarks.mrv} working sets per muscle per week`);
     if (v.volume?.length) {
         const mrv = v.volume[0].mrv;
         const vol = v.volume.map((x) => {
@@ -240,7 +244,7 @@ function formatVerdictsContext(v) {
         lines.push(`Volume this week so far vs MRV ${mrv}: ${vol.join(' · ')}`);
     }
     const sb = formatScoreboardContext(v.scoreboard);
-    if (lines.length === 1 && !sb) return '';
+    if (!v.exercises?.length && !v.volume?.length && !v.deload && !sb) return '';
     return `${lines.join('\n')}\n${sb}`;
 }
 

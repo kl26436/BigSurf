@@ -42,23 +42,39 @@ function rpeOf(v) {
 }
 
 /**
- * Validate + normalize one week target. Unknown fields are dropped; known
- * fields outside their range are dropped too (never silently clamped into
- * something the model didn't ask for).
+ * Validate + normalize one week target. Unknown fields are dropped; a known
+ * lever outside its range is REJECTED with the allowed range (AP-18) — it
+ * used to be dropped silently, so the model designed a six-week wave and the
+ * program kept one percentage, nobody told.
  * @returns {{ok:true, target:object} | {ok:false, error:string}}
  */
 function normalizeWeekTarget(t, weeks) {
     const week = intIn(t?.week, 1, weeks);
     const label = clip(t?.label, 20);
-    if (week == null || !label) return { ok: false, error: 'each weekTarget needs week (within program) + label' };
+    if (week == null || !label) return { ok: false, error: `each weekTarget needs week (1-${weeks}) + label (got week ${t?.week})` };
     const target = { week, label };
-    if (typeof t.weightPct === 'number' && t.weightPct >= -90 && t.weightPct <= 100) target.weightPct = Math.round(t.weightPct);
-    const setDelta = intIn(t.setDelta, SET_DELTA_MIN, SET_DELTA_MAX);
-    if (setDelta != null && setDelta !== 0) target.setDelta = setDelta;
-    const repRange = repRangeOf(t.repRange);
-    if (repRange) target.repRange = repRange;
-    const rpeTarget = rpeOf(t.rpeTarget);
-    if (rpeTarget != null) target.rpeTarget = rpeTarget;
+    const has = (k) => t[k] !== undefined && t[k] !== null;
+    if (has('weightPct')) {
+        if (typeof t.weightPct !== 'number' || t.weightPct < -90 || t.weightPct > 100) {
+            return { ok: false, error: `week ${week}: weightPct must be a number from -90 to 100 (got ${JSON.stringify(t.weightPct)})` };
+        }
+        if (t.weightPct !== 0) target.weightPct = Math.round(t.weightPct);
+    }
+    if (has('setDelta')) {
+        const setDelta = intIn(t.setDelta, SET_DELTA_MIN, SET_DELTA_MAX);
+        if (setDelta == null) return { ok: false, error: `week ${week}: setDelta must be a whole number from ${SET_DELTA_MIN} to +${SET_DELTA_MAX} (got ${JSON.stringify(t.setDelta)})` };
+        if (setDelta !== 0) target.setDelta = setDelta;
+    }
+    if (has('repRange')) {
+        const repRange = repRangeOf(t.repRange);
+        if (!repRange) return { ok: false, error: `week ${week}: repRange must be [low, high] with 1 ≤ low ≤ high ≤ 50 (got ${JSON.stringify(t.repRange)})` };
+        target.repRange = repRange;
+    }
+    if (has('rpeTarget')) {
+        const rpeTarget = rpeOf(t.rpeTarget);
+        if (rpeTarget == null) return { ok: false, error: `week ${week}: rpeTarget must be 6-10 (got ${JSON.stringify(t.rpeTarget)})` };
+        target.rpeTarget = rpeTarget;
+    }
     if (t.note) target.note = clip(t.note, 80);
     return { ok: true, target };
 }

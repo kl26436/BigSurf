@@ -101,14 +101,19 @@ describe('validateCreateTemplateInput', () => {
 
     // CP-1 / Bug 7 — the whitelist used to drop these silently, so a
     // coach-written template lost every prescription field on the way in.
-    it('keeps valid prescription fields and drops invalid ones', () => {
+    // AP-18 — an invalid one is now an ERROR listing the allowed values.
+    it('keeps valid prescription fields and rejects invalid ones with the allowed values', () => {
         const good = normalizeExercise({
             name: 'Seated Chest Press', sets: 4, reps: 10,
             repRange: [8, 12], rpeTarget: 8, role: 'primary', pattern: 'horizontal-push', progression: 'double',
         });
         expect(good).toMatchObject({ repRange: [8, 12], rpeTarget: 8, role: 'primary', pattern: 'horizontal-push', progression: 'double' });
-        const bad = normalizeExercise({ name: 'X', repRange: [12, 8], rpeTarget: 2, role: 'chief', pattern: 'fly', progression: 'never' });
-        expect(bad).toEqual({ machine: 'X', sets: 3, reps: 10 });
+        expect(normalizeExercise({ name: 'X', role: 'chief' }).error)
+            .toBe('X: role must be one of primary, secondary, accessory, core (got "chief")');
+        expect(normalizeExercise({ name: 'X', pattern: 'fly' }).error).toMatch(/pattern must be one of horizontal-push, /);
+        expect(normalizeExercise({ name: 'X', progression: 'never' }).error).toMatch(/progression must be one of double, load-only, rep-only, hold/);
+        expect(normalizeExercise({ name: 'X', repRange: [12, 8] }).error).toMatch(/repRange must be \[low, high\]/);
+        expect(normalizeExercise({ name: 'X', rpeTarget: 2 }).error).toMatch(/rpeTarget must be 6-10/);
     });
 
     it('rejects missing name, empty exercises, too many exercises', () => {
@@ -118,17 +123,26 @@ describe('validateCreateTemplateInput', () => {
         expect(validateCreateTemplateInput({ name: 'A', exercises: tooMany }).ok).toBe(false);
     });
 
-    it('rejects when every exercise is invalid; drops only the bad ones otherwise', () => {
+    it('one bad exercise rejects the whole call — nothing is silently dropped (AP-18)', () => {
         expect(validateCreateTemplateInput({ name: 'A', exercises: [{}, { sets: 3 }] }).ok).toBe(false);
         const v = validateCreateTemplateInput({ name: 'A', exercises: [{ name: 'Good' }, {}] });
-        expect(v.ok).toBe(true);
-        expect(v.normalized.exercises).toHaveLength(1);
+        expect(v).toEqual({ ok: false, error: 'each exercise needs a name' });
     });
 
-    it('clamps garbage sets/reps to defaults and ignores absurd weights', () => {
-        const ex = normalizeExercise({ name: 'Squat', sets: 99, reps: -5, weight: 99999 });
-        expect(ex).toMatchObject({ machine: 'Squat', sets: 3, reps: 10 });
-        expect(ex.weight).toBeUndefined();
+    it('rejects out-of-range sets/reps/weight instead of clamping to 3×10 (AP-18)', () => {
+        expect(normalizeExercise({ name: 'Squat', sets: 12 }).error).toBe('Squat: sets must be a whole number 1-10 (got 12)');
+        expect(normalizeExercise({ name: 'Squat', sets: 3.5 }).error).toMatch(/sets must be a whole number/);
+        expect(normalizeExercise({ name: 'Squat', reps: -5 }).error).toBe('Squat: reps must be a whole number 1-50 (got -5)');
+        expect(normalizeExercise({ name: 'Squat', weight: 99999 }).error).toMatch(/weight must be a number 0-2000/);
+        // Absent is not invalid: defaults still apply.
+        expect(normalizeExercise({ name: 'Squat' })).toEqual({ machine: 'Squat', sets: 3, reps: 10 });
+    });
+
+    it('category is an enum, matched case-insensitively', () => {
+        expect(validateCreateTemplateInput({ name: 'A', category: 'push', exercises: [{ name: 'X' }] }).normalized.category).toBe('Push');
+        expect(validateCreateTemplateInput({ name: 'A', exercises: [{ name: 'X' }] }).normalized.category).toBe('Other');
+        expect(validateCreateTemplateInput({ name: 'A', category: 'Chest day', exercises: [{ name: 'X' }] }).error)
+            .toMatch(/^category must be one of Push, Pull, Legs, Core, Cardio, Arms, Shoulders, Other/);
     });
 });
 
@@ -227,19 +241,33 @@ describe('validateProgramInput (Phase 9)', () => {
     });
 
     // CP-3 / Bug 3 — the validator used to keep only week/label/weightPct/note.
-    it('keeps setDelta / repRange / rpeTarget and drops out-of-range values', () => {
+    it('keeps setDelta / repRange / rpeTarget and REJECTS out-of-range values (AP-18)', () => {
         const v = validateProgramInput({
             ...good(),
             weekTargets: [
                 { week: 2, label: 'accumulate', setDelta: 1, repRange: [10, 12], rpeTarget: 7.5 },
-                { week: 3, label: 'sloppy', setDelta: 9, repRange: [12, 8], rpeTarget: 3, weightPct: 500 },
                 { week: 4, label: 'deload', setDelta: -2, weightPct: -35 },
             ],
         });
         expect(v.ok).toBe(true);
         expect(v.normalized.weekTargets[0]).toEqual({ week: 2, label: 'accumulate', setDelta: 1, repRange: [10, 12], rpeTarget: 7.5 });
-        expect(v.normalized.weekTargets[1]).toEqual({ week: 3, label: 'sloppy' });
-        expect(v.normalized.weekTargets[2]).toEqual({ week: 4, label: 'deload', setDelta: -2, weightPct: -35 });
+        expect(v.normalized.weekTargets[1]).toEqual({ week: 4, label: 'deload', setDelta: -2, weightPct: -35 });
+        const sloppy = validateProgramInput({ ...good(), weekTargets: [{ week: 3, label: 'sloppy', setDelta: 9 }, { week: 4, label: 'deload', weightPct: -35 }] });
+        expect(sloppy).toEqual({ ok: false, error: 'week 3: setDelta must be a whole number from -3 to +3 (got 9)' });
+    });
+
+    it('goal is an enum (AP-18)', () => {
+        expect(validateProgramInput({ ...good(), goal: 'Strength' }).normalized.goal).toBe('strength');
+        expect(validateProgramInput({ ...good(), goal: 'get huge' }).error).toMatch(/^goal must be one of strength, hypertrophy, recomp, general/);
+    });
+
+    it('a 4+ week block without a deload is rejected; identical weeks warn (AP-17)', () => {
+        const noDeload = validateProgramInput({ ...good(), weeks: 6, weekTargets: [{ week: 2, label: 'heavy', weightPct: 5 }] });
+        expect(noDeload.ok).toBe(false);
+        expect(noDeload.error).toMatch(/^A 6-week block needs a deload week/);
+        const flat = validateProgramInput({ ...good(), weeks: 4, weekTargets: [{ week: 4, label: 'deload', weightPct: -35 }] });
+        expect(flat.ok).toBe(true);
+        expect(flat.warnings.map(w => w.code)).toEqual(['identical_weeks']);
     });
 
     it('rejects missing name/split, bad weeks, bad dates, out-of-range targets', () => {

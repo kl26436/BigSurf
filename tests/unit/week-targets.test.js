@@ -12,13 +12,16 @@ describe('normalizeWeekTarget', () => {
         expect(normalizeWeekTarget({ week: 2, label: 'accumulate' }, 6)).toEqual({ ok: true, target: { week: 2, label: 'accumulate' } });
     });
 
-    it('keeps every valid lever and drops invalid ones rather than clamping them', () => {
+    it('keeps every valid lever; an out-of-range lever is an error, never silently dropped (AP-18)', () => {
         const { target } = normalizeWeekTarget({
             week: 6, label: 'deload', weightPct: -35.4, setDelta: '-2', repRange: ['12', 15], rpeTarget: 6.2, note: 'easy', bogus: 1,
         }, 6);
         expect(target).toEqual({ week: 6, label: 'deload', weightPct: -35, setDelta: -2, repRange: [12, 15], rpeTarget: 6, note: 'easy' });
-        const { target: loose } = normalizeWeekTarget({ week: 1, label: 'x', setDelta: 4, repRange: [12, 8], rpeTarget: 11, weightPct: -95 }, 6);
-        expect(loose).toEqual({ week: 1, label: 'x' });
+        expect(normalizeWeekTarget({ week: 1, label: 'x', setDelta: 4 }, 6).error).toBe('week 1: setDelta must be a whole number from -3 to +3 (got 4)');
+        expect(normalizeWeekTarget({ week: 1, label: 'x', repRange: [12, 8] }, 6).error).toMatch(/^week 1: repRange must be \[low, high\]/);
+        expect(normalizeWeekTarget({ week: 1, label: 'x', rpeTarget: 11 }, 6).error).toBe('week 1: rpeTarget must be 6-10 (got 11)');
+        expect(normalizeWeekTarget({ week: 1, label: 'x', weightPct: -95 }, 6).error).toBe('week 1: weightPct must be a number from -90 to 100 (got -95)');
+        expect(normalizeWeekTarget({ week: 9, label: 'x' }, 6).error).toMatch(/needs week \(1-6\)/);
     });
 
     it('a zero setDelta is a no-op, not a lever', () => {

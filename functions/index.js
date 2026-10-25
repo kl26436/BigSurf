@@ -22,7 +22,7 @@ const webpush = require('web-push');
 const https = require('https');
 const {
     TOOL_DEFINITIONS, TOOL_STATUS, makeToolExecutors, computeUserVerdicts,
-    validateProposal, liveToolDefinitions,
+    validateProposal, liveToolDefinitions, deriveTemplateUsage,
 } = require('./coach-tools');
 const { buildOutcomesContext, convertToUnit } = require('./coach-outcomes');
 const { formatVerdictsContext } = require('./coach-rules');
@@ -982,8 +982,7 @@ HOW TO USE THE DATA — this is non-negotiable:
 
 Training principles to apply (when supported by the data):
 - Progressive overload is the primary driver of strength and hypertrophy
-- Volume landmarks: MEV ~6-8 sets/muscle/week, MRV ~15-25 sets/muscle/week
-- Most people grow optimally at 10-20 hard sets per muscle group per week
+- Volume landmarks (MEV / MRV per muscle per week) are the numbers stated in the context — the app's own thresholds. Never substitute textbook ranges.
 - Training frequency of 2-3x per muscle group per week is optimal for most
 - Deload every 4-6 weeks of hard training (reduce volume 40-50%)
 - Prioritize compound movements, supplement with isolation
@@ -1089,6 +1088,8 @@ TOOLS — you can act in the app, not just talk:
 - remember_fact: when the user shares DURABLE information — injuries, goals, schedule, equipment quirks, preferences — store it (short, one sentence). Never store measurements the app already tracks. Use forget_fact when the user corrects or retracts something you remembered.
 - log_advice: whenever you give a concrete CHECKABLE recommendation (a weight target, a deload, a volume change, an exercise swap), silently log it — one call per recommendation. Your context shows what happened after past recommendations; reference that track record when relevant, as correlation not causation.
 - PROGRAMS (get_program / create_program / adjust_program): a program = a multi-week direction (goal, length, per-week targets) layered over the week plan. A week target can move FOUR levers — weightPct, setDelta (sets per exercise, ±3; the app caps additions at each muscle's MRV), repRange [low, high], rpeTarget (6–10) — so give the block a SHAPE: e.g. wk1 accumulate 10–12 reps RPE 7 · wk2 +1 set · wk3 8–10 reps RPE 8 · wk4 +2 sets · wk5 6–8 reps RPE 9 · wk6 deload −2 sets, −35% weight, 12–15 reps. A deload = negative setDelta and/or weightPct. Never a block of identical weeks with one percentage. VARIETY IS BUILT IN: pass rotateAccessories:true on create_program when the user wants a fresh block or complains of sameness — the app swaps every accessory to the stalest same-pattern machine at their gym (never a primary), lists each swap on the card, and undo restores the templates; don't hand-pick accessory swaps one by one when this flag does it deterministically. "Build me a program" → create the templates first if needed, then create_program (which also sets the week plan — one consent covers both). The current week derives from startDate; honor the active program's week target when proposing sessions (via propose_session_adjustments — the deload week NEVER edits templates). Trust levels: 'propose' (default — everything is a card) or 'auto_confirm' (the dashboard pre-builds each program week's adjusted session and starting it is the confirmation). Switch levels ONLY when the user explicitly asks ("turn on auto mode" → adjust_program {trustLevel:'auto_confirm'}); it is always reversible and you should mention that. Neither level ever writes a workout without a user tap. "I can only train 3 days next week" → adjust_program with a reshaped split. VARIETY: a block that runs one identical template per muscle group all program long is a weak program — build A/B variants of the main days (same core lifts for progression, different accessory picks; kind='variation') and schedule both across the week, pulling fresh movements from list_equipment with preference for machines the user owns but has never used. Between blocks, rotate the accessories.
+- TOOL ERRORS are structured: {error:{code, message, hint}}. invalid_input → fix the named field using the message/hint and retry (allowed values are listed). not_found → look the id up (list_templates) and retry. near_duplicate → update or vary the existing workout named in the error instead. locked → the program is in a deload week: use propose_session_adjustments; retry with override:true + overrideReason ONLY if the user explicitly insists on editing the workout itself. internal → tell the user it couldn't be done; don't retry blindly.
+- The tools enforce the rules: a weight above a stalled lift's rule target, an unloadable weight, or equipment not in the library is rejected — pick the rule's number and real equipment the first time.
 - If a tool fails, say so briefly and give your best text answer instead — never claim an action succeeded when it didn't.`;
 
 // Live-mode addendum (Phase 6): the coach is IN the workout, speed + brevity.
@@ -1531,12 +1532,17 @@ exports.coachChatStream = onRequest({
                         // applies them only on a user tap (the active workout
                         // is client-owned state; a server write would race
                         // the debounced auto-save).
+                        // AP-18 — shape (pure) then data checks: the template
+                        // exists, the load obeys the rules, the swap's
+                        // equipment is at this gym. Nothing is echoed to the
+                        // client unless both pass.
                         const v = validateProposal(tu.name, tu.input);
-                        if (v.ok) {
-                            send({ type: 'proposal', proposal: v.proposal });
-                            out = { result: { proposed: true, proposal: v.proposal } };
+                        const checked = v.ok ? await executors.checkProposal(tu.name, v.proposal) : v;
+                        if (v.ok && !checked.error) {
+                            send({ type: 'proposal', proposal: checked.proposal });
+                            out = { result: { proposed: true, proposal: checked.proposal } };
                         } else {
-                            out = { error: v.error };
+                            out = { error: checked.error };
                         }
                     } else {
                         out = executors[tu.name]
@@ -1544,9 +1550,12 @@ exports.coachChatStream = onRequest({
                             : { error: `Unknown tool: ${tu.name}` };
                     }
                 } catch (e) {
+                    // Real exception to the logs, a safe summary to the model.
                     console.error(`❌ coach tool ${tu.name} failed:`, e);
-                    out = { error: 'Tool failed — tell the user the action could not be completed.' };
+                    out = { error: { code: 'internal', message: 'The tool hit an internal error.', hint: 'Tell the user the action could not be completed; do not retry.' } };
                 }
+                // Every error reaches the model in ONE shape (AP-18).
+                if (out.error && typeof out.error === 'string') out = { ...out, error: { code: 'invalid_input', message: out.error } };
                 if (out.actionCard) {
                     send({ type: 'action_card', card: out.actionCard });
                     actionCards.push(out.actionCard);
@@ -1718,6 +1727,40 @@ exports.identifyMachine = functions.runWith({
         console.error('❌ Machine ID error:', error);
         throw new functions.https.HttpsError('internal', "Couldn't identify the machine");
     }
+});
+
+/**
+ * Template usage backfill (AP-18 — reads must not write). list_templates
+ * used to write usageCount/lastUsedDate as a side effect of a read; it now
+ * only reports the derived numbers, and this daily job persists them for
+ * templates that still lack the denormalized count.
+ */
+exports.backfillTemplateUsage = functions.runWith({
+    timeoutSeconds: 540,
+    memory: '256MB',
+    maxInstances: 1,
+}).pubsub.schedule('every day 09:00').onRun(async () => {
+    const userRefs = await db.collection('users').listDocuments();
+    let written = 0;
+    for (const userRef of userRefs) {
+        try {
+            const tSnap = await userRef.collection('workoutTemplates').get();
+            const missing = tSnap.docs.filter(d => !d.data().archived && d.data().usageCount == null);
+            if (!missing.length) continue;
+            const woSnap = await userRef.collection('workouts').orderBy('date', 'desc').limit(300).get();
+            const usage = deriveTemplateUsage(missing.map(d => ({ id: d.id, ...d.data() })), woSnap.docs.map(d => d.data()));
+            for (const d of missing) {
+                const u = usage.get(d.id);
+                if (!u) continue;
+                await d.ref.set({ usageCount: u.usageCount, lastUsedDate: u.lastUsedDate }, { merge: true });
+                written += 1;
+            }
+        } catch (userErr) {
+            console.error(`❌ backfillTemplateUsage failed for ${userRef.id}:`, userErr);
+        }
+    }
+    console.log(`✅ backfillTemplateUsage: ${written} template(s) updated`);
+    return null;
 });
 
 /**

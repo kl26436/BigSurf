@@ -7,11 +7,19 @@
  * users/{userId}/… — the model can never reach another user's data.
  */
 
-const { applyPrescriptionFields } = require('./movement-patterns');
+const {
+    applyPrescriptionFields, prescriptionFieldErrors, ROLES, PATTERNS, PROGRESSIONS,
+} = require('./movement-patterns');
 const { normalizeWeekTarget, isDeloadTarget } = require('./week-targets');
 const { selectRotation, applyRotation } = require('./exercise-rotation');
 const { convertToUnit } = require('./coach-outcomes');
 const { computeVerdicts } = require('./coach-rules');
+const { getSessionIntent } = require('./session-intent');
+const {
+    toolError, errorText, canonicalEnum, deloadLock, progressionGuard, loadabilityGuard,
+    resolveEquipment, findNearDuplicate, programShapeIssues,
+    TEMPLATE_CATEGORIES, TEMPLATE_KINDS, PROGRAM_GOALS, ADVICE_TYPES,
+} = require('./coach-guards');
 
 // Shared schema for a program week target (CP-3). A week can move load,
 // set counts, rep bands and effort — not just a percentage.
@@ -33,9 +41,42 @@ const WEEK_TARGET_ITEM = {
 const PRESCRIPTION_PROPS = {
     repRange: { type: 'array', items: { type: 'number' }, description: 'Optional [low, high] rep band the block waves within, e.g. [8, 12]' },
     rpeTarget: { type: 'number', description: 'Optional effort target on the 6–10 RPE scale (RIR = 10 − RPE)' },
-    role: { type: 'string', description: "primary = the lift progress is measured on (never rotated) · secondary = other compound · accessory = isolation (rotates freely) · core" },
-    pattern: { type: 'string', description: 'Movement pattern: horizontal-push, vertical-push, horizontal-pull, vertical-pull, knee-dominant, knee-flexion, hip-dominant, calf, lateral-delt, rear-delt, elbow-flex, elbow-ext, trunk-flex, trunk-ext, anti-rotation, anti-extension, abduction, adduction, cardio' },
-    progression: { type: 'string', description: 'double (reps then load, default) · load-only · rep-only · hold' },
+    role: { type: 'string', enum: ROLES, description: "primary = the lift progress is measured on (never rotated) · secondary = other compound · accessory = isolation (rotates freely) · core" },
+    pattern: { type: 'string', enum: PATTERNS, description: 'What the movement does mechanically' },
+    progression: { type: 'string', enum: PROGRESSIONS, description: 'double (reps then load, default) · load-only · rep-only · hold' },
+};
+
+// AP-18 — one exercise schema for every tool that writes exercises. Out of
+// range values are REJECTED by the executor (not clamped to 3×10), and the
+// error says what's allowed.
+const EXERCISE_ITEM = {
+    type: 'object',
+    properties: {
+        name: { type: 'string', description: 'Exercise name (≤80 chars)' },
+        bodyPart: { type: 'string' },
+        equipmentType: { type: 'string' },
+        equipment: { type: 'string', description: "A machine from the user's equipment library (list_equipment) — unknown names are rejected with the nearest matches" },
+        sets: { type: 'integer', minimum: 1, maximum: 10, description: 'Default 3 when omitted' },
+        reps: { type: 'integer', minimum: 1, maximum: 50, description: 'Default 10 when omitted' },
+        weight: { type: 'number', minimum: 0, description: "In the user's unit, from their history; must be loadable (whole smallest-jumps from a weight they've lifted) and never above a stalled lift's rule target" },
+        ...PRESCRIPTION_PROPS,
+    },
+    required: ['name'],
+};
+
+// day → templateId | "rest" | null — the set_week_plan shape.
+const SPLIT_SCHEMA = {
+    type: 'object',
+    description: 'day → templateId (from list_templates) | "rest" | null',
+    properties: Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+        .map(d => [d, { type: ['string', 'null'] }])),
+    additionalProperties: false,
+};
+
+// AP-17 — template writes are locked in a program's deload week.
+const OVERRIDE_PROPS = {
+    override: { type: 'boolean', description: "Deload-lock override. ONLY when the user explicitly insists on editing this workout during a deload week; requires overrideReason. Logged." },
+    overrideReason: { type: 'string', description: 'Why the deload lock is being overridden (the user\'s words)' },
 };
 
 // ── Tool definitions (Anthropic schema) ─────────────────────────────
@@ -80,27 +121,17 @@ const TOOL_DEFINITIONS = [
             type: 'object',
             properties: {
                 name: { type: 'string', description: 'Short workout name by what it IS ("Pull day", "Legs — heavy") — NEVER a weekday' },
-                category: { type: 'string', description: 'One of: Push, Pull, Legs, Core, Cardio, Arms, Shoulders, Other' },
-                kind: { type: 'string', description: "'core' = recurring workout (default) · 'variation' = riff on an existing core workout (pass parentTemplateId) · 'oneOff' = single occasion (travel gym, test day — auto-archives after first use)" },
+                category: { type: 'string', enum: TEMPLATE_CATEGORIES },
+                kind: { type: 'string', enum: TEMPLATE_KINDS, description: "'core' = recurring workout (default) · 'variation' = riff on an existing core workout (pass parentTemplateId) · 'oneOff' = single occasion (travel gym, test day — auto-archives after first use). A new core/oneOff template that overlaps an existing one ≥70% is rejected as a near-duplicate — update or vary that one instead." },
                 parentTemplateId: { type: 'string', description: 'Required when kind=variation: the core template this varies' },
                 exercises: {
                     type: 'array',
                     description: '5-8 exercises for a full workout (compound movements first); fewer only if the user asked for fewer',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            name: { type: 'string' },
-                            bodyPart: { type: 'string' },
-                            equipmentType: { type: 'string' },
-                            equipment: { type: 'string', description: "A machine from the user's equipment list when one fits" },
-                            sets: { type: 'number' },
-                            reps: { type: 'number' },
-                            weight: { type: 'number', description: "Starting weight in the user's unit, from their history" },
-                            ...PRESCRIPTION_PROPS,
-                        },
-                        required: ['name'],
-                    },
+                    minItems: 1,
+                    maxItems: 12,
+                    items: EXERCISE_ITEM,
                 },
+                ...OVERRIDE_PROPS,
             },
             required: ['name', 'exercises'],
         },
@@ -117,18 +148,15 @@ const TOOL_DEFINITIONS = [
             type: 'object',
             properties: {
                 name: { type: 'string', description: 'e.g. "Strength block — 4 weeks"' },
-                goal: { type: 'string', description: "'strength' | 'hypertrophy' | 'recomp' | 'general'" },
-                weeks: { type: 'number', description: '1-16' },
+                goal: { type: 'string', enum: PROGRAM_GOALS },
+                weeks: { type: 'integer', minimum: 1, maximum: 16, description: '4+ weeks must include a deload week' },
                 startDate: { type: 'string', description: 'YYYY-MM-DD, the Monday of week 1' },
                 weekTargets: {
                     type: 'array',
                     description: 'One entry per week that differs from baseline. Give the block a SHAPE: volume ramps (setDelta), reps descend (repRange), effort tightens (rpeTarget), then a deload (negative setDelta and/or weightPct).',
                     items: WEEK_TARGET_ITEM,
                 },
-                split: {
-                    type: 'object',
-                    description: 'day → templateId | "rest" | null (same shape as set_week_plan)',
-                },
+                split: SPLIT_SCHEMA,
                 rotateAccessories: {
                     type: 'boolean',
                     description: "true = rotate every ACCESSORY exercise on the split's templates to the stalest same-pattern machine at the user's current gym (never-used first). Primaries and secondaries are never touched. Use when the user wants variety or a fresh block; the card lists every swap and undo restores the templates.",
@@ -147,11 +175,11 @@ const TOOL_DEFINITIONS = [
                     type: 'object',
                     properties: {
                         name: { type: 'string' },
-                        weeks: { type: 'number' },
+                        weeks: { type: 'integer', minimum: 1, maximum: 16 },
                         startDate: { type: 'string' },
                         weekTargets: { type: 'array', items: WEEK_TARGET_ITEM, description: 'Replaces the whole weekTargets list' },
-                        split: { type: 'object' },
-                        trustLevel: { type: 'string', description: "'propose' (default — everything is a card) or 'auto_confirm' (the dashboard pre-builds each week's adjusted session; starting it is the confirmation). Switch ONLY on an explicit user request; always reversible." },
+                        split: SPLIT_SCHEMA,
+                        trustLevel: { type: 'string', enum: ['propose', 'auto_confirm'], description: "'propose' (default — everything is a card) or 'auto_confirm' (the dashboard pre-builds each week's adjusted session; starting it is the confirmation). Switch ONLY on an explicit user request; always reversible." },
                     },
                 },
             },
@@ -164,7 +192,7 @@ const TOOL_DEFINITIONS = [
         input_schema: {
             type: 'object',
             properties: {
-                type: { type: 'string', description: "'weight_target' | 'deload' | 'volume_change' | 'exercise_swap' | 'technique'" },
+                type: { type: 'string', enum: ADVICE_TYPES },
                 exercise: { type: 'string', description: 'Exercise it applies to, when specific' },
                 detail: { type: 'string', description: 'One-line summary of the recommendation' },
                 targetValue: { description: 'The checkable value: target weight (number) or swap-to exercise name (string)' },
@@ -189,8 +217,8 @@ const TOOL_DEFINITIONS = [
             properties: {
                 templateId: { type: 'string' },
                 label: { type: 'string', description: 'Short session label, e.g. "Deload", "Make-up legs"' },
-                weightPct: { type: 'number', description: 'Global weight change in percent, e.g. -40 for a deload' },
-                addExercises: { type: 'array', items: { type: 'object' }, description: 'Exercises added for this session only' },
+                weightPct: { type: 'number', minimum: -90, maximum: 100, description: 'Global weight change in percent, e.g. -40 for a deload' },
+                addExercises: { type: 'array', items: EXERCISE_ITEM, maxItems: 5, description: 'Exercises added for this session only' },
                 dropExercises: { type: 'array', items: { type: 'string' }, description: 'Exercise names skipped this session' },
                 why: { type: 'string' },
             },
@@ -258,7 +286,7 @@ const TOOL_DEFINITIONS = [
                     type: 'object',
                     properties: {
                         rename: { type: 'string' },
-                        addExercises: { type: 'array', items: { type: 'object' } },
+                        addExercises: { type: 'array', items: EXERCISE_ITEM },
                         removeExercises: { type: 'array', items: { type: 'string' }, description: 'Exercise names to remove' },
                         reorderExercises: { type: 'array', items: { type: 'string' }, description: 'The COMPLETE list of existing exercise names in the desired new order' },
                         setExercise: {
@@ -266,14 +294,15 @@ const TOOL_DEFINITIONS = [
                             description: 'Change sets/reps/weight on one exercise by name',
                             properties: {
                                 name: { type: 'string' },
-                                sets: { type: 'number' },
-                                reps: { type: 'number' },
-                                weight: { type: 'number' },
+                                sets: { type: 'integer', minimum: 1, maximum: 10 },
+                                reps: { type: 'integer', minimum: 1, maximum: 50 },
+                                weight: { type: 'number', minimum: 0 },
                             },
                             required: ['name'],
                         },
                     },
                 },
+                ...OVERRIDE_PROPS,
             },
             required: ['templateId', 'changes'],
         },
@@ -287,24 +316,14 @@ const TOOL_DEFINITIONS = [
                 templateId: { type: 'string' },
                 exercises: {
                     type: 'array',
-                    description: 'The full new exercise list, in order. Each: { name, sets, reps, weight?, equipment?, bodyPart?, equipmentType?, repRange?, rpeTarget?, role?, pattern?, progression? }',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            name: { type: 'string' },
-                            sets: { type: 'number' },
-                            reps: { type: 'number' },
-                            weight: { type: 'number' },
-                            equipment: { type: 'string' },
-                            bodyPart: { type: 'string' },
-                            equipmentType: { type: 'string' },
-                            ...PRESCRIPTION_PROPS,
-                        },
-                        required: ['name'],
-                    },
+                    description: 'The full new exercise list, in order.',
+                    minItems: 1,
+                    maxItems: 20,
+                    items: EXERCISE_ITEM,
                 },
                 rename: { type: 'string', description: 'Optional new name for the workout' },
                 why: { type: 'string', description: 'One line on what changed and why — shown on the card' },
+                ...OVERRIDE_PROPS,
             },
             required: ['templateId', 'exercises'],
         },
@@ -331,20 +350,35 @@ function intIn(v, min, max, fallback) {
 }
 
 /**
- * Validate + normalize one exercise entry. Returns null when unusable.
- * Normalized shape matches what the client's template editor expects:
- * `machine` is the display name key used across templates.
+ * Validate + normalize one exercise entry. Normalized shape matches what the
+ * client's template editor expects: `machine` is the display name key.
+ *
+ * AP-18 — REJECT, don't coerce. A value outside its range used to become a
+ * silent default (sets 12 → 3, reps 99 → 10, role 'chief' dropped): the tool
+ * reported success, the model told the user "12 sets", the template said 3.
+ * Absent fields still get defaults (3×10); present-but-invalid is an error.
+ * @returns {object} the exercise, or `{error: string}` naming the field and
+ *   what's allowed
  */
 function normalizeExercise(ex) {
-    if (!ex || typeof ex !== 'object') return null;
+    if (!ex || typeof ex !== 'object') return { error: 'each exercise must be an object with a name' };
     const name = typeof ex.name === 'string' ? ex.name.trim() : '';
-    if (!name || name.length > 80) return null;
-    const out = {
-        machine: name,
-        sets: intIn(ex.sets, 1, 10, 3),
-        reps: intIn(ex.reps, 1, 50, 10),
-    };
-    if (typeof ex.weight === 'number' && ex.weight >= 0 && ex.weight < 2000) out.weight = ex.weight;
+    if (!name) return { error: 'each exercise needs a name' };
+    if (name.length > 80) return { error: `exercise name too long (max 80 chars): "${name.slice(0, 40)}…"` };
+    const has = (k) => ex[k] !== undefined && ex[k] !== null;
+    const sets = has('sets') ? intIn(ex.sets, 1, 10, null) : 3;
+    if (sets == null || (has('sets') && Number(ex.sets) !== sets)) return { error: `${name}: sets must be a whole number 1-10 (got ${JSON.stringify(ex.sets)})` };
+    const reps = has('reps') ? intIn(ex.reps, 1, 50, null) : 10;
+    if (reps == null || (has('reps') && Number(ex.reps) !== reps)) return { error: `${name}: reps must be a whole number 1-50 (got ${JSON.stringify(ex.reps)})` };
+    const out = { machine: name, sets, reps };
+    if (has('weight')) {
+        if (typeof ex.weight !== 'number' || !(ex.weight >= 0) || ex.weight >= 2000) {
+            return { error: `${name}: weight must be a number 0-2000 in the user's unit (got ${JSON.stringify(ex.weight)})` };
+        }
+        out.weight = ex.weight;
+    }
+    const bad = prescriptionFieldErrors(ex);
+    if (bad.length) return { error: `${name}: ${bad.join('; ')}` };
     if (typeof ex.bodyPart === 'string' && ex.bodyPart.trim()) out.bodyPart = ex.bodyPart.trim();
     if (typeof ex.equipmentType === 'string' && ex.equipmentType.trim()) out.equipmentType = ex.equipmentType.trim();
     if (typeof ex.equipment === 'string' && ex.equipment.trim()) out.equipment = ex.equipment.trim();
@@ -369,12 +403,17 @@ function validateCreateTemplateInput(input) {
     if (input.exercises.length > 12) {
         return { ok: false, error: 'Too many exercises (max 12)' };
     }
-    const exercises = input.exercises.map(normalizeExercise).filter(Boolean);
-    if (exercises.length === 0) {
-        return { ok: false, error: 'No valid exercises (each needs a name)' };
+    const exercises = [];
+    for (const raw of input.exercises) {
+        const ex = normalizeExercise(raw);
+        if (ex.error) return { ok: false, error: ex.error };
+        exercises.push(ex);
     }
-    const category = typeof input.category === 'string' && input.category.trim()
-        ? input.category.trim() : 'Other';
+    let category = 'Other';
+    if (input.category != null && input.category !== '') {
+        category = canonicalEnum(input.category, TEMPLATE_CATEGORIES);
+        if (!category) return { ok: false, error: `category must be one of ${TEMPLATE_CATEGORIES.join(', ')} (got ${JSON.stringify(input.category)})` };
+    }
     return { ok: true, normalized: { name, category, exercises } };
 }
 
@@ -412,7 +451,7 @@ function applyTemplateChanges(template, changes) {
     if (Array.isArray(changes.addExercises)) {
         for (const raw of changes.addExercises) {
             const ex = normalizeExercise(raw);
-            if (!ex) return { ok: false, error: 'Added exercise is missing a name' };
+            if (ex.error) return { ok: false, error: `addExercises: ${ex.error}` };
             if (updated.exercises.length >= 20) return { ok: false, error: 'Workout is full (max 20 exercises)' };
             updated.exercises.push(ex);
             diffs.push(`Added ${ex.machine} ${ex.sets}×${ex.reps}`);
@@ -478,9 +517,13 @@ function validateProgramInput(input) {
     if (!input || typeof input !== 'object') return { ok: false, error: 'Missing input' };
     const name = clip(input.name, 60);
     if (!name) return { ok: false, error: 'name is required' };
-    const goal = clip(input.goal, 20) || 'general';
+    let goal = 'general';
+    if (input.goal != null && input.goal !== '') {
+        goal = canonicalEnum(input.goal, PROGRAM_GOALS);
+        if (!goal) return { ok: false, error: `goal must be one of ${PROGRAM_GOALS.join(', ')} (got ${JSON.stringify(input.goal)})` };
+    }
     const weeks = intIn(input.weeks, 1, 16, null);
-    if (weeks == null) return { ok: false, error: 'weeks must be 1-16' };
+    if (weeks == null) return { ok: false, error: `weeks must be a whole number 1-16 (got ${JSON.stringify(input.weeks)})` };
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '')) {
         return { ok: false, error: 'startDate must be YYYY-MM-DD' };
     }
@@ -494,7 +537,11 @@ function validateProgramInput(input) {
         weekTargets.push(n.target);
     }
     if (!input.split || typeof input.split !== 'object') return { ok: false, error: 'split is required' };
-    return { ok: true, normalized: { name, goal, weeks, startDate: input.startDate, weekTargets, split: input.split } };
+    // AP-17 — program shape: a 4+ week block needs a deload (error);
+    // frequency / identical-week problems come back as warnings.
+    const shape = programShapeIssues({ weeks, weekTargets });
+    if (shape.error) return { ok: false, error: shape.error };
+    return { ok: true, normalized: { name, goal, weeks, startDate: input.startDate, weekTargets, split: input.split }, warnings: shape.warnings };
 }
 
 /**
@@ -510,8 +557,12 @@ function replaceTemplateExercises(template, input) {
         return { ok: false, error: 'exercises must be the complete new list (at least one)' };
     }
     if (input.exercises.length > 20) return { ok: false, error: 'Too many exercises (max 20)' };
-    const next = input.exercises.map(normalizeExercise).filter(Boolean);
-    if (next.length !== input.exercises.length) return { ok: false, error: 'Every exercise needs a name' };
+    const next = [];
+    for (const raw of input.exercises) {
+        const ex = normalizeExercise(raw);
+        if (ex.error) return { ok: false, error: ex.error };
+        next.push(ex);
+    }
 
     const exName = (e) => e.machine || e.name || '';
     const key = (e) => exName(e).trim().toLowerCase();
@@ -622,6 +673,33 @@ function exerciseHistorySession(w, ex, unit) {
     };
 }
 
+// ── Template usage (AP-18: reads must not write) ────────────────────
+
+/**
+ * usageCount / lastUsedDate per template, derived from completed workouts
+ * by workoutType name. list_templates REPORTS this for templates that lack
+ * the denormalized count; the daily backfillTemplateUsage job WRITES it —
+ * a read tool used to write as a side effect.
+ * @returns {Map<string, {usageCount:number, lastUsedDate:string|null}>} keyed by template id
+ */
+function deriveTemplateUsage(templates, workouts) {
+    const byName = new Map();
+    for (const w of workouts || []) {
+        if (!w?.completedAt || w.cancelledAt || !w.workoutType) continue;
+        const key = w.workoutType.toLowerCase();
+        const cur = byName.get(key) || { usageCount: 0, lastUsedDate: null };
+        cur.usageCount += 1;
+        if (!cur.lastUsedDate || w.date > cur.lastUsedDate) cur.lastUsedDate = w.date;
+        byName.set(key, cur);
+    }
+    const out = new Map();
+    for (const t of templates || []) {
+        const u = byName.get(String(t.name || t.id || '').toLowerCase());
+        if (u) out.set(t.id, u);
+    }
+    return out;
+}
+
 // ── Rules verdicts (AP-16) ──────────────────────────────────────────
 
 /**
@@ -685,8 +763,134 @@ async function computeUserVerdicts({ db, userId, today = null, unit = null }) {
 function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs', today = null }) {
     const userDoc = () => db.collection('users').doc(userId);
     const unit = normalizeUnit(rawUnit);
+    const date = todayInfo(today).date;
+
+    // Data the guards need, read once per turn (memoized promise).
+    let ctxPromise = null;
+    const loadCtx = () => {
+        if (!ctxPromise) {
+            ctxPromise = (async () => {
+                const [woSnap, progSnap, settingsSnap, equipSnap, tSnap] = await Promise.all([
+                    userDoc().collection('workouts').orderBy('date', 'desc').limit(250).get(),
+                    userDoc().collection('programs').where('active', '==', true).limit(1).get(),
+                    userDoc().collection('preferences').doc('settings').get(),
+                    userDoc().collection('equipment').get(),
+                    userDoc().collection('workoutTemplates').get(),
+                ]);
+                const all = woSnap.docs.map(d => d.data());
+                const settings = settingsSnap.exists ? (settingsSnap.data() || {}) : {};
+                const program = progSnap.empty ? null : progSnap.docs[0].data();
+                const live = all.find(w => w.date === date && !w.completedAt && !w.cancelledAt);
+                const intent = live?.sessionIntent || getSessionIntent({ program, today: date, manualDeload: settings.manualDeload || null });
+                const equipment = equipSnap.docs.map(d => d.data()).filter(e => e && e.name);
+                // Current gym: the in-progress session's, else where they last trained.
+                const gymOf = (w) => (typeof w?.location === 'object' ? w.location?.name : w?.location) || null;
+                const gym = gymOf(live) || gymOf(all.find(w => w.completedAt && gymOf(w)));
+                return {
+                    workouts: all.filter(w => w.completedAt && !w.cancelledAt),
+                    settings, program, intent, equipment, gym,
+                    plates: unit === 'kg' ? settings.plateKg : settings.plateLbs,
+                    templates: tSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+                };
+            })();
+        }
+        return ctxPromise;
+    };
+
+    /**
+     * AP-17 deload lock. Template writes in a program's deload week are
+     * refused unless the model passes override:true + overrideReason (the
+     * user insisted) — the override is logged to coachOverrides.
+     */
+    const checkDeloadLock = async (tool, input) => {
+        const { program } = await loadCtx();
+        const lock = deloadLock(program, date);
+        if (!lock) return null;
+        if (input?.override === true) {
+            const reason = clip(input.overrideReason, 200);
+            if (!reason) return toolError('invalid_input', 'override:true needs overrideReason — the user\'s own words for why the deload week\'s workout must change.');
+            await userDoc().collection('coachOverrides').add({
+                tool, reason, rule: 'deload_lock', week: lock.week, date, createdAt: new Date().toISOString(),
+            });
+            return null;
+        }
+        return toolError('locked',
+            `Week ${lock.week} of the program is a deload (${lock.label}) — template edits are locked.`,
+            'Use propose_session_adjustments for this week\'s sessions. Only if the user explicitly insists on changing the workout itself, retry with override:true and overrideReason.');
+    };
+
+    /**
+     * AP-17/18 per-exercise guards for template writes: equipment must
+     * exist in the library (canonicalized), a weight must be loadable and
+     * must not exceed a stalled lift's rule target. Mutates `exercises`
+     * (canonical equipment names). Returns a tool error or null.
+     */
+    const checkExercises = async (exercises) => {
+        const withEquip = exercises.filter(e => e.equipment);
+        const withWeight = exercises.filter(e => typeof e.weight === 'number' && e.weight > 0);
+        if (!withEquip.length && !withWeight.length) return null;
+        const ctx = await loadCtx();
+        const library = ctx.equipment.map(e => e.name);
+        for (const e of withEquip) {
+            const r = resolveEquipment(e.equipment, library);
+            if (!r.ok) {
+                return toolError('invalid_input',
+                    `${e.machine}: equipment "${e.equipment}" isn't in the user's library.`,
+                    r.nearest.length ? `Nearest: ${r.nearest.join(', ')} — use one of these, omit equipment, or call list_equipment.` : 'Call list_equipment, or omit equipment.');
+            }
+            e.equipment = r.name;
+        }
+        for (const e of withWeight) {
+            const args = { workouts: ctx.workouts, exercise: e.machine, weight: e.weight, unit, plates: ctx.plates };
+            const stall = progressionGuard({ ...args, repTarget: e.reps });
+            if (stall) return toolError('invalid_input', stall, 'Use the rule\'s target weight, or explain the deviation to the user without writing it.');
+            const load = loadabilityGuard(args);
+            if (load) return toolError('invalid_input', load);
+        }
+        return null;
+    };
 
     return {
+        /**
+         * Server-side checks on a live/coach proposal (validateProposal does
+         * the shape): template exists (session adjustments), the load obeys
+         * the rules (next target / add exercise), and a swap's equipment is
+         * at the current gym. Returns {proposal} (possibly canonicalized) or
+         * a tool error.
+         */
+        async checkProposal(toolName, proposal) {
+            const ctx = await loadCtx();
+            if (toolName === 'propose_session_adjustments') {
+                if (!ctx.templates.some(t => t.id === proposal.templateId && !t.archived)) {
+                    return toolError('not_found', `No saved workout with templateId "${proposal.templateId}".`, 'Call list_templates for valid ids.');
+                }
+                const bad = await checkExercises(proposal.addExercises || []);
+                if (bad) return bad;
+            }
+            if ((toolName === 'propose_next_target' || toolName === 'propose_add_exercise') && proposal.weight != null) {
+                const args = { workouts: ctx.workouts, exercise: proposal.exercise, weight: proposal.weight, unit, plates: ctx.plates };
+                const rule = toolName === 'propose_next_target'
+                    ? progressionGuard({ ...args, repTarget: proposal.reps, intent: ctx.intent }) : null;
+                if (rule) return toolError('invalid_input', rule, 'Propose the rule\'s target, or hold the weight.');
+                const load = loadabilityGuard(args);
+                if (load) return toolError('invalid_input', load);
+            }
+            if (toolName === 'propose_swap' && proposal.equipment) {
+                const atGym = ctx.gym
+                    ? ctx.equipment.filter(e => (e.locations || [e.location]).some(l => String(l || '').toLowerCase() === ctx.gym.toLowerCase()))
+                    : [];
+                const pool = (atGym.length ? atGym : ctx.equipment).map(e => e.name);
+                const r = resolveEquipment(proposal.equipment, pool);
+                if (!r.ok) {
+                    return toolError('invalid_input',
+                        `"${proposal.equipment}" isn't ${atGym.length ? `at ${ctx.gym}` : "in the user's equipment library"}.`,
+                        r.nearest.length ? `Equipment there: ${r.nearest.join(', ')}.` : 'Swap to a bodyweight or dumbbell move, or omit equipment.');
+                }
+                return { proposal: { ...proposal, equipment: r.name } };
+            }
+            return { proposal };
+        },
+
         // CP-5 — the chat coach previously had NO path to the exercise
         // library (the client's buildExerciseLibraryContext only feeds the
         // template generator), so it could only suggest what was already in
@@ -756,10 +960,32 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             if (!templateId) return { error: 'templateId is required' };
             const ref = userDoc().collection('workoutTemplates').doc(templateId);
             const snap = await ref.get();
-            if (!snap.exists) return { error: `Template not found: ${templateId}. Call list_templates for valid ids.` };
+            if (!snap.exists) return toolError('not_found', `Template not found: ${templateId}.`, 'Call list_templates for valid ids.');
             const current = snap.data();
+            const locked = await checkDeloadLock('replace_day', input);
+            if (locked) return locked;
             const applied = replaceTemplateExercises(current, input);
             if (!applied.ok) return { error: applied.error };
+            // Guard only what the model sent: carried-forward fields (an old
+            // equipment name, last block's weight) aren't this call's claim.
+            const byName = new Map(applied.updated.exercises.map(e => [String(e.machine).toLowerCase(), e]));
+            const fresh = (input.exercises || [])
+                .filter(raw => raw && (raw.equipment || typeof raw.weight === 'number'))
+                .map((raw) => {
+                    const ref = byName.get(String(raw.name || '').trim().toLowerCase());
+                    return ref ? {
+                        ref,
+                        check: {
+                            machine: ref.machine, reps: ref.reps,
+                            ...(raw.equipment ? { equipment: String(raw.equipment).trim() } : {}),
+                            ...(typeof raw.weight === 'number' ? { weight: raw.weight } : {}),
+                        },
+                    } : null;
+                })
+                .filter(Boolean);
+            const bad = await checkExercises(fresh.map(f => f.check));
+            if (bad) return bad;
+            for (const f of fresh) if (f.check.equipment) f.ref.equipment = f.check.equipment;
 
             applied.updated.lastUpdated = new Date().toISOString();
             await ref.set(applied.updated);
@@ -842,23 +1068,16 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const activeDocs = snap.docs.filter(d => !d.data().archived);
 
             // Usage honesty: denormalized usageCount only began 2026-07-07 —
-            // without a history-derived backfill the coach reads long-used
-            // staples as 'never used' and proposes archiving them (live bug).
-            // Derive from completed workouts by name and backfill durably.
+            // without it the coach reads long-used staples as 'never used'
+            // and proposes archiving them (live bug). Derive it for the
+            // answer; the backfill WRITE lives in the daily
+            // backfillTemplateUsage job (AP-18: a read tool must not write).
             const needsUsage = activeDocs.some(d => d.data().usageCount == null);
-            const usageByName = new Map();
+            let derived = new Map();
             if (needsUsage) {
                 const woSnap = await userDoc().collection('workouts')
                     .orderBy('date', 'desc').limit(200).get();
-                for (const doc of woSnap.docs) {
-                    const w = doc.data();
-                    if (!w.completedAt || w.cancelledAt || !w.workoutType) continue;
-                    const key = w.workoutType.toLowerCase();
-                    const cur = usageByName.get(key) || { count: 0, last: null };
-                    cur.count += 1;
-                    if (!cur.last || w.date > cur.last) cur.last = w.date;
-                    usageByName.set(key, cur);
-                }
+                derived = deriveTemplateUsage(activeDocs.map(d => ({ id: d.id, ...d.data() })), woSnap.docs.map(d => d.data()));
             }
 
             let usageIncomplete = false;
@@ -867,11 +1086,10 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 let usageCount = t.usageCount;
                 let lastUsedDate = t.lastUsedDate || null;
                 if (usageCount == null) {
-                    const u = usageByName.get((t.name || d.id).toLowerCase());
-                    usageCount = u ? u.count : 0;
-                    lastUsedDate = lastUsedDate || (u ? u.last : null);
-                    if (u) d.ref.set({ usageCount, lastUsedDate }, { merge: true }).catch(() => {});
-                    else usageIncomplete = true; // renamed templates lose name lineage
+                    const u = derived.get(d.id);
+                    usageCount = u ? u.usageCount : 0;
+                    lastUsedDate = lastUsedDate || (u ? u.lastUsedDate : null);
+                    if (!u) usageIncomplete = true; // renamed templates lose name lineage
                 }
                 return {
                     templateId: d.id,
@@ -912,6 +1130,12 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const v = validateProgramInput(input);
             if (!v.ok) return { error: v.error };
             const { name, goal, weeks, startDate, weekTargets, split } = v.normalized;
+            // AP-17 — split-level shape warnings need the templates.
+            const ctxForShape = await loadCtx();
+            const warnings = [
+                ...v.warnings,
+                ...programShapeIssues({ weeks: 0, split, templates: ctxForShape.templates, exerciseDatabase: require('./data/exercises.json') }).warnings,
+            ];
 
             // Snapshot prior state BEFORE any write — the card renders after
             // the write (the ask was the consent), so a real undo needs to
@@ -928,7 +1152,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             // Apply the split through the SAME validated path as set_week_plan —
             // one consent covers program + schedule.
             const planOut = await this.set_week_plan({ days: split });
-            if (planOut.error) return { error: `split: ${planOut.error}` };
+            if (planOut.error) return toolError('invalid_input', `split: ${errorText(planOut.error)}`);
 
             // One active program at a time.
             const actives = await userDoc().collection('programs').where('active', '==', true).get();
@@ -1009,6 +1233,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                     programId: id, name, weeks, weekPlan: planOut.result.summary,
                     ...(rotation ? { rotation, rotatedCount } : {}),
                     ...(input.rotateAccessories === true && !rotation ? { rotation: 'failed — templates unchanged' } : {}),
+                    ...(warnings.length ? { warnings } : {}),
                 },
                 actionCard: {
                     kind: 'program_set',
@@ -1024,12 +1249,21 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const changes = input?.changes;
             if (!changes || typeof changes !== 'object') return { error: 'changes is required' };
             const snap = await userDoc().collection('programs').where('active', '==', true).limit(1).get();
-            if (snap.empty) return { error: 'No active program — create one first.' };
+            if (snap.empty) return toolError('not_found', 'No active program.', 'create_program first.');
             const ref = snap.docs[0].ref;
             const current = snap.docs[0].data();
 
             const updated = {};
             const diffs = [];
+            const shapeWarnings = [];
+            if (changes.weeks != null && !Array.isArray(changes.weekTargets)) {
+                // A longer block must still end in a deload.
+                const w = intIn(changes.weeks, 1, 16, null);
+                if (w != null) {
+                    const shape = programShapeIssues({ weeks: w, weekTargets: current.weekTargets || [] });
+                    if (shape.error) return toolError('invalid_input', shape.error);
+                }
+            }
             if (changes.name && clip(changes.name, 60) !== current.name) {
                 updated.name = clip(changes.name, 60);
                 diffs.push(`renamed to "${updated.name}"`);
@@ -1055,10 +1289,11 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 if (!check.ok) return { error: check.error };
                 updated.weekTargets = check.normalized.weekTargets;
                 diffs.push('week targets updated');
+                shapeWarnings.push(...check.warnings);
             }
             if (changes.split && typeof changes.split === 'object') {
                 const planOut = await this.set_week_plan({ days: changes.split });
-                if (planOut.error) return { error: `split: ${planOut.error}` };
+                if (planOut.error) return toolError('invalid_input', `split: ${errorText(planOut.error)}`);
                 updated.split = planOut.result.plan.days;
                 diffs.push(`schedule: ${planOut.result.summary}`);
             }
@@ -1078,7 +1313,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             updated.lastUpdated = new Date().toISOString();
             await ref.set(updated, { merge: true });
             return {
-                result: { programId: current.id, diff: diffs.join('; ') },
+                result: { programId: current.id, diff: diffs.join('; '), ...(shapeWarnings.length ? { warnings: shapeWarnings } : {}) },
                 actionCard: {
                     kind: 'program_set',
                     name: `Program: ${updated.name || current.name}`,
@@ -1088,10 +1323,9 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
         },
 
         async log_advice(input) {
-            const VALID_TYPES = ['weight_target', 'deload', 'volume_change', 'exercise_swap', 'technique'];
             const type = String(input?.type || '').trim();
             const detail = clip(input?.detail, 200);
-            if (!VALID_TYPES.includes(type)) return { error: `type must be one of: ${VALID_TYPES.join(', ')}` };
+            if (!ADVICE_TYPES.includes(type)) return toolError('invalid_input', `type must be one of: ${ADVICE_TYPES.join(', ')} (got ${JSON.stringify(input?.type)})`);
             if (!detail) return { error: 'detail is required' };
             const doc = {
                 date: new Date().toISOString().slice(0, 10),
@@ -1116,7 +1350,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             if (!templateId) return { error: 'templateId is required' };
             const ref = userDoc().collection('workoutTemplates').doc(templateId);
             const snap = await ref.get();
-            if (!snap.exists) return { error: `Template not found: ${templateId}` };
+            if (!snap.exists) return toolError('not_found', `Template not found: ${templateId}`, 'Call list_templates for valid ids.');
             await ref.set({ archived: true, lastUpdated: new Date().toISOString() }, { merge: true });
             return {
                 result: { archived: templateId },
@@ -1157,14 +1391,40 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const { name, category, exercises } = v.normalized;
 
             // 5.6.0 — classify at birth. Variations must point at a real parent.
-            const kind = ['core', 'variation', 'oneOff'].includes(input.kind) ? input.kind : 'core';
+            let kind = 'core';
+            if (input.kind != null && input.kind !== '') {
+                kind = canonicalEnum(input.kind, TEMPLATE_KINDS);
+                if (!kind) return toolError('invalid_input', `kind must be one of ${TEMPLATE_KINDS.join(', ')} (got ${JSON.stringify(input.kind)})`);
+            }
             let parentTemplateId = null;
             if (kind === 'variation') {
                 const pid = String(input.parentTemplateId || '').trim();
-                if (!pid) return { error: 'kind=variation requires parentTemplateId (from list_templates)' };
+                if (!pid) return toolError('invalid_input', 'kind=variation requires parentTemplateId', 'Get it from list_templates.');
                 const parent = await userDoc().collection('workoutTemplates').doc(pid).get();
-                if (!parent.exists) return { error: `parentTemplateId not found: ${pid}` };
+                if (!parent.exists) return toolError('not_found', `parentTemplateId not found: ${pid}`, 'Call list_templates for valid ids.');
                 parentTemplateId = pid;
+            }
+
+            const locked = await checkDeloadLock('create_workout_template', input);
+            if (locked) return locked;
+            const bad = await checkExercises(exercises);
+            if (bad) return bad;
+
+            // AP-18 dedupe — a "new" workout that is mostly an existing one
+            // clutters the library and splits its history. Variations are the
+            // deliberate exception.
+            if (kind !== 'variation') {
+                const dup = findNearDuplicate(exercises, (await loadCtx()).templates);
+                if (dup) {
+                    return {
+                        error: {
+                            code: 'near_duplicate',
+                            message: `"${name}" overlaps "${dup.name}" by ${Math.round(dup.overlap * 100)}% of exercises.`,
+                            hint: `Update ${dup.templateId} (update_workout_template / replace_day), or pass kind:'variation' with parentTemplateId:'${dup.templateId}' if it's a deliberate variant.`,
+                            existing: dup,
+                        },
+                    };
+                }
             }
 
             // Same slug scheme the client uses, with collision suffixing so the
@@ -1240,7 +1500,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 if (val === 'rest') { days[day] = null; restDays.add(day); }
                 else if (val == null || val === '') { days[day] = null; restDays.delete(day); }
                 else {
-                    if (!templateNames.has(val)) return { error: `Unknown templateId "${val}" for ${day} — call list_templates for valid ids.` };
+                    if (!templateNames.has(val)) return toolError('not_found', `Unknown templateId "${val}" for ${day}.`, 'Call list_templates for valid ids.');
                     days[day] = val;
                     restDays.delete(day);
                 }
@@ -1296,10 +1556,24 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             if (!templateId) return { error: 'templateId is required' };
             const ref = userDoc().collection('workoutTemplates').doc(templateId);
             const snap = await ref.get();
-            if (!snap.exists) return { error: `Template not found: ${templateId}. Call list_templates for valid ids.` };
+            if (!snap.exists) return toolError('not_found', `Template not found: ${templateId}.`, 'Call list_templates for valid ids.');
+            const locked = await checkDeloadLock('update_workout_template', input);
+            if (locked) return locked;
 
             const applied = applyTemplateChanges(snap.data(), input.changes);
             if (!applied.ok) return { error: applied.error };
+            // Guard the exercises this call adds and the weight it sets.
+            const priorNames = new Set((snap.data().exercises || []).map(e => String(e.machine || e.name || '').toLowerCase()));
+            const added = applied.updated.exercises.filter(e => !priorNames.has(String(e.machine || e.name || '').toLowerCase()));
+            const checks = added.map(e => ({ ref: e, check: { machine: e.machine, reps: e.reps, equipment: e.equipment, weight: e.weight } }));
+            const setEx = input.changes?.setExercise;
+            if (setEx && typeof setEx.weight === 'number') {
+                const ref = applied.updated.exercises.find(e => String(e.machine || e.name || '').toLowerCase() === String(setEx.name || '').trim().toLowerCase());
+                if (ref) checks.push({ ref, check: { machine: ref.machine || ref.name, reps: ref.defaultReps ?? ref.reps, weight: setEx.weight } });
+            }
+            const bad = await checkExercises(checks.map(c => c.check));
+            if (bad) return bad;
+            for (const c of checks) if (c.check.equipment) c.ref.equipment = c.check.equipment;
 
             applied.updated.lastUpdated = new Date().toISOString();
             await ref.set(applied.updated);
@@ -1393,8 +1667,12 @@ function validateProposal(toolName, input) {
         case 'propose_next_target': {
             const exercise = clip(input?.exercise, 80);
             if (!exercise) return { ok: false, error: 'exercise is required' };
-            const weight = typeof input?.weight === 'number' && input.weight >= 0 && input.weight < 2000 ? input.weight : null;
-            const reps = intIn(input?.reps, 1, 50, null);
+            if (input?.weight != null && !(typeof input.weight === 'number' && input.weight >= 0 && input.weight < 2000)) {
+                return { ok: false, error: `weight must be a number 0-2000 (got ${JSON.stringify(input.weight)})` };
+            }
+            if (input?.reps != null && intIn(input.reps, 1, 50, null) == null) return { ok: false, error: `reps must be 1-50 (got ${JSON.stringify(input.reps)})` };
+            const weight = input?.weight ?? null;
+            const reps = input?.reps != null ? intIn(input.reps, 1, 50, null) : null;
             if (weight == null && reps == null) return { ok: false, error: 'weight or reps required' };
             return { ok: true, proposal: { kind: 'next_target', exercise, weight, reps, why } };
         }
@@ -1405,16 +1683,13 @@ function validateProposal(toolName, input) {
             return { ok: true, proposal: { kind: 'swap', fromExercise, toExercise, equipment: clip(input?.equipment, 80) || null, why } };
         }
         case 'propose_add_exercise': {
-            const exercise = clip(input?.exercise, 80);
-            if (!exercise) return { ok: false, error: 'exercise is required' };
-            const weight = typeof input?.weight === 'number' && input.weight >= 0 && input.weight < 2000 ? input.weight : null;
+            const ex = normalizeExercise({ name: input?.exercise, sets: input?.sets, reps: input?.reps, weight: input?.weight });
+            if (ex.error) return { ok: false, error: ex.error };
             return {
                 ok: true,
                 proposal: {
-                    kind: 'add_exercise', exercise,
-                    sets: intIn(input?.sets, 1, 10, 3),
-                    reps: intIn(input?.reps, 1, 50, 10),
-                    weight, why,
+                    kind: 'add_exercise', exercise: ex.machine,
+                    sets: ex.sets, reps: ex.reps, weight: ex.weight ?? null, why,
                 },
             };
         }
@@ -1425,15 +1700,23 @@ function validateProposal(toolName, input) {
         }
         case 'propose_session_adjustments': {
             // Coach-tab proposal (5.6.1): one-session riff on an existing
-            // template. Template existence is checked client-side at Apply
-            // (the client owns the library cache) — validation here is shape.
+            // template. Shape here; template existence + exercise guards in
+            // the executor's checkProposal (AP-18 — a missing template used
+            // to return {proposed:true} while the client dropped the card).
             const templateId = clip(input?.templateId, 80);
             const label = clip(input?.label, 40);
             if (!templateId || !label) return { ok: false, error: 'templateId and label are required' };
-            const weightPct = typeof input?.weightPct === 'number' && input.weightPct >= -90 && input.weightPct <= 100
-                ? Math.round(input.weightPct) : null;
-            const addExercises = Array.isArray(input?.addExercises)
-                ? input.addExercises.map(normalizeExercise).filter(Boolean).slice(0, 5) : [];
+            if (input?.weightPct != null && !(typeof input.weightPct === 'number' && input.weightPct >= -90 && input.weightPct <= 100)) {
+                return { ok: false, error: `weightPct must be a number from -90 to 100 (got ${JSON.stringify(input.weightPct)})` };
+            }
+            const weightPct = input?.weightPct != null ? Math.round(input.weightPct) : null;
+            if (Array.isArray(input?.addExercises) && input.addExercises.length > 5) return { ok: false, error: 'addExercises: at most 5 for one session' };
+            const addExercises = [];
+            for (const raw of (Array.isArray(input?.addExercises) ? input.addExercises : [])) {
+                const ex = normalizeExercise(raw);
+                if (ex.error) return { ok: false, error: `addExercises: ${ex.error}` };
+                addExercises.push(ex);
+            }
             const dropExercises = Array.isArray(input?.dropExercises)
                 ? input.dropExercises.map(x => clip(x, 80)).filter(Boolean).slice(0, 10) : [];
             if (weightPct == null && !addExercises.length && !dropExercises.length) {
@@ -1487,6 +1770,7 @@ module.exports = {
     normalizeExercise,
     makeToolExecutors,
     computeUserVerdicts,
+    deriveTemplateUsage,
     validateProposal,
     liveToolDefinitions,
     LIVE_PROPOSAL_TOOLS,

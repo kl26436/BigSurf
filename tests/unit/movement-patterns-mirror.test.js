@@ -20,6 +20,9 @@ const MIRRORS = [
     ['js/core/features/training-rules.js', 'functions/training-rules.js'],
     ['js/core/features/progress-scoreboard.js', 'functions/progress-scoreboard.js'],
     ['js/core/features/coach-rules.js', 'functions/coach-rules.js'],
+    // AP-17 / AP-18 — the guards the write tools enforce.
+    ['js/core/features/fuzzy-match.js', 'functions/fuzzy-match.js'],
+    ['js/core/features/coach-guards.js', 'functions/coach-guards.js'],
 ];
 
 describe('functions/ mirrors of pure client modules', () => {

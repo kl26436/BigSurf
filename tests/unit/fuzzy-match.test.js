@@ -1,6 +1,6 @@
 // Tests for the fuzzy-match helpers (dice bigram similarity + best-match).
 import { describe, it, expect } from 'vitest';
-import { diceSimilarity, findBestMatch } from '../../js/core/data/fuzzy-match.js';
+import { diceSimilarity, findBestMatch } from '../../js/core/features/fuzzy-match.js';
 
 describe('diceSimilarity', () => {
     it('returns 1 for identical strings', () => {

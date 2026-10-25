@@ -141,6 +141,24 @@ export function normalizeRpeTarget(v) {
 }
 
 /**
+ * AP-18 — what's wrong with the CP-1 prescription fields on `src`, one
+ * message per bad field listing the allowed values. Present-but-invalid is
+ * an error (the coach tools reject it); absent is fine.
+ * @returns {string[]}
+ */
+export function prescriptionFieldErrors(src) {
+    if (!src || typeof src !== 'object') return [];
+    const errs = [];
+    const has = (k) => src[k] !== undefined && src[k] !== null;
+    if (has('repRange') && !normalizeRepRange(src.repRange)) errs.push(`repRange must be [low, high] with 1 ≤ low ≤ high ≤ 50 (got ${JSON.stringify(src.repRange)})`);
+    if (has('rpeTarget') && normalizeRpeTarget(src.rpeTarget) == null) errs.push(`rpeTarget must be 6-10 (got ${JSON.stringify(src.rpeTarget)})`);
+    if (has('role') && !ROLES.includes(src.role)) errs.push(`role must be one of ${ROLES.join(', ')} (got ${JSON.stringify(src.role)})`);
+    if (has('pattern') && !PATTERNS.includes(src.pattern)) errs.push(`pattern must be one of ${PATTERNS.join(', ')} (got ${JSON.stringify(src.pattern)})`);
+    if (has('progression') && !PROGRESSIONS.includes(src.progression)) errs.push(`progression must be one of ${PROGRESSIONS.join(', ')} (got ${JSON.stringify(src.progression)})`);
+    return errs;
+}
+
+/**
  * Copy the CP-1 prescription fields from `src` onto `out` when valid. Shared
  * by the server normalizer and the client validator so both sides accept
  * exactly the same shape.

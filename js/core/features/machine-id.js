@@ -10,7 +10,7 @@
 import { AppState } from '../utils/app-state.js';
 import { Config } from '../utils/config.js';
 import { showNotification, escapeHtml } from '../ui/ui-helpers.js';
-import { findBestMatch } from '../data/fuzzy-match.js';
+import { findBestMatch } from './fuzzy-match.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
 import { getSessionGym } from './gym-session-context.js';
 

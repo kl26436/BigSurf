@@ -16,7 +16,7 @@ import { Config, debugLog } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
 import { formatCoachResponse } from './coach-markdown.js';
 import { getEquipmentAtLocation } from './equipment-planner.js';
-import { findBestMatch } from '../data/fuzzy-match.js';
+import { findBestMatch } from './fuzzy-match.js';
 import { debouncedSaveWorkoutData } from '../data/data-manager.js';
 import {
     renderActiveWorkout,

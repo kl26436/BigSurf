@@ -57,7 +57,6 @@ js/
     │   ├── equipment-id-migration-runner.js # ?debug console runner for the id backfills (dry-run default)
     │   ├── location-id-resolver.js     # Gym name → stable location doc id (exact; ambiguous/orphan aware)
     │   ├── location-id-migration.js    # Pure planners: locationIds[] backfill + orphan-gym detection
-    │   ├── fuzzy-match.js          # Fuzzy string matching (catalog/exercise matching)
     │   └── schema-migration.js     # v2 to v3 migration
     ├── features/               # Feature modules
     │   ├── ai-coach-ui.js          # AI Coach modal, prompt cards, history
@@ -89,6 +88,8 @@ js/
     │   ├── pr-tracker.js           # Personal record detection (segmented per exercise+equipment)
     │   ├── progress-scoreboard.js  # AP-21: rolling 4-wk e1RM per main lift, rep PRs, pattern coverage (dashboard card + coach + weekly review)
     │   ├── coach-rules.js          # AP-16: computeVerdicts/formatVerdictsContext — the rules' answers handed to the coach as facts
+    │   ├── coach-guards.js         # AP-17/18: what the coach's write tools enforce (deload lock, stall/loadability, equipment, dedupe, program shape)
+    │   ├── fuzzy-match.js          # Dice similarity (catalog/exercise/equipment matching) — mirrored for the coach's equipment check
     │   ├── training-rules.js       # Pure volume/deload rules + RULE_THRESHOLDS (Config spreads them); training-insights wraps these
     │   ├── progression.js          # Pure double-progression + stall ladder; takes the session intent (deload never bumps)
     │   ├── session-intent.js       # getSessionIntent(): deload / peak / build for TODAY (program week > manual > legacy label); stamped on savedData.sessionIntent at start/resume
@@ -432,7 +433,7 @@ For add-exercise / equipment / similar shared flows, prefer the parameterized he
 
 ### Mirrored rule modules (client ↔ functions/)
 
-`functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-outcomes, week-targets, movement-patterns, exercise-rotation. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
+`functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-guards, fuzzy-match, coach-outcomes, week-targets, movement-patterns, exercise-rotation. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
 
 ### Touching active-workout code
 

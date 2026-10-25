@@ -8,6 +8,8 @@
 
 *Status 2026-10-24: AP-15 h–i, AP-16, AP-21 and AP-22 phase 1 committed; full suite green (1062), lint at baseline, design audit strict ok. Functions deployed (one project — live for dev and prod clients; backward compatible with the old client). Hosting on **dev** only; promote to prod after verifying. "As built" notes under each phase record where the build differs from the plan text.*
 
+*Status 2026-10-25: AP-17 and AP-18 implemented (1099 tests green, lint at baseline, design audit strict ok). Not yet deployed — functions carry nearly all of it.*
+
 **How to use this doc in VS Code:** each AP-n block is written so you can paste it (with the "Context" paragraph at the top of its issue section) straight into Claude Code / Copilot as the task. The "Acceptance" lines are what to check before merging. Run `npm test` before and after every phase.
 
 ---
@@ -349,6 +351,8 @@ Everything with a number and a threshold is a rule. The model receives verdicts 
 
 #### AP-17 — Guards in code, not prose (M)
 
+> **As built (2026-10-25):** guards are a new pure, mirrored module `js/core/features/coach-guards.js` (`deloadLock`, `progressionGuard`, `loadabilityGuard`, `programShapeIssues`, plus AP-18's `resolveEquipment`/`findNearDuplicate`/`toolError`); the executors in `coach-tools.js` load data once per turn (`loadCtx`) and call in. **Deload lock** on `update_workout_template`/`replace_day`/`create_workout_template` → `{error:{code:'locked'}}`; `override:true` requires `overrideReason` and writes a `coachOverrides` doc. **Progression guard** on template weights (setExercise, added exercises, replace_day/create inputs — only values the model sent, never carried-forward ones) and on `propose_next_target` (which also enforces the live deload target). **Loadability**: on-grid from any previously lifted top weight in `weightIncrement` steps; no history = allowed. **Program shape**: 4+ weeks without a deload is an error in `validateProgramInput` (create + adjust incl. a `weeks` change); identical training weeks and <2×/week for Chest/Back/Legs/Shoulders come back as `warnings[]` on the result. **Thresholds**: the prompt's MEV/MRV and "10–20 sets" lines are gone; the verdicts block states `Volume landmarks: MEV · MRV` from `RULE_THRESHOLDS`. `detectPlateaus`/dashboard already used the stall ladder since AP-8 — nothing left there. Found while testing: the body-part keyword fallback filed **Leg Press under Shoulders** and **Lateral raise under Back**; fixed by keyword order in `training-rules.js`.
+
 - **Deload lock:** when the active program's current week `isDeloadTarget`, `update_workout_template`/`replace_day`/`create_workout_template` return `{error:{code:'locked', message:'Deload week — template edits are locked; use propose_session_adjustments', hint}}` unless `override:true` with a logged reason.
 - **Progression guard:** `propose_next_target` and template `weight` reject a load above `progressionTarget().weight` when `stalled` (error names the rung and rule-derived target).
 - **Loadability guard:** reject weights not reachable by `weightIncrement` steps (server mirror of `scaleLoadableWeight`).
@@ -356,6 +360,8 @@ Everything with a number and a threshold is a rule. The model receives verdicts 
 - **Align thresholds:** delete MEV/MRV numbers from the prompt, inject `Config.VOLUME_MEV/MRV` into the context header; `detectPlateaus` (`:191`) and dashboard (`:491`) call `progressionTarget`.
 
 #### AP-18 — Tool hygiene (M)
+
+> **As built (2026-10-25):** `normalizeExercise` returns the exercise or `{error}` naming the field and the allowed range — absent fields still default (3×10), present-but-invalid is rejected; one bad exercise rejects the whole call. `normalizeWeekTarget` and the new `prescriptionFieldErrors` (movement-patterns) reject the same way. Schemas: one `EXERCISE_ITEM` (integer min/max, enums for role/pattern/progression) for create/replace/update.addExercises/session-adjustments, `SPLIT_SCHEMA` for create/adjust_program, enums for category/kind/goal/trustLevel/log_advice.type. Equipment: exact or Dice ≥ 0.85 → canonical library name, else error with the 3 nearest (`fuzzy-match.js` moved `data/` → `features/` and is mirrored); `propose_swap` checks against the **current gym's** equipment. `checkProposal` (executor) runs after `validateProposal`: session adjustments need a real, unarchived template (`not_found` instead of `{proposed:true}`). Structured errors: executors use `toolError`; the tool loop normalizes any string error to `invalid_input` and turns exceptions into `internal` (logged server-side). Near-duplicate: Jaccard ≥ 0.7 vs active templates → `near_duplicate` with `existing`, unless `kind:'variation'`. `list_templates` no longer writes; new scheduled `backfillTemplateUsage` (daily 09:00) persists the counts. The prompt gained one paragraph on what each error code means.
 
 - **Reject, don't coerce:** `normalizeExercise`, `normalizeWeekTarget`, `applyPrescriptionFields` return `{error}` listing allowed values. The model learns the schema from the error and retries; nothing silently becomes 3×10.
 - Real inner schemas for `addExercises` (both tools) and `split`; `enum` arrays for `category`, `goal`, `kind`, `role`, `pattern`, `progression`, `log_advice.type`.

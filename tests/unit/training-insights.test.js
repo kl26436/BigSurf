@@ -68,6 +68,10 @@ describe('getBodyPartForExercise', () => {
         expect(getBodyPartForExercise('Cable Row', [])).toBe('Back');
         expect(getBodyPartForExercise('Leg Extension', [])).toBe('Legs');
         expect(getBodyPartForExercise('Deadlift', [])).toBe('Back');
+        // Keyword order: legs before the bare "press", lateral raise before "lat".
+        expect(getBodyPartForExercise('Leg Press', [])).toBe('Legs');
+        expect(getBodyPartForExercise('Lateral Raise Machine', [])).toBe('Shoulders');
+        expect(getBodyPartForExercise('Overhead Press', [])).toBe('Shoulders');
     });
 
     it('returns null for unknown exercises', () => {

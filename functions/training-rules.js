@@ -115,12 +115,15 @@ function getBodyPartForExercise(exerciseName, exerciseDatabase) {
         if (match && match.bodyPart) return match.bodyPart;
     }
 
-    // Keyword fallback
+    // Keyword fallback. Order matters: specific words before the generic
+    // ones they collide with — "lateral raise" before back's "lat", and legs
+    // before the bare "press" (Leg Press used to count as shoulders).
     const name = exerciseName.toLowerCase();
     if (name.includes('bench') || name.includes('chest') || name.includes('fly') || name.includes('pec')) return 'Chest';
+    if (name.includes('shoulder') || name.includes('delt') || name.includes('lateral raise')) return 'Shoulders';
     if (name.includes('row') || name.includes('pull') || name.includes('lat') || name.includes('back')) return 'Back';
-    if (name.includes('shoulder') || name.includes('press') || name.includes('delt') || name.includes('lateral raise')) return 'Shoulders';
     if (name.includes('squat') || name.includes('leg') || name.includes('lunge') || name.includes('hamstring') || name.includes('quad') || name.includes('calf')) return 'Legs';
+    if (name.includes('press')) return 'Shoulders';
     if (name.includes('bicep') || name.includes('curl') || name.includes('tricep') || name.includes('arm') || name.includes('extension')) return 'Arms';
     if (name.includes('core') || name.includes('ab') || name.includes('crunch') || name.includes('plank')) return 'Core';
     if (name.includes('deadlift')) return 'Back';
