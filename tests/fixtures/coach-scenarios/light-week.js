@@ -96,3 +96,23 @@ export function lightWeekUser() {
 export function fourWeekBest() {
     return Object.fromEntries(Object.entries(WEEKS).map(([name, rows]) => [name, Math.max(...rows.slice(0, 4).map(r => r[0]))]));
 }
+
+/**
+ * AU-12 isolated: week 5 trained at week-4 load with NO notes, but the Lat
+ * Pulldown done on the Panatta (90×10) instead of the High Row. Only keying
+ * series by machine keeps the High Row verdict here.
+ */
+export function machineSwitchUser() {
+    const user = lightWeekUser();
+    for (const w of user.workouts) {
+        if (w.date < '2026-10-19') continue;
+        for (const [k, ex] of Object.entries(w.exercises)) {
+            delete ex.notes;
+            const name = w.exerciseNames[k];
+            if (name === 'Lat Pulldown') continue; // stays on the Panatta at 90
+            const [wt, r] = WEEKS[name][3];
+            ex.sets = [set(wt, r), set(wt, r), set(wt, Math.max(1, r - 1))];
+        }
+    }
+    return user;
+}

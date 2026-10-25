@@ -17,6 +17,20 @@
 import { weekTargetEffects, isDeloadTarget, describeWeekTarget, deriveProgramWeek } from './week-targets.js';
 
 const RECOVERY_LABEL = /deload|recovery/i;
+/**
+ * AU-10(a) — a note saying the session was light ("Dead load week",
+ * "deload", "recovery", "light day"). Kevin's 2026-10 block: the week was
+ * trained light with no label, only notes, and the rules bumped off it.
+ */
+export const RECOVERY_NOTE = /\b(de-?load|dead.?load|recovery)\b|\blight (week|day|session)\b/i;
+
+/** The workout's own note + every exercise note that matches RECOVERY_NOTE. */
+export function recoveryNotes(w) {
+    if (!w) return { workout: false, exercises: 0, any: false };
+    const workout = RECOVERY_NOTE.test(String(w.workoutNotes || ''));
+    const exercises = Object.values(w.exercises || {}).filter(ex => RECOVERY_NOTE.test(String(ex?.notes || ''))).length;
+    return { workout, exercises, any: workout || exercises > 0 };
+}
 
 /** Default load cut for a manual (no-program) deload. */
 export const MANUAL_DELOAD_WEIGHT_PCT = -30;
@@ -130,9 +144,18 @@ export function sessionOnlyDeloadIntent() {
     };
 }
 
-/** A completed workout that was a deload/recovery session. */
+/**
+ * A completed workout that was a deload/recovery session: its intent or label
+ * says so, or (AU-10(a)) its notes describe the session itself — the workout
+ * note, or two or more exercise notes. A single exercise note is too weak on
+ * its own ("next week is deload" on a heavy day); buildExerciseSessions
+ * accepts it only when the load agrees.
+ */
 export function isRecoveryWorkout(w) {
-    return !!w && (w.sessionIntent?.mode === 'deload' || RECOVERY_LABEL.test(w.sessionLabel || ''));
+    if (!w) return false;
+    if (w.sessionIntent?.mode === 'deload' || RECOVERY_LABEL.test(w.sessionLabel || '')) return true;
+    const n = recoveryNotes(w);
+    return n.workout || n.exercises >= 2;
 }
 
 /** "Deload · −35% weight · 12–15 reps" — '' for a plain build session. */

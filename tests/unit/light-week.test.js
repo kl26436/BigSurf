@@ -4,15 +4,15 @@
 // which fix did what. Real modules, synthetic fixture.
 
 import { describe, it, expect } from 'vitest';
-import { lightWeekUser, fourWeekBest } from '../fixtures/coach-scenarios/light-week.js';
+import { lightWeekUser, fourWeekBest, machineSwitchUser } from '../fixtures/coach-scenarios/light-week.js';
 import { computeVerdicts, formatVerdictsContext } from '../../js/core/features/coach-rules.js';
 import { buildScoreboard } from '../../js/core/features/progress-scoreboard.js';
 
 const user = lightWeekUser();
 const best = fourWeekBest();
-const verdicts = () => computeVerdicts({
-    workouts: user.workouts, templates: user.templates, weekPlan: user.weekPlan, program: user.program,
-    today: user.today, unit: 'lbs', plates: user.settings.plateLbs,
+const verdicts = (u = user) => computeVerdicts({
+    workouts: u.workouts, templates: u.templates, weekPlan: u.weekPlan, program: u.program,
+    today: u.today, unit: 'lbs', plates: u.settings.plateLbs,
 });
 const PRIMARIES = ['Smith Machine Bench Press', 'Shoulder Press Machine', 'Lat Pulldown', 'Hack Squat'];
 
@@ -24,7 +24,7 @@ describe('scenario 22 — unlabeled light week (rules level)', () => {
         expect(wk5.map(w => Object.values(w.exercises).filter(e => e.notes).length)).toEqual([1, 1]);
     });
 
-    it.fails('no main-lift target sits below 85% of its 4-week best (flips on: —)', () => {
+    it('no main-lift target sits below 85% of its 4-week best (flipped by AU-10(a) — notes + load)', () => {
         const v = verdicts();
         for (const name of PRIMARIES) {
             const e = v.exercises.find(x => x.name === name);
@@ -32,8 +32,10 @@ describe('scenario 22 — unlabeled light week (rules level)', () => {
         }
     });
 
-    it.fails('the Lat Pulldown verdict is the High Row series, not the Panatta (flips on: —)', () => {
-        const e = verdicts().exercises.find(x => x.name === 'Lat Pulldown');
+    // AU-10(a) also drops the Panatta session here (it's light), so this
+    // variant isolates AU-12: a normal week, no notes, only the machine moved.
+    it.fails('a machine switch alone: the Lat Pulldown verdict stays on the High Row series (flips on: —)', () => {
+        const e = verdicts(machineSwitchUser()).exercises.find(x => x.name === 'Lat Pulldown');
         expect(e.weight).toBeGreaterThanOrEqual(300);
     });
 
@@ -43,8 +45,10 @@ describe('scenario 22 — unlabeled light week (rules level)', () => {
         expect(hinge.setsThisWeek).toBeGreaterThan(0);
     });
 
-    it('today the verdicts read the light week as the baseline (the bug, pinned)', () => {
+    it('after AU-10(a): the light week is skipped and the calls match the golden answer', () => {
         const text = formatVerdictsContext(verdicts());
-        expect(text).toMatch(/Smith Machine Bench Press .*bump → 100×6/);
+        expect(text).toMatch(/Smith Machine Bench Press .*hold 140 lbs, chase 6 reps/);
+        expect(text).toMatch(/Shoulder Press Machine .*last 160×10 lbs on 2026-10-12/);
+        expect(text).toMatch(/Lat Pulldown .*last 320×5 lbs on 2026-10-12/);
     });
 });

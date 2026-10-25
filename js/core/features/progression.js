@@ -15,7 +15,7 @@
 // server's get_verdicts tool and weekly review run THIS rule matrix, so the
 // coach can't disagree with the set rows. Sibling imports only.
 
-import { isRecoveryWorkout } from './session-intent.js';
+import { isRecoveryWorkout, recoveryNotes } from './session-intent.js';
 import { convertToUnit } from './coach-outcomes.js';
 
 const INCREMENT = { lbs: 5, kg: 2.5 };
@@ -83,6 +83,11 @@ export function scaleLoadableWeight(weight, factor, step) {
  * as the light session and "earned" a bump off it (0.65·W + 5), and a deload
  * at full reps looked like a fresh plateau start.
  */
+/** Epley estimate; used only to compare a session against its own lift's recent best. */
+const e1rmOf = (w, r) => (w > 0 && r > 0 ? w * (1 + Math.min(r, 12) / 30) : 0);
+/** AU-10(a) — a noted session is "light" for a lift below this share of its 4-week best. */
+export const LIGHT_NOTE_LOAD_SHARE = 0.85;
+
 export function buildExerciseSessions(allWorkouts, exName, displayUnit, { excludeRecovery = true } = {}) {
     if (!Array.isArray(allWorkouts) || !exName) return [];
     const sessions = [];
@@ -116,12 +121,37 @@ export function buildExerciseSessions(allWorkouts, exName, displayUnit, { exclud
                     if (rpe != null) topRpe = Math.max(topRpe ?? 0, rpe);
                 }
             }
-            sessions.push({ date: w.date, topWeight, topReps, maxReps, topRpe, rpeLogged });
+            sessions.push({ date: w.date, topWeight, topReps, maxReps, topRpe, rpeLogged, _noted: excludeRecovery && recoveryNotes(w).any });
             break; // one entry per workout
         }
     }
     sessions.sort((a, b) => b.date.localeCompare(a.date));
-    return sessions;
+    // AU-10(a) — one "deload"/"light" note in the workout + this lift's top
+    // set under 85% of its best over the previous 28 days = a light session
+    // for this lift: left out, like a labelled deload. A note on a normal-load
+    // day ("next week is deload") doesn't move anything.
+    const skipped = [];
+    const kept = sessions.filter((s, i) => {
+        if (!s._noted) return true;
+        const from = shiftDate(s.date, -28);
+        let best = 0;
+        for (const p of sessions.slice(i + 1)) {
+            if (p.date < from) break;
+            best = Math.max(best, e1rmOf(p.topWeight, p.topReps || p.maxReps));
+        }
+        const light = best > 0 && e1rmOf(s.topWeight, s.topReps || s.maxReps) < best * LIGHT_NOTE_LOAD_SHARE;
+        if (light) skipped.push({ date: s.date, reason: 'notes + load' });
+        return !light;
+    });
+    for (const s of kept) delete s._noted;
+    if (skipped.length) Object.defineProperty(kept, 'lightSkipped', { value: skipped, enumerable: false });
+    return kept;
+}
+
+function shiftDate(date, days) {
+    const d = new Date(`${date}T12:00:00`);
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /**
