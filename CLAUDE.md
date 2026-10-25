@@ -90,6 +90,8 @@ js/
     │   ├── pr-tracker.js           # Personal record detection (segmented per exercise+equipment)
     │   ├── progress-scoreboard.js  # AP-21: rolling 4-wk e1RM per main lift, rep PRs, pattern coverage (dashboard card + coach + weekly review)
     │   ├── coach-rules.js          # AP-16: computeVerdicts/formatVerdictsContext — the rules' answers handed to the coach as facts
+    │   ├── coach-context-builder.js # AP-20c: PURE chat-context builder (buildChatContext) — ai-coach-ui + the eval build the same block
+    │   ├── coach-live-context.js   # AP-20c: PURE live-workout snapshot (buildLiveWorkoutContext; re-exported by coach-live.js)
     │   ├── coach-guards.js         # AP-17/18: what the coach's write tools enforce (deload lock, stall/loadability, equipment, dedupe, program shape)
     │   ├── fuzzy-match.js          # Dice similarity (catalog/exercise/equipment matching) — mirrored for the coach's equipment check
     │   ├── training-rules.js       # Pure volume/deload rules + RULE_THRESHOLDS (Config spreads them); training-insights wraps these
@@ -114,6 +116,8 @@ js/
     │   ├── navigation.js           # Bottom nav, routing, navStack for drill-downs
     │   ├── settings-ui.js          # Settings page, onboarding flow, profile detail
     │   ├── confirm-sheet.js        # confirmSheet()/promptSheet() — promise-based replacement for native confirm/prompt
+    │   ├── sheet.js                # SH-2b: openSheet() — THE bottom-sheet primitive (pinned search, inert, focus, Escape, swipe, stacking)
+    │   ├── page-lock.js            # SH-2a: page scroll lock DERIVED from what's open (OVERLAY_SELECTOR) + explicit lockPage() holds
     │   ├── template-selection.js   # Workouts page — library + dedicated editor page (#workout-editor-section)
     │   ├── ui-helpers.js           # Notifications, conversions, modal helpers
     │   └── workout-history-ui.js   # History modal
@@ -123,6 +127,7 @@ js/
     │   ├── date-helpers.js         # Date parsing/formatting, getDayName()
     │   ├── equipment-name.js       # composeEquipmentName() — the SINGLE brand/line/function → name composer
     │   ├── debug-utilities.js      # Debug functions
+    │   ├── shell-hud.js            # SH-0: ?debug viewport/keyboard/safe-area/lock HUD + shell_snapshot (lazy, debug only)
     │   ├── error-handler.js        # Error handling with severity levels
     │   ├── haptics.js              # Haptic feedback wrapper
     │   ├── capacitor-push.js       # Capacitor push bridge
@@ -183,6 +188,8 @@ styles/
 │   ├── library-tabs.css   # Equipment library compact tabs
 │   ├── completion-summary.css # Workout completion modal
 │   ├── confirm-sheet.css  # confirmSheet()/promptSheet() bottom sheets
+│   ├── sheet.css          # openSheet() primitive (SH-2b)
+│   ├── shell-hud.css      # ?debug shell HUD (SH-0)
 │   ├── quick-add-sheet.css # Quick-add bottom sheet
 │   ├── active-pill.css    # Floating workout-in-progress pill
 │   ├── bodyweight.css     # BW banner + base-weight rows
@@ -217,6 +224,8 @@ styles/
 Tests use Vitest and IMPORT THE REAL SOURCE MODULES — do not re-implement logic in tests. Conventions (2026-07 conversion):
 - Pure modules (config.js, streak-tracker, training-insights, ui-helpers math) import directly.
 - Modules whose import graph pulls Firebase use `vi.mock('../../js/core/data/firebase-config.js', ...)` backed by the shared in-memory factory in [tests/fixtures/firestore-mock.js](tests/fixtures/firestore-mock.js) (supports doc/collection/getDocs/setDoc/query/where/orderBy). Mock `ui-helpers.js` when the graph touches the DOM at import time.
+- Server code (`functions/*.js`) gets [tests/fixtures/admin-db-mock.js](tests/fixtures/admin-db-mock.js) — an Admin-SDK fake (set/merge, where, orderBy, limit, `snap.ref`) that records every write in `db.writes`.
+- DOM tests opt into jsdom per file with a first-line `// @vitest-environment jsdom` (see page-lock / sheet tests); the default environment stays node.
 - A few tests still mirror logic that only exists inline in render functions (or in deliberately-unexported active-workout functions). Those carry a `// MIRRORS: <file>#<function> (lines N-M)` header — keep them in sync when touching the source, or better, extract+export the function and convert the test.
 - Adding `export` to an existing internal function purely for testability is allowed (zero runtime impact — nothing in the app imports it).
 - [window-wiring.test.js](tests/unit/window-wiring.test.js) statically verifies every inline `onclick` handler (index.html + JS template strings) resolves to a `window.*` assignment — it will fail your PR if you render a handler without wiring it.
@@ -400,7 +409,9 @@ The editor page (in `template-selection.js`: `renderWorkoutEditorPage`) reuses t
 
 ### Adding a bottom sheet
 
-There is NO shared sheet primitive (`js/core/ui/sheet.js` never existed — don't hunt for it). Sheets are built manually with the `aw-sheet` DOM pattern; canonical examples are `renderManualLinkSheet` in [equipment-library-ui.js](js/core/ui/equipment-library-ui.js) and `showGymChooserSheet` in [workout-session.js](js/core/workout/workout-session.js):
+**New sheets use the primitive:** `openSheet({ id, title, subtitle, bodyHTML, footerHTML, search, size, dismissible, onClose })` from [sheet.js](js/core/ui/sheet.js) (SH-2b, 2026-10) → `{ el, body, search, close, setBody, setFooter }`. It owns keyboard inset, safe areas, the pinned search field, page lock, `inert` behind, focus, Escape, swipe-down and stacking — don't re-implement any of those. The page lock ([page-lock.js](js/core/ui/page-lock.js)) is derived from the DOM: a new overlay root that isn't a `.sheet`/`.aw-sheet`/`dialog.modal` must be added to its `OVERLAY_SELECTOR`, and never write `body.style.overflow`.
+
+**Legacy pattern (until SH-3 migrates them):** existing sheets are built manually with the `aw-sheet` DOM pattern; canonical examples are `renderManualLinkSheet` in [equipment-library-ui.js](js/core/ui/equipment-library-ui.js) and `showGymChooserSheet` in [workout-session.js](js/core/workout/workout-session.js):
 
 ```js
 const backdrop = document.createElement('div');
@@ -436,7 +447,7 @@ For add-exercise / equipment / similar shared flows, prefer the parameterized he
 
 ### Mirrored rule modules (client ↔ functions/)
 
-Server-only (not mirrored): `functions/coach-routing.js` — model routing per turn + `coachTraces` doc builder (top-level collection, admin-only read).
+Server-only (not mirrored): `functions/coach-routing.js` — model routing per turn + `coachTraces` doc builder (top-level collection, admin-only read); `functions/coach-prompts.js` — system prompts, model per tier, `buildModeRequest`; `functions/coach-loop.js` — `runCoachToolLoop`, THE tool loop (coachChatStream and the AP-20 eval both call it — change the loop there, never inline).
 
 `functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-guards, fuzzy-match, coach-outcomes, week-targets, movement-patterns, exercise-rotation. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
 
@@ -643,6 +654,8 @@ After meaningful changes, run the relevant subset before saying a task is comple
 | Pure data file (catalog seed, fixtures) | Verify data loads; skip Vitest/lint |
 | CSS-only (tokens, components, restyle) | `npm run audit:design` (catches raw colors, untokenized font sizes, duplicate classes) |
 | HTML structure | `npm run audit:design` + manual smoke test |
+| Sheets, overlays, headers, back/close buttons | `npm run audit:shell:strict` (budgets in scripts/shell-audit.js only go down) |
+| Coach prompt, tool, context or loop change | `npm run eval:coach` (needs `ANTHROPIC_API_KEY`; `EVAL_ONLY=id1,id2` to iterate) — no new regressions vs tests/coach-eval/baseline.json |
 
 `npm run audit:design --strict` is the must-pass variant. Lint baseline: 20 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 20` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
 
