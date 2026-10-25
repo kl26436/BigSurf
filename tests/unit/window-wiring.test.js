@@ -89,3 +89,18 @@ describe('window-export wiring', () => {
         ).toEqual([]);
     });
 });
+
+// AP-11 / AP-13 — the equipment picker has one door now. These were the old
+// doors (a separate "New machine" form, a navigate-to-Library bridge, two
+// trailing "Create" rows); nothing may render or wire them again.
+describe('retired equipment-create handlers stay retired', () => {
+    for (const name of [
+        'awQuickAddEquipment', 'awSaveNewEquipment', 'awNewEquipSetType', 'awNewEquipKeydown',
+        'awGoToEquipmentLibrary', 'awCreateEquipmentFromSearch', 'awSharedCreateEquipmentFromSearch',
+    ]) {
+        it(`${name} appears nowhere in js/ or index.html`, () => {
+            expect(jsText.includes(name)).toBe(false);
+            expect(htmlText.includes(name)).toBe(false);
+        });
+    }
+});

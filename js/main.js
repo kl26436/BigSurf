@@ -125,7 +125,6 @@ import {
     awConfirmSupersetLink,
     awOpenEquipmentSheet,
     awSelectEquipment,
-    awGoToEquipmentLibrary,
     awShowFormVideo,
     awCloseFormVideo,
     awAddExercise,
@@ -143,8 +142,6 @@ import {
     awEndReorder,
     awEquipSearch,
     awEquipShowAll,
-    awQuickAddEquipment,
-    awSaveNewEquipment,
     awSharedEquipSearch,
     awSharedSelectEquipment,
     awSharedCancelEquipment,
@@ -586,7 +583,6 @@ window.awToggleSupersetSelect = awToggleSupersetSelect;
 window.awConfirmSupersetLink = awConfirmSupersetLink;
 window.awOpenEquipmentSheet = awOpenEquipmentSheet;
 window.awSelectEquipment = awSelectEquipment;
-window.awGoToEquipmentLibrary = awGoToEquipmentLibrary;
 window.awShowFormVideo = awShowFormVideo;
 window.awCloseFormVideo = awCloseFormVideo;
 window.awAddExercise = awAddExercise;
@@ -604,8 +600,6 @@ window.awMoveExercise = awMoveExercise;
 window.awEndReorder = awEndReorder;
 window.awEquipSearch = awEquipSearch;
 window.awEquipShowAll = awEquipShowAll;
-window.awQuickAddEquipment = awQuickAddEquipment;
-window.awSaveNewEquipment = awSaveNewEquipment;
 window.awSharedEquipSearch = awSharedEquipSearch;
 window.awSharedSelectEquipment = awSharedSelectEquipment;
 window.awSharedCancelEquipment = awSharedCancelEquipment;

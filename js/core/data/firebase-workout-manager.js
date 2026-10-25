@@ -28,6 +28,7 @@ import { Config, debugLog } from '../utils/config.js';
 import { confidentEquipmentId } from './equipment-id-resolver.js';
 import { resolveLocationId } from './location-id-resolver.js';
 import { captureWarning } from '../utils/error-handler.js';
+import { matchOwnedEquipment, parseEquipmentName, knownBrands } from './equipment-create.js';
 
 // One-shot guard for the legacy `location` → `locations[]` write sweep in
 // getUserEquipment. Module-scoped (not per-instance) because the manager is
@@ -63,44 +64,9 @@ function withTimeout(promise, ms = Config.FIREBASE_TIMEOUT_MS) {
 // strict case-insensitive equality.
 // ===================================================================
 
-function normalizeEquipName(name) {
-    return (name || '').toLowerCase().trim().replace(/\s+/g, ' ');
-}
-
-function fuzzyEquipMatch(a, b) {
-    const na = normalizeEquipName(a);
-    const nb = normalizeEquipName(b);
-    if (!na || !nb) return false;
-    if (na === nb) return true;
-    const strip = (s) => s.replace(/[—–\-_·:]/g, ' ').replace(/\s+/g, ' ').trim();
-    return strip(na) === strip(nb);
-}
-
-/**
- * Given a raw equipment name and the user's existing equipment, try to
- * extract a {brand, function} split by matching against known brand
- * prefixes. Returns { brand: null, function: null } when nothing matches —
- * callers should treat those nulls as "unparsed", not as final values.
- *
- * Only considers brands that are neither falsy nor the sentinel "Unknown".
- */
-function parseEquipmentName(rawName, knownEquipment) {
-    if (!rawName) return { brand: null, function: null };
-    const brands = [...new Set(
-        (knownEquipment || [])
-            .map((e) => e.brand)
-            .filter((b) => b && b !== 'Unknown')
-    )];
-    const lowerName = rawName.toLowerCase();
-    for (const brand of brands) {
-        const lowerBrand = brand.toLowerCase();
-        if (lowerName.startsWith(lowerBrand)) {
-            const rest = rawName.slice(brand.length).trim().replace(/^[—–\-·:]\s*/, '');
-            return { brand, function: rest || null };
-        }
-    }
-    return { brand: null, function: null };
-}
+// (normalizeEquipName / fuzzyEquipMatch / parseEquipmentName moved to
+// equipment-create.js — AP-12: one set of dedupe and brand rules for every
+// create path.)
 
 export class FirebaseWorkoutManager {
     constructor(appState) {
@@ -1087,6 +1053,12 @@ export class FirebaseWorkoutManager {
                 // { [exerciseName]: [{label, value}] } — "Seat 4", "Pin 13".
                 exerciseSettings: equipmentData.exerciseSettings || {},
                 notes: equipmentData.notes || '',
+                // AP-12 — the unit this machine reads in (kg plates at an lbs
+                // gym) and where the doc came from. Both used to be dropped
+                // here, so photo-ID's createdVia silently vanished.
+                ...(equipmentData.preferredUnit === 'kg' || equipmentData.preferredUnit === 'lbs'
+                    ? { preferredUnit: equipmentData.preferredUnit } : {}),
+                ...(equipmentData.createdVia ? { createdVia: String(equipmentData.createdVia).slice(0, 30) } : {}),
                 createdAt: equipmentData.createdAt || new Date().toISOString(),
                 lastUsed: new Date().toISOString(),
                 version: 2,
@@ -1323,9 +1295,18 @@ export class FirebaseWorkoutManager {
     }
 
     /**
-     * Get or create equipment by name and optional location
-     * Returns existing equipment if found (by name only), creates new if not
-     * Equipment can have multiple locations, so we match by name only
+     * Get or create equipment by name — THE equipment writer (AP-13): every
+     * create path in the app lands here, so dedupe, brand parsing, gym/
+     * exercise tagging and the cache are handled once.
+     *
+     * Matching is by name ignoring case, spacing and separators
+     * ("Hammer Strength — Chest Press" = "hammer strength chest press"); a
+     * merely SIMILAR name is the UI's question to ask (planInlineEquipment),
+     * never a silent merge here. An existing match gets the requested gym and
+     * exercise tags added.
+     *
+     * Options form: `{...docFields, knownEquipment?}` — pass the warm
+     * equipment cache as knownEquipment to skip the full pre-read (AP-12).
      */
     async getOrCreateEquipment(equipmentName, locationOrOptions = null, exerciseName = null, videoUrl = null) {
         if (!this.appState.currentUser || !equipmentName) {
@@ -1338,23 +1319,18 @@ export class FirebaseWorkoutManager {
         if (typeof locationOrOptions === 'string') {
             location = locationOrOptions;
         } else if (locationOrOptions && typeof locationOrOptions === 'object') {
-            extraFields = locationOrOptions;
+            const { knownEquipment: _known, ...rest } = locationOrOptions;
+            extraFields = rest;
         }
+        const known = locationOrOptions && typeof locationOrOptions === 'object'
+            && Array.isArray(locationOrOptions.knownEquipment) && locationOrOptions.knownEquipment.length
+            ? locationOrOptions.knownEquipment : null;
 
         try {
-            const allEquipment = await this.getUserEquipment();
+            const allEquipment = known || await this.getUserEquipment();
 
-            // 1) Exact case-insensitive match
-            let existing = allEquipment.find(
-                (eq) => eq.name?.toLowerCase() === equipmentName.toLowerCase()
-            );
-
-            // 2) Fuzzy match — collapses whitespace and strips separators so
-            //    "Hammer Strength — Chest Press" and "Hammer Strength Chest Press"
-            //    resolve to the same record.
-            if (!existing) {
-                existing = allEquipment.find((eq) => fuzzyEquipMatch(eq.name, equipmentName));
-            }
+            const match = matchOwnedEquipment(equipmentName, allEquipment, { threshold: Infinity });
+            const existing = match?.equipment || null;
 
             if (existing) {
                 // Add location if provided and not already present
@@ -1365,6 +1341,18 @@ export class FirebaseWorkoutManager {
                 if (exerciseName) {
                     await this.updateEquipmentUsage(existing.id, exerciseName);
                 }
+                // Options form: the gym and exercise this call is FOR get tagged
+                // onto the machine it turned out to be.
+                const has = (list, v) => (list || []).some(x => String(x).toLowerCase() === String(v).toLowerCase());
+                const addLocs = (extraFields.locations || []).filter(l => l && !has(existing.locations, l));
+                const addEx = (extraFields.exerciseTypes || []).filter(n => n && !has(existing.exerciseTypes, n));
+                if (addLocs.length || addEx.length) {
+                    const updates = {};
+                    if (addLocs.length) updates.locations = [...(existing.locations || []), ...addLocs];
+                    if (addEx.length) updates.exerciseTypes = [...(existing.exerciseTypes || []), ...addEx];
+                    await this.updateEquipment(existing.id, updates);
+                    Object.assign(existing, updates);
+                }
                 return existing;
             }
 
@@ -1374,7 +1362,7 @@ export class FirebaseWorkoutManager {
             // already split them out, trust that.
             const shouldAutoParse = extraFields.brand == null && extraFields.function == null;
             const parsed = shouldAutoParse
-                ? parseEquipmentName(equipmentName, allEquipment)
+                ? parseEquipmentName(equipmentName, knownBrands(allEquipment))
                 : { brand: null, function: null };
 
             // Create new equipment. Order: computed defaults → extraFields override →
@@ -1405,7 +1393,12 @@ export class FirebaseWorkoutManager {
             newEquipment.exerciseVideos = videoMap;
 
             const equipmentId = await this.saveEquipment(newEquipment);
-            return { id: equipmentId, ...newEquipment };
+            const created = { id: equipmentId, ...newEquipment };
+            // saveEquipment nulled the shared cache; allEquipment WAS the whole
+            // list, so put it back with the new doc instead of making the next
+            // reader re-fetch every machine.
+            this.appState._cachedEquipment = [...allEquipment, created];
+            return created;
         } catch (error) {
             console.error('❌ Error getting or creating equipment:', error);
             return null;

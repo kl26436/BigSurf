@@ -51,6 +51,7 @@ js/
     │   ├── equipment-catalog-firestore.js  # Catalog Firestore reads/writes
     │   ├── equipment-catalog-helpers.js    # Catalog lookup/normalization helpers
     │   ├── catalog-search.js       # Pure catalog free-text search + type inference (equipment pickers)
+    │   ├── equipment-create.js     # AP-12: pure create planner — dedupe (exact vs similar), brand parse, type, unit, base weight
     │   ├── equipment-migration.js  # Legacy equipment → catalog migration
     │   ├── equipment-id-resolver.js    # Equipment name → stable doc id (exact/alias/fuzzy + confidence gate)
     │   ├── equipment-id-migration.js   # Pure planners: equipmentId backfill + PR re-key (field-wise merge)
@@ -439,6 +440,7 @@ For add-exercise / equipment / similar shared flows, prefer the parameterized he
 
 Active workout is the most user-critical surface. Two safety patterns:
 - When changing the equipment picker or add-exercise sheet, prefer adding a parallel `openShared*` API rather than refactoring `awOpenEquipmentSheet` / `awAddExercise` directly. Yes, this means some duplication — it's a deliberate tradeoff.
+- Every equipment doc is written by `FirebaseWorkoutManager#getOrCreateEquipment` (pass `knownEquipment` = the warm cache); typed names go through `planInlineEquipment` first. Don't add a create path that calls `saveEquipment` directly.
 - After any change, verify: change-equipment, replace-exercise, add-exercise from menu, and complete-workout flows. The auto-save path is `debouncedSaveWorkoutData` — confirm it still fires.
 - Render pads blank rows before autofill lands. Any path that changes what an exercise slot IS (exercise, equipment, intent) must call `loadAutofillForExercise(idx, { reseed: true, trigger })` so untouched rows refill (`mergeSeededSets`); start/resume use fill-only-if-blank so program adjustments aren't undone. Every autofill emits a quiet `autofill_trace` (Error Log page, session-only); `?debug` adds an overlay line on the last-session card and an `autofill_mismatch` warning when untouched rows don't match the card.
 - Today's deload/peak/build lives on `savedData.sessionIntent` (session-intent.js). Progression, seeding, the card nudge and dashboard insights read it — don't re-derive "is this a deload" from labels or the program elsewhere; use `isRecoveryWorkout(w)` for completed docs.

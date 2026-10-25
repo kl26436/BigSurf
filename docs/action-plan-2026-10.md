@@ -8,6 +8,8 @@
 
 *Status 2026-10-24: AP-15 h–i, AP-16, AP-21 and AP-22 phase 1 committed; full suite green (1062), lint at baseline, design audit strict ok. Functions deployed (one project — live for dev and prod clients; backward compatible with the old client). Hosting on **dev** only; promote to prod after verifying. "As built" notes under each phase record where the build differs from the plan text.*
 
+*2026-10-25: §4.0 rewritten around how Kevin trains (plan → execute → renegotiate); AP-19 gains a planning contract; added §4c / AP-23 (planner tools + live gaps) and §4d / AP-24 (Block page).*
+
 *Status 2026-10-25: AP-17 and AP-18 implemented (1099 tests green, lint at baseline, design audit strict ok). Not yet deployed — functions carry nearly all of it.*
 
 **How to use this doc in VS Code:** each AP-n block is written so you can paste it (with the "Context" paragraph at the top of its issue section) straight into Claude Code / Copilot as the task. The "Acceptance" lines are what to check before merging. Run `npm test` before and after every phase.
@@ -39,7 +41,7 @@ Week 3   AP-15         coach data fixes (volume math, Today line, units)
          AP-21         progress scoreboard (rolling 4-week e1RM on primaries) — the week-to-week "am I progressing?" answer
          AP-20a        coach traces (log what the model saw/called)
          AP-12         equipment-create planner + dedupe + unit
-Then     AP-4/5/8/10/13/14/16-19/20b as time allows, in the order listed; AP-22 (fatigue signal) right after AP-21 + AP-16 land.
+Then     AP-19 (both contracts) → AP-20a → **AP-23 → AP-24** (the planner's tools, then the page to see the plan) → AP-22 phase 2 → AP-4/5/13/14/20b-e as time allows.
 ```
 
 ### Before you start (30 minutes, no code)
@@ -104,6 +106,8 @@ Acceptance: every prefill produces exactly one `autofill_trace` on the Error Log
 
 #### AP-3 — Id-aware, case-insensitive last-session lookup with tier (M) — fixes D4
 
+> **As built (2026-10-25, with `9ec3198`):** id match + case-insensitive equipment landed in `9ec3198`; this pass added trim/lowercase exercise-name matching, `tier` and `cacheHit` on the result (cache hits return a copy), D9 (`loadAllWorkouts(state, {throwOnError:true})` — a failed read is never cached as "no history"), the card's "from X" following the matcher (`_lastSessionOtherMachine`, so an id-matched renamed machine doesn't say "from Old Name"), and tier in `autofill_trace` + the `?debug` overlay.
+
 In `data-manager.js`:
 - Signature `getLastSessionDefaults(exerciseName, equipment, location, equipmentId = null)`; include `equipmentId` in `cacheKey`.
 - Exercise compare: trim + lowercase. Equipment compare: `(equipmentId && exEquipId === equipmentId) || (equipment && exEquipment && norm(equipment) === norm(exEquipment))` where `exEquipId = exData.equipmentId || originalAtIdx?.equipmentId || null`.
@@ -116,11 +120,15 @@ Tests (`tests/unit/last-session-defaults.test.js`, new): tier precedence; equipm
 
 #### AP-4 — Plate/unit display (S) — fixes D6, D7
 
+> **As built (2026-10-25):** `plateRelativeDisplay(set, baseWeight)` in `set-seeding.js` (a seeded `_plateWeight` row shows its plates; typed-this-session shows as typed; legacy totals lose the base). `awToggleUnit` converts `_plateWeight` with the total (shared `convertSetsUnit`) and keeps autofilled numbers in the placeholder. Tests in `set-seeding.test.js` (no separate `set-row-display.test.js`).
+
 - `:1105`: `else if (!set._userEdited) rawForDisplay = (typeof set._plateWeight === 'number') ? set._plateWeight : Math.max(0, rawForDisplay - baseWeight);`
 - `awToggleUnit`: convert `_plateWeight` alongside `weight`; only write `input.value` for `_userEdited || completed` sets, update `placeholder` for the rest.
 - Export `plateRelativeDisplay(set, baseWeight)` from lines 1102-1106 and test it (`tests/unit/set-row-display.test.js`).
 
 #### AP-5 — Small ones (S) — fixes D5, D8, D10
+
+> **As built (2026-10-25):** D5 `equipmentExplicitNone` on the saved exercise gates both template-equipment copy and history adoption; adoption sets `equipmentId` with the name. D8 `refreshWorkoutForGym()` (workout-session.js) on all three gym-change paths: clear the last-session cache, `renderAll()` (index kept), `loadAutofillForAllExercises({trigger:'location', reseed:true})` — note a reseed re-derives untouched rows, so a non-deload hero adjustment (e.g. +5%) on untouched rows is re-seeded from history, same as an equipment change. D10 `reindexAfterDelete()` for `savedData.exercises` and `exerciseUnits`; in-flight autofills for shifted slots are voided. Also §3.4 (i): with no history anywhere the rows seed from the template `weight` (deload-scaled, ↓) — `defaultWeight` was only ever set by manual entry, so template weights never reached a live workout; the hero adjustment no longer scales `ex.weight` when autofill applied the deload. §3.4 (ii): resume keeps `defaultReps`, `category`, `_rpeTarget`.
 
 - D5: `awSelectEquipment` with empty name sets `sx.equipmentExplicitNone = true`; gate the adoption block at `:4129` on `!sx.equipmentExplicitNone`; when adopting, also set `sx.equipmentId = getEquipmentDoc(...)?.id || null`.
 - D8: after each `savedData.location = …` in `workout-session.js`, call `clearLastSessionCache()` then `loadAutofillForAllExercises().then(renderAll)` instead of `renderActiveWorkout()`; with AP-1 this re-seeds only untouched rows and keeps the wizard index.
@@ -174,6 +182,8 @@ Add a one-line rule to CLAUDE.md under "Touching active-workout code": **never c
 
 #### AP-11 — Discoverability + never leave the workout (M)
 
+> **As built (2026-10-25, with `9ec3198`):** the search field + an add slot sit in one sticky head (`.aw-equip-head`). The slot is: nothing (exact owned match is the first row below), **Use "X"** + "Add … as a new machine" (Dice ≥ 0.75), or **Add "X" at Gym** (one tap: create → tag gym → link exercise → set unit → select → close → toast; no gym → created anyway with a **Set gym** toast action). The sheet always opens instantly (cache or empty) and refreshes behind. The search field auto-focuses **only when nothing is linked to the exercise yet** — with machines to tap, the keyboard would just hide them. Footer is "Done" only; catalog browsing is the last row, "Browse by body part", passing the query as `initialSearch`; quick-add hides its own custom form when opened from a picker. Deleted: `awGoToEquipmentLibrary`, the separate New-machine form (`awQuickAddEquipment`/`awSaveNewEquipment`/type/keydown/`guessEquipmentType`), `awCreateEquipmentFromSearch`, `awSharedCreateEquipmentFromSearch`; `window-wiring.test.js` asserts they stay gone. The shared (template-editor) sheet uses the same slot.
+
 - `awOpenEquipmentSheet`: render from cache first, refetch after, focus input synchronously.
 - `buildEquipListHTML`: sticky first row (Create/Use-existing) via new `inlineAddRowHTML`; Create requires ≥2 chars; move Create out of trailing position.
 - Replace footer "Browse catalog" with the bottom "Browse by body part" row; pass `initialSearch` (extend `openQuickAddSheet(gymName, { onDone, initialSearch })`; seed `quickAddState.search`; omit `customHTML` when `onDone` set).
@@ -185,6 +195,8 @@ Acceptance: from an exercise, typing a machine name and tapping once creates it 
 
 #### AP-12 — `equipment-create.js` planner + dedupe + unit (M)
 
+> **As built (2026-10-25):** `js/core/data/equipment-create.js`: `planInlineEquipment`, `matchOwnedEquipment` (exact = name ignoring case/spacing/separators; similar = Dice ≥ 0.75 — the UI asks, the writer never auto-merges a merely similar name), `parseEquipmentName` + `knownBrands` (catalog + owned, longest first; moved out of the manager), `BASE_WEIGHT_SUGGESTIONS`/`suggestedBaseWeight` per unit (kept in this module rather than config.js — it's create logic). Selectorized inferred. `saveEquipment` keeps `preferredUnit` + `createdVia`. Instead of a separate `createEquipmentFromPlan`, `getOrCreateEquipment` itself takes `knownEquipment` (no pre-read), inserts the new doc into the cache instead of nulling it, and tags the requested gym/exercise onto an existing match. `awSelectEquipment` switches the exercise to the machine's `preferredUnit` and converts its rows. Add row and catalog rows are busy-guarded.
+
 - New pure module `js/core/data/equipment-create.js`: `planInlineEquipment({ query, exerciseName, gymName, unit, brand, type, owned, catalog }) → { action:'use-existing'|'create', existing?, doc? }`. Brand detection against **catalog brand names** (`awCatalog().map(b => b.name)`) and owned brands (move `parseEquipmentName` out of `firebase-workout-manager.js:87` into this module and import it back). `name = composeEquipmentName({brand, function: query})` when brand found, else trimmed query. `equipmentType = type || inferEquipmentType(query)`; add `selectorized|stack|pin loaded → 'Selectorized'`. `baseWeight = BASE_WEIGHT_SUGGESTIONS[type] || 0` (move the constant from `equipment-library-ui.js:3797` to `config.js`). Export `matchesAllTokens(hay, query)` and use it in `applySearch` and as a rank-3 fallback in `searchCatalogMachines`.
 - `saveEquipment` whitelist: add `preferredUnit` and `createdVia` (one-liners; also unbreaks `machine-id.js:157`).
 - New `createEquipmentFromPlan(doc, { knownEquipment })`: skips the pre-read when the warm cache is passed; runs the exact/sep-fuzzy guard against it; derives `locationIds` via `_deriveLocationIds`; one `setDoc`.
@@ -195,9 +207,13 @@ Tests: `tests/unit/equipment-create.test.js` (plan shapes; catalog-brand prefix;
 
 #### AP-13 — Route every create path through the planner (M)
 
+> **As built (2026-10-25):** the audit found **13** create paths, not 7. All now write through `getOrCreateEquipment` — the two that bypassed it (quick-add custom, photo-ID) were switched, so both now dedupe. Picker and shared-sheet creates go through the planner (gym + exercise + unit tagged). `catalogDisplayName` and the inline composer in `addCatalogMachineDoc` are gone — `composeEquipmentName` only. **Not deleted:** the legacy `#equipment-picker-modal` — it's still reachable (legacy exercise cards, manual workout), and its creates already go through the writer.
+
 Shared sheet (`:2817`) passes `gymName = locName`, `exerciseName = ctx.exerciseName`. Photo-ID `addIdentifiedMachine` → planner + `onAdd`. Quick-add custom → planner. `promoteCatalogToEquipment`/`catalogDisplayName` → `composeEquipmentName`. Delete the legacy modal path. Add a negative assertion to `window-wiring.test.js` that `awQuickAddEquipment`/`awSaveNewEquipment`/`awGoToEquipmentLibrary` no longer appear in `js/`.
 
 #### AP-14 — In-place expand mini-form (S, optional)
+
+> **As built (2026-10-25):** the Add row's chevron expands Name / Brand (datalist of catalog + owned brands) / Type chips / Unit (lb·kg) / Base weight in place, with a live "Saves as …" preview through `composeEquipmentName`; "Add and use" commits through the same planner + writer. This replaced the separate New-machine sheet. **Not done:** the "Link to catalog" chip in quick-edit.
 
 Brand/Type/Unit expansion on the Add row; "Link to catalog" chip in quick-edit for `createdVia:'picker'` docs when exactly one rank-0 catalog hit matches `doc.brand` (never auto-rename).
 
@@ -303,18 +319,21 @@ Settings row "Deload mode" + workout ⋮ item "Make this a deload session" → `
 
 **Context for the coding agent:** the coach is Firebase Cloud Functions in `functions/index.js` calling the Anthropic API with tool use. System prompt = `TRAINING_SCIENCE_PROMPT + COACH_TOOLS_PROMPT + memoryBlock` (`:950-1086`, ~3.7k tokens). Chat model `claude-opus-4-8`, adaptive thinking, effort xhigh, max_tokens 16000 (`:34`, `:1466-1473`); live model `claude-sonnet-5` max 1500 (`:1459-1465`). Loop `coachChatStream` `:1475-1544`, ≤12 rounds, SSE streaming. 18 chat tools + 4 live proposals in `functions/coach-tools.js:41-316, 1190-1246`. Client context assembly `ai-coach-ui.js:1156-1329` (`buildTrainingContext`), `coach-context.js`, live `coach-live.js:44-86`. Pure rules modules are mirrored client↔server (`week-targets.js`, `exercise-rotation.js`, `movement-patterns.js`) via a sync script; `functions/` cannot import `js/`.
 
-### 4.0 What the coach is for — four jobs, and the line between rules and judgment
+### 4.0 What the coach is for — a planner who executes
 
-The goal is a replacement for a personal trainer at a gym that doesn't offer one: *what should my plan be, am I stalling, what do I do today, am I making progress.* Most of that is arithmetic over a rich history, and the app already computes it. The coach's job is the part that isn't arithmetic. Four conversations, in priority order:
+*Rewritten 2026-10-25 after Kevin described how he actually trains.* The goal is a replacement for a personal trainer at a gym that doesn't offer one — but the way this user works is specific: **think hard once per block, execute the plan daily without talking to anyone, check in weekly, and occasionally renegotiate** ("last week was hard"; "I want something new but don't break my progress"). Live chat barely figures in that. For a planner, the set rows *are* the live coach: verdict-driven targets, ↑/↓ markers, deload-scaled numbers — the rules engine coaching between sets with no chat box. Live chat stays and gets its gaps fixed (AP-23), but it is not where the value lands.
 
-| # | Job | Trigger | Rules supply (code, deterministic) | Model supplies (judgment, words) |
-|---|---|---|---|---|
-| 1 | **Weekly scoreboard** | weekly review / "how am I doing?" | AP-21 scoreboard: per-primary rolling-4-wk e1RM trend, rep PRs, stall rung, per-pattern volume vs MEV/MRV | pick the one thing to lead with; say it in two sentences |
-| 2 | **Block boundary** | last week of a block / "what's next?" | candidate accessories ranked by staleness + pattern coverage + equipment at the gym; rep-range emphasis for the next block; MRV governor | assemble the block, explain why each change, confirm with the user |
-| 3 | **Today** | session start / "what do I do today?" | `sessionIntent` (AP-6) + per-exercise `progressionTarget` verdicts (AP-16) | one sentence: "Pull day, week 5 intensify — go for rep PRs on row, hold the rest." |
-| 4 | **Free text** | anything typed in the user's own words | history, injuries, equipment, verdicts as facts | interpretation, trade-offs, substitutions, "my knee feels weird" |
+Five jobs, in priority order:
 
-Everything with a number and a threshold is a rule. The model receives verdicts as facts, explains them, and may deviate only through an explicit, logged `override:true, reason` (AP-17). The progress question — *am I getting stronger week to week?* — is answered by a **dashboard** (AP-21), not by chat; the coach reads the same object the dashboard shows so the two can never disagree.
+| # | Job | Trigger | Rules supply (code, deterministic) | Model supplies (judgment, words) | Where it lands |
+|---|---|---|---|---|---|
+| 1 | **Plan the block** | end of a block / "what should the next 4–6 weeks be?" | block retrospective (`get_verdicts {scope:'block'}`), scoreboard, rotation candidates ranked by staleness + pattern + gym (`get_rotation_candidates`), program shape rules (AP-17), MRV governor | assemble the block, explain every change and every thing that stays fixed, confirm — in the **planning contract** (AP-19): week-by-week purpose, day-by-day, fixed vs changed, how we'll know it worked | `create_program` + `rationale` → the **Block page** (AP-24) |
+| 2 | **Renegotiate mid-block** | "last week was hard" · "I'm bored" · "I can only do 3 days" | fatigue + readiness signals (AP-22), week override mechanism (AP-10 generalized), primaries-fixed / accessories-rotate rule, rotation candidates | pick the lever — lighter week, swap accessories, reshape the split — and say what it costs; never break scoreboard continuity | `propose_week_adjustment` card · `replace_day` diff card · Block page updates |
+| 3 | **Weekly scoreboard** | weekly review / "how am I doing?" | AP-21 scoreboard: per-primary rolling-4-wk e1RM, rep PRs, stall rung, pattern coverage; fatigue flags | the one thing to lead with, in two sentences | weekly review · dashboard card · Block page header |
+| 4 | **Today** | session start | `sessionIntent` (AP-6) + per-exercise `progressionTarget` verdicts (AP-16) | usually nothing — the rows say it. Chat: one sentence when asked | set rows · dashboard hero |
+| 5 | **Free text (chat + live)** | anything in the user's own words, between sets or not | history, injuries, equipment, verdicts as facts; session lookups | interpretation, trade-offs, substitutions, "my knee feels weird" | chat · live proposals (swap / skip / target / rest) |
+
+Everything with a number and a threshold is a rule. The model receives verdicts as facts, explains them, and may deviate only through an explicit, logged `override:true, reason` (AP-17). Progress is answered by a **dashboard** (AP-21), the plan is *seen* on a **page** (AP-24), and the coach reads the same objects those surfaces show so none of them can disagree.
 
 ### 4.1 Diagnosis — why it feels stupid, in order
 
@@ -375,6 +394,8 @@ Everything with a number and a threshold is a rule. The model receives verdicts 
 #### AP-19 — Output contract (S)
 
 Replace the format paragraph (`index.js:1004-1006`) with: **Verdict** (one line; rule-derived when a verdict exists) → **Because** (≤2 bullets citing the user's numbers) → **Do** (exact weight×reps or one action) → optional **Watch**. Cap ~120 words chat / ~40 live. One recommendation unless a plan is asked for. Give live mode its own ~300-token system prompt (the base prompt's "THE DATA YOU RECEIVE INCLUDES…" list is false in live mode, `:952-963`, `:1463`). Speculative but likely cheap win: route obvious lookups ("what's my bench PR") to Sonnet; xhigh Opus on every turn is where latency/cost go.
+
+**Two contracts, not one** (added 2026-10-25). The Verdict → Because → Do shape is for *questions*. A *plan* — anything that creates or reshapes a block — gets its own shape, and the model picks by what it's producing: **(1) The block in one line** — goal, weeks, deload week. **(2) Week by week** — a table: week · what it's *for* (accumulate / intensify / peak / deload) · the levers (reps, RPE, set delta, % load). **(3) Day by day** — the split with each template's exercises, primaries marked. **(4) What stays fixed and why** — the primaries, named, "so the scoreboard keeps meaning something." **(5) What changes and why** — each accessory swap with the engine's reason (never used / idle since). **(6) How we'll know it worked** — the two or three scoreboard numbers to watch at week 4. The same six parts are persisted as `rationale` on the program doc (AP-23) and rendered on the Block page (AP-24), so the talk-through survives the conversation.
 
 #### AP-20 — Measure it: traces + eval loop (M/L)
 
@@ -453,6 +474,52 @@ Tests (`progression.test.js`): `topRpe` picks the max at top load and is `null` 
 
 Acceptance (phase 1): with `trackRpe` on and three sessions at the same load with RPE 7.5/8.5/9 on dev, the verdict line, scoreboard chip, and dashboard insight all show the fatigue signal, the set-row target is unchanged, and the coach — asked "should I go heavier?" — quotes the signal and recommends holding or pulling the deload forward.
 
+## 4c. Tools the planner needs — AP-23
+
+**Context for the coding agent:** tool definitions and executors in `functions/coach-tools.js`; the accessory-rotation engine is `selectRotation()` in `js/core/features/exercise-rotation.js`, mirrored to `functions/exercise-rotation.js` via `scripts/sync-mirror.mjs`, and today reachable only through `create_program({rotateAccessories:true})`. The manual week override is `settings.manualDeload = { from, weeks, weightPct }` (AP-10), read by `getSessionIntent` rule 2 (`session-intent.js`) and shown as a Settings toggle (`settings-ui.js:~195`). Proposals are validated in `validateProposal` and rendered client-side as cards; nothing applies without a tap. Live tool set = `liveToolDefinitions()` in `functions/index.js`. `get_verdicts` (AP-16) computes from `coach-rules.js`.
+
+### AP-23 — Planner tools + live gaps (M)
+
+| # | Tool | Kind | What it does | Why |
+|---|---|---|---|---|
+| a | **`get_rotation_candidates`** `{ exercise? , pattern?, location?, limit=5 }` | look-up | Runs `selectRotation` in *query* mode: for one exercise (or a pattern), return ranked same-pattern alternatives at the gym — `{ name, equipment, pattern, reason:'never used' \| 'idle since 2026-07', lastUsed }` — plus the held primaries with their reason. No writes. | Job 1 + 2 + 5. Today "what should I replace back extension with?" is hand-picked from raw lists; the engine that does it right is unreachable from conversation. Rules rank, model explains. |
+| b | **`propose_week_adjustment`** `{ weightPct (−50…+10), setDelta (−3…+3), label, weeks=1, from=today, extendBlock=false, reason }` | proposal | Card → on tap writes `settings.weekOverride` (rename of `manualDeload`, generalized to any pct/label; `getSessionIntent` rule 2 unchanged except the mode: `deload` when pct ≤ −20 or label matches, else `build` with `source:'manual'`), and optionally shifts `program.startDate` back by `weeks·7` so the block's remaining weeks are preserved. Card shows the four affected sessions and the new targets. | Job 2, "last week was hard." The mechanism exists (AP-10) as a Settings toggle hard-coded to deload; a trainer's "back off 10% this week, pick up next week" is one tap. |
+| c | **`get_verdicts { scope: 'week' \| 'block' }`** | look-up (param) | `block` = retrospective over the active (or just-finished) program: per-primary e1RM start → end, rep PRs, weeks each pattern sat under MEV, planned vs completed days, fatigue flags by week, accessories used and never used. Reuses `programBlockStats` + scoreboard math with the block window. | Job 1. The block-boundary conversation starts with "here's how the block went," not a rolling 4 weeks. |
+| d | **`set_primary_lifts`** `{ exercises: [name] }` (3–8) | action | Writes `role:'primary'` on matching template exercises (clears it elsewhere); validates names against active templates; returns the resulting list. | Job 3. The scoreboard is only meaningful if primaries are chosen; a trainer does this *with* you in the first conversation instead of a settings hunt. |
+| e | **`create_program.rationale`** (schema addition) `{ block: string, weeks: [{ week, why }], fixed: [{ name, why }], changed: [{ from, to, why }], watch: [string] }` | action (field) | Persisted on the program doc; the Block page renders it. Required when `weeks ≥ 4`. | Job 1. The talk-through survives the chat thread. Without it the plan is a list of templates and a start date. |
+| f | **`get_workouts`** `{ date } \| { from, to }` (≤ 14 sessions) | look-up | Whole sessions by date — exercises, sets with units, label, readiness, notes. | Job 5. The block carries 12 recent sessions; "what did I do last Tuesday?" and "compare to the same week last block" need older ones. |
+| g | **`propose_skip_exercise`** `{ exercise, endSession=false, why }` (live) | proposal | Card: drop one exercise from today's session, or end the session. Logs the reason; `endSession` routes to the normal completion flow. | Job 5 live. The live prompt says "pain: propose a swap or ending the session" and there is no tool for the second half. |
+| h | **`remember_fact` in live mode** | config | Add to `liveToolDefinitions()`. | An injury reported between sets is the most important fact to remember, and it's reported in live mode. |
+| i | **`list_templates` returns `avgDurationMin`** | look-up (field) | From `startedAt`/`completedAt` of the last 5 completions per template. | "I've got 40 minutes" becomes a computed cut via `propose_session_adjustments.dropExercises`, not a guess. |
+
+Prompt: in `COACH_TOOLS_PROMPT`, replace the hand-pick guidance ("pull the replacement from list_equipment…") with one line: *"For any swap or rotation, call `get_rotation_candidates` and present its top choice with its reason; hand-pick only when it returns nothing."* Add one line each for b, c, d. Delete the Settings-toggle wording for manual deload in favour of the card.
+
+Tests: `coach-tools-executors.test.js` — rotation candidates: ranks never-used first, excludes primaries, respects `location`, empty when no same-pattern gear; week adjustment: validation bounds, `extendBlock` shifts `startDate`, intent resolves to `deload`/`build` by pct, card payload lists affected sessions; `scope:'block'` numbers against a fixture program; `set_primary_lifts` rejects unknown names and caps at 8; `get_workouts` caps and labels; `propose_skip_exercise` validates the exercise is in the live session. `session-intent.test.js`: `weekOverride` with −10% → `build`, `source:'manual'`, `weightPct:-10`. Window-wiring test for the new cards' handlers.
+
+Acceptance: "replace back extension with something" → the answer names the engine's top candidate and its reason, and offers a one-tap `replace_day`; "last week was hard" → one card, tap, every session this week is 10% lighter and the Block page shows the override; the first program the coach builds asks which lifts are primaries and writes them; the created program carries a `rationale` the Block page renders.
+
+---
+
+## 4d. Seeing the plan — AP-24 Block page
+
+**Context for the coding agent:** today the only view of a block is `openProgramDetailSheet()` (`program-session.js:447`): a bottom sheet with one row per week (label + lever summary) and the weekly split by day name. No exercises, no targets, no progress against the plan, no rationale, no past weeks' results. The dashboard hero shows today's session only. `programBlockStats` (`:156`) computes days trained / planned / PR count. Week targets are applied to a session by `applyAdjustmentToCurrentSession` / `scaleSessionSetTargets`; the same math must produce the *displayed* targets so the page and the set rows agree.
+
+### AP-24 — Block page (M/L)
+
+A full page (route `block`), reached from the dashboard hero ("View block"), the Workouts tab, and the end of a coach planning conversation. Replaces the detail sheet.
+
+- **Header:** program name · goal · "Week 3 of 6 — Intensify" · scoreboard headline (AP-21) · days trained / planned this block.
+- **Rationale strip** (from `program.rationale`, AP-23e): the one-line block statement, then collapsible "What's fixed" (primaries, with why) and "What changed" (swaps, with the engine's reason). This is the talk-through, kept.
+- **Week grid:** one column per week, one row per training day of the split. Cell = template name + the week's lever badge (−35% · 12–15 · RPE 7). **Past cells:** ✓ with top set of the primary vs its target (e.g. "185×6 ✓" / "185×3 ↓"), or "missed". **Current week** highlighted; today's cell carries the Start button (same as the hero). **Future cells:** targets as the rules will seed them — computed with the same `scaleLoadableWeight`/rep-range math the set rows use. A manual week override (AP-23b) shows as a badge on that column with its reason.
+- **Tap a cell →** the session: exercises with that week's targets, primaries marked, and for past sessions the logged sets beside them.
+- **Actions row:** *Adjust this week* (→ `propose_week_adjustment` via a coach turn seeded with the week) · *Swap an accessory* (→ coach, seeded with `get_rotation_candidates` for the tapped exercise) · *Plan next block* (visible from the deload week; → job 1 conversation seeded with `get_verdicts {scope:'block'}`) · *Discuss*.
+- **Pure module** `js/core/features/block-view.js`: `buildBlockModel({ program, templates, workouts, prs, today, unit, scoreboard })` → the grid as data; the page renders it; the weekly review and `get_verdicts {scope:'block'}` can quote the same model. Tests on the model, not the DOM: week/day cells, past vs future, override badge, target math equals the seeder's for a sample week, missed-day detection, no program → empty state with "Ask the coach to plan a block."
+- **Empty state** (no program): the scoreboard headline + one button that opens job 1.
+
+Acceptance: from the dashboard, one tap shows the whole block by week and day with past results and future targets; the targets shown for next week match what the set rows seed when that session starts; the rationale from the planning conversation is visible on the page; "Adjust this week" and "Swap an accessory" each take one tap plus one confirmation.
+
+---
+
 ---
 
 ## 5. Tracking — so the next report comes with data
@@ -500,3 +567,5 @@ Acceptance (phase 1): with `trackRpe` on and three sessions at the same load wit
 | AP-20 | 4 | M/L | AP-15 | traces (a), fixtures (b), runner (c), assertions (d), rubric (e) |
 | AP-21 | 4b | M | AP-6 (recovery exclusion); pairs with AP-16 | `progress-scoreboard.js`: rolling 4-wk e1RM per primary, rep PRs, pattern coverage; dashboard card; weekly review + coach quote it |
 | AP-22 | 4b | S/M | AP-21 (primaries, rung chip), AP-16 (verdict line); phase 2 gated on AP-20 fixtures | `fatigueState` (RPE-at-load) + `readinessState`: leading fatigue indicators reported in verdicts, scoreboard, dashboard, `checkDeloadNeeded`; promoted to change targets only after eval |
+| AP-23 | 4c | M | AP-16, AP-17/18 (schemas), AP-10 (override mechanism), AP-21 (primaries) | planner tools: `get_rotation_candidates`, `propose_week_adjustment`, `get_verdicts{scope}`, `set_primary_lifts`, `rationale`, `get_workouts`; live: `propose_skip_exercise`, `remember_fact` |
+| AP-24 | 4d | M/L | AP-23 (rationale, override), AP-21 (headline), AP-7 (target math) | Block page: week × day grid, past results vs targets, future targets from the seeder's math, rationale strip, adjust/swap/plan-next actions |

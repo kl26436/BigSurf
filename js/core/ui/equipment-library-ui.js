@@ -19,6 +19,7 @@ import { getExercisePRs } from '../features/pr-tracker.js';
 import { findBestMatch } from '../features/fuzzy-match.js';
 import { suggestExercisesForMachine } from '../features/machine-exercise-matcher.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
+import { suggestedBaseWeight } from '../data/equipment-create.js';
 import { resolveLocationId } from '../data/location-id-resolver.js';
 import { normalizeEquipName } from '../data/equipment-id-resolver.js';
 import { unmappedEquipment, lineGaps, branchScouting, PATTERN_LABELS } from '../features/equipment-discovery.js';
@@ -1158,13 +1159,6 @@ function inferBodyPartFromEquipment(eq) {
  * Add-equipment flow uses so promoted records and manually-added records
  * collide on name in getOrCreateEquipment's fuzzy match.
  */
-function catalogDisplayName(brand, line, machineName) {
-    if (brand && line && machineName) return `${brand} ${line} — ${machineName}`;
-    if (brand && machineName)         return `${brand} — ${machineName}`;
-    if (machineName)                  return machineName;
-    return brand || '';
-}
-
 /**
  * Suggest exerciseTypes for a machine name from the in-memory exercise
  * library. Conservative by design — see machine-exercise-matcher.js.
@@ -1195,9 +1189,10 @@ async function promoteCatalogToEquipment(catalogRef, gymName = null, { refresh =
     if (!resolved) return null;
 
     const { brand, line, machine } = resolved;
-    const name = catalogDisplayName(brand.name, line.name, machine.name);
+    // composeEquipmentName is THE composer (AP-13).
+    const name = composeEquipmentName({ brand: brand.name, line: line.name, function: machine.name });
     const type = machine.type || line.type || 'Other';
-    const baseWeight = BASE_WEIGHT_SUGGESTIONS[type] || 0;
+    const baseWeight = suggestedBaseWeight(type, 'lbs');
 
     try {
         const result = await getManager().getOrCreateEquipment(
@@ -1391,8 +1386,9 @@ let quickAddState = null;
  * commit with the promoted equipment docs, instead of re-rendering the
  * library. Lets the active-workout picker open this sheet inline and select
  * the machine the user just added.
+ * `initialSearch` — what was typed in the picker, so it isn't typed twice.
  */
-export async function openQuickAddSheet(gymName, { onDone = null } = {}) {
+export async function openQuickAddSheet(gymName, { onDone = null, initialSearch = '' } = {}) {
     if (!gymName) return;
 
     // Mid-workout callers reach this before the library has ever rendered.
@@ -1437,7 +1433,7 @@ export async function openQuickAddSheet(gymName, { onDone = null } = {}) {
         gymName,
         gymId,
         selected: new Set(),
-        search: '',
+        search: String(initialSearch || '').trim(),
         bpFilter: 'All',
         alreadyTagged,
         allMachines,
@@ -1609,8 +1605,10 @@ function renderQuickAddBody() {
     // "Can't find it?" — create a custom equipment inline when the catalog is
     // missing a machine. Saved as a standalone equipment doc tagged to this gym
     // (locations[]), so it shows in the gym detail alongside catalog items.
-    const { customOpen, customName, customType } = quickAddState;
-    const customHTML = customOpen
+    // Opened from an equipment picker (onDone): that sheet's own Add row is
+    // the custom path, so this one doesn't offer a second (AP-11).
+    const { customOpen, customName, customType, onDone: pickerCallback } = quickAddState;
+    const customHTML = pickerCallback ? '' : customOpen
         ? `
         <div class="qa-custom">
             <div class="qa-custom__title">Add custom equipment</div>
@@ -1746,19 +1744,25 @@ export async function commitQuickAddCustom() {
         }
         // Standalone equipment doc tagged to the gym via locations[] — the gym
         // detail merges these with catalog refs, so it shows there right away.
-        const equipmentId = await getManager().saveEquipment({
-            name,
+        // Through the one writer (AP-13): this used to call saveEquipment
+        // directly, so a name you already owned became a second machine.
+        const created = await getManager().getOrCreateEquipment(name, {
             equipmentType: type,
+            baseWeight: suggestedBaseWeight(type, AppState.globalUnit || 'lbs'),
+            baseWeightUnit: AppState.globalUnit === 'kg' ? 'kg' : 'lbs',
+            preferredUnit: AppState.globalUnit === 'kg' ? 'kg' : 'lbs',
             locations: [gymName],
             exerciseTypes: suggestMachineExercises(name),
+            createdVia: 'quick-add',
         });
+        if (!created) throw new Error('equipment write failed');
         await refreshEquipmentCaches();
 
         closeQuickAddSheet();
-        showNotification(`${name} added to ${gymName}`, 'success');
+        showNotification(`${created.name} added to ${gymName}`, 'success');
         if (onDone) {
-            const created = allEquipment.find((e) => e.id === equipmentId) || { id: equipmentId, name };
-            try { await onDone([created]); } catch (e) { console.error('Quick-add onDone threw:', e); }
+            const fresh = allEquipment.find((e) => e.id === created.id) || created;
+            try { await onDone([fresh]); } catch (e) { console.error('Quick-add onDone threw:', e); }
         } else {
             renderEquipmentLibrary();
         }
@@ -3794,10 +3798,7 @@ const EQUIPMENT_TYPES_LIST = [
 const BASE_WEIGHT_TYPES = ['Plate-Loaded', 'Machine', 'Barbell', 'Cable', 'Bench', 'Rack'];
 
 /** Suggested default base weights when switching type */
-const BASE_WEIGHT_SUGGESTIONS = {
-    Barbell: 45,
-    Cable: 5,
-};
+// (BASE_WEIGHT_SUGGESTIONS moved to data/equipment-create.js#suggestedBaseWeight.)
 
 const addFlowState = {
     brand: null,    // selected brand name
@@ -4445,7 +4446,7 @@ export async function confirmAddEquipment(addAnother = false) {
     }
 
     const name = (addFlowState.name && addFlowState.name.trim()) || addFlowGeneratedName();
-    const defaultBW = BASE_WEIGHT_SUGGESTIONS[type] || 0;
+    const defaultBW = suggestedBaseWeight(type, 'lbs');
 
     // When opened with `assignToExercise`, the new equipment's exerciseTypes
     // gets pre-populated so the caller's exercise picks it up immediately.

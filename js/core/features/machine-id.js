@@ -142,33 +142,26 @@ export async function addIdentifiedMachine(useAlt = false) {
     try {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const wm = new FirebaseWorkoutManager(AppState);
-        // Dual-write the stable location id alongside the gym name — same
-        // resolution getOrCreateEquipment does (empty when the gym has no doc
-        // yet; the name in locations[] stays the fallback).
-        const locationIds = gym ? wm._deriveLocationIds([gym]) : [];
-        const saved = await wm.saveEquipment({
-            name: pick.name,
+        const unit = AppState.globalUnit === 'kg' ? 'kg' : 'lbs';
+        // Through the one equipment writer (AP-13): this called saveEquipment
+        // directly, so a machine you already owned was added a second time,
+        // and createdVia was dropped by the old whitelist. The writer dedupes,
+        // tags gym + exercises onto an existing match, derives locationIds
+        // and keeps the cache current.
+        const saved = await wm.getOrCreateEquipment(pick.name, {
             brand: pick.brand || null,
             function: data.identified.machineFunction || null,
             equipmentType: data.identified.equipmentType || 'Machine',
             exerciseTypes: (data.identified.exercises || []).slice(0, 6),
             locations: gym ? [gym] : [],
-            locationIds,
+            baseWeightUnit: unit,
+            preferredUnit: unit,
             createdVia: 'photo-id',
+            knownEquipment: AppState._cachedEquipment || [],
         });
-        // Keep the in-memory cache honest without a full refetch.
-        if (Array.isArray(AppState._cachedEquipment)) {
-            AppState._cachedEquipment.push({
-                id: typeof saved === 'string' ? saved : saved?.id,
-                name: pick.name,
-                brand: pick.brand || null,
-                equipmentType: data.identified.equipmentType || 'Machine',
-                locations: gym ? [gym] : [],
-                locationIds,
-            });
-        }
+        if (!saved) throw new Error('equipment write failed');
         closeMachineIdSheet();
-        showNotification(gym ? `${pick.name} added to ${gym}` : `${pick.name} added`, 'success');
+        showNotification(gym ? `${saved.name} added to ${gym}` : `${saved.name} added`, 'success');
     } catch (e) {
         console.error('❌ Add identified machine failed:', e);
         showNotification("Couldn't save — try again", 'error');

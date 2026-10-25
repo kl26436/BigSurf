@@ -121,5 +121,7 @@ export function inferEquipmentType(name) {
     if (/ (rack|rig) /.test(n)) return 'Rack';
     if (/ (treadmill|bike|rower|elliptical|stair) /.test(n)) return 'Cardio';
     if (/ (plate loaded|iso lateral|hammer) /.test(n)) return 'Plate-Loaded';
+    // AP-12: a pin-and-stack machine was always guessed as plain 'Machine'.
+    if (/ (selectorized|selector|stack|pin loaded|pin select) /.test(n)) return 'Selectorized';
     return 'Machine';
 }

@@ -1401,7 +1401,41 @@
     flex: 1;
 }
 
-/* === NEW EQUIPMENT FORM (quick-add sheet) === */
+/* === EQUIPMENT PICKER: search + one-door add slot (AP-11 / AP-14) ===
+   The search field and the add row stay pinned together at the top of the
+   sheet; the expanded details form scrolls with the list instead. */
+.aw-equip-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-surface);
+    padding-bottom: var(--space-4);
+}
+.aw-equip-head--form { position: static; }
+.aw-equip-add { margin-top: var(--space-6); }
+.aw-equip-add__row { border: 1px solid var(--primary-border); border-radius: var(--radius-sm); }
+.aw-equip-add__anyway {
+    display: block;
+    margin: var(--space-2) 0 0 var(--space-12);
+    font-size: var(--font-xs);
+}
+.aw-equip-add--form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+    padding: var(--space-12);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+}
+.aw-equip-add__preview {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.aw-equip-add__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-8);
+}
 .aw-new-equip__base-row {
     display: flex;
     gap: var(--space-8);
@@ -1410,15 +1444,6 @@
 .aw-new-equip__base-input {
     width: 80px;
     text-align: center;
-}
-.aw-new-equip__base-unit {
-    color: var(--text-muted);
-    font-size: var(--font-xs);
-}
-.aw-new-equip__location-hint {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    margin-top: var(--space-8);
 }
 
 /* Notes area */
