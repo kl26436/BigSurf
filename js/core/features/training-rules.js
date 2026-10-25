@@ -279,7 +279,13 @@ export function getISOWeekKey(dateStr) {
  * @returns {{ needed: boolean, consecutiveHardWeeks: number, inRecoveryWeek: boolean,
  *   reasons: string[], fatigue: Array<{exercise:string, reason:string}>, readinessLow: boolean } | null}
  */
-export function checkDeloadNeeded(workouts, thresholds = RULE_THRESHOLDS, { today = null, unit = 'lbs', inc = 5 } = {}) {
+/**
+ * AP-22 phase 2: when the run is one week short of DELOAD_CONSECUTIVE_WEEKS
+ * and the leading signals agree (effort rising on 2+ main lifts, or low
+ * readiness), the deload is due a week early — `source:'fatigue'`.
+ * `primaries` = main-lift names; null counts every fatigued exercise.
+ */
+export function checkDeloadNeeded(workouts, thresholds = RULE_THRESHOLDS, { today = null, unit = 'lbs', inc = 5, primaries = null } = {}) {
     if (!workouts || workouts.length === 0) return null;
     const t = { ...RULE_THRESHOLDS, ...(thresholds || {}) };
 
@@ -329,20 +335,31 @@ export function checkDeloadNeeded(workouts, thresholds = RULE_THRESHOLDS, { toda
         }
     }
 
-    const needed = consecutiveHardWeeks >= t.DELOAD_CONSECUTIVE_WEEKS;
+    const byWeeks = consecutiveHardWeeks >= t.DELOAD_CONSECUTIVE_WEEKS;
     const reasons = [];
-    if (needed) reasons.push(`${consecutiveHardWeeks} hard weeks in a row`);
+    if (byWeeks) reasons.push(`${consecutiveHardWeeks} hard weeks in a row`);
     const fatigue = inRecoveryWeek ? [] : fatigueSignals(workouts, { today, unit, inc, minSessions: t.PLATEAU_MIN_SESSIONS });
     for (const f of fatigue) reasons.push(`effort rising on ${f.exercise}: ${f.reason}`);
     const ready = readinessState(workouts, { today, days: t.READINESS_WINDOW_DAYS, lowCount: t.READINESS_LOW_COUNT });
-    if (ready.readinessLow && !inRecoveryWeek) reasons.push(`readiness ≤2/5 on ${ready.low} of ${ready.of} check-ins in the last ${t.READINESS_WINDOW_DAYS} days`);
+    const readinessLow = ready.readinessLow && !inRecoveryWeek;
+    if (readinessLow) reasons.push(`readiness ≤2/5 on ${ready.low} of ${ready.of} check-ins in the last ${t.READINESS_WINDOW_DAYS} days`);
+
+    const main = Array.isArray(primaries) ? new Set(primaries.map(n => String(n).trim().toLowerCase())) : null;
+    const fatiguedMain = main ? fatigue.filter(f => main.has(String(f.exercise).trim().toLowerCase())) : fatigue;
+    const early = !byWeeks && !inRecoveryWeek
+        && consecutiveHardWeeks >= Math.max(1, t.DELOAD_CONSECUTIVE_WEEKS - 1)
+        && (fatiguedMain.length >= 2 || readinessLow);
+    if (early) reasons.unshift(`${consecutiveHardWeeks} hard weeks and ${fatiguedMain.length >= 2 ? `effort rising on ${fatiguedMain.length} main lifts` : 'low readiness'} — a week early`);
+    const needed = byWeeks || early;
 
     return {
         needed,
+        source: needed ? (early ? 'fatigue' : 'weeks') : null,
         consecutiveHardWeeks,
         inRecoveryWeek,
         reasons,
         fatigue,
-        readinessLow: ready.readinessLow && !inRecoveryWeek,
+        fatiguedMain: fatiguedMain.map(f => f.exercise),
+        readinessLow,
     };
 }

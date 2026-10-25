@@ -17,7 +17,7 @@
 //   node scripts/sync-mirror.mjs js/core/features/coach-rules.js functions/coach-rules.js
 // (tests/unit/movement-patterns-mirror.test.js enforces parity).
 
-import { buildExerciseSessions, progressionTarget, weightIncrement, fatigueState } from './progression.js';
+import { buildExerciseSessions, progressionTarget, weightIncrement } from './progression.js';
 import { getSessionIntent, describeIntent } from './session-intent.js';
 import { analyzeWeeklyVolume, checkDeloadNeeded, getISOWeekKey, readinessState, RULE_THRESHOLDS } from './training-rules.js';
 import { buildScoreboard, formatScoreboardContext, pickPrimaries, bestE1rmBetween } from './progress-scoreboard.js';
@@ -131,8 +131,6 @@ export function computeVerdicts({
         const base = { name, template: pick.template, today: pick.today };
         if (!target) return { ...base, action: 'no-history' };
         const last = sessions[0];
-        // AP-22 phase 1 — reported next to the target, never changes it.
-        const fatigue = fatigueState(sessions, { minSessions: t.PLATEAU_MIN_SESSIONS, inc: increment });
         return {
             ...base,
             action: target.action,
@@ -141,8 +139,10 @@ export function computeVerdicts({
             bumped: target.bumped,
             stalled: target.stalled,
             ...(target.rung ? { rung: target.rung, stallRun: target.stallRun } : {}),
+            ...(target.early ? { early: true } : {}),
             last: { weight: last.topWeight, reps: last.topReps || last.maxReps || null, date: last.date },
-            ...(fatigue?.fatigued ? { fatigue: fatigue.reason } : {}),
+            // AP-22 phase 2 — progressionTarget already acted on it.
+            ...(target.fatigued ? { fatigue: target.fatigueReason } : {}),
         };
     });
 
@@ -170,7 +170,7 @@ export function computeVerdicts({
             levers: describeIntent(sessionIntent),
         },
         exercises,
-        deload: checkDeloadNeeded(done, t, { today, unit: u, inc: increment }),
+        deload: checkDeloadNeeded(done, t, { today, unit: u, inc: increment, primaries: pickPrimaries({ templates, workouts: done, today }).map(p => p.name) }),
         readiness: readinessState(done, { today, days: t.READINESS_WINDOW_DAYS, lowCount: t.READINESS_LOW_COUNT }),
         volume,
         // AP-17 — the app's thresholds, stated to the model (the prompt no
@@ -189,12 +189,15 @@ export function verdictLine(v, unit) {
     const lastStr = v.last ? `last ${wr(v.last.weight, v.last.reps)} on ${v.last.date}` : '';
     switch (v.action) {
         case 'bump': return `bump → ${wr(v.weight, v.reps)} (${lastStr} hit the target)`;
-        case 'consolidate': return `hold ${wr(v.weight, v.reps)} — went up last session, own it first (${lastStr})`;
+        case 'consolidate':
+            return v.fatigue
+                ? `hold ${wr(v.weight, v.reps)} — reps earned a bump but effort is climbing, own it first (${lastStr})`
+                : `hold ${wr(v.weight, v.reps)} — went up last session, own it first (${lastStr})`;
         case 'chase-rep':
             return v.rung
                 ? `stall rung 1 (${v.stallRun} sessions at ${v.weight}) — hold ${v.weight} ${unit}, chase ${v.reps} reps`
                 : `hold ${v.weight} ${unit}, chase ${v.reps} reps (${lastStr})`;
-        case 'back-off': return `stall rung 2 (${v.stallRun} sessions flat) — back off to ${wr(v.weight, v.reps)} for two sessions, then rebuild`;
+        case 'back-off': return `stall rung 2${v.early ? ' a rung early — effort rising' : ''} (${v.stallRun} sessions flat) — back off to ${wr(v.weight, v.reps)} for two sessions, then rebuild`;
         case 'rotate': return `stall rung 3 (${v.stallRun} sessions flat at ${v.weight}) — rotate to a similar movement this block`;
         case 'deload': return `deload — ${wr(v.weight, v.reps)}, two reps in the tank (${lastStr})`;
         case 'start': return `hold ${wr(v.weight, v.reps)} — not enough history for a call yet`;
@@ -217,9 +220,10 @@ export function formatVerdictsContext(v) {
         const d = v.deload;
         let s = `not due (${d.consecutiveHardWeeks} hard week${d.consecutiveHardWeeks === 1 ? '' : 's'} running)`;
         if (d.inRecoveryWeek) s = 'in a recovery week now';
+        else if (d.needed && d.source === 'fatigue') s = `DUE a week early — ${d.reasons[0]}`;
         else if (d.needed) s = `DUE — ${d.consecutiveHardWeeks} hard weeks in a row`;
-        // AP-22 — leading signals ride along; they don't make it "due" (yet).
-        const early = (d.reasons || []).filter(r => !/hard weeks in a row/.test(r));
+        // AP-22 — the leading signals behind (or short of) the call.
+        const early = (d.reasons || []).filter(r => !/hard weeks/.test(r));
         if (early.length) s += `; early fatigue signs: ${early.join('; ')}`;
         lines.push(`Deload check: ${s}`);
     }
@@ -230,7 +234,7 @@ export function formatVerdictsContext(v) {
     if (v.exercises?.length) {
         lines.push(`Progression targets (weights in ${v.unit}, smallest jump ${v.increment}):`);
         for (const e of v.exercises) {
-            const fatigue = e.fatigue ? ` · fatigue: ${e.fatigue} — target unchanged; hold rather than push, or pull the deload forward` : '';
+            const fatigue = e.fatigue ? ` · fatigue: ${e.fatigue} (already in the target — don't push past it)` : '';
             lines.push(`- ${e.name} (${e.template}${e.today ? ', today' : ''}): ${verdictLine(e, v.unit)}${fatigue}`);
         }
     }

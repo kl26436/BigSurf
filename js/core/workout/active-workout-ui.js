@@ -20,7 +20,7 @@ import { augmentStaticCatalog } from '../data/equipment-catalog-helpers.js';
 import { ownedEquipmentKeys, searchCatalogMachines, matchesAllTokens } from '../data/catalog-search.js';
 import {
     mergeSeededSets, isBlankSet, isTouchedSet, historyFromSameMachine, seedSetsFromLastSession, seedSetsFromTemplate,
-    plateRelativeDisplay, reindexAfterDelete,
+    plateRelativeDisplay, reindexAfterDelete, rpePromptSetIndex,
 } from './set-seeding.js';
 import { planInlineEquipment, knownBrands, suggestedBaseWeight } from '../data/equipment-create.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
@@ -1156,6 +1156,7 @@ function buildSetRows(exercise, idx, savedEx, unit, baseWeight = 0) {
     if (currentSetIdx < 0) currentSetIdx = sets.length;
 
     const unitLabel = unit || 'lbs';
+    const rpeSetIdx = AppState.settings?.trackRpe ? rpePromptSetIndex(sets) : -1;
 
     const rows = sets.map((set, si) => {
         const isCurrent = si === currentSetIdx;
@@ -1176,10 +1177,12 @@ function buildSetRows(exercise, idx, savedEx, unit, baseWeight = 0) {
             ? `<span class="aw-set-row__beat" aria-label="Beat last session">${beat.label}</span>`
             : '';
 
-        // RPE row (opt-in via settings.trackRpe) — effort chips under each
-        // completed set. Rendered as a sibling of the set row so the set grid
-        // and awToggleSet's row indexing are untouched.
-        const showRpe = !!AppState.settings?.trackRpe && set.completed;
+        // RPE row (opt-in via settings.trackRpe) — effort chips under the
+        // heaviest completed working set only (AP-22: the fatigue rule reads
+        // the top set; one tap per exercise), plus any set already rated.
+        // Rendered as a sibling of the set row so the set grid and
+        // awToggleSet's row indexing are untouched.
+        const showRpe = !!AppState.settings?.trackRpe && set.completed && (si === rpeSetIdx || set.rpe != null);
         const rpeRow = showRpe
             ? `<div class="aw-rpe-row">
                 <span class="aw-rpe-row__label">RPE${exercise._rpeTarget ? ` · aim ${exercise._rpeTarget}` : ''}</span>

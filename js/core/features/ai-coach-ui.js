@@ -116,7 +116,14 @@ function getContextualPrompts() {
 
         try {
             const deload = TrainingInsights.checkDeloadNeeded(workouts);
-            if (deload?.needed) {
+            if (deload?.needed && deload.source === 'fatigue') {
+                prompts.push({
+                    icon: 'fa-running',
+                    iconClass: 'coach-prompt-card__icon--core',
+                    text: `My effort is climbing at the same weights (${deload.reasons[0]}). Should I take the deload a week early? Plan it for me.`,
+                    html: `Take the <strong>deload a week early</strong>? Effort is climbing.`,
+                });
+            } else if (deload?.needed) {
                 prompts.push({
                     icon: 'fa-running',
                     iconClass: 'coach-prompt-card__icon--core',

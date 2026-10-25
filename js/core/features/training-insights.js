@@ -6,6 +6,7 @@ import { AppState } from '../utils/app-state.js';
 import { Config } from '../utils/config.js';
 import { formatBodyPart } from '../utils/workout-helpers.js';
 import { buildExerciseSessions, stallState, scaleLoadableWeight, weightIncrement } from './progression.js';
+import { pickPrimaries } from './progress-scoreboard.js';
 import {
     getBodyPartForExercise, workoutTonnage, getISOWeekKey,
     analyzeWeeklyVolume as rulesWeeklyVolume,
@@ -127,7 +128,9 @@ export function detectPlateaus(workouts, minSessions = Config.PLATEAU_MIN_SESSIO
 export function checkDeloadNeeded(workouts) {
     const unit = currentDisplayUnit();
     const inc = weightIncrement(unit, unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs);
-    return rulesCheckDeload(workouts, Config, { unit, inc });
+    const primaries = pickPrimaries({ templates: AppState.workoutPlans || [], workouts, today: AppState.getTodayDateString?.() || null })
+        .map(p => p.name);
+    return rulesCheckDeload(workouts, Config, { unit, inc, primaries });
 }
 
 // ===================================================================
@@ -275,14 +278,16 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase, { 
             type: 'deload',
             severity: 'warning',
             icon: 'fa-bed',
-            message: `You've trained hard for ${deload.consecutiveHardWeeks} weeks straight. Consider a deload week — reduce volume 40-50%.`,
+            message: deload.source === 'fatigue'
+                ? `Effort is climbing ${deload.fatiguedMain?.length >= 2 ? `on ${deload.fatiguedMain.slice(0, 2).join(' and ')}` : 'and readiness is low'} — take the deload a week early.`
+                : `You've trained hard for ${deload.consecutiveHardWeeks} weeks straight. Consider a deload week — reduce volume 40-50%.`,
         });
     }
 
     // 1b. AP-22 — leading fatigue signs: effort climbing at the same load,
-    // or a run of low readiness check-ins. Advisory (phase 1): the targets
-    // don't change; the dashboard just says it before the reps drop.
-    if (deload && !inDeload) {
+    // or a run of low readiness check-ins. The set targets already hold or
+    // back off for them (phase 2); this says why before the reps drop.
+    if (deload && !inDeload && !deload.needed) {
         const f = deload.fatigue?.[0];
         if (f) {
             insights.push({

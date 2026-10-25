@@ -6,7 +6,7 @@
 
 *Status 2026-10-23 evening: AP-1, AP-2, AP-6, AP-7, AP-8, AP-10 (`5ca4af6`) and AP-9, AP-15 a–g (`7dc3319`) are on `main`; coach unit tests green (130). Not yet on dev/prod.*
 
-*Status 2026-10-25: AP-19, AP-20a, AP-23 and AP-24 built (full suite green, 1165) — functions + firestore rules + hosting not yet deployed. Earlier: AP-15 h–i, AP-16, AP-21 and AP-22 phase 1 committed; full suite green (1062), lint at baseline, design audit strict ok. Functions deployed (one project — live for dev and prod clients; backward compatible with the old client). Hosting on **dev** only; promote to prod after verifying. "As built" notes under each phase record where the build differs from the plan text.*
+*Status 2026-10-25: AP-19, AP-20a, AP-23 and AP-24 deployed (functions, dev, prod; firestore rules pending). AP-22 phase 2 + the heaviest-set RPE prompt built (1172 green). Earlier: AP-15 h–i, AP-16, AP-21 and AP-22 phase 1 committed; full suite green (1062), lint at baseline, design audit strict ok. Functions deployed (one project — live for dev and prod clients; backward compatible with the old client). Hosting on **dev** only; promote to prod after verifying. "As built" notes under each phase record where the build differs from the plan text.*
 
 *2026-10-25: §4.0 rewritten around how Kevin trains (plan → execute → renegotiate); AP-19 gains a planning contract; added §4c / AP-23 (planner tools + live gaps) and §4d / AP-24 (Block page).*
 
@@ -462,6 +462,16 @@ Acceptance: the dashboard answers "am I progressing?" in one glance without open
 ### 4b.4 AP-22 — Fatigue signal: RPE-at-load and readiness (S/M)
 
 > **As built (2026-10-24), phase 1 only:** `buildExerciseSessions` carries `topRpe`/`rpeLogged`; `fatigueState` in `progression.js` exactly as specified (null under `minSessions` rated sessions). `readinessState` and `fatigueSignals` live in `training-rules.js` (workout-level, mirrored); `checkDeloadNeeded` now returns `reasons[]`, `fatigue[]`, `readinessLow` — `needed` is unchanged. Reported in: the verdict line (`· fatigue: RPE 7.5→8.5→9 at 185 over 3 sessions — target unchanged…`), the deload-check line ("early fatigue signs"), a new readiness line, the scoreboard (`primary.fatigue` → dashboard "Effort ↑" chip), and a dashboard insight that outranks the low-volume headline. Prompt: one line telling the model to quote the signal and hold / pull the deload forward. Tests: `tests/unit/fatigue-signal.test.js`. **Not done:** the logging-cost UX decision (RPE prompt only on the heaviest set or only on primaries) — still every set when `trackRpe` is on; phase 2 (changing targets) stays gated on AP-20 fixtures.
+
+> **As built (2026-10-25), phase 2 + logging cost:** shipped ahead of the AP-20 fixtures, by decision. `progressionTarget` calls `fatigueState` itself:
+> - A fatigued rung-1 stall returns the back-off (`rung:2, early:true`).
+> - **Addition to the plan:** a fatigued lift at rung 0 that would bump holds instead (`action:'consolidate'`). This covers the RPE ≥ 9.5 case; rung 2/3 are unchanged.
+> - Every fatigued target carries `fatigued`/`fatigueReason`, and the verdict quotes it ("already in the target").
+> - `computeOverloadNudge` makes the same calls, so the card and the rows agree; a deload intent still wins.
+>
+> `checkDeloadNeeded(…, {primaries})` is due **a week early** (`source:'fatigue'`) when the hard-week run is one short and either 2+ main lifts are fatigued or readiness is low. `primaries` comes from `pickPrimaries`, passed in by `computeVerdicts` and the client wrapper; training-rules can't import the scoreboard, which already imports it. The dashboard insight, coach prompt card and verdict line say "a week early".
+>
+> Logging cost (decided 2026-10-25, **heaviest set**): with `trackRpe` on, RPE chips show only on the heaviest completed working set per exercise (`rpePromptSetIndex`, ties → the later set), plus any set already rated. Settings copy: "Rate your heaviest set (6–10) on each exercise". Tests in `fatigue-signal.test.js`.
 
 **Why:** every rule today is a *lagging* indicator — it fires after the weight or reps drop. You log two *leading* indicators, `set.rpe` (6–10, opt-in via `settings.trackRpe`, off by default) and `workout.readiness.score` (1–5), and neither feeds any rule; only the prompt mentions them (`index.js` "Auto-regulate on readiness…"). The question "when should I back down?" is best answered by *same load, effort climbing* — three sessions at 185 where the top set went RPE 7.5 → 8.5 → 9 is fatigue a week before 185×6 becomes 185×3. The specimen thread (field guide 1.4b) is exactly that case, caught late.
 

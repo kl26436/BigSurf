@@ -189,8 +189,8 @@ export function stallState(sessions) {
  *     `inc`), reps same-or-fewer end to end, and top-set RPE rose by at least
  *     `rpeRise`; or
  *   - the latest top set hit RPE ≥ 9.5 at a load previously done at ≤ 8.
- * Phase 1: reported only (verdicts, scoreboard, dashboard, deload check) —
- * it does not change progressionTarget.
+ * Phase 2: progressionTarget acts on it — a fatigued stall skips to the
+ * back-off rung early, and a fatigued lift is never bumped (hold instead).
  *
  * @param {Array} sessions - buildExerciseSessions output (newest first)
  * @returns {null|{fatigued:boolean, load:number, rpeTrend:number[],
@@ -255,6 +255,16 @@ export function computeOverloadNudge(sessions, displayUnit, repTarget, increment
 
     // 1) Plateau — same top weight three sessions running.
     const stall = stallState(sessions);
+    // AP-22 phase 2 — same calls as progressionTarget, so card and rows agree.
+    const fatigue = fatigueState(sessions, { inc });
+    const fatigued = !!fatigue?.fatigued;
+    if (fatigued && stall.rung === 1) {
+        const back = scaleLoadableWeight(W, BACK_OFF_FACTOR, inc);
+        return `Effort is climbing at ${W} ${displayUnit} (${fatigue.reason}) — drop to ${back} for two sessions, then back at it`;
+    }
+    if (fatigued && stall.rung === 0 && ((rt && R >= rt) || (stall.run >= 3 && stall.repsClimbing))) {
+        return `${R} reps at ${W} ${displayUnit}, but effort is climbing (${fatigue.reason}) — hold ${W} before the next jump`;
+    }
     if (stall.run >= 3) {
         if (stall.repsClimbing) return `${stall.run} sessions at ${W} ${displayUnit} — reps are climbing, go ${next} next`;
         // Never offer MORE load at a detected stall (the old string did).
@@ -302,6 +312,11 @@ function ordinal(n) {
  *
  * A deload intent (AP-7) short-circuits to `action:'deload', deload:true`.
  *
+ * Fatigue (AP-22 phase 2, `fatigueState`): a fatigued rung-1 stall skips to
+ * the back-off rung (`rung:2, early:true`); a fatigued lift that would bump
+ * holds instead (`action:'consolidate'`). Every target for a fatigued lift
+ * carries `fatigued:true, fatigueReason`.
+ *
  * @returns {{weight:number, reps:number|null, bumped:boolean, stalled:boolean,
  *            action:'bump'|'consolidate'|'chase-rep'|'back-off'|'rotate'|'start'|'deload',
  *            rung?:number, stallRun?:number, backOff?:boolean, rotate?:boolean}|null}
@@ -325,7 +340,26 @@ export function progressionTarget(sessions, displayUnit, repTarget, increment, i
 
     const stall = stallState(sessions);
     const repsClimbing = stall.run >= 3 && stall.repsClimbing;
+    const fatigue = fatigueState(sessions, { inc });
+    const tag = fatigue?.fatigued ? { fatigued: true, fatigueReason: fatigue.reason } : {};
 
+    // Effort climbing at a stalled load: the back-off comes a rung early.
+    if (tag.fatigued && stall.rung === 1) {
+        return {
+            bumped: false, stalled: true, rung: 2, stallRun: stall.run, early: true,
+            weight: scaleLoadableWeight(W, BACK_OFF_FACTOR, inc), reps: rt || R || null,
+            action: 'back-off', backOff: true, ...tag,
+        };
+    }
+    // Earned a bump on reps, but the effort says not yet — hold.
+    if (tag.fatigued && stall.rung === 0 && ((rt && R >= rt) || repsClimbing)) {
+        return { weight: W, reps: rt || R || null, bumped: false, stalled: false, action: 'consolidate', ...tag };
+    }
+    const result = progressionTargetCore(sessions, { W, R, rt, inc, next, stall, repsClimbing });
+    return tag.fatigued ? { ...result, ...tag } : result;
+}
+
+function progressionTargetCore(sessions, { W, R, rt, inc, next, stall, repsClimbing }) {
     // Stall: three+ sessions at the same weight with reps NOT climbing — a
     // true plateau, answered by the rung rather than a terminal flag.
     if (stall.rung >= 1) {

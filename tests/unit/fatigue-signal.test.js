@@ -1,9 +1,11 @@
-// AP-22 phase 1 — fatigue signal from RPE-at-load and readiness. Leading
-// indicators, REPORTED (verdicts, scoreboard, dashboard, deload reasons) but
-// never changing a target. Pure modules, imported real.
+// AP-22 — fatigue signal from RPE-at-load and readiness. Phase 1 reports it
+// (verdicts, scoreboard, dashboard, deload reasons); phase 2 acts on it (a
+// fatigued stall backs off a rung early, a fatigued lift isn't bumped, the
+// deload comes a week early). Pure modules, imported real.
 
 import { describe, it, expect } from 'vitest';
-import { buildExerciseSessions, fatigueState, progressionTarget } from '../../js/core/features/progression.js';
+import { buildExerciseSessions, fatigueState, progressionTarget, computeOverloadNudge, scaleLoadableWeight } from '../../js/core/features/progression.js';
+import { rpePromptSetIndex } from '../../js/core/workout/set-seeding.js';
 import { checkDeloadNeeded, readinessState, fatigueSignals } from '../../js/core/features/training-rules.js';
 import { buildScoreboard } from '../../js/core/features/progress-scoreboard.js';
 import { computeVerdicts, formatVerdictsContext } from '../../js/core/features/coach-rules.js';
@@ -74,10 +76,53 @@ describe('fatigueState', () => {
         expect(fatigueState(sessionsOf(withDeload))).toBeNull(); // only two rated build sessions left
     });
 
-    it('phase 1: progressionTarget is unchanged by fatigue', () => {
-        const s = sessionsOf(creeping);
-        const t = progressionTarget(s, 'lbs', 8, 5);
-        expect(t).toMatchObject({ action: 'chase-rep', rung: 1, weight: 185 }); // the stall ladder, as before
+});
+
+describe('progressionTarget acts on fatigue (phase 2)', () => {
+    const back = scaleLoadableWeight(185, 0.9, 5);
+
+    it('a fatigued rung-1 stall skips to the back-off rung', () => {
+        const t = progressionTarget(sessionsOf(creeping), 'lbs', 8, 5);
+        expect(t).toMatchObject({ action: 'back-off', rung: 2, early: true, backOff: true, weight: back, fatigued: true });
+        expect(t.fatigueReason).toBe('RPE 7.5→8.5→9 at 185 over 3 sessions');
+        const nudge = computeOverloadNudge(sessionsOf(creeping), 'lbs', 8, 5);
+        expect(nudge).toContain('Effort is climbing at 185 lbs');
+        expect(nudge).toContain(`drop to ${back}`);
+    });
+
+    it('the same history without RPE keeps the normal ladder', () => {
+        const plain = creeping.map(w => ({ ...w, exercises: { exercise_0: { sets: [set(185, 8)] } } }));
+        const t = progressionTarget(sessionsOf(plain), 'lbs', 8, 5);
+        expect(t).toMatchObject({ action: 'chase-rep', rung: 1, weight: 185 });
+        expect(t.fatigued).toBeUndefined();
+    });
+
+    it('reps earned a bump but effort spiked → hold, card agrees', () => {
+        const spiked = [
+            wo('2026-10-08', [set(185, 8, 8)]), wo('2026-10-15', [set(180, 8, 8)]), wo('2026-10-22', [set(185, 8, 9.5)]),
+        ];
+        const t = progressionTarget(sessionsOf(spiked), 'lbs', 8, 5);
+        expect(t).toMatchObject({ action: 'consolidate', weight: 185, bumped: false, fatigued: true });
+        expect(computeOverloadNudge(sessionsOf(spiked), 'lbs', 8, 5)).toContain('hold 185 before the next jump');
+        // Without the RPE spike the same reps bump.
+        const easy = [...spiked.slice(0, 2), wo('2026-10-22', [set(185, 8, 8)])];
+        expect(progressionTarget(sessionsOf(easy), 'lbs', 8, 5)).toMatchObject({ action: 'bump', weight: 190 });
+    });
+
+    it('a deload session still wins over fatigue', () => {
+        const t = progressionTarget(sessionsOf(creeping), 'lbs', 8, 5, { mode: 'deload', weightPct: -35 });
+        expect(t.action).toBe('deload');
+    });
+});
+
+describe('rpePromptSetIndex (one RPE tap per exercise)', () => {
+    it('the heaviest completed working set; ties → the later one; warmups and open sets skipped', () => {
+        expect(rpePromptSetIndex([
+            { weight: 95, completed: true, type: 'warmup' }, { weight: 185, completed: true },
+            { weight: 185, completed: true }, { weight: 205, completed: false },
+        ])).toBe(2);
+        expect(rpePromptSetIndex([{ weight: 185, completed: false }])).toBe(-1);
+        expect(rpePromptSetIndex([{ weight: null, completed: true }, { weight: null, completed: true }])).toBe(1);
     });
 });
 
@@ -95,10 +140,11 @@ describe('readinessState', () => {
     });
 });
 
-describe('checkDeloadNeeded reasons (phase 1: reported, not recommended)', () => {
+describe('checkDeloadNeeded reasons', () => {
     it('lists the fatigue reason without flipping needed', () => {
         const d = checkDeloadNeeded(creeping, undefined, { today: TODAY });
         expect(d.needed).toBe(false);
+        expect(d.source).toBeNull();
         expect(d.fatigue).toEqual([{ exercise: 'Smith Bench', reason: 'RPE 7.5→8.5→9 at 185 over 3 sessions', load: 185 }]);
         expect(d.reasons).toContain('effort rising on Smith Bench: RPE 7.5→8.5→9 at 185 over 3 sessions');
     });
@@ -115,6 +161,34 @@ describe('checkDeloadNeeded reasons (phase 1: reported, not recommended)', () =>
         expect(checkDeloadNeeded(ws, undefined, { today: TODAY }).reasons).toEqual([]);
     });
 
+    // Phase 2 — one week short of the run, with effort rising on 2+ main lifts.
+    // Same tonnage every week, so no week reads as a recovery week.
+    const even = [wo('2026-10-08', [set(185, 8, 7.5)]), creeping[1], creeping[2]];
+    const twoLifts = even.map(w => ({
+        ...w,
+        exerciseNames: { exercise_0: 'Smith Bench', exercise_1: 'Leg Press' },
+        exercises: { exercise_0: w.exercises.exercise_0, exercise_1: w.exercises.exercise_0 },
+    }));
+    const t = { DELOAD_DAYS_PER_WEEK: 1, DELOAD_CONSECUTIVE_WEEKS: 4 };
+
+    it('a week early when two main lifts show it', () => {
+        const d = checkDeloadNeeded(twoLifts, t, { today: TODAY, primaries: ['Smith Bench', 'leg press'] });
+        expect(d).toMatchObject({ needed: true, source: 'fatigue', consecutiveHardWeeks: 3, fatiguedMain: ['Smith Bench', 'Leg Press'] });
+        expect(d.reasons[0]).toBe('3 hard weeks and effort rising on 2 main lifts — a week early');
+    });
+
+    it('not early on one main lift, or two weeks short', () => {
+        expect(checkDeloadNeeded(twoLifts, t, { today: TODAY, primaries: ['Smith Bench'] }).needed).toBe(false);
+        expect(checkDeloadNeeded(twoLifts, { ...t, DELOAD_CONSECUTIVE_WEEKS: 5 }, { today: TODAY }).needed).toBe(false);
+        expect(checkDeloadNeeded(twoLifts, { ...t, DELOAD_CONSECUTIVE_WEEKS: 3 }, { today: TODAY }).source).toBe('weeks');
+    });
+
+    it('low readiness alone also pulls it a week early', () => {
+        const tired = even.map(w => ({ ...w, readiness: { score: 2 } }));
+        const d = checkDeloadNeeded(tired, { ...t, READINESS_WINDOW_DAYS: 30, READINESS_LOW_COUNT: 3 }, { today: TODAY, primaries: [] });
+        expect(d).toMatchObject({ needed: true, source: 'fatigue', readinessLow: true });
+    });
+
     it('fatigueSignals ignores lifts without RPE', () => {
         expect(fatigueSignals(creeping.map(w => ({ ...w, exercises: { exercise_0: { sets: [set(185, 8)] } } })), { today: TODAY })).toEqual([]);
     });
@@ -123,12 +197,13 @@ describe('checkDeloadNeeded reasons (phase 1: reported, not recommended)', () =>
 describe('fatigue in the verdicts and the scoreboard', () => {
     const templates = [{ id: 'push', name: 'Push day', exercises: [{ machine: 'Smith Bench', defaultReps: 8, role: 'primary' }] }];
 
-    it('the verdict line carries the signal; the target is the same as without it', () => {
+    it('the verdict is the fatigued target, and says why', () => {
         const v = computeVerdicts({ workouts: creeping, templates, weekPlan: { days: { sat: 'push' } }, today: TODAY });
         const e = v.exercises[0];
-        expect(e).toMatchObject({ action: 'chase-rep', weight: 185, fatigue: 'RPE 7.5→8.5→9 at 185 over 3 sessions' });
+        expect(e).toMatchObject({ action: 'back-off', early: true, fatigue: 'RPE 7.5→8.5→9 at 185 over 3 sessions' });
         const text = formatVerdictsContext(v);
-        expect(text).toContain('· fatigue: RPE 7.5→8.5→9 at 185 over 3 sessions — target unchanged');
+        expect(text).toContain('stall rung 2 a rung early — effort rising');
+        expect(text).toContain('· fatigue: RPE 7.5→8.5→9 at 185 over 3 sessions (already in the target');
         expect(text).toContain('early fatigue signs: effort rising on Smith Bench');
     });
 

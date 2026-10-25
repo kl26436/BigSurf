@@ -21,8 +21,8 @@ const DEFAULT_SETTINGS = {
     restTimerAutoStart: true,
     restTimerVibration: true,
     restTimerSound: false,
-    // Log RPE (rate of perceived exertion, 6–10) per completed set. Off by
-    // default so casual users aren't taxed; opt-in shows a chip row per set.
+    // Log RPE (rate of perceived exertion, 6–10) on the heaviest set. Off by
+    // default so casual users aren't taxed; opt-in shows one chip row per exercise.
     trackRpe: false,
     // Manual deload week (AP-10) — { from: 'YYYY-MM-DD', weeks: 1, weightPct: -30 }
     // or null. Expires by its date window; no cleanup job. A program's own
@@ -369,7 +369,7 @@ export function renderSettings() {
                     <div class="srow-icon ic-primary"><i class="fas fa-gauge-high"></i></div>
                     <div class="srow-info">
                         <div class="srow-name">Track RPE</div>
-                        <div class="srow-desc">Log effort (6–10) per set</div>
+                        <div class="srow-desc">Rate your heaviest set (6–10) on each exercise</div>
                     </div>
                     ${toggleBtn('trackRpe', s.trackRpe)}
                 </div>

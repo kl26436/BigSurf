@@ -183,3 +183,21 @@ export function historyFromSameMachine(equipName, equipId, lastSession) {
     if (!lastSession.equipment) return true;
     return !!equipName && equipNameKey(equipName) === equipNameKey(lastSession.equipment);
 }
+
+/**
+ * AP-22 — which completed set asks for RPE. The fatigue rule reads only the
+ * top set, so one tap per exercise: the heaviest completed working set (ties
+ * → the later set, the harder effort). Sets that already carry an RPE keep
+ * their chips separately (the caller shows those too).
+ * @returns {number} set index, or -1 when nothing is completed
+ */
+export function rpePromptSetIndex(sets) {
+    let best = -1;
+    let bestW = -Infinity;
+    (sets || []).forEach((s, i) => {
+        if (!s?.completed || s.type === 'warmup') return;
+        const w = Number(s.weight) || 0;
+        if (w >= bestW) { bestW = w; best = i; }
+    });
+    return best;
+}
