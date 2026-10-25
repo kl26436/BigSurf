@@ -53,3 +53,30 @@ describe('recovery from notes (AU-10(a))', () => {
         expect(s).toHaveLength(3);
     });
 });
+
+describe('light sessions from load alone, with a window (AU-10(b))', () => {
+    const base = [wo('2026-09-28', 185, 8), wo('2026-10-05', 185, 8), wo('2026-10-12', 185, 8)];
+
+    it('an un-noted −35% week followed by a normal week is skipped', () => {
+        const s = buildExerciseSessions([...base, wo('2026-10-19', 120, 8), wo('2026-10-26', 185, 8)], 'Bench', 'lbs');
+        expect(s.map(x => x.date)).not.toContain('2026-10-19');
+        expect(s.lightSkipped).toEqual([{ date: '2026-10-19', reason: 'dip, then back to normal load' }]);
+    });
+
+    it('a −35% week with nothing after it yet is NOT skipped (the window is open)', () => {
+        const s = buildExerciseSessions([...base, wo('2026-10-19', 120, 8)], 'Bench', 'lbs');
+        expect(s[0].date).toBe('2026-10-19');
+    });
+
+    it('a −10% session is never skipped', () => {
+        const s = buildExerciseSessions([...base, wo('2026-10-19', 165, 8), wo('2026-10-26', 185, 8)], 'Bench', 'lbs');
+        expect(s.map(x => x.date)).toContain('2026-10-19');
+    });
+
+    it('six weeks post-injury at ~60%: nothing skipped — the ladder runs on the new baseline', () => {
+        const injured = ['2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16', '2026-11-23'].map(d => wo(d, 110, 8));
+        const s = buildExerciseSessions([...base, ...injured], 'Bench', 'lbs');
+        expect(s.lightSkipped).toBeUndefined();
+        expect(s[0].topWeight).toBe(110);
+    });
+});

@@ -109,6 +109,10 @@ function sameMachine(equipName, equipId, src) {
 const e1rmOf = (w, r) => (w > 0 && r > 0 ? w * (1 + Math.min(r, 12) / 30) : 0);
 /** AU-10(a) — a noted session is "light" for a lift below this share of its 4-week best. */
 const LIGHT_NOTE_LOAD_SHARE = 0.85;
+/** AU-10(b) — an un-noted dip this deep, bracketed by a return to normal load, is light. */
+const LIGHT_DIP_SHARE = 0.75;
+const LIGHT_RETURN_SHARE = 0.9;
+const LIGHT_RETURN_DAYS = 14;
 
 function buildExerciseSessions(allWorkouts, exName, displayUnit, { excludeRecovery = true, machine = null } = {}) {
     if (!Array.isArray(allWorkouts) || !exName) return [];
@@ -157,18 +161,37 @@ function buildExerciseSessions(allWorkouts, exName, displayUnit, { excludeRecove
     // set under 85% of its best over the previous 28 days = a light session
     // for this lift: left out, like a labelled deload. A note on a normal-load
     // day ("next week is deload") doesn't move anything.
+    //
+    // AU-10(b) — no note at all: a session under 75% of that best is light
+    // only when a LATER session within 14 days is back at >= 90% of it (a dip
+    // bracketed by normal load). A sustained drop — injury, layoff — has no
+    // return after it, so it stays in the series and the ladder (and AU-11's
+    // reacquaint) work from the new baseline instead of pre-injury numbers.
     const skipped = [];
+    const excludeLight = excludeRecovery;
     const kept = sessions.filter((s, i) => {
-        if (!s._noted) return true;
+        if (!excludeLight) return true;
         const from = shiftDate(s.date, -28);
         let best = 0;
         for (const p of sessions.slice(i + 1)) {
             if (p.date < from) break;
             best = Math.max(best, e1rmOf(p.topWeight, p.topReps || p.maxReps));
         }
-        const light = best > 0 && e1rmOf(s.topWeight, s.topReps || s.maxReps) < best * LIGHT_NOTE_LOAD_SHARE;
-        if (light) skipped.push({ date: s.date, reason: 'notes + load' });
-        return !light;
+        if (!(best > 0)) return true;
+        const e = e1rmOf(s.topWeight, s.topReps || s.maxReps);
+        if (s._noted && e < best * LIGHT_NOTE_LOAD_SHARE) {
+            skipped.push({ date: s.date, reason: 'notes + load' });
+            return false;
+        }
+        if (e < best * LIGHT_DIP_SHARE) {
+            const until = shiftDate(s.date, LIGHT_RETURN_DAYS);
+            const returned = sessions.slice(0, i).some(n => n.date <= until && e1rmOf(n.topWeight, n.topReps || n.maxReps) >= best * LIGHT_RETURN_SHARE);
+            if (returned) {
+                skipped.push({ date: s.date, reason: 'dip, then back to normal load' });
+                return false;
+            }
+        }
+        return true;
     });
     for (const s of kept) delete s._noted;
     if (skipped.length) Object.defineProperty(kept, 'lightSkipped', { value: skipped, enumerable: false });
@@ -519,4 +542,4 @@ function progressionTargetCore(sessions, { W, R, rt, inc, next, stall, repsClimb
     return { weight: W, reps: rt || R || null, bumped: false, stalled: false, action: 'start' };
 }
 
-module.exports = { weightIncrement, scaleLoadableWeight, machineKey, sameMachine, LIGHT_NOTE_LOAD_SHARE, buildExerciseSessions, deloadTarget, deloadNudgeText, stallState, fatigueState, computeOverloadNudge, PROGRESSION_ACTIONS, STALE_SESSION_DAYS, LIGHT_TARGET_SHARE, progressionTarget };
+module.exports = { weightIncrement, scaleLoadableWeight, machineKey, sameMachine, LIGHT_NOTE_LOAD_SHARE, LIGHT_DIP_SHARE, LIGHT_RETURN_SHARE, LIGHT_RETURN_DAYS, buildExerciseSessions, deloadTarget, deloadNudgeText, stallState, fatigueState, computeOverloadNudge, PROGRESSION_ACTIONS, STALE_SESSION_DAYS, LIGHT_TARGET_SHARE, progressionTarget };
