@@ -6,7 +6,7 @@
 
 *Status 2026-10-23 evening: AP-1, AP-2, AP-6, AP-7, AP-8, AP-10 (`5ca4af6`) and AP-9, AP-15 a–g (`7dc3319`) are on `main`; coach unit tests green (130). Not yet on dev/prod.*
 
-*Status 2026-10-24: AP-15 h–i, AP-16, AP-21 and AP-22 phase 1 committed; full suite green (1062), lint at baseline, design audit strict ok. Functions deployed (one project — live for dev and prod clients; backward compatible with the old client). Hosting on **dev** only; promote to prod after verifying. "As built" notes under each phase record where the build differs from the plan text.*
+*Status 2026-10-25: AP-19, AP-20a, AP-23 and AP-24 built (full suite green, 1165) — functions + firestore rules + hosting not yet deployed. Earlier: AP-15 h–i, AP-16, AP-21 and AP-22 phase 1 committed; full suite green (1062), lint at baseline, design audit strict ok. Functions deployed (one project — live for dev and prod clients; backward compatible with the old client). Hosting on **dev** only; promote to prod after verifying. "As built" notes under each phase record where the build differs from the plan text.*
 
 *2026-10-25: §4.0 rewritten around how Kevin trains (plan → execute → renegotiate); AP-19 gains a planning contract; added §4c / AP-23 (planner tools + live gaps) and §4d / AP-24 (Block page).*
 
@@ -397,6 +397,8 @@ Replace the format paragraph (`index.js:1004-1006`) with: **Verdict** (one line;
 
 **Two contracts, not one** (added 2026-10-25). The Verdict → Because → Do shape is for *questions*. A *plan* — anything that creates or reshapes a block — gets its own shape, and the model picks by what it's producing: **(1) The block in one line** — goal, weeks, deload week. **(2) Week by week** — a table: week · what it's *for* (accumulate / intensify / peak / deload) · the levers (reps, RPE, set delta, % load). **(3) Day by day** — the split with each template's exercises, primaries marked. **(4) What stays fixed and why** — the primaries, named, "so the scoreboard keeps meaning something." **(5) What changes and why** — each accessory swap with the engine's reason (never used / idle since). **(6) How we'll know it worked** — the two or three scoreboard numbers to watch at week 4. The same six parts are persisted as `rationale` on the program doc (AP-23) and rendered on the Block page (AP-24), so the talk-through survives the conversation.
 
+> **As built (2026-10-25):** the base prompt's format paragraph is now **HOW TO ANSWER** with contract A (question: Verdict / Because / Do / Watch, ~120 words, one recommendation) and contract B (plan: the six parts, also passed as `create_program.rationale`). Live mode no longer appends to the chat prompt: it gets its own `LIVE_SYSTEM_PROMPT` (≤40 words; deload, loadable weights, gym equipment, pain → swap / skip / end + `remember_fact`) plus the memory block. Routing: `functions/coach-routing.js#routeCoachTurn` sends a chat turn to `QUICK_COACH_MODEL` (Sonnet, no thinking, 4k tokens) only when it opens like a lookup *and* names a fact (PR, best, last, how many…) *and* has no judgment word (should, why, plan, swap, deload, hard…) *and* is ≤140 chars; anything else stays on the flagship. The tier and reason are recorded on the trace.
+
 #### AP-20 — Measure it: traces + eval loop (M/L)
 
 - **20a Traces (S, do early):** per turn write `coachTraces/{threadId}/{turn}`: context text (or hash + size), tool calls `{name, input, output, is_error, ms}`, rounds, model, tokens, latency. Admin-only read. Every "stupid" answer becomes a reproducible case.
@@ -404,6 +406,8 @@ Replace the format paragraph (`index.js:1004-1006`) with: **Verdict** (one line;
 - **20c Runner (M):** `scripts/coach-eval.mjs` — extract `buildTrainingContext` to a pure module first (it reads `AppState` today), build context per scenario, call the API with the real prompt + tools, execute tools against the in-memory Firestore mock, capture the trace.
 - **20d Assertions (S):** no write tool on a question-form prompt; `propose_session_adjustments` (not `update_*`) when deload flag set; every prescribed weight loadable; equipment exists at gym; injured pattern not programmed; word count within contract; `log_advice` called when a number is prescribed; verdict quoted when present.
 - **20e Rubric (S):** Sonnet grades 1-5 on grounded-in-numbers / one clear recommendation / explains why / consistent with verdict; store scores; diff against previous run. Gate prompt/tool PRs on `npm run eval:coach`.
+
+> **As built (2026-10-25), 20a only:** traces are a **top-level** `coachTraces/{autoId}` collection, not `coachTraces/{threadId}/{turn}` under the user — the rules give an owner read on all of `users/{uid}/**`, so an admin-only doc can't live there. Rule: `match /coachTraces/{traceId} { allow read, delete: if isAdmin(); }` (writes are Admin SDK only); **needs `firebase deploy --only firestore:rules`**. Doc (`buildTraceDoc`): userId, threadId, turn, mode, route, model, the last user message as `contextText` (clipped 60k) + `contextChars` + `contextHash` (sha256, 16 hex) + `hasContextBlock`, `toolCalls[] {round, name, input (2k), output (4k), isError, ms}`, rounds, tokens, latencyMs, stopReason, response (8k), error. Written on success, on the live return and in the catch path; a failed write is logged and never fails the turn. 20b–e not started.
 
 ### 4.3 How agents actually work — a primer against this codebase
 
@@ -498,6 +502,17 @@ Tests: `coach-tools-executors.test.js` — rotation candidates: ranks never-used
 
 Acceptance: "replace back extension with something" → the answer names the engine's top candidate and its reason, and offers a one-tap `replace_day`; "last week was hard" → one card, tap, every session this week is 10% lighter and the Block page shows the override; the first program the coach builds asks which lifts are primaries and writes them; the created program carries a `rationale` the Block page renders.
 
+> **As built (2026-10-25):**
+> - **a** `rankRotationCandidates` (exercise-rotation.js, mirrored) shares `patternCandidates` with `selectRotation` (behaviour unchanged); the tool returns `{location, pattern, role, candidates[], heldPrimaries[]}`, or a `note` when nothing at the gym fits the pattern.
+> - **b** `settings.weekOverride` replaces `manualDeload` (`weekOverrideOf(settings)` reads either, so old docs still work; the Settings toggle now writes `weekOverride`). **Precedence changed:** the override now beats the program week (it was rule 2, after the program) — otherwise a coach-proposed lighter week inside a block did nothing. **Mode:** any negative `weightPct` resolves to `deload` (not `build` above −20% as planned), so progression never bumps during a lighter week; the label distinguishes them ("Lighter week" for a cut smaller than 20%, else "Deload"). `extendBlock` moves `program.startDate` **later** by `weeks·7` (not "back"): the paused weeks are re-run, so no block week is lost. `setDelta` is applied once at workout start (`applyOverrideSetDelta`). The card lists the sessions from the week plan with the previewed intent; `extendBlock` is dropped when there's no active program.
+> - **c** `buildBlockRetrospective`/`formatBlockRetrospective` in coach-rules.js (mirrored); `get_verdicts {scope:'block'}` uses the active program, else the latest by `createdAt`; it reports through the last *finished* week.
+> - **d** `set_primary_lifts` writes `role:'primary'`, and pins `role:'secondary'` elsewhere, using the same `applyPrimaryChoice` as the scoreboard picker; names fuzzy-match to template names.
+> - **e** `rationale` is required when `weeks ≥ 4` on create; `adjust_program` doesn't require it.
+> - **f** `get_workouts` takes either form; ranges are capped at 14 sessions, newest first, in the display unit.
+> - **g** `propose_skip_exercise` → `removeExerciseAt` (extracted from `awDeleteExercise`), or `endSession` → close the live coach + `awFinishWorkout`.
+> - **h, i** done.
+> - Tests: `coach-tools-executors.test.js` "planner tools (AP-23)".
+
 ---
 
 ## 4d. Seeing the plan — AP-24 Block page
@@ -517,6 +532,8 @@ A full page (route `block`), reached from the dashboard hero ("View block"), the
 - **Empty state** (no program): the scoreboard headline + one button that opens job 1.
 
 Acceptance: from the dashboard, one tap shows the whole block by week and day with past results and future targets; the targets shown for next week match what the set rows seed when that session starts; the rationale from the planning conversation is visible on the page; "Adjust this week" and "Swap an accessory" each take one tap plus one confirmation.
+
+> **As built (2026-10-25):** `js/core/features/block-view.js` (`buildBlockModel`, `buildBlockSession`, `targetFor`, `primaryOf`) + `js/core/ui/block-ui.js`, route `block` / `#block-section`. Targets come from `progressionTarget` with history strictly before the cell's date and that date's intent — the same call the set rows make. The grid is rendered as one section per week with a row per split day (not columns: a phone is too narrow for 6 columns). A session done on another day of the same week counts for that cell. Entry points: dashboard program line and Settings program row (`openProgramDetailSheet` now opens the page; the old sheet render is deleted), the coach's program card ("View block"), and a "This block" row atop the Workouts list. Actions are coach turns seeded with the week, accessory or block. Tests: `tests/unit/block-view.test.js`.
 
 ---
 

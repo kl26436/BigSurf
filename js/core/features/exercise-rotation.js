@@ -47,6 +47,79 @@ function reasonFor(doc) {
 }
 
 /**
+ * Every machine at the gym that trains `pattern`, paired with the exercise it
+ * trains in that pattern, stalest first (never-used, then longest idle).
+ * Shared by selectRotation (one pick per slot) and rankRotationCandidates
+ * (the ranked list the coach shows).
+ */
+function patternCandidates({ pattern, atGym, lookup, skipEquipment = () => false, skipName = () => false }) {
+    const candidates = [];
+    for (const doc of atGym) {
+        const key = doc.name.toLowerCase();
+        if (skipEquipment(key)) continue;
+        if (!patternsForEquipment(doc, lookup).includes(pattern)) continue;
+        // The exercise this machine trains in THIS pattern.
+        const exName = (doc.exerciseTypes || []).find(n => {
+            const ex = (lookup && lookup(n)) || { name: n };
+            return inferPattern(ex) === pattern;
+        }) || (inferPattern({ name: [doc.function, doc.name].filter(Boolean).join(' ') }) === pattern ? doc.name : null);
+        if (!exName) continue;
+        if (skipName(exName.toLowerCase())) continue;
+        candidates.push({ doc, exName });
+    }
+    candidates.sort((a, b) =>
+        staleness(a.doc).localeCompare(staleness(b.doc))
+        || a.doc.name.localeCompare(b.doc.name)
+        || a.exName.localeCompare(b.exName));
+    return candidates;
+}
+
+function atGymOf(equipment, location) {
+    return (equipment || []).filter(doc => {
+        if (!doc || !doc.name) return false;
+        if (!location) return true;
+        return Array.isArray(doc.locations) && doc.locations.some(l => String(l).toLowerCase() === String(location).toLowerCase());
+    });
+}
+
+/**
+ * AP-23a — query mode: ranked same-pattern alternatives for ONE exercise (or
+ * a pattern), for the coach's get_rotation_candidates. Same ranking as
+ * selectRotation; nothing is written.
+ *
+ * @param {object} args
+ * @param {string} [args.exercise] - the exercise to replace (its pattern is inferred)
+ * @param {string} [args.pattern] - or an explicit pattern
+ * @param {Array}  args.equipment - equipment docs
+ * @param {string|null} [args.location] - gym name; null = all equipment
+ * @param {(name:string)=>object|undefined} [args.lookup]
+ * @param {string[]} [args.exclude] - exercise names not to offer (e.g. already in the workout)
+ * @param {number} [args.limit]
+ * @returns {{pattern:string|null, role:string|null, candidates:Array<{name:string, equipment:string,
+ *   pattern:string, reason:string, lastUsed:string|null}>}}
+ */
+export function rankRotationCandidates({ exercise = null, pattern = null, equipment = [], location = null, lookup, exclude = [], limit = 5 } = {}) {
+    const row = exercise ? enrich({ name: exercise }, lookup) : null;
+    const p = pattern || (row ? inferPattern(row) : null);
+    if (!p) return { pattern: null, role: row ? inferRole(row, 0) : null, candidates: [] };
+    const skip = new Set([...(exclude || []), ...(exercise ? [exercise] : [])].map(n => String(n).toLowerCase()));
+    const ranked = patternCandidates({ pattern: p, atGym: atGymOf(equipment, location), lookup, skipName: (k) => skip.has(k) });
+    const seen = new Set();
+    const candidates = [];
+    for (const c of ranked) {
+        const k = c.exName.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        candidates.push({
+            name: c.exName, equipment: c.doc.name, pattern: p, reason: reasonFor(c.doc),
+            lastUsed: c.doc.lastUsed ? String(c.doc.lastUsed).slice(0, 10) : null,
+        });
+        if (candidates.length >= limit) break;
+    }
+    return { pattern: p, role: row ? inferRole(row, 0) : null, candidates };
+}
+
+/**
  * Plan accessory swaps for one template.
  *
  * @param {object} args
@@ -93,25 +166,11 @@ export function selectRotation({ exercises = [], equipment = [], location = null
             return;
         }
         const currentEquip = (row.equipment || '').toLowerCase();
-        const candidates = [];
-        for (const doc of atGym) {
-            const key = doc.name.toLowerCase();
-            if (key === currentEquip || reservedEquipment.has(key) || takenEquipment.has(key)) continue;
-            if (!patternsForEquipment(doc, lookup).includes(pattern)) continue;
-            // The exercise this machine trains in THIS pattern.
-            const exName = (doc.exerciseTypes || []).find(n => {
-                const ex = (lookup && lookup(n)) || { name: n };
-                return inferPattern(ex) === pattern;
-            }) || (inferPattern({ name: [doc.function, doc.name].filter(Boolean).join(' ') }) === pattern ? doc.name : null);
-            if (!exName) continue;
-            const exKey = exName.toLowerCase();
-            if (exKey === row.name.toLowerCase() || templateNames.has(exKey) || takenNames.has(exKey)) continue;
-            candidates.push({ doc, exName });
-        }
-        candidates.sort((a, b) =>
-            staleness(a.doc).localeCompare(staleness(b.doc))
-            || a.doc.name.localeCompare(b.doc.name)
-            || a.exName.localeCompare(b.exName));
+        const candidates = patternCandidates({
+            pattern, atGym, lookup,
+            skipEquipment: (key) => key === currentEquip || reservedEquipment.has(key) || takenEquipment.has(key),
+            skipName: (exKey) => exKey === row.name.toLowerCase() || templateNames.has(exKey) || takenNames.has(exKey),
+        });
         const pick = candidates[0];
         if (!pick) {
             held.push({ index, name: row.name, role, reason: 'no alternative at this gym' });

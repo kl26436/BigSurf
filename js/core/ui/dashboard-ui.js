@@ -161,11 +161,11 @@ async function renderDashboard() {
             // AP-8: a deload week (program or manual) mutes "add weight" insights.
             let insightIntent = null;
             try {
-                const { getSessionIntent } = await import('../features/session-intent.js');
+                const { getSessionIntent, weekOverrideOf } = await import('../features/session-intent.js');
                 insightIntent = getSessionIntent({
                     program: AppState._activeProgram || null,
                     today: AppState.getTodayDateString(),
-                    manualDeload: AppState.settings?.manualDeload || null,
+                    manualDeload: weekOverrideOf(AppState.settings),
                 });
             } catch { /* plain insights */ }
             const topInsight = TrainingInsights.getTopInsight(

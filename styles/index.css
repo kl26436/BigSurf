@@ -54,6 +54,7 @@
 @import url('pages/dexa.css');
 @import url('pages/error-log.css');
 @import url('pages/metric-detail.css');
+@import url('pages/block.css');
 
 /* 5. Animations (centralized keyframes) */
 @import url('animations.css');

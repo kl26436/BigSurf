@@ -440,6 +440,9 @@ import { openMetricDetail, closeMetricDetail, setDetailRange, deleteBodyWeightEn
 // Range filter
 import { setRange } from './core/features/metrics/range-filter.js';
 import { showDashboard } from './core/ui/dashboard-ui.js';
+// AP-24 — the Block page self-wires its handlers (openBlockPage is rendered
+// from the dashboard, the coach's program card and the program heartbeat).
+import { openBlockPage } from './core/ui/block-ui.js';
 
 // Stats tab removed — drill-downs now live in dashboard v2
 
@@ -905,6 +908,7 @@ window.openCoachTemplate = openCoachTemplate;
 window.sendCoachMessage = sendCoachMessage;
 window.askCoach = askCoach;
 window.startProgramChat = startProgramChat;
+window.openBlockPage = openBlockPage;
 window.resetCoachUI = resetCoachUI;
 window.showPastCoachSession = showPastCoachSession;
 window.showWorkoutBuilder = showWorkoutBuilder;

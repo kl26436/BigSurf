@@ -69,12 +69,28 @@ describe('getSessionIntent — manual and legacy', () => {
         expect(getSessionIntent({ today: '2026-10-20', manualDeload: { from: '2026-10-20', weeks: 1 } }).weightPct).toBe(MANUAL_DELOAD_WEIGHT_PCT);
     });
 
-    it('precedence: a program week that changes the session beats a manual window', () => {
-        const i = getSessionIntent({ program, today: '2026-10-23', manualDeload: manual });
-        expect(i).toMatchObject({ mode: 'peak', source: 'program' });
-        // A baseline program week lets the manual deload through.
-        expect(getSessionIntent({ program, today: '2026-10-14', manualDeload: { from: '2026-10-12', weeks: 1 } }))
+    it('precedence (AP-23b): an explicit week override beats the program week for its window', () => {
+        expect(getSessionIntent({ program, today: '2026-10-23', manualDeload: manual }))
             .toMatchObject({ mode: 'deload', source: 'manual' });
+        // Outside the window the program's week is back in charge.
+        expect(getSessionIntent({ program, today: '2026-10-23', manualDeload: { from: '2026-09-01', weeks: 1 } }))
+            .toMatchObject({ mode: 'peak', source: 'program' });
+    });
+
+    it('week overrides (AP-23b): a small cut is a lighter week through the deload engine; volume-only is build', () => {
+        const lighter = getSessionIntent({ today: '2026-10-23', manualDeload: { from: '2026-10-20', weeks: 1, weightPct: -10, reason: 'last week was hard' } });
+        expect(lighter).toMatchObject({ mode: 'deload', weightPct: -10, label: 'Lighter week', source: 'manual' });
+        expect(lighter.reason).toBe('Lighter week through 2026-10-26 — last week was hard');
+        expect(getSessionIntent({ today: '2026-10-23', manualDeload: { from: '2026-10-20', weeks: 1, setDelta: 1 } }))
+            .toMatchObject({ mode: 'build', setDelta: 1, weightPct: null, label: 'Adjusted week' });
+        expect(getSessionIntent({ today: '2026-10-23', manualDeload: { from: '2026-10-20', weeks: 1, weightPct: -30 } }).label).toBe('Deload');
+    });
+
+    it('weekOverrideOf reads the new field, falling back to the AP-10 one', async () => {
+        const { weekOverrideOf } = await import('../../js/core/features/session-intent.js');
+        expect(weekOverrideOf({ weekOverride: { from: 'a' }, manualDeload: { from: 'b' } })).toEqual({ from: 'a' });
+        expect(weekOverrideOf({ manualDeload: { from: 'b' } })).toEqual({ from: 'b' });
+        expect(weekOverrideOf(null)).toBeNull();
     });
 
     it('a legacy deload label is a deload that scales nothing again', () => {

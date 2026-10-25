@@ -36,5 +36,13 @@ service cloud.firestore {
                     && request.resource.data.keys().size() < 20;
       allow read, delete: if isAdmin();
     }
+
+    // Coach traces (AP-20a): one doc per coach turn — the context the model
+    // saw, every tool call, tokens, latency. Written only by Cloud Functions
+    // (Admin SDK); admin-only reads. Kept outside users/{uid} on purpose: the
+    // owner-read rule there would expose them.
+    match /coachTraces/{traceId} {
+      allow read, delete: if isAdmin();
+    }
   }
 }

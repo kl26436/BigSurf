@@ -1715,11 +1715,20 @@ export async function awDeleteExercise(idx) {
         destructive: true,
     });
     if (!ok) return;
+    removeExerciseAt(idx);
+    renderAll();
+}
 
+/**
+ * Drop one exercise from the live session — no confirm (callers that need
+ * one ask first; the live coach's skip card IS the confirmation). Every
+ * index-keyed map shifts with the exercises (D10: exerciseUnits didn't, so
+ * the deleted slot's kg flag landed on whatever slid in).
+ */
+export function removeExerciseAt(idx) {
+    const exercises = AppState.currentWorkout?.exercises;
+    if (!exercises || idx < 0 || idx >= exercises.length) return false;
     exercises.splice(idx, 1);
-
-    // Every index-keyed map shifts with the exercises (D10: exerciseUnits
-    // didn't, so the deleted slot's kg flag landed on whatever slid in).
     AppState.savedData.exercises = reindexAfterDelete(AppState.savedData.exercises, idx);
     if (AppState.exerciseUnits) AppState.exerciseUnits = reindexAfterDelete(AppState.exerciseUnits, idx);
     // An autofill still in flight for a shifted slot must not land on the
@@ -1731,7 +1740,7 @@ export async function awDeleteExercise(idx) {
     }
     exerciseMenuOpen = false;
     debouncedSaveWorkoutData(AppState);
-    renderAll();
+    return true;
 }
 
 /**

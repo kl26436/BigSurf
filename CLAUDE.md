@@ -61,6 +61,7 @@ js/
     │   └── schema-migration.js     # v2 to v3 migration
     ├── features/               # Feature modules
     │   ├── ai-coach-ui.js          # AI Coach modal, prompt cards, history
+    │   ├── block-view.js           # AP-24: pure Block page model (week × day cells, targets via progressionTarget)
     │   ├── body-measurements.js    # Body weight/measurements data layer
     │   ├── body-measurements-ui.js # Weight entry page, Chart.js weight chart (the ONLY Chart.js usage)
     │   ├── bodyweight-prompt.js    # Prompt for bodyweight on BW exercises
@@ -100,6 +101,7 @@ js/
     │   ├── training-insights.js    # Rules engine for dashboard insights (no API)
     │   └── withings-integration.js # Withings OAuth + weight sync
     ├── ui/                     # UI components
+    │   ├── block-ui.js             # AP-24: Block page (#block-section, route 'block') — the active program by week/day
     │   ├── dashboard-ui.js         # Dashboard render + renderProgressPage (#progress-section)
     │   ├── muscle-group-detail-ui.js # Level-2 drill-down from dashboard body-part cards
     │   ├── exercise-detail-ui.js   # Level-3 drill-down from muscle-group exercise list
@@ -189,6 +191,7 @@ styles/
 ├── pages/
 │   ├── app-shell.css      # App container, full-page overlay sections
 │   ├── dashboard-v2.css   # Dashboard widgets, hero chips, body-part cards, PRs
+│   ├── block.css          # Block page (AP-24)
 │   ├── detail-pages.css   # Muscle-group / exercise / progress drill-down pages
 │   ├── metric-detail.css  # Metric-card drill-down pages
 │   ├── active-workout-v2.css # Active workout, set rows, rest timer, aw-sheet chrome
@@ -434,6 +437,8 @@ For add-exercise / equipment / similar shared flows, prefer the parameterized he
 
 ### Mirrored rule modules (client ↔ functions/)
 
+Server-only (not mirrored): `functions/coach-routing.js` — model routing per turn + `coachTraces` doc builder (top-level collection, admin-only read).
+
 `functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-guards, fuzzy-match, coach-outcomes, week-targets, movement-patterns, exercise-rotation. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
 
 ### Touching active-workout code
@@ -443,7 +448,7 @@ Active workout is the most user-critical surface. Two safety patterns:
 - Every equipment doc is written by `FirebaseWorkoutManager#getOrCreateEquipment` (pass `knownEquipment` = the warm cache); typed names go through `planInlineEquipment` first. Don't add a create path that calls `saveEquipment` directly.
 - After any change, verify: change-equipment, replace-exercise, add-exercise from menu, and complete-workout flows. The auto-save path is `debouncedSaveWorkoutData` — confirm it still fires.
 - Render pads blank rows before autofill lands. Any path that changes what an exercise slot IS (exercise, equipment, intent) must call `loadAutofillForExercise(idx, { reseed: true, trigger })` so untouched rows refill (`mergeSeededSets`); start/resume use fill-only-if-blank so program adjustments aren't undone. Every autofill emits a quiet `autofill_trace` (Error Log page, session-only); `?debug` adds an overlay line on the last-session card and an `autofill_mismatch` warning when untouched rows don't match the card.
-- Today's deload/peak/build lives on `savedData.sessionIntent` (session-intent.js). Progression, seeding, the card nudge and dashboard insights read it — don't re-derive "is this a deload" from labels or the program elsewhere; use `isRecoveryWorkout(w)` for completed docs.
+- Today's deload/peak/build lives on `savedData.sessionIntent` (session-intent.js). A week override (`settings.weekOverride`, legacy `manualDeload` — read both via `weekOverrideOf`) beats the program week. Progression, seeding, the card nudge and dashboard insights read it — don't re-derive "is this a deload" from labels or the program elsewhere; use `isRecoveryWorkout(w)` for completed docs.
 
 ## Debugging
 

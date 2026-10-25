@@ -8,7 +8,7 @@ import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { navigateTo } from './navigation.js';
 import { db, doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from '../data/firebase-config.js';
 import { exportWorkoutData } from '../data/data-manager.js';
-import { isManualDeloadActive, manualDeloadEnd, MANUAL_DELOAD_WEIGHT_PCT } from '../features/session-intent.js';
+import { isManualDeloadActive, manualDeloadEnd, MANUAL_DELOAD_WEIGHT_PCT, weekOverrideOf } from '../features/session-intent.js';
 import { pickPrimaries, applyPrimaryChoice, PATTERN_LABELS } from '../features/progress-scoreboard.js';
 import { inferPattern } from '../features/movement-patterns.js';
 import { isFCMAvailable, getPushSubscription, initializeFCM, scheduleRestNotification } from '../utils/push-notification-manager.js';
@@ -28,6 +28,11 @@ const DEFAULT_SETTINGS = {
     // or null. Expires by its date window; no cleanup job. A program's own
     // week target wins when both exist (session-intent.js).
     manualDeload: null,
+    // AP-23b — the generalized week override that replaced manualDeload:
+    // { from, weeks, weightPct?, setDelta?, label?, reason? } or null. Set by
+    // this page's Deload toggle or the coach's "lighter this week" card;
+    // beats the program's week for its window (session-intent.js).
+    weekOverride: null,
     // Active-workout autofill hint ("Pre-filled from last session…") is shown
     // once per user, ever — flipped true the first time it renders.
     autofillHintSeen: false,
@@ -178,33 +183,39 @@ function segmented(settingKey, options, currentValue, parseType) {
 /** "Deload week" settings row (AP-10). */
 function manualDeloadRowHTML(s) {
     const today = AppState.getTodayDateString();
-    const on = isManualDeloadActive(s.manualDeload, today);
+    const override = weekOverrideOf(s);
+    const on = isManualDeloadActive(override, today);
     return `
                 <div class="srow">
                     <div class="srow-icon ic-primary"><i class="fas fa-feather"></i></div>
                     <div class="srow-info">
                         <div class="srow-name">Deload week</div>
-                        <div class="srow-desc" id="manual-deload-desc">${escapeHtml(manualDeloadDesc(s.manualDeload, on))}</div>
+                        <div class="srow-desc" id="manual-deload-desc">${escapeHtml(manualDeloadDesc(override, on))}</div>
                     </div>
                     <button class="toggle ${on ? 'on' : ''}" onclick="toggleManualDeload(this)" aria-label="Deload week" aria-pressed="${on}"></button>
                 </div>`;
 }
 
-function manualDeloadDesc(manualDeload, on) {
-    const pct = Math.abs(manualDeload?.weightPct ?? MANUAL_DELOAD_WEIGHT_PCT);
-    if (!on) return `${pct}% lighter for one week — no program needed`;
-    const end = manualDeloadEnd(manualDeload);
+function manualDeloadDesc(override, on) {
+    if (!on) return `${Math.abs(MANUAL_DELOAD_WEIGHT_PCT)}% lighter for one week — no program needed`;
+    const end = manualDeloadEnd(override);
     const endLabel = end ? new Date(`${end}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
-    return `On through ${endLabel} · ${pct}% lighter`;
+    const levers = [];
+    if (typeof override.weightPct === 'number') levers.push(`${Math.abs(override.weightPct)}% ${override.weightPct < 0 ? 'lighter' : 'heavier'}`);
+    if (typeof override.setDelta === 'number' && override.setDelta) levers.push(`${override.setDelta > 0 ? '+' : ''}${override.setDelta} set${Math.abs(override.setDelta) === 1 ? '' : 's'}`);
+    if (!levers.length) levers.push(`${Math.abs(MANUAL_DELOAD_WEIGHT_PCT)}% lighter`);
+    return `${override.label || 'Deload'} on through ${endLabel} · ${levers.join(' · ')}`;
 }
 
 /** Toggle the manual deload week; the next workouts start lighter. */
 export function toggleManualDeload(btn) {
     const turnOn = !btn?.classList.contains('on');
     const value = turnOn
-        ? { from: AppState.getTodayDateString(), weeks: 1, weightPct: MANUAL_DELOAD_WEIGHT_PCT }
+        ? { from: AppState.getTodayDateString(), weeks: 1, weightPct: MANUAL_DELOAD_WEIGHT_PCT, label: 'Deload' }
         : null;
-    updateSetting('manualDeload', value);
+    updateSetting('weekOverride', value);
+    // The legacy field must not resurrect a window this toggle turned off.
+    if (AppState.settings?.manualDeload) updateSetting('manualDeload', null);
     btn?.classList.toggle('on', turnOn);
     btn?.setAttribute('aria-pressed', String(turnOn));
     const desc = document.getElementById('manual-deload-desc');

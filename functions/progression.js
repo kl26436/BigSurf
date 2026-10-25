@@ -144,9 +144,12 @@ function deloadTarget(W, R, rt, intent, inc) {
 function deloadNudgeText(W, R, rt, intent, displayUnit, inc) {
     const t = deloadTarget(W, R, rt, intent, inc);
     const repsStr = t.reps ? ` for ${t.reps}` : '';
+    // A coach/user override says what it is ("Lighter week"); a program or
+    // legacy deload keeps the classic wording.
+    const head = intent?.source === 'manual' && intent.label && !/^deload$/i.test(intent.label) ? intent.label : 'Deload week';
     return t.weight !== W
-        ? `Deload week — ${t.weight} ${displayUnit}${repsStr}, two reps in the tank`
-        : `Deload week — hold ${W} ${displayUnit}, stop two reps short`;
+        ? `${head} — ${t.weight} ${displayUnit}${repsStr}, two reps in the tank`
+        : `${head} — hold ${W} ${displayUnit}, stop two reps short`;
 }
 
 /** Back-off factor for stall rung 2 — drop a step and rebuild. */

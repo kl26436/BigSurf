@@ -1303,3 +1303,13 @@
     min-height: var(--tap);
     align-items: center;
 }
+
+/* AP-24 — "This block" row atop the Workouts list (opens the Block page). */
+.ws-block-link {
+    width: 100%;
+    margin-bottom: var(--space-12);
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+}

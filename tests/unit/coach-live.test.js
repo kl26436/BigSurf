@@ -207,11 +207,12 @@ describe('validateProposal', () => {
 });
 
 describe('liveToolDefinitions', () => {
-    it('reads + proposals only — NO template or memory writes mid-set', () => {
+    it('reads + proposals + remember_fact (AP-23h) — NO template writes mid-set', () => {
         const names = liveToolDefinitions().map(t => t.name).sort();
         expect(names).toEqual([
             'get_exercise_history', 'get_prs', 'log_advice',
-            'propose_add_exercise', 'propose_next_target', 'propose_rest', 'propose_swap',
+            'propose_add_exercise', 'propose_next_target', 'propose_rest', 'propose_skip_exercise', 'propose_swap',
+            'remember_fact',
         ]);
     });
 });

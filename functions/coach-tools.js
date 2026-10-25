@@ -10,11 +10,16 @@
 const {
     applyPrescriptionFields, prescriptionFieldErrors, ROLES, PATTERNS, PROGRESSIONS,
 } = require('./movement-patterns');
+// (inferRole is required below with the AP-23 helpers.)
 const { normalizeWeekTarget, isDeloadTarget } = require('./week-targets');
 const { selectRotation, applyRotation } = require('./exercise-rotation');
 const { convertToUnit } = require('./coach-outcomes');
-const { computeVerdicts } = require('./coach-rules');
-const { getSessionIntent } = require('./session-intent');
+const { computeVerdicts, buildBlockRetrospective } = require('./coach-rules');
+const { getSessionIntent, weekOverrideOf } = require('./session-intent');
+const { rankRotationCandidates } = require('./exercise-rotation');
+const { applyPrimaryChoice } = require('./progress-scoreboard');
+const { inferRole } = require('./movement-patterns');
+const { diceSimilarity } = require('./fuzzy-match');
 const {
     toolError, errorText, canonicalEnum, deloadLock, progressionGuard, loadabilityGuard,
     resolveEquipment, findNearDuplicate, programShapeIssues,
@@ -157,6 +162,18 @@ const TOOL_DEFINITIONS = [
                     items: WEEK_TARGET_ITEM,
                 },
                 split: SPLIT_SCHEMA,
+                rationale: {
+                    type: 'object',
+                    description: "REQUIRED for 4+ weeks — the planning talk-through, saved on the program and shown on the Block page: block = the block in one line; weeks = what each week is FOR; fixed = the primaries kept and why; changed = each swap and why; watch = the scoreboard numbers to check at week 4.",
+                    properties: {
+                        block: { type: 'string' },
+                        weeks: { type: 'array', items: { type: 'object', properties: { week: { type: 'integer' }, why: { type: 'string' } }, required: ['week', 'why'] } },
+                        fixed: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, why: { type: 'string' } }, required: ['name', 'why'] } },
+                        changed: { type: 'array', items: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' }, why: { type: 'string' } }, required: ['to', 'why'] } },
+                        watch: { type: 'array', items: { type: 'string' } },
+                    },
+                    required: ['block'],
+                },
                 rotateAccessories: {
                     type: 'boolean',
                     description: "true = rotate every ACCESSORY exercise on the split's templates to the stalest same-pattern machine at the user's current gym (never-used first). Primaries and secondaries are never touched. Use when the user wants variety or a fresh block; the card lists every swap and undo restores the templates.",
@@ -179,6 +196,7 @@ const TOOL_DEFINITIONS = [
                         startDate: { type: 'string' },
                         weekTargets: { type: 'array', items: WEEK_TARGET_ITEM, description: 'Replaces the whole weekTargets list' },
                         split: SPLIT_SCHEMA,
+                        rationale: { type: 'object', description: 'Replaces the saved planning rationale (same shape as create_program.rationale)' },
                         trustLevel: { type: 'string', enum: ['propose', 'auto_confirm'], description: "'propose' (default — everything is a card) or 'auto_confirm' (the dashboard pre-builds each week's adjusted session; starting it is the confirmation). Switch ONLY on an explicit user request; always reversible." },
                     },
                 },
@@ -228,7 +246,62 @@ const TOOL_DEFINITIONS = [
     {
         name: 'get_verdicts',
         description: "The app's rules-engine verdicts, computed fresh with the SAME rules as the set rows and the dashboard: today's session intent (deload / peak / build), a progression target per exercise for today's and this week's planned workouts (action bump / consolidate / chase-rep / back-off / rotate / deload, weight × reps in the user's unit, stall rung), whether a deload is due, this week's sets per muscle vs MRV, and the progress scoreboard (best estimated 1RM per 4-week window per main lift, rep PRs, movement-pattern coverage). Authoritative: explain these, don't override them. The first message's Rules verdicts block is this same data — call this when that block is missing, from an earlier day, or the user just logged a session.",
-        input_schema: { type: 'object', properties: {} },
+        input_schema: {
+            type: 'object',
+            properties: {
+                scope: { type: 'string', enum: ['week', 'block'], description: "'week' (default) = today's targets + scoreboard. 'block' = how the active (or just-finished) program went: e1RM start → end per main lift, days trained per week, fatigue flags and under-trained patterns by week, accessories never used — call this to open any 'what's next?' conversation." },
+            },
+        },
+    },
+    {
+        name: 'get_rotation_candidates',
+        description: "Ranked replacements for ONE exercise (or a movement pattern) from the user's equipment at a gym — same-pattern machines, never-used first, then longest idle, each with its reason — plus the primaries held fixed. Nothing is written. Call this for ANY swap or rotation question and present its top choice with its reason; hand-pick only when it returns nothing.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                exercise: { type: 'string', description: 'The exercise to replace' },
+                pattern: { type: 'string', enum: PATTERNS, description: 'Or a movement pattern to fill' },
+                location: { type: 'string', description: "Gym name (default: where they're training / last trained)" },
+                limit: { type: 'integer', minimum: 1, maximum: 10 },
+            },
+        },
+    },
+    {
+        name: 'set_primary_lifts',
+        description: "Set the main lifts (3–8) the progress scoreboard tracks and the variety engine never rotates: writes role:'primary' on those exercises in the user's saved workouts and clears it elsewhere. Names must exist in their workouts. Do this WITH the user in the first planning conversation — ask which lifts they care about; consent rule applies.",
+        input_schema: {
+            type: 'object',
+            properties: { exercises: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 8 } },
+            required: ['exercises'],
+        },
+    },
+    {
+        name: 'get_workouts',
+        description: "Whole logged sessions by date: one day ({date}) or a range ({from, to}), newest first, max 14 — exercises with every set (weights in the user's unit, RPE), session label, gym, readiness and notes. Use for 'what did I do last Tuesday?' or comparing to the same week last block; the context only carries the last 12 sessions.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                date: { type: 'string', description: 'YYYY-MM-DD' },
+                from: { type: 'string', description: 'YYYY-MM-DD' },
+                to: { type: 'string', description: 'YYYY-MM-DD' },
+            },
+        },
+    },
+    {
+        name: 'propose_week_adjustment',
+        description: "Change the load/volume of every session for a week (or a few) — 'last week was hard', 'I'm beat, go lighter', 'add a set this week'. Renders a card listing the affected sessions; on the user's tap it sets the week override (it beats the program's week for its window) and, with extendBlock, pushes the program's remaining weeks back so nothing is skipped. Nothing applies without the tap. Use instead of editing workouts or the program for a temporary change.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                weightPct: { type: 'number', minimum: -50, maximum: 10, description: 'e.g. -10 for a lighter week, -35 for a full deload' },
+                setDelta: { type: 'integer', minimum: -3, maximum: 3 },
+                label: { type: 'string', description: "Short, e.g. 'Lighter week', 'Deload'" },
+                weeks: { type: 'integer', minimum: 1, maximum: 4 },
+                from: { type: 'string', description: 'YYYY-MM-DD, default today' },
+                extendBlock: { type: 'boolean', description: 'Push the active program back by the same number of weeks' },
+                why: { type: 'string' },
+            },
+        },
     },
     {
         name: 'get_week_plan',
@@ -510,6 +583,33 @@ function applyTemplateChanges(template, changes) {
 }
 
 /**
+ * AP-23e — the planning rationale saved on the program (the Block page
+ * renders it). Required for 4+ week blocks; shapes are clipped, not guessed.
+ * @returns {{ok:true, rationale:object|null} | {ok:false, error:string}}
+ */
+function normalizeRationale(r, weeks, { required = false } = {}) {
+    if (r == null) {
+        return required
+            ? { ok: false, error: `A ${weeks}-week program needs a rationale: {block, weeks:[{week, why}], fixed:[{name, why}], changed:[{from, to, why}], watch:[...]} — the talk-through the Block page shows.` }
+            : { ok: true, rationale: null };
+    }
+    if (typeof r !== 'object') return { ok: false, error: 'rationale must be an object' };
+    const block = clip(r.block, 240);
+    if (!block) return { ok: false, error: 'rationale.block (the block in one line) is required' };
+    const arr = (v) => (Array.isArray(v) ? v : []);
+    const out = {
+        block,
+        weeks: arr(r.weeks).map(x => ({ week: intIn(x?.week, 1, weeks, null), why: clip(x?.why, 200) }))
+            .filter(x => x.week && x.why).slice(0, 16),
+        fixed: arr(r.fixed).map(x => ({ name: clip(x?.name, 80), why: clip(x?.why, 200) })).filter(x => x.name).slice(0, 10),
+        changed: arr(r.changed).map(x => ({ from: clip(x?.from, 80) || null, to: clip(x?.to, 80), why: clip(x?.why, 200) }))
+            .filter(x => x.to).slice(0, 16),
+        watch: arr(r.watch).map(x => clip(x, 160)).filter(Boolean).slice(0, 6),
+    };
+    return { ok: true, rationale: out };
+}
+
+/**
  * Validate create_program input (Phase 9, pure).
  * @returns {{ok:true, normalized:object} | {ok:false, error:string}}
  */
@@ -541,7 +641,13 @@ function validateProgramInput(input) {
     // frequency / identical-week problems come back as warnings.
     const shape = programShapeIssues({ weeks, weekTargets });
     if (shape.error) return { ok: false, error: shape.error };
-    return { ok: true, normalized: { name, goal, weeks, startDate: input.startDate, weekTargets, split: input.split }, warnings: shape.warnings };
+    const rat = normalizeRationale(input.rationale, weeks, { required: weeks >= 4 && !input._skipRationale });
+    if (!rat.ok) return { ok: false, error: rat.error };
+    return {
+        ok: true,
+        normalized: { name, goal, weeks, startDate: input.startDate, weekTargets, split: input.split, rationale: rat.rationale },
+        warnings: shape.warnings,
+    };
 }
 
 /**
@@ -700,6 +806,73 @@ function deriveTemplateUsage(templates, workouts) {
     return out;
 }
 
+// ── AP-23 helpers ───────────────────────────────────────────────────
+
+/** Minutes a session took: totalDuration (s), else completedAt − startedAt. */
+function sessionMinutes(w) {
+    const s = Number(w?.totalDuration) > 0 ? Number(w.totalDuration)
+        : (w?.startedAt && w?.completedAt ? (Date.parse(w.completedAt) - Date.parse(w.startedAt)) / 1000 : 0);
+    const m = s / 60;
+    return m >= 5 && m <= 240 ? m : null;
+}
+
+/**
+ * AP-23i — average minutes over a template's last 5 completions (by
+ * workoutType name), so "I've got 40 minutes" is a computed cut.
+ * @returns {Map<string, number>} keyed by lowercased template name
+ */
+function averageDurations(workouts) {
+    const byName = new Map();
+    const sorted = [...(workouts || [])].filter(w => w?.completedAt && !w.cancelledAt && w.workoutType)
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    for (const w of sorted) {
+        const key = w.workoutType.toLowerCase();
+        const list = byName.get(key) || [];
+        if (list.length >= 5) continue;
+        const m = sessionMinutes(w);
+        if (m != null) list.push(m);
+        byName.set(key, list);
+    }
+    const out = new Map();
+    for (const [k, list] of byName) if (list.length) out.set(k, Math.round(list.reduce((a, b) => a + b, 0) / list.length));
+    return out;
+}
+
+/** Match a typed exercise name to one of `names` (exact, else Dice ≥ min). */
+function matchName(typed, names, min = 0.75) {
+    const t = String(typed || '').trim().toLowerCase();
+    const exact = names.find(n => n.toLowerCase() === t);
+    if (exact) return { name: exact };
+    const scored = names.map(n => ({ n, s: diceSimilarity(typed, n) })).sort((a, b) => b.s - a.s);
+    if (scored[0] && scored[0].s >= min) return { name: scored[0].n };
+    return { name: null, nearest: scored.slice(0, 3).map(x => x.n) };
+}
+
+const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+function addDays(dateStr, n) {
+    const d = new Date(`${dateStr}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+}
+
+/** A whole session for get_workouts, weights in `unit`. */
+function workoutSummary(w, unit) {
+    const names = w.exerciseNames || {};
+    return {
+        date: w.date,
+        workout: w.workoutType || '',
+        label: w.sessionLabel || null,
+        location: (typeof w.location === 'object' ? w.location?.name : w.location) || null,
+        readiness: w.readiness?.score ? { score: w.readiness.score, note: w.readiness.note || null } : null,
+        minutes: sessionMinutes(w) != null ? Math.round(sessionMinutes(w)) : null,
+        exercises: Object.entries(w.exercises || {}).map(([k, ex]) => ({
+            name: names[k] || ex?.name || ex?.machine || k,
+            ...exerciseHistorySession(w, ex || {}, unit),
+            date: undefined, workout: undefined, label: undefined,
+        })).map(({ date: _d, workout: _w, label: _l, ...rest }) => rest),
+    };
+}
+
 // ── Rules verdicts (AP-16) ──────────────────────────────────────────
 
 /**
@@ -714,7 +887,7 @@ function deriveTemplateUsage(templates, workouts) {
  * @param {string} [args.today] - user's local YYYY-MM-DD
  * @param {string|null} [args.unit] - display unit; defaults to the settings unit
  */
-async function computeUserVerdicts({ db, userId, today = null, unit = null }) {
+async function computeUserVerdicts({ db, userId, today = null, unit = null, scope = 'week' }) {
     const userDoc = db.collection('users').doc(userId);
     const date = todayInfo(today).date;
     const [woSnap, tSnap, planSnap, progSnap, settingsSnap, customSnap] = await Promise.all([
@@ -734,12 +907,28 @@ async function computeUserVerdicts({ db, userId, today = null, unit = null }) {
     // legacy label) — the same precedence the client uses.
     const live = all.find(w => w.date === date && !w.completedAt && !w.cancelledAt && w.sessionIntent);
     const plan = planSnap.exists ? (planSnap.data() || null) : null;
+    if (scope === 'block') {
+        // The active block, or the one that just ended.
+        let program = progSnap.empty ? null : progSnap.docs[0].data();
+        if (!program) {
+            const last = await userDoc.collection('programs').orderBy('createdAt', 'desc').limit(1).get();
+            program = last.empty ? null : last.docs[0].data();
+        }
+        if (!program) return { scope: 'block', program: null, note: 'No program yet — nothing to look back on.' };
+        return buildBlockRetrospective({
+            program,
+            workouts: all.filter(w => w.completedAt && !w.cancelledAt),
+            templates: tSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            unit: u, today: date,
+            plates: u === 'kg' ? settings.plateKg : settings.plateLbs,
+        });
+    }
     return computeVerdicts({
         workouts: all.filter(w => w.completedAt && !w.cancelledAt),
         templates: tSnap.docs.map(d => ({ id: d.id, ...d.data() })),
         weekPlan: plan ? { days: plan.days || {}, restDays: plan.restDays || [] } : null,
         program: progSnap.empty ? null : progSnap.docs[0].data(),
-        manualDeload: settings.manualDeload || null,
+        manualDeload: weekOverrideOf(settings),
         intent: live?.sessionIntent || null,
         unit: u,
         plates: u === 'kg' ? settings.plateKg : settings.plateLbs,
@@ -770,24 +959,28 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
     const loadCtx = () => {
         if (!ctxPromise) {
             ctxPromise = (async () => {
-                const [woSnap, progSnap, settingsSnap, equipSnap, tSnap] = await Promise.all([
+                const [woSnap, progSnap, settingsSnap, equipSnap, tSnap, planSnap] = await Promise.all([
                     userDoc().collection('workouts').orderBy('date', 'desc').limit(250).get(),
                     userDoc().collection('programs').where('active', '==', true).limit(1).get(),
                     userDoc().collection('preferences').doc('settings').get(),
                     userDoc().collection('equipment').get(),
                     userDoc().collection('workoutTemplates').get(),
+                    userDoc().collection('preferences').doc('weekPlan').get(),
                 ]);
                 const all = woSnap.docs.map(d => d.data());
                 const settings = settingsSnap.exists ? (settingsSnap.data() || {}) : {};
                 const program = progSnap.empty ? null : progSnap.docs[0].data();
                 const live = all.find(w => w.date === date && !w.completedAt && !w.cancelledAt);
-                const intent = live?.sessionIntent || getSessionIntent({ program, today: date, manualDeload: settings.manualDeload || null });
+                const intent = live?.sessionIntent || getSessionIntent({ program, today: date, manualDeload: weekOverrideOf(settings) });
                 const equipment = equipSnap.docs.map(d => d.data()).filter(e => e && e.name);
                 // Current gym: the in-progress session's, else where they last trained.
                 const gymOf = (w) => (typeof w?.location === 'object' ? w.location?.name : w?.location) || null;
                 const gym = gymOf(live) || gymOf(all.find(w => w.completedAt && gymOf(w)));
                 return {
                     workouts: all.filter(w => w.completedAt && !w.cancelledAt),
+                    live: live || null,
+                    weekPlan: planSnap.exists ? (planSnap.data() || null) : null,
+                    programId: progSnap.empty ? null : progSnap.docs[0].id,
                     settings, program, intent, equipment, gym,
                     plates: unit === 'kg' ? settings.plateKg : settings.plateLbs,
                     templates: tSnap.docs.map(d => ({ id: d.id, ...d.data() })),
@@ -874,6 +1067,43 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 if (rule) return toolError('invalid_input', rule, 'Propose the rule\'s target, or hold the weight.');
                 const load = loadabilityGuard(args);
                 if (load) return toolError('invalid_input', load);
+            }
+            if (toolName === 'propose_week_adjustment') {
+                // The card lists the sessions the window covers and what the
+                // week becomes — the same intent the app will compute.
+                const from = proposal.from || date;
+                const weeks = proposal.weeks || 1;
+                const names = new Map(ctx.templates.map(t => [t.id, t.name || t.id]));
+                const days = ctx.weekPlan?.days || {};
+                const sessions = [];
+                for (let i = 0; i < weeks * 7; i++) {
+                    const d = addDays(from, i);
+                    const dow = new Date(`${d}T12:00:00Z`).getUTCDay();
+                    const tid = days[DAY_ORDER[(dow + 6) % 7]];
+                    if (tid && tid !== 'rest') sessions.push({ date: d, name: names.get(tid) || tid });
+                }
+                const preview = getSessionIntent({ today: from, manualDeload: { from, weeks, weightPct: proposal.weightPct, setDelta: proposal.setDelta, label: proposal.label } });
+                return {
+                    proposal: {
+                        ...proposal, from, weeks,
+                        label: proposal.label || preview.label,
+                        mode: preview.mode,
+                        sessions,
+                        extendBlock: !!(proposal.extendBlock && ctx.program),
+                        programId: proposal.extendBlock && ctx.program ? ctx.programId : null,
+                    },
+                };
+            }
+            if (toolName === 'propose_skip_exercise') {
+                if (!ctx.live) return toolError('not_found', 'No workout in progress today.', 'Skips are for a live session.');
+                if (proposal.endSession) return { proposal };
+                const names = Object.values(ctx.live.exerciseNames || {}).filter(Boolean);
+                const m = matchName(proposal.exercise, names);
+                if (!m.name) {
+                    return toolError('not_found', `"${proposal.exercise}" isn't in today's session.`,
+                        names.length ? `Today's exercises: ${names.slice(0, 10).join(', ')}.` : 'The session has no exercises yet.');
+                }
+                return { proposal: { ...proposal, exercise: m.name } };
             }
             if (toolName === 'propose_swap' && proposal.equipment) {
                 const atGym = ctx.gym
@@ -1081,6 +1311,8 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             }
 
             let usageIncomplete = false;
+            // AP-23i — how long each workout actually takes.
+            const durations = averageDurations((await loadCtx()).workouts);
             const templates = activeDocs.slice(0, 20).map(d => {
                 const t = d.data();
                 let usageCount = t.usageCount;
@@ -1099,6 +1331,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                     ...(t.parentTemplateId ? { parentTemplateId: t.parentTemplateId } : {}),
                     usageCount,
                     lastUsedDate,
+                    avgDurationMin: durations.get(String(t.name || d.id).toLowerCase()) ?? null,
                     exercises: (t.exercises || []).slice(0, 15).map(e => ({
                         name: e.machine || e.name,
                         sets: e.sets, reps: e.defaultReps || e.reps,
@@ -1129,7 +1362,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
         async create_program(input) {
             const v = validateProgramInput(input);
             if (!v.ok) return { error: v.error };
-            const { name, goal, weeks, startDate, weekTargets, split } = v.normalized;
+            const { name, goal, weeks, startDate, weekTargets, split, rationale } = v.normalized;
             // AP-17 — split-level shape warnings need the templates.
             const ctxForShape = await loadCtx();
             const warnings = [
@@ -1165,6 +1398,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const nowIso = new Date().toISOString();
             await userDoc().collection('programs').doc(id).set({
                 id, name, goal, weeks, startDate, weekTargets,
+                ...(rationale ? { rationale } : {}),
                 split: planOut.result.plan.days,
                 active: true,
                 trustLevel: 'propose',
@@ -1285,6 +1519,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                     weeks: updated.weeks || current.weeks,
                     startDate: updated.startDate || current.startDate,
                     weekTargets: changes.weekTargets, split: current.split || {},
+                    _skipRationale: true,
                 });
                 if (!check.ok) return { error: check.error };
                 updated.weekTargets = check.normalized.weekTargets;
@@ -1296,6 +1531,12 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 if (planOut.error) return toolError('invalid_input', `split: ${errorText(planOut.error)}`);
                 updated.split = planOut.result.plan.days;
                 diffs.push(`schedule: ${planOut.result.summary}`);
+            }
+            if (changes.rationale != null) {
+                const rat = normalizeRationale(changes.rationale, updated.weeks || current.weeks || 1);
+                if (!rat.ok) return toolError('invalid_input', rat.error);
+                updated.rationale = rat.rationale;
+                diffs.push('rationale updated');
             }
             if (changes.trustLevel != null) {
                 if (!['propose', 'auto_confirm'].includes(changes.trustLevel)) {
@@ -1461,8 +1702,104 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             };
         },
 
-        async get_verdicts() {
-            return computeUserVerdicts({ db, userId, today, unit });
+        async get_verdicts(input) {
+            const scope = input?.scope == null ? 'week' : input.scope;
+            if (scope !== 'week' && scope !== 'block') return toolError('invalid_input', `scope must be 'week' or 'block' (got ${JSON.stringify(input.scope)})`);
+            return computeUserVerdicts({ db, userId, today, unit, scope });
+        },
+
+        async get_rotation_candidates(input) {
+            if (!input?.exercise && !input?.pattern) return toolError('invalid_input', 'Pass exercise (to replace) or pattern (to fill).');
+            if (input.pattern && !PATTERNS.includes(input.pattern)) {
+                return toolError('invalid_input', `pattern must be one of ${PATTERNS.join(', ')} (got ${JSON.stringify(input.pattern)})`);
+            }
+            const ctx = await loadCtx();
+            const customSnap = await userDoc().collection('customExercises').get();
+            const byName = new Map([...require('./data/exercises.json'), ...customSnap.docs.map(d => d.data())]
+                .filter(e => e?.name).map(e => [e.name.toLowerCase(), e]));
+            const lookup = (n) => byName.get(String(n || '').toLowerCase());
+            const location = clip(input.location, 80) || ctx.gym || null;
+            const active = ctx.templates.filter(t => !t.archived && !t.isHidden && Array.isArray(t.exercises));
+            // Don't offer what's already on the same workout(s) as the exercise.
+            const exKey = String(input.exercise || '').trim().toLowerCase();
+            const sameDay = active.filter(t => t.exercises.some(e => String(e.machine || e.name || '').toLowerCase() === exKey));
+            const exclude = sameDay.flatMap(t => t.exercises.map(e => e.machine || e.name)).filter(Boolean);
+            const ranked = rankRotationCandidates({
+                exercise: input.exercise || null, pattern: input.pattern || null,
+                equipment: ctx.equipment, location, lookup, exclude, limit: intIn(input.limit, 1, 10, 5),
+            });
+            const held = [];
+            const seen = new Set();
+            for (const t of active) {
+                t.exercises.forEach((e, i) => {
+                    const n = e.machine || e.name;
+                    if (!n || seen.has(n.toLowerCase()) || inferRole(e, i) !== 'primary') return;
+                    seen.add(n.toLowerCase());
+                    held.push({ name: n, reason: 'primary — kept fixed so the scoreboard keeps meaning something' });
+                });
+            }
+            return {
+                exercise: input.exercise || null,
+                location,
+                pattern: ranked.pattern,
+                ...(ranked.role === 'primary' && input.exercise ? { warning: `${input.exercise} reads as a primary — rotating it resets its scoreboard trend.` } : {}),
+                candidates: ranked.candidates,
+                heldPrimaries: held.slice(0, 8),
+                ...(ranked.candidates.length ? {} : { note: location ? `No other ${ranked.pattern || 'same-pattern'} machine at ${location}.` : 'No same-pattern alternative in the library.' }),
+            };
+        },
+
+        async set_primary_lifts(input) {
+            const list = Array.isArray(input?.exercises) ? input.exercises.map(x => clip(x, 80)).filter(Boolean) : [];
+            if (list.length < 3 || list.length > 8) return toolError('invalid_input', `Pick 3–8 main lifts (got ${list.length}).`);
+            const ctx = await loadCtx();
+            const active = ctx.templates.filter(t => !t.archived && !t.isHidden && Array.isArray(t.exercises));
+            const known = [...new Set(active.flatMap(t => t.exercises.map(e => e.machine || e.name)).filter(Boolean))];
+            const chosen = [];
+            for (const typed of list) {
+                const m = matchName(typed, known, 0.85);
+                if (!m.name) {
+                    return toolError('invalid_input', `"${typed}" isn't in any saved workout.`,
+                        m.nearest?.length ? `Nearest: ${m.nearest.join(', ')}.` : 'Call list_templates.');
+                }
+                if (!chosen.includes(m.name)) chosen.push(m.name);
+            }
+            const set = new Set(chosen.map(n => n.toLowerCase()));
+            const updatedNames = [];
+            const nowIso = new Date().toISOString();
+            for (const t of active) {
+                const next = applyPrimaryChoice(t.exercises, set);
+                if (!next) continue;
+                await userDoc().collection('workoutTemplates').doc(t.id).set({ exercises: next, lastUpdated: nowIso }, { merge: true });
+                t.exercises = next;
+                updatedNames.push(t.name || t.id);
+            }
+            return {
+                result: { primaries: chosen, workoutsUpdated: updatedNames },
+                actionCard: { kind: 'primaries_set', name: 'Main lifts set', summary: chosen.join(' · ') },
+            };
+        },
+
+        async get_workouts(input) {
+            const ok = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ''));
+            let from = input?.from;
+            let to = input?.to;
+            if (input?.date != null) {
+                if (!ok(input.date)) return toolError('invalid_input', `date must be YYYY-MM-DD (got ${JSON.stringify(input.date)})`);
+                from = input.date;
+                to = input.date;
+            }
+            if (!ok(from) || !ok(to)) return toolError('invalid_input', 'Pass {date} or {from, to}, each YYYY-MM-DD.');
+            if (from > to) [from, to] = [to, from];
+            const ctx = await loadCtx();
+            const hits = ctx.workouts.filter(w => w.date >= from && w.date <= to)
+                .sort((a, b) => b.date.localeCompare(a.date));
+            return {
+                unit, from, to,
+                sessions: hits.slice(0, 14).map(w => workoutSummary(w, unit)),
+                found: hits.length,
+                ...(hits.length > 14 ? { note: `${hits.length} sessions in range — showing the newest 14; narrow the range for the rest.` } : {}),
+            };
         },
 
         async get_week_plan() {
@@ -1642,6 +1979,18 @@ const LIVE_PROPOSAL_TOOLS = [
         },
     },
     {
+        name: 'propose_skip_exercise',
+        description: 'Propose dropping ONE exercise from today\'s session (pain, no machine, out of time) — or, with endSession:true, ending the session. Renders a card; nothing happens without the tap. The reason is logged on the workout.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                exercise: { type: 'string', description: "An exercise in today's session (not needed with endSession)" },
+                endSession: { type: 'boolean' },
+                why: { type: 'string' },
+            },
+        },
+    },
+    {
         name: 'propose_rest',
         description: 'Propose a different rest duration before the next set (e.g. longer before a heavy top set).',
         input_schema: {
@@ -1693,6 +2042,34 @@ function validateProposal(toolName, input) {
                 },
             };
         }
+        case 'propose_week_adjustment': {
+            const has = (k) => input?.[k] !== undefined && input?.[k] !== null;
+            if (has('weightPct') && !(typeof input.weightPct === 'number' && input.weightPct >= -50 && input.weightPct <= 10)) {
+                return { ok: false, error: `weightPct must be a number from -50 to 10 (got ${JSON.stringify(input.weightPct)})` };
+            }
+            const setDelta = has('setDelta') ? intIn(input.setDelta, -3, 3, null) : null;
+            if (has('setDelta') && setDelta == null) return { ok: false, error: `setDelta must be a whole number from -3 to 3 (got ${JSON.stringify(input.setDelta)})` };
+            const weightPct = has('weightPct') && input.weightPct !== 0 ? Math.round(input.weightPct) : null;
+            if (weightPct == null && !setDelta) return { ok: false, error: 'Provide weightPct and/or setDelta' };
+            const weeks = has('weeks') ? intIn(input.weeks, 1, 4, null) : 1;
+            if (weeks == null) return { ok: false, error: `weeks must be 1-4 (got ${JSON.stringify(input.weeks)})` };
+            if (has('from') && !/^\d{4}-\d{2}-\d{2}$/.test(String(input.from))) return { ok: false, error: 'from must be YYYY-MM-DD' };
+            return {
+                ok: true,
+                proposal: {
+                    kind: 'week_adjustment', weightPct, setDelta: setDelta || null,
+                    label: clip(input?.label, 40) || null, weeks,
+                    from: has('from') ? input.from : null,
+                    extendBlock: input?.extendBlock === true, why,
+                },
+            };
+        }
+        case 'propose_skip_exercise': {
+            const endSession = input?.endSession === true;
+            const exercise = clip(input?.exercise, 80);
+            if (!endSession && !exercise) return { ok: false, error: 'exercise is required (or endSession:true)' };
+            return { ok: true, proposal: { kind: 'skip_exercise', exercise: exercise || null, endSession, why } };
+        }
         case 'propose_rest': {
             const seconds = intIn(input?.seconds, 15, 600, null);
             if (seconds == null) return { ok: false, error: 'seconds must be 15-600' };
@@ -1731,7 +2108,9 @@ function validateProposal(toolName, input) {
 
 // Tool set for live mode: fast reads + proposals (+ silent advice logging).
 // NO template writes and no memory writes — those belong to the coach tab.
-const LIVE_TOOL_NAMES = ['get_exercise_history', 'get_prs', 'log_advice'];
+// remember_fact (AP-23h): an injury reported between sets is the most
+// important thing to remember, and it's reported here.
+const LIVE_TOOL_NAMES = ['get_exercise_history', 'get_prs', 'log_advice', 'remember_fact'];
 function liveToolDefinitions() {
     return [
         ...TOOL_DEFINITIONS.filter(t => LIVE_TOOL_NAMES.includes(t.name)),
@@ -1753,6 +2132,9 @@ const TOOL_STATUS = {
     forget_fact: 'Forgetting that…',
     get_week_plan: 'Checking your week…',
     get_verdicts: 'Checking your numbers…',
+    get_rotation_candidates: 'Finding alternatives…',
+    set_primary_lifts: 'Setting your main lifts…',
+    get_workouts: 'Reading those sessions…',
     set_week_plan: 'Updating your week…',
     archive_template: 'Archiving…',
     propose_session_adjustments: 'Building your session…',
@@ -1771,6 +2153,8 @@ module.exports = {
     makeToolExecutors,
     computeUserVerdicts,
     deriveTemplateUsage,
+    averageDurations,
+    normalizeRationale,
     validateProposal,
     liveToolDefinitions,
     LIVE_PROPOSAL_TOOLS,

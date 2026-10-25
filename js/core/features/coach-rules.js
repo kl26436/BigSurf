@@ -20,7 +20,10 @@
 import { buildExerciseSessions, progressionTarget, weightIncrement, fatigueState } from './progression.js';
 import { getSessionIntent, describeIntent } from './session-intent.js';
 import { analyzeWeeklyVolume, checkDeloadNeeded, getISOWeekKey, readinessState, RULE_THRESHOLDS } from './training-rules.js';
-import { buildScoreboard, formatScoreboardContext } from './progress-scoreboard.js';
+import { buildScoreboard, formatScoreboardContext, pickPrimaries, bestE1rmBetween } from './progress-scoreboard.js';
+import { inferRole } from './movement-patterns.js';
+import { deriveProgramWeek } from './week-targets.js';
+import { fatigueSignals, shiftDay } from './training-rules.js';
 
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 /** Enough to cover today plus the rest of the week's plan, small enough to stay a short block. */
@@ -243,4 +246,125 @@ export function formatVerdictsContext(v) {
     const sb = formatScoreboardContext(v.scoreboard);
     if (!v.exercises?.length && !v.volume?.length && !v.deload && !sb) return '';
     return `${lines.join('\n')}\n${sb}`;
+}
+
+// ── Block retrospective (AP-23c) ─────────────────────────────────────
+
+const round1 = (n) => Math.round(n * 10) / 10;
+
+/**
+ * How a block went — the start of every "what's next?" conversation:
+ * per main lift, best e1RM at the start vs the end; per week, planned vs
+ * trained days, the fatigue flags and the movement patterns that sat under
+ * target; which accessories on the split were used and which never were.
+ * Works on the active block (to date) or a finished one.
+ *
+ * @param {object} args
+ * @param {object} args.program - program doc ({name, goal, weeks, startDate, weekTargets, split})
+ * @param {Array} args.workouts - completed history, any order
+ * @param {Array} [args.templates]
+ * @param {'lbs'|'kg'} [args.unit]
+ * @param {string} args.today - YYYY-MM-DD
+ * @param {number[]} [args.plates]
+ * @returns {object|null}
+ */
+export function buildBlockRetrospective({ program, workouts = [], templates = [], unit = 'lbs', today, plates = null } = {}) {
+    if (!program?.startDate || !today) return null;
+    const u = unit === 'kg' ? 'kg' : 'lbs';
+    const weeks = Math.max(1, Number(program.weeks) || 1);
+    const start = program.startDate;
+    const blockEnd = shiftDay(start, weeks * 7 - 1);
+    const end = today < blockEnd ? today : blockEnd;
+    if (end < start) return null;
+    const done = (workouts || []).filter(w => w?.date && w.completedAt && !w.cancelledAt && w.date <= end);
+    const inBlock = done.filter(w => w.date >= start);
+    const inc = weightIncrement(u, plates);
+    const currentWeek = Math.min(weeks, Math.max(1, deriveProgramWeek(program, end).week));
+
+    const primaries = pickPrimaries({ templates, workouts: done, today: end }).map((p) => {
+        const e1rmStart = bestE1rmBetween(done, p.name, u, start, shiftDay(start, 13))
+            ?? bestE1rmBetween(done, p.name, u, shiftDay(start, -28), shiftDay(start, -1));
+        const e1rmEnd = bestE1rmBetween(done, p.name, u, shiftDay(end, -13), end);
+        return {
+            name: p.name, pattern: p.pattern, e1rmStart, e1rmEnd,
+            delta: e1rmStart && e1rmEnd ? round1(e1rmEnd - e1rmStart) : null,
+            deltaPct: e1rmStart && e1rmEnd ? round1(((e1rmEnd - e1rmStart) / e1rmStart) * 100) : null,
+        };
+    });
+
+    const split = program.split || {};
+    const splitIds = Object.values(split).filter(id => id && id !== 'rest');
+    const planned = splitIds.length;
+    const weekRows = [];
+    for (let w = 1; w <= currentWeek; w++) {
+        const wStart = shiftDay(start, (w - 1) * 7);
+        const wEndFull = shiftDay(wStart, 6);
+        const wEnd = wEndFull < end ? wEndFull : end;
+        const trained = new Set(inBlock.filter(x => x.date >= wStart && x.date <= wEnd).map(x => x.date)).size;
+        const target = (program.weekTargets || []).find(t => t.week === w) || null;
+        const upTo = done.filter(x => x.date <= wEnd);
+        const sb = buildScoreboard({ workouts: upTo, templates, unit: u, today: wEnd, config: { increment: inc } });
+        weekRows.push({
+            week: w,
+            label: target?.label || 'baseline',
+            planned,
+            trained,
+            complete: wEnd === wEndFull,
+            fatigue: fatigueSignals(upTo, { today: wEnd, unit: u, inc }).map(f => f.exercise),
+            patternsUnder: sb.patterns.filter(p => p.status === 'under').map(p => p.label),
+        });
+    }
+
+    const byId = new Map((templates || []).map(t => [t.id, t]));
+    const usedNames = new Set();
+    for (const w of inBlock) {
+        for (const [k, ex] of Object.entries(w.exercises || {})) {
+            const n = w.exerciseNames?.[k] || ex?.name || ex?.machine;
+            if (n) usedNames.add(n.trim().toLowerCase());
+        }
+    }
+    const used = [];
+    const neverUsed = [];
+    const seen = new Set();
+    for (const id of new Set(splitIds)) {
+        const t = byId.get(id);
+        (t?.exercises || []).forEach((ex, i) => {
+            const name = ex?.machine || ex?.name;
+            if (!name || seen.has(name.toLowerCase())) return;
+            seen.add(name.toLowerCase());
+            if (inferRole(ex, i) === 'primary') return;
+            (usedNames.has(name.toLowerCase()) ? used : neverUsed).push(name);
+        });
+    }
+
+    return {
+        scope: 'block',
+        program: { name: program.name || 'Program', goal: program.goal || null, weeks, startDate: start, endDate: blockEnd },
+        finished: today > blockEnd,
+        throughWeek: currentWeek,
+        unit: u,
+        primaries,
+        weeks: weekRows,
+        daysTrained: new Set(inBlock.map(w => w.date)).size,
+        daysPlanned: planned * weekRows.filter(r => r.complete).length + (weekRows.some(r => !r.complete) ? planned : 0),
+        accessories: { used, neverUsed },
+    };
+}
+
+/** The retrospective as context text. */
+export function formatBlockRetrospective(r) {
+    if (!r) return '';
+    const lines = [`Block retrospective — "${r.program.name}" (${r.program.weeks} weeks from ${r.program.startDate}${r.finished ? ', finished' : `, through week ${r.throughWeek}`}): ${r.daysTrained} of ~${r.daysPlanned} planned days trained`];
+    for (const p of r.primaries) {
+        const move = p.delta == null ? 'not enough data' : `${p.e1rmStart} → ${p.e1rmEnd} ${r.unit} (${p.delta > 0 ? '+' : ''}${p.delta}, ${p.deltaPct > 0 ? '+' : ''}${p.deltaPct}%)`;
+        lines.push(`- ${p.name}: e1RM ${move}`);
+    }
+    for (const w of r.weeks) {
+        const bits = [`${w.trained}/${w.planned} days`];
+        if (w.fatigue.length) bits.push(`fatigue: ${w.fatigue.join(', ')}`);
+        if (w.patternsUnder.length) bits.push(`under: ${w.patternsUnder.join(', ').toLowerCase()}`);
+        lines.push(`- Week ${w.week} (${w.label}): ${bits.join(' · ')}`);
+    }
+    if (r.accessories.neverUsed.length) lines.push(`Accessories on the split never done this block: ${r.accessories.neverUsed.join(', ')}`);
+    return `${lines.join('\n')}\n`;
 }

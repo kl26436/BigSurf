@@ -121,6 +121,7 @@ export {
     awSetAddFilter,
     awSetAddSearch,
     awInsertExercise,
+    removeExerciseAt,
     awCreateAndInsertExercise,
     awCloseSheet,
     awRestAdd30,

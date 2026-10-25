@@ -40,14 +40,50 @@ export function isManualDeloadActive(manualDeload, today) {
     return !!end && !!today && today >= manualDeload.from && today <= end;
 }
 
+/**
+ * The user's week override (AP-23b) — `settings.weekOverride`
+ * `{ from, weeks, weightPct?, setDelta?, label?, reason? }`, set by the
+ * coach's "lighter this week" card or the Settings deload toggle. Falls back
+ * to the AP-10 `manualDeload` doc older settings carry.
+ */
+export function weekOverrideOf(settings) {
+    return settings?.weekOverride || settings?.manualDeload || null;
+}
+
+/**
+ * Intent for an active override window. Any load cut runs through the deload
+ * engine (no bump, scaled from the last build session, ↓ rows) — a −10%
+ * "lighter week" needs exactly that behaviour — but keeps its own label so
+ * the copy says "Lighter week", not "Deload". A volume-only or heavier
+ * override is a build/peak session with the levers attached.
+ */
+function overrideIntent(o) {
+    const pct = typeof o.weightPct === 'number' ? o.weightPct
+        : (o.setDelta == null ? MANUAL_DELOAD_WEIGHT_PCT : null);
+    const setDelta = typeof o.setDelta === 'number' && o.setDelta !== 0 ? o.setDelta : null;
+    const labelled = typeof o.label === 'string' && o.label.trim() ? o.label.trim() : null;
+    const deload = (pct != null && pct < 0) || (setDelta != null && setDelta < 0 && pct == null) || (labelled && RECOVERY_LABEL.test(labelled));
+    let label = labelled;
+    if (!label) label = deload ? (pct != null && pct > -20 ? 'Lighter week' : 'Deload') : 'Adjusted week';
+    return {
+        ...baseIntent(),
+        mode: deload ? 'deload' : (pct != null && pct > 0 ? 'peak' : 'build'),
+        weightPct: pct, setDelta, label, source: 'manual',
+        reason: `${label} through ${manualDeloadEnd(o)}${o.reason ? ` — ${o.reason}` : ''}`,
+    };
+}
+
 const baseIntent = () => ({
     mode: 'build', weightPct: null, setDelta: null, repRange: null, rpeTarget: null,
     label: null, week: null, weeks: null, source: 'none', reason: '',
 });
 
 /**
- * Precedence: (1) the active program's current week, when it changes the
- * session; (2) a manual deload window; (3) a legacy deload/recovery
+ * Precedence: (0) an explicit week override (AP-23b — the user or the coach
+ * said "this week is different"; it beats the program's week for its window,
+ * otherwise "lighter this week" did nothing mid-program); (1) the active
+ * program's current week, when it changes the session; (2) — the legacy
+ * manual deload, now read as an override; (3) a legacy deload/recovery
  * sessionLabel (resuming a doc started before intents existed); (4) plain
  * build / freestyle. Intent is computed for every trust level — trust gates
  * APPLYING set/rep deltas, not knowing what week it is.
@@ -58,6 +94,7 @@ const baseIntent = () => ({
  *   source:'program'|'manual'|'label'|'none', reason:string}}
  */
 export function getSessionIntent({ program = null, today, manualDeload = null, sessionLabel = null, freestyle = false } = {}) {
+    if (isManualDeloadActive(manualDeload, today)) return overrideIntent(manualDeload);
     if (program?.startDate && program.active !== false && today) {
         const { week, target, finished } = deriveProgramWeek(program, today);
         if (Number.isFinite(week) && week >= 1 && !finished && target) {
@@ -75,14 +112,6 @@ export function getSessionIntent({ program = null, today, manualDeload = null, s
                 };
             }
         }
-    }
-    if (isManualDeloadActive(manualDeload, today)) {
-        const pct = typeof manualDeload.weightPct === 'number' ? manualDeload.weightPct : MANUAL_DELOAD_WEIGHT_PCT;
-        return {
-            ...baseIntent(),
-            mode: 'deload', weightPct: pct, label: 'Deload', source: 'manual',
-            reason: `Deload week through ${manualDeloadEnd(manualDeload)}`,
-        };
     }
     if (sessionLabel && RECOVERY_LABEL.test(sessionLabel)) {
         // Weights on a legacy labelled session were already scaled when it

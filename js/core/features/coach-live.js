@@ -22,6 +22,7 @@ import {
     renderActiveWorkout,
     awInsertExercise,
     awSelectEquipment,
+    removeExerciseAt,
 } from '../workout/workout-core.js';
 import { micButtonHtml, ttsToggleHtml, speakCoachAnswer, stopSpeaking } from './coach-voice.js';
 import { weightIncrement } from './progression.js';
@@ -453,6 +454,7 @@ const PROPOSAL_TITLES = {
     swap: (p) => `Swap ${p.fromExercise} → ${p.toExercise}${p.equipment ? ` (${p.equipment})` : ''}`,
     add_exercise: (p) => `Add ${p.exercise} ${p.sets}×${p.reps}${p.weight != null ? ` @ ${p.weight}` : ''}`,
     rest: (p) => `Rest ${p.seconds}s before the next set`,
+    skip_exercise: (p) => (p.endSession ? 'End the session here' : `Skip ${p.exercise} today`),
 };
 
 function renderProposalCard(proposal, streamingBubble) {
@@ -488,12 +490,22 @@ export function dismissLiveProposal(id) {
 export function applyLiveProposal(id) {
     const p = _pendingProposals.get(id);
     if (!p) return;
+    // AP-23g — ending the session hands over to the normal finish flow
+    // (incomplete-sets check, summary); nothing to re-render here.
+    if (p.kind === 'skip_exercise' && p.endSession) {
+        logSkip(p);
+        dismissLiveProposal(id);
+        closeLiveCoach();
+        window.awFinishWorkout?.();
+        return;
+    }
     let confirmMsg = null;
     try {
         if (p.kind === 'next_target') confirmMsg = applyNextTarget(p);
         else if (p.kind === 'swap') confirmMsg = applySwap(p);
         else if (p.kind === 'add_exercise') confirmMsg = applyAddExercise(p);
         else if (p.kind === 'rest') confirmMsg = applyRest(p);
+        else if (p.kind === 'skip_exercise') confirmMsg = applySkip(p);
     } catch (e) {
         console.error('❌ Apply proposal failed:', e);
     }
@@ -593,6 +605,23 @@ function applyAddExercise(p) {
         };
     }
     return `Added ${p.exercise} ${p.sets}×${p.reps}.`;
+}
+
+/** The reason travels with the workout doc — "why was bench skipped on the 24th?" */
+function logSkip(p) {
+    if (!AppState.savedData) return;
+    AppState.savedData.skipped = [
+        ...(AppState.savedData.skipped || []),
+        { exercise: p.exercise || null, endSession: !!p.endSession, why: p.why || null, at: new Date().toISOString() },
+    ];
+}
+
+function applySkip(p) {
+    const idx = findExerciseIdx(p.exercise);
+    if (idx === -1) return null;
+    logSkip(p);
+    if (!removeExerciseAt(idx)) return null;
+    return `Skipped ${p.exercise} — noted on today's workout.`;
 }
 
 function applyRest(p) {

@@ -189,6 +189,19 @@ function liftSessions(workouts, name, unit, today) {
     return out;
 }
 
+/**
+ * Best estimated 1RM for one lift between two dates (inclusive), recovery
+ * sessions excluded — the block retrospective's start/end numbers (AP-23c).
+ * @returns {number|null}
+ */
+export function bestE1rmBetween(workouts, name, unit, from, to) {
+    const vals = liftSessions(workouts, name, unit === 'kg' ? 'kg' : 'lbs', to)
+        .filter(s => s.date >= from && s.date <= to)
+        .map(s => s.e1rm)
+        .filter(v => v > 0);
+    return vals.length ? Math.max(...vals) : null;
+}
+
 function trendOf(now, prev, increment) {
     if (!now || !prev) return null;
     const band = Math.max(prev * FLAT_BAND_PCT, increment);

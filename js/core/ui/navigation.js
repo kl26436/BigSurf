@@ -16,6 +16,7 @@ const SECTION_IDS = [
     'muscle-group-detail-section',
     'exercise-detail-section',
     'progress-section',
+    'block-section',
     'composition-detail-section',
     'exercise-manager-section',
     'location-management-section',
@@ -179,6 +180,10 @@ function routeToView(view) {
 
         case 'progress':
             showProgressView();
+            break;
+
+        case 'block':
+            showBlockView();
             break;
 
         case 'composition-detail':
@@ -365,6 +370,16 @@ async function showProgressView() {
     updateBottomNavActive('dashboard');
     const { renderProgressPage } = await import('./dashboard-ui.js');
     await renderProgressPage();
+}
+
+// AP-24 — the program by week and day.
+async function showBlockView() {
+    const section = document.getElementById('block-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('dashboard');
+    const { renderBlockPage } = await import('./block-ui.js');
+    await renderBlockPage();
 }
 
 // Entry point for onclick handlers (window-bound in main.js).

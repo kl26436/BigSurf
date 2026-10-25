@@ -17,6 +17,7 @@ import {
     contextRefreshReason, contextTurn, visibleQuestion,
 } from './coach-context.js';
 import { computeVerdicts, formatVerdictsContext } from './coach-rules.js';
+import { weekOverrideOf } from './session-intent.js';
 import { summarizeWeekPlan, satisfiedDays, weekDates, DAY_KEYS, loadWeekPlan } from './week-plan.js';
 import { scaleSessionSetTargets } from './program-session.js';
 import { weightIncrement, scaleLoadableWeight } from './progression.js';
@@ -558,7 +559,7 @@ export async function askCoach(question) {
                 templates: AppState.workoutPlans || [],
                 weekPlan: AppState._weekPlan || null,
                 program,
-                manualDeload: AppState.settings?.manualDeload || null,
+                manualDeload: weekOverrideOf(AppState.settings),
                 intent,
                 unit,
                 plates: unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs,
@@ -771,6 +772,9 @@ async function streamCoachResponse(question, bubble, stats = {}) {
                 } else if (ev.type === 'proposal' && ev.proposal?.kind === 'session_adjustments') {
                     stats.sideEffects = (stats.sideEffects || 0) + 1;
                     renderSessionAdjustmentCard(ev.proposal, bubble);
+                } else if (ev.type === 'proposal' && ev.proposal?.kind === 'week_adjustment') {
+                    stats.sideEffects = (stats.sideEffects || 0) + 1;
+                    renderWeekAdjustmentCard(ev.proposal, bubble);
                 } else if (ev.type === 'delta') {
                     acc += ev.text || '';
                     if (bubble) bubble.innerHTML = formatCoachResponse(acc);
@@ -850,7 +854,8 @@ function handleCoachActionCard(card, streamingBubble) {
                 <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 140))}</div>
                 ${rotationHtml}
                 <div class="coach-action-card__actions">
-                    <button class="live-proposal__apply" onclick="openWeekPlanSheet()">Review week plan</button>
+                    <button class="live-proposal__apply" onclick="openBlockPage()">View block</button>
+                    <button class="live-proposal__dismiss" onclick="openWeekPlanSheet()">Week plan</button>
                     ${card.undo?.newProgramId ? `<button class="live-proposal__dismiss" onclick="undoProgramCreate('${id}')">Undo</button>` : ''}
                 </div>
             </div>
@@ -877,6 +882,18 @@ function handleCoachActionCard(card, streamingBubble) {
         // (programs set the week plan too).
         AppState._weekPlan = undefined;
         AppState._activeProgram = undefined;
+    } else if (card.kind === 'primaries_set') {
+        // AP-23d — the scoreboard's main lifts were set in conversation.
+        addChatBubble('bot', `
+            <div class="coach-action-card coach-action-card--receipt">
+                <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-chart-line"></i></div>
+                <div class="coach-action-card__body">
+                    <div class="coach-action-card__title">${escapeHtml(card.name || 'Main lifts set')}</div>
+                    <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 110))}</div>
+                </div>
+                <span class="coach-receipt-tag">Applied</span>
+            </div>
+        `);
     } else if (card.kind === 'template_replaced') {
         // CP-5 — a whole-day rewrite lands as ONE receipt with a structured
         // diff and an undo, instead of six single-field cards to tap.
@@ -1132,6 +1149,102 @@ async function renderSessionAdjustmentCard(proposal, streamingBubble) {
     `);
     if (streamingBubble?.parentElement) streamingBubble.parentElement.appendChild(streamingBubble);
     scrollCoachChatIfNearBottom();
+}
+
+// ── Week adjustment card (AP-23b) ───────────────────────────────────
+// "Last week was hard" → one card: the affected sessions and the levers.
+// Nothing changes until the tap; the tap writes settings.weekOverride (it
+// beats the program's week for its window) and, with extendBlock, pushes the
+// program's start back so no block week is lost.
+
+const _pendingWeekAdj = new Map();
+let _weekAdjSeq = 0;
+
+function weekAdjLevers(p) {
+    const bits = [];
+    if (p.weightPct != null) bits.push(`${p.weightPct > 0 ? '+' : ''}${p.weightPct}% weight`);
+    if (p.setDelta) bits.push(`${p.setDelta > 0 ? '+' : ''}${p.setDelta} set${Math.abs(p.setDelta) === 1 ? '' : 's'}`);
+    return bits.join(' · ');
+}
+
+function renderWeekAdjustmentCard(proposal, streamingBubble) {
+    const id = `wadj_${++_weekAdjSeq}`;
+    _pendingWeekAdj.set(id, proposal);
+    const sessions = (proposal.sessions || []).map(x => {
+        const day = new Date(`${x.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' });
+        return `${day} ${x.name}`;
+    });
+    const end = new Date(`${proposal.from}T12:00:00`);
+    end.setDate(end.getDate() + (proposal.weeks || 1) * 7 - 1);
+    const through = Number.isNaN(end.getTime()) ? '' : end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    addChatBubble('bot', `
+        <div class="coach-action-card coach-action-card--session" id="${id}">
+            <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-feather"></i></div>
+            <div class="coach-action-card__body">
+                <div class="coach-action-card__title">${escapeHtml(proposal.label || 'Adjusted week')} — ${escapeHtml(weekAdjLevers(proposal))}</div>
+                <div class="coach-action-card__desc">${sessions.length ? escapeHtml(sessions.join(' · ')) : 'Every session you start'}${through ? ` · through ${escapeHtml(through)}` : ''}${proposal.extendBlock ? ' · your block moves back a week' : ''}${proposal.why ? ` · ${escapeHtml(proposal.why)}` : ''}</div>
+                <div class="coach-action-card__actions">
+                    <button class="live-proposal__apply" onclick="applyWeekAdjustment('${id}')">Make it so</button>
+                    <button class="live-proposal__dismiss" onclick="dismissWeekAdjustment('${id}')">Dismiss</button>
+                </div>
+            </div>
+        </div>
+    `);
+    if (streamingBubble?.parentElement) streamingBubble.parentElement.appendChild(streamingBubble);
+    scrollCoachChatIfNearBottom();
+}
+
+export function dismissWeekAdjustment(id) {
+    _pendingWeekAdj.delete(id);
+    document.getElementById(id)?.remove();
+}
+
+export async function applyWeekAdjustment(id) {
+    const p = _pendingWeekAdj.get(id);
+    if (!p || !AppState.currentUser) return;
+    const value = {
+        from: p.from,
+        weeks: p.weeks || 1,
+        ...(p.weightPct != null ? { weightPct: p.weightPct } : {}),
+        ...(p.setDelta ? { setDelta: p.setDelta } : {}),
+        label: p.label || 'Adjusted week',
+        ...(p.why ? { reason: p.why } : {}),
+        setBy: 'coach',
+    };
+    try {
+        const { updateSetting } = await import('../ui/settings-ui.js');
+        updateSetting('weekOverride', value);
+        if (AppState.settings?.manualDeload) updateSetting('manualDeload', null);
+        if (p.extendBlock && p.programId) {
+            // Push the block's start LATER by the override's length: the week
+            // number then stays put through the override, and the remaining
+            // weeks run after it instead of being skipped.
+            const program = AppState._activeProgram;
+            const startDate = program?.id === p.programId ? program.startDate : null;
+            const { db, doc, getDoc, setDoc } = await import('../data/firebase-config.js');
+            const ref = doc(db, 'users', AppState.currentUser.uid, 'programs', p.programId);
+            const current = startDate || (await getDoc(ref)).data()?.startDate;
+            if (current) {
+                const d = new Date(`${current}T12:00:00`);
+                d.setDate(d.getDate() + (p.weeks || 1) * 7);
+                const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                await setDoc(ref, { startDate: next, lastUpdated: new Date().toISOString() }, { merge: true });
+                AppState._activeProgram = undefined;
+            }
+        }
+        _pendingWeekAdj.delete(id);
+        const card = document.getElementById(id);
+        if (card) {
+            card.querySelector('.coach-action-card__actions')?.remove();
+            card.classList.add('coach-action-card--receipt');
+            card.insertAdjacentHTML('beforeend', '<span class="coach-receipt-tag">Applied</span>');
+        }
+        _coachWroteSinceContext = true;
+        showNotification(`${value.label} set — starts with your next workout`, 'success');
+    } catch (e) {
+        console.error('❌ Week adjustment failed:', e);
+        showNotification("Couldn't set the week — try again", 'error');
+    }
 }
 
 export function dismissSessionAdjustments(id) {
@@ -2145,6 +2258,8 @@ function coachSessionTitle(s) {
 window.confirmRegenerateWorkout = confirmRegenerateWorkout;
 window.applySessionAdjustments = applySessionAdjustments;
 window.dismissSessionAdjustments = dismissSessionAdjustments;
+window.applyWeekAdjustment = applyWeekAdjustment;
+window.dismissWeekAdjustment = dismissWeekAdjustment;
 window.rateCoachAnswer = rateCoachAnswer;
 window.undoProgramCreate = undoProgramCreate;
 window.undoReplaceDay = undoReplaceDay;

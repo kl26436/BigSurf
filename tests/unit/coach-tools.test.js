@@ -216,9 +216,9 @@ describe('TOOL_DEFINITIONS', () => {
         expect(names).toEqual([
             'adjust_program', 'archive_template', 'create_program',
             'create_workout_template', 'forget_fact', 'get_exercise_history',
-            'get_program', 'get_prs', 'get_verdicts', 'get_week_plan', 'list_equipment', 'list_exercises', 'list_templates',
-            'log_advice', 'propose_session_adjustments', 'remember_fact', 'replace_day',
-            'set_week_plan', 'update_workout_template',
+            'get_program', 'get_prs', 'get_rotation_candidates', 'get_verdicts', 'get_week_plan', 'get_workouts', 'list_equipment', 'list_exercises', 'list_templates',
+            'log_advice', 'propose_session_adjustments', 'propose_week_adjustment', 'remember_fact', 'replace_day',
+            'set_primary_lifts', 'set_week_plan', 'update_workout_template',
         ]);
         for (const t of TOOL_DEFINITIONS) {
             expect(t.description.length).toBeGreaterThan(20);
@@ -232,6 +232,27 @@ describe('validateProgramInput (Phase 9)', () => {
         name: 'Strength block', goal: 'strength', weeks: 4, startDate: '2026-07-06',
         weekTargets: [{ week: 4, label: 'deload', weightPct: -40 }],
         split: { mon: 'push_day' },
+        rationale: { block: 'Strength, 4 weeks, deload week 4' },
+    });
+
+    it('AP-23e: a 4+ week program needs a rationale; it is normalized and kept', () => {
+        const { rationale: _r, ...noRationale } = good();
+        expect(validateProgramInput(noRationale).error).toMatch(/^A 4-week program needs a rationale/);
+        const v = validateProgramInput({
+            ...good(),
+            rationale: {
+                block: 'Strength, 4 weeks', weeks: [{ week: 1, why: 'accumulate' }, { week: 9, why: 'out of range' }],
+                fixed: [{ name: 'Bench Press', why: 'main lift' }], changed: [{ from: 'Fly', to: 'Pec deck', why: 'never used' }],
+                watch: ['Bench e1RM'],
+            },
+        });
+        expect(v.normalized.rationale).toEqual({
+            block: 'Strength, 4 weeks', weeks: [{ week: 1, why: 'accumulate' }],
+            fixed: [{ name: 'Bench Press', why: 'main lift' }], changed: [{ from: 'Fly', to: 'Pec deck', why: 'never used' }],
+            watch: ['Bench e1RM'],
+        });
+        // Shorter blocks don't need one.
+        expect(validateProgramInput({ ...noRationale, weeks: 3, weekTargets: [] }).ok).toBe(true);
     });
 
     it('accepts a sane program and normalizes targets', () => {

@@ -1,0 +1,108 @@
+/* ===========================================
+   BLOCK PAGE (AP-24) — the active program by week and day
+   Rows reuse .row-card; section heads reuse .dash-section-head; the
+   rationale strip and week chrome are the only block-specific shapes.
+   =========================================== */
+
+.block-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding-bottom: var(--nav-clearance);
+}
+
+.block-hero__meta {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.block-hero__headline {
+    margin-top: var(--space-8);
+    font-size: var(--font-md);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.block-hero__days {
+    margin-top: var(--space-6);
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+
+.block-rationale {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-12);
+}
+.block-rationale__line {
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    line-height: 1.45;
+}
+.block-rationale__more {
+    margin-top: var(--space-8);
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+.block-rationale__more summary {
+    cursor: pointer;
+    color: var(--primary);
+    font-weight: 600;
+    min-height: var(--tap-sm);
+    display: flex;
+    align-items: center;
+}
+.block-rationale__list {
+    margin: var(--space-4) 0 0;
+    padding-left: var(--space-16);
+    line-height: 1.5;
+}
+.block-rationale__list b { color: var(--text-main); }
+
+.block-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+}
+
+.block-week__cells {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+.block-week__now {
+    margin-left: var(--space-6);
+    padding: var(--space-2) var(--space-6);
+    border-radius: var(--radius-pill);
+    background: var(--primary-bg);
+    color: var(--primary);
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    vertical-align: middle;
+}
+.block-week--current .dash-section-head h3 { color: var(--primary); }
+.block-week--past .row-card { opacity: 0.85; }
+.block-week__override {
+    margin-bottom: var(--space-6);
+    padding: var(--space-6) var(--space-10);
+    border-radius: var(--radius-sm);
+    background: var(--warning-bg-subtle);
+    color: var(--warning-moderate);
+    font-size: var(--font-xs);
+    font-weight: 600;
+}
+
+.block-cell--done .block-cell__icon { background: var(--success-bg); color: var(--success); }
+.block-cell--missed .block-cell__icon { background: var(--danger-soft-bg); color: var(--danger); }
+.block-cell--upcoming .block-cell__icon { background: var(--bg-card-hover); color: var(--text-muted); font-size: var(--font-2xs); }
+.block-cell--today { border-color: var(--primary-border); }
+.block-cell__start { flex-shrink: 0; }
+
+.block-session__main {
+    margin-left: var(--space-4);
+    padding: 0 var(--space-6);
+    border-radius: var(--radius-pill);
+    background: var(--primary-bg);
+    color: var(--primary);
+    font-size: var(--font-2xs);
+    font-weight: 700;
+}

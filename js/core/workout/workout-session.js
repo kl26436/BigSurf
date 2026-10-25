@@ -21,7 +21,7 @@ import { haptic } from '../utils/haptics.js';
 import { Config } from '../utils/config.js';
 import { cancelRestNotification } from '../utils/push-notification-manager.js';
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
-import { getSessionIntent } from '../features/session-intent.js';
+import { getSessionIntent, weekOverrideOf } from '../features/session-intent.js';
 
 // ===================================================================
 // TEMPLATE CHANGE DETECTION
@@ -86,7 +86,7 @@ async function stampSessionIntent({ freestyle = false } = {}) {
         const intent = getSessionIntent({
             program,
             today: AppState.savedData.date,
-            manualDeload: AppState.settings?.manualDeload || null,
+            manualDeload: weekOverrideOf(AppState.settings),
             sessionLabel: AppState.savedData.sessionLabel || null,
             freestyle,
         });
@@ -292,6 +292,7 @@ export async function startWorkout(workoutType) {
 
     // V2 wizard UI: load autofill then render
     await loadAutofillForAllExercises();
+    await applyOverrideSetDelta();
     renderActiveWorkout();
 
     // Initialize window.inProgressWorkout so saveWorkoutData can update it
@@ -499,6 +500,25 @@ function pruneUnloggedSets(savedData) {
         if (!ex || !ex.sets || ex.sets.length === 0) {
             delete exMap[key];
         }
+    }
+}
+
+/**
+ * A week override's set delta (AP-23b — "add a set this week", "−2 sets")
+ * on a session that isn't the program's own (the program's levers land via
+ * its hero adjustment). Same governor-free helper the program uses: rows
+ * follow, completed and typed rows are never touched.
+ */
+async function applyOverrideSetDelta() {
+    const intent = AppState.savedData?.sessionIntent;
+    if (intent?.source !== 'manual' || !intent.setDelta || !AppState.currentWorkout) return;
+    try {
+        const { applySetDeltaToExercise } = await import('../features/program-session.js');
+        AppState.currentWorkout.exercises.forEach((ex, i) => {
+            applySetDeltaToExercise(ex, AppState.savedData.exercises?.[`exercise_${i}`], intent.setDelta);
+        });
+    } catch (e) {
+        console.error('❌ Week override set delta failed:', e);
     }
 }
 

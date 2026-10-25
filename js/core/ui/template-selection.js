@@ -13,6 +13,7 @@ import { getEquipmentAtLocation, getExercisesAtLocation, checkTemplateCompatibil
 import * as equipmentPlanner from '../features/equipment-planner.js';
 import { getTemplatesForDayOfWeek } from '../features/metrics/aggregators.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
+import { deriveProgramWeek } from '../features/week-targets.js';
 
 // ===================================================================
 // TEMPLATE SELECTION STATE
@@ -369,6 +370,7 @@ async function renderWorkoutSelectorUI() {
 
     // Render template rows (archived group appended when not category-filtered)
     renderTemplateRows(listContainer, filtered, activeSelectorCategory !== null, archivedTemplates);
+    renderBlockLink(listContainer);
 
     // Set up delegation for clicks
     setupSelectorDelegation(listContainer);
@@ -377,6 +379,27 @@ async function renderWorkoutSelectorUI() {
     // rows. Fire-and-forget — hydrateLastSession only fills in `data-pending`
     // placeholders it finds in the DOM.
     hydrateLastSession();
+}
+
+/**
+ * AP-24 — with an active program, the Workouts tab's first row opens the
+ * Block page (the same page as the dashboard program line).
+ */
+function renderBlockLink(container) {
+    const program = AppState._activeProgram;
+    if (!program) return;
+    const { week } = deriveProgramWeek(program, AppState.getTodayDateString());
+    const weeks = program.weeks || 0;
+    const when = week > weeks ? 'Finished' : week >= 1 ? `Week ${week} of ${weeks}` : 'Starts soon';
+    container.insertAdjacentHTML('afterbegin', `
+        <button type="button" class="row-card ws-block-link" onclick="openBlockPage()">
+            <span class="row-card__icon"><i class="fas fa-calendar-week"></i></span>
+            <span class="row-card__content">
+                <span class="row-card__title">${escapeHtml(program.name || 'Your block')}</span>
+                <span class="row-card__subtitle">${when} · see every week and day</span>
+            </span>
+            <i class="fas fa-chevron-right row-card__action"></i>
+        </button>`);
 }
 
 /**

@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-    makeToolExecutors, todayInfo, plannedForDay, prRecordInUnit, normalizeUnit, deriveTemplateUsage,
+    makeToolExecutors, todayInfo, plannedForDay, prRecordInUnit, normalizeUnit, deriveTemplateUsage, validateProposal,
 } from '../../functions/coach-tools.js';
 
 /** Admin-SDK-shaped fake: docs keyed by full path ('users/u1/workouts/w1'). */
@@ -315,6 +315,7 @@ describe('write guards in the executors (AP-17 / AP-18)', () => {
         const ok = await exec(db).create_program({
             name: 'Block', goal: 'strength', weeks: 4, startDate: '2026-10-26', split: { mon: 'push_day' },
             weekTargets: [{ week: 2, label: 'more', setDelta: 1 }, { week: 4, label: 'deload', weightPct: -35 }],
+            rationale: { block: 'Strength, 4 weeks, deload week 4' },
         });
         expect(ok.result.warnings.map(w => w.message)).toContain('Back is trained 0× a week in this split — most muscles grow best at 2×.');
     });
@@ -335,5 +336,105 @@ describe('write guards in the executors (AP-17 / AP-18)', () => {
         ]);
         expect(usage.get('push_day')).toEqual({ usageCount: 2, lastUsedDate: '2026-10-08' });
         expect(usage.has('legs')).toBe(false);
+    });
+});
+
+describe('planner tools (AP-23)', () => {
+    const set = (weight, reps) => ({ weight, reps, originalUnit: 'lbs', type: 'working', completed: true });
+    const exec = (db, today = '2026-10-24') => makeToolExecutors({ db, userId: 'u1', unit: 'lbs', today });
+    const push = { name: 'Push Day', exercises: [{ machine: 'Bench Press', role: 'primary' }, { machine: 'Pec Deck' }] };
+    const legs = { name: 'Legs', exercises: [{ machine: 'Squat' }, { machine: 'Leg Curl' }, { machine: 'Back Extension' }] };
+    const seed = (extra = {}) => ({
+        [`${U}/workoutTemplates/push`]: push,
+        [`${U}/workoutTemplates/legs`]: legs,
+        [`${U}/equipment/a`]: { name: 'Glute Ham Raise', exerciseTypes: ['Glute Ham Raise'], locations: ['Downtown'], lastUsed: null },
+        [`${U}/equipment/b`]: { name: 'Reverse Hyper', exerciseTypes: ['Reverse Hyper'], locations: ['Downtown'], lastUsed: '2026-07-01' },
+        [`${U}/equipment/c`]: { name: 'Hyperextension Bench', exerciseTypes: ['Hyperextension'], locations: ['Uptown'], lastUsed: null },
+        [`${U}/workouts/w1`]: workout('2026-10-20', [set(200, 8)], { location: 'Downtown', workoutType: 'Push Day', startedAt: '2026-10-20T17:00:00Z', completedAt: '2026-10-20T17:50:00Z' }),
+        ...extra,
+    });
+
+    it('get_rotation_candidates: same pattern at this gym, never-used first, primaries held', async () => {
+        const out = await exec(fakeAdminDb(seed())).get_rotation_candidates({ exercise: 'Back Extension' });
+        expect(out.location).toBe('Downtown');
+        expect(out.pattern).toBe('trunk-ext');
+        expect(out.candidates.map(c => [c.name, c.reason])).toEqual([['Reverse Hyper', 'idle since 2026-07']]);
+        expect(out.heldPrimaries.map(h => h.name)).toEqual(['Bench Press', 'Squat']);
+        const uptown = await exec(fakeAdminDb(seed())).get_rotation_candidates({ exercise: 'Back Extension', location: 'Uptown' });
+        expect(uptown.candidates.map(c => c.name)).toEqual(['Hyperextension']);
+        expect(uptown.candidates[0].reason).toBe('never used');
+    });
+
+    it('get_rotation_candidates: nothing to offer says so; no input is an error', async () => {
+        const none = await exec(fakeAdminDb(seed())).get_rotation_candidates({ pattern: 'calf' });
+        expect(none.candidates).toEqual([]);
+        expect(none.note).toMatch(/No other calf machine at Downtown/);
+        expect((await exec(fakeAdminDb(seed())).get_rotation_candidates({})).error.code).toBe('invalid_input');
+    });
+
+    it('set_primary_lifts: 3–8 real names, written as role:primary, cleared elsewhere', async () => {
+        const db = fakeAdminDb(seed());
+        expect((await exec(db).set_primary_lifts({ exercises: ['Bench Press'] })).error.message).toMatch(/Pick 3–8/);
+        const bad = await exec(db).set_primary_lifts({ exercises: ['Bench Press', 'Squat', 'Zercher Lunge'] });
+        expect(bad.error).toMatchObject({ code: 'invalid_input', message: '"Zercher Lunge" isn\'t in any saved workout.' });
+        const ok = await exec(db).set_primary_lifts({ exercises: ['squat', 'Leg Curl', 'pec deck'] });
+        expect(ok.result.primaries).toEqual(['Squat', 'Leg Curl', 'Pec Deck']);
+        expect(ok.actionCard.kind).toBe('primaries_set');
+        const savedPush = db._docs.get(`${U}/workoutTemplates/push`).exercises;
+        expect(savedPush).toEqual([{ machine: 'Bench Press', role: 'secondary' }, { machine: 'Pec Deck', role: 'primary' }]);
+    });
+
+    it('get_workouts: whole sessions by date or range, in the display unit', async () => {
+        const db = fakeAdminDb(seed({ [`${U}/workouts/w2`]: workout('2026-10-22', [{ weight: 100, reps: 5, originalUnit: 'kg', type: 'working', completed: true }], { sessionLabel: 'Deload' }) }));
+        const day = await exec(db).get_workouts({ date: '2026-10-20' });
+        expect(day.sessions).toHaveLength(1);
+        expect(day.sessions[0]).toMatchObject({ date: '2026-10-20', workout: 'Push Day', location: 'Downtown', minutes: 50 });
+        expect(day.sessions[0].exercises[0]).toMatchObject({ name: 'Bench Press', equipment: 'Flat Bench' });
+        const range = await exec(db).get_workouts({ from: '2026-10-25', to: '2026-10-19' });
+        expect(range.sessions.map(s => s.date)).toEqual(['2026-10-22', '2026-10-20']);
+        expect(range.sessions[0].label).toBe('Deload');
+        expect((await exec(db).get_workouts({ date: 'Tuesday' })).error.code).toBe('invalid_input');
+    });
+
+    it('list_templates reports average minutes from recent completions', async () => {
+        const out = await exec(fakeAdminDb(seed())).list_templates();
+        expect(out.templates.find(t => t.templateId === 'push').avgDurationMin).toBe(50);
+        expect(out.templates.find(t => t.templateId === 'legs').avgDurationMin).toBeNull();
+    });
+
+    it('get_verdicts {scope:"block"} looks back over the active program', async () => {
+        const db = fakeAdminDb(seed({
+            [`${U}/programs/p1`]: { name: 'Block', active: true, startDate: '2026-10-05', weeks: 4, split: { mon: 'push' }, weekTargets: [{ week: 4, label: 'deload', weightPct: -35 }], createdAt: '2026-10-01' },
+        }));
+        const r = await exec(db).get_verdicts({ scope: 'block' });
+        expect(r).toMatchObject({ scope: 'block', program: { name: 'Block', weeks: 4 }, throughWeek: 3, daysTrained: 1 });
+        expect(r.accessories.neverUsed).toEqual(['Pec Deck']);
+        expect((await exec(db).get_verdicts({ scope: 'month' })).error.code).toBe('invalid_input');
+        const none = await exec(fakeAdminDb(seed())).get_verdicts({ scope: 'block' });
+        expect(none.note).toMatch(/No program yet/);
+    });
+
+    it('propose_week_adjustment: shape checked, then the card lists the sessions it covers', async () => {
+        expect(validateProposal('propose_week_adjustment', { weightPct: -80 }).error).toMatch(/weightPct must be a number from -50 to 10/);
+        expect(validateProposal('propose_week_adjustment', { label: 'x' }).error).toBe('Provide weightPct and/or setDelta');
+        const v = validateProposal('propose_week_adjustment', { weightPct: -10, why: 'last week was hard', extendBlock: true });
+        expect(v.proposal).toMatchObject({ kind: 'week_adjustment', weightPct: -10, weeks: 1, from: null, extendBlock: true });
+        const db = fakeAdminDb(seed({ [`${U}/preferences/weekPlan`]: { days: { mon: 'push', wed: 'legs' }, restDays: [] } }));
+        const out = await exec(db).checkProposal('propose_week_adjustment', v.proposal);
+        expect(out.proposal).toMatchObject({
+            from: '2026-10-24', label: 'Lighter week', mode: 'deload', extendBlock: false, // no program → nothing to extend
+            sessions: [{ date: '2026-10-26', name: 'Push Day' }, { date: '2026-10-28', name: 'Legs' }],
+        });
+    });
+
+    it('propose_skip_exercise: needs a live session and an exercise in it', async () => {
+        expect(validateProposal('propose_skip_exercise', {}).error).toBe('exercise is required (or endSession:true)');
+        const p = validateProposal('propose_skip_exercise', { exercise: 'bench', why: 'shoulder twinge' }).proposal;
+        expect((await exec(fakeAdminDb(seed())).checkProposal('propose_skip_exercise', p)).error.code).toBe('not_found');
+        const live = { [`${U}/workouts/live`]: { date: '2026-10-24', exerciseNames: { exercise_0: 'Bench Press', exercise_1: 'Pec Deck' }, exercises: {} } };
+        const ok = await exec(fakeAdminDb(seed(live))).checkProposal('propose_skip_exercise', { ...p, exercise: 'bench pres' });
+        expect(ok.proposal.exercise).toBe('Bench Press');
+        const miss = await exec(fakeAdminDb(seed(live))).checkProposal('propose_skip_exercise', { ...p, exercise: 'Squat' });
+        expect(miss.error.hint).toMatch(/Today's exercises: Bench Press, Pec Deck/);
     });
 });
