@@ -46,7 +46,7 @@ Then     AP-19 (both contracts) → AP-20a → **AP-23 → AP-24** (the planner'
 
 ### Before you start (30 minutes, no code)
 
-1. **Working tree has 70 files "modified" by line endings only.** `git diff --ignore-cr-at-eol --stat` is empty; `git status` shows 70 files. `.prettierrc` / `.vscode/settings.json` changed (likely `endOfLine`). Decide once: add a `.gitattributes` (`* text=auto eol=crlf` to match the repo) or `git add --renormalize .` and commit, so every PR diff isn't polluted with whole-file churn.
+1. *(Done 2026-10-25: `.gitattributes` `* text=auto eol=lf` — the index was already LF; working copies re-checked-out as LF; `.prettierrc` `endOfLine: lf`, VS Code `files.eol`.)* **Working tree has 70 files "modified" by line endings only.** `git diff --ignore-cr-at-eol --stat` is empty; `git status` shows 70 files. `.prettierrc` / `.vscode/settings.json` changed (likely `endOfLine`). Decide once: add a `.gitattributes` (`* text=auto eol=crlf` to match the repo) or `git add --renormalize .` and commit, so every PR diff isn't polluted with whole-file churn.
 2. **Confirm what build your phone is running.** Hard-refresh prod (or check the SW version) and verify the `Create "<query>"` row appears when you type in the equipment sheet. If it doesn't, you're on a cached build and part of #2 is a deploy problem, not a code problem.
 3. **Confirm the app actually thinks it's a deload week.** In `?debug`, log `AppState._activeProgram.startDate` and `weekTargets`. Per `docs/coach-periodization-plan.md` Appendix A (block start 2026-09-21), 2026-10-23 is **week 5 "intensify"**; deload is week 6 (10-26 → 11-01). If your program doc says the same, the hero path didn't misfire — the structural problem (#3) still stands, but the repro changes.
 4. **Confirm CP-0…CP-7 are on prod.** `launch-roadmap.md` §4 says "on dev 2026-09-18, awaiting dev verification → prod." If prod is pre-CP, some of what you see is pre-CP behaviour.
@@ -551,7 +551,7 @@ Acceptance: from the dashboard, one tap shows the whole block by week and day wi
 
 ## 5. Tracking — so the next report comes with data
 
-**`docs/bug-log.md`** (create). One entry per observation, this template:
+**`docs/bug-log.md`** (created 2026-10-25, with where each trace lives). One entry per observation, this template:
 
 ```
 ### YYYY-MM-DD · <area: prefill | equipment | progression | coach> · <one-line symptom>

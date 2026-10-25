@@ -1,0 +1,15 @@
+# LF in the repo AND in the working copy, on every OS. Without this,
+# core.autocrlf=true (Git for Windows' default) checked files out as CRLF and
+# warned "LF will be replaced by CRLF" on every commit, and the working copy
+# drifted to a mix of LF / CRLF / mixed files.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
