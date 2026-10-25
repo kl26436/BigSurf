@@ -85,22 +85,8 @@
 }
 
 /* ===========================================
-   14. EQUIPMENT PICKER
+   14. EQUIPMENT NAME / LOCATION TEXT
    =========================================== */
-.equipment-option {
-    padding: var(--space-16);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-}
-.equipment-option:hover {
-    border-color: var(--primary);
-}
-.equipment-option.selected {
-    border-color: var(--primary);
-    background: var(--primary-bg-subtle);
-}
 .equipment-name {
     font-weight: 500;
 }
@@ -737,36 +723,8 @@
 }
 
 /* ===========================================
-   28. EQUIPMENT PICKER
+   28. FORM SECTION DIVIDER
    =========================================== */
-.equipment-picker-subtitle {
-    font-size: var(--font-base);
-    color: var(--text-muted);
-    margin-bottom: var(--space-16);
-}
-.equipment-picker-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-    margin-bottom: var(--space-16);
-}
-.equipment-picker-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-12);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-}
-.equipment-picker-item:hover {
-    border-color: var(--primary);
-}
-.equipment-picker-item.selected {
-    border-color: var(--primary);
-    background: var(--primary-bg-subtle);
-}
 .form-section-divider {
     display: flex;
     align-items: center;
@@ -781,11 +739,6 @@
     flex: 1;
     height: 1px;
     background: var(--border);
-}
-.equipment-picker-add-form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-10);
 }
 
 /* ===========================================
@@ -971,74 +924,13 @@
 }
 
 /* ===========================================
-   40. EQUIPMENT PICKER
+   40. EQUIPMENT LOCATIONS EMPTY STATE
+   (the legacy equipment-picker modal's styles went with it — AP-13)
    =========================================== */
-.equipment-option {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-12);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    margin-bottom: var(--space-8);
-}
-.equipment-option:hover {
-    border-color: var(--primary);
-}
-.equipment-option.selected {
-    border-color: var(--primary);
-    background: var(--primary-bg-subtle);
-}
-.equipment-option-radio {
-    width: var(--icon-xs);
-    height: var(--icon-xs);
-    border: 2px solid var(--border);
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-.equipment-option.selected .equipment-option-radio {
-    border-color: var(--primary);
-    background: var(--primary);
-}
-.equipment-option-details {
-    flex: 1;
-}
-.equipment-option-name {
-    font-weight: 500;
-    color: var(--text-strong);
-}
-.equipment-option-location {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-}
-.equipment-info {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-}
-.equipment-locations-empty,
-.equipment-picker-empty {
+.equipment-locations-empty {
     text-align: center;
     padding: var(--space-16);
     color: var(--text-muted);
-}
-
-/* Phase 4 — Equipment Picker section headers
-   Used to label the "Used before / At <gym> / All equipment" groupings inside
-   #equipment-picker-list. Reuses the existing .equipment-option row styles. */
-.eq-picker__section-header {
-    padding: var(--space-12) var(--space-4) var(--space-6);
-    font-size: var(--font-2xs);
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    border-bottom: 1px solid var(--border);
-    margin-bottom: var(--space-6);
-}
-.eq-picker__section-header:first-child {
-    padding-top: var(--space-4);
 }
 
 /* ===========================================

@@ -97,10 +97,18 @@ describe('retired equipment-create handlers stay retired', () => {
     for (const name of [
         'awQuickAddEquipment', 'awSaveNewEquipment', 'awNewEquipSetType', 'awNewEquipKeydown',
         'awGoToEquipmentLibrary', 'awCreateEquipmentFromSearch', 'awSharedCreateEquipmentFromSearch',
+        // AP-13 (rest) — the legacy #equipment-picker-modal and its handlers.
+        'closeEquipmentPicker', 'addEquipmentFromPicker', 'skipEquipmentSelection',
+        'confirmEquipmentSelection', 'populateEquipmentPicker', 'selectEquipmentForManual',
     ]) {
         it(`${name} appears nowhere in js/ or index.html`, () => {
             expect(jsText.includes(name)).toBe(false);
             expect(htmlText.includes(name)).toBe(false);
         });
     }
+
+    it('the legacy equipment-picker dialog is gone', () => {
+        expect(htmlText.includes('id="equipment-picker-modal"')).toBe(false);
+        expect(jsText.includes("getElementById('equipment-picker-modal')")).toBe(false);
+    });
 });

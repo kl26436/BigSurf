@@ -114,7 +114,6 @@ js/
     │   ├── navigation.js           # Bottom nav, routing, navStack for drill-downs
     │   ├── settings-ui.js          # Settings page, onboarding flow, profile detail
     │   ├── confirm-sheet.js        # confirmSheet()/promptSheet() — promise-based replacement for native confirm/prompt
-    │   ├── equipment-picker.js     # Equipment picker render helper (categorized: For exercise / At gym / Other)
     │   ├── template-selection.js   # Workouts page — library + dedicated editor page (#workout-editor-section)
     │   ├── ui-helpers.js           # Notifications, conversions, modal helpers
     │   └── workout-history-ui.js   # History modal
@@ -142,7 +141,7 @@ js/
         ├── set-seeding.js          # Pure prefill rules: mergeSeededSets, seedSetsFromLastSession (bump/back-off/deload), same-machine check
         ├── workout-core.js         # Top-level lifecycle re-exports
         ├── workout-history.js      # Calendar, history data
-        ├── workout-management-ui.js # Equipment picker + create-exercise modal (template editor was retired in Phase 9; editTemplate / createNewTemplate now route to the workout-selector)
+        ├── workout-management-ui.js # Exercise-library → add-to-workout + create-exercise modal (template editor retired in Phase 9; the legacy equipment-picker modal retired in AP-13 — every equipment pick is openSharedEquipmentSheet / awOpenEquipmentSheet)
         └── workout-session.js      # Workout completion, summary modal
 ```
 

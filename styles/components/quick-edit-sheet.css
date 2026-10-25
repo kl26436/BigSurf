@@ -93,6 +93,16 @@
 .qe-chip--add:active {
     background: var(--bg-card-hi);
 }
+/* AP-14 — "Link to catalog" under the name field */
+.qe-chips--link {
+    margin-top: var(--space-6);
+}
+.qe-chip--on {
+    border-style: solid;
+    border-color: var(--primary);
+    background: var(--primary-bg-subtle);
+    color: var(--primary);
+}
 .qe-add-row {
     display: flex;
     gap: var(--space-6);

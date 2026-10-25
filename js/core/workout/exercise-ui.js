@@ -2333,29 +2333,26 @@ export async function changeExerciseEquipment(exerciseIndex) {
     // Store the index for the callback
     pendingEquipmentChangeIndex = exerciseIndex;
 
-    // Set flag to indicate we're changing equipment (not adding new exercise)
-    window.changingEquipmentDuringWorkout = true;
-
-    // Open the equipment picker modal
-    const modal = document.getElementById('equipment-picker-modal');
-
-    const { populateEquipmentPicker } = await import('../ui/equipment-picker.js');
-    await populateEquipmentPicker({
+    // AP-13 — the shared equipment sheet (one door) replaces the legacy
+    // #equipment-picker-modal; '' from its "None" row clears the equipment.
+    const { openSharedEquipmentSheet } = await import('./active-workout-ui.js');
+    await openSharedEquipmentSheet({
         exerciseName,
         currentEquipment: exercise.equipment || null,
-        currentLocation: exercise.equipmentLocation || null,
-        sessionLocation: getSessionLocation(),
+        onSelect: (name) => applyEquipmentChange(name || null, name ? equipmentLocationFor(name) : null),
+        onCancel: () => { pendingEquipmentChangeIndex = null; },
     });
+}
 
-    if (modal) openModal(modal);
+/** The session gym, else the machine's first saved gym. */
+function equipmentLocationFor(name) {
+    const eq = (AppState._cachedEquipment || []).find(e => e.name === name);
+    return getSessionLocation() || eq?.locations?.[0] || null;
 }
 
 // Apply the selected equipment to the current workout exercise
 export async function applyEquipmentChange(equipmentName, equipmentLocation, equipmentVideo = null) {
-    if (pendingEquipmentChangeIndex === null || !AppState.currentWorkout) {
-        window.changingEquipmentDuringWorkout = false;
-        return;
-    }
+    if (pendingEquipmentChangeIndex === null || !AppState.currentWorkout) return;
 
     const exerciseIndex = pendingEquipmentChangeIndex;
     const exercise = AppState.currentWorkout.exercises[exerciseIndex];
@@ -2396,7 +2393,6 @@ export async function applyEquipmentChange(equipmentName, equipmentLocation, equ
 
     // Clean up
     pendingEquipmentChangeIndex = null;
-    window.changingEquipmentDuringWorkout = false;
 }
 
 // ===================================================================

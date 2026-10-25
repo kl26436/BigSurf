@@ -565,9 +565,9 @@ function selectExerciseFromLibrary(exercise) {
 
     // Check if we're adding to active workout
     if (window.addingToActiveWorkout && window.confirmExerciseAddToWorkout) {
-        // For active workouts, show equipment picker
+        // For active workouts, pick equipment on the shared sheet (AP-13)
         pendingExerciseForEquipment = exercise;
-        showEquipmentPicker(exercise, true);
+        showEquipmentPicker(exercise);
         return;
     }
 
@@ -577,192 +577,22 @@ function selectExerciseFromLibrary(exercise) {
     // add/replace flow.
 }
 
-// Show equipment picker modal
-async function showEquipmentPicker(exercise, isActiveWorkout) {
-    const exerciseName = exercise.name || exercise.machine;
-    const modal = document.getElementById('equipment-picker-modal');
-
-    const { populateEquipmentPicker } = await import('../ui/equipment-picker.js');
-    await populateEquipmentPicker({
-        exerciseName,
+// Pick equipment for an exercise being added from the library to the active
+// workout — the shared sheet (one door; AP-13 retired #equipment-picker-modal).
+// '' from the sheet's "None" row adds it with no equipment.
+async function showEquipmentPicker(exercise) {
+    const { openSharedEquipmentSheet } = await import('./active-workout-ui.js');
+    await openSharedEquipmentSheet({
+        exerciseName: exercise.name || exercise.machine,
         currentEquipment: exercise.equipment || null,
-        currentLocation: exercise.equipmentLocation || null,
-        sessionLocation: isActiveWorkout ? getSessionLocation() : null,
+        onSelect: (name) => finalizeExerciseAddition(name || null, name ? (getSessionLocation() || null) : null),
+        onCancel: () => { pendingExerciseForEquipment = null; },
     });
-
-    // Store whether this is for active workout
-    window.equipmentPickerForActiveWorkout = isActiveWorkout;
-
-    if (modal) openModal(modal);
-}
-
-// Close equipment picker
-export function closeEquipmentPicker() {
-    const modal = document.getElementById('equipment-picker-modal');
-    if (modal) closeModal(modal);
-    pendingExerciseForEquipment = null;
-    window.equipmentPickerForActiveWorkout = false;
-    window.changingEquipmentDuringWorkout = false;
-}
-
-// Add equipment from picker (saves to list and auto-selects)
-export async function addEquipmentFromPicker() {
-    const nameInput = document.getElementById('equipment-picker-new-name');
-    const locationInput = document.getElementById('equipment-picker-new-location');
-    const videoInput = document.getElementById('equipment-picker-new-video');
-
-    const equipmentName = nameInput?.value.trim();
-    let locationName = locationInput?.value.trim();
-    const videoUrl = videoInput?.value.trim();
-
-    if (!equipmentName) {
-        showNotification('Add an equipment name', 'warning');
-        nameInput?.focus();
-        return;
-    }
-
-    // If no location specified and we're in an active workout, use session location
-    if (!locationName && (window.equipmentPickerForActiveWorkout || window.changingEquipmentDuringWorkout)) {
-        locationName = getSessionLocation() || '';
-    }
-
-    // Get the exercise name from pending exercise or current workout
-    let exerciseName = null;
-    if (pendingExerciseForEquipment) {
-        exerciseName = pendingExerciseForEquipment.name || pendingExerciseForEquipment.machine;
-    } else if (window.changingEquipmentDuringWorkout && AppState.currentWorkout) {
-        // Get from focused exercise index during active workout equipment change
-        const idx = AppState.focusedExerciseIndex;
-        if (idx !== null && AppState.currentWorkout.exercises[idx]) {
-            exerciseName = AppState.currentWorkout.exercises[idx].machine;
-        }
-    }
-
-    // Fallback: parse exercise name from the modal title (shows "for "Exercise Name"")
-    if (!exerciseName) {
-        const titleEl = document.getElementById('equipment-picker-exercise-name');
-        if (titleEl) {
-            const match = titleEl.textContent.match(/for "(.+)"/);
-            if (match) {
-                exerciseName = match[1];
-            }
-        }
-    }
-
-    if (!exerciseName) {
-        showNotification('No exercise selected', 'error');
-        return;
-    }
-
-    try {
-        const workoutManager = new FirebaseWorkoutManager(AppState);
-        await workoutManager.getOrCreateEquipment(equipmentName, locationName, exerciseName, videoUrl);
-
-        // Clear inputs
-        if (nameInput) nameInput.value = '';
-        if (locationInput) locationInput.value = '';
-        if (videoInput) videoInput.value = '';
-
-        // Refresh the equipment list
-        const exerciseEquipment = await workoutManager.getEquipmentForExercise(exerciseName);
-        const listEl = document.getElementById('equipment-picker-list');
-
-        if (listEl && exerciseEquipment.length > 0) {
-            listEl.innerHTML = exerciseEquipment
-                .map(
-                    (eq) => `
-                <div class="equipment-option ${eq.name === equipmentName ? 'selected' : ''}"
-                     data-equipment-id="${escapeAttr(eq.id)}"
-                     data-equipment-name="${escapeAttr(eq.name)}"
-                     data-equipment-location="${escapeAttr((eq.locations && eq.locations[0]) || '')}">
-                    <div class="equipment-option-radio"></div>
-                    <div class="equipment-option-details">
-                        <div class="equipment-option-name">${escapeHtml(eq.name)}</div>
-                        ${eq.locations?.length ? `<div class="equipment-option-location">${escapeHtml(eq.locations.join(', '))}</div>` : ''}
-                    </div>
-                </div>
-            `
-                )
-                .join('');
-
-            // Re-add click handlers
-            listEl.querySelectorAll('.equipment-option').forEach((option) => {
-                option.addEventListener('click', () => {
-                    listEl.querySelectorAll('.equipment-option').forEach((o) => o.classList.remove('selected'));
-                    option.classList.add('selected');
-                    if (nameInput) nameInput.value = '';
-                    if (locationInput) locationInput.value = '';
-                });
-            });
-        }
-
-        // Silent success - equipment appears in list immediately
-    } catch (error) {
-        console.error('Error adding equipment:', error);
-        showNotification("Couldn't add equipment", 'error');
-    }
-}
-
-// Skip equipment selection (no equipment)
-export function skipEquipmentSelection() {
-    // Check if we're changing equipment during a workout
-    if (window.changingEquipmentDuringWorkout && window.applyEquipmentChange) {
-        window.applyEquipmentChange(null, null);
-        closeEquipmentPicker();
-        return;
-    }
-    finalizeExerciseAddition(null, null);
-}
-
-// Confirm equipment selection
-export function confirmEquipmentSelection() {
-    const listEl = document.getElementById('equipment-picker-list');
-    const newNameInput = document.getElementById('equipment-picker-new-name');
-    const newLocationInput = document.getElementById('equipment-picker-new-location');
-    const newVideoInput = document.getElementById('equipment-picker-new-video');
-
-    let equipmentName = null;
-    let equipmentLocation = null;
-    let equipmentVideo = null;
-
-    // Check if existing equipment is selected
-    const selectedOption = listEl?.querySelector('.equipment-option.selected');
-    if (selectedOption) {
-        equipmentName = selectedOption.dataset.equipmentName;
-        equipmentLocation = selectedOption.dataset.equipmentLocation || null;
-    }
-
-    // Check if new equipment was entered
-    const newName = newNameInput?.value.trim();
-    const newLocation = newLocationInput?.value.trim();
-    const newVideo = newVideoInput?.value.trim();
-    if (newName) {
-        equipmentName = newName;
-        equipmentLocation = newLocation || null;
-        equipmentVideo = newVideo || null;
-    }
-
-    // If no location and we're in an active workout, use session location
-    if (!equipmentLocation && (window.equipmentPickerForActiveWorkout || window.changingEquipmentDuringWorkout)) {
-        equipmentLocation = getSessionLocation() || null;
-    }
-
-    // Check if we're changing equipment during a workout
-    if (window.changingEquipmentDuringWorkout && window.applyEquipmentChange) {
-        window.applyEquipmentChange(equipmentName, equipmentLocation, equipmentVideo);
-        closeEquipmentPicker();
-        return;
-    }
-
-    finalizeExerciseAddition(equipmentName, equipmentLocation, equipmentVideo);
 }
 
 // Finalize adding the exercise with equipment info
 async function finalizeExerciseAddition(equipmentName, equipmentLocation, equipmentVideo = null) {
-    if (!pendingExerciseForEquipment) {
-        closeEquipmentPicker();
-        return;
-    }
+    if (!pendingExerciseForEquipment) return;
 
     const exercise = pendingExerciseForEquipment;
     const exerciseName = exercise.name || exercise.machine;
@@ -791,7 +621,7 @@ async function finalizeExerciseAddition(equipmentName, equipmentLocation, equipm
     }
 
     // Handle active workout
-    if (window.equipmentPickerForActiveWorkout && window.confirmExerciseAddToWorkout) {
+    if (window.confirmExerciseAddToWorkout) {
         const exerciseWithEquipment = {
             ...exercise,
             equipment: equipmentName,
@@ -799,7 +629,7 @@ async function finalizeExerciseAddition(equipmentName, equipmentLocation, equipm
         };
         window.confirmExerciseAddToWorkout(exerciseWithEquipment);
         closeExerciseLibrary();
-        closeEquipmentPicker();
+        pendingExerciseForEquipment = null;
         window.addingToActiveWorkout = false;
         // Silent success - exercise card appears immediately in workout
         return;

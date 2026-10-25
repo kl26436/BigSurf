@@ -16,10 +16,21 @@ import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
+import { catalogLinkCandidate } from '../data/catalog-search.js';
+import { augmentStaticCatalog } from '../data/equipment-catalog-helpers.js';
+import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
 
 let state = null;
 // Shape: { equipmentId, original, name, brand, line, function,
-//          exerciseTypes: [], locations: [], contextExercise, addExerciseQuery }
+//          exerciseTypes: [], locations: [], contextExercise, addExerciseQuery,
+//          catalogLink (candidate or null), linkCatalog (bool) }
+
+let _catalog = null;
+function catalog() {
+    if (AppState.equipmentCatalog) return AppState.equipmentCatalog;
+    if (!_catalog) _catalog = augmentStaticCatalog(EQUIPMENT_CATALOG);
+    return _catalog;
+}
 
 /**
  * Open the quick-edit sheet for an equipment doc (by name or doc object).
@@ -53,6 +64,8 @@ export async function openEquipmentQuickEdit(equipmentName, { contextExercise = 
         locations: [...(equipment.locations || [])],
         contextExercise: contextExercise || null,
         addExerciseQuery: '',
+        catalogLink: catalogLinkCandidate(equipment, catalog()),
+        linkCatalog: false,
     };
     renderSheet();
 }
@@ -111,6 +124,19 @@ function renderBody() {
            </button>`
         : '';
 
+    // AP-14 — "Link to catalog": one tap ties an inline-created machine to its
+    // catalog entry (type/body part, owned-machine matching). Never renames.
+    const link = state.catalogLink;
+    const linkChip = link
+        ? `<div class="qe-chips qe-chips--link">
+               <button type="button" class="qe-chip qe-chip--add${state.linkCatalog ? ' qe-chip--on' : ''}"
+                       onclick="qeToggleCatalogLink()" aria-pressed="${state.linkCatalog}">
+                   <i class="fas ${state.linkCatalog ? 'fa-check' : 'fa-link'}"></i>
+                   ${state.linkCatalog ? 'Linked to' : 'Link to'} ${escapeHtml(link.brandName)} ${escapeHtml(link.name)}
+               </button>
+           </div>`
+        : '';
+
     // Exercise search input backed by the library datalist
     const libraryOptions = (AppState.exerciseDatabase || [])
         .map(ex => ex.name || ex.machine)
@@ -148,6 +174,7 @@ function renderBody() {
             <input type="text" class="qe-field__input" id="qe-name-input"
                    value="${escapeAttr(state.name)}" oninput="qeSetName(this.value)">
             <div class="qe-field__hint">Auto-fills from brand, line, and function below.</div>
+            ${linkChip}
         </div>
         <div class="qe-field-row">
             <div class="qe-field qe-field--third">
@@ -237,6 +264,12 @@ function qeSetField(field, v) {
     }
 }
 
+function qeToggleCatalogLink() {
+    if (!state?.catalogLink) return;
+    state.linkCatalog = !state.linkCatalog;
+    rerenderBody();
+}
+
 function qeAddExercise(name) {
     if (!state || !name) return;
     if (!state.exerciseTypes.includes(name)) state.exerciseTypes.push(name);
@@ -299,6 +332,11 @@ async function qeSave() {
             function: (st.function || '').trim() || null,
             exerciseTypes: st.exerciseTypes,
             locations: st.locations,
+            ...(st.linkCatalog && st.catalogLink ? {
+                catalogRef: st.catalogLink.catalogRef,
+                ...(original.equipmentType ? {} : { equipmentType: st.catalogLink.type }),
+                ...(original.bodyPart ? {} : { bodyPart: st.catalogLink.bodyPart }),
+            } : {}),
         });
 
         // (Phase 8b step 4: the location.equipment[] catalogRef mirror was
@@ -325,6 +363,7 @@ window.qeSetName = qeSetName;
 window.qeSetField = qeSetField;
 window.qeSetExerciseQuery = qeSetExerciseQuery;
 window.qeAddExercise = qeAddExercise;
+window.qeToggleCatalogLink = qeToggleCatalogLink;
 window.qeAddTypedExercise = qeAddTypedExercise;
 window.qeRemoveExercise = qeRemoveExercise;
 window.qeAddGym = qeAddGym;

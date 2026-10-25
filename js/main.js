@@ -191,10 +191,6 @@ import {
     editTemplate,
     deleteTemplate,
     resetToDefault,
-    closeEquipmentPicker,
-    skipEquipmentSelection,
-    confirmEquipmentSelection,
-    addEquipmentFromPicker,
 } from './core/workout/workout-management-ui.js';
 
 // Inline historical edit (in-place edit on workout-detail-section, replacing
@@ -243,8 +239,6 @@ import {
     applyManualDate,
     adjustManualDuration,
     openEquipmentPickerForManual,
-    selectEquipmentForManual,
-    closeEquipmentPickerForManual,
     // Legacy exports for backwards compatibility
     proceedToExerciseSelection,
     backToBasicInfo,
@@ -650,8 +644,6 @@ window.editManualDuration = editManualDuration;
 window.applyManualDate = applyManualDate;
 window.adjustManualDuration = adjustManualDuration;
 window.openEquipmentPickerForManual = openEquipmentPickerForManual;
-window.selectEquipmentForManual = selectEquipmentForManual;
-window.closeEquipmentPickerForManual = closeEquipmentPickerForManual;
 // Legacy stubs
 window.proceedToExerciseSelection = proceedToExerciseSelection;
 window.backToBasicInfo = backToBasicInfo;
@@ -826,10 +818,6 @@ window.createNewExercise = createNewExercise;
 window.editTemplate = editTemplate;
 window.deleteTemplate = deleteTemplate;
 window.resetToDefault = resetToDefault;
-window.closeEquipmentPicker = closeEquipmentPicker;
-window.skipEquipmentSelection = skipEquipmentSelection;
-window.confirmEquipmentSelection = confirmEquipmentSelection;
-window.addEquipmentFromPicker = addEquipmentFromPicker;
 
 // Authentication Functions
 window.signIn = signIn;

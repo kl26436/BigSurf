@@ -8,7 +8,7 @@
 // duration chip uses a ± stepper.
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 
@@ -867,87 +867,31 @@ async function saveAsNewTemplate() {
 let manualEquipmentEditIndex = null;
 
 export async function openEquipmentPickerForManual(exerciseIndex) {
-    manualEquipmentEditIndex = exerciseIndex;
-
-    // Get the exercise name for filtering
     const exercise = manualWorkoutState.exercises[exerciseIndex];
     if (!exercise) return;
+    manualEquipmentEditIndex = exerciseIndex;
 
-    const exerciseName = exercise.name;
-
-    // Get the equipment picker modal
-    const modal = document.getElementById('equipment-picker-modal');
-    if (!modal) {
-        console.error('❌ Equipment picker modal not found');
-        return;
-    }
-
-    // Load equipment for this specific exercise
-    try {
-        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-        const workoutManager = new FirebaseWorkoutManager(AppState);
-        const equipmentList = await workoutManager.getEquipmentForExercise(exerciseName);
-
-        const listContainer = document.getElementById('equipment-picker-list');
-        if (listContainer) {
-            if (equipmentList.length === 0) {
-                listContainer.innerHTML = `<p class="empty-state">No equipment saved for "${escapeHtml(exerciseName)}" yet.<br>Equipment is saved automatically when you log sets during a workout.</p>`;
-            } else {
-                listContainer.innerHTML = equipmentList
-                    .map((eq) => {
-                        const location = eq.locations?.length > 0 ? eq.locations[0] : '';
-                        return `
-                    <div class="equipment-picker-item" data-action="selectEquipment" data-eq-id="${escapeAttr(eq.id)}" data-eq-name="${escapeAttr(eq.name || '')}" data-eq-location="${escapeAttr(location || '')}">
-                        <i class="fas fa-cog"></i>
-                        <div class="equipment-info">
-                            <span class="equipment-name">${escapeHtml(eq.name || 'Unknown')}</span>
-                            ${location ? `<span class="equipment-location">@ ${escapeHtml(location)}</span>` : ''}
-                        </div>
-                    </div>
-                `;
-                    })
-                    .join('');
-
-            // Event delegation for equipment selection
-            listContainer.addEventListener('click', (e) => {
-                const item = e.target.closest('[data-action="selectEquipment"]');
-                if (!item) return;
-                selectEquipmentForManual(item.dataset.eqId, item.dataset.eqName, item.dataset.eqLocation);
-            });
-            }
-        }
-
-        openModal(modal);
-    } catch (error) {
-        console.error('❌ Error loading equipment:', error);
-        showNotification("Couldn't load equipment", 'error');
-    }
+    // AP-13 — the shared equipment sheet (search, add, catalog) replaces the
+    // legacy #equipment-picker-modal. '' from its "None" row clears it.
+    const { openSharedEquipmentSheet } = await import('../workout/active-workout-ui.js');
+    await openSharedEquipmentSheet({
+        exerciseName: exercise.name,
+        currentEquipment: exercise.equipment || null,
+        onSelect: (name) => applyManualEquipment(name),
+        onCancel: () => { manualEquipmentEditIndex = null; },
+    });
 }
 
-export function selectEquipmentForManual(equipmentId, name, location) {
+function applyManualEquipment(name) {
     if (manualEquipmentEditIndex === null) return;
-
     const exercise = manualWorkoutState.exercises[manualEquipmentEditIndex];
     if (exercise) {
-        exercise.equipment = name;
-        exercise.equipmentLocation = location || null;
+        const eq = name ? (AppState._cachedEquipment || []).find(e => e.name === name) : null;
+        exercise.equipment = name || null;
+        exercise.equipmentLocation = eq?.locations?.[0] || null;
     }
-
-    // Close the modal
-    const modal = document.getElementById('equipment-picker-modal');
-    closeModal(modal);
-
     manualEquipmentEditIndex = null;
-
-    // Re-render to show updated equipment
     renderManualExercises();
-    // Silent success - equipment appears immediately on exercise card
-}
-
-export function closeEquipmentPickerForManual() {
-    const modal = document.getElementById('equipment-picker-modal');
-    closeModal(modal);
-    manualEquipmentEditIndex = null;
 }
 
 // ===================================================================

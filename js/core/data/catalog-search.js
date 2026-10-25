@@ -125,3 +125,29 @@ export function inferEquipmentType(name) {
     if (/ (selectorized|selector|stack|pin loaded|pin select) /.test(n)) return 'Selectorized';
     return 'Machine';
 }
+
+/**
+ * AP-14 — the one catalog machine an inline-created doc can be linked to, or
+ * null. Only for picker-created docs with no catalogRef and a brand; only when
+ * EXACTLY one catalog machine of that brand starts with the doc's function
+ * (or its name minus the brand). Linking sets catalogRef — it never renames.
+ * @param {Object} equipment - the equipment doc
+ * @param {Array} catalog - the augmented catalog (see searchCatalogMachines)
+ * @returns {{catalogRef, name, brandName, lineName, type, bodyPart}|null}
+ */
+export function catalogLinkCandidate(equipment, catalog) {
+    if (!equipment || equipment.catalogRef || equipment.createdVia !== 'picker') return null;
+    const brand = (equipment.brand || '').trim();
+    if (!brand || brand === 'Unknown') return null;
+    let q = (equipment.function || '').trim();
+    if (!q) {
+        const name = (equipment.name || '').trim();
+        q = name.toLowerCase().startsWith(brand.toLowerCase()) ? name.slice(brand.length).trim() : '';
+    }
+    q = q.toLowerCase();
+    if (q.length < 2) return null;
+    const hits = searchCatalogMachines(q, catalog, { max: 100 })
+        .filter(h => (h.brandName || '').toLowerCase() === brand.toLowerCase()
+            && (h.name || '').toLowerCase().startsWith(q));
+    return hits.length === 1 ? hits[0] : null;
+}

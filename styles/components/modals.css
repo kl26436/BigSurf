@@ -425,8 +425,7 @@ dialog.modal:not([open]) {
 
 /* Modals that appear above exercise library modal (which gets z-index 1100 inline) */
 #location-selector-modal,
-#workout-location-selector-modal,
-#equipment-picker-modal {
+#workout-location-selector-modal {
     z-index: 1200;
 }
 

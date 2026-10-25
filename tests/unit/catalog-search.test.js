@@ -14,6 +14,7 @@ import {
     searchCatalogMachines,
     inferEquipmentType,
     matchesAllTokens,
+    catalogLinkCandidate,
 } from '../../js/core/data/catalog-search.js';
 import { EQUIPMENT_CATALOG } from '../../js/core/data/equipment-catalog.js';
 import { augmentStaticCatalog } from '../../js/core/data/equipment-catalog-helpers.js';
@@ -186,5 +187,24 @@ describe('inferEquipmentType', () => {
 
     it('matches whole words only, so "bike" inside another word does not win', () => {
         expect(inferEquipmentType('Bikefit trainer')).toBe('Machine');
+    });
+});
+
+describe('catalogLinkCandidate (AP-14)', () => {
+    const doc = (extra) => ({ name: 'Life Fitness Leg Press', brand: 'Life Fitness', createdVia: 'picker', ...extra });
+
+    it('one same-brand machine starting with the function → that machine', () => {
+        expect(catalogLinkCandidate(doc({ function: 'Leg Press' }), CATALOG)).toMatchObject({ catalogRef: 'lf-leg-press', brandName: 'Life Fitness' });
+        // No function: the name minus the brand.
+        expect(catalogLinkCandidate(doc({}), CATALOG)?.catalogRef).toBe('lf-leg-press');
+    });
+
+    it('nothing for linked, non-picker, brandless, other-brand or ambiguous docs', () => {
+        expect(catalogLinkCandidate(doc({ catalogRef: 'x' }), CATALOG)).toBeNull();
+        expect(catalogLinkCandidate(doc({ createdVia: 'catalog' }), CATALOG)).toBeNull();
+        expect(catalogLinkCandidate(doc({ brand: '' }), CATALOG)).toBeNull();
+        expect(catalogLinkCandidate(doc({ brand: 'Hammer Strength', name: 'Hammer Strength Leg Press' }), CATALOG)).toBeNull();
+        // Two Hammer Strength machines start with "Iso-Lateral" → don't guess.
+        expect(catalogLinkCandidate({ name: 'Hammer Strength Iso-Lateral', brand: 'Hammer Strength', createdVia: 'picker' }, CATALOG)).toBeNull();
     });
 });
