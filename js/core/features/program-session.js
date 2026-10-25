@@ -388,12 +388,11 @@ export async function applyProgramWeekAndStart(templateName) {
 
 /**
  * Secondary path off the hero notice: open the coach with the session ask
- * pre-sent, for when the user wants to discuss rather than just apply.
+ * prefilled (AU-14 — the user sends it), for discussing rather than applying.
  */
 export function askCoachAboutProgramWeek() {
     import('./ai-coach-ui.js').then(m => {
-        m.showAICoach();
-        setTimeout(() => window.askCoach?.("What's today's session on my program? Propose the adjustments."), 350);
+        m.showAICoach({ prefill: "What's today's session on my program? Propose the adjustments." }); // AU-14: prefill, never send
     }).catch(e => debugLog('program week ask failed:', e));
 }
 
@@ -403,8 +402,7 @@ export function askCoachAboutProgramWeek() {
  */
 export function askCoachToReflow() {
     import('./ai-coach-ui.js').then(m => {
-        m.showAICoach();
-        setTimeout(() => window.askCoach?.('I trained fewer days than planned recently — can you reflow my program so this week still makes sense?'), 350);
+        m.showAICoach({ prefill: 'I trained fewer days than planned recently — can you reflow my program so this week still makes sense?' }); // AU-14: prefill, never send
     }).catch(e => debugLog('reflow ask failed:', e));
 }
 
@@ -424,14 +422,13 @@ export async function dismissProgramComplete(programId) {
 }
 
 /**
- * "Plan the next block" — hand off to the coach with the ask pre-sent. The
+ * "Plan the next block" — hand off to the coach with the ask prefilled. The
  * finished program stays active until the coach supersedes it (create_program
  * deactivates it) so its context is still visible while planning.
  */
 export function planNextBlock() {
     import('./ai-coach-ui.js').then(m => {
-        m.showAICoach();
-        setTimeout(() => window.askCoach?.('My program just wrapped up — how did it go, and what should the next block be? Propose it.'), 350);
+        m.showAICoach({ prefill: 'My program just wrapped up — how did it go, and what should the next block be? Propose it.' }); // AU-14: prefill, never send
     }).catch(e => debugLog('plan next block failed:', e));
 }
 
@@ -461,8 +458,7 @@ export function editProgramSchedule() {
 export function discussProgramWithCoach() {
     closeProgramDetailSheet();
     import('./ai-coach-ui.js').then(m => {
-        m.showAICoach();
-        setTimeout(() => window.askCoach?.("Let's review my program — walk me through the coming weeks, and what we could change."), 350);
+        m.showAICoach({ prefill: "Let's review my program — walk me through the coming weeks, and what we could change." }); // AU-14: prefill, never send
     }).catch(e => debugLog('program discuss failed:', e));
 }
 

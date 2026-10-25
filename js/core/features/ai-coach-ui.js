@@ -304,8 +304,17 @@ export function showAICoach(prefillContext) {
         })();
     }
 
-    // If prefill context, auto-ask (exercise name → plateau question;
-    // object form → any prompt, e.g. the post-workout session review).
+    // AU-14 — { prefill } puts a suggested question in the input and focuses
+    // it; the user edits or sends. Seeded prompts never send on their own
+    // (a "Discuss block" tap cost a deep-tier turn on a question nobody typed).
+    if (prefillContext && typeof prefillContext === 'object' && typeof prefillContext.prefill === 'string') {
+        prefillCoachInput(prefillContext.prefill);
+        return;
+    }
+
+    // { question } / exercise name → auto-ask. Kept ONLY for asks whose
+    // question is the feature: the post-workout session review, the plateau
+    // chip and weekly-review follow-ups.
     if (prefillContext) {
         const question = typeof prefillContext === 'object'
             ? prefillContext.question
@@ -314,6 +323,19 @@ export function showAICoach(prefillContext) {
             setTimeout(() => { askCoach(question); }, 300);
         }
     }
+}
+
+/** AU-14 — fill the coach input (cursor at the end) without sending. */
+export function prefillCoachInput(text) {
+    const put = () => {
+        const input = document.getElementById('coach-chat-input');
+        if (!input) return false;
+        input.value = text;
+        input.focus();
+        input.setSelectionRange?.(text.length, text.length);
+        return true;
+    };
+    if (!put()) setTimeout(put, 100);
 }
 
 // ===================================================================
@@ -358,8 +380,9 @@ export function reviewSessionWithCoach(workoutName) {
 export function startProgramChat() {
     // The tap may come from inside the week-plan sheet — close it first.
     import('../ui/settings-ui.js').then((m) => m.closeWeekPlanSheet?.(true)).catch(() => {});
-    showAICoach();
-    setTimeout(() => askCoach(PROGRAM_STARTER_PROMPT), 300);
+    // AU-14 — prefilled, not sent: a program build is the most expensive
+    // turn there is; the user starts it.
+    showAICoach({ prefill: PROGRAM_STARTER_PROMPT });
 }
 
 /**

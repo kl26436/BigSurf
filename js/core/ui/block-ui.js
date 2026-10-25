@@ -245,9 +245,11 @@ export function openBlockSession(weekNum, cellIdx) {
 
 // ── Actions: each one tap + the coach's confirmation ─────────────────
 
+// AU-14 — every block action PREFILLS the coach input; nothing is sent
+// until the user taps send (they can edit the question first).
 function askCoachSeeded(question) {
     import('../features/ai-coach-ui.js')
-        .then((m) => m.showAICoach({ question }))
+        .then((m) => m.showAICoach({ prefill: question }))
         .catch((e) => {
             console.error('❌ Coach open failed:', e);
             showNotification("Couldn't open the coach — try again", 'error');
