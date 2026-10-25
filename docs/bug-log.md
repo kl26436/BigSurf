@@ -32,4 +32,12 @@ week's `coachTraces`; move anything surprising in here.
 
 ## Entries
 
-_None yet._
+### 2026-10-25 · equipment · No visible way to add a machine mid-workout
+- Build: 8844b94…f9b3a60   Path: mid-session equip
+- Expected / Saw: a one-tap "add new machine" (shipped 9ec3198) / nothing until you type a name — the AP-11 rewrite removed the always-visible "New machine" footer entry and showed the Add row only for a 2+ character query.
+- Status: fixed in bf9877a ("Add a new machine at <gym>" row with an empty search; opens the in-place form, keyboard up)
+
+### 2026-10-25 · shell · Keyboard up → only ~two exercises visible in the add-exercise sheet
+- Build: up to 9f1bf6b   Path: mid-session add exercise
+- Expected / Saw: a list to scroll / ~2 rows — sheet capped at 85dvh minus the keyboard, and header + search + chips + Cancel bar took the rest.
+- Status: fixed in bf9877a (while a search field has focus the sheet uses the whole area above the keyboard; action bar, subtitle and handle hide). Confirm on the phone with ?debug (kb, vv on the HUD).
