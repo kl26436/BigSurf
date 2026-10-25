@@ -4417,7 +4417,10 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
                     trace.allWorkoutsCount = Array.isArray(allWorkouts) ? allWorkouts.length : null;
                     const nudgeUnit = AppState.exerciseUnits?.[idx] || AppState.globalUnit || 'lbs';
                     // Deload sessions are left out (AP-7) — a light week isn't a strength signal.
-                    const sessions = buildExerciseSessions(allWorkouts, exName, nudgeUnit);
+                    // AU-12 — this machine's series only (sameMachine already gates the nudge).
+                    const sessions = buildExerciseSessions(allWorkouts, exName, nudgeUnit, {
+                        machine: equipName || equipId ? { name: equipName, id: equipId } : null,
+                    });
                     const repTarget = exercise.defaultReps || exercise.reps || null;
                     // Plate-aware jump: without 2.5s the smallest real barbell
                     // move is 10, not 5 — one increment feeds BOTH the advisory

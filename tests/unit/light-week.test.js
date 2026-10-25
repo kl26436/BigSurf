@@ -34,7 +34,7 @@ describe('scenario 22 — unlabeled light week (rules level)', () => {
 
     // AU-10(a) also drops the Panatta session here (it's light), so this
     // variant isolates AU-12: a normal week, no notes, only the machine moved.
-    it.fails('a machine switch alone: the Lat Pulldown verdict stays on the High Row series (flips on: —)', () => {
+    it('a machine switch alone: the Lat Pulldown verdict stays on the High Row series (flipped by AU-12 — series keyed by machine)', () => {
         const e = verdicts(machineSwitchUser()).exercises.find(x => x.name === 'Lat Pulldown');
         expect(e.weight).toBeGreaterThanOrEqual(300);
     });

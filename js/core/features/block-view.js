@@ -62,7 +62,10 @@ export function targetFor({ ex, date, workouts, program, override, unit, inc }) 
     const name = nameOf(ex);
     if (!name) return null;
     const before = (workouts || []).filter(w => w?.date && w.date < date);
-    const sessions = buildExerciseSessions(before, spellingIn(before, name) || name, unit);
+    const machine = ex.equipment || ex.equipmentId ? { name: ex.equipment, id: ex.equipmentId } : null;
+    const spelling = spellingIn(before, name) || name;
+    let sessions = buildExerciseSessions(before, spelling, unit, { machine });
+    if (machine && !sessions.length) sessions = buildExerciseSessions(before, spelling, unit); // AU-12 fallback
     const intent = getSessionIntent({ program, today: date, manualDeload: override });
     const t = progressionTarget(sessions, unit, Number(ex.defaultReps || ex.reps) || null, inc, intent);
     return t ? { weight: t.weight, reps: t.reps, action: t.action } : null;

@@ -16,7 +16,7 @@
 
 import { inferPattern, inferRole } from './movement-patterns.js';
 import { isRecoveryWorkout } from './session-intent.js';
-import { buildExerciseSessions, stallState, fatigueState } from './progression.js';
+import { buildExerciseSessions, stallState, fatigueState, sameMachine } from './progression.js';
 import { convertToUnit } from './coach-outcomes.js';
 import { RULE_THRESHOLDS, shiftDay } from './training-rules.js';
 
@@ -103,7 +103,10 @@ export function pickPrimaries({ templates = [], workouts = [], today = null } = 
             if (ex?.role !== 'primary') continue;
             const name = ex.machine || ex.name;
             if (!name || tagged.has(norm(name))) continue;
-            tagged.set(norm(name), { name, pattern: inferPattern({ ...ex, name }), source: 'tagged' });
+            tagged.set(norm(name), {
+                name, pattern: inferPattern({ ...ex, name }), source: 'tagged',
+                ...(ex.equipment ? { equipment: ex.equipment } : {}), ...(ex.equipmentId ? { equipmentId: ex.equipmentId } : {}),
+            });
         }
     }
     if (tagged.size) return [...tagged.values()].slice(0, MAX_TAGGED_PRIMARIES);
@@ -123,7 +126,7 @@ export function pickPrimaries({ templates = [], workouts = [], today = null } = 
             const key = norm(name);
             const c = counts.get(key) || { name, pattern, sets: 0, last: '' };
             c.sets += n;
-            if (w.date > c.last) { c.last = w.date; c.name = name; }
+            if (w.date > c.last) { c.last = w.date; c.name = name; c.equipment = ex.equipment || null; c.equipmentId = ex.equipmentId || null; }
             counts.set(key, c);
         });
     }
@@ -134,7 +137,7 @@ export function pickPrimaries({ templates = [], workouts = [], today = null } = 
     }
     return SPINE_PATTERNS.map(p => best.get(p)).filter(Boolean)
         .slice(0, MAX_AUTO_PRIMARIES)
-        .map(c => ({ name: c.name, pattern: c.pattern, source: 'auto' }));
+        .map(c => ({ name: c.name, pattern: c.pattern, source: 'auto', ...(c.equipment ? { equipment: c.equipment } : {}), ...(c.equipmentId ? { equipmentId: c.equipmentId } : {}) }));
 }
 
 /**
@@ -168,7 +171,7 @@ export function applyPrimaryChoice(exercises, chosen) {
 }
 
 /** Newest-first sessions of one lift: best e1RM and every set, in `unit`. */
-function liftSessions(workouts, name, unit, today) {
+function liftSessions(workouts, name, unit, today, machine = null) {
     const key = norm(name);
     const out = [];
     for (const w of workouts || []) {
@@ -176,6 +179,7 @@ function liftSessions(workouts, name, unit, today) {
         let found = null;
         eachExercise(w, (exName, ex) => {
             if (found || norm(exName) !== key) return;
+            if (machine && !sameMachine(machine.name, machine.id, ex)) return; // AU-12
             const sets = strengthSets(ex)
                 .map(s => ({ weight: loadOf(s, unit), reps: Number(s.reps) }))
                 .filter(s => s.weight > 0);
@@ -194,8 +198,8 @@ function liftSessions(workouts, name, unit, today) {
  * sessions excluded — the block retrospective's start/end numbers (AP-23c).
  * @returns {number|null}
  */
-export function bestE1rmBetween(workouts, name, unit, from, to) {
-    const vals = liftSessions(workouts, name, unit === 'kg' ? 'kg' : 'lbs', to)
+export function bestE1rmBetween(workouts, name, unit, from, to, machine = null) {
+    const vals = liftSessions(workouts, name, unit === 'kg' ? 'kg' : 'lbs', to, machine)
         .filter(s => s.date >= from && s.date <= to)
         .map(s => s.e1rm)
         .filter(v => v > 0);
@@ -286,8 +290,8 @@ function patternRows(workouts, today, target, mrv) {
 }
 
 /** Stall rung and the AP-22 effort signal, from the same session list. */
-function ladderAndFatigue(workouts, spelling, unit, inc) {
-    const sessions = buildExerciseSessions(workouts, spelling, unit);
+function ladderAndFatigue(workouts, spelling, unit, inc, machine = null) {
+    const sessions = buildExerciseSessions(workouts, spelling, unit, { machine });
     const f = fatigueState(sessions, { minSessions: RULE_THRESHOLDS.PLATEAU_MIN_SESSIONS, inc });
     return { rung: stallState(sessions).rung, fatigue: f?.fatigued ? f.reason : null };
 }
@@ -351,7 +355,11 @@ export function buildScoreboard({ workouts = [], templates = [], unit = 'lbs', t
     const prev2To = shiftDay(today, -(2 * days));
 
     const primaries = pickPrimaries({ templates, workouts, today }).map((p) => {
-        const sessions = liftSessions(workouts, p.name, u, today);
+        // AU-12 — a primary is an exercise ON a machine; fall back to the
+        // name only when that machine has no history.
+        let machine = p.equipment || p.equipmentId ? { name: p.equipment, id: p.equipmentId } : null;
+        let sessions = liftSessions(workouts, p.name, u, today, machine);
+        if (machine && !sessions.length) { machine = null; sessions = liftSessions(workouts, p.name, u, today); }
         const bestIn = (a, b) => {
             const vals = sessions.filter(s => s.date >= a && s.date <= b).map(s => s.e1rm).filter(v => v > 0);
             return vals.length ? Math.max(...vals) : null;
@@ -365,6 +373,7 @@ export function buildScoreboard({ workouts = [], templates = [], unit = 'lbs', t
         const spelling = sessions[0]?.spelling || p.name;
         return {
             name: spelling,
+            ...(machine?.name ? { equipment: machine.name } : {}),
             pattern: p.pattern,
             source: p.source,
             e1rmNow: now,
@@ -375,7 +384,7 @@ export function buildScoreboard({ workouts = [], templates = [], unit = 'lbs', t
             trend,
             downTwice: trendOf(now, prev, increment) === 'down' && trendOf(prev, prev2, increment) === 'down',
             repPR: findRepPR(sessions, from),
-            ...ladderAndFatigue(workouts, spelling, u, increment),
+            ...ladderAndFatigue(workouts, spelling, u, increment, machine),
             lastDate: sessions[0]?.date || null,
         };
     });
@@ -410,7 +419,7 @@ export function describePrimary(p, unit) {
     if (p.repPR) parts.push(`rep PR ${p.repPR.weight}×${p.repPR.reps} (was ×${p.repPR.prevReps}) on ${p.repPR.date}`);
     if (p.rung > 0) parts.push(`stall rung ${p.rung}`);
     if (p.fatigue) parts.push(`effort rising: ${p.fatigue}`);
-    return `${p.name}: ${parts.join(' · ')}`;
+    return `${p.name}${p.equipment ? ` on ${p.equipment}` : ''}: ${parts.join(' · ')}`;
 }
 
 /**

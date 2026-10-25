@@ -77,34 +77,9 @@ export function buildTrainingContext({
         });
     }
 
-    // Key lift trends (max weight per exercise, last sessions), normalized to
-    // the display unit so a mixed-unit log doesn't read as "225 -> 100 -> 225".
-    const liftTrends = {};
-    for (const workout of workouts) {
-        if (!workout.exercises) continue;
-        for (const ex of withResolvedNames(workout)) {
-            if (!ex.name || !ex.sets) continue;
-            const normalized = ex.sets
-                // Warmups out — a 45 lb warmup polluting a max-weight trend
-                // reads as a strength crash that never happened.
-                .filter(s => s.weight && s.type !== 'warmup')
-                .map(s => convertWeight(s.weight, s.originalUnit || 'lbs', unit));
-            const maxW = Math.max(...normalized, 0);
-            if (maxW === 0) continue;
-            if (!liftTrends[ex.name]) liftTrends[ex.name] = [];
-            liftTrends[ex.name].push(maxW);
-        }
-    }
-    // Top 12 most-trained exercises, up to 8 recent max-weight points each.
-    const topLifts = Object.entries(liftTrends)
-        .sort((a, b) => b[1].length - a[1].length)
-        .slice(0, 12);
-    if (topLifts.length > 0) {
-        summary += `\nKey lift trends (max weight in ${unit}, recent sessions, newest first):\n`;
-        topLifts.forEach(([name, weights]) => {
-            summary += `${name}: ${weights.slice(0, 8).join(' -> ')} ${unit}\n`;
-        });
-    }
+    // (AU-12: "Key lift trends" — max weight per exercise NAME — is gone. It
+    // mixed machines into one line ("380 → 740 → 560 → 90"); the scoreboard
+    // and the per-machine verdicts above carry the real trend.)
 
     // Personal records — lets the coach anchor advice to all-time bests.
     const prBlock = buildPRContext(prList);

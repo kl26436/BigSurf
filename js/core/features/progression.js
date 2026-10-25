@@ -83,20 +83,44 @@ export function scaleLoadableWeight(weight, factor, step) {
  * as the light session and "earned" a bump off it (0.65·W + 5), and a deload
  * at full reps looked like a fresh plateau start.
  */
+/** Machine name key: lowercase, separators folded — "Hammer-Strength  Row" = "hammer strength row". */
+export function machineKey(name) {
+    return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/**
+ * THE same-machine rule (AP-3, now shared — AU-12): no machine asked for →
+ * anything matches; a source that recorded no machine can't be called a
+ * different one; otherwise stable id first, then the name key.
+ * `src` = { equipment, equipmentId } (a last session or a logged exercise).
+ */
+export function sameMachine(equipName, equipId, src) {
+    if (!equipName && !equipId) return true;
+    if (!src) return false;
+    if (equipId && src.equipmentId && equipId === src.equipmentId) return true;
+    if (!src.equipment) return true;
+    return !!equipName && machineKey(equipName) === machineKey(src.equipment);
+}
+
 /** Epley estimate; used only to compare a session against its own lift's recent best. */
 const e1rmOf = (w, r) => (w > 0 && r > 0 ? w * (1 + Math.min(r, 12) / 30) : 0);
 /** AU-10(a) — a noted session is "light" for a lift below this share of its 4-week best. */
 export const LIGHT_NOTE_LOAD_SHARE = 0.85;
 
-export function buildExerciseSessions(allWorkouts, exName, displayUnit, { excludeRecovery = true } = {}) {
+export function buildExerciseSessions(allWorkouts, exName, displayUnit, { excludeRecovery = true, machine = null } = {}) {
     if (!Array.isArray(allWorkouts) || !exName) return [];
     const sessions = [];
+    const machinesSeen = new Set();
     for (const w of allWorkouts) {
         if (!w || !w.exercises || !w.date || !w.completedAt || w.cancelledAt) continue;
         if (excludeRecovery && isRecoveryWorkout(w)) continue;
         for (const [k, ex] of Object.entries(w.exercises)) {
             const name = w.exerciseNames?.[k] || ex?.name || ex?.machine;
             if (name !== exName) continue;
+            // AU-12 — one machine's series: a High Row at 320 and a
+            // Convergent at 90 are not one lift's history.
+            if (machine && !sameMachine(machine.name, machine.id, ex)) continue;
+            if (ex.equipment) machinesSeen.add(machineKey(ex.equipment));
             const working = (ex.sets || []).filter(s =>
                 s && s.completed !== false && s.weight && (s.type || 'working') !== 'warmup');
             if (working.length === 0) break;
@@ -145,6 +169,8 @@ export function buildExerciseSessions(allWorkouts, exName, displayUnit, { exclud
     });
     for (const s of kept) delete s._noted;
     if (skipped.length) Object.defineProperty(kept, 'lightSkipped', { value: skipped, enumerable: false });
+    // Unfiltered and spread over 2+ machines: the caller should say so.
+    if (!machine && machinesSeen.size > 1) Object.defineProperty(kept, 'mixedEquipment', { value: true, enumerable: false });
     return kept;
 }
 

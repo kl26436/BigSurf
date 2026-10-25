@@ -9,9 +9,8 @@
 // every mid-workout change (replace, add, switch machine) showed the new
 // "Last:" card above blank or stale rows.
 
-import { equipNameKey } from '../data/catalog-search.js';
 import { convertWeight } from '../ui/ui-helpers.js';
-import { scaleLoadableWeight, computeOverloadNudge } from '../features/progression.js';
+import { scaleLoadableWeight, computeOverloadNudge, sameMachine } from '../features/progression.js';
 
 /** Back-off factor for CP-2 stall rung 2 (mirrors progression.js). */
 const BACK_OFF_FACTOR = 0.9;
@@ -177,11 +176,9 @@ export function mergeSeededSets(existing, seeded) {
  * by name ignoring case and separators.
  */
 export function historyFromSameMachine(equipName, equipId, lastSession) {
-    if (!equipName && !equipId) return true;
-    if (!lastSession) return false;
-    if (equipId && lastSession.equipmentId && equipId === lastSession.equipmentId) return true;
-    if (!lastSession.equipment) return true;
-    return !!equipName && equipNameKey(equipName) === equipNameKey(lastSession.equipment);
+    // One definition (AU-12): progression.js#sameMachine, also used to key
+    // the progression and scoreboard series by machine.
+    return sameMachine(equipName, equipId, lastSession);
 }
 
 /**

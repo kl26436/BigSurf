@@ -92,7 +92,10 @@ export function pickVerdictExercises({ templates = [], weekPlan = null, today, w
             if (!name || seen.has(norm(name))) continue;
             seen.add(norm(name));
             const repTarget = Number(ex.defaultReps || ex.reps) || null;
-            out.push({ name, repTarget, template: t.name || t.day || 'Workout', today: isToday });
+            out.push({
+                name, repTarget, template: t.name || t.day || 'Workout', today: isToday,
+                equipment: ex.equipment || null, equipmentId: ex.equipmentId || null,
+            });
             if (out.length >= MAX_VERDICT_EXERCISES) return out;
         }
     }
@@ -126,9 +129,22 @@ export function computeVerdicts({
 
     const exercises = pickVerdictExercises({ templates, weekPlan, today, workouts: done }).map((pick) => {
         const name = spellings.get(norm(pick.name)) || pick.name;
-        const sessions = buildExerciseSessions(done, name, u);
+        // AU-12 — the template row's machine; if that machine has no history
+        // (renamed, or the row is stale) fall back to the name and say so.
+        const machine = pick.equipment || pick.equipmentId ? { name: pick.equipment, id: pick.equipmentId } : null;
+        let sessions = buildExerciseSessions(done, name, u, { machine });
+        let machineFallback = false;
+        if (machine && sessions.length === 0) {
+            sessions = buildExerciseSessions(done, name, u);
+            machineFallback = sessions.length > 0;
+        }
         const target = progressionTarget(sessions, u, pick.repTarget, increment, sessionIntent);
-        const base = { name, template: pick.template, today: pick.today };
+        const mixed = machineFallback ? (sessions.mixedEquipment ? 'mixed' : 'other') : (sessions.mixedEquipment ? 'mixed' : null);
+        const base = {
+            name, template: pick.template, today: pick.today,
+            ...(pick.equipment ? { equipment: pick.equipment } : {}),
+            ...(mixed ? { machineNote: mixed } : {}),
+        };
         if (!target) return { ...base, action: 'no-history' };
         const last = sessions[0];
         return {
@@ -235,7 +251,11 @@ export function formatVerdictsContext(v) {
         lines.push(`Progression targets (weights in ${v.unit}, smallest jump ${v.increment}):`);
         for (const e of v.exercises) {
             const fatigue = e.fatigue ? ` · fatigue: ${e.fatigue} (already in the target — don't push past it)` : '';
-            lines.push(`- ${e.name} (${e.template}${e.today ? ', today' : ''}): ${verdictLine(e, v.unit)}${fatigue}`);
+            // AU-12 — the machine is part of the lift.
+            const on = e.equipment ? ` on ${e.equipment}` : '';
+            const mixed = e.machineNote === 'mixed' ? ' · history spans more than one machine — check which one before prescribing'
+                : e.machineNote === 'other' ? ' · no history on this machine; numbers are from another one' : '';
+            lines.push(`- ${e.name}${on} (${e.template}${e.today ? ', today' : ''}): ${verdictLine(e, v.unit)}${fatigue}${mixed}`);
         }
     }
     if (v.landmarks) lines.push(`Volume landmarks: MEV ${v.landmarks.mev} · MRV ${v.landmarks.mrv} working sets per muscle per week`);
