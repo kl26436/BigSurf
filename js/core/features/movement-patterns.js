@@ -39,7 +39,11 @@ const ISOLATION_RE = /\b(fly|flye|flight|crossover|pec deck|peck back|raise|curl
 const RULES = [
     [/treadmill|stationary bike|elliptical|rowing machine|stair ?climber|jump rope|\bcardio\b|conditioning|\brun(ning)?\b|cycling|\bski ?erg|assault/, 'cardio'],
     [/leg curl|glute[- ]ham|hamstring curl|nordic/, 'knee-flexion'],
-    [/back extension|hyperextension|lower back|reverse hyper/, 'trunk-ext'],
+    // AU-13 — a 45° back extension / hip extension / reverse hyper is a hinge
+    // (hips extend under load), not lumbar trunk work; only crunch-style
+    // lower-back work stays trunk-ext.
+    [/back extension|hyperextension|hip extension|reverse hyper|45.?(°|degree)?.?(back|hip)/, 'hip-dominant'],
+    [/lower back|lumbar/, 'trunk-ext'],
     [/lateral raise|side raise|upright row|front raise|lateral delt|front delt|\bdelt machine/, 'lateral-delt'],
     [/rear delt|reverse (pec|fly|flye)|peck back|pec back|face pull/, 'rear-delt'],
     [/pullover|pulldown|pull-?up|chin-?up|lat machine|\blats?\b/, 'vertical-pull'],

@@ -39,7 +39,7 @@ describe('scenario 22 — unlabeled light week (rules level)', () => {
         expect(e.weight).toBeGreaterThanOrEqual(300);
     });
 
-    it.fails('the 45° hip extension counts as hinge in pattern coverage (flips on: —)', () => {
+    it('the 45° hip extension counts as hinge in pattern coverage (flipped by AU-13 — library + regex)', () => {
         const sb = buildScoreboard({ workouts: user.workouts, templates: user.templates, today: user.today });
         const hinge = sb.patterns.find(p => p.pattern === 'hip-dominant');
         expect(hinge.setsThisWeek).toBeGreaterThan(0);

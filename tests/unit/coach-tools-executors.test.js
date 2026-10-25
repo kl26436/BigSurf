@@ -357,7 +357,7 @@ describe('planner tools (AP-23)', () => {
     it('get_rotation_candidates: same pattern at this gym, never-used first, primaries held', async () => {
         const out = await exec(fakeAdminDb(seed())).get_rotation_candidates({ exercise: 'Back Extension' });
         expect(out.location).toBe('Downtown');
-        expect(out.pattern).toBe('trunk-ext');
+        expect(out.pattern).toBe('hip-dominant'); // AU-13: back extension is a hinge
         expect(out.candidates.map(c => [c.name, c.reason])).toEqual([['Reverse Hyper', 'idle since 2026-07']]);
         expect(out.heldPrimaries.map(h => h.name)).toEqual(['Bench Press', 'Squat']);
         const uptown = await exec(fakeAdminDb(seed())).get_rotation_candidates({ exercise: 'Back Extension', location: 'Uptown' });
