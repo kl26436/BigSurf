@@ -34,8 +34,23 @@ const BACK_OFF_FACTOR = 0.9;
  * (getLastSessionDefaults), so the seeded number IS plates — `_plateWeight`
  * says so, or completion would subtract the base a second time.
  */
-export function seedSetsFromLastSession(lastSets, prog, intent, unit, inc, { alreadyLight = false, fallbackUnit = 'lbs' } = {}) {
+export function seedSetsFromLastSession(lastSets, prog, intent, unit, inc, { alreadyLight = false, fallbackUnit = 'lbs', fromTarget = false } = {}) {
     const deload = intent?.mode === 'deload';
+    // AU-10(a) / AU-11 — the session these rows would copy was skipped as
+    // light (or the target came from an earlier session): seed the working
+    // sets FROM THE TARGET so rows, card and coach say the same number.
+    if (fromTarget && !deload && prog?.weight > 0) {
+        return (lastSets || []).map((s) => {
+            const working = (s.type || 'working') !== 'warmup';
+            if (!working || !(s.weight > 0)) {
+                return { weight: s.weight > 0 ? s.weight : null, reps: s.reps > 0 ? s.reps : null, completed: false, originalUnit: s.originalUnit || fallbackUnit };
+            }
+            return {
+                weight: prog.weight, reps: prog.reps || (s.reps > 0 ? s.reps : null), completed: false, originalUnit: unit,
+                ...(prog.bumped ? { _suggested: true } : {}),
+            };
+        });
+    }
     const pct = deload && !alreadyLight && typeof intent.weightPct === 'number' ? intent.weightPct : null;
     const repRange = deload && Array.isArray(intent.repRange) ? intent.repRange : null;
     const bump = !deload && !!prog && prog.bumped && prog.weight > 0;

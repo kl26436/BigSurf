@@ -528,7 +528,7 @@ function checkAutofillMismatch(exercise, idx, savedEx) {
         const expected = seedSetsFromLastSession(
             exercise._lastSessionSets, exercise._progression, intent, dbg.seedUnit,
             exercise._progressionInc || (dbg.seedUnit === 'kg' ? 2.5 : 5),
-            { alreadyLight: dbg.recovery, fallbackUnit: AppState.globalUnit || 'lbs' });
+            { alreadyLight: dbg.recovery, fallbackUnit: AppState.globalUnit || 'lbs', fromTarget: seedFromTarget(exercise, { date: exercise._lastSessionDate }) });
         const diffs = [];
         (savedEx.sets || []).forEach((row, i) => {
             const want = expected[i];
@@ -902,6 +902,19 @@ function deloadLineFor(lastSets, displayUnit, exercise, intent) {
 // buildExerciseSessions + computeOverloadNudge moved to the pure, tested
 // js/core/features/progression.js (Phase 5.7.3). Imported at the top of this
 // file; call sites unchanged.
+
+/**
+ * AU-10(a) / AU-11 — seed rows from the target instead of copying the last
+ * session when that session was skipped as light, or the target came from an
+ * earlier session. Keeps rows, card and coach on one number.
+ */
+function seedFromTarget(exercise, lastSession) {
+    const p = exercise?._progression;
+    if (!p) return false;
+    if (p.warning === 'light-session' && p.fromSession) return true;
+    const skipped = exercise._progressionSessions?.lightSkipped || [];
+    return !!lastSession?.date && skipped.some(x => x.date === lastSession.date);
+}
 
 function renderLastSessionCard(exerciseName, idx) {
     // Check if we have cached last session data on the exercise
@@ -4395,6 +4408,7 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
         });
         if (lastSession && lastSession.sets) {
             exercise._lastSessionSets = lastSession.sets;
+            exercise._lastSessionDate = lastSession.date || null;
             // Capture the source equipment so the card can show "from <other
             // machine>" when the strict-match-failed fallback fired.
             exercise._lastSessionEquipment = lastSession.equipment || null;
@@ -4494,7 +4508,7 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
             ? seedSetsFromLastSession(
                 lastSession.sets, exercise._progression, intent, progUnit,
                 exercise._progressionInc || (progUnit === 'kg' ? 2.5 : 5),
-                { alreadyLight: !!lastSession.recovery, fallbackUnit: AppState.globalUnit || 'lbs' })
+                { alreadyLight: !!lastSession.recovery, fallbackUnit: AppState.globalUnit || 'lbs', fromTarget: seedFromTarget(exercise, lastSession) })
             // No history on this machine — template defaults. The template's
             // weight only when there's no history anywhere (a NEW machine
             // starts fresh) and the gear has no base weight (a template

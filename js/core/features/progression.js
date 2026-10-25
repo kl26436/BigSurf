@@ -296,8 +296,20 @@ export function fatigueState(sessions, { minSessions = 3, rpeRise = 1, inc = 5 }
  *   5. Not enough signal → simple next-step suggestion.
  * Pure; returns the advisory string (or null).
  */
-export function computeOverloadNudge(sessions, displayUnit, repTarget, increment, intent = null) {
+export function computeOverloadNudge(sessions, displayUnit, repTarget, increment, intent = null, today = null) {
     if (!Array.isArray(sessions) || sessions.length === 0) return null;
+    // AU-11 — the card says what progressionTarget decided.
+    if (intent?.mode !== 'deload') {
+        const t = progressionTarget(sessions, displayUnit, repTarget, increment, intent, today);
+        if (t?.action === 'reacquaint') {
+            return `Last done ${t.staleDays} days ago — start at ${t.weight} ${displayUnit} and feel it out`;
+        }
+        if (t?.warning === 'light-session' && t.fromSession) {
+            const k = sessions.findIndex(s => s.date === t.fromSession);
+            const rest = computeOverloadNudge(sessions.slice(k), displayUnit, repTarget, increment, intent, null);
+            return rest ? `${rest} (last session looked light — going off ${t.fromSession})` : null;
+        }
+    }
     const cur = sessions[0];
     const W = cur.topWeight;
     if (!W) return null;
@@ -377,7 +389,69 @@ function ordinal(n) {
  *            action:'bump'|'consolidate'|'chase-rep'|'back-off'|'rotate'|'start'|'deload',
  *            rung?:number, stallRun?:number, backOff?:boolean, rotate?:boolean}|null}
  */
-export function progressionTarget(sessions, displayUnit, repTarget, increment, intent = null) {
+/** Every action progressionTarget can return — consumers must handle each (AU-11; tested). */
+export const PROGRESSION_ACTIONS = ['bump', 'consolidate', 'chase-rep', 'back-off', 'rotate', 'start', 'deload', 'reacquaint'];
+/** AU-11 — a verdict off a session older than this restarts at the last weight. */
+export const STALE_SESSION_DAYS = 42;
+/** AU-11 — a target implying less than this share of the 4-week best e1RM is suspect. */
+export const LIGHT_TARGET_SHARE = 0.8;
+
+function daysBetween(a, b) {
+    return Math.round((Date.parse(`${b}T12:00:00`) - Date.parse(`${a}T12:00:00`)) / 86400000);
+}
+
+/** Best top-set e1RM over the 28 days ending at the newest session. */
+function bestE1rm4wk(sessions) {
+    const from = shiftDate(sessions[0].date, -28);
+    let best = 0;
+    for (const s of sessions) {
+        if (s.date < from) break;
+        best = Math.max(best, e1rmOf(s.topWeight, s.topReps || s.maxReps));
+    }
+    return best;
+}
+
+/**
+ * Today's target (see targetFromSessions for the rule matrix), plus two
+ * cross-checks the engine runs on its own numbers (AU-11):
+ *   - **Stale** (`today` given, newest session > 6 weeks old): `reacquaint` —
+ *     start at the last weight, no bump. Inert when `today` is null, so
+ *     callers migrate one at a time.
+ *   - **Light** (not a deload): a target whose implied e1RM is < 80 % of the
+ *     lift's 4-week best was computed off a light session the rules weren't
+ *     told about — recompute from the newest session within 85–115 % of that
+ *     best and flag `warning:'light-session'`, `fromSession`.
+ */
+export function progressionTarget(sessions, displayUnit, repTarget, increment, intent = null, today = null) {
+    if (!Array.isArray(sessions) || sessions.length === 0) return null;
+    const cur = sessions[0];
+    if (today && intent?.mode !== 'deload' && cur.topWeight) {
+        const staleDays = daysBetween(cur.date, today);
+        if (staleDays > STALE_SESSION_DAYS) {
+            const rt = repTarget && repTarget > 0 ? repTarget : null;
+            return {
+                weight: cur.topWeight, reps: rt || cur.topReps || cur.maxReps || null,
+                bumped: false, stalled: false, action: 'reacquaint', reacquaint: true, staleDays,
+            };
+        }
+    }
+    const t = targetFromSessions(sessions, displayUnit, repTarget, increment, intent);
+    if (!t || intent?.mode === 'deload') return t;
+    const best = bestE1rm4wk(sessions);
+    const implied = e1rmOf(t.weight, t.reps || cur.topReps || cur.maxReps);
+    if (!(best > 0) || implied >= best * LIGHT_TARGET_SHARE) return t;
+    const k = sessions.findIndex((s, i) => {
+        if (i === 0) return false;
+        const e = e1rmOf(s.topWeight, s.topReps || s.maxReps);
+        return e >= best * 0.85 && e <= best * 1.15;
+    });
+    if (k < 1) return { ...t, warning: 'light-session' };
+    const alt = targetFromSessions(sessions.slice(k), displayUnit, repTarget, increment, intent);
+    return alt ? { ...alt, warning: 'light-session', fromSession: sessions[k].date } : { ...t, warning: 'light-session' };
+}
+
+/** The rule matrix proper (no cross-checks) — progressionTarget wraps it. */
+function targetFromSessions(sessions, displayUnit, repTarget, increment, intent = null) {
     if (!Array.isArray(sessions) || sessions.length === 0) return null;
     const cur = sessions[0];
     const W = cur.topWeight;

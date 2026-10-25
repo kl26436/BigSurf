@@ -67,7 +67,8 @@ export function targetFor({ ex, date, workouts, program, override, unit, inc }) 
     let sessions = buildExerciseSessions(before, spelling, unit, { machine });
     if (machine && !sessions.length) sessions = buildExerciseSessions(before, spelling, unit); // AU-12 fallback
     const intent = getSessionIntent({ program, today: date, manualDeload: override });
-    const t = progressionTarget(sessions, unit, Number(ex.defaultReps || ex.reps) || null, inc, intent);
+    // AU-11 — the cell's date: a lift untouched for 6+ weeks restarts there.
+    const t = progressionTarget(sessions, unit, Number(ex.defaultReps || ex.reps) || null, inc, intent, date);
     return t ? { weight: t.weight, reps: t.reps, action: t.action } : null;
 }
 

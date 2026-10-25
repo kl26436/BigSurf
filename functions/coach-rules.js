@@ -141,7 +141,8 @@ function computeVerdicts({
             sessions = buildExerciseSessions(done, name, u);
             machineFallback = sessions.length > 0;
         }
-        const target = progressionTarget(sessions, u, pick.repTarget, increment, sessionIntent);
+        // AU-11 — `today` turns on the stale-history rule (reacquaint).
+        const target = progressionTarget(sessions, u, pick.repTarget, increment, sessionIntent, today || null);
         const mixed = machineFallback ? (sessions.mixedEquipment ? 'mixed' : 'other') : (sessions.mixedEquipment ? 'mixed' : null);
         const base = {
             name, template: pick.template, today: pick.today,
@@ -159,6 +160,9 @@ function computeVerdicts({
             stalled: target.stalled,
             ...(target.rung ? { rung: target.rung, stallRun: target.stallRun } : {}),
             ...(target.early ? { early: true } : {}),
+            ...(target.warning ? { warning: target.warning, ...(target.fromSession ? { fromSession: target.fromSession } : {}) } : {}),
+            ...(target.staleDays ? { staleDays: target.staleDays } : {}),
+            ...(sessions.lightSkipped ? { lightSkipped: sessions.lightSkipped.map(x => x.date) } : {}),
             last: { weight: last.topWeight, reps: last.topReps || last.maxReps || null, date: last.date },
             // AP-22 phase 2 — progressionTarget already acted on it.
             ...(target.fatigued ? { fatigue: target.fatigueReason } : {}),
@@ -220,6 +224,7 @@ function verdictLine(v, unit) {
         case 'rotate': return `stall rung 3 (${v.stallRun} sessions flat at ${v.weight}) — rotate to a similar movement this block`;
         case 'deload': return `deload — ${wr(v.weight, v.reps)}, two reps in the tank (${lastStr})`;
         case 'start': return `hold ${wr(v.weight, v.reps)} — not enough history for a call yet`;
+        case 'reacquaint': return `no recent data (${lastStr}, ${v.staleDays} days ago) — start at ${wr(v.weight, v.reps)}, don't bump`;
         default: return 'no logged history — start conservative';
     }
 }
@@ -256,9 +261,13 @@ function formatVerdictsContext(v) {
             const fatigue = e.fatigue ? ` · fatigue: ${e.fatigue} (already in the target — don't push past it)` : '';
             // AU-12 — the machine is part of the lift.
             const on = e.equipment ? ` on ${e.equipment}` : '';
+            // AU-10(a)/AU-11 — say when the rules skipped or doubted a session.
+            const skipped = e.lightSkipped?.length ? ` · (light session${e.lightSkipped.length > 1 ? 's' : ''} ${e.lightSkipped.map(d => d.slice(5)).join(', ')} skipped)` : '';
+            const light = e.warning === 'light-session'
+                ? ` · the newest session looked light${e.fromSession ? ` — target from ${e.fromSession}` : ''}; check with the user before prescribing` : '';
             const mixed = e.machineNote === 'mixed' ? ' · history spans more than one machine — check which one before prescribing'
                 : e.machineNote === 'other' ? ' · no history on this machine; numbers are from another one' : '';
-            lines.push(`- ${e.name}${on} (${e.template}${e.today ? ', today' : ''}): ${verdictLine(e, v.unit)}${fatigue}${mixed}`);
+            lines.push(`- ${e.name}${on} (${e.template}${e.today ? ', today' : ''}): ${verdictLine(e, v.unit)}${fatigue}${mixed}${skipped}${light}`);
         }
     }
     if (v.landmarks) lines.push(`Volume landmarks: MEV ${v.landmarks.mev} · MRV ${v.landmarks.mrv} working sets per muscle per week`);
