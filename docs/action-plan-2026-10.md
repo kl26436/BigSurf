@@ -6,11 +6,33 @@
 
 *Status 2026-10-23 evening: AP-1, AP-2, AP-6, AP-7, AP-8, AP-10 (`5ca4af6`) and AP-9, AP-15 a–g (`7dc3319`) are on `main`; coach unit tests green (130). Not yet on dev/prod.*
 
-*Status 2026-10-25: AP-19, AP-20a, AP-23 and AP-24 deployed (functions, dev, prod; firestore rules pending). AP-22 phase 2 + the heaviest-set RPE prompt built (1172 green). Earlier: AP-15 h–i, AP-16, AP-21 and AP-22 phase 1 committed; full suite green (1062), lint at baseline, design audit strict ok. Functions deployed (one project — live for dev and prod clients; backward compatible with the old client). Hosting on **dev** only; promote to prod after verifying. "As built" notes under each phase record where the build differs from the plan text.*
+*Status 2026-10-25 (late): every AP phase except AP-20b–e is built. On prod (hosting, functions, rules) through `501ac09`; the AP-13 legacy-modal removal and AP-14 catalog link (`9852812`) are on `main`, not yet deployed. The shell plan is folded in as §7 (SH-n). What's left is ▶ The one queue below.* *Status 2026-10-25: AP-19, AP-20a, AP-23 and AP-24 deployed (functions, dev, prod; firestore rules pending). AP-22 phase 2 + the heaviest-set RPE prompt built (1172 green). Earlier: AP-15 h–i, AP-16, AP-21 and AP-22 phase 1 committed; full suite green (1062), lint at baseline, design audit strict ok. Functions deployed (one project — live for dev and prod clients; backward compatible with the old client). Hosting on **dev** only; promote to prod after verifying. "As built" notes under each phase record where the build differs from the plan text.*
 
 *2026-10-25: §4.0 rewritten around how Kevin trains (plan → execute → renegotiate); AP-19 gains a planning contract; added §4c / AP-23 (planner tools + live gaps) and §4d / AP-24 (Block page).*
 
 *Status 2026-10-25: AP-17 and AP-18 implemented (1099 tests green, lint at baseline, design audit strict ok). Not yet deployed — functions carry nearly all of it.*
+
+## ▶ The one queue (2026-10-25) — everything still open, in order
+
+**This is the only execution plan.** It replaces the standalone shell draft (`ux-shell-plan-2026-10.md`, folded into §7) and the open leftovers of the July UX plan (`ux-overhaul-plan-2026-07.md` — its unchecked boxes are stale; what's still open was verified against the code and is listed here). Business/launch work (accounts, legal, stores, pricing) stays in `launch-roadmap.md`; its *code* blockers are item 11 below. Finished phases keep their "As built" notes in their sections; when an item ships, tick it here and add the note there. New work gets a row here — not a new plan file.
+
+| # | Item | Size | What / why | Detail |
+|---|---|---|---|---|
+| 1 | **SH-0 HUD, then one phone session** | S + 1 evening | Build the `?debug` shell HUD + `shell_snapshot`. Then, on the phone (standalone, `?debug`, build = latest `main`): the shell walk-through **and** the acceptance checks nothing but the phone can do — AP-22 (three sessions at one load with rising RPE → early back-off; "a week early" deload), AP-23 ("last week was hard" → one card, the week lighter, Block page shows the override; "replace back extension" names the engine's top choice; the first program asks for main lifts), AP-24 (next week's Block targets = what the set rows seed). Findings → `docs/ux-shell-audit-2026-10.md` + `docs/bug-log.md`. | §7 SH-0; AP-22/23/24 acceptance |
+| 2 | **SH-2a stop the bleeding** | S | `overscroll-behavior: contain` on every sheet body, `touch-action: none` on backdrops/handles/headers, one `lockPage()` counter (modals + every sheet + navigation teardown), 44 px hit areas on back/close. Fixes all three 10/25 complaints on the existing chrome. | §7 SH-2a |
+| 3 | **AP-20b–e coach eval loop** | M/L | Fixtures from real data → runner (extract `buildTrainingContext` pure first) → code assertions → Sonnet rubric; `npm run eval:coach` gates prompt/tool PRs. Until this exists every coach change is guesswork — the traces (20a) are already recording. | §4.2 AP-20 |
+| 4 | **SH-1 inventory + SH-5 budgets** | S/M | `scripts/shell-audit.js` (agent task), then design-audit budgets at today's counts + CLAUDE.md rules + the 8-line phone checklist. | §7 SH-1, SH-5 |
+| 5 | **SH-2b sheet primitive + SH-3a equipment sheet** | M | `sheet.js`/`sheet.css`; move `add-exercise-modal`/`add-location-modal` out of `.app-container` before using `inert`; equipment sheet swaps chrome only. | §7 SH-2b, SH-3a |
+| 6 | **SH-3b migrate the other overlays** | M/L | ~11 overlays, one PR each or by file, CSS deleted as each lands. Includes equipment detail's "+ Assign exercise" (still a full-page swap, `assignExerciseToEquipment`) → a sheet like identity/bw/uf. | §7 SH-3 |
+| 7 | **SH-4 header primitive** | S/M | `.page-header` the only sticky header; inset in two files; `.d-back` (5 detail UIs) and `.detail-page-header__back` fold into `.page-header__back`. | §7 SH-4 |
+| 8 | **SH-6 one back system + back gesture** | M | First the July plan's unfinished "one back system" (verified open: `MAX_STACK_SIZE` still 5, no top-dedupe; sections shown by direct `.hidden` in workout-session, exercise-manager, dashboard, metric-detail; fixed-destination backs in equipment-library, metric-detail, settings; `_libraryReturnContext` still live, and quick-edit's "Full details" never sets it), then `pushState`/`popstate`. | §7 SH-6 |
+| 9 | **Persona re-review** | S | Marcus + Sam on dev (test account), scored against the 10/25 complaints + checklist. | §7.3 |
+| 10 | **Small leftovers** (batch) | S each | (a) **Gym-availability copy** — "Possible here" / "Not mapped here yet" still confuse (Kevin, 07-03; `template-selection.js` pill, `equipment-planner.js` badges). (b) **Cardio "Conditioning" line** on Progress (sessions + minutes this week) — the July decision, never built. (c) Body-weight entry drops an unparseable height silently → say so. (d) Dead CSS `#template-selection-modal` (`modals.css`). | July plan items, re-verified |
+| 11 | **Launch code blockers** (from `launch-roadmap.md`) | M each | (a) **Offline:** Firestore persistence not enabled (`firebase-config.js` is plain `getFirestore`) — gyms have bad signal. (b) **Account deletion** (Apple requirement): "Delete all data" skips the Auth user, the `users/{uid}` root doc, Storage, `programs`, `coachAdvice`, `stats/personalRecords`, legacy `templates`. (c) **Data export:** JSON covers workouts/templates/equipment only — not locations, custom exercises, overrides, measurements, coach history, programs, PRs, settings. | `launch-roadmap.md` §2, §4 |
+
+**Deferred — needs a decision before it's queued:** "Edit form video" from the active-workout exercise menu (new feature on the riskiest surface); CP-1b template-editor UI for role / rep range (`coach-periodization-plan.md`); proactive adherence reflow, which gates stall rung 3 (Marcus punch list); AP-22's RPE on sets other than the heaviest (decided against, 10/25).
+
+---
 
 **How to use this doc in VS Code:** each AP-n block is written so you can paste it (with the "Context" paragraph at the top of its issue section) straight into Claude Code / Copilot as the task. The "Acceptance" lines are what to check before merging. Run `npm test` before and after every phase.
 
@@ -29,7 +51,7 @@ Four complaints, three root causes, one missing habit.
 
 **Cross-cutting theme:** the app computes the right answers in code (`progressionTarget`, `checkDeloadNeeded`, `getLastSessionDefaults`) and then each surface ignores or re-derives them. The plan below makes **one source of truth per decision** and **instruments every decision** so the next bug report arrives with data.
 
-### Recommended order
+### Recommended order *(historical — the original October sequence; superseded by ▶ The one queue above)*
 
 ```
 Week 1   AP-1 + AP-2   prefill merge-seed + autofill_trace        (ship together — the trace proves the fix)
@@ -596,3 +618,159 @@ Acceptance: from the dashboard, one tap shows the whole block by week and day wi
 | AP-22 | 4b | S/M | AP-21 (primaries, rung chip), AP-16 (verdict line); phase 2 gated on AP-20 fixtures | `fatigueState` (RPE-at-load) + `readinessState`: leading fatigue indicators reported in verdicts, scoreboard, dashboard, `checkDeloadNeeded`; promoted to change targets only after eval |
 | AP-23 | 4c | M | AP-16, AP-17/18 (schemas), AP-10 (override mechanism), AP-21 (primaries) | planner tools: `get_rotation_candidates`, `propose_week_adjustment`, `get_verdicts{scope}`, `set_primary_lifts`, `rationale`, `get_workouts`; live: `propose_skip_exercise`, `remember_fact` |
 | AP-24 | 4d | M/L | AP-23 (rationale, override), AP-21 (headline), AP-7 (target math) | Block page: week × day grid, past results vs targets, future targets from the seeder's math, rationale strip, adjust/swap/plan-next actions |
+| SH-0 | 7 | S | — | `?debug` shell HUD + `shell_snapshot`; phone walk-through → `docs/ux-shell-audit-2026-10.md` |
+| SH-1 | 7 | S/M | — | `scripts/shell-audit.js` static inventory |
+| SH-2a | 7 | S | — | overscroll containment, one page lock, 44 px hit areas — fixes the 10/25 complaints on today's chrome |
+| SH-2b | 7 | M | SH-2a | `sheet.js` + `sheet.css` primitive; `inert` after moving two dialogs out of `.app-container` |
+| SH-3a/b | 7 | S + M/L | SH-2b | migrate the equipment sheet (chrome only), then the other ~11 overlays |
+| SH-4 | 7 | S/M | — | `.page-header` the only header; inset in two files |
+| SH-5 | 7 | S | SH-1 | design-audit budgets, CLAUDE.md rules, phone checklist |
+| SH-6 | 7 | M | SH-2b | one back system (navStack) + `pushState`/`popstate` |
+
+---
+
+## 7. The shell — headers, sheets, keyboard, scroll (SH-n)
+
+*Folded in 2026-10-25 from the standalone `ux-shell-plan-2026-10.md` draft (written at `8844b94`), re-checked against `9852812`. Its phases were called UX-0…UX-6 in the draft; renamed **SH-0…SH-6** here because UX-0…UX-6 already name the July UX-overhaul phases (shipped; see `launch-roadmap.md` §4). "Review" notes mark where the draft was wrong or has gone stale.*
+
+**Trigger (Kevin, 10/25):** back arrows sit too high and aren't reliably tappable; with the keyboard up, search results are hidden and hard to scroll; on the inline add-equipment form, the page text scrolls behind the form. "Examples, but not limited to" — so the audit (SH-0/SH-1) is built to catch the rest.
+
+### 7.1 Diagnosis
+
+| # | Symptom | Root cause | Why it keeps coming back |
+|---|---|---|---|
+| A | Back arrows too high / not tappable | **Every sticky header carries its own copy of the status-bar inset, and the back button is 36 px against a 44 px minimum.** `env(safe-area-inset-top)` is hand-written **11×** across 8 files (modals ×2, page-header ×2, utilities ×2, active-workout-v2, app-shell, exercise-lib, settings, templates). `.page-header__back` is 36×36 (`page-header.css:30`); `--tap` is 44. The 9/10 and 9/18 Dynamic-Island reports were fixed header by header. | ≥4 header implementations (`.page-header`, `.aw-header`, `.edit-exercise-header`, `.we-header`) plus `.modal-header`. A new header forgets the inset; nothing checks. |
+| B | Keyboard up → results hidden, hard to scroll | **Scroll chaining.** When the sheet's short list hits its end (or the finger lands on the header or search field), the scroll goes to the page behind. `overscroll-behavior` appears **0×** in the codebase. With the keyboard up the sheet body is `calc(85dvh − kb-inset)` minus header and search — a few rows — so the first swipe reaches the end. | Same as C. |
+| C | Add-equipment form: page scrolls behind it | **Body scroll lock covers only `.modal` / `dialog.modal`** (`initModalScrollLock`, `ui-helpers.js:373`, `body.style.overflow`). `.aw-sheet`, `.qa-sheet`, `.qe-sheet`, `.picker-overlay` and the rest never lock the page — and iOS Safari ignores `overflow:hidden` on body for touch anyway. | **≥12 sheet/overlay implementations**, each deciding scroll lock, keyboard, safe-area-bottom, focus, Escape and backdrop-tap on its own. `aw-sheet` alone is opened from 10 files (active-workout, workout-session, workout-management, template-selection, settings, navigation, equipment-library, quick-edit, machine-id, block-ui). The "13 create paths" problem (AP-11…13), one layer up. |
+
+**Also:** no `pushState`/`popstate` anywhere in `js/` — iOS swipe-back and Android back leave the app instead of closing the sheet or going back a page.
+
+> **Review (2026-10-25).**
+> 1. **The three complaints don't need the primitive to be fixed.** `overscroll-behavior: contain` on every sheet body, `touch-action: none` on backdrops/handles/headers, one shared page-lock counter, and 44 px hit areas fix A/B/C on the existing chrome in one PR — that's **SH-2a** below. The primitive (SH-2b) and migrations (SH-3) are consolidation so it can't regress, not the fix. Ship the fix first.
+> 2. **`inert` hazard.** The draft puts `inert` on `#app` / `.app-container` while a sheet is open. Two dialogs live *inside* `.app-container` (`add-exercise-modal`, `add-location-modal`, `index.html:404/426`) — `inert` on an ancestor makes them dead even as top-layer dialogs. Move both out to body level in the same PR. (Toasts and `confirmSheet` dialogs already append to `document.body` — fine.)
+> 3. **The lock must survive navigation.** `navigateTo()` force-removes `#aw-sheet`/`#aw-sheet-backdrop` (`navigation.js:76-82`). If that teardown doesn't release the lock counter, the page stays frozen after the next navigation. Teardown goes through `closeAllSheets()`; the HUD shows lock depth so a leak is visible.
+> 4. **Stale since the draft:** `picker-overlay` is now only the Settings experience-level picker (`settings-ui.js:1430`) — the equipment-picker modal it mentioned was deleted in AP-13. The equipment sheet was rewritten in AP-11…14, so the draft's line numbers there are off. The Block page (AP-24) adds an `aw-sheet` user.
+> 5. **CLAUDE.md conflicts to resolve when SH-2b lands:** "There is NO shared sheet primitive — don't hunt for `sheet.js`" becomes false; and the active-workout rule ("prefer a parallel `openShared*` API over refactoring `awOpenEquipmentSheet`") means SH-3a swaps only the **chrome** (open/close/backdrop/CSS) and keeps `buildEquipListHTML` and every handler — then run the four-flow check (change equipment, replace, add from menu, complete).
+> 6. **SH-6 (back gesture) and the July "one back system" are the same work** (July plan lines 122-125: every section via `navigateTo`, every back via `navigateBack`, `MAX_STACK_SIZE` 5→10 with top-dedupe, retire `_libraryReturnContext`). Merged into SH-6.
+> 7. **SH-0's phone session doubles as the acceptance pass** for AP-22/23/24 (see §0.1) — one evening at the gym, not two.
+
+### 7.2 Phases
+
+#### SH-0 — `?debug` shell HUD + phone walk-through (S, do first)
+
+Measure before fixing; agents can't see the Dynamic Island.
+
+**HUD.** In `app-initialization.js`, when `location.search` has `debug`, mount a fixed 10 px monospace strip bottom-left (`pointer-events:none`, above everything), re-rendered on `visualViewport` resize/scroll, `focusin/out`, and a 250 ms tick:
+
+```
+ih 844 · vv 500 @0 · kb 344 · sat 59 sab 34 · scrollY 0 · lock 1 · open: aw-sheet · focus: INPUT#aw-equip-search
+```
+
+`ih` = `innerHeight`; `vv` = `visualViewport.height @ offsetTop`; `kb` = computed `--kb-inset`; `sat/sab` from a hidden probe with `padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom)`; `lock` = page-lock depth (after SH-2a); `open` = root classes of visible overlays; `focus` = active element tag + id.
+
+**Snap.** Long-press the HUD (or `?debug&snap`) → one `shell_snapshot` to the Error Log page (silent severity, like `autofill_trace`) with the HUD numbers plus `getBoundingClientRect()` + computed size of every visible back/close control. A back button with `rect.top < sat + 4` or `height < 44` is a defect, with numbers.
+
+**Walk-through (~60 min, phone, standalone PWA, `?debug`).** Every screen and every sheet, keyboard up on every search field; one screenshot + one snap each; a row per screen in `docs/ux-shell-audit-2026-10.md`:
+
+```
+| Screen / sheet | Header impl | back top vs sat | back size | Locks page? | Keyboard: list scrolls inside? | Safe-area bottom ok? | Other | Sev |
+```
+
+Screens: Dashboard, Workouts + editor, Block page + session sheet, Active workout (exercise view, equipment sheet, ⋮ menu, "All" sheet, coach live, rest banner), History + edit-history, Exercise library + edit exercise, Equipment library + quick-add + quick-edit + detail + photo-ID, Locations, Progress/metric/muscle/exercise detail, Composition/DEXA/body measurements, Settings + Main-lifts sheet + deload toggle, AI coach thread, Error Log, onboarding, completion summary, plate calculator, manual workout. Severity: 🔴 blocks or misleads · 🟡 real drag · 🟢 polish. Write iOS version + model at the top (insets are 0 in a Safari tab — measure standalone).
+
+Acceptance: the audit doc exists, one row per screen/sheet, each backed by a screenshot and a `shell_snapshot` id.
+
+#### SH-1 — `scripts/shell-audit.js` static inventory (S/M — agent task)
+
+Same shape as `scripts/design-audit.js`; prints a markdown table, later gets budgets (SH-5).
+1. **Overlay roots:** every `position: fixed` + (`inset: 0` | `bottom: 0` | `top/left/right: 0`) selector, excluding `.bottom-nav`, `.toast*`, `.aw-footer`; for each: file:line, the JS that toggles it, and booleans — page-lock? `overscroll-behavior`? `--kb-inset`-aware? `safe-area-inset-bottom`? focus trap? Escape? backdrop-tap close? `role="dialog"`/`aria-modal`?
+2. **Sticky headers:** `position: sticky; top: 0` → carries the inset? `min-height`? which pages.
+3. **Back/close controls:** CSS blocks matching `back|close|dismiss` → declared size vs `--tap`; rendered buttons with `←`, `chevron-left`, `×`, `close` → which header wraps them.
+4. **Search inputs:** `<input type="search"` / `placeholder="Search` → inside `.field-search`? Is the results list the scroll container, or the sheet?
+5. **Inset copies:** every `env(safe-area-inset-top)` outside `page-header.css` / `sheet.css` / `tokens.css`.
+
+Merge the output into the audit doc under "Static inventory".
+
+#### SH-2a — Stop the bleeding on the existing chrome (S, ship first)
+
+- **Scroll containment:** `overscroll-behavior: contain` on every sheet/overlay scroll body (`.aw-sheet__body`, `.qa-sheet` list, `.qe-sheet` body, modal content, picker-overlay sheet); `touch-action: none` on every backdrop, sheet handle and sheet header.
+- **One page lock:** `lockPage()` / `unlockPage()` with a module-level counter (in `ui-helpers.js` until SH-2b moves it to `sheet.js`). iOS-safe: on first lock save `scrollY`, set body `position:fixed; top:-y; width:100%`; on last unlock restore and `scrollTo(0, y)`. Called from `openModal/closeModal` (replacing `initModalScrollLock`'s `body.style.overflow`), from every `aw-sheet` open/close (`awCloseSheet` and the openers), quick-add, quick-edit, and the `navigateTo` teardown (reset to 0). No `inert` yet.
+- **44 px hit areas** (pulled forward from SH-4): `.page-header__back` and every `×` keep the 36 px visual circle but get `min-width/min-height: var(--tap)` (circle drawn on `::before`, or `padding` + negative `margin`); `aria-label="Back"` / `"Close"` where missing.
+- Tests: `lockPage` counter (two locks, one unlock keeps it locked; restore calls `scrollTo` with the saved y); `navigateTo` teardown resets it.
+
+Acceptance (phone, HUD): with any sheet open, swiping the header, the search field, the form or past the end of the list never changes `scrollY`; with the keyboard up the list scrolls inside the sheet; closing lands exactly where you were; every back arrow on the walk-through screens takes the first thumb tap.
+
+#### SH-2b — One Sheet primitive (M)
+
+New `js/core/ui/sheet.js` + `styles/components/sheet.css` — the only place that knows keyboards, safe areas, scroll locking and focus.
+
+```js
+export function openSheet({
+  id, title, subtitle = '', bodyHTML = '', footerHTML = '',
+  search = null,          // { placeholder, value, onInput, autofocus:true } → pinned under header, outside the scrolling body
+  size = 'auto',          // 'auto' | 'tall' (85dvh) | 'full'
+  dismissible = true,     // backdrop tap + Escape + swipe-down on handle
+  onClose = null,
+}) → { el, body, close(), setBody(html), setFooter(html) }
+export function closeTopSheet(); export function closeAllSheets(); export function sheetDepth();
+```
+
+- **Layout:** `.sheet-backdrop` (fixed, inset 0, `touch-action: none`) + `.sheet` (fixed, `bottom: var(--kb-inset, 0)`, `max-height: calc(85dvh − var(--kb-inset, 0))`, flex column) → `__handle`, `__header`, optional `__search` (pinned), `__body` (`flex:1; min-height:0; overflow-y:auto; overscroll-behavior: contain`), `__footer` (`padding-bottom: calc(12px + env(safe-area-inset-bottom))`, hidden while the keyboard is up).
+- **Page lock:** SH-2a's `lockPage/unlockPage` move here; `openModal/closeModal` keep calling them so `<dialog>` modals share the counter. Now add `inert` to the app root — **after** moving `add-exercise-modal` and `add-location-modal` out of `.app-container`.
+- **Keyboard:** consume the existing `--kb-inset` (`app-initialization.js:264-269`); migrated sheets stop re-implementing it. `search.autofocus` focuses synchronously inside the opening tap handler (iOS raises the keyboard only from a user gesture).
+- **Focus + a11y:** `role="dialog" aria-modal="true" aria-labelledby`, focus trap, focus restore, Escape closes the top sheet, swipe-down on the handle (pointer events, 60 px).
+- **Stacking:** sheets stack; backdrop dims only on the first; z-index from `--z-modal` + depth. `navigateTo`'s teardown calls `closeAllSheets()`.
+- Tests `tests/unit/sheet.test.js` (jsdom): open sets the lock + `inert` and records scrollY; close restores both; two sheets → one lock, close in order, Escape closes top only; autofocus focuses the input; `setBody` replaces only `__body`; `window-wiring.test.js` still passes for handlers in `bodyHTML`.
+- CLAUDE.md: replace "There is NO shared sheet primitive…" with "New bottom sheet → `openSheet()`".
+
+#### SH-3 — Migrate every overlay to the primitive (M/L, in order of pain)
+
+**3a (with SH-2b):** the active-workout equipment sheet — chrome only (see Review 5): opener, backdrop, the search field moves to `search:` (pinned above the list), the inline Add row and its expand form stay in `bodyHTML`, `buildEquipListHTML` and handlers untouched. Delete the `aw-sheet*` CSS it no longer uses. Four-flow check before merge.
+
+**3b — the rest, one PR each or grouped by file:**
+
+| Order | Overlay | Where | Notes |
+|---|---|---|---|
+| 1 | remaining `aw-sheet` users (⋮ menu, "All", coach live, substitution, gym chooser, Block session, settings sheets, template editor sheets, machine-id) | the 10 files in §7.1 | same bodies, new opener |
+| 2 | `qa-sheet` quick-add | `equipment-library-ui.js`, `quick-add-sheet.css` | keep `openQuickAddSheet(gym, {onDone, initialSearch})`'s signature |
+| 3 | `qe-sheet` quick-edit | `equipment-quick-edit.js` | |
+| 4 | `picker-overlay` (experience level), `more-menu-overlay`, `bw-prompt-overlay`, `dash-todays-prs-overlay`, `plate-calc-backdrop`, `aw-form-video-overlay`, `onboarding-overlay` | various | small; the video overlay may stay full-screen but must use the lock |
+| 5 | equipment detail "+ Assign exercise" (full-page swap in `assignExerciseToEquipment`) | `equipment-library-ui.js` | becomes a `mountEquipSheet`-style sheet like identity/bw/uf (July plan item) |
+| 6 | `exercise-modal`, `reassign-modal` | `exercise-manager-ui.js`, `workout-management-ui.js` | check for dead paths first |
+| — | `dialog.confirm-sheet`, `dialog.modal` | stay `<dialog>` | only change: share the lock |
+
+Per-overlay acceptance = SH-2a acceptance, plus `grep -c "<old root class>" js styles` → 0 and its CSS deleted.
+
+#### SH-4 — One Header primitive (S/M)
+
+`.page-header` (`page-header.css:7`) becomes the only sticky header. Migrate `.aw-header`, `.edit-exercise-header`, `.we-header`, and any `.modal-header` with a back/close, to `.page-header` modifiers (`--compact`, `--workout`, `--in-sheet` which drops the inset). The inset then exists in two files (`page-header.css`, `sheet.css`) via a `--safe-top` token set once in `tokens.css`; delete the other copies. The detail pages' `.d-back` (5 UIs) and metric-detail's `.detail-page-header__back` (already 44 px) fold into `.page-header__back`. (The 44 px hit areas everywhere else ship in SH-2a.)
+
+If a header still reads high on the Island phone afterwards, the inset isn't the cause: check for a sticky header inside a scroll container whose own `padding-top` offsets content but not the header (`exercise-lib.css` comment near `.edit-exercise-header`), and whether iOS's status-bar scroll-to-top zone is eating the tap — move the control down with `--compact` spacing.
+
+Tests: `tests/unit/header-markup.test.js` — every rendered `page-header` has at most one `__back`/`__close` and no inline `padding-top`. Acceptance: HUD shows back `rect.top ≥ sat + 4`, `height ≥ 44` on every screen.
+
+#### SH-5 — Guardrails (S)
+
+`scripts/design-audit.js` `BUDGETS`, each starting at SH-1's count and ratcheting to 0 as SH-3/4 land; `--strict` fails CI:
+
+```js
+overlayRootsOutsideSheetCss: N,
+safeAreaTopRulesOutsidePrimitives: N,
+backCloseControlsUnderTap: N,
+searchInputsOutsideFieldSearch: N,
+bodyOverflowWrites: N,               // document.body.style.overflow in js/
+```
+
+CLAUDE.md "Touching UI": *New bottom sheet → `openSheet()`. New page header → `.page-header`. Never write `env(safe-area-inset-top)`, `position:fixed; bottom:0`, or `body.style.overflow` outside the primitives.*
+
+`docs/ux-shell-checklist.md` — 8 lines, run on the phone with `?debug` before every prod promote: (1) back tappable on 3 random pages, (2) equipment sheet + keyboard: list scrolls, page doesn't, (3) quick-add + keyboard same, (4) close any sheet → scroll position unchanged, (5) bottom actions clear the home indicator, (6) rest banner + sheet stack, (7) portrait only, (8) one `shell_snapshot` saved.
+
+#### SH-6 — One back system + back gesture (M)
+
+Two halves, in order:
+1. **One back system** (from the July plan, never done): every full-page section shown through `navigateTo` (no direct `.hidden` toggles on `SECTION_IDS` sections); every back button calls `navigateBack()`; `MAX_STACK_SIZE` 5 → 10 with top-dedupe; retire `_libraryReturnContext`. Test: dashboard → Progress → muscle group → exercise → equipment detail → back ×4 lands where you came from.
+2. **Gesture:** `sheet.js` pushes a history entry on open (`history.pushState({sheet:id})`) and `popstate` closes the top sheet; `navigation.js` pushes on page change and `popstate` navigates back. Never push between the active workout's exercise steps (the wizard stays one entry). Test: `navigation-history.test.js` with a fake `history`.
+
+### 7.3 Persona re-review (after SH-2a/SH-3a)
+
+Marcus and Sam against **dev** with the test account only (`klaperriere87@gmail.com` — dev and prod share one Firebase project), briefed with the three complaints plus the SH-5 checklist, scored before/after. File to `docs/marcus-review-2026-10-shell.md` / `docs/freestyle-review-2026-10-shell.md`. They can't see the Island; their job is flows and copy, the HUD numbers are the proof for A/B/C.

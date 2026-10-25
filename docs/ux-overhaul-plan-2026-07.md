@@ -1,5 +1,7 @@
 # UX Overhaul Implementation Plan — July 2026
 
+> **Closed 2026-10-25.** Phases shipped per `launch-roadmap.md` §4 (many boxes below were never ticked). The items still open were re-verified against the code and moved to the one queue in `docs/action-plan-2026-10.md` — work from there, not here.
+
 Source: [UX-AUDIT-2026-07.md](../UX-AUDIT-2026-07.md) + mockups (`mockups/dashboard-v3.html`, `equipment-detail-redesign.html`, `exercise-detail-v2.html`, `workout-editor-ergonomics.html`) + supplemental sweep of AI Coach / DEXA / manual workout / plate calc / body measurements / locations / exercise library / onboarding / error log.
 
 Phases are independently shippable, ordered by value-per-effort. Each ends with the standard gate: `npm test` + `npm run lint` + `npm run audit:design` + deploy to **dev** and verify on device before prod.

@@ -46,6 +46,8 @@ The product roadmap is the other doc; the launch-blocking subset is:
 
 - ✅ Tier 0/1/2 equipment-gym integrity + UX fixes (all shipped to dev 2026-07-02) **[CC]**
 
+> **Product execution now lives in one place:** ▶ The one queue at the top of [action-plan-2026-10.md](action-plan-2026-10.md) (coach, prefill, equipment, shell, and this doc's code blockers — offline, account deletion, export). The July queue below is complete except what moved there.
+
 ### Unified execution queue (decided 2026-07-02)
 
 One queue across [ux-overhaul-plan-2026-07.md](ux-overhaul-plan-2026-07.md) and [tier3-implementation-plan.md](tier3-implementation-plan.md) — one phase per PR, dev-deploy gate each. Rationale: editor reaches canonical shape before badges land on it (UX-3 before T3-1); equipment-detail restructure and quick-edit sheet are adjacent (UX-4 → T3-7).
