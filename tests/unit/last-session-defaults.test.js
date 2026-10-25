@@ -21,6 +21,7 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({
 
 import { getLastSessionDefaults, clearLastSessionCache, clearAllWorkoutsCache } from '../../js/core/data/data-manager.js';
 import { AppState } from '../../js/core/utils/app-state.js';
+import * as firebaseConfig from '../../js/core/data/firebase-config.js';
 
 const UID = 'test-user';
 
@@ -90,5 +91,39 @@ describe('getLastSessionDefaults', () => {
         const last = await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym', null, { preferBuild: true });
         expect(last.sets[0].weight).toBe(120);
         expect(last.recovery).toBe(true);
+    });
+});
+
+describe('getLastSessionDefaults — tier, name matching, cache (AP-3)', () => {
+    it('reports which tier matched, most specific first', async () => {
+        putWorkout('w3', { date: '2026-10-20', location: 'Uptown Gym', equipment: 'Other Machine', weight: 60 });
+        putWorkout('w2', { date: '2026-10-15', location: 'Uptown Gym', equipment: 'Hammer Strength Incline', weight: 170 });
+        putWorkout('w1', { date: '2026-10-10', equipment: 'Hammer Strength Incline', weight: 180 });
+        expect((await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym')).tier).toBe('exact');
+        expect((await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Elsewhere')).tier).toBe('equipment');
+        expect((await getLastSessionDefaults('Incline Press', 'Brand New', 'Uptown Gym')).tier).toBe('location');
+        expect((await getLastSessionDefaults('Incline Press', 'Brand New', 'Elsewhere')).tier).toBe('name');
+    });
+
+    it('matches the exercise name ignoring case and whitespace', async () => {
+        putWorkout('w1', { date: '2026-10-10', equipment: 'Hammer Strength Incline', weight: 180 });
+        const last = await getLastSessionDefaults('  incline PRESS ', 'Hammer Strength Incline', 'downtown gym');
+        expect(last).toMatchObject({ tier: 'exact', equipment: 'Hammer Strength Incline' });
+    });
+
+    it('says when the answer came from the session cache', async () => {
+        putWorkout('w1', { date: '2026-10-10', equipment: 'Hammer Strength Incline', weight: 180 });
+        expect((await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym')).cacheHit).toBe(false);
+        expect((await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym')).cacheHit).toBe(true);
+    });
+
+    it('D9: a failed history read is not cached as "no history"', async () => {
+        putWorkout('w1', { date: '2026-10-10', equipment: 'Hammer Strength Incline', weight: 180 });
+        const spy = vi.spyOn(firebaseConfig, 'getDocs').mockRejectedValueOnce(new Error('offline'));
+        expect(await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym')).toBeNull();
+        spy.mockRestore();
+        const retry = await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym');
+        expect(retry).toMatchObject({ tier: 'exact', cacheHit: false });
+        expect(retry.sets[0].weight).toBe(180);
     });
 });

@@ -277,20 +277,22 @@ function applyAdjustmentToCurrentSession(program, adj, { weeklyVolume = [] } = {
     let skippedBw = 0;
     if (adj.weightPct) {
         const f = 1 + adj.weightPct / 100;
+        // Autofill already seeded this deload (AP-7: the session intent
+        // carries the week's percentage into every entry path, and the
+        // no-history seeder scales the template weight too, §3.4). Scaling
+        // again here would apply −35% twice — to the rows now, and to the
+        // template weight a later reseed (equipment change) starts from.
+        const seededByIntent = AppState.savedData?.sessionIntent?.mode === 'deload'
+            && typeof AppState.savedData.sessionIntent.weightPct === 'number';
         for (const ex of exercises) {
             if (typeof ex.weight === 'number' && ex.weight > 0) {
-                ex.weight = scaleLoadableWeight(ex.weight, f, step);
+                if (!seededByIntent) ex.weight = scaleLoadableWeight(ex.weight, f, step);
             } else {
                 skippedBw++;
             }
         }
         // The visible set targets (autofilled from last session) scale too —
         // without this the "-40%" toast shows but the rows still say last week.
-        // Unless autofill already seeded this deload (AP-7: the session intent
-        // carries the same week's percentage into every entry path) — scaling
-        // again here would apply −35% twice.
-        const seededByIntent = AppState.savedData?.sessionIntent?.mode === 'deload'
-            && typeof AppState.savedData.sessionIntent.weightPct === 'number';
         if (!seededByIntent) scaleSessionSetTargets(f);
     }
     let clamped = [];

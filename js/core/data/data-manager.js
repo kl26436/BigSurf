@@ -136,6 +136,12 @@ async function writeWorkoutData(state) {
                 equipmentId: ex.equipmentId || null,
                 equipmentLocation: ex.equipmentLocation || null,
                 bodyPart: ex.bodyPart || null, // Include bodyPart for progress categorization
+                // §3.4 — resume rebuilt the session from this list and lost
+                // the rep target (repTarget fell back to ex.reps), the category
+                // and the program's RPE aim.
+                ...(ex.defaultReps != null ? { defaultReps: ex.defaultReps } : {}),
+                ...(ex.category ? { category: ex.category } : {}),
+                ...(ex._rpeTarget != null ? { _rpeTarget: ex._rpeTarget } : {}),
             })),
         };
 
@@ -255,16 +261,24 @@ export function clearLastSessionCache() {
     }
 }
 
+const normName = (s) => String(s || '').trim().toLowerCase();
+
 /**
  * Gets the most recent completed workout data for a specific exercise.
- * Matches by exercise name AND equipment to get equipment-specific history.
- * Returns { sets, date } from the last session, or null if no history.
+ * Matches by exercise name (case/whitespace-insensitive) AND equipment to get
+ * equipment-specific history.
+ * Returns { sets, date, equipment, equipmentId, location, recovery, tier,
+ * cacheHit } from the last session, or null if no history. `tier` says how it
+ * matched (AP-3): 'exact' (machine + gym) · 'equipment' · 'location' · 'name'.
  */
 export async function getLastSessionDefaults(exerciseName, equipment = null, location = null, equipmentId = null, { preferBuild = false } = {}) {
     if (!exerciseName) return null;
 
-    const cacheKey = `${exerciseName}__${equipment || ''}__${location || ''}__${equipmentId || ''}__${preferBuild ? 'b' : ''}`;
-    if (_lastSessionCache[cacheKey] !== undefined) return _lastSessionCache[cacheKey];
+    const cacheKey = `${normName(exerciseName)}__${normName(equipment)}__${normName(location)}__${equipmentId || ''}__${preferBuild ? 'b' : ''}`;
+    if (_lastSessionCache[cacheKey] !== undefined) {
+        const hit = _lastSessionCache[cacheKey];
+        return hit ? { ...hit, cacheHit: true } : null;
+    }
 
     const state = (await import('../utils/app-state.js')).AppState;
     if (!state.currentUser) return null;
@@ -278,10 +292,13 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
         // meant N timeouts and "no prefilled suggestions in several
         // exercises" (9/29). No 90-doc window any more either, so a
         // cancelled-heavy week can't starve out the real last session.
-        const allWorkouts = await loadAllWorkouts(state);
+        // D9: a failed read throws here instead of reading as "no history" —
+        // caching that null blanked every exercise for the whole workout.
+        const allWorkouts = await loadAllWorkouts(state, { throwOnError: true });
 
         const today = state.getTodayDateString();
-        const locLC = (location || '').toLowerCase();
+        const exLC = normName(exerciseName);
+        const locLC = normName(location);
         const equipLC = (equipment || '').trim().toLowerCase();
 
         // Tiered match preference (most → least specific):
@@ -308,7 +325,7 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
 
             const wLoc = (typeof data.location === 'object' ? data.location?.name : data.location) || '';
             const recovery = isRecoveryWorkout(data);
-            const locMatches = !!locLC && wLoc.toLowerCase() === locLC;
+            const locMatches = !!locLC && normName(wLoc) === locLC;
 
             for (const [key, exData] of Object.entries(data.exercises)) {
                 if (!exData || !exData.sets || exData.sets.length === 0) continue;
@@ -318,7 +335,7 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
                     || data.originalWorkout?.exercises?.[idx]?.machine
                     || exData.name;
 
-                if (exName !== exerciseName) continue;
+                if (normName(exName) !== exLC) continue;
 
                 // Equipment fallback: only trust originalWorkout's slot when
                 // its NAME still matches the exercise we just matched. If the
@@ -330,7 +347,7 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
                 // standing arm equipment" report.
                 const originalAtIdx = data.originalWorkout?.exercises?.[idx];
                 const originalNameMatches = originalAtIdx &&
-                    (originalAtIdx.machine || originalAtIdx.name) === exerciseName;
+                    normName(originalAtIdx.machine || originalAtIdx.name) === exLC;
                 const exEquipment = exData.equipment
                     || (originalNameMatches ? originalAtIdx?.equipment : null)
                     || null;
@@ -362,30 +379,32 @@ export async function getLastSessionDefaults(exerciseName, equipment = null, loc
                     recovery,
                 };
 
+                const tiered = (tier) => ({ ...result, tier });
                 if (preferBuild && recovery) {
-                    if (equipMatches && locMatches && !rec.exact) rec.exact = result;
-                    if (equipMatches && !rec.equip) rec.equip = result;
-                    if (locMatches && !rec.loc) rec.loc = result;
-                    if (!rec.name) rec.name = result;
+                    if (equipMatches && locMatches && !rec.exact) rec.exact = tiered('exact');
+                    if (equipMatches && !rec.equip) rec.equip = tiered('equipment');
+                    if (locMatches && !rec.loc) rec.loc = tiered('location');
+                    if (!rec.name) rec.name = tiered('name');
                     continue;
                 }
                 if (equipMatches && locMatches && !bestExact) {
-                    bestExact = result;
+                    bestExact = tiered('exact');
                     // Best possible — short-circuit.
                     _lastSessionCache[cacheKey] = bestExact;
-                    return bestExact;
+                    return { ...bestExact, cacheHit: false };
                 }
-                if (equipMatches && !bestEquipOnly) bestEquipOnly = result;
-                if (locMatches && !bestLocationOnly) bestLocationOnly = result;
-                if (!bestNameOnly) bestNameOnly = result;
+                if (equipMatches && !bestEquipOnly) bestEquipOnly = tiered('equipment');
+                if (locMatches && !bestLocationOnly) bestLocationOnly = tiered('location');
+                if (!bestNameOnly) bestNameOnly = tiered('name');
             }
         }
 
         const finalResult = bestExact || bestEquipOnly || bestLocationOnly || bestNameOnly
             || rec.exact || rec.equip || rec.loc || rec.name || null;
         _lastSessionCache[cacheKey] = finalResult;
-        return finalResult;
+        return finalResult ? { ...finalResult, cacheHit: false } : null;
     } catch (error) {
+        // Not cached: the next exercise (or a retry) reads again.
         console.error('Error loading last session defaults:', error);
         return null;
     }
@@ -933,7 +952,13 @@ export function clearAllWorkoutsCache() {
     _allWorkoutsGen += 1;
 }
 
-export async function loadAllWorkouts(state) {
+/**
+ * @param {object} state - AppState
+ * @param {{throwOnError?: boolean}} [opts] - throw on a failed read instead of
+ *   returning [] (callers that cache the answer must not cache a failure as
+ *   "no history" — D9)
+ */
+export async function loadAllWorkouts(state, { throwOnError = false } = {}) {
     if (!state.currentUser) return [];
     const uid = state.currentUser.uid;
     const now = Date.now();
@@ -958,6 +983,7 @@ export async function loadAllWorkouts(state) {
         return workouts;
     } catch (error) {
         console.error('❌ Error loading all workouts:', error);
+        if (throwOnError) throw error;
         return [];
     }
 }

@@ -15,7 +15,7 @@ import {
     getCurrentCoords,
     calculateDistance,
 } from '../features/location-service.js';
-import { renderActiveWorkout, loadAutofillForAllExercises, openSharedEquipmentSheet, openSharedAddExerciseSheet } from './active-workout-ui.js';
+import { renderActiveWorkout, renderAll, loadAutofillForAllExercises, openSharedEquipmentSheet, openSharedAddExerciseSheet } from './active-workout-ui.js';
 import { getEquipmentAtLocation, getExercisesAtLocation, checkTemplateCompatibility } from '../features/equipment-planner.js';
 import { haptic } from '../utils/haptics.js';
 import { Config } from '../utils/config.js';
@@ -500,6 +500,19 @@ function pruneUnloggedSets(savedData) {
             delete exMap[key];
         }
     }
+}
+
+/**
+ * After the session's gym changes mid-workout (D8): history is gym-aware, so
+ * re-run autofill — untouched rows re-seed for the new gym, typed and logged
+ * rows stay — and stay on the exercise in view. renderActiveWorkout() used to
+ * run here, which never re-seeded and jumped back to exercise 1.
+ */
+function refreshWorkoutForGym() {
+    clearLastSessionCache();
+    renderAll();
+    loadAutofillForAllExercises({ trigger: 'location', reseed: true })
+        .catch(err => console.error('❌ Autofill after gym change failed:', err));
 }
 
 export async function completeWorkout() {
@@ -2046,7 +2059,7 @@ function showGymChooserSheet(matches, workoutManager) {
             AppState.savedData.location = match.name;
             await saveWorkoutData(AppState);
         }
-        if (AppState.currentWorkout) renderActiveWorkout();
+        if (AppState.currentWorkout) refreshWorkoutForGym();
 
         try {
             if (match.id) await workoutManager.updateLocationVisit(match.id);
@@ -2417,7 +2430,7 @@ function showGymFallbackSheet(savedLocations, workoutManager) {
             AppState.savedData.location = loc.name;
             await saveWorkoutData(AppState);
         }
-        if (AppState.currentWorkout) renderActiveWorkout();
+        if (AppState.currentWorkout) refreshWorkoutForGym();
         updateLocationIndicator(loc.name);
 
         try {
@@ -2725,7 +2738,7 @@ export async function confirmWorkoutLocationChange() {
         }
 
         // Re-render the V2 wizard so the header shows the corrected gym
-        if (AppState.currentWorkout) renderActiveWorkout();
+        if (AppState.currentWorkout) refreshWorkoutForGym();
 
         // Equipment already used this session was associated with the old gym.
         // Add the corrected gym to those equipment docs (idempotent). The old

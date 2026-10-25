@@ -25,6 +25,8 @@ import {
     historyFromSameMachine,
     seedSetsFromLastSession,
     seedSetsFromTemplate,
+    plateRelativeDisplay,
+    reindexAfterDelete,
 } from '../../js/core/workout/set-seeding.js';
 import { scaleLoadableWeight } from '../../js/core/features/progression.js';
 
@@ -194,5 +196,56 @@ describe('seedSetsFromTemplate', () => {
         ]);
         expect(seedSetsFromTemplate({ sets: 1, defaultReps: 8 }, { mode: 'deload', repRange: [12, 15] })[0].reps).toBe(12);
         expect(seedSetsFromTemplate({}, null)).toHaveLength(3);
+    });
+});
+
+describe('seedSetsFromTemplate — template weight and the deload (§3.4)', () => {
+    const ex = { sets: 2, reps: 10, weight: 100 };
+    it('no history anywhere: the template weight seeds the rows', () => {
+        expect(seedSetsFromTemplate(ex, null, { useTemplateWeight: true }))
+            .toEqual([{ weight: 100, reps: 10, completed: false }, { weight: 100, reps: 10, completed: false }]);
+    });
+    it('history on another machine: a new machine starts fresh (no weight)', () => {
+        expect(seedSetsFromTemplate(ex, null, { useTemplateWeight: false })[0].weight).toBeNull();
+    });
+    it('a deload scales the template weight, plate-loadably, and marks it ↓', () => {
+        const rows = seedSetsFromTemplate(ex, { mode: 'deload', weightPct: -35, repRange: [12, 15] }, { useTemplateWeight: true, inc: 10 });
+        expect(rows[0]).toEqual({ weight: scaleLoadableWeight(100, 0.65, 10), reps: 12, completed: false, _adjusted: 'deload' });
+    });
+    it('manual entry\'s defaultWeight still wins', () => {
+        expect(seedSetsFromTemplate({ ...ex, defaultWeight: 80 }, null)[0].weight).toBe(80);
+    });
+});
+
+describe('plateRelativeDisplay (AP-4 / D6)', () => {
+    it('no base weight → the stored number', () => {
+        expect(plateRelativeDisplay({ weight: 270 }, 0)).toBe(270);
+    });
+    it('a seeded plate-relative row shows its plates — not plates minus the base again', () => {
+        expect(plateRelativeDisplay({ weight: 270, _plateWeight: 270 }, 90)).toBe(270);
+    });
+    it('a completed row shows what was typed', () => {
+        expect(plateRelativeDisplay({ weight: 360, _plateWeight: 270, completed: true }, 90)).toBe(270);
+    });
+    it('a number typed this session already is plates', () => {
+        expect(plateRelativeDisplay({ weight: 250, _userEdited: true }, 90)).toBe(250);
+    });
+    it('a legacy total loses the base', () => {
+        expect(plateRelativeDisplay({ weight: 360 }, 90)).toBe(270);
+        expect(plateRelativeDisplay({ weight: 50 }, 90)).toBe(0);
+    });
+});
+
+describe('reindexAfterDelete (AP-5 / D10)', () => {
+    it('shifts exercise_<i> keys above the deleted slot down one', () => {
+        expect(reindexAfterDelete({ exercise_0: 'a', exercise_1: 'b', exercise_2: 'c' }, 1))
+            .toEqual({ exercise_0: 'a', exercise_1: 'c' });
+    });
+    it('does the same for bare index keys (exerciseUnits) — the kg flag follows its exercise', () => {
+        expect(reindexAfterDelete({ 0: 'lbs', 2: 'kg' }, 1)).toEqual({ 0: 'lbs', 1: 'kg' });
+        expect(reindexAfterDelete({ 0: 'kg' }, 0)).toEqual({});
+    });
+    it('leaves non-index keys alone', () => {
+        expect(reindexAfterDelete({ note: 'x', 1: 'kg' }, 0)).toEqual({ note: 'x', 0: 'kg' });
     });
 });

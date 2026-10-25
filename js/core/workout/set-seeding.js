@@ -74,16 +74,67 @@ export function seedSetsFromLastSession(lastSets, prog, intent, unit, inc, { alr
     });
 }
 
-/** Rows for an exercise with no history on this machine — template defaults, deload reps clamped. */
-export function seedSetsFromTemplate(exercise, intent) {
-    const repRange = intent?.mode === 'deload' && Array.isArray(intent.repRange) ? intent.repRange : null;
-    let reps = exercise?.defaultReps || null;
+/**
+ * Rows for an exercise with no history on this machine — template defaults.
+ *
+ * `useTemplateWeight` (no history for the exercise ANYWHERE): the template's
+ * weight is the starting point. It used to read `defaultWeight`, which only
+ * manual entry sets, so a live workout never showed the template weight — and
+ * in a deload week the program's % never reached a new exercise at all
+ * (§3.4). A deload scales it like a history row (plate-loadable, ↓ marker).
+ * History from a DIFFERENT machine passes false: a new machine starts fresh.
+ */
+export function seedSetsFromTemplate(exercise, intent, { useTemplateWeight = false, inc = null, unit = 'lbs' } = {}) {
+    const deload = intent?.mode === 'deload';
+    const repRange = deload && Array.isArray(intent.repRange) ? intent.repRange : null;
+    let reps = exercise?.defaultReps || exercise?.reps || null;
     if (repRange && reps != null) reps = Math.min(repRange[1], Math.max(repRange[0], reps));
+    const templateWeight = Number(exercise?.defaultWeight ?? (useTemplateWeight ? exercise?.weight : null)) || null;
+    const pct = deload && typeof intent.weightPct === 'number' ? intent.weightPct : null;
+    const step = inc || (unit === 'kg' ? 2.5 : 5);
+    const weight = templateWeight && pct ? scaleLoadableWeight(templateWeight, 1 + pct / 100, step) : templateWeight;
+    const lowered = !!templateWeight && weight < templateWeight;
     return Array.from({ length: exercise?.sets || 3 }, () => ({
-        weight: exercise?.defaultWeight || null,
+        weight,
         reps,
         completed: false,
+        ...(lowered ? { _adjusted: 'deload' } : {}),
     }));
+}
+
+/**
+ * The number a set row shows in its weight field on a base-weight machine
+ * (AP-4 / D6). Storage keeps the TOTAL; the row shows what's ON the machine.
+ * A row that knows its typed plates (`_plateWeight` — completed sets and
+ * plate-relative seeds) shows them; a number typed this session already is
+ * plates; anything else is a legacy total and loses the base. Seeded rows
+ * used to have the base subtracted from a number that was already plates —
+ * the card said 270, the row said 180.
+ */
+export function plateRelativeDisplay(set, baseWeight) {
+    const w = set?.weight;
+    if (!(baseWeight > 0) || w == null) return w;
+    if (typeof set._plateWeight === 'number') return set._plateWeight;
+    if (set._userEdited && !set.completed) return w;
+    return Math.max(0, w - baseWeight);
+}
+
+/**
+ * Re-key an index-keyed map after deleting slot `deletedIdx` (AP-5 / D10):
+ * entries above it shift down one, the deleted one goes. Works for both
+ * shapes the workout uses — `exercise_<i>` keys (savedData.exercises) and
+ * bare `<i>` keys (AppState.exerciseUnits). Pure.
+ */
+export function reindexAfterDelete(map, deletedIdx) {
+    const out = {};
+    for (const [key, value] of Object.entries(map || {})) {
+        const m = /^(exercise_)?(\d+)$/.exec(key);
+        if (!m) { out[key] = value; continue; }
+        const i = Number(m[2]);
+        if (i === deletedIdx) continue;
+        out[`${m[1] || ''}${i > deletedIdx ? i - 1 : i}`] = value;
+    }
+    return out;
 }
 
 /** A row the user has logged or typed into — autofill never overwrites it. */

@@ -18,7 +18,10 @@ import { confirmSheet } from '../ui/confirm-sheet.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
 import { augmentStaticCatalog } from '../data/equipment-catalog-helpers.js';
 import { equipNameKey, ownedEquipmentKeys, searchCatalogMachines, inferEquipmentType, matchesAllTokens } from '../data/catalog-search.js';
-import { mergeSeededSets, isBlankSet, isTouchedSet, historyFromSameMachine, seedSetsFromLastSession, seedSetsFromTemplate } from './set-seeding.js';
+import {
+    mergeSeededSets, isBlankSet, isTouchedSet, historyFromSameMachine, seedSetsFromLastSession, seedSetsFromTemplate,
+    plateRelativeDisplay, reindexAfterDelete,
+} from './set-seeding.js';
 import { suggestMachinesForExercise } from '../features/exercise-machine-matcher.js';
 import { getEquipmentAtLocation, getExercisesAtLocation } from '../features/equipment-planner.js';
 import { programHeartbeat } from '../features/program-session.js';
@@ -988,9 +991,11 @@ function renderLastSessionCard(exerciseName, idx) {
     // to name-only) says so. Unlabeled, a freshly created machine showed its
     // predecessor's numbers as its own — "it loaded my old equipment with it"
     // (9/29).
-    const currentEquipName = savedExForCard?.equipment || exercise.equipment || '';
+    // Same-machine is the matcher's call (id first, then name) — a machine
+    // renamed in quick-edit matches by id and must not read "from Old Name"
+    // (AP-3).
     const fromEquip = exercise._lastSessionEquipment || '';
-    const fromTag = fromEquip && fromEquip.toLowerCase() !== currentEquipName.toLowerCase()
+    const fromTag = fromEquip && exercise._lastSessionOtherMachine
         ? ` · from ${escapeHtml(fromEquip)}`
         : '';
 
@@ -1001,6 +1006,7 @@ function renderLastSessionCard(exerciseName, idx) {
     const dbg = Config.DEBUG_MODE ? exercise._autofillDebug : null;
     const debugHtml = dbg
         ? `<div class="aw-last__debug">${escapeHtml([
+            dbg.tier || 'no history',
             dbg.sameMachine ? 'same machine' : 'other machine',
             `query=${dbg.query || '—'}`,
             `from=${dbg.from || '—'}`,
@@ -1190,16 +1196,8 @@ function buildSetRows(exercise, idx, savedEx, unit, baseWeight = 0) {
             if (from === unitLabel) return Math.round(raw * 10) / 10;
             return convertWeight(raw, from, unitLabel);
         };
-        // Plate-relative view: an autofilled (un-edited) value is a stored
-        // TOTAL from history → subtract the base; a completed set remembers
-        // what was typed in _plateWeight; a value the user typed this
-        // session is already plate weight.
-        let rawForDisplay = set.weight;
-        if (baseWeight > 0 && rawForDisplay != null) {
-            if (set.completed) rawForDisplay = set._plateWeight ?? Math.max(0, rawForDisplay - baseWeight);
-            else if (!set._userEdited) rawForDisplay = Math.max(0, rawForDisplay - baseWeight);
-        }
-        const weightShown = displayWeight(rawForDisplay);
+        // Plate-relative view (AP-4 / D6): see set-seeding#plateRelativeDisplay.
+        const weightShown = displayWeight(plateRelativeDisplay(set, baseWeight));
         const weightVal = set._userEdited || set.completed ? (weightShown ?? '') : '';
         const repsVal = set._userEdited || set.completed ? (set.reps ?? '') : '';
         const weightPlaceholder = !set._userEdited && !set.completed && weightShown != null ? weightShown : unitLabel;
@@ -1718,17 +1716,13 @@ export async function awDeleteExercise(idx) {
 
     exercises.splice(idx, 1);
 
-    // Rebuild savedData exercises
-    const newExercises = {};
-    exercises.forEach((ex, i) => {
-        const newKey = `exercise_${i}`;
-        if (i >= idx) {
-            newExercises[newKey] = AppState.savedData.exercises[`exercise_${i + 1}`] || { sets: [] };
-        } else {
-            newExercises[newKey] = AppState.savedData.exercises[`exercise_${i}`] || { sets: [] };
-        }
-    });
-    AppState.savedData.exercises = newExercises;
+    // Every index-keyed map shifts with the exercises (D10: exerciseUnits
+    // didn't, so the deleted slot's kg flag landed on whatever slid in).
+    AppState.savedData.exercises = reindexAfterDelete(AppState.savedData.exercises, idx);
+    if (AppState.exerciseUnits) AppState.exerciseUnits = reindexAfterDelete(AppState.exerciseUnits, idx);
+    // An autofill still in flight for a shifted slot must not land on the
+    // exercise that slid into it.
+    for (let i = idx; i <= exercises.length; i++) _autofillGen.set(i, (_autofillGen.get(i) || 0) + 1);
 
     if (currentExerciseIdx >= exercises.length) {
         currentExerciseIdx = Math.max(0, exercises.length - 1);
@@ -3040,6 +3034,10 @@ export async function awSelectEquipment(exerciseIdx, equipName, equipId = null) 
     const resolvedId = equipId || (equipName ? (getEquipmentDoc(equipName)?.id || null) : null);
 
     AppState.savedData.exercises[key].equipment = equipName || null;
+    // D5 — "None" is a choice: autofill must not re-adopt last session's
+    // machine onto an exercise the user deliberately cleared.
+    if (equipName) delete AppState.savedData.exercises[key].equipmentExplicitNone;
+    else AppState.savedData.exercises[key].equipmentExplicitNone = true;
     // CRITICAL: keep the stable id in lockstep with the name. Leaving the OLD
     // machine's id here made every id-first resolver (base weight, plate calc,
     // settings sheet, PR keying) read the wrong equipment doc after a swap —
@@ -3803,9 +3801,14 @@ export function awToggleUnit(exerciseIdx) {
     const savedEx = AppState.savedData.exercises[key];
     if (savedEx?.sets) {
         savedEx.sets.forEach(set => {
+            const from = set.originalUnit || current;
             if (set.weight != null && set.weight > 0) {
-                const from = set.originalUnit || current;
                 set.weight = convertWeight(set.weight, from, newUnit);
+            }
+            // The typed plate number travels with the total (D7) — left in the
+            // old unit, completion would read 120 kg as 120 lbs of plates.
+            if (typeof set._plateWeight === 'number' && set._plateWeight > 0) {
+                set._plateWeight = convertWeight(set._plateWeight, from, newUnit);
             }
             set.originalUnit = newUnit;
         });
@@ -3832,11 +3835,20 @@ export function awToggleUnit(exerciseIdx) {
         const labels = document.querySelectorAll('.aw-sets-header .aw-sets-header__label');
         if (labels.length >= 3) labels[2].textContent = weightLabel;
 
-        // Update weight input values to the new unit
+        // Update weight inputs to the new unit. Only a typed or logged row
+        // has a VALUE; an autofilled row keeps its number in the placeholder
+        // (D7: writing it as a value made the next check-off read it as typed
+        // and log plates + base).
+        const base = hasBaseWeight ? equipDoc.baseWeight : 0;
         (savedEx?.sets || []).forEach((set, setIdx) => {
             const input = document.querySelector(`.aw-set-row[data-set-idx="${setIdx}"] input[data-field="weight"]`);
-            if (input && document.activeElement !== input) {
-                input.value = set.weight != null ? set.weight : '';
+            if (!input || document.activeElement === input) return;
+            const shown = plateRelativeDisplay(set, base);
+            if (set._userEdited || set.completed) {
+                input.value = shown != null ? shown : '';
+            } else {
+                input.value = '';
+                input.placeholder = shown != null ? shown : newUnit;
             }
         });
 
@@ -4310,6 +4322,8 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
         const sameMachine = historyFromSameMachine(equipName, equipId, lastSession);
         trace.resolved = lastSession ? {
             found: true,
+            tier: lastSession.tier || null,
+            cacheHit: !!lastSession.cacheHit,
             sameMachine,
             equipment: lastSession.equipment || null,
             equipmentId: lastSession.equipmentId || null,
@@ -4405,7 +4419,7 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
         // the source of the "machines linked to exercises that don't have
         // them" report after a reorder — autofill clobbered the user's
         // pick with the template's default.
-        if (!sx.equipment && exercise.equipment) sx.equipment = exercise.equipment;
+        if (!sx.equipment && exercise.equipment && !sx.equipmentExplicitNone) sx.equipment = exercise.equipment;
         // If the user hasn't picked equipment AND there's no template
         // default, but the last session at this gym used something, adopt
         // that. Makes "no equipment set" workflows pull through cleanly.
@@ -4414,9 +4428,14 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
         // the wrong machine" leak: on 7/21 "Pec Deck" surfaced "Gymleco",
         // which matched nothing in the library (missingFromLibrary), yet
         // was written onto the exercise as though the user had picked it.
-        if (!sx.equipment && lastSession?.equipment && lastSession.location === locName
-            && getEquipmentDoc(lastSession.equipment)) {
-            sx.equipment = lastSession.equipment;
+        if (!sx.equipment && !sx.equipmentExplicitNone && lastSession?.equipment && lastSession.location === locName) {
+            const adopted = getEquipmentDoc(lastSession.equipment, lastSession.equipmentId || null);
+            if (adopted) {
+                sx.equipment = adopted.name || lastSession.equipment;
+                // Name and id move together (D5) — an adopted name with a
+                // stale or missing id sent id-first resolvers to the wrong doc.
+                sx.equipmentId = adopted.id || null;
+            }
         }
         if (exercise.group) sx.group = exercise.group;
         // A deload week's effort cap shows as the RPE "aim" whatever path started it.
@@ -4429,8 +4448,15 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
                 lastSession.sets, exercise._progression, intent, progUnit,
                 exercise._progressionInc || (progUnit === 'kg' ? 2.5 : 5),
                 { alreadyLight: !!lastSession.recovery, fallbackUnit: AppState.globalUnit || 'lbs' })
-            // No history on this machine — start fresh from template defaults.
-            : seedSetsFromTemplate(exercise, intent);
+            // No history on this machine — template defaults. The template's
+            // weight only when there's no history anywhere (a NEW machine
+            // starts fresh) and the gear has no base weight (a template
+            // number can't say whether it's plates or a total).
+            : seedSetsFromTemplate(exercise, intent, {
+                useTemplateWeight: !lastSession && !(getEquipmentDoc(equipName, equipId)?.baseWeight > 0),
+                inc: exercise._progressionInc || weightIncrement(progUnit, progUnit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs),
+                unit: progUnit,
+            });
 
         const before = sx.sets || [];
         const allBlank = before.every(isBlankSet);
@@ -4453,6 +4479,7 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
             trigger: trace.trigger, gen,
             query: equipName || null,
             from: lastSession?.equipment || null,
+            tier: lastSession?.tier || null,
             sameMachine,
             source: trace.seed.source,
             seeded: trace.seed.setsSeeded,
