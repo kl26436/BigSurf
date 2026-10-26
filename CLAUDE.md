@@ -113,10 +113,11 @@ js/
     │   ├── equipment-quick-edit.js # Quick-edit bottom sheet (name/brand/line/function, exercise + gym chips)
     │   ├── exercise-manager-ui.js  # Exercise library modal
     │   ├── error-log-ui.js         # Error log page (More menu)
-    │   ├── navigation.js           # Bottom nav, routing, navStack for drill-downs
+    │   ├── navigation.js           # Bottom nav, routing, navStack (10 deep), enterSection, system-back guard wiring
+    │   ├── back-guard.js           # SH-6: one history entry so Android back / iOS edge swipe does an in-app back
     │   ├── settings-ui.js          # Settings page, onboarding flow, profile detail
     │   ├── confirm-sheet.js        # confirmSheet()/promptSheet() — promise-based replacement for native confirm/prompt
-    │   ├── sheet.js                # SH-2b: openSheet() — THE bottom-sheet primitive (pinned search, inert, focus, Escape, swipe, stacking)
+    │   ├── sheet.js                # openSheet() — THE bottom-sheet primitive; every sheet uses it (SH-3)
     │   ├── page-lock.js            # SH-2a: page scroll lock DERIVED from what's open (OVERLAY_SELECTOR) + explicit lockPage() holds
     │   ├── template-selection.js   # Workouts page — library + dedicated editor page (#workout-editor-section)
     │   ├── ui-helpers.js           # Notifications, conversions, modal helpers
@@ -200,7 +201,7 @@ styles/
 │   ├── block.css          # Block page (AP-24)
 │   ├── detail-pages.css   # Muscle-group / exercise / progress drill-down pages
 │   ├── metric-detail.css  # Metric-card drill-down pages
-│   ├── active-workout-v2.css # Active workout, set rows, rest timer, aw-sheet chrome
+│   ├── active-workout-v2.css # Active workout, set rows, rest timer, sheet body content (chrome is sheet.css)
 │   ├── templates.css      # Template selection, workout selector, inline editor (.te-row)
 │   ├── history.css        # Calendar, workout history
 │   ├── edit-history.css   # Historical workout inline editing
@@ -410,39 +411,27 @@ The editor page (in `template-selection.js`: `renderWorkoutEditorPage`) reuses t
 
 ### Adding a bottom sheet
 
-**New sheets use the primitive:** `openSheet({ id, title, subtitle, bodyHTML, footerHTML, search, size, dismissible, onClose })` from [sheet.js](js/core/ui/sheet.js) (SH-2b, 2026-10) → `{ el, body, search, close, setBody, setFooter }`. It owns keyboard inset, safe areas, the pinned search field, page lock, `inert` behind, focus, Escape, swipe-down and stacking — don't re-implement any of those. The page lock ([page-lock.js](js/core/ui/page-lock.js)) is derived from the DOM: a new overlay root that isn't a `.sheet`/`.aw-sheet`/`dialog.modal` must be added to its `OVERLAY_SELECTOR`, and never write `body.style.overflow`.
-
-**Legacy pattern (until SH-3 migrates them):** existing sheets are built manually with the `aw-sheet` DOM pattern; canonical examples are `renderManualLinkSheet` in [equipment-library-ui.js](js/core/ui/equipment-library-ui.js) and `showGymChooserSheet` in [workout-session.js](js/core/workout/workout-session.js):
+**Every sheet uses the primitive** (SH-3 migrated them all, 2026-10; the legacy `aw-sheet` chrome is deleted — don't rebuild it): `openSheet({ id, title | titleHTML, titleColor, subtitle, bodyHTML, footerHTML | actions, search, size, dismissible, onClose, className, bodyId, bodyClass, keepFooter })` from [sheet.js](js/core/ui/sheet.js) → `{ el, body, search, close, setBody, setFooter }`; also `closeSheet(id)`, `sheetById(id)`. It owns keyboard inset, safe areas, the pinned search field, page lock, `inert` behind, focus, Escape, swipe-down, stacking, the open-time backdrop guard (iOS phantom click) and the system-back step — don't re-implement any of those.
 
 ```js
-const backdrop = document.createElement('div');
-backdrop.className = 'aw-sheet-backdrop';
-backdrop.id = 'my-sheet-backdrop';
-backdrop.onclick = closeMySheet;
-
-const sheet = document.createElement('div');
-sheet.className = 'aw-sheet';
-sheet.id = 'my-sheet';
-sheet.setAttribute('role', 'dialog');
-sheet.setAttribute('aria-modal', 'true');
-sheet.innerHTML = `
-    <div class="aw-sheet__handle"></div>
-    <div class="aw-sheet__header">
-        <div class="aw-sheet__title">Title</div>
-        <div class="aw-sheet__subtitle">Optional subtitle</div>
-    </div>
-    <div class="aw-sheet__body">${rows}</div>
-    <div class="aw-sheet__actions">
-        <button class="aw-sheet__action" onclick="closeMySheet()">Cancel</button>
-        <button class="aw-sheet__action primary" onclick="confirmMySheet()">Confirm</button>
-    </div>
-`;
-document.body.appendChild(backdrop);
-document.body.appendChild(sheet);
-requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+openSheet({
+    id: 'my-sheet',
+    title: 'Which gym?',                      // escaped; titleHTML for markup
+    bodyHTML: rows,                           // list rows use the .js-row pattern
+    actions: [                                // labels are HTML — escape user text
+        { label: 'Close', onClick: 'closeMySheet()' },
+        { label: 'Save gym', onClick: 'saveMySheet()', primary: true },
+    ],
+    onClose: () => { /* runs once on EVERY dismissal — put the outcome/cleanup here */ },
+});
 ```
 
-Sheet chrome classes live in [styles/pages/active-workout-v2.css](styles/pages/active-workout-v2.css); list rows inside sheets use the `.js-row` pattern. Note `navigateTo()` force-removes `#aw-sheet`/`#aw-sheet-backdrop` on navigation — use unique ids for your sheet and clean up on close.
+- Re-opening the same `id` replaces the sheet in place (silently — no `onClose`), so re-render by calling `openSheet` again or `setBody`.
+- Footer labels name the action (`Close`, `Keep current`, `Start workout`), never `Cancel`; dismiss buttons stay neutral (no `danger`).
+- `navigateTo()` closes every open sheet (`closeAllSheets`), firing each `onClose`.
+- The page lock ([page-lock.js](js/core/ui/page-lock.js)) is derived from the DOM: a new overlay root that isn't a `.sheet`/`dialog` must be added to its `OVERLAY_SELECTOR`, and never write `body.style.overflow`.
+
+**Pages, not sheets:** show a full-page section with `navigateTo(view)`; a flow that paints a page itself and must keep its sheets open uses `enterSection(view)` (navigation.js) so the back stack and the system-back guard see it. Backs call `navigateBack()` — never a fixed destination, never a direct `.hidden` toggle on a `SECTION_IDS` section.
 
 For add-exercise / equipment / similar shared flows, prefer the parameterized helpers (`openSharedAddExerciseSheet`, `openSharedEquipmentSheet` in [active-workout-ui.js](js/core/workout/active-workout-ui.js)) — they take an `onSelect` callback so the same sheet works from any context.
 
