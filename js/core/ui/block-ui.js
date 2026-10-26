@@ -93,7 +93,7 @@ function emptyHTML() {
                 <div class="empty-state-icon"><i class="fas fa-flag-checkered"></i></div>
                 <div class="empty-state-title">No plan yet</div>
                 <div class="empty-state-description">Plan the next few weeks with the coach — every week, day and target shows up here, and it keeps going on its own.</div>
-                <button class="btn btn-primary" onclick="startProgramChat()">Plan it with the coach</button>
+                <button class="btn btn-primary" onclick="startProgramChat()">Build my plan</button>
             </div>
         </div>`;
 }

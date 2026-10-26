@@ -251,6 +251,8 @@ function formatPlanContext({ plan = null, weekPlan = null, templates = [], timel
         else if (timeline) parts.push(`through ${timeline.header.through}`);
         if (plan.rotationPolicy === 'auto') parts.push('accessories rotate automatically between waves');
         if (plan.sessionMinutes) parts.push(`${plan.sessionMinutes} min sessions`);
+        const fixed = Object.entries(plan.fixed || {}).filter(([d, v]) => DAY_LABELS[d] && v?.mustInclude?.length);
+        if (fixed.length) parts.push(`fixed: ${fixed.map(([d, v]) => `${DAY_LABELS[d]} ${v.mustInclude.join(' + ')}`).join(', ')}`);
     }
     if (timeline?.header.thisWeek) parts.push(`this week: ${timeline.header.thisWeek}`);
     if (timeline?.header.nextLighter && timeline.header.nextLighter > today) parts.push(`lighter week starts ${shortDate(timeline.header.nextLighter)}`);

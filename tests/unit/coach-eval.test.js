@@ -264,3 +264,45 @@ describe('TP-2 / A6 — the report card eval mode', () => {
         expect(runChecks(t, run2).find(c => c.id === 'chosen-option-expected')).toMatchObject({ pass: false });
     });
 });
+
+describe('TP-5 — the planning conversation scenarios', () => {
+    const peakProgram = (targets, extra = {}) => ({
+        name: 'To the wedding', goal: 'general', weeks: 6, startDate: '2026-10-26', split: { mon: 'push', wed: 'pull', fri: 'legs' },
+        weekTargets: targets,
+        rationale: { block: 'Building to the wedding on Dec 5', weeks: [{ week: 1, why: 'build' }], fixed: [{ name: 'Flat Barbell Bench Press', why: 'so your strength numbers stay comparable' }] },
+        ...extra,
+    });
+    const good = [
+        { week: 1, label: 'Build' }, { week: 2, label: 'Build', setDelta: 1 }, { week: 3, label: 'Push', rpeTarget: 8.5 },
+        { week: 4, label: 'Lighter week', weightPct: -35, setDelta: -1 }, { week: 5, label: 'Peak', rpeTarget: 9 }, { week: 6, label: 'Peak', rpeTarget: 9 },
+    ];
+
+    it('program-shape: peak weeks last, a lighter week before them, no rotation', async () => {
+        const s = byId['plan-event-peak'];
+        const run = await runScenario(s, { callRound: scripted([tool('create_program', peakProgram(good))], [say('Set — peak weeks lead into the wedding.')]).callRound });
+        const c = runChecks(s, run);
+        expect(c.find(x => x.id === 'program-shape')).toMatchObject({ pass: true, detail: 'build/build/push/lighter/peak/peak' });
+        expect(c.find(x => x.id === 'program-rationale')).toMatchObject({ pass: true });
+
+        const flat = good.map(t => (t.week >= 5 ? { week: t.week, label: 'Build', setDelta: 1 } : t));
+        const run2 = await runScenario(s, { callRound: scripted([tool('create_program', peakProgram(flat, { rotateAccessories: true }))], [say('Done.')]).callRound });
+        const shape = runChecks(s, run2).find(x => x.id === 'program-shape');
+        expect(shape.pass).toBe(false);
+        expect(shape.detail).toMatch(/not peak/);
+        expect(shape.detail).toMatch(/rotated accessories/);
+    });
+
+    it('the behind-goal card really has a goal behind, and the no-blocks scenario bans the word', async () => {
+        const s = byId['reportcard-goal-behind'];
+        const run = await runScenario(s, { callRound: scripted([say('{"headline":"Bench is behind its 400 goal.","choice":"stay","why":"Keep the work steady."}')]).callRound });
+        expect(run.card.goals.map(g => g.status)).toEqual(['behind']);
+        expect(runChecks(s, run).filter(c => !c.pass).map(c => c.id)).toEqual([]);
+
+        const nb = byId['plan-no-blocks'];
+        const bad = await runScenario(nb, { callRound: scripted([say('Your next block starts Monday — it continues on its own.')]).callRound });
+        expect(runChecks(nb, bad).find(c => c.id.startsWith('not-mentions:'))).toMatchObject({ pass: false });
+        const ok = await runScenario(nb, { callRound: scripted([say('Your plan keeps going on its own: three build weeks then a lighter one, through January.')]).callRound });
+        const checks = runChecks(nb, ok);
+        expect(checks.filter(c => c.id.startsWith('not-mentions:') || c.id.startsWith('mentions:')).every(c => c.pass)).toBe(true);
+    });
+});

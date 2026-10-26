@@ -54,7 +54,8 @@ let _coachWroteSinceContext = false;
 // The program door prompt — shared by the coach landing fallback card and
 // the external entry points (dashboard starter row, Settings program row,
 // week-plan sheet cross-sell).
-const PROGRAM_STARTER_PROMPT = 'Build me a 4-week plan from my workouts — pick the split, set how each week differs, and end with a lighter week.';
+// TP-5 — the intake starts here: the coach asks what it can't compute (days, minutes, anything fixed, goals) and builds the rest.
+const PROGRAM_STARTER_PROMPT = 'Build my plan — ask me what you need to know first, then set it up.';
 
 function getContextualPrompts() {
     const workouts = AppState.workouts || [];

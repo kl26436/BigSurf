@@ -373,6 +373,14 @@ Acceptance: from an empty Plan page, one conversation of ≤ 6 turns produces a 
 - **Coach:** plan sessions leave the capped "User's saved workouts" block and get a `Plan sessions:` line; `list_templates` returns `planOwned`.
 - **Verified, not rebuilt:** a session started from the Workouts tab gets the week's intent at start (`stampSessionIntent` reads the active program whoever owns the template).
 
+## 3e. As built — TP-5 (2026-10-26)
+
+- **Intake** lives in the PLAN contract: at most four questions in one message (days, minutes, anything fixed, goals / dates), skipped when the message, the Goals lines or memory already answer them; answers are stored (minutes + fixed → `update_plan`, goals → `set_goal`, dates → `add_event`); main lifts are proposed from history, not asked for.
+- **Contract B** in the spec's order (plan in one line · a typical week · how the weeks differ · stays the same · what's new · what we're watching), with the worked example; the same parts go to `create_program.rationale`. With a plan in place the coach starts from `draft_next_wave`. Peaking before a date: label the weeks Peak, effort 9, no rotation, a lighter week before them.
+- `update_plan { fixed }` (day → `mustInclude`), shown on the `Your plan:` line. The roller doesn't enforce it — it reuses sessions; it's a constraint for the coach when it composes.
+- **Entry points** already prefill (AU-14): Plan page *Change my plan* / *Build my plan*, report card *Discuss this week*, Goals *Plan around my goals*; the starter text now invites the intake.
+- **Eval:** `plan-first-goals`, `plan-event-peak` (new `program-shape` check: peak weeks last, a lighter week before them, no rotation), `reportcard-goal-behind`, `plan-no-blocks` (the word banned even though the user said it); `program-rationale` check. 30 scenarios — none run against the API yet.
+
 ## 4. Report card — the Sunday page, as the user reads it
 
 ```

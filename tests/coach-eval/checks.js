@@ -9,6 +9,8 @@ import { inferPattern } from '../../functions/movement-patterns.js';
 import { weightIncrement } from '../../js/core/features/progression.js';
 import { findJargon, jargonTermsIn } from '../../js/core/features/plain-language.js';
 import { cardNumbers, numbersIn } from '../../js/core/features/report-card.js';
+import { weekKindOf } from '../../js/core/features/plain-language.js';
+import { isDeloadTarget } from '../../js/core/features/week-targets.js';
 
 /** Tools that change the user's workouts, program or plan. */
 export const WRITE_TOOLS = new Set([
@@ -180,6 +182,36 @@ export function runChecks(scenario, run) {
             .filter(x => expect.injuredPatterns.includes(x.pattern || inferPattern({ name: x.name })))
             .map(x => x.name);
         check('respects-injury', !bad.length, bad.join(', ') || 'ok');
+    }
+
+    // TP-5 — a plan carries its six-part rationale.
+    if (expect.programRationale) {
+        const c = calls.find(x => x.name === 'create_program' && !x.isError);
+        const r = c?.input?.rationale;
+        check('program-rationale', !!(r?.block && (r.weeks || []).length && (r.fixed || []).length), c ? (r?.block ? `${(r.weeks || []).length} weeks · ${(r.fixed || []).length} fixed` : 'no rationale') : 'no create_program');
+    }
+
+    // TP-5 — peaking for a date: the last weeks before it are peak, a lighter
+    // week just before them, and no new exercises (no rotateAccessories).
+    if (expect.programShape) {
+        const c = calls.find(x => x.name === 'create_program' && !x.isError);
+        const detail = [];
+        let pass = !!c;
+        if (c) {
+            const weeks = Number(c.input?.weeks) || 0;
+            const kindOf = (w) => {
+                const t = (c.input.weekTargets || []).find(x => x.week === w) || null;
+                return isDeloadTarget(t) ? 'lighter' : weekKindOf(t);
+            };
+            const kinds = Array.from({ length: weeks }, (_, i) => kindOf(i + 1));
+            const { peakLast = 0, lighterBefore = false } = expect.programShape;
+            const tail = kinds.slice(-peakLast);
+            if (peakLast && !(tail.length === peakLast && tail.every(k => k === 'peak'))) { pass = false; detail.push(`last ${peakLast} not peak: ${kinds.join('/')}`); }
+            if (lighterBefore && kinds[weeks - peakLast - 1] !== 'lighter') { pass = false; detail.push(`no lighter week before the peak: ${kinds.join('/')}`); }
+            if (c.input?.rotateAccessories === true) { pass = false; detail.push('rotated accessories into a peak'); }
+            if (!detail.length) detail.push(kinds.join('/'));
+        } else detail.push('no create_program');
+        check('program-shape', pass, detail.join('; '));
     }
 
     if (expect.askOrBuild) {

@@ -261,6 +261,18 @@ describe('the Sunday roll (server) and the plan tools', () => {
         expect(d.result.note).toMatch(/create_program/);
     });
 
+    it('update_plan stores fixed days; the plan line shows them', async () => {
+        const db = fakeAdminDb(seed());
+        const ex = makeToolExecutors({ db, userId: 'u1', unit: 'lbs', today: '2026-10-21' });
+        expect((await ex.update_plan({ fixed: { monday: { mustInclude: ['Bench'] } } })).error.message).toMatch(/isn't a day/);
+        expect((await ex.update_plan({ fixed: { mon: ['Bench'] } })).error.message).toMatch(/mustInclude/);
+        await ex.update_plan({ fixed: { mon: { mustInclude: ['Bench Press'] } }, sessionMinutes: 60 });
+        const plan = db.writes.filter(w => w.path === `${U}/plan/current`).at(-1).data;
+        expect(plan).toMatchObject({ fixed: { mon: { mustInclude: ['Bench Press'] } }, sessionMinutes: 60 });
+        const line = formatPlanContext({ plan: { ...PLAN, ...plan }, weekPlan, templates, today: '2026-10-21' });
+        expect(line).toContain('60 min sessions · fixed: Mon Bench Press');
+    });
+
     it('create_program creates the plan doc from the program\'s shape', async () => {
         const docs = seed();
         delete docs[`${U}/plan/current`];

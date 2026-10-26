@@ -378,6 +378,11 @@ const TOOL_DEFINITIONS = [
                 paused: { type: 'boolean' },
                 name: { type: 'string' },
                 split: SPLIT_SCHEMA,
+                fixed: {
+                    type: 'object',
+                    description: 'What must stay on a day, e.g. { "mon": { "mustInclude": ["Smith Machine Bench Press"] } }. Pass {} to clear. Days: mon…sun.',
+                    additionalProperties: { type: 'object', properties: { mustInclude: { type: 'array', items: { type: 'string' }, maxItems: 5 } } },
+                },
             },
         },
     },
@@ -1991,13 +1996,27 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 patch.paused = i.paused;
             }
             if (i.name !== undefined) patch.name = clip(i.name, 40) || 'My plan';
+            if (i.fixed !== undefined) {
+                // TP-5 — "I always bench Monday": stored on the plan, shown to the coach.
+                if (!i.fixed || typeof i.fixed !== 'object' || Array.isArray(i.fixed)) return toolError('invalid_input', 'fixed must be an object of day → { mustInclude: [exercise names] }');
+                const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+                const fixed = {};
+                for (const [day, v] of Object.entries(i.fixed)) {
+                    if (!DAYS.includes(day)) return toolError('invalid_input', `fixed: "${day}" isn't a day — use ${DAYS.join(', ')}`);
+                    const list = Array.isArray(v?.mustInclude) ? v.mustInclude.map(x => clip(x, 80)).filter(Boolean) : null;
+                    if (!list) return toolError('invalid_input', `fixed.${day} needs mustInclude: [exercise names]`);
+                    if (list.length > 5) return toolError('invalid_input', `fixed.${day}: at most 5 exercises (got ${list.length})`);
+                    if (list.length) fixed[day] = { mustInclude: list };
+                }
+                patch.fixed = fixed;
+            }
             let splitSummary = null;
             if (i.split !== undefined) {
                 const out = await this.set_week_plan({ days: i.split });
                 if (out.error) return toolError('invalid_input', `split: ${errorText(out.error)}`);
                 splitSummary = out.result.summary;
             }
-            if (!Object.keys(patch).length && !splitSummary) return toolError('invalid_input', 'Nothing to change — pass cadence, horizonWeeks, sessionMinutes, rotationPolicy, paused, name or split.');
+            if (!Object.keys(patch).length && !splitSummary) return toolError('invalid_input', 'Nothing to change — pass cadence, horizonWeeks, sessionMinutes, rotationPolicy, paused, name, fixed or split.');
             const nowIso = new Date().toISOString();
             if (Object.keys(patch).length) {
                 const ref = userDoc().collection('plan').doc('current');

@@ -400,6 +400,73 @@ export function buildScenarios() {
         });
     }
 
+    // 26–29 — TP-5: the planning conversation.
+    const benchGoal = (over = {}) => ({
+        id: 'goal_bench', type: 'lift', metric: 'estimatedMax', key: { exercise: 'Flat Barbell Bench Press' },
+        unit: 'lbs', direction: 'up', target: 225, by: '2027-02-14', status: 'active',
+        baseline: { value: 200, date: '2026-09-27' }, createdAt: '2026-09-27T12:00:00Z', ...over,
+    });
+
+    // 26 — the first plan, every intake answer in the message → build it, with the six parts.
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        user.goals = [benchGoal()];
+        list.push({
+            id: 'plan-first-goals', title: 'First plan: four days, 60 minutes, bench Monday, bench goal → build it',
+            mode: 'chat', user,
+            question: 'Build my plan: four days a week — Monday, Tuesday, Thursday, Saturday — about 60 minutes each. I always bench on Monday. Bench 225 by February is the goal.',
+            expect: {
+                kind: 'action', maxWords: 650, mustCall: ['create_program'], programRationale: true,
+                mustMention: ['(build|lighter) week', '225'],
+            },
+        });
+    }
+
+    // 27 — peaking for a date six weeks out: peak weeks last, a lighter week before them.
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        user.events = [{ id: 'event_wedding', name: 'Wedding', date: '2026-12-05', kind: 'look', peakWeeks: 2, lighterBefore: true }];
+        user.plan = { name: 'My plan', cadence: { buildWeeks: 3, lighterWeek: true }, horizonWeeks: 12, rotationPolicy: 'ask' };
+        list.push({
+            id: 'plan-event-peak', title: 'Wedding in six weeks → plan the six weeks to peak for it',
+            mode: 'chat', user,
+            question: 'Plan the next six weeks so I peak for the wedding — set it up.',
+            expect: { kind: 'action', maxWords: 650, mustCall: ['create_program'], programShape: { peakLast: 2, lighterBefore: true }, programRationale: true },
+        });
+    }
+
+    // 28 — the Sunday card with a goal behind: quote the goal, pick one valid option, write nothing.
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        user.goals = [benchGoal({ target: 400, by: '2026-12-31' })];
+        list.push({
+            id: 'reportcard-goal-behind', title: 'Sunday card — the bench goal is behind',
+            mode: 'reportcard', question: 'Sunday report card', user,
+            expect: { kind: 'question', maxWords: 90, mustMention: ['(bench|400)'] },
+        });
+    }
+
+    // 29 — "I don't think in blocks": the answer describes one continuous plan and never says the word.
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        user.program = programOn('2026-10-25', { weeks: 4, deloadWeek: 4 });
+        user.plan = { name: 'My plan', cadence: { buildWeeks: 3, lighterWeek: true }, horizonWeeks: 12, rotationPolicy: 'ask' };
+        list.push({
+            id: 'plan-no-blocks', title: '"I don\'t think in blocks" → one continuous plan, never the word',
+            mode: 'chat', user,
+            question: "Every few weeks it feels like we start over. I don't think in blocks — what's my plan from here?",
+            expect: {
+                ...QUESTION, maxWords: 220,
+                mustNotMention: ['\\bblocks?\\b'],
+                mustMention: ['(continu|next few weeks|keeps going|on its own|through)'],
+            },
+        });
+    }
+
     return list;
 }
 
