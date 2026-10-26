@@ -2,7 +2,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, displayWeight } from './ui-helpers.js';
-import { navigateTo } from './navigation.js';
+import { navigateTo, navigateBack } from './navigation.js';
 import { formatRelativeDate as formatRelativeDateShared } from '../utils/date-helpers.js';
 
 import { renderRangeFilter, getRangeBounds, getPreviousRangeBounds, rangeLabel, DEFAULT_RANGE, persistRange } from '../features/metrics/range-filter.js';
@@ -64,12 +64,11 @@ export function openMetricDetail(id) {
 }
 
 /**
- * Close the detail view and return to dashboard.
+ * Close the detail view — back to wherever it was opened from (SH-6: one
+ * back system; it used to jump to the dashboard and hide the section by hand).
  */
 export function closeMetricDetail() {
-    const section = document.getElementById('metric-detail-section');
-    if (section) section.classList.add('hidden');
-    navigateTo('dashboard');
+    navigateBack();
 }
 
 /**

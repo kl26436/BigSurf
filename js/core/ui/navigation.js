@@ -23,6 +23,8 @@ const SECTION_IDS = [
     'block-section',
     'composition-detail-section',
     'exercise-manager-section',
+    'edit-exercise-section',       // SH-6 — the exercise library's edit page
+    'equipment-editor-section',    // SH-6 — its legacy equipment editor
     'location-management-section',
     'equipment-library-section',
     'plate-calculator-section',
@@ -60,6 +62,43 @@ function sectionOf(view) {
     return SECTION_IDS.includes(`${view}-section`) ? `${view}-section` : view;
 }
 let skipStackPush = false;
+
+/** Push the page we're leaving (or pop, when `view` is the one below it). */
+function recordNavigation(view, { replace = false } = {}) {
+    const current = getCurrentView();
+    const top = navStack[navStack.length - 1];
+    if (!current || sectionOf(current) === sectionOf(view)) return;
+    if (top && sectionOf(top) === sectionOf(view)) {
+        navStack.pop();
+    } else if (!replace && (!top || sectionOf(top) !== sectionOf(current))) {
+        navStack.push(current);
+        if (navStack.length > MAX_STACK_SIZE) navStack.shift();
+    }
+}
+
+/**
+ * SH-6 — for flows that paint a page themselves (workout start, the exercise
+ * library's edit page and equipment hand-offs): record it in the back stack
+ * and the back guard exactly as navigateTo would, without re-running the
+ * route, fading, or closing sheets the flow may still have open.
+ * `replace: true` swaps the current page instead of stacking on it (the
+ * live workout's "edit exercise" passes through the library without
+ * leaving it in the back path).
+ */
+export function enterSection(view, { replace = false } = {}) {
+    const target = sectionOf(view);
+    recordNavigation(view, { replace });
+    SECTION_IDS.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', id !== target);
+    });
+    backGuard.sync();
+}
+
+/** The back stack, oldest first (tests / ?debug). */
+export function navStackSnapshot() {
+    return [...navStack];
+}
 
 export function navigateBack() {
     const previous = navStack.pop();
@@ -113,18 +152,7 @@ export function navigateTo(view) {
     // "forward" to the view that's on top of the stack IS going back (a
     // fixed "back to dashboard" link must not leave a dashboard ↔ detail
     // loop behind it), and the same view is never pushed twice in a row.
-    if (!skipStackPush) {
-        const current = getCurrentView();
-        const top = navStack[navStack.length - 1];
-        if (current && sectionOf(current) !== sectionOf(view)) {
-            if (top && sectionOf(top) === sectionOf(view)) {
-                navStack.pop();
-            } else if (!top || sectionOf(top) !== sectionOf(current)) {
-                navStack.push(current);
-                if (navStack.length > MAX_STACK_SIZE) navStack.shift();
-            }
-        }
-    }
+    if (!skipStackPush) recordNavigation(view);
     // Find the currently visible section
     const visibleSection = SECTION_IDS
         .map((id) => document.getElementById(id))
@@ -222,6 +250,21 @@ function routeToView(view) {
         case 'exercises':
         case 'exercise-manager':
             openExerciseManager();
+            break;
+
+        // SH-6 — reached only by going BACK to them (forward entry is
+        // enterSection from exercise-manager-ui); their state is still in place.
+        case 'edit-exercise':
+            document.getElementById('edit-exercise-section')?.classList.remove('hidden');
+            if (window.setHeaderMode) window.setHeaderMode(false);
+            import('./exercise-manager-ui.js')
+                .then(m => m.resumeEditExerciseSection?.())
+                .catch(() => {});
+            break;
+
+        case 'equipment-editor':
+            document.getElementById('equipment-editor-section')?.classList.remove('hidden');
+            if (window.setHeaderMode) window.setHeaderMode(false);
             break;
 
         case 'templates':

@@ -3,7 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml, openModal, closeModal } from '../ui/ui-helpers.js';
-import { setBottomNavVisible, navigateTo, setWorkoutActiveState } from '../ui/navigation.js';
+import { setBottomNavVisible, navigateTo, setWorkoutActiveState, enterSection } from '../ui/navigation.js';
 import { saveWorkoutData, clearLastSessionCache, clearAllWorkoutsCache, loadAllWorkouts } from '../data/data-manager.js';
 import {
     detectLocation,
@@ -263,18 +263,11 @@ export async function startWorkout(workoutType) {
         workoutNameElement.textContent = displayName;
     }
 
-    // Hide other sections and show active workout
-    const workoutSelector = document.getElementById('workout-selector');
-    const activeWorkout = document.getElementById('active-workout');
-    const exerciseManagerSection = document.getElementById('exercise-manager-section');
-    const historySection = document.getElementById('workout-history-section');
-    const dashboard = document.getElementById('dashboard');
-
-    if (workoutSelector) workoutSelector.classList.add('hidden');
-    if (exerciseManagerSection) exerciseManagerSection.classList.add('hidden');
-    if (historySection) historySection.classList.add('hidden');
-    if (dashboard) dashboard.classList.add('hidden');
-    if (activeWorkout) activeWorkout.classList.remove('hidden');
+    // Show the active workout. SH-6 — through the page system, so the back
+    // stack and the system-back guard know we're here (a system back used
+    // to leave the app mid-workout when the guard wasn't armed); not
+    // navigateTo, which would close the gym / substitution sheets.
+    enterSection('active-workout');
 
     // Hide main header AND bottom nav — during a workout the aw-footer is the
     // only bottom bar (two stacked bars read as clutter). X exits back to the
@@ -422,11 +415,7 @@ export async function startFreestyleWorkout(focus = null, seedExercises = null) 
     await stampSessionIntent({ freestyle: true });
 
     // Show the active-workout section (mirrors startWorkout).
-    document.getElementById('workout-selector')?.classList.add('hidden');
-    document.getElementById('exercise-manager-section')?.classList.add('hidden');
-    document.getElementById('workout-history-section')?.classList.add('hidden');
-    document.getElementById('dashboard')?.classList.add('hidden');
-    document.getElementById('active-workout')?.classList.remove('hidden');
+    enterSection('active-workout');
 
     setHeaderMode(false);
     setBottomNavVisible(false); // single bottom bar during workouts (aw-footer)

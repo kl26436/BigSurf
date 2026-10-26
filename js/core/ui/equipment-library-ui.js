@@ -5,6 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displayWeight } from './ui-helpers.js';
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet } from './sheet.js';
+import { navigateBack } from './navigation.js';
 import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, writeBatch } from '../data/firebase-config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { clearAllWorkoutsCache } from '../data/data-manager.js';
@@ -87,6 +88,14 @@ let _pendingDetailId = null;
 export function setPendingEquipmentDetail(id) {
     _pendingDetailId = id || null;
 }
+
+// SH-6 — the detail / add-equipment screen was opened from ANOTHER page
+// (the exercise editor, quick-edit "Full details"), so its back and its
+// save return there via navigateBack instead of landing on the library
+// list. Reset whenever the list view is restored.
+let _detailFromElsewhere = false;
+// Exercise the add flow pre-assigns the new equipment to (exercise editor).
+let _addFlowAssignTo = null;
 
 function getManager() {
     if (!workoutManager) workoutManager = new FirebaseWorkoutManager(AppState);
@@ -173,6 +182,8 @@ export async function openEquipmentLibrary() {
 
     section.classList.remove('hidden');
     scanReviewActive = false; // always land on the normal list, not the review view
+    _detailFromElsewhere = false; // a standalone open is the library's own list
+    _addFlowAssignTo = null;
 
     // First paint is a skeleton, not an empty section. The reads below can
     // take seconds on a slow connection and until they landed the page was
@@ -205,7 +216,7 @@ export async function openEquipmentLibrary() {
     if (_pendingDetailId) {
         const id = _pendingDetailId;
         _pendingDetailId = null;
-        await openEquipmentDetail(id);
+        await openEquipmentDetail(id, { fromElsewhere: true });
         return;
     }
 
@@ -3023,7 +3034,8 @@ export function filterEquipmentBySearch(term) {
 // EQUIPMENT DETAIL VIEW
 // ===================================================================
 
-export async function openEquipmentDetail(equipmentId) {
+export async function openEquipmentDetail(equipmentId, { fromElsewhere = false } = {}) {
+    if (fromElsewhere) _detailFromElsewhere = true;
     // Find equipment from cache or reload
     let equipment = allEquipment.find(e => e.id === equipmentId);
     if (!equipment) {
@@ -3405,25 +3417,18 @@ function dismissEquipSheet(idBase, { silent = false } = {}) {
 }
 
 export function backToEquipmentList() {
+    const returnElsewhere = _detailFromElsewhere;
     // Always restore the canonical header + list view so a future standalone
-    // open of the library shows a clean state, even if we're about to hand
-    // control back to a caller via returnTo.
+    // open of the library shows a clean state.
     restoreEquipmentLibraryListView();
-
-    // If we got into the library via a returnTo context (e.g., the exercise
-    // editor's "Add equipment" button), hand control back instead of landing
-    // on the library list. The caller's returnTo is responsible for restoring
-    // its own UI.
-    if (_libraryReturnContext?.returnTo) {
-        const ctx = _libraryReturnContext;
-        _libraryReturnContext = null;
-        ctx.returnTo(null);
-        return;
-    }
-    return;
+    // SH-6 — opened from another page: back returns there (its route
+    // refreshes whatever it shows), not to the library list.
+    if (returnElsewhere) navigateBack();
 }
 
 function restoreEquipmentLibraryListView() {
+    _detailFromElsewhere = false;
+    _addFlowAssignTo = null;
 
     // Restore the canonical .page-header for the list view (matches the
     // markup in index.html so the DOM snaps back to its original shape).
@@ -4154,37 +4159,12 @@ function addFlowGeneratedName() {
     });
 }
 
-// Optional return context — when set, confirmAddEquipment / backToEquipmentList
-// hand control back to the caller (exercise editor, active workout) instead of
-// landing on the library list. Cleared by clearLibraryReturnContext() when the
-// trip completes so the next standalone open of the library works normally.
-let _libraryReturnContext = null;
-
-export function clearLibraryReturnContext() {
-    _libraryReturnContext = null;
-}
-
-/**
- * Set a return context BEFORE opening any library entry point
- * (openEquipmentDetail, showAddEquipmentFlow). The library will route back to
- * `returnTo(equipmentOrNull)` instead of the library list when the user is
- * done. Use this when calling into the library from another page so you can
- * restore that page's UI on return.
- */
-export function setLibraryReturnContext({ assignToExercise = null, returnTo = null } = {}) {
-    _libraryReturnContext = {
-        assignToExercise,
-        returnTo: typeof returnTo === 'function' ? returnTo : null,
-    };
-}
-
 /**
  * Open the catalog-aware Add Equipment flow.
  *
- * When called with `{ assignToExercise, returnTo }`, the new equipment is
- * auto-associated with that exercise on save and `returnTo(equipment)` is
- * invoked instead of opening the equipment detail view. Used by the exercise
- * editor to add new equipment without leaving the page.
+ * `{ assignToExercise, fromElsewhere }` (the exercise editor): the new
+ * equipment is auto-associated with that exercise on save, and save / back
+ * return to the calling page (navigateBack) instead of opening the detail.
  */
 export function showAddEquipmentFlow(opts = {}) {
     addFlowState.brand = null;
@@ -4192,12 +4172,8 @@ export function showAddEquipmentFlow(opts = {}) {
     addFlowState.func = '';
     addFlowState.type = 'Machine';
     addFlowState.name = null;
-    if (opts.assignToExercise || opts.returnTo) {
-        _libraryReturnContext = {
-            assignToExercise: opts.assignToExercise || null,
-            returnTo: typeof opts.returnTo === 'function' ? opts.returnTo : null,
-        };
-    }
+    _addFlowAssignTo = opts.assignToExercise || null;
+    _detailFromElsewhere = !!opts.fromElsewhere;
     renderAddFlow();
 }
 
@@ -4333,7 +4309,7 @@ export async function confirmAddEquipment(addAnother = false) {
 
     // When opened with `assignToExercise`, the new equipment's exerciseTypes
     // gets pre-populated so the caller's exercise picks it up immediately.
-    const assignTo = _libraryReturnContext?.assignToExercise || null;
+    const assignTo = _addFlowAssignTo;
 
     try {
         const result = await getManager().getOrCreateEquipment(
@@ -4367,13 +4343,11 @@ export async function confirmAddEquipment(addAnother = false) {
             }, 30);
         } else {
             showNotification('Equipment added', 'success', 1500);
-            const ctx = _libraryReturnContext;
-            if (ctx?.returnTo) {
-                _libraryReturnContext = null;
-                // Reset the library to its canonical list view so a future
-                // standalone open isn't stuck on the Add Equipment screen.
+            if (_detailFromElsewhere) {
+                // Back to the calling page (SH-6); reset the library to its
+                // list so a future standalone open isn't stuck on this form.
                 restoreEquipmentLibraryListView();
-                ctx.returnTo(result);
+                navigateBack();
             } else {
                 openEquipmentDetail(result.id);
             }

@@ -6,7 +6,7 @@ import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, clo
 import { confirmSheet } from './confirm-sheet.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { countReassignmentImpact, reassignEquipment } from '../data/data-manager.js';
-import { setBottomNavVisible } from './navigation.js';
+import { setBottomNavVisible, enterSection, navigateBack } from './navigation.js';
 import { getExerciseName, formatBodyPart } from '../utils/workout-helpers.js';
 
 let allExercises = [];
@@ -58,23 +58,8 @@ function getEquipmentIcon(equipmentType) {
 export function openExerciseManager() {
     const section = document.getElementById('exercise-manager-section');
     if (section) {
-        // Hide all other sections
-        const sections = [
-            'dashboard',
-            'workout-selector',
-            'active-workout',
-            'workout-history-section',
-            'muscle-group-detail-section',
-            'exercise-detail-section',
-            'composition-detail-section',
-            'location-management-section',
-        ];
-        sections.forEach((id) => {
-            const el = document.getElementById(id);
-            if (el) el.classList.add('hidden');
-        });
-
-        section.classList.remove('hidden');
+        // SH-6 — one page system: the back stack remembers where we came from.
+        enterSection('exercise-manager-section');
 
         // Hide header but keep bottom nav for consistency
         setHeaderMode(false);
@@ -250,32 +235,11 @@ function filterAndRenderExercises(searchTerm = '') {
     document.getElementById('exercise-manager-grid')?.closest('.content-section-body')?.scrollTo?.(0, 0);
 }
 
-// Close exercise manager section
+// Close exercise manager section. SH-6 — back goes where you came from (the
+// live workout, the dashboard, the More menu's page…), not a fixed place.
 export function closeExerciseManager() {
-    const section = document.getElementById('exercise-manager-section');
-    if (section) {
-        section.classList.add('hidden');
-    }
-
-    // Check if we came from active workout
-    if (window.editingFromActiveWorkout) {
-        // Return to active workout
-        const activeWorkout = document.getElementById('active-workout');
-        if (activeWorkout) {
-            activeWorkout.classList.remove('hidden');
-        }
-        // Show bottom nav again
-        setBottomNavVisible(true);
-        // Clear the flag
-        window.editingFromActiveWorkout = false;
-    } else {
-        // Show dashboard (normal behavior from exercise library)
-        const dashboard = document.getElementById('dashboard');
-        if (dashboard) {
-            dashboard.classList.remove('hidden');
-        }
-        setBottomNavVisible(true);
-    }
+    window.editingFromActiveWorkout = false;
+    navigateBack();
 }
 
 // Build exercise usage cache from workout history
@@ -439,22 +403,6 @@ export function openEditExerciseSection(exercise) {
     selectedEquipmentId = null;
     selectedEquipmentData = null;
 
-    // Hide all other sections
-    const sections = [
-        'dashboard',
-        'workout-selector',
-        'active-workout',
-        'workout-history-section',
-        'muscle-group-detail-section',
-        'exercise-detail-section',
-        'composition-detail-section',
-        'exercise-manager-section',
-    ];
-    sections.forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) el.classList.add('hidden');
-    });
-
     // Resolve title + initial field values (null `exercise` = create mode)
     const isEdit = !!exercise;
     currentEditingExercise = isEdit ? exercise : null;
@@ -485,8 +433,10 @@ export function openEditExerciseSection(exercise) {
 
     section.innerHTML = renderEditExerciseMarkup(title, initial, showDelete);
 
-    // Show the edit section
-    section.classList.remove('hidden');
+    // Show the edit section. SH-6 — from the live workout the library is
+    // only a pass-through, so the edit page replaces it in the back stack and
+    // back returns straight to the workout.
+    enterSection('edit-exercise-section', { replace: !!window.editingFromActiveWorkout });
 
     // Wire name-input validity listener
     const nameInput = document.getElementById('edit-exercise-name');
@@ -627,26 +577,10 @@ function renderEditExerciseMarkup(title, v, showDelete) {
 
 // Close the edit exercise section
 export function closeEditExerciseSection() {
-    const section = document.getElementById('edit-exercise-section');
-    if (section) section.classList.add('hidden');
-
-    if (window.editingFromActiveWorkout) {
-        // Return to active workout - hide exercise manager section first
-        const exerciseManager = document.getElementById('exercise-manager-section');
-        if (exerciseManager) exerciseManager.classList.add('hidden');
-
-        const activeWorkout = document.getElementById('active-workout');
-        if (activeWorkout) activeWorkout.classList.remove('hidden');
-
-        // Show bottom nav again
-        setBottomNavVisible(true);
-
-        window.editingFromActiveWorkout = false;
-    } else {
-        // Return to exercise manager (normal behavior)
-        const exerciseManager = document.getElementById('exercise-manager-section');
-        if (exerciseManager) exerciseManager.classList.remove('hidden');
-    }
+    // SH-6 — back to wherever the edit page was opened from (the library,
+    // or straight to the live workout — see openEditExerciseSection).
+    window.editingFromActiveWorkout = false;
+    navigateBack();
 
     currentEditingExercise = null;
     selectedEquipmentId = null;
@@ -914,25 +848,14 @@ export async function addEquipmentForExerciseFromCatalog() {
         return;
     }
 
-    const editSection = document.getElementById('edit-exercise-section');
-    const libSection = document.getElementById('equipment-library-section');
-    if (!libSection) return;
+    if (!document.getElementById('equipment-library-section')) return;
+    const { showAddEquipmentFlow } = await import('./equipment-library-ui.js');
 
-    const { setLibraryReturnContext, showAddEquipmentFlow } = await import('./equipment-library-ui.js');
-
-    setLibraryReturnContext({
-        assignToExercise: exerciseName,
-        returnTo: async () => {
-            libSection.classList.add('hidden');
-            if (editSection) editSection.classList.remove('hidden');
-            // Refresh so the freshly added equipment shows up assigned to this exercise.
-            await populateEquipmentListForSection(exerciseName);
-        },
-    });
-
-    if (editSection) editSection.classList.add('hidden');
-    libSection.classList.remove('hidden');
-    showAddEquipmentFlow();
+    // SH-6 — the library is just the next page: its back / save returns here
+    // via navigateBack, and the edit-exercise route refreshes the equipment
+    // list (resumeEditExerciseSection) so the new piece shows up assigned.
+    enterSection('equipment-library-section');
+    showAddEquipmentFlow({ assignToExercise: exerciseName, fromElsewhere: true });
 }
 
 /**
@@ -943,28 +866,25 @@ export async function addEquipmentForExerciseFromCatalog() {
  */
 export async function editEquipmentInLibrary(equipmentId) {
     if (!equipmentId) return;
-    const exerciseName =
+    if (!document.getElementById('equipment-library-section')) return;
+    const { openEquipmentDetail } = await import('./equipment-library-ui.js');
+
+    // SH-6 — see addEquipmentForExerciseFromCatalog: back returns here.
+    enterSection('equipment-library-section');
+    await openEquipmentDetail(equipmentId, { fromElsewhere: true });
+}
+
+/**
+ * SH-6 — the edit page shown again by going back to it (from the equipment
+ * library or editor): its equipment may have changed, so refresh the list.
+ */
+export async function resumeEditExerciseSection() {
+    const name =
         currentEditingExercise?.name ||
         currentEditingExercise?.machine ||
+        document.getElementById('edit-exercise-name')?.value.trim() ||
         null;
-
-    const editSection = document.getElementById('edit-exercise-section');
-    const libSection = document.getElementById('equipment-library-section');
-    if (!libSection) return;
-
-    const { setLibraryReturnContext, openEquipmentDetail } = await import('./equipment-library-ui.js');
-
-    setLibraryReturnContext({
-        returnTo: async () => {
-            libSection.classList.add('hidden');
-            if (editSection) editSection.classList.remove('hidden');
-            if (exerciseName) await populateEquipmentListForSection(exerciseName);
-        },
-    });
-
-    if (editSection) editSection.classList.add('hidden');
-    libSection.classList.remove('hidden');
-    await openEquipmentDetail(equipmentId);
+    if (name) await populateEquipmentListForSection(name);
 }
 
 // Add equipment to list instantly (from the Add Equipment button in full-screen section)
@@ -1400,12 +1320,8 @@ export async function openEquipmentEditor(equipment) {
     // Populate location datalist with saved gym locations
     await populateEquipmentEditorLocationDatalist();
 
-    // Hide edit exercise section and show equipment editor section
-    const editExerciseSection = document.getElementById('edit-exercise-section');
-    const equipmentSection = document.getElementById('equipment-editor-section');
-
-    if (editExerciseSection) editExerciseSection.classList.add('hidden');
-    if (equipmentSection) equipmentSection.classList.remove('hidden');
+    // SH-6 — the editor is the next page; its back returns to the edit page.
+    enterSection('equipment-editor-section');
 }
 
 /**
@@ -1666,12 +1582,7 @@ export async function deleteEquipmentFromEditor() {
  * Close equipment editor section
  */
 export function closeEquipmentEditor() {
-    const equipmentSection = document.getElementById('equipment-editor-section');
-    const editExerciseSection = document.getElementById('edit-exercise-section');
-
-    if (equipmentSection) equipmentSection.classList.add('hidden');
-    if (editExerciseSection) editExerciseSection.classList.remove('hidden');
-
+    navigateBack(); // SH-6 — the edit page's route refreshes its equipment list
     editingEquipmentData = null;
     editingEquipmentLocations = [];
 }
@@ -1792,9 +1703,8 @@ export async function showReassignEquipment() {
         reassignmentState.newExerciseName = option.dataset.exercise;
     };
 
-    // Hide equipment editor, show reassignment modal
-    const equipmentSection = document.getElementById('equipment-editor-section');
-    if (equipmentSection) equipmentSection.classList.add('hidden');
+    // A top-layer <dialog> over the editor — the page stays where it is, so
+    // any way the dialog closes (button, Escape, system back) lands on it.
     openModal(modal);
 }
 
@@ -1963,11 +1873,6 @@ export function closeReassignModal() {
     const modal = document.getElementById('reassign-equipment-modal');
     if (modal) closeModal(modal);
 
-    // Re-show equipment editor if it was hidden
-    const equipmentSection = document.getElementById('equipment-editor-section');
-    if (equipmentSection && editingEquipmentData) {
-        equipmentSection.classList.remove('hidden');
-    }
 
     reassignmentState = {
         equipmentId: null, equipmentName: null,

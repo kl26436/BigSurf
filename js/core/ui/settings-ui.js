@@ -6,7 +6,7 @@ import { Config, APP_VERSION } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr, formatHeight, parseHeightToCm } from './ui-helpers.js';
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet } from './sheet.js';
-import { navigateTo } from './navigation.js';
+import { navigateTo, navigateBack } from './navigation.js';
 import { db, doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from '../data/firebase-config.js';
 import { exportWorkoutData } from '../data/data-manager.js';
 import { isManualDeloadActive, manualDeloadEnd, MANUAL_DELOAD_WEIGHT_PCT, weekOverrideOf } from '../features/session-intent.js';
@@ -1380,7 +1380,9 @@ export function selectProfileExperience(value) {
 export function closeProfileExperiencePicker() {
     closeSheet('profile-exp-picker');
 }
-export function closeProfile() { navigateTo('settings-section'); }
+// SH-6 — one back system: back to wherever the profile was opened from
+// (only Settings today, but navigateBack never strands a new entry point).
+export function closeProfile() { navigateBack(); }
 
 /**
  * Rebuild PRs from settings page — recalculates from full workout history.
