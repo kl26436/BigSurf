@@ -2,7 +2,8 @@
 // Handles bottom nav navigation and view switching
 
 import { resetPageLock } from './page-lock.js';
-import { closeAllSheets } from './sheet.js';
+import { closeAllSheets, closeTopSheet, sheetDepth } from './sheet.js';
+import { createBackGuard } from './back-guard.js';
 
 // ===================================================================
 // NAVIGATION ROUTING
@@ -40,7 +41,24 @@ let fadeTimeout = null;
 // ===================================================================
 
 const navStack = [];
-const MAX_STACK_SIZE = 5;
+// SH-6 — 10 deep (dashboard → progress → muscle → exercise → equipment →
+// … must survive), with top-dedupe in navigateTo.
+const MAX_STACK_SIZE = 10;
+
+/** The section a view name lands on — so 'history' and 'workout-history-section' compare equal. */
+const VIEW_ALIASES = {
+    history: 'workout-history-section', 'workout-history': 'workout-history-section',
+    workout: 'workout-selector', 'start-workout': 'workout-selector', templates: 'workout-selector', 'workout-management': 'workout-selector',
+    'workout-editor': 'workout-editor-section',
+    equipment: 'equipment-library-section', location: 'location-management-section',
+    exercises: 'exercise-manager-section',
+};
+function sectionOf(view) {
+    if (!view) return null;
+    if (VIEW_ALIASES[view]) return VIEW_ALIASES[view];
+    if (SECTION_IDS.includes(view)) return view;
+    return SECTION_IDS.includes(`${view}-section`) ? `${view}-section` : view;
+}
 let skipStackPush = false;
 
 export function navigateBack() {
@@ -104,14 +122,19 @@ export function navigateTo(view) {
     // would leave the sheet visible across the navigation.
     closeMoreMenu();
 
-    // Push current view onto stack for back navigation
+    // Push current view onto stack for back navigation. SH-6 — going
+    // "forward" to the view that's on top of the stack IS going back (a
+    // fixed "back to dashboard" link must not leave a dashboard ↔ detail
+    // loop behind it), and the same view is never pushed twice in a row.
     if (!skipStackPush) {
         const current = getCurrentView();
-        if (current && current !== view) {
-            navStack.push(current);
-            // Cap stack size
-            if (navStack.length > MAX_STACK_SIZE) {
-                navStack.shift();
+        const top = navStack[navStack.length - 1];
+        if (current && sectionOf(current) !== sectionOf(view)) {
+            if (top && sectionOf(top) === sectionOf(view)) {
+                navStack.pop();
+            } else if (!top || sectionOf(top) !== sectionOf(current)) {
+                navStack.push(current);
+                if (navStack.length > MAX_STACK_SIZE) navStack.shift();
             }
         }
     }
@@ -132,6 +155,7 @@ export function navigateTo(view) {
 
         // Route to appropriate view
         routeToView(view);
+        backGuard.sync();
     }
 
     // Cancel any in-progress fade from a previous navigateTo call
@@ -765,4 +789,59 @@ export function showExerciseDetail(exerciseName) {
     const { AppState } = window;
     if (AppState) AppState.activeExercise = exerciseName;
     navigateTo('exercise-detail');
+}
+// ===================================================================
+// BACK GESTURE (SH-6) — system back (Android, iOS edge swipe) does an
+// in-app back instead of leaving the app. See back-guard.js.
+// ===================================================================
+
+function topDialog() {
+    const open = [...document.querySelectorAll('dialog[open]')];
+    return open[open.length - 1] || null;
+}
+
+function moreMenuOpen() {
+    return !!document.getElementById('more-menu')?.classList.contains('visible');
+}
+
+function canGoBackInApp() {
+    if (typeof document === 'undefined') return false;
+    if (topDialog() || sheetDepth() > 0 || moreMenuOpen()) return true;
+    const current = getCurrentView();
+    return navStack.length > 0 || (!!current && current !== 'dashboard');
+}
+
+/** One back step, innermost layer first. */
+function goBackInApp() {
+    const dlg = topDialog();
+    if (dlg) {
+        // confirmSheet/promptSheet resolve on 'cancel'; openModal dialogs close.
+        const ev = new Event('cancel', { cancelable: true });
+        dlg.dispatchEvent(ev);
+        if (!ev.defaultPrevented && dlg.open) {
+            if (typeof window.closeModal === 'function') window.closeModal(dlg);
+            else dlg.close();
+        }
+        return;
+    }
+    if (sheetDepth() > 0) { closeTopSheet(); return; }
+    if (moreMenuOpen()) { closeMoreMenu(); return; }
+    // Leaving the live workout goes through its own confirm, like its ← button.
+    if (getCurrentView() === 'active-workout' && typeof window.awConfirmExit === 'function') {
+        window.awConfirmExit();
+        return;
+    }
+    navigateBack();
+}
+
+const backGuard = createBackGuard({
+    history: typeof window !== 'undefined' ? window.history : { pushState() {}, back() {} },
+    canGoBack: canGoBackInApp,
+    goBack: goBackInApp,
+});
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('popstate', () => backGuard.onPopState());
+    // Sheets and dialogs announce open/close so the guard follows them.
+    document.addEventListener('bigsurf:layer', () => backGuard.sync());
 }

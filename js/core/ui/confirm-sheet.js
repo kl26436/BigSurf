@@ -51,6 +51,7 @@ function openSheet({ title, message, bodyHTML, actionsHTML, onWire, iconHTML = '
             setTimeout(() => {
                 try { dlg.close(); } catch { /* already closed */ }
                 dlg.remove();
+                document.dispatchEvent(new CustomEvent('bigsurf:layer'));
             }, 300);
         };
 
@@ -68,6 +69,7 @@ function openSheet({ title, message, bodyHTML, actionsHTML, onWire, iconHTML = '
         });
 
         dlg.showModal();
+        document.dispatchEvent(new CustomEvent('bigsurf:layer')); // SH-6 back guard
         // Attention cues: the whole screen dims+blurs behind the top-layer
         // dialog, and a haptic fires in-hand — a bottom sheet alone is easy
         // to miss mid-workout. haptic() respects prefers-reduced-motion.

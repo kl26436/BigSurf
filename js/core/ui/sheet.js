@@ -133,7 +133,13 @@ export function openSheet({
             el.classList.add('visible');
         });
     }
+    announceLayer();
     return handle;
+}
+
+/** SH-6 — tell the back guard a layer opened or closed. */
+function announceLayer() {
+    try { document.dispatchEvent(new CustomEvent('bigsurf:layer')); } catch { /* no DOM */ }
 }
 
 /** Footer buttons from `actions: [{ label (HTML), onClick (handler string), primary, warm, danger, disabled }]`. */
@@ -201,6 +207,7 @@ function closeEntry(entry, { immediate = false, silent = false } = {}) {
     if (stack.length === 0) setInert(false);
     const prev = entry.previousFocus;
     if (prev && document.contains(prev) && typeof prev.focus === 'function') prev.focus({ preventScroll: true });
+    announceLayer();
     if (typeof entry.onClose === 'function') {
         try { entry.onClose(); } catch (e) { console.error('❌ sheet onClose threw:', e); }
     }

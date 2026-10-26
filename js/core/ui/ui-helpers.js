@@ -310,6 +310,7 @@ export function setHeaderMode(showFullHeader) {
 
 // Open a modal — works for both <dialog> and <div> modals, accepts element or ID string
 export function openModal(modal) {
+    setTimeout(() => document.dispatchEvent(new CustomEvent('bigsurf:layer')), 0); // SH-6 back guard
     if (typeof modal === 'string') modal = document.getElementById(modal);
     if (!modal) return;
     if (modal.tagName === 'DIALOG') {
@@ -353,6 +354,7 @@ export function openModal(modal) {
 
 // Close a modal — works for both <dialog> and <div> modals, accepts element or ID string
 export function closeModal(modal) {
+    setTimeout(() => document.dispatchEvent(new CustomEvent('bigsurf:layer')), 0); // SH-6 back guard
     if (typeof modal === 'string') modal = document.getElementById(modal);
     if (!modal) return;
     if (modal.tagName === 'DIALOG') {
