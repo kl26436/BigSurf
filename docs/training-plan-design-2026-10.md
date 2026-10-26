@@ -364,6 +364,15 @@ Acceptance: from an empty Plan page, one conversation of ≤ 6 turns produces a 
 - **Not done here:** `trustLevel` is carried from the previous wave, not tied to `rotationPolicy` — `auto_confirm` also means "the dashboard pre-builds the session", a different decision; the Settings toggle still edits the program. `sessionMinutes` is stored and shown to the coach but caps nothing yet — TP-3 never composes sessions (the roll reuses them); it matters for TP-4/5.
 - **Coach:** `get_plan`, `update_plan`, `draft_next_wave`; `get_program` / `get_week_plan` retired from the tool list (A3) — 29 chat tools. The `Your plan:` line (A2) sits after the Today line. Eval: `reportcard-wave-ending` (the runner rolls first, as the job does).
 
+## 3d. As built — TP-4 (2026-10-26)
+
+- `plan-sessions.js` (pure, mirrored): `splitTemplatesForList`, `planWeekSessions`, `cloneForMyWorkouts`, `planTemplatesToArchive`, `formatPlanSessionsContext`.
+- **Ownership only comes from building for the plan.** `create_program` links whatever is on the split — today that's Kevin's hand-built workouts — so it does NOT mark templates plan-owned (that would hide his own workouts from his list). `create_workout_template { forPlan: true }` does, when `plan/current` exists (`planId: 'current'`). `replace_day` writes `{ ...template, exercises }`, so ownership survives a rewrite. The near-duplicate guard still applies to plan sessions (the coach reuses an existing workout rather than cloning it); only "save to my workouts" bypasses it.
+- **Workouts tab:** the list is the user's own workouts; the "Your plan" group on top replaces the single plan row — the row that opens the Plan page, then this week's sessions from the week plan (whoever owns them) with Start, today highlighted, and a save button on plan-built ones. The session sheet on the Plan page has *Save to my workouts* too. The copy is `kind: 'core'`, `planOwned: false`, `savedFromPlan: { templateId, planId, date }`, name editable (default "{name} (saved)").
+- **Archiving:** the Sunday roll archives plan-owned sessions that neither the week plan nor any wave still running from the new wave's first day uses (they stay for history). The user's own workouts are never archived by it.
+- **Coach:** plan sessions leave the capped "User's saved workouts" block and get a `Plan sessions:` line; `list_templates` returns `planOwned`.
+- **Verified, not rebuilt:** a session started from the Workouts tab gets the week's intent at start (`stampSessionIntent` reads the active program whoever owns the template).
+
 ## 4. Report card — the Sunday page, as the user reads it
 
 ```

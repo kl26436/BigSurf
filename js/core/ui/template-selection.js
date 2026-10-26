@@ -16,6 +16,7 @@ import { getTemplatesForDayOfWeek } from '../features/metrics/aggregators.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 import { deriveProgramWeek } from '../features/week-targets.js';
 import { weekKindLabel } from '../features/plain-language.js';
+import { splitTemplatesForList, planWeekSessions } from '../features/plan-sessions.js';
 
 // ===================================================================
 // TEMPLATE SELECTION STATE
@@ -343,8 +344,9 @@ async function renderWorkoutSelectorUI() {
     // Phase 7 — archived workouts drop out of the main browsing surface (and
     // For Today ranking + dashboard); they live in a collapsed group at the
     // bottom of the list, restorable any time.
-    const activeTemplates = allTemplates.filter(t => !t.archived);
-    const archivedTemplates = allTemplates.filter(t => t.archived);
+    // TP-4 — the list is the user's own workouts; plan sessions show in the
+    // "Your plan" group on top (this week's, with Start), not in the list.
+    const { mine: activeTemplates, archived: archivedTemplates } = splitTemplatesForList(allTemplates);
 
     // Collect unique categories (from active workouts only)
     const categories = [...new Set(activeTemplates.map(effectiveTemplateCategory))];
@@ -372,7 +374,7 @@ async function renderWorkoutSelectorUI() {
 
     // Render template rows (archived group appended when not category-filtered)
     renderTemplateRows(listContainer, filtered, activeSelectorCategory !== null, archivedTemplates);
-    renderBlockLink(listContainer);
+    renderPlanGroup(listContainer, allTemplates);
 
     // Set up delegation for clicks
     setupSelectorDelegation(listContainer);
@@ -384,26 +386,54 @@ async function renderWorkoutSelectorUI() {
 }
 
 /**
- * AP-24 — with an active program, the Workouts tab's first row opens the
- * Block page (the same page as the dashboard program line).
+ * TP-4 — the "Your plan" group atop the Workouts list: a row that opens the
+ * Plan page, then this week's plan sessions (from the week plan) with Start,
+ * so today's session stays one tap away. Sessions built for the plan get a
+ * "save to my workouts" button. Shown with an active program, a plan, or
+ * plan-owned sessions.
  */
-function renderBlockLink(container) {
+function renderPlanGroup(container, allTemplates) {
     const program = AppState._activeProgram;
-    if (!program) return;
-    const { week } = deriveProgramWeek(program, AppState.getTodayDateString());
-    const weeks = program.weeks || 0;
-    const { target } = deriveProgramWeek(program, AppState.getTodayDateString());
-    // TP-3 — the week's kind, never "week 2 of 4" (the waves are scaffolding).
-    const when = week > weeks ? 'These weeks are done' : week >= 1 ? weekKindLabel(target) : 'Starts soon';
+    const hasPlanOwned = (allTemplates || []).some(t => t.planOwned && !t.archived);
+    if (!program && !hasPlanOwned) return;
+    const today = AppState.getTodayDateString();
+    let when = 'See every week and day';
+    if (program) {
+        const { week, target } = deriveProgramWeek(program, today);
+        const weeks = program.weeks || 0;
+        // TP-3 — the week's kind, never "week 2 of 4" (the waves are scaffolding).
+        when = week > weeks ? 'These weeks are done' : week >= 1 ? `${weekKindLabel(target)} · see every week and day` : 'Starts soon';
+    }
+    const sessions = planWeekSessions({ weekPlan: AppState._weekPlan || null, templates: allTemplates, workouts: AppState.workouts || [], today });
+    const rows = sessions.map((x) => {
+        const name = x.template.name || x.template.id;
+        const status = x.done ? 'Done' : x.isToday ? 'Today' : x.date < today ? 'Missed' : '';
+        return `
+            <div class="row-card template-row ws-plan-row${x.isToday ? ' ws-plan-row--today' : ''}" data-template-id="${escapeAttr(x.template.id)}" data-action="openWorkoutEditor">
+                <div class="row-card__content">
+                    <div class="row-card__title">${escapeHtml(x.dayLabel)} · ${escapeHtml(name)}</div>
+                    ${status ? `<div class="row-card__subtitle">${escapeHtml(status)}</div>` : ''}
+                </div>
+                ${x.template.planOwned ? `<button class="ws-plan-row__save" data-action="savePlanSession" data-template-id="${escapeAttr(x.template.id)}" aria-label="${escapeAttr(`Save ${name} to my workouts`)}"><i class="fas fa-bookmark" aria-hidden="true"></i></button>` : ''}
+                <div class="template-row__start">
+                    <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(name)}" aria-label="${escapeAttr(`Start ${name}`)}">
+                        <i class="fas fa-play"></i>
+                    </button>
+                </div>
+            </div>`;
+    }).join('');
     container.insertAdjacentHTML('afterbegin', `
-        <button type="button" class="row-card ws-block-link" onclick="openBlockPage()">
-            <span class="row-card__icon"><i class="fas fa-calendar-week"></i></span>
-            <span class="row-card__content">
-                <span class="row-card__title">Your plan</span>
-                <span class="row-card__subtitle">${when} · see every week and day</span>
-            </span>
-            <i class="fas fa-chevron-right row-card__action"></i>
-        </button>`);
+        <div class="ws-plan-group">
+            <button type="button" class="row-card ws-block-link" onclick="openBlockPage()">
+                <span class="row-card__icon"><i class="fas fa-calendar-week"></i></span>
+                <span class="row-card__content">
+                    <span class="row-card__title">Your plan</span>
+                    <span class="row-card__subtitle">${escapeHtml(when)}</span>
+                </span>
+                <i class="fas fa-chevron-right row-card__action"></i>
+            </button>
+            ${rows ? `<div class="ws-plan-group__rows">${rows}</div>` : ''}
+        </div>`);
 }
 
 /**
@@ -1704,6 +1734,14 @@ function setupSelectorDelegation(container) {
                 expandedExerciseInTemplate = (expandedExerciseInTemplate === rowKey) ? null : rowKey;
                 refreshEditorOrList();
             }
+            return;
+        }
+
+        // TP-4 — save a plan session to the user's own list.
+        const saveBtn = e.target.closest('[data-action="savePlanSession"]');
+        if (saveBtn) {
+            e.stopPropagation();
+            if (typeof window.saveSessionToMyWorkouts === 'function') window.saveSessionToMyWorkouts(saveBtn.dataset.templateId);
             return;
         }
 

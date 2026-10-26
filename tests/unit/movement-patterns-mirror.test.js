@@ -34,6 +34,8 @@ const MIRRORS = [
     ['js/core/features/block-view.js', 'functions/block-view.js'],
     ['js/core/features/plan-timeline.js', 'functions/plan-timeline.js'],
     ['js/core/features/plan-roller.js', 'functions/plan-roller.js'],
+    // TP-4 — plan-owned sessions (the roll archives the unused ones server-side).
+    ['js/core/features/plan-sessions.js', 'functions/plan-sessions.js'],
 ];
 
 describe('functions/ mirrors of pure client modules', () => {

@@ -17,6 +17,7 @@ import {
 import { summarizeWeekPlan, satisfiedDays, weekDates, DAY_KEYS } from './week-plan.js';
 import { computeVerdicts, formatVerdictsContext } from './coach-rules.js';
 import { describeVolumeLandmarks, effortTag } from './plain-language.js';
+import { splitTemplatesForList, formatPlanSessionsContext } from './plan-sessions.js';
 
 /**
  * Exercises with `name` resolved from the workout-level `exerciseNames` map
@@ -87,8 +88,11 @@ export function buildTrainingContext({
     if (prBlock) summary += `\n${prBlock}`;
 
     // Saved workouts — "plan my week" should adjust what exists, not reinvent.
-    const templatesBlock = buildTemplatesContext(templates || [], { weekPlan });
+    // TP-4 — plan sessions are listed through the plan, outside the cap.
+    const { plan: planOwned } = splitTemplatesForList(templates || []);
+    const templatesBlock = buildTemplatesContext((templates || []).filter(t => !t.planOwned), { weekPlan });
     if (templatesBlock) summary += `\n${templatesBlock}`;
+    if (planOwned.length) summary += `\n${formatPlanSessionsContext({ templates, weekPlan, today })}`;
 
     // Plate inventory — the coach must never prescribe a load the gym can't build.
     const plates = unit === 'kg' ? settings?.plateKg : settings?.plateLbs;

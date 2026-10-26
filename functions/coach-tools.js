@@ -134,6 +134,7 @@ const TOOL_DEFINITIONS = [
                 category: { type: 'string', enum: TEMPLATE_CATEGORIES },
                 kind: { type: 'string', enum: TEMPLATE_KINDS, description: "'core' = recurring workout (default) · 'variation' = riff on an existing core workout (pass parentTemplateId) · 'oneOff' = single occasion (travel gym, test day — auto-archives after first use). A new core/oneOff template that overlaps an existing one ≥70% is rejected as a near-duplicate — update or vary that one instead." },
                 parentTemplateId: { type: 'string', description: 'Required when kind=variation: the core template this varies' },
+                forPlan: { type: 'boolean', description: "true when building a session FOR the user's plan in a planning conversation — it lives with the plan (the Workouts tab's \"Your plan\" group), not in their own list; they can save a copy. Default false (a workout they asked to keep)." },
                 exercises: {
                     type: 'array',
                     description: '5-8 exercises for a full workout (compound movements first); fewer only if the user asked for fewer',
@@ -1462,6 +1463,8 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                     category: t.category || null,
                     kind: t.kind || 'core',
                     ...(t.parentTemplateId ? { parentTemplateId: t.parentTemplateId } : {}),
+                    // TP-4 — built for the plan (shown in its "Your plan" group, not the user's list).
+                    planOwned: !!t.planOwned,
                     usageCount,
                     lastUsedDate,
                     avgDurationMin: durations.get(String(t.name || d.id).toLowerCase()) ?? null,
@@ -1824,6 +1827,12 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             }
 
             const nowIso = new Date().toISOString();
+            // TP-4 — a session built for the plan lives with the plan (only when one exists).
+            let planOwned = false;
+            if (input.forPlan === true) {
+                const planSnap = await userDoc().collection('plan').doc('current').get();
+                planOwned = planSnap.exists;
+            }
             await userDoc().collection('workoutTemplates').doc(templateId).set({
                 id: templateId,
                 name,
@@ -1831,6 +1840,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 exercises,
                 kind,
                 ...(parentTemplateId ? { parentTemplateId } : {}),
+                ...(planOwned ? { planOwned: true, planId: 'current' } : {}),
                 lastUpdated: nowIso,
                 createdBy: userId,
                 isCustom: true,
@@ -1838,7 +1848,11 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 createdVia: 'coach',
             });
             return {
-                result: { templateId, name, exerciseCount: exercises.length },
+                result: {
+                    templateId, name, exerciseCount: exercises.length,
+                    ...(planOwned ? { planOwned: true } : {}),
+                    ...(input.forPlan === true && !planOwned ? { note: "No plan yet, so it's in the user's own list." } : {}),
+                },
                 actionCard: {
                     kind: 'template_created',
                     templateId, name, category,

@@ -11,6 +11,7 @@
 const { rollWindow, draftNextWave, rolledProgramDoc } = require('./plan-roller');
 const { applyRotation } = require('./exercise-rotation');
 const { reportWeek, DEFAULT_TIME_ZONE } = require('./report-card');
+const { planTemplatesToArchive } = require('./plan-sessions');
 
 const gymOf = (w) => (typeof w?.location === 'object' ? w.location?.name : w?.location) || null;
 
@@ -89,8 +90,17 @@ async function rollPlanForUser(userRef, { now = new Date() } = {}) {
     const id = `program_${now.getTime()}`;
     await userRef.collection('programs').doc(id).set(rolledProgramDoc(draft, { id, nowIso, priorTemplates }));
     await userRef.collection('plan').doc('current').set({ lastRolledFor: draft.startDate, lastRolledAt: nowIso }, { merge: true });
+    // TP-4 — plan sessions no week uses any more stay for history, archived.
+    const archived = planTemplatesToArchive({
+        // From the new wave's first day: the old wave ends tonight, so it no longer counts.
+        templates: data.templates, weekPlan: data.weekPlan, today: draft.startDate,
+        programs: [...data.programs.map(p => (p.active === true ? { ...p, state: 'finished' } : p)), { ...draft, id }],
+    });
+    for (const tid of archived) {
+        await userRef.collection('workoutTemplates').doc(tid).set({ archived: true, archivedAt: nowIso, archivedBy: 'plan-roll', lastUpdated: nowIso }, { merge: true });
+    }
     return {
-        status: 'rolled', programId: id, start: draft.startDate,
+        status: 'rolled', programId: id, start: draft.startDate, archived,
         rotated: draft.applyRotations ? draft.rotations.reduce((n, r) => n + r.swaps.length, 0) : 0,
         pending: draft.applyRotations ? 0 : draft.rotations.reduce((n, r) => n + r.swaps.length, 0),
     };

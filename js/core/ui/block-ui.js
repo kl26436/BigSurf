@@ -17,7 +17,8 @@ import { buildPlanTimeline } from '../features/plan-timeline.js';
 import { rollUndoable } from '../features/plan-roller.js';
 import { weekOverrideOf } from '../features/session-intent.js';
 import { openSheet, closeSheet } from './sheet.js';
-import { confirmSheet } from './confirm-sheet.js';
+import { confirmSheet, promptSheet } from './confirm-sheet.js';
+import { cloneForMyWorkouts } from '../features/plan-sessions.js';
 
 let _tl = null;    // the timeline on screen
 let _ctx = null;   // the data it was built from
@@ -283,6 +284,8 @@ export function openBlockSession(weekIdx, cellIdx) {
                 </div>`,
         actions: [
             { label: 'Close', onClick: 'closeBlockSession()' },
+            // TP-4 — a session built for the plan can be kept in the user's own list.
+            ...(template?.planOwned ? [{ label: 'Save to my workouts', onClick: `closeBlockSession(); saveSessionToMyWorkouts('${escapeAttr(template.id)}')` }] : []),
             ...(primaryAction ? [primaryAction] : []),
         ],
     });
@@ -390,6 +393,35 @@ export async function planUndoRoll() {
     }
 }
 
+/**
+ * TP-4 — "Save to my workouts": a copy of a plan session in the user's own
+ * list (name editable). Later swaps in the plan change the plan's copy only.
+ */
+export async function saveSessionToMyWorkouts(templateId) {
+    const templates = AppState.workoutPlans || [];
+    const t = templates.find(x => x.id === templateId);
+    if (!t) { showNotification("Couldn't find that workout — refresh and try again", 'warning'); return; }
+    const name = await promptSheet({
+        title: 'Save to my workouts',
+        message: "A copy goes in your list. Changes to the plan won't touch it.",
+        placeholder: 'Workout name', initialValue: `${t.name || 'Workout'} (saved)`, confirmLabel: 'Save workout', cancelLabel: 'Keep it in the plan',
+    });
+    if (name == null) return;
+    try {
+        const clone = cloneForMyWorkouts(t, { name, date: AppState.getTodayDateString() });
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        await new FirebaseWorkoutManager(AppState).saveWorkoutTemplate(clone);
+        AppState.workoutPlans = [...templates, clone];
+        showNotification(`${clone.name} saved to your workouts`, 'success', 2000);
+        // Accept the in-memory list as current and repaint the Workouts tab if it's up.
+        const { acceptCoachTemplateRefresh } = await import('./template-selection.js').catch(() => ({}));
+        if (typeof acceptCoachTemplateRefresh === 'function') acceptCoachTemplateRefresh();
+    } catch (e) {
+        console.error('❌ Save to my workouts failed:', e);
+        showNotification("Couldn't save the workout — try again", 'error');
+    }
+}
+
 // Self-wire handlers rendered from this module's own templates.
 if (typeof window !== 'undefined') {
     window.openBlockPage = openBlockPage;
@@ -405,4 +437,5 @@ if (typeof window !== 'undefined') {
     window.planSetRotationPolicy = planSetRotationPolicy;
     window.planApplySwaps = planApplySwaps;
     window.planUndoRoll = planUndoRoll;
+    window.saveSessionToMyWorkouts = saveSessionToMyWorkouts;
 }

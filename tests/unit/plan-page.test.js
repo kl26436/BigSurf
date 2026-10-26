@@ -8,6 +8,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const h = vi.hoisted(() => ({
     plan: null,
     programs: [],
+    saved: [],
+    promptSheet: vi.fn(),
+    refresh: vi.fn(),
     AppState: {
         settings: {}, globalUnit: 'lbs', _weekPlan: { days: { mon: 'push', thu: 'legs' } },
         getTodayDateString: () => '2026-10-08',
@@ -23,7 +26,9 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({
 }));
 vi.mock('../../js/core/ui/navigation.js', () => ({ navigateTo: vi.fn() }));
 vi.mock('../../js/core/ui/sheet.js', () => ({ openSheet: vi.fn(), closeSheet: vi.fn() }));
-vi.mock('../../js/core/ui/confirm-sheet.js', () => ({ confirmSheet: vi.fn() }));
+vi.mock('../../js/core/ui/confirm-sheet.js', () => ({ confirmSheet: vi.fn(), promptSheet: h.promptSheet }));
+vi.mock('../../js/core/data/firebase-workout-manager.js', () => ({ FirebaseWorkoutManager: class { async saveWorkoutTemplate(t) { h.saved.push(t); } } }));
+vi.mock('../../js/core/ui/template-selection.js', () => ({ acceptCoachTemplateRefresh: h.refresh }));
 vi.mock('../../js/core/features/plan.js', () => ({
     loadPlan: async () => h.plan,
     loadPrograms: async () => h.programs,
@@ -40,7 +45,7 @@ vi.mock('../../js/core/features/goals.js', () => ({
     loadEvents: async () => [{ id: 'e1', name: 'Trip', date: '2026-12-19', peakWeeks: 2 }],
 }));
 
-const { renderBlockPage } = await import('../../js/core/ui/block-ui.js');
+const { renderBlockPage, saveSessionToMyWorkouts } = await import('../../js/core/ui/block-ui.js');
 
 const wave = {
     id: 'p1', name: 'Strength block III', startDate: '2026-09-28', weeks: 4, active: true, split: { mon: 'push', thu: 'legs' },
@@ -104,5 +109,21 @@ describe('Plan page', () => {
         await renderBlockPage();
         expect(text()).toContain('Your plan is paused');
         expect(document.querySelectorAll('.plan-week--projected').length).toBe(0);
+    });
+
+    it('save to my workouts: one copy in the list, named as typed; the plan session untouched', async () => {
+        const planA = { id: 'push_a', name: 'Push A', planOwned: true, planId: 'current', exercises: [{ machine: 'Incline Press', sets: 4 }] };
+        h.AppState.workoutPlans = [planA];
+        h.saved.length = 0;
+        h.promptSheet.mockResolvedValueOnce('My push');
+        await saveSessionToMyWorkouts('push_a');
+        expect(h.saved).toHaveLength(1);
+        expect(h.saved[0]).toMatchObject({ name: 'My push', kind: 'core', planOwned: false, savedFromPlan: { templateId: 'push_a', planId: 'current' } });
+        expect(h.AppState.workoutPlans.map(t => t.name)).toEqual(['Push A', 'My push']);
+        expect(planA.planOwned).toBe(true);
+        expect(h.refresh).toHaveBeenCalled();
+        h.promptSheet.mockResolvedValueOnce(null); // cancelled
+        await saveSessionToMyWorkouts('push_a');
+        expect(h.saved).toHaveLength(1);
     });
 });

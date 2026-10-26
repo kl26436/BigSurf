@@ -1303,3 +1303,35 @@
     color: inherit;
     cursor: pointer;
 }
+
+/* TP-4 — "Your plan" group atop the Workouts list: this week's plan sessions. */
+.ws-plan-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    margin-bottom: var(--space-12);
+}
+.ws-plan-group .ws-block-link {
+    margin-bottom: 0;
+}
+.ws-plan-group__rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+.ws-plan-row--today {
+    border-color: var(--primary-border);
+}
+.ws-plan-row__save {
+    flex-shrink: 0;
+    width: var(--tap);
+    height: var(--tap);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-md);
+    cursor: pointer;
+}

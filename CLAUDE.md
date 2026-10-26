@@ -102,6 +102,7 @@ js/
     │   ├── plan-timeline.js        # TP-3: buildPlanTimeline (past/current/planned/projected weeks, events, markers), formatPlanContext — mirrored
     │   ├── plan-roller.js          # TP-3: rollWindow (is the next wave due?), draftNextWave (code-built), rollUndoable — mirrored
     │   ├── plan.js                 # TP-3: plan/current data layer; enable, apply waiting swaps, undo a roll
+    │   ├── plan-sessions.js        # TP-4: plan-owned sessions — list split, this week's sessions, save-a-copy, archive rule — mirrored
     │   ├── training-rules.js       # Pure volume/deload rules + RULE_THRESHOLDS (Config spreads them); training-insights wraps these
     │   ├── progression.js          # Pure double-progression + stall ladder; takes the session intent (deload never bumps)
     │   ├── session-intent.js       # getSessionIntent(): deload / peak / build for TODAY (program week > manual > legacy label); stamped on savedData.sessionIntent at start/resume
@@ -457,7 +458,7 @@ For add-exercise / equipment / similar shared flows, prefer the parameterized he
 
 Server-only (not mirrored): `functions/coach-routing.js` — model routing per turn + `coachTraces` doc builder (top-level collection, admin-only read); `functions/coach-prompts.js` — system prompts, model per tier, `buildModeRequest`; `functions/coach-loop.js` — `runCoachToolLoop`, THE tool loop (coachChatStream and the AP-20 eval both call it — change the loop there, never inline). `functions/weekly-review.js` — `buildWeeklyReviewRequest` (the review's prompt + data; index.js only sends/saves/pushes). `functions/plan-roll.js` — `loadPlanData` / `rollPlanForUser` (the Sunday job rolls the next wave before the card; the plan tools read the same load). `functions/report-card-request.js` — `buildReportCardRequest` / `reportCardDoc` (the Sunday card's data load + the one cheap model turn; index.js `sundayReportCard` / `requestReportCard` send, save, push).
 
-`functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-guards, fuzzy-match, coach-outcomes, week-targets, movement-patterns, exercise-rotation, plain-language, body-stats, goal-progress, report-card, block-view, plan-timeline, plan-roller. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
+`functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-guards, fuzzy-match, coach-outcomes, week-targets, movement-patterns, exercise-rotation, plain-language, body-stats, goal-progress, report-card, block-view, plan-timeline, plan-roller, plan-sessions. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
 
 ### Touching active-workout code
 
