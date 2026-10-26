@@ -1,9 +1,9 @@
 /* ============================================================================
-   CONFIRM / PROMPT SHEET — <dialog> wrapper around the aw-sheet chrome
+   CONFIRM / PROMPT SHEET — <dialog> wrapper around the sheet chrome (sheet.css)
    Rendered by js/core/ui/confirm-sheet.js via showModal(), so it lives in the
    browser top layer and stacks above any open modal. These rules only reset
    the <dialog> UA styles and add the message/input rows; the sheet chrome
-   (handle, header, actions) comes from the aw-sheet classes.
+   (handle, header, footer, actions) comes from the .sheet classes.
    ============================================================================ */
 
 dialog.confirm-sheet {
@@ -12,12 +12,12 @@ dialog.confirm-sheet {
     margin: 0;
     border: none;
     padding: 0;
-    /* aw-sheet supplies background/position/radius; the UA sets inset:0 with
+    /* .sheet supplies background/position/radius; the UA sets inset:0 with
        margin:auto — pin it back to the bottom edge. */
     top: auto;
     color: inherit;
     /* Springier entrance than the picker sheets — a decision sheet should
-       feel like it ARRIVED. Keep aw-sheet's bottom/max-height transitions so
+       feel like it ARRIVED. Keep the sheet's bottom/max-height transitions so
        keyboard-inset behavior is preserved. */
     transition: transform 320ms var(--ease-out-back), bottom 0.15s ease, max-height 0.15s ease;
 }

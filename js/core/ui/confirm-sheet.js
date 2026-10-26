@@ -4,7 +4,7 @@
 // <dialog> via showModal() so it joins the browser top layer and stacks above
 // ANY open modal or sheet (z-index can't beat the top layer — the reason the
 // old template editor had to close parent dialogs before opening sheets).
-// Visual chrome reuses the aw-sheet classes; confirm-sheet.css only resets
+// Visual chrome is the sheet primitive's (.sheet*, sheet.css — SH-3b); confirm-sheet.css only resets
 // the <dialog> UA styles and styles the message/input rows.
 //
 // Copy rules (CLAUDE.md §User-Facing Copy) are the caller's job, but the API
@@ -25,17 +25,17 @@ function openSheet({ title, message, bodyHTML, actionsHTML, onWire, iconHTML = '
     if (activeSheet) activeSheet.cancel();
 
     const dlg = document.createElement('dialog');
-    dlg.className = 'aw-sheet confirm-sheet';
+    dlg.className = 'sheet confirm-sheet';
     dlg.setAttribute('aria-label', title);
     dlg.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header confirm-sheet__header">
+        <div class="sheet__handle" aria-hidden="true"></div>
+        <div class="sheet__header confirm-sheet__header">
             ${iconHTML}
-            <div class="aw-sheet__title">${escapeHtml(title)}</div>
+            <div class="sheet__title">${escapeHtml(title)}</div>
         </div>
         ${message ? `<div class="confirm-sheet__message">${escapeHtml(message)}</div>` : ''}
         ${bodyHTML || ''}
-        <div class="aw-sheet__actions">${actionsHTML}</div>
+        <div class="sheet__footer">${actionsHTML}</div>
     `;
 
     document.body.appendChild(dlg);
@@ -102,8 +102,8 @@ export function confirmSheet({ title, message = '', confirmLabel, cancelLabel = 
             : '',
         hapticType: destructive ? 'warning' : 'tap',
         actionsHTML: `
-            <button class="aw-sheet__action" data-confirm-sheet="cancel">${escapeHtml(cancelLabel)}</button>
-            <button class="aw-sheet__action ${destructive ? 'danger' : 'primary'}" data-confirm-sheet="confirm">${escapeHtml(confirmLabel)}</button>
+            <button type="button" class="sheet__action" data-confirm-sheet="cancel">${escapeHtml(cancelLabel)}</button>
+            <button type="button" class="sheet__action ${destructive ? 'sheet__action--danger' : 'sheet__action--primary'}" data-confirm-sheet="confirm">${escapeHtml(confirmLabel)}</button>
         `,
         onWire(dlg, finish) {
             const confirmBtn = dlg.querySelector('[data-confirm-sheet="confirm"]');
@@ -143,8 +143,8 @@ export function promptSheet({ title, message = '', placeholder = '', initialValu
             </div>
         `,
         actionsHTML: `
-            <button class="aw-sheet__action" data-confirm-sheet="cancel">${escapeHtml(cancelLabel)}</button>
-            <button class="aw-sheet__action primary" data-confirm-sheet="confirm">${escapeHtml(confirmLabel)}</button>
+            <button type="button" class="sheet__action" data-confirm-sheet="cancel">${escapeHtml(cancelLabel)}</button>
+            <button type="button" class="sheet__action sheet__action--primary" data-confirm-sheet="confirm">${escapeHtml(confirmLabel)}</button>
         `,
         onWire(dlg, finish) {
             const input = dlg.querySelector('.confirm-sheet__input');
