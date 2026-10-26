@@ -36,7 +36,7 @@ const MARKER_END = '<!-- shell-audit:end -->';
 // them into CI.
 const BUDGETS = {
     overlayRootsOutsideSheetCss: 13,
-    safeAreaTopRulesOutsidePrimitives: 8,
+    safeAreaTopRulesOutsidePrimitives: 0, // SH-4: the inset lives in page-header.css + sheet.css (via --safe-top)
     backCloseControlsUnderTap: 4,
     searchInputsOutsideFieldSearch: 8,
     bodyOverflowWrites: 0,

@@ -231,7 +231,7 @@ function renderWorkoutHeader() {
     const intentMeta = AppState.savedData?.sessionIntent?.mode === 'deload' ? ' · deload' : '';
 
     return `
-        <div class="aw-header">
+        <div class="page-header page-header--workout">
             <button class="aw-back" onclick="awConfirmExit()" aria-label="Back to dashboard" title="Back to dashboard">
                 <i class="fas fa-chevron-left"></i>
             </button>

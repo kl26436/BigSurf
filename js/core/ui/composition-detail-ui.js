@@ -37,8 +37,8 @@ export async function renderCompositionDetail() {
     const userUnit = AppState.globalUnit || 'lbs';
 
     container.innerHTML = `
-        <div class="d-header">
-            <button class="d-back" onclick="navigateBack()"><i class="fas fa-chevron-left"></i></button>
+        <div class="page-header page-header--detail">
+            <button class="page-header__back" onclick="navigateBack()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
             <div class="d-header-info">
                 <div class="d-header-icon ic-core"><i class="fas fa-circle-nodes"></i></div>
                 <div>

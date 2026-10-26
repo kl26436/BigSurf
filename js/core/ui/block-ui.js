@@ -78,8 +78,8 @@ export async function renderBlockPage() {
 
 function headerHTML(title, subtitle) {
     return `
-        <div class="d-header">
-            <button class="d-back" onclick="navigateBack()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+        <div class="page-header page-header--detail">
+            <button class="page-header__back" onclick="navigateBack()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
             <div class="d-header-info">
                 <div>
                     <div class="d-title">${escapeHtml(title)}</div>

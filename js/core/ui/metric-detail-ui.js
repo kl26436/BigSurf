@@ -127,8 +127,8 @@ function bmiCategory(bmi) {
 
 function renderDetailLayout({ title, tag, range, hero, chart, insight, breakdown, breakdownAction }) {
     return `
-        <div class="detail-page-header">
-            <button class="detail-page-header__back" onclick="closeMetricDetail()">
+        <div class="page-header page-header--detail">
+            <button class="page-header__back" onclick="closeMetricDetail()" aria-label="Back">
                 <i class="fas fa-chevron-left"></i>
             </button>
             <div class="detail-page-header__title">${escapeHtml(title)}</div>
@@ -150,8 +150,8 @@ function renderDetailLayout({ title, tag, range, hero, chart, insight, breakdown
 
 function renderUnknownMetric(id) {
     return `
-        <div class="detail-page-header">
-            <button class="detail-page-header__back" onclick="closeMetricDetail()">
+        <div class="page-header page-header--detail">
+            <button class="page-header__back" onclick="closeMetricDetail()" aria-label="Back">
                 <i class="fas fa-chevron-left"></i>
             </button>
             <div class="detail-page-header__title">${escapeHtml(id)}</div>

@@ -1040,16 +1040,6 @@
     flex-direction: column;
     min-height: 0;
 }
-.we-header {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-12) var(--space-16);
-    padding-top: calc(var(--space-12) + env(safe-area-inset-top));
-    background: var(--bg-app);
-    border-bottom: 1px solid var(--border-subtle);
-}
 .we-header__info {
     flex: 1;
     min-width: 0;

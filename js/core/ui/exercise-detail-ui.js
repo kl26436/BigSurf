@@ -104,8 +104,8 @@ export function renderExerciseDetail(exerciseName) {
     } catch { /* chip is best-effort — the page renders without it */ }
 
     container.innerHTML = `
-        <div class="d-header">
-            <button class="d-back" onclick="navigateBack()"><i class="fas fa-chevron-left"></i></button>
+        <div class="page-header page-header--detail">
+            <button class="page-header__back" onclick="navigateBack()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
             <div class="d-header-info">
                 <div class="d-header-icon ${BP_TINTS[bodyPart] || ''}"><i class="fas ${BP_ICONS[bodyPart] || 'fa-dumbbell'}"></i></div>
                 <div>

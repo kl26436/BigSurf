@@ -10,12 +10,52 @@
     z-index: var(--z-header);
     background: var(--bg-app);
     padding: var(--space-10) var(--pad-card-x);
-    padding-top: calc(var(--space-10) + env(safe-area-inset-top, 0px));
+    /* The status-bar inset lives HERE (and in sheet.css) only — SH-4. */
+    padding-top: calc(var(--space-10) + var(--safe-top));
     display: flex;
     align-items: center;
     justify-content: space-between;
     min-height: 56px;
     border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ── Modifiers (SH-4) — the old per-page headers, folded in. Each one keeps
+   its spacing; all of them get the inset from --safe-top. ─────────────── */
+
+/* Drill-down + Block page (was .d-header — which had NO inset, so its back
+   button sat under the Dynamic Island on every non-dashboard page). */
+.page-header--detail {
+    z-index: var(--z-sticky);
+    padding: var(--space-10) 14px;
+    padding-top: calc(var(--space-10) + var(--safe-top));
+    justify-content: flex-start;
+    gap: var(--space-10);
+    min-height: 52px;
+}
+/* Active workout (was .aw-header). */
+.page-header--workout {
+    z-index: var(--z-sticky);
+    padding: var(--space-8) 14px;
+    padding-top: calc(var(--space-8) + var(--safe-top));
+    justify-content: flex-start;
+    gap: var(--space-8);
+    border-bottom: 0;
+}
+/* Workout editor (was .we-header) — a flex item in a pinned section. */
+.page-header--editor {
+    flex-shrink: 0;
+    padding: var(--space-12) var(--space-16);
+    padding-top: calc(var(--space-12) + var(--safe-top));
+    justify-content: flex-start;
+    gap: var(--space-12);
+}
+/* Edit exercise / equipment editor (was .edit-exercise-header) — bleeds
+   across the section's side padding. */
+.page-header--bleed {
+    padding: var(--space-12) var(--space-16);
+    padding-top: calc(var(--space-12) + var(--safe-top));
+    margin: 0 calc(-1 * var(--space-16)) var(--space-16);
+    border-bottom-color: var(--border);
 }
 
 .page-header__left {
@@ -147,7 +187,7 @@
     gap: var(--space-8);
     min-height: 56px;
     padding: var(--space-12) var(--space-16);
-    padding-top: calc(var(--space-12) + env(safe-area-inset-top, 0px));
+    padding-top: calc(var(--space-12) + var(--safe-top));
     border-bottom: 1px solid var(--border-light);
     background: var(--bg-app);
     flex-shrink: 0;

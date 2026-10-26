@@ -1633,8 +1633,8 @@ export async function renderProgressPage() {
     const volumeByPart = weeklyVolumeByBodyPart(allWorkouts);
 
     container.innerHTML = `
-        <div class="d-header">
-            <button class="d-back" onclick="navigateBack()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+        <div class="page-header page-header--detail">
+            <button class="page-header__back" onclick="navigateBack()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
             <div class="d-header-info">
                 <div>
                     <div class="d-title">Progress</div>

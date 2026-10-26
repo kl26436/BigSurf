@@ -13,21 +13,6 @@
 .aw-body { position: relative; }
 
 /* === HEADER === */
-.aw-header {
-    background: var(--bg-app);
-    padding: 8px 14px;
-    /* Sticky at top:0 means this header, not the app container, must carry
-       the status-bar inset — otherwise the back button and exercise name sit
-       under the Dynamic Island / Live Activity bar (9/10 + 9/18 reports). */
-    padding-top: calc(8px + env(safe-area-inset-top, 0px));
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 56px;
-    position: sticky;
-    top: 0;
-    z-index: var(--z-sticky);
-}
 .aw-back, .aw-menu, .aw-coach {
     /* SH-2a — 44px hit area, same 32px visual: padding grows the box, the
        background stays clipped to the circle, the negative margin keeps layout. */

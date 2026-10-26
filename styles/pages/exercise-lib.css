@@ -213,20 +213,6 @@
 /* ===========================================
    24. EDIT EXERCISE SECTION
    =========================================== */
-.edit-exercise-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 56px;
-    padding: var(--space-12) var(--space-16);
-    padding-top: calc(var(--space-12) + env(safe-area-inset-top, 0px));
-    border-bottom: 1px solid var(--border);
-    margin: 0 calc(-1 * var(--space-16)) var(--space-16);
-    position: sticky;
-    top: 0;
-    background: var(--bg-app);
-    z-index: var(--z-header);
-}
 
 /* Ensure edit section scrolls independently so sticky header works */
 #edit-exercise-section {
@@ -235,7 +221,8 @@
     max-height: 100vh;
     max-height: 100dvh;
 }
-.edit-exercise-header h2 {
+#equipment-editor-section .page-header h2,
+#edit-exercise-section .page-header h2 {
     font-size: var(--font-md);
     margin: 0;
     flex: 1;

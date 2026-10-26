@@ -239,7 +239,7 @@ dialog[open] > .modal-content {
        The rule that carried this lived under a dead `.main-header` selector
        (element class is `header`) — 9/18: "logo is high up and blocked by the
        active bar when music or a workout is going". */
-    padding-top: calc(var(--space-10) + env(safe-area-inset-top, 0px));
+    padding-top: calc(var(--space-10) + var(--safe-top));
     background: var(--bg-app);
     border-bottom: 1px solid var(--border);
     position: relative;
@@ -461,7 +461,7 @@ dialog[open] > .modal-content {
 /* Pull-to-refresh pill (pull-to-refresh.js) */
 .ptr-pill {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + var(--space-8));
+    top: calc(var(--safe-top) + var(--space-8));
     left: 50%;
     transform: translateX(-50%);
     z-index: var(--z-toast);

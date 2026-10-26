@@ -1032,8 +1032,8 @@ function renderWorkoutEditorPage(template) {
     }
 
     return `
-        <div class="we-header">
-            <button class="d-back" onclick="closeWorkoutEditor()" aria-label="Back to workouts">
+        <div class="page-header page-header--editor">
+            <button class="page-header__back" onclick="closeWorkoutEditor()" aria-label="Back to workouts">
                 <i class="fas fa-chevron-left"></i>
             </button>
             <div class="we-header__info">
