@@ -67,4 +67,15 @@ describe('isCardioExercise', () => {
         expect(isCardioExercise('Seated Cable Row')).toBe(false);
         expect(isCardioExercise('Leg Press')).toBe(false);
     });
+
+    it('a known non-cardio exercise stays non-cardio even when its name has "bike"', () => {
+        AppState.exerciseDatabase.push({ name: 'Bike Crunch', bodyPart: 'Core' });
+        expect(isCardioExercise('Bike Crunch')).toBe(false);
+        expect(isCardioExercise('Stationary Bike')).toBe(true); // unknown → the name decides
+    });
+
+    it('an unfinished workout does not count', () => {
+        const open = { ...w('2026-10-22', [{ name: 'Assault Bike' }]), completedAt: null };
+        expect(aggregateConditioning([open], range).sessions).toBe(0);
+    });
 });

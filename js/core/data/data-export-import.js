@@ -7,6 +7,7 @@ import {
     setDoc,
     getDoc,
     getDocs,
+    getDocsFromServer,
     collection,
     query,
     orderBy,
@@ -47,6 +48,9 @@ export const EXPORT_COLLECTIONS = [
     'hiddenExercises',
     'measurements',
     'dexa',
+    'goals',                // TP-1
+    'events',               // TP-1
+    'reportCards',          // TP-2 — the Sunday report cards
     'stats',
     'preferences',
     'coachHistory',
@@ -346,8 +350,12 @@ function downloadFile(content, mimeType, filename) {
  * doesn't sink the export — it's listed under `incomplete` instead.
  */
 async function readAllUserCollections(uid) {
+    // From the SERVER: with the offline cache on, getDocs on one bar of
+    // signal quietly returns whatever the device has — a partial file that
+    // looks complete. A server-only read fails instead, and the collection
+    // is listed under `incomplete`.
     const results = await Promise.allSettled(
-        EXPORT_COLLECTIONS.map(name => getDocs(collection(db, 'users', uid, name)))
+        EXPORT_COLLECTIONS.map(name => getDocsFromServer(collection(db, 'users', uid, name)))
     );
     const snapshotsByCollection = {};
     const errors = [];
@@ -627,6 +635,12 @@ async function restoreMissingDocs(userId, collectionName, entries, fallbackId) {
  */
 export async function confirmImport() {
     if (!pendingImportData || !AppState.currentUser) return;
+    // Each restore checks the server for an existing doc — offline that read
+    // throws on anything uncached and the import stops halfway.
+    if (!isOnline()) {
+        showNotification("You're offline — connect to import your data", 'warning');
+        return;
+    }
 
     const btn = document.getElementById('import-confirm-btn');
     if (btn) {

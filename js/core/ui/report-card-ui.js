@@ -283,6 +283,8 @@ export async function reportCardApply() {
 }
 
 export async function reportCardBuildNow(btn) {
+    const { isOnline } = await import('../data/offline.js');
+    if (!isOnline()) { showNotification("You're offline — the report card needs a connection. Try again when you're back.", 'warning'); return; }
     if (btn) { btn.disabled = true; btn.textContent = 'Building…'; }
     try {
         const { functions, httpsCallable } = await fs();

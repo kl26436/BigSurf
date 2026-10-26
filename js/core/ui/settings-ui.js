@@ -111,21 +111,31 @@ const EXPERIENCE_OPTIONS = [
  * Load user settings from Firestore and merge with defaults.
  * Called once on app initialization after auth.
  */
+// The settings doc was actually READ this session. Until it is, a save writes
+// only the keys changed here (merge) — the defaults standing in for an
+// unreadable doc (offline, nothing cached) must never overwrite the real one.
+let _settingsLoaded = false;
+const _dirtyKeys = new Set();
+
 export async function loadUserSettings() {
     if (!AppState.currentUser) return;
+    _settingsLoaded = false;
 
     try {
         const settingsDoc = await getDoc(doc(db, 'users', AppState.currentUser.uid, 'preferences', 'settings'));
         const userSettings = settingsDoc.exists() ? settingsDoc.data() : {};
 
         // Merge: user overrides take precedence, defaults fill gaps
-        AppState.settings = { ...DEFAULT_SETTINGS, ...userSettings };
+        // Keys changed before the read landed win over what was stored.
+        const early = Object.fromEntries([..._dirtyKeys].map(k => [k, AppState.settings?.[k]]));
+        AppState.settings = { ...DEFAULT_SETTINGS, ...userSettings, ...early };
+        _settingsLoaded = true;
 
         // Apply to runtime config
         applySettingsToConfig();
     } catch (error) {
         console.error('❌ Error loading settings:', error);
-        AppState.settings = { ...DEFAULT_SETTINGS };
+        AppState.settings = { ...DEFAULT_SETTINGS, ...(AppState.settings || {}) };
     }
 }
 
@@ -148,6 +158,7 @@ function applySettingsToConfig() {
 export function updateSetting(key, value) {
     if (!AppState.settings) AppState.settings = { ...DEFAULT_SETTINGS };
     AppState.settings[key] = value;
+    _dirtyKeys.add(key);
     applySettingsToConfig();
     debouncedSaveSettings();
 }
@@ -160,10 +171,14 @@ function debouncedSaveSettings() {
     saveTimeout = setTimeout(async () => {
         if (!AppState.currentUser) return;
         try {
-            await setDoc(
-                doc(db, 'users', AppState.currentUser.uid, 'preferences', 'settings'),
-                AppState.settings
-            );
+            const ref = doc(db, 'users', AppState.currentUser.uid, 'preferences', 'settings');
+            if (_settingsLoaded) {
+                await setDoc(ref, AppState.settings);
+            } else {
+                const changed = Object.fromEntries([..._dirtyKeys].map(k => [k, AppState.settings[k] ?? null]));
+                await setDoc(ref, changed, { merge: true });
+            }
+            _dirtyKeys.clear();
         } catch (error) {
             console.error('❌ Error saving settings:', error);
         }

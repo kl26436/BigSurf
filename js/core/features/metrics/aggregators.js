@@ -837,7 +837,11 @@ const CARDIO_NAME_RE = /treadmill|stationary bike|elliptical|rowing machine|stai
 
 export function isCardioExercise(name) {
     if (!name) return false;
-    return classifyBodyPart(name) === 'cardio' || CARDIO_NAME_RE.test(name);
+    // The exercise database decides when it knows the exercise ("Bike
+    // Crunch" is core); the name pattern is the fallback for ones it doesn't.
+    const known = (AppState.exerciseDatabase || []).find(ex => (ex.name || ex.machine || '').toLowerCase() === name.toLowerCase());
+    if (known?.bodyPart) return classifyBodyPart(name) === 'cardio';
+    return CARDIO_NAME_RE.test(name) || classifyBodyPart(name) === 'cardio';
 }
 
 function hasLoggedSet(ex) {
@@ -860,7 +864,7 @@ export function aggregateConditioning(workouts, { start, end }) {
     let minutesComplete = true;
     let lastDate = null;
     for (const w of workouts || []) {
-        if (w.cancelledAt) continue;
+        if (w.cancelledAt || !w.completedAt) continue;
         const exercises = withResolvedNames(w).filter(hasLoggedSet);
         const cardio = exercises.filter(ex => isCardioExercise(ex.name));
         if (cardio.length === 0) continue;

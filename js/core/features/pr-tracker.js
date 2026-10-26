@@ -52,6 +52,10 @@ let _rebuildingInProgress = false;
 // replace the real store with this one workout's records when the write syncs
 // (an offline first launch with nothing cached yet).
 let _prDataLoaded = false;
+// Whose store prData holds — a sign-out / sign-in on a shared phone must not
+// record user B's sets into user A's loaded store.
+let _prDataUid = null;
+const prDataLoadedFor = (uid) => _prDataLoaded && _prDataUid === uid;
 let prData = {
     exercisePRs: {},
     locations: {},
@@ -77,6 +81,7 @@ export async function loadPRData() {
         if (prDoc.exists()) {
             prData = prDoc.data();
             _prDataLoaded = true;
+            _prDataUid = AppState.currentUser.uid;
             return prData;
         } else {
             prData = {
@@ -85,10 +90,12 @@ export async function loadPRData() {
                 currentLocation: null,
             };
             _prDataLoaded = true;
+            _prDataUid = AppState.currentUser.uid;
             return prData;
         }
     } catch (error) {
         console.error('❌ Error loading PR data:', error);
+        if (_prDataUid !== AppState.currentUser.uid) _prDataLoaded = false;
         return null;
     }
 }
@@ -481,7 +488,7 @@ export async function processWorkoutForPRs(workoutData) {
     // Never record into the empty placeholder (see _prDataLoaded). Offline with
     // the store cached, loadPRData reads it from the device; with nothing to
     // read, skip — a later rebuild from history catches these sets up.
-    if (!_prDataLoaded && !(await loadPRData())) {
+    if (!prDataLoadedFor(AppState.currentUser.uid) && !(await loadPRData())) {
         return [];
     }
 

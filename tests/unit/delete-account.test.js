@@ -24,7 +24,7 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({ showNotification: h.showNotif
 vi.mock('../../js/core/ui/confirm-sheet.js', () => ({ confirmSheet: h.confirmSheet, promptSheet: h.promptSheet }));
 vi.mock('../../js/core/app-initialization.js', () => ({ signOutUser: h.signOutUser }));
 
-const { confirmDeleteAccount, deleteAccountErrorMessage, clearDeviceCache } = await import('../../js/core/ui/delete-account.js');
+const { confirmDeleteAccount, deleteAccountErrorMessage, clearDeviceCache, freezeFirestoreWrites } = await import('../../js/core/ui/delete-account.js');
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -91,6 +91,30 @@ describe('confirmDeleteAccount', () => {
         expect(type).toBe('error');
         expect(msg).not.toMatch(/INTERNAL/);
         expect(msg).toMatch(/try again/);
+    });
+
+    it('pauses Firestore writes before the call, and resumes them when the call fails', async () => {
+        const order = [];
+        const unfreeze = vi.fn(async () => { order.push('unfreeze'); });
+        const freeze = vi.fn(async () => { order.push('freeze'); return unfreeze; });
+        h.callable.mockImplementation(async () => { order.push('call'); throw Object.assign(new Error('x'), { code: 'functions/internal' }); });
+        const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        expect(await confirmDeleteAccount({ clearCache: vi.fn(), reload: vi.fn(), freeze })).toBe(false);
+        errSpy.mockRestore();
+        expect(order).toEqual(['freeze', 'call', 'unfreeze']);
+    });
+
+    it('freezeFirestoreWrites flushes, then disables the network; its undo re-enables it', async () => {
+        const sdk = { waitForPendingWrites: vi.fn(async () => {}), disableNetwork: vi.fn(async () => {}), enableNetwork: vi.fn(async () => {}) };
+        const undo = await freezeFirestoreWrites(async () => sdk, 10);
+        expect(sdk.waitForPendingWrites).toHaveBeenCalledWith({ name: 'db' });
+        expect(sdk.disableNetwork).toHaveBeenCalledWith({ name: 'db' });
+        await undo();
+        expect(sdk.enableNetwork).toHaveBeenCalledWith({ name: 'db' });
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const noop = await freezeFirestoreWrites(async () => { throw new Error('no sdk'); });
+        warn.mockRestore();
+        await expect(noop()).resolves.toBeUndefined();
     });
 
     it('does nothing when signed out', async () => {

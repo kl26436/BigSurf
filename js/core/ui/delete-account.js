@@ -37,6 +37,44 @@ export async function clearDeviceCache(loadSdk = () => import(FIRESTORE_SDK_URL)
 
 const reloadPage = () => window.location.reload();
 
+/**
+ * Stop this device writing before the server wipes the account: flush what's
+ * queued (a few seconds at most), then take Firestore offline so a debounced
+ * settings or workout save can't land under users/{uid} after the server's
+ * sweep (the ID token stays valid until it expires). Returns the undo for a
+ * failed deletion. Best effort — a failure here never blocks the deletion.
+ */
+export async function freezeFirestoreWrites(loadSdk = () => import(FIRESTORE_SDK_URL), waitMs = 4000) {
+    try {
+        const { waitForPendingWrites, disableNetwork, enableNetwork } = await loadSdk();
+        await Promise.race([waitForPendingWrites(db), new Promise(r => setTimeout(r, waitMs))]);
+        await disableNetwork(db);
+        return async () => { try { await enableNetwork(db); } catch { /* reload recovers */ } };
+    } catch (error) {
+        console.warn('⚠️ Could not pause Firestore before account deletion:', error);
+        return async () => {};
+    }
+}
+
+const PROGRESS_SHEET_ID = 'delete-account-progress';
+
+/** A sheet that stays up while the server works (toasts last 1.5 s). */
+async function showProgress() {
+    try {
+        const { openSheet } = await import('./sheet.js');
+        openSheet({
+            id: PROGRESS_SHEET_ID, title: 'Deleting your account…', dismissible: false,
+            bodyHTML: '<div class="empty-state-compact"><p><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Erasing your data. Keep the app open — this can take a minute.</p></div>',
+        });
+    } catch { /* non-DOM contexts (tests) */ }
+}
+async function hideProgress() {
+    try {
+        const { closeSheet } = await import('./sheet.js');
+        closeSheet(PROGRESS_SHEET_ID, { immediate: true });
+    } catch { /* non-DOM contexts (tests) */ }
+}
+
 /** Plain-language copy for a failed call (never the raw error). */
 export function deleteAccountErrorMessage(error) {
     const code = String(error?.code || '').replace(/^functions\//, '');
@@ -59,7 +97,7 @@ let inFlight = false;
  * @param {Function} [deps.reload]
  * @returns {Promise<boolean>} true when the account was deleted
  */
-export async function confirmDeleteAccount({ clearCache = clearDeviceCache, reload = reloadPage } = {}) {
+export async function confirmDeleteAccount({ clearCache = clearDeviceCache, reload = reloadPage, freeze = freezeFirestoreWrites } = {}) {
     if (inFlight) return false;
     if (!AppState.currentUser) {
         showNotification('Sign in to delete your account', 'warning');
@@ -96,15 +134,19 @@ export async function confirmDeleteAccount({ clearCache = clearDeviceCache, relo
     }
 
     inFlight = true;
-    showNotification('Deleting your account…', 'info', 30000);
+    await showProgress();
+    const unfreeze = await freeze();
     try {
         await httpsCallable(functions, 'deleteAccount', { timeout: 300000 })();
     } catch (error) {
         console.error('❌ Delete account failed:', error);
+        await unfreeze();
+        await hideProgress();
         showNotification(deleteAccountErrorMessage(error), 'error', 6000);
         inFlight = false;
         return false;
     }
+    await hideProgress();
 
     showNotification('Account deleted', 'success', 3000);
     try {

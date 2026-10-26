@@ -17,7 +17,7 @@ import {
     orderBy,
     writeBatch,
 } from './firebase-config.js';
-import { readWithCacheFallback } from './offline.js';
+import { readWithCacheFallback, isOnline } from './offline.js';
 import { showNotification } from '../ui/ui-helpers.js';
 import {
     validateExerciseData,
@@ -68,7 +68,11 @@ function readDocs(q, { fromServer = false, ms = Config.FIREBASE_TIMEOUT_MS } = {
     return readWithCacheFallback(
         () => (fromServer ? getDocsFromServer(q) : getDocs(q)),
         () => getDocsFromCache(q),
-        { timeoutMs: ms },
+        // fromServer skips the "server missed an answer lately" shortcut: one
+        // slow save on gym signal must not hide a coach-written template for a
+        // minute. It still asks with the timeout, and still uses the cache
+        // when the device is actually offline.
+        fromServer ? { timeoutMs: ms, online: isOnline() } : { timeoutMs: ms },
     );
 }
 

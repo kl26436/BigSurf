@@ -1326,35 +1326,10 @@
         </div>
         <div id="more-menu-overlay" class="more-menu-overlay" onclick="closeMoreMenu()"></div>
 
-        <!-- Force clear old service worker cache on version mismatch -->
-        <script>
-            (async function () {
-                if ('serviceWorker' in navigator) {
-                    const REQUIRED_VERSION = 'v4.55';
-                    const regs = await navigator.serviceWorker.getRegistrations();
-                    for (const reg of regs) {
-                        // Check if cache is outdated
-                        const cacheNames = await caches.keys();
-                        const hasOldCache = cacheNames.some(
-                            (name) => name.includes('big-surf') && !name.includes(REQUIRED_VERSION)
-                        );
-                        if (hasOldCache) {
-                            console.log('🔄 Clearing outdated service worker cache...');
-                            for (const name of cacheNames) {
-                                if (name.includes('big-surf') && !name.includes(REQUIRED_VERSION)) {
-                                    await caches.delete(name);
-                                    console.log('🗑️ Deleted old cache:', name);
-                                }
-                            }
-                            await reg.unregister();
-                            console.log('✅ Old service worker unregistered, reloading...');
-                            window.location.reload();
-                            return;
-                        }
-                    }
-                }
-            })();
-        </script>
+        <!-- (The old inline "clear caches unless v4.55" script is gone: every cache name
+             since failed its test, so it wiped the cache and reloaded on every other
+             load — offline that meant the browser's error page. The service
+             worker's activate handler deletes stale caches.) -->
 
         <!-- Application Entry Point -->
         <script type="module" src="js/main.js"></script>

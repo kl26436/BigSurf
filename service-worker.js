@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v8.14-offline';
+const CACHE_NAME = 'big-surf-v8.15-offline';
 // Precache list — mirrors styles/index.css @import order. Add new CSS files here when
 // they're added to index.css, otherwise the first-paint on install misses them (cache-first
 // fetch will still pick them up on first navigation, but precaching avoids the blip).
@@ -55,6 +55,8 @@ const STATIC_ASSETS = [
   '/styles/pages/error-log.css',
   '/styles/pages/metric-detail.css',
   '/styles/pages/block.css',
+  '/styles/pages/goals.css',
+  '/styles/pages/report-card.css',
   '/styles/animations.css',
   '/styles/utilities.css',
   '/BigSurf.png',
@@ -157,10 +159,13 @@ async function cacheFirst(request) {
 
 // cacheKey: where the copy lives — every navigation shares '/index.html'
 // (it's a single-page app) instead of one entry per URL + query string.
-async function networkFirst(request, cacheKey = request) {
+// expectType: only a response of that content type is cached — a captive
+// portal answering 200 with its login page must not become a cached module.
+async function networkFirst(request, cacheKey = request, expectType = null) {
   try {
     const response = await fetch(request);
-    putInCache(cacheKey, response);
+    const type = response.headers.get('content-type') || '';
+    if (!expectType || type.includes(expectType)) putInCache(cacheKey, response);
     return response;
   } catch (error) {
     const cached = await caches.match(cacheKey);
@@ -188,13 +193,13 @@ self.addEventListener('fetch', (event) => {
 
   // The app shell: any navigation is the single-page app's index.html.
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, '/index.html'));
+    event.respondWith(networkFirst(request, '/index.html', 'text/html'));
     return;
   }
 
   // Our modules: network first (fresh code), cache when offline / slow.
   if (url.pathname.endsWith('.js')) {
-    event.respondWith(networkFirst(request));
+    event.respondWith(networkFirst(request, request, 'javascript'));
     return;
   }
 
