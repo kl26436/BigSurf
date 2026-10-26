@@ -15,6 +15,7 @@ import { ensureFreshBodyWeight } from '../features/bodyweight-prompt.js';
 import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from '../utils/push-notification-manager.js';
 import { convertYouTubeUrl } from './exercise-ui.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
+import { openSheet as openSheetPrimitive, closeSheet } from '../ui/sheet.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
 import { augmentStaticCatalog } from '../data/equipment-catalog-helpers.js';
 import { ownedEquipmentKeys, searchCatalogMachines, matchesAllTokens } from '../data/catalog-search.js';
@@ -769,7 +770,7 @@ function renderSettingsSheet() {
         subtitle: `${st.equipmentName} · ${st.exName}`,
         body,
         actions: [
-            { label: 'Cancel', onClick: 'awCloseSheet()' },
+            { label: 'Close', onClick: 'awCloseSheet()' },
             { label: 'Save settings', onClick: 'awSaveSettingsSheet()', primary: true },
         ],
     });
@@ -2026,7 +2027,7 @@ function renderSupersetSheet() {
         subtitle: 'Tap exercises to include. They\'ll alternate sets with shared rest.',
         body,
         actions: [
-            { label: 'Cancel', onClick: 'awCloseSheet()' },
+            { label: 'Close', onClick: 'awCloseSheet()' },
             {
                 label: count >= 2 ? `<i class="fas fa-link"></i> Link ${count} exercises` : 'Select ≥ 2',
                 onClick: 'awConfirmSupersetLink()',
@@ -3138,7 +3139,7 @@ function renderSharedEquipmentSheet() {
         subtitle: exName,
         body,
         actions: [
-            { label: 'Cancel', onClick: 'awSharedCancelEquipment()' },
+            { label: 'Keep current', onClick: 'awSharedCancelEquipment()' },
             { label: 'Done', onClick: 'awCloseSheet()', primary: true },
         ],
     });
@@ -3531,7 +3532,7 @@ function renderAddExerciseSheet() {
         subtitle: `${AppState.currentWorkout.exercises.length} exercises in workout`,
         body,
         actions: [
-            { label: 'Cancel', onClick: 'awCloseSheet()' },
+            { label: 'Close', onClick: 'awCloseSheet()' },
         ],
     });
 }
@@ -3693,7 +3694,7 @@ function renderSharedAddExerciseSheet() {
         subtitle: ctx.targetWorkoutLabel,
         body,
         actions: [
-            { label: 'Cancel', onClick: 'awSharedAddCancel()' },
+            { label: 'Close', onClick: 'awSharedAddCancel()' },
         ],
     });
 }
@@ -4057,65 +4058,24 @@ export function awEndReorder() {
 // BOTTOM SHEET UTILITY
 // ===================================================================
 
+// SH-3a — every active-workout sheet (equipment, add exercise, superset,
+// machine settings, the "All" list…) renders through the shared primitive
+// (js/core/ui/sheet.js): keyboard inset, page lock, inert, focus, Escape,
+// swipe-down, stacking. Bodies and their handlers are unchanged; the sheet
+// keeps id "aw-sheet" so in-place updates (chips, lists) still find it, and
+// re-opening it re-renders in place.
 function openSheet({ title, titleColor, subtitle, body, actions }) {
-    closeSheetImmediate();
-
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'aw-sheet-backdrop';
-    backdrop.onclick = () => awCloseSheet();
-
-    const actionsHtml = (actions || []).map(a => {
-        const cls = ['aw-sheet__action'];
-        if (a.primary) cls.push('primary');
-        if (a.warm) cls.push('warm');
-        if (a.danger) cls.push('danger');
-        return `<button class="${cls.join(' ')}" ${a.disabled ? 'disabled' : ''} onclick="${a.onClick}">${a.label}</button>`;
-    }).join('');
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'aw-sheet';
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title" ${titleColor ? `style="--title-color: ${titleColor}"` : ''}>${title}</div>
-            ${subtitle ? `<div class="aw-sheet__subtitle">${subtitle}</div>` : ''}
-        </div>
-        <div class="aw-sheet__body">${body}</div>
-        <div class="aw-sheet__actions">${actionsHtml}</div>
-    `;
-
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-
-    // Trigger animation
-    requestAnimationFrame(() => {
-        backdrop.classList.add('visible');
-        sheet.classList.add('visible');
+    openSheetPrimitive({
+        id: 'aw-sheet', titleHTML: title, titleColor, subtitle, bodyHTML: body, actions,
     });
 }
 
 function closeSheetImmediate() {
-    const backdrop = document.getElementById('aw-sheet-backdrop');
-    const sheet = document.getElementById('aw-sheet');
-    if (backdrop) backdrop.remove();
-    if (sheet) sheet.remove();
+    closeSheet('aw-sheet', { immediate: true });
 }
 
 export function awCloseSheet() {
-    const backdrop = document.getElementById('aw-sheet-backdrop');
-    const sheet = document.getElementById('aw-sheet');
-    if (backdrop) {
-        backdrop.classList.remove('visible');
-    }
-    if (sheet) {
-        sheet.classList.remove('visible');
-        setTimeout(() => {
-            backdrop?.remove();
-            sheet?.remove();
-        }, 300);
-    }
+    closeSheet('aw-sheet');
 }
 
 // ===================================================================

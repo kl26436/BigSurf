@@ -906,26 +906,6 @@
 .aw-sheet.visible {
     transform: translateY(0);
 }
-/* 10/25 — with the keyboard up the sheet was capped at 85dvh minus the
-   keyboard, and header + search + chips + action bar left room for ~two
-   rows. While a SEARCH field has focus, take everything above the keyboard
-   and drop the chrome that isn't needed while typing (Cancel/Done, subtitle,
-   handle). Forms (quick-edit, add-machine) keep their actions — the rule
-   only fires for .field-search inputs. `kb-open` is set by the keyboard
-   inset tracker in app-initialization.js. */
-.kb-open .aw-sheet:has(.field-search input:focus) {
-    max-height: calc(100vh - var(--kb-inset, 0px) - var(--safe-top) - 8px); /* fallback */
-    max-height: calc(100dvh - var(--kb-inset, 0px) - var(--safe-top) - 8px);
-}
-.kb-open .aw-sheet:has(.field-search input:focus) .aw-sheet__actions,
-.kb-open .aw-sheet:has(.field-search input:focus) .aw-sheet__subtitle,
-.kb-open .aw-sheet:has(.field-search input:focus) .aw-sheet__handle {
-    display: none;
-}
-.kb-open .aw-sheet:has(.field-search input:focus) .aw-sheet__header {
-    padding-top: var(--space-8);
-    padding-bottom: var(--space-4);
-}
 .aw-sheet__handle {
     touch-action: none;
     width: 36px; height: 4px;

@@ -7,7 +7,9 @@
 .sheet-backdrop {
     position: fixed;
     inset: 0;
-    z-index: calc(var(--z-modal) + var(--sheet-depth, 1) * 2 - 1);
+    /* Depth 1 shares the legacy aw-sheet layer (z-modal) so, during SH-3, a
+       legacy sheet opened later still lands on top by DOM order. */
+    z-index: calc(var(--z-modal) + (var(--sheet-depth, 1) - 1) * 2 - 1);
     background: var(--overlay-heavy);
     backdrop-filter: var(--backdrop-blur);
     -webkit-backdrop-filter: var(--backdrop-blur);
@@ -31,7 +33,7 @@
     left: 0;
     right: 0;
     bottom: var(--kb-inset, 0px);
-    z-index: calc(var(--z-modal) + var(--sheet-depth, 1) * 2);
+    z-index: calc(var(--z-modal) + (var(--sheet-depth, 1) - 1) * 2);
     display: flex;
     flex-direction: column;
     max-height: calc(85vh - var(--kb-inset, 0px)); /* fallback */
@@ -77,7 +79,7 @@
 .sheet__title {
     font-size: var(--font-lg);
     font-weight: 800;
-    color: var(--text-strong);
+    color: var(--sheet-title-color, var(--text-strong));
 }
 .sheet__subtitle {
     margin-top: var(--space-2);
@@ -105,11 +107,62 @@
     border-top: 1px solid var(--border-subtle);
     touch-action: pan-x;
 }
-.sheet__footer[hidden],
-.kb-open .sheet__footer {
+.sheet__footer[hidden] {
+    display: none;
+}
+/* Keyboard up while a SEARCH field has focus (10/25, bf9877a): use every
+   pixel above the keyboard; the footer, subtitle and handle step aside.
+   Forms (quick-edit, add-machine) keep their actions — the rule only fires
+   for .field-search inputs. */
+.kb-open .sheet:has(.field-search input:focus) {
+    max-height: calc(100vh - var(--kb-inset, 0px) - var(--safe-top) - 8px); /* fallback */
+    max-height: calc(100dvh - var(--kb-inset, 0px) - var(--safe-top) - 8px);
+}
+.kb-open .sheet:has(.field-search input:focus) .sheet__footer,
+.kb-open .sheet:has(.field-search input:focus) .sheet__subtitle,
+.kb-open .sheet:has(.field-search input:focus) .sheet__handle {
     display: none;
 }
 /* With no footer, the body keeps the home indicator clear itself. */
 .sheet:has(.sheet__footer[hidden]) .sheet__body {
     padding-bottom: calc(var(--space-12) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Footer action buttons (`actions:` option). */
+.sheet__action {
+    flex: 1;
+    padding: var(--space-12);
+    border-radius: var(--radius-md);
+    font-size: var(--font-sm);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-6);
+    cursor: pointer;
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    color: var(--text-main);
+    font-family: inherit;
+    transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast), transform var(--anim-fast);
+}
+.sheet__action:active { transform: scale(0.98); }
+.sheet__action--primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--bg-app);
+}
+.sheet__action--warm {
+    background: var(--highlight-warm);
+    border-color: var(--highlight-warm);
+    color: var(--bg-app);
+}
+.sheet__action--danger {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: transparent;
+}
+.sheet__action[disabled] {
+    opacity: 0.4;
+    pointer-events: none;
 }

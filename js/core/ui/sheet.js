@@ -49,27 +49,35 @@ function focusables(root) {
  *            close: Function, setBody: Function, setFooter: Function}}
  */
 export function openSheet({
-    id, title = '', subtitle = '', bodyHTML = '', footerHTML = '',
+    id, title = '', titleHTML = '', titleColor = null, subtitle = '', bodyHTML = '', footerHTML = '', actions = null,
     search = null, size = 'auto', dismissible = true, onClose = null,
+    className = '', bodyId = '', bodyClass = '',
 } = {}) {
-    if (id) document.getElementById(id)?.remove();
+    // Re-opening an id that's already up (a sheet re-rendering itself, as
+    // the aw-sheets do) replaces it in place: no second stack entry, no
+    // slide-in, focus and inert untouched.
+    const prior = id ? stack.find(e => e.el.id === id && !e.closed) : null;
+    if (prior) closeEntry(prior, { immediate: true, silent: true });
+    else if (id) document.getElementById(id)?.remove();
     const depth = stack.length + 1;
     const titleId = `${id || 'sheet'}-title-${depth}`;
 
     const backdrop = document.createElement('div');
     backdrop.className = `sheet-backdrop${depth > 1 ? ' sheet-backdrop--stacked' : ''}`;
     const el = document.createElement('div');
-    el.className = `sheet sheet--${size}`;
+    el.className = `sheet sheet--${size}${className ? ` ${className}` : ''}`;
+    el.tabIndex = -1;
     if (id) el.id = id;
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-modal', 'true');
-    if (title) el.setAttribute('aria-labelledby', titleId);
+    if (title || titleHTML) el.setAttribute('aria-labelledby', titleId);
+    if (titleColor) el.style.setProperty('--sheet-title-color', titleColor);
     el.style.setProperty('--sheet-depth', String(depth));
     backdrop.style.setProperty('--sheet-depth', String(depth));
     el.innerHTML = `
         <div class="sheet__handle" aria-hidden="true"></div>
-        ${title || subtitle ? `<div class="sheet__header">
-            ${title ? `<div class="sheet__title" id="${titleId}">${esc(title)}</div>` : ''}
+        ${title || titleHTML || subtitle ? `<div class="sheet__header">
+            ${title || titleHTML ? `<div class="sheet__title" id="${titleId}">${titleHTML || esc(title)}</div>` : ''}
             ${subtitle ? `<div class="sheet__subtitle">${esc(subtitle)}</div>` : ''}
         </div>` : ''}
         ${search ? `<div class="sheet__search field-search">
@@ -77,15 +85,16 @@ export function openSheet({
             <input type="search" class="field-search__input" placeholder="${esc(search.placeholder || 'Search…')}"
                    value="${esc(search.value || '')}" aria-label="${esc(search.placeholder || 'Search')}" autocomplete="off">
         </div>` : ''}
-        <div class="sheet__body"></div>
+        <div class="sheet__body${bodyClass ? ` ${bodyClass}` : ''}"${bodyId ? ` id="${esc(bodyId)}"` : ''}></div>
         <div class="sheet__footer"></div>
     `;
     const body = el.querySelector('.sheet__body');
     const footer = el.querySelector('.sheet__footer');
     const input = el.querySelector('.sheet__search input');
     body.innerHTML = bodyHTML;
-    footer.innerHTML = footerHTML;
-    footer.hidden = !footerHTML;
+    const foot = footerHTML || actionsHTML(actions);
+    footer.innerHTML = foot;
+    footer.hidden = !foot;
 
     const entry = { el, backdrop, onClose, dismissible, previousFocus: document.activeElement, closed: false };
     const handle = {
@@ -109,14 +118,31 @@ export function openSheet({
     stack.push(entry);
 
     // Synchronous focus keeps the opening gesture, so iOS raises the keyboard.
+    // Without a pinned search the SHEET takes focus, not its first input —
+    // a focused field pops the keyboard (AP-11: the equipment search
+    // auto-focuses only when nothing is linked yet; the caller decides).
     if (input && search.autofocus !== false) input.focus();
-    else (focusables(el)[0] || el).focus?.();
+    else if (!prior) el.focus?.({ preventScroll: true });
 
-    requestAnimationFrame(() => {
+    if (prior) {
         backdrop.classList.add('visible');
         el.classList.add('visible');
-    });
+    } else {
+        requestAnimationFrame(() => {
+            backdrop.classList.add('visible');
+            el.classList.add('visible');
+        });
+    }
     return handle;
+}
+
+/** Footer buttons from `actions: [{ label (HTML), onClick (handler string), primary, warm, danger, disabled }]`. */
+function actionsHTML(actions) {
+    if (!Array.isArray(actions) || !actions.length) return '';
+    return actions.map((a) => {
+        const mods = ['primary', 'warm', 'danger'].filter(m => a[m]).map(m => ` sheet__action--${m}`).join('');
+        return `<button type="button" class="sheet__action${mods}"${a.disabled ? ' disabled' : ''}${a.onClick ? ` onclick="${a.onClick}"` : ''}>${a.label}</button>`;
+    }).join('');
 }
 
 function onKeydown(e, entry) {
@@ -160,7 +186,7 @@ function wireSwipe(el, entry) {
     };
 }
 
-function closeEntry(entry, { immediate = false } = {}) {
+function closeEntry(entry, { immediate = false, silent = false } = {}) {
     if (entry.closed) return;
     entry.closed = true;
     const i = stack.indexOf(entry);
@@ -171,12 +197,25 @@ function closeEntry(entry, { immediate = false } = {}) {
     const remove = () => { entry.el.remove(); entry.backdrop.remove(); };
     if (immediate) remove();
     else setTimeout(remove, CLOSE_MS);
+    if (silent) return; // replaced in place by openSheet — the new entry takes over
     if (stack.length === 0) setInert(false);
     const prev = entry.previousFocus;
-    if (prev && document.contains(prev) && typeof prev.focus === 'function') prev.focus();
+    if (prev && document.contains(prev) && typeof prev.focus === 'function') prev.focus({ preventScroll: true });
     if (typeof entry.onClose === 'function') {
         try { entry.onClose(); } catch (e) { console.error('❌ sheet onClose threw:', e); }
     }
+}
+
+/** Close the open sheet with this id (the legacy close functions call this). */
+export function closeSheet(id, { immediate = false } = {}) {
+    const e = stack.find(x => x.el.id === id && !x.closed);
+    if (e) closeEntry(e, { immediate });
+    return !!e;
+}
+
+/** The handle of the open sheet with this id, or null. */
+export function sheetById(id) {
+    return stack.find(x => x.el.id === id && !x.closed)?.handle || null;
 }
 
 /** Close the topmost sheet (Escape, back gesture). */
