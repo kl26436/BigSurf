@@ -3,6 +3,7 @@ import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
+import { openSheet, closeSheet } from '../ui/sheet.js';
 import { saveWorkoutData } from '../data/data-manager.js';
 import { normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
 import { getSessionLocation, detectLocation } from '../features/location-service.js';
@@ -121,37 +122,21 @@ function findBestTemplateMatch(exercises) {
  */
 function askTemplateKind(bestMatch) {
     return new Promise((resolve) => {
-        document.getElementById('template-kind-backdrop')?.remove();
-        document.getElementById('template-kind-sheet')?.remove();
-
-        const finish = (pick) => {
-            const backdrop = document.getElementById('template-kind-backdrop');
-            const sheet = document.getElementById('template-kind-sheet');
-            backdrop?.classList.remove('visible');
-            sheet?.classList.remove('visible');
-            setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
-            resolve(pick);
+        // SH-3b: one resolve, whichever way the sheet goes — a row tap
+        // records the pick and closes; backdrop / Escape / swipe-down /
+        // navigation close with no pick → Regular (the safe default).
+        let pick = null;
+        window._pickTemplateKind = (kind, parentTemplateId = null) => {
+            pick = { kind, parentTemplateId };
+            closeSheet('template-kind-sheet');
         };
-        window._pickTemplateKind = (kind, parentTemplateId = null) => finish({ kind, parentTemplateId });
 
-        const backdrop = document.createElement('div');
-        backdrop.className = 'aw-sheet-backdrop';
-        backdrop.id = 'template-kind-backdrop';
-        backdrop.onclick = () => finish({ kind: 'core' });
-
-        const sheet = document.createElement('div');
-        sheet.className = 'aw-sheet';
-        sheet.id = 'template-kind-sheet';
-        sheet.setAttribute('role', 'dialog');
-        sheet.setAttribute('aria-modal', 'true');
-        sheet.setAttribute('aria-label', 'Keep as');
-        sheet.innerHTML = `
-            <div class="aw-sheet__handle"></div>
-            <div class="aw-sheet__header">
-                <div class="aw-sheet__title">Keep as</div>
-                <div class="aw-sheet__subtitle">Variations nest under their workout; one-timers archive after use</div>
-            </div>
-            <div class="aw-sheet__body">
+        openSheet({
+            id: 'template-kind-sheet',
+            title: 'Keep as',
+            subtitle: 'Variations nest under their workout; one-timers archive after use',
+            onClose: () => resolve(pick || { kind: 'core' }),
+            bodyHTML: `
                 <div class="js-row" onclick="_pickTemplateKind('core')">
                     <i class="fas fa-dumbbell"></i>
                     <div class="js-row__txt">Regular workout</div>
@@ -165,11 +150,8 @@ function askTemplateKind(bestMatch) {
                     <i class="fas fa-clock"></i>
                     <div class="js-row__txt">Just this once</div>
                 </div>
-            </div>
-        `;
-        document.body.appendChild(backdrop);
-        document.body.appendChild(sheet);
-        requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+            `,
+        });
     });
 }
 

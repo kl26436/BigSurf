@@ -23,7 +23,6 @@ const OVERLAY_SELECTOR = [
     '.dash-todays-prs-overlay',
     '.onboarding-overlay',
     '.aw-form-video-overlay',
-    '.picker-overlay',
     'dialog.modal[open]',
     'dialog.confirm-sheet[open]',      // confirmSheet() / promptSheet() — top layer, still scroll-chains on iOS
     '.modal:not(dialog):not(.hidden)',

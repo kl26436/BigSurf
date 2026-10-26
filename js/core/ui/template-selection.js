@@ -5,6 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { getCategoryIcon, CATEGORY_COLORS } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
+import { openSheet, closeSheet } from './sheet.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { getEquipmentAtLocation, getExercisesAtLocation, checkTemplateCompatibility } from '../features/equipment-planner.js';
@@ -624,34 +625,20 @@ export function openQuickStartSheet() {
         `<button class="chip chip--sm" data-qs-focus="${f}" onclick="qsSetFocus('${f}')">${escapeHtml(f)}</button>`
     ).join('');
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'qs-sheet-backdrop';
-    backdrop.onclick = closeQuickStartSheet;
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'qs-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">Quick start</div>
-            <div class="aw-sheet__subtitle">Pick a focus (optional), then add exercises as you go</div>
-        </div>
-        <div class="aw-sheet__body">
+    // SH-3b: chrome from the sheet primitive (re-opening replaces in place).
+    openSheet({
+        id: 'qs-sheet',
+        title: 'Quick start',
+        subtitle: 'Pick a focus (optional), then add exercises as you go',
+        bodyHTML: `
             <div class="qs-focus-chips">${chips}</div>
             <div id="qs-memory"></div>
-        </div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="closeQuickStartSheet()">Cancel</button>
-            <button class="aw-sheet__action primary" onclick="qsStart()">Start workout</button>
-        </div>
-    `;
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+        `,
+        actions: [
+            { label: 'Close', onClick: 'closeQuickStartSheet()' },
+            { label: 'Start workout', onClick: 'qsStart()', primary: true },
+        ],
+    });
     hydrateQuickStartMemory();
 }
 
@@ -721,8 +708,7 @@ export function qsStartFromLast() {
 }
 
 export function closeQuickStartSheet() {
-    document.getElementById('qs-sheet')?.remove();
-    document.getElementById('qs-sheet-backdrop')?.remove();
+    closeSheet('qs-sheet');
 }
 
 export function qsStart() {

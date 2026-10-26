@@ -5,6 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { Config, APP_VERSION } from '../utils/config.js';
 import { showNotification, escapeHtml, escapeAttr, formatHeight, parseHeightToCm } from './ui-helpers.js';
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
+import { openSheet, closeSheet } from './sheet.js';
 import { navigateTo } from './navigation.js';
 import { db, doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from '../data/firebase-config.js';
 import { exportWorkoutData } from '../data/data-manager.js';
@@ -978,7 +979,6 @@ export async function editCoachNotes() {
 
 export async function openCoachMemorySheet() {
     if (!AppState.currentUser) return;
-    closeCoachMemorySheet(true);
 
     let facts;
     try {
@@ -990,31 +990,15 @@ export async function openCoachMemorySheet() {
         return;
     }
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'coach-memory-backdrop';
-    backdrop.onclick = () => closeCoachMemorySheet();
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'coach-memory-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'What your coach remembers');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">What your coach remembers</div>
-            <div class="aw-sheet__subtitle">Saved from your conversations — delete anything</div>
-        </div>
-        <div class="aw-sheet__body" id="coach-memory-body">${renderCoachMemoryBody(facts)}</div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action primary" onclick="closeCoachMemorySheet()">Done</button>
-        </div>
-    `;
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+    // SH-3b: chrome from the sheet primitive; re-opening replaces in place.
+    openSheet({
+        id: 'coach-memory-sheet',
+        title: 'What your coach remembers',
+        subtitle: 'Saved from your conversations — delete anything',
+        bodyId: 'coach-memory-body',
+        bodyHTML: renderCoachMemoryBody(facts),
+        actions: [{ label: 'Done', onClick: 'closeCoachMemorySheet()', primary: true }],
+    });
 }
 
 function renderCoachMemoryBody(facts) {
@@ -1064,12 +1048,7 @@ export async function deleteCoachFact(factId) {
 }
 
 export function closeCoachMemorySheet(immediate = false) {
-    const backdrop = document.getElementById('coach-memory-backdrop');
-    const sheet = document.getElementById('coach-memory-sheet');
-    if (immediate) { backdrop?.remove(); sheet?.remove(); return; }
-    backdrop?.classList.remove('visible');
-    sheet?.classList.remove('visible');
-    setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
+    closeSheet('coach-memory-sheet', { immediate });
 }
 
 // ── Main lifts picker (AP-21) ───────────────────────────────────────
@@ -1100,7 +1079,6 @@ function primaryLiftsDesc() {
 }
 
 export function openPrimaryLiftsSheet() {
-    closePrimaryLiftsSheet(true);
     const lifts = new Map();
     for (const t of editableTemplates()) {
         for (const ex of t.exercises) {
@@ -1136,37 +1114,24 @@ export function openPrimaryLiftsSheet() {
                 </div>`;
         }).join('');
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'primary-lifts-backdrop';
-    backdrop.onclick = () => closePrimaryLiftsSheet();
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'primary-lifts-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Main lifts');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">Main lifts</div>
-            <div class="aw-sheet__subtitle">Your progress trend tracks these — up to ${MAX_MAIN_LIFTS}</div>
-        </div>
-        <div class="aw-sheet__body" id="primary-lifts-body">${rows || `
+    openSheet({
+        id: 'primary-lifts-sheet',
+        title: 'Main lifts',
+        subtitle: `Your progress trend tracks these — up to ${MAX_MAIN_LIFTS}`,
+        bodyId: 'primary-lifts-body',
+        bodyHTML: rows || `
             <div class="empty-state-compact">
                 <i class="fas fa-dumbbell"></i>
                 <p>No saved workouts yet</p>
                 <p class="empty-state-hint">Save a workout and its lifts show up here to pick from.</p>
-            </div>`}</div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="closePrimaryLiftsSheet()">Cancel</button>
-            ${rows ? '<button class="aw-sheet__action primary" onclick="savePrimaryLifts()">Save main lifts</button>' : ''}
-        </div>
-    `;
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+            </div>`,
+        actions: rows
+            ? [
+                { label: 'Keep current', onClick: 'closePrimaryLiftsSheet()' },
+                { label: 'Save main lifts', onClick: 'savePrimaryLifts()', primary: true },
+            ]
+            : [{ label: 'Close', onClick: 'closePrimaryLiftsSheet()' }],
+    });
 }
 
 export function togglePrimaryLift(row) {
@@ -1221,16 +1186,7 @@ export async function savePrimaryLifts() {
 }
 
 export function closePrimaryLiftsSheet(immediate = false) {
-    const backdrop = document.getElementById('primary-lifts-backdrop');
-    const sheet = document.getElementById('primary-lifts-sheet');
-    if (immediate) {
-        backdrop?.remove();
-        sheet?.remove();
-        return;
-    }
-    backdrop?.classList.remove('visible');
-    sheet?.classList.remove('visible');
-    setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
+    closeSheet('primary-lifts-sheet', { immediate });
 }
 
 // ── Week plan editor (Phase 5.5) ────────────────────────────────────
@@ -1249,7 +1205,6 @@ export function settingsProgramRowTap() {
 
 export async function openWeekPlanSheet() {
     if (!AppState.currentUser) return;
-    closeWeekPlanSheet(true);
     const { DAY_KEYS, DAY_LABELS, loadWeekPlan, emptyWeekPlan } = await import('../features/week-plan.js');
     const plan = (AppState._weekPlan !== undefined ? AppState._weekPlan : await loadWeekPlan()) || emptyWeekPlan();
     const templates = (AppState.workoutPlans || []).filter(t => !t.archived && (t.name || t.day));
@@ -1269,24 +1224,12 @@ export async function openWeekPlanSheet() {
         ...templates.map(t => `<option value="${escapeAttr(t.id)}" ${selected === t.id ? 'selected' : ''}>${escapeHtml(t.name || t.day)}</option>`),
     ].join('');
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'week-plan-backdrop';
-    backdrop.onclick = () => closeWeekPlanSheet();
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'week-plan-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Week plan');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">Week plan</div>
-            <div class="aw-sheet__subtitle">Missed days shift to your next open day — quietly</div>
-        </div>
-        <div class="aw-sheet__body week-plan-editor">
+    openSheet({
+        id: 'week-plan-sheet',
+        title: 'Week plan',
+        subtitle: 'Missed days shift to your next open day — quietly',
+        bodyClass: 'week-plan-editor',
+        bodyHTML: `
             ${DAY_KEYS.map(d => `
                 <div class="week-plan-editor__row">
                     <div class="week-plan-editor__day">${escapeHtml(DAY_LABELS[d])}</div>
@@ -1300,15 +1243,12 @@ export async function openWeekPlanSheet() {
                     <i class="fas fa-flag-checkered"></i>
                     <span>Want blocks and deloads planned too? Ask the coach for a program</span>
                 </div>` : ''}
-        </div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="closeWeekPlanSheet()">Cancel</button>
-            <button class="aw-sheet__action primary" onclick="saveWeekPlanFromSheet()">Save plan</button>
-        </div>
-    `;
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+        `,
+        actions: [
+            { label: 'Keep current', onClick: 'closeWeekPlanSheet()' },
+            { label: 'Save plan', onClick: 'saveWeekPlanFromSheet()', primary: true },
+        ],
+    });
 }
 
 export async function saveWeekPlanFromSheet() {
@@ -1326,13 +1266,9 @@ export async function saveWeekPlanFromSheet() {
     showNotification(ok ? 'Week plan saved' : "Couldn't save — try again", ok ? 'success' : 'error');
 }
 
+/** `immediate` (ai-coach-ui's startProgramChat passes true) skips the slide-out. */
 export function closeWeekPlanSheet(immediate = false) {
-    const backdrop = document.getElementById('week-plan-backdrop');
-    const sheet = document.getElementById('week-plan-sheet');
-    if (immediate) { backdrop?.remove(); sheet?.remove(); return; }
-    backdrop?.classList.remove('visible');
-    sheet?.classList.remove('visible');
-    setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
+    closeSheet('week-plan-sheet', { immediate });
 }
 
 export async function editProfileName() {
@@ -1425,18 +1361,14 @@ export function editProfileExperience() {
         `;
     }).join('');
 
-    const overlay = document.createElement('div');
-    overlay.id = 'profile-exp-picker';
-    overlay.className = 'picker-overlay';
-    overlay.onclick = (e) => { if (e.target === overlay) closeProfileExperiencePicker(); };
-    overlay.innerHTML = `
-        <div class="picker-overlay__sheet" role="dialog" aria-label="Experience level">
-            <div class="picker-overlay__title">Experience level</div>
-            <div class="onb-chips">${chips}</div>
-            <button type="button" class="btn-ghost onb-btn-full" onclick="closeProfileExperiencePicker()">Cancel</button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
+    // SH-3b: was a hand-built .picker-overlay; now the shared sheet primitive.
+    openSheet({
+        id: 'profile-exp-picker',
+        title: 'Experience level',
+        className: 'exp-picker-sheet',
+        bodyHTML: `<div class="onb-chips">${chips}</div>`,
+        actions: [{ label: 'Close', onClick: 'closeProfileExperiencePicker()' }],
+    });
 }
 
 export function selectProfileExperience(value) {
@@ -1446,8 +1378,7 @@ export function selectProfileExperience(value) {
 }
 
 export function closeProfileExperiencePicker() {
-    const overlay = document.getElementById('profile-exp-picker');
-    if (overlay) overlay.remove();
+    closeSheet('profile-exp-picker');
 }
 export function closeProfile() { navigateTo('settings-section'); }
 
