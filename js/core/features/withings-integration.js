@@ -130,6 +130,15 @@ export async function syncWithingsWeight(days = 30, options = {}) {
         const result = await sync({ days });
 
         if (result.data?.success) {
+            // PF-2 — new weigh-ins landed server-side: drop the cached history
+            // and let the dashboard repaint its body card.
+            if ((result.data.synced || 0) > 0) {
+                try {
+                    const { clearBodyWeightCache } = await import('./body-measurements.js');
+                    clearBodyWeightCache();
+                    window.dispatchEvent(new CustomEvent('bigsurf:data-changed', { detail: { what: 'measurements' } }));
+                } catch { /* the next read refetches anyway */ }
+            }
             // Reload in-memory settings — the Cloud Function may have written
             // profileHeightCm into preferences/settings (meastype 4) and the
             // UI reads from AppState.settings, not Firestore live.

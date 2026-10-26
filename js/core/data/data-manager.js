@@ -958,13 +958,52 @@ export function clearAllWorkoutsCache() {
     _allWorkoutsGen += 1;
 }
 
+function parseWorkouts(snapshot) {
+    const workouts = [];
+    snapshot.forEach(docSnap => {
+        const data = { id: docSnap.id, ...docSnap.data() };
+        if (data.completedAt && !data.cancelledAt) workouts.push(data);
+    });
+    return workouts;
+}
+
+/** Cheap "did anything change": count + the newest edit stamp. */
+export function workoutsFingerprint(list = []) {
+    let newest = '';
+    for (const w of list) {
+        const t = String(w.lastUpdated || w.completedAt || '');
+        if (t > newest) newest = t;
+    }
+    return `${list.length}|${newest}`;
+}
+
+// One server read in flight at a time per user (the launch warm-up and the
+// dashboard used to race each other into two full-collection reads).
+let _allWorkoutsInflight = null; // { uid, gen, promise }
+
+function serverRead(uid, gen) {
+    if (_allWorkoutsInflight && _allWorkoutsInflight.uid === uid && _allWorkoutsInflight.gen === gen) {
+        return _allWorkoutsInflight.promise;
+    }
+    const q = query(collection(db, 'users', uid, 'workouts'), orderBy('date', 'desc'));
+    // Offline / bad signal → the device's cache (which already holds this
+    // device's own saves). The 'online' listener in error-handler.js clears
+    // the session cache on reconnect so a cache-read list isn't pinned.
+    const promise = readDocs(q).then(parseWorkouts).finally(() => {
+        if (_allWorkoutsInflight?.promise === promise) _allWorkoutsInflight = null;
+    });
+    _allWorkoutsInflight = { uid, gen, promise };
+    return promise;
+}
+
 /**
  * @param {object} state - AppState
- * @param {{throwOnError?: boolean}} [opts] - throw on a failed read instead of
- *   returning [] (callers that cache the answer must not cache a failure as
- *   "no history" — D9)
+ * @param {{throwOnError?: boolean, fresh?: boolean}} [opts] - throwOnError:
+ *   throw on a failed read instead of returning [] (callers that cache the
+ *   answer must not cache a failure as "no history" — D9); fresh: skip the
+ *   device-first answer and wait for the server.
  */
-export async function loadAllWorkouts(state, { throwOnError = false } = {}) {
+export async function loadAllWorkouts(state, { throwOnError = false, fresh = false } = {}) {
     if (!state.currentUser) return [];
     const uid = state.currentUser.uid;
     const now = Date.now();
@@ -977,18 +1016,33 @@ export async function loadAllWorkouts(state, { throwOnError = false } = {}) {
     }
     const gen = _allWorkoutsGen;
     try {
-        const workoutsRef = collection(db, 'users', uid, 'workouts');
-        const q = query(workoutsRef, orderBy('date', 'desc'));
-        // Offline / bad signal → the device's cache (which already holds this
-        // device's own saves). The TTL below still applies; the 'online'
-        // listener in error-handler.js clears it on reconnect so a cache-read
-        // list isn't pinned for five minutes once the server is back.
-        const snapshot = await readDocs(q);
-        const workouts = [];
-        snapshot.forEach(docSnap => {
-            const data = { id: docSnap.id, ...docSnap.data() };
-            if (data.completedAt && !data.cancelledAt) workouts.push(data);
-        });
+        // PF-3 — paint from what the device already has, then refresh. The
+        // Firestore cache on this device holds every server read and this
+        // device's own (local-first) saves, so the only thing it can miss is
+        // a write from another device or a Sunday job — the background read
+        // below catches exactly those and announces the change. A first-ever
+        // launch has nothing cached: wait for the server as before.
+        if (!fresh) {
+            let local = null;
+            try {
+                const q = query(collection(db, 'users', uid, 'workouts'), orderBy('date', 'desc'));
+                const snap = await getDocsFromCache(q);
+                if (!snap.empty) local = parseWorkouts(snap);
+            } catch { /* no cache (memory-only persistence) — the server path below */ }
+            if (local) {
+                if (gen === _allWorkoutsGen) _allWorkoutsCache = { uid, fetchedAt: now, data: local };
+                const before = workoutsFingerprint(local);
+                serverRead(uid, gen).then((server) => {
+                    if (gen !== _allWorkoutsGen) return; // invalidated meanwhile — a newer read owns the cache
+                    _allWorkoutsCache = { uid, fetchedAt: Date.now(), data: server };
+                    if (workoutsFingerprint(server) !== before && typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('bigsurf:data-changed', { detail: { what: 'workouts' } }));
+                    }
+                }).catch((e) => console.error('❌ Background workouts refresh failed:', e));
+                return local;
+            }
+        }
+        const workouts = await serverRead(uid, gen);
         if (gen === _allWorkoutsGen) _allWorkoutsCache = { uid, fetchedAt: now, data: workouts };
         return workouts;
     } catch (error) {

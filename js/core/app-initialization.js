@@ -14,7 +14,7 @@ import {
 } from './data/firebase-config.js';
 import { GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { AppState } from './utils/app-state.js';
-import { debugLog } from './utils/config.js';
+import { debugLog, perfMark } from './utils/config.js';
 import { showNotification, setTodayDisplay, initModalScrollLock, openModal, closeModal, escapeHtml } from './ui/ui-helpers.js';
 import { confirmSheet } from './ui/confirm-sheet.js';
 import { loadWorkoutPlans } from './data/data-manager.js'; // ADD loadWorkoutData here
@@ -450,6 +450,8 @@ export async function signOutUser() {
     try {
         // Set flag BEFORE calling signOut to prevent auth listener from running
         manualSignOut = true;
+        // PF-3 — the next account's first dashboard paint shows the skeleton, not ours.
+        document.getElementById('dashboard-content')?.removeAttribute('data-rendered');
 
         // Hide all content sections
         const sections = [
@@ -528,6 +530,59 @@ export function hideUserInfo() {
 
 }
 
+/**
+ * PF-1 — one-time login maintenance, after the dashboard paints. Each step
+ * reads a whole collection, so each runs until it completes cleanly once and
+ * then never again (a flag on preferences/settings, already in memory).
+ */
+async function runLoginMaintenance(uid) {
+    const { updateSetting } = await import('./ui/settings-ui.js');
+    const s = AppState.settings || {};
+    if (!s.schemaV3Checked || !s.equipmentBaseWeightChecked) {
+        const { checkAndMigrateOnLogin, migrateEquipmentBaseWeight } = await import('./data/schema-migration.js');
+        if (!s.schemaV3Checked) {
+            const r = await checkAndMigrateOnLogin(uid);
+            if (r?.success) updateSetting('schemaV3Checked', true);
+            if (r?.migrated > 0) {
+                debugLog(`✅ Migrated ${r.migrated} workouts to schema v3.0`);
+                const { clearAllWorkoutsCache } = await import('./data/data-manager.js');
+                clearAllWorkoutsCache();
+            }
+        }
+        if (!s.equipmentBaseWeightChecked) {
+            const touched = await migrateEquipmentBaseWeight(uid);
+            if (touched !== null) updateSetting('equipmentBaseWeightChecked', true);
+        }
+    }
+    perfMark('maintenance:done');
+}
+
+/** PF-1 — notifications + push registration, never on the launch path. */
+function startNotificationsInBackground() {
+    (async () => {
+        try {
+            const { initializeNotifications } = await import('./utils/notification-helper.js');
+            await initializeNotifications();
+        } catch (e) { console.error('❌ Notifications init failed (non-fatal):', e); }
+        try {
+            const { initializeFCM } = await import('./utils/push-notification-manager.js');
+            await initializeFCM();
+        } catch {
+            // FCM not available or not configured - local notifications still work
+        }
+        perfMark('notifications:done');
+    })();
+}
+
+/** After the launch batch: if the exercise library fell back, retry it (was validateUserData's job). */
+function retryLibraryIfFellBack() {
+    import('./data/firebase-workout-manager.js').then(({ defaultLibraryFellBack }) => {
+        if (typeof defaultLibraryFellBack === 'function' && defaultLibraryFellBack() && _libraryRetryCount < LIBRARY_RETRY_DELAYS_MS.length) {
+            setTimeout(() => { refreshExerciseDatabase(); }, LIBRARY_RETRY_DELAYS_MS[_libraryRetryCount++]);
+        }
+    }).catch(() => {});
+}
+
 export function setupAuthenticationListener() {
     // Handle redirect result (user coming back from Google sign-in)
     getRedirectResult(auth)
@@ -555,36 +610,36 @@ export function setupAuthenticationListener() {
             // Update loading message
             updateLoadingMessage('Loading your workouts…');
 
-            // Check and run schema migration if needed (v3.0 - multiple workouts per day)
-            try {
-                const { checkAndMigrateOnLogin, migrateEquipmentBaseWeight } = await import('./data/schema-migration.js');
-                const migrationResult = await checkAndMigrateOnLogin(user.uid);
-                if (migrationResult.migrated > 0) {
-                    debugLog(`✅ Migrated ${migrationResult.migrated} workouts to schema v3.0`);
-                }
-                // Equipment base weight migration (v3.1) — idempotent, safe to run every login
-                await migrateEquipmentBaseWeight(user.uid);
-            } catch (migrationError) {
-                // Migration errors shouldn't block login - just log them
-                console.error('Migration check failed:', migrationError);
-            }
+            perfMark('auth:user');
 
-            // Load user settings first (affects unit display, rest timer, etc.)
-            const { loadUserSettings, checkOnboarding } = await import('./ui/settings-ui.js');
-            await loadUserSettings();
+            // PF-1 — ONE parallel batch before the first paint. Everything the
+            // dashboard needs starts now; nothing a user can't see (migrations,
+            // push registration, the old duplicate library load) waits in front
+            // of it. Only loadUserSettings has an ordering need (unit, rest
+            // timer) and nothing in this batch reads settings while it fetches.
+            const [{ loadUserSettings, checkOnboarding }, { PRTracker }, dm] = await Promise.all([
+                import('./ui/settings-ui.js'),
+                import('./features/pr-tracker.js'),
+                import('./data/data-manager.js'),
+            ]);
+            // The dashboard's history read joins the batch (not awaited): it
+            // fills the 5-minute cache, so renderDashboard finds it warm.
+            dm.loadAllWorkouts(AppState).then(() => perfMark('auth:workouts')).catch(() => {});
+            const [, , , todaysData] = await Promise.all([
+                loadUserSettings().then(() => perfMark('auth:settings')),
+                loadWorkoutPlans(AppState).then(() => perfMark('auth:plans')),
+                PRTracker.loadPRData().then(() => perfMark('auth:prs')),
+                dm.loadTodaysWorkout(AppState).catch(() => null).then((d) => { perfMark('auth:today'); return d; }),
+            ]);
+            // validateUserData() used to repeat loadWorkoutPlans' six queries
+            // here; its only lasting job was the library retry after a fallback.
+            retryLibraryIfFellBack();
 
             // Equipment migration v2 — dry-run first, prompt user on destructive changes.
             // Non-blocking: failures don't prevent login.
             checkEquipmentMigrationV3(user.uid).catch((err) => {
                 console.error('❌ Equipment migration v2 check failed (non-fatal):', err);
             });
-
-            // Load ALL data FIRST (loadWorkoutPlans loads both plans AND exercises)
-            await loadWorkoutPlans(AppState);
-
-            // Load PR tracking data
-            const { PRTracker } = await import('./features/pr-tracker.js');
-            await PRTracker.loadPRData();
 
             // Kick off equipment catalog load (Firestore → falls back to static).
             // Non-blocking: UI can render before this resolves; consumers await
@@ -597,36 +652,25 @@ export function setupAuthenticationListener() {
                 })
                 .catch((err) => console.error('❌ Catalog load failed (non-fatal):', err));
 
-            // Initialize background notifications
-            const { initializeNotifications } = await import('./utils/notification-helper.js');
-            await initializeNotifications();
+            // In-progress workout check, from the doc the batch already read.
+            await checkForInProgressWorkoutEnhanced(todaysData);
+            perfMark('auth:in-progress');
 
-            // Initialize Firebase Cloud Messaging for iOS background/lock screen notifications
-            try {
-                const { initializeFCM } = await import('./utils/push-notification-manager.js');
-                await initializeFCM();
-            } catch {
-                // FCM not available or not configured - local notifications still work
-            }
-
-            // Validate and refresh user data
-            await validateUserData();
-
-            // THEN check for in-progress workouts (now plans will be loaded!)
-            await checkForInProgressWorkoutEnhanced();
-
-            // Hide loading screen - data is ready!
-            setTimeout(async () => {
+            // Data is ready — no timing delay (the old 500 ms setTimeout).
+            {
                 debugLog('✅ Auth complete, hiding loading screen...');
                 hideLoadingScreen();
 
-                // Show dashboard by default - use dynamic import to avoid timing issues
                 try {
-                    debugLog('📊 Importing dashboard-ui...');
                     const { showDashboard } = await import('./ui/dashboard-ui.js');
-                    debugLog('📊 Calling showDashboard...');
                     await showDashboard();
-                    debugLog('📊 Dashboard should be visible now');
+
+                    // PF-1 — after the paint, in the background: login
+                    // maintenance (flag-gated, so a whole-collection scan runs
+                    // once per account, not every launch) and notifications /
+                    // push (the callable's cold start no longer blocks launch).
+                    runLoginMaintenance(user.uid).catch((err) => console.error('❌ Login maintenance failed (non-fatal):', err));
+                    startNotificationsInBackground();
 
                     // Process pending Withings OAuth callback + auto-sync on load
                     try {
@@ -685,7 +729,7 @@ export function setupAuthenticationListener() {
                         window.navigateTo('dashboard');
                     }
                 }
-            }, 500);
+            }
         } else {
             AppState.currentUser = null;
 
@@ -998,10 +1042,13 @@ export function fillTemplateValues() {
 // IN-PROGRESS WORKOUT CHECK
 // ===================================================================
 
-async function checkForInProgressWorkoutEnhanced() {
+async function checkForInProgressWorkoutEnhanced(preloaded) {
     try {
-        const { loadTodaysWorkout } = await import('./data/data-manager.js');
-        const todaysData = await loadTodaysWorkout(AppState);
+        let todaysData = preloaded;
+        if (todaysData === undefined) {
+            const { loadTodaysWorkout } = await import('./data/data-manager.js');
+            todaysData = await loadTodaysWorkout(AppState);
+        }
 
         if (todaysData && !todaysData.completedAt && !todaysData.cancelledAt) {
             const workoutPlan = (AppState.workoutPlans || []).find(

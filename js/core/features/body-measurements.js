@@ -14,6 +14,13 @@ import {
     limit,
 } from '../data/firebase-config.js';
 import { AppState } from '../utils/app-state.js';
+import { makeSessionCache } from '../data/session-cache.js';
+
+// PF-2 — the dashboard, Goals and the report card all read weigh-ins; once per
+// 5 minutes per size, cleared by every write (save, delete, Withings sync,
+// reconnect).
+const _bwCache = makeSessionCache();
+export function clearBodyWeightCache() { _bwCache.clear(); }
 import { showNotification } from '../ui/ui-helpers.js';
 import { debugLog } from '../utils/config.js';
 import { getDateString } from '../utils/date-helpers.js';
@@ -145,6 +152,7 @@ export async function saveBodyWeight(weight, unit, options = {}) {
     try {
         const userId = AppState.currentUser.uid;
         await setDoc(doc(db, 'users', userId, 'measurements', docId), data);
+        clearBodyWeightCache();
         debugLog('Body weight saved:', data);
         showNotification('Weight logged', 'success', 1500);
         return { id: docId, ...data };
@@ -165,15 +173,15 @@ export async function loadBodyWeightHistory(maxEntries = 365) {
 
     try {
         const userId = AppState.currentUser.uid;
-        const ref = collection(db, 'users', userId, 'measurements');
-        const q = query(ref, orderBy('date', 'desc'), limit(maxEntries));
-        const snapshot = await getDocs(q);
-
-        const entries = [];
-        snapshot.forEach(d => entries.push({ id: d.id, ...d.data() }));
-
-        // Deduplicate and sort ascending
-        return deduplicateByDate(entries);
+        return await _bwCache.get(`history:${maxEntries}`, userId, async () => {
+            const ref = collection(db, 'users', userId, 'measurements');
+            const q = query(ref, orderBy('date', 'desc'), limit(maxEntries));
+            const snapshot = await getDocs(q);
+            const entries = [];
+            snapshot.forEach(d => entries.push({ id: d.id, ...d.data() }));
+            // Deduplicate and sort ascending
+            return deduplicateByDate(entries);
+        });
     } catch (error) {
         console.error('❌ Failed to load body weight history:', error);
         return [];
@@ -212,6 +220,7 @@ export async function deleteBodyWeight(docId) {
     try {
         const userId = AppState.currentUser.uid;
         await deleteDoc(doc(db, 'users', userId, 'measurements', docId));
+        clearBodyWeightCache();
         showNotification('Entry deleted', 'success', 1500);
     } catch (error) {
         console.error('❌ Failed to delete body weight entry:', error);

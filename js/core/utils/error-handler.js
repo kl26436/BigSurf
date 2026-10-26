@@ -388,6 +388,9 @@ function initializeConnectivityNotices() {
         import('../data/data-manager.js')
             .then((m) => m.clearAllWorkoutsCache())
             .catch(() => { /* nothing cached to clear */ });
+        // PF-2 — the other session caches the dashboard reads, same reason.
+        import('../features/body-measurements.js').then((m) => m.clearBodyWeightCache()).catch(() => {});
+        import('../features/dexa-scan.js').then((m) => m.clearDexaCache()).catch(() => {});
     });
 
     // Opened at the gym with no signal: no 'offline' event fires, so say it once.

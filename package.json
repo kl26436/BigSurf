@@ -20,6 +20,8 @@
     "audit:shell:strict": "node scripts/shell-audit.js --strict",
     "eval:coach": "vitest run --config vitest.eval.config.js",
     "eval:coach:check": "node scripts/check-coach-eval.js",
+    "build:preload": "node scripts/gen-modulepreload.mjs",
+    "check:preload": "node scripts/gen-modulepreload.mjs --check",
     "hooks:install": "git config core.hooksPath .githooks"
   },
   "repository": {

@@ -104,3 +104,19 @@ export function getCategoryIcon(category) {
 export function debugLog(...args) {
     if (Config.DEBUG_MODE) console.log(...args);
 }
+
+// PF-0 — perf marks, ?debug only (prod never pays for them). perfMark('auth:settings')
+// after each await on the launch and dashboard paths; perfReport() prints the table
+// (window.perfReport() from the console). The regression check for PF-1…PF-4.
+const _perf = [];
+export function perfMark(label) {
+    if (Config.DEBUG_MODE) _perf.push([label, performance.now()]);
+}
+export function perfReport() {
+    if (!Config.DEBUG_MODE || !_perf.length) return [];
+    const t0 = _perf[0][1];
+    const rows = _perf.map(([l, t], i) => ({ step: l, at_ms: Math.round(t - t0), delta_ms: Math.round(t - (_perf[i - 1]?.[1] ?? t)) }));
+    console.table(rows);
+    return rows;
+}
+if (typeof window !== 'undefined') window.perfReport = perfReport;

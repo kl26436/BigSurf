@@ -184,7 +184,7 @@ const BASE_WEIGHT_DEFAULTS = {
  * Safe to run multiple times (idempotent).
  *
  * @param {string} userId
- * @returns {Promise<number>} Number of documents updated
+ * @returns {Promise<number|null>} Number of documents updated; null when it failed
  */
 export async function migrateEquipmentBaseWeight(userId) {
     if (!userId) return 0;
@@ -217,6 +217,7 @@ export async function migrateEquipmentBaseWeight(userId) {
         return touched;
     } catch (error) {
         console.error('❌ Equipment base weight migration failed:', error);
-        return 0;
+        // null, not 0: the caller only marks the migration done after a clean run (PF-1).
+        return null;
     }
 }

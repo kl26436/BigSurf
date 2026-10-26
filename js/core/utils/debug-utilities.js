@@ -1546,7 +1546,7 @@ export async function rebuildAllPRs() {
         const { PRTracker } = await import('../features/pr-tracker.js');
 
         // Load current PR data first
-        await PRTracker.loadPRData();
+        await PRTracker.loadPRData({ force: true });
 
         // Rebuild from history
         const result = await PRTracker.rebuildPRsFromHistory();
@@ -1643,7 +1643,7 @@ export async function showPRSummary() {
 
     try {
         const { PRTracker } = await import('../features/pr-tracker.js');
-        await PRTracker.loadPRData();
+        await PRTracker.loadPRData({ force: true });
 
         const allPRs = PRTracker.getAllPRs();
         const prsByBodyPart = PRTracker.getPRsByBodyPart();

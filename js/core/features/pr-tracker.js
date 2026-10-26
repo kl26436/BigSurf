@@ -67,12 +67,16 @@ let prData = {
 // ===================================================================
 
 /**
- * Load PR data from Firebase
+ * Load PR data from Firebase. PF-2 — once per user per session: every PR
+ * write goes through this module (prData is kept current), and no server job
+ * writes the doc, so the dashboard no longer re-reads it on every visit.
+ * `force` reads the server copy again (the ?debug tools after a manual re-key).
  */
-export async function loadPRData() {
+export async function loadPRData({ force = false } = {}) {
     if (!AppState.currentUser) {
         return null;
     }
+    if (!force && prDataLoadedFor(AppState.currentUser.uid)) return prData;
 
     try {
         const prDocRef = doc(db, 'users', AppState.currentUser.uid, 'stats', 'personalRecords');

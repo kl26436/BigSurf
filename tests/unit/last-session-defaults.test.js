@@ -119,9 +119,13 @@ describe('getLastSessionDefaults — tier, name matching, cache (AP-3)', () => {
 
     it('D9: a failed history read is not cached as "no history"', async () => {
         putWorkout('w1', { date: '2026-10-10', equipment: 'Hammer Strength Incline', weight: 180 });
+        // PF-3: the history read answers from the device cache first — empty
+        // that step too so the server failure is what the call sees.
+        const cacheSpy = vi.spyOn(firebaseConfig, 'getDocsFromCache').mockRejectedValueOnce(new Error('no cache'));
         const spy = vi.spyOn(firebaseConfig, 'getDocs').mockRejectedValueOnce(new Error('offline'));
         expect(await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym')).toBeNull();
         spy.mockRestore();
+        cacheSpy.mockRestore();
         const retry = await getLastSessionDefaults('Incline Press', 'Hammer Strength Incline', 'Downtown Gym');
         expect(retry).toMatchObject({ tier: 'exact', cacheHit: false });
         expect(retry.sets[0].weight).toBe(180);

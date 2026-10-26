@@ -36,7 +36,7 @@ const PR_DOC_PATH = 'users/test-user/stats/personalRecords';
 // prData state via the real loadPRData(), then run the real checkForNewPR().
 async function checkForNewPR(exerciseName, reps, weight, equipment, prData, equipmentId = null) {
     store.set(PR_DOC_PATH, JSON.parse(JSON.stringify(prData)));
-    await loadPRData();
+    await loadPRData({ force: true });
     return realCheckForNewPR(exerciseName, reps, weight, equipment, equipmentId);
 }
 
@@ -44,7 +44,7 @@ async function checkForNewPR(exerciseName, reps, weight, equipment, prData, equi
 // then call getExercisePRs / recordPR / getAllPRs against the real module state.
 async function seedPRData(prData) {
     store.set(PR_DOC_PATH, JSON.parse(JSON.stringify(prData)));
-    await loadPRData();
+    await loadPRData({ force: true });
 }
 
 describe('calculateVolume', () => {

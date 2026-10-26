@@ -45,6 +45,7 @@ js/
     │   ├── firebase-config.js      # Firebase SDK init
     │   ├── firebase-workout-manager.js  # Templates, exercises, equipment, locations
     │   ├── data-manager.js         # Workout save/load, export, equipment reassignment
+    │   ├── session-cache.js        # PF-2: makeSessionCache() — TTL + single-flight + generation guard for repeated reads
     │   ├── data-export-import.js   # CSV export, JSON export/import
     │   ├── exercise-library.js     # Exercise database with favorites
     │   ├── equipment-catalog.js    # Equipment catalog seed data
@@ -658,6 +659,9 @@ The app has two Firebase Hosting targets:
 **Always deploy to `dev` first, never directly to `prod`.** Note: switching to `no-cache` only affects *future* fetches — files a user already has under the old 1-year `max-age` stay pinned until that entry expires or they hard-refresh once.
 
 ```bash
+# Regenerate the modulepreload block first (a test fails if it's stale)
+npm run build:preload
+
 # Verify a change
 firebase deploy --only hosting:dev
 
@@ -730,6 +734,14 @@ All shipped:
 - `loadAllWorkouts` has a 5-min TTL cache (module-private) keyed by uid. Invalidate via `clearAllWorkoutsCache()` from data-manager.js — wired into `completeWorkout` (workout-session.js) and `deleteWorkout` (workout-history.js).
 - `aggregateBodyPartStats` is memoized via WeakMap keyed by the workouts array reference. Dashboard's training section calls it 6× with the same workouts arg → 5/6 calls are cache hits.
 - The cache identity-stable contract: as long as `loadAllWorkouts` returns the same array reference, downstream memoization survives. When the cache TTL expires or invalidation fires, fresh array → WeakMap loses key → memos auto-clear.
+
+### Launch + dashboard speed (PF, 2026-10)
+
+- **Measure with `?debug`:** `perfMark('label')` (config.js) at each step; `perfReport()` (also `window.perfReport`) prints the timing table. Launch and `renderDashboard` are already marked.
+- **Launch is one parallel batch** (`setupAuthenticationListener`): settings ∥ plans ∥ PR doc ∥ today's workout, with `loadAllWorkouts` warming the cache. Anything a user can't see (migrations, push registration) runs AFTER the dashboard paints; whole-collection migrations are flag-gated on settings (`schemaV3Checked`, `equipmentBaseWeightChecked`). Don't put a new await in front of `hideLoadingScreen()`.
+- **Dashboard reads are one `Promise.all`**, each session-cached (`makeSessionCache` for weigh-ins, scans, the report-card row; `loadPRData()` returns the loaded doc — pass `{ force: true }` to re-read). Every write to a cached collection clears its cache (`clearBodyWeightCache`, `clearDexaCache`). The skeleton shows only before the first paint (`#dashboard-content[data-rendered]`).
+- **`loadAllWorkouts` answers from the device first** (`getDocsFromCache`), then one single-flight server read refreshes it and dispatches `bigsurf:data-changed` (`{ what }`) when the fingerprint changed; the dashboard repaints on that event. `{ fresh: true }` waits for the server.
+- **`modulepreload`:** `index.html` lists the static import graph between `<!-- modulepreload:start/end -->`. Adding or removing a static import changes it — run `npm run build:preload` (perf-launch.test.js fails while it's stale).
 
 ### Ongoing tech-debt notes
 

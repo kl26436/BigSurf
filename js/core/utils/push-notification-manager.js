@@ -7,6 +7,7 @@
 
 import { functions, auth, httpsCallable } from '../data/firebase-config.js';
 import { debugLog } from './config.js';
+import { AppState } from './app-state.js';
 
 // Push subscription for this device
 let pushSubscription = null;
@@ -106,8 +107,17 @@ export async function initializeFCM() {
             const subscriptionJson = pushSubscription.toJSON();
             debugLog('✅ Push subscription endpoint:', subscriptionJson.endpoint?.substring(0, 50) + '...');
 
-            // Save subscription to server
-            await saveSubscriptionToServer(subscriptionJson);
+            // PF-1 — save only a subscription the server doesn't have yet: the
+            // callable's cold start used to run on every launch for nothing.
+            // The endpoint it last saved rides on preferences/settings.
+            if (subscriptionJson.endpoint && AppState.settings?.pushEndpoint !== subscriptionJson.endpoint) {
+                if (await saveSubscriptionToServer(subscriptionJson)) {
+                    const { updateSetting } = await import('../ui/settings-ui.js');
+                    updateSetting('pushEndpoint', subscriptionJson.endpoint);
+                }
+            } else {
+                debugLog('✅ Push subscription unchanged — not re-saved');
+            }
 
             return true;
         } catch (subscribeError) {
@@ -132,14 +142,16 @@ export async function initializeFCM() {
  * Save push subscription to server for scheduled notifications
  */
 async function saveSubscriptionToServer(subscription) {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) return false;
 
     try {
         const saveSubscription = httpsCallable(functions, 'savePushSubscription');
         await saveSubscription({ subscription });
         debugLog('✅ Push subscription saved to server');
+        return true;
     } catch (error) {
         console.error('❌ Error saving push subscription:', error);
+        return false;
     }
 }
 

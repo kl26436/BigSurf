@@ -16,6 +16,11 @@ import {
     httpsCallable,
 } from '../data/firebase-config.js';
 import { AppState } from '../utils/app-state.js';
+import { makeSessionCache } from '../data/session-cache.js';
+
+// PF-2 — scans change only when this app writes one; cached per size, cleared on save / delete / reconnect.
+const _dexaCache = makeSessionCache();
+export function clearDexaCache() { _dexaCache.clear(); }
 import { showNotification } from '../ui/ui-helpers.js';
 import { debugLog } from '../utils/config.js';
 
@@ -190,6 +195,7 @@ export async function saveDexaScan(scanId, data) {
 
     try {
         await setDoc(doc(db, 'users', userId, 'dexa', scanId), document);
+        clearDexaCache();
         debugLog('DEXA scan saved:', scanId);
         return { id: scanId, ...document };
     } catch (error) {
@@ -209,13 +215,14 @@ export async function loadDexaHistory(maxEntries = 50) {
 
     try {
         const userId = AppState.currentUser.uid;
-        const ref = collection(db, 'users', userId, 'dexa');
-        const q = query(ref, orderBy('date', 'desc'), limit(maxEntries));
-        const snapshot = await getDocs(q);
-
-        const scans = [];
-        snapshot.forEach(d => scans.push({ id: d.id, ...d.data() }));
-        return scans;
+        return await _dexaCache.get(`history:${maxEntries}`, userId, async () => {
+            const ref = collection(db, 'users', userId, 'dexa');
+            const q = query(ref, orderBy('date', 'desc'), limit(maxEntries));
+            const snapshot = await getDocs(q);
+            const scans = [];
+            snapshot.forEach(d => scans.push({ id: d.id, ...d.data() }));
+            return scans;
+        });
     } catch (error) {
         console.error('❌ Failed to load DEXA history:', error);
         return [];
@@ -230,14 +237,9 @@ export async function getLatestDexaScan() {
     if (!AppState.currentUser) return null;
 
     try {
-        const userId = AppState.currentUser.uid;
-        const ref = collection(db, 'users', userId, 'dexa');
-        const q = query(ref, orderBy('date', 'desc'), limit(1));
-        const snapshot = await getDocs(q);
-
-        if (snapshot.empty) return null;
-        const d = snapshot.docs[0];
-        return { id: d.id, ...d.data() };
+        // The newest scan is the first of the (cached) two-scan history the dashboard reads.
+        const scans = await loadDexaHistory(2);
+        return scans[0] || null;
     } catch (error) {
         console.error('❌ Failed to get latest DEXA scan:', error);
         return null;
@@ -257,6 +259,7 @@ export async function deleteDexaScan(scanId) {
         // Delete Firestore document
         const scanDoc = await getDoc(doc(db, 'users', userId, 'dexa', scanId));
         await deleteDoc(doc(db, 'users', userId, 'dexa', scanId));
+        clearDexaCache();
 
         // Delete PDF from Storage if it exists
         if (scanDoc.exists() && scanDoc.data().reportUrl) {

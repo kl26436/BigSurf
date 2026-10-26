@@ -10,7 +10,7 @@ import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
 import { getDateString, getDayName, formatRelativeDate } from '../utils/date-helpers.js';
-import { Config, getCategoryIcon, debugLog } from '../utils/config.js';
+import { Config, getCategoryIcon, debugLog, perfMark, perfReport } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { loadAllWorkouts } from '../data/data-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
@@ -84,33 +84,46 @@ export async function showDashboard() {
 // MAIN RENDER
 // ===================================================================
 
+// A render that started earlier must not paint over a newer one.
+let _dashRenderSeq = 0;
+
 async function renderDashboard() {
     const container = document.getElementById('dashboard-content');
     if (!container) return;
+    perfMark('dashboard:start');
+    const seq = ++_dashRenderSeq;
 
-    container.innerHTML = `
-        <div class="skeleton skeleton-card dash-skel--hero"></div>
-        <div class="skeleton skeleton-card dash-skel--strip"></div>
-        <div class="skeleton skeleton-card dash-skel--row"></div>
-    `;
+    // PF-3 — the skeleton only before the session's first paint. After that
+    // the previous dashboard stays up while the (cached) reads run, and the
+    // swap happens in one go — no flash on tab switches or back from a page.
+    if (container.dataset.rendered !== '1') {
+        container.innerHTML = `
+            <div class="skeleton skeleton-card dash-skel--hero"></div>
+            <div class="skeleton skeleton-card dash-skel--strip"></div>
+            <div class="skeleton skeleton-card dash-skel--row"></div>
+        `;
+    }
 
     try {
-        const wm = new FirebaseWorkoutManager(AppState);
-        // ONE workout read. Streaks, weekly stats and insights each ran their
-        // own full-collection query in parallel with loadAllWorkouts — four
-        // copies of the same history over the network on every dashboard
-        // open, and the skeleton stayed up until the slowest landed ("takes
-        // forever… every time I open the app", 9/29). They now derive from
-        // the shared 5-minute cache; the PR doc and week plan / program are
-        // small single-doc reads and stay parallel with it.
-        const [allWorkouts] = await Promise.all([
+        // PF-2 — ONE parallel batch for everything the page shows; wall time
+        // is the slowest read, not the sum. Each is session-cached (workouts,
+        // weigh-ins, scans, the report-card row) or loaded once (PR doc,
+        // week plan, program), so a warm return makes no network trip at all.
+        // Streaks, weekly stats and insights all derive from the one workouts
+        // list (the 9/29 fix).
+        const [allWorkouts, bwData, dexaHistory, reportEntryHTML] = await Promise.all([
             loadAllWorkouts(AppState),
+            loadBodyWeightData(),
+            import('../features/dexa-scan.js').then(m => m.loadDexaHistory(2)).catch(() => []),
+            reportCardEntry(),
             PRTracker.loadPRData(),
             // Week plan (5.5): hydrate once per session (null = none set).
             AppState._weekPlan === undefined ? loadWeekPlan().catch(() => null) : Promise.resolve(),
             // Active program (Phase 9 rung 2): same hydrate-once pattern.
             AppState._activeProgram === undefined ? loadActiveProgram().catch(() => null) : Promise.resolve(),
         ]);
+        perfMark('dashboard:data');
+        if (seq !== _dashRenderSeq) return;
         const [streaks, weeklyStats, insightsData] = await Promise.all([
             StreakTracker.calculateStreaks(allWorkouts),
             StatsTracker.getWeeklyStats(allWorkouts),
@@ -152,11 +165,9 @@ async function renderDashboard() {
             // Cache full history for drill-down pages
             AppState.workouts = allWorkouts;
 
-            // Load templates for "For Today" section
-            try {
-                const templates = await wm.getUserWorkoutTemplates();
-                AppState.templates = templates || [];
-            } catch { AppState.templates = []; }
+            // "For Today" reads the templates already in memory (loaded at
+            // launch, refreshed after every edit) — PF-2, not two more queries.
+            AppState.templates = AppState.workoutPlans || [];
 
             // Top insight (uses 8-week data from insightsData, not full history)
             const exerciseDatabase = AppState.exerciseDatabase || [];
@@ -174,8 +185,6 @@ async function renderDashboard() {
                 insightsData.recentWorkouts, insightsData.allWorkouts, exerciseDatabase, { intent: insightIntent }
             );
 
-            // Body weight data
-            const bwData = await loadBodyWeightData();
 
             // De-dup: today's PRs surface in the banner, so exclude them from
             // the This-week recap below to avoid the same win twice on screen.
@@ -194,24 +203,22 @@ async function renderDashboard() {
                 ${renderActiveWorkoutPill()}
                 ${renderProgramCompleteBanner(allWorkouts)}
                 ${renderForToday(allWorkouts)}
-                ${await reportCardEntry()}
+                ${reportEntryHTML}
                 ${renderTodayPRBanner(recentPRs)}
                 ${renderScoreboardCard(allWorkouts)}
                 ${renderThisWeekCard(allWorkouts, recentPRs, todaysPRKeys, topInsight)}
-                ${await renderBodyCard(bwData)}
+                ${renderBodyCard(bwData, dexaHistory)}
             `;
 
             if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();
         }
+        container.dataset.rendered = '1';
+        perfMark('dashboard:painted');
+        perfReport();
 
-        // Conditionally hide "Manage Locations" in More menu
-        try {
-            const locations = await wm.getUserLocations();
-            const locMenuItem = document.getElementById('more-menu-locations');
-            if (locMenuItem) {
-                locMenuItem.classList.toggle('hidden', !locations || locations.length === 0);
-            }
-        } catch { /* Non-critical */ }
+        // "Manage Locations" in the More menu — PF-2: off the render path,
+        // read once per session.
+        refreshLocationsMenuItem();
 
         showFirstUseTip('more-menu');
     } catch (error) {
@@ -1271,19 +1278,11 @@ function weeklyVolumeByBodyPart(allWorkouts) {
 // BODY CARD — weight + composition merged into one surface (V3)
 // ===================================================================
 
-async function renderBodyCard(bwData) {
-    let scan = null;
-    let prevScan = null;
-    try {
-        const { getLatestDexaScan, loadDexaHistory } = await import('../features/dexa-scan.js');
-        scan = await getLatestDexaScan();
-        // Pull previous scan too for the muscle-delta line. loadDexaHistory
-        // returns descending by date; index 1 is the second-most-recent.
-        if (scan) {
-            const history = await loadDexaHistory();
-            if (history && history.length > 1) prevScan = history[1];
-        }
-    } catch { /* no dexa */ }
+function renderBodyCard(bwData, dexaHistory = []) {
+    // PF-2 — one two-scan read (newest first) instead of "latest" then the
+    // whole history for index 1.
+    const scan = dexaHistory?.[0] || null;
+    const prevScan = dexaHistory?.[1] || null;
 
     // Field on the scan doc is `totalLeanMass`, not `muscleMass` — see
     // composition-detail-ui for the original donut bug this guards against.
@@ -1684,6 +1683,31 @@ export async function renderProgressPage() {
             </div>
         </div>
     `;
+}
+
+/**
+ * PF-2 — "Manage locations" shows only when there's a gym saved. Read once per
+ * session (AppState._cachedLocations), never on the dashboard's render path.
+ */
+function refreshLocationsMenuItem() {
+    const apply = (locations) => {
+        const item = document.getElementById('more-menu-locations');
+        if (item) item.classList.toggle('hidden', !locations || locations.length === 0);
+    };
+    if (Array.isArray(AppState._cachedLocations)) { apply(AppState._cachedLocations); return; }
+    new FirebaseWorkoutManager(AppState).getUserLocations()
+        .then((locations) => { AppState._cachedLocations = locations || []; apply(AppState._cachedLocations); })
+        .catch(() => { /* Non-critical */ });
+}
+
+// PF-3 — data changed behind the page (another device's workout landed in the
+// background refresh, a Withings sync wrote weigh-ins): repaint in place if
+// the dashboard is what's on screen.
+if (typeof window !== 'undefined') {
+    window.addEventListener('bigsurf:data-changed', () => {
+        const section = document.getElementById('dashboard');
+        if (section && !section.classList.contains('hidden')) renderDashboard();
+    });
 }
 
 /** TP-2 — Sunday / Monday: this week's report card, one row under For Today. */

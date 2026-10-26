@@ -17,10 +17,13 @@ import {
     buildReportCard, reportWeek, optionStillValid, dayIndex, GRADE_LABELS, DEFAULT_TIME_ZONE,
 } from '../features/report-card.js';
 import { shortDate } from '../features/goal-progress.js';
+import { makeSessionCache } from '../data/session-cache.js';
 import { once } from './busy.js';
 
 let _doc = null;      // the reportCards doc on screen (card possibly recomputed)
 let _weekKey = null;  // which week to open (null = latest)
+// PF-2 — the dashboard's report-card row, once per 5 minutes; cleared when a card is built or applied.
+const _entryCache = makeSessionCache();
 
 export function openReportCard(weekKey = null) {
     _weekKey = typeof weekKey === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(weekKey) ? weekKey : null;
@@ -242,6 +245,7 @@ async function markApplied(kind) {
     if (!uid || !key) return;
     await setDoc(doc(db, 'users', uid, 'reportCards', key), { applied: { kind, at: new Date().toISOString() } }, { merge: true });
     _doc.applied = { kind };
+    _entryCache.clear();
 }
 
 async function applySwap(p) {
@@ -304,7 +308,7 @@ export async function reportCardBuildNow(btn) {
         const { functions, httpsCallable } = await fs();
         const res = await httpsCallable(functions, 'requestReportCard')({});
         const status = res?.data?.status;
-        if (status === 'ok') { _weekKey = res.data.weekKey; await renderReportCardPage(); return; }
+        if (status === 'ok') { _entryCache.clear(); _weekKey = res.data.weekKey; await renderReportCardPage(); return; }
         showNotification(status === 'rate_limited' ? 'One report card a day — check back tomorrow' : "Couldn't build the card — try again", 'warning');
     } catch (e) {
         console.error('❌ requestReportCard failed:', e);
@@ -342,7 +346,8 @@ export async function reportCardEntryHTML() {
         const week = reportWeek(new Date(), tz());
         const dow = dayIndex(week.today);
         if (dow !== 6 && dow !== 0) return '';
-        const d = await loadDoc(week.weekKey);
+        // PF-2 — session-cached: the dashboard asks on every visit Sun/Mon.
+        const d = await _entryCache.get(week.weekKey, AppState.currentUser?.uid || '', () => loadDoc(week.weekKey));
         if (!d) return '';
         return `
             <div class="row-card rc-entry" onclick="openReportCard('${escapeAttr(week.weekKey)}')">

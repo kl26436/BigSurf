@@ -68,12 +68,12 @@ beforeEach(async () => {
     store.clear();
     AppState.currentUser = { uid: UID };
     // Reset the module-private prData between tests (empty store → empty structure)
-    await loadPRData();
+    await loadPRData({ force: true });
 });
 
 describe('loadPRData', () => {
     it('returns an empty structure when no PR doc exists', async () => {
-        const data = await loadPRData();
+        const data = await loadPRData({ force: true });
         expect(data).toEqual({ exercisePRs: {}, locations: {}, currentLocation: null });
     });
 
@@ -94,7 +94,7 @@ describe('loadPRData', () => {
             currentLocation: 'Gym A',
         });
 
-        await loadPRData();
+        await loadPRData({ force: true });
 
         const prs = getExercisePRs('Bench Press', 'Barbell');
         expect(prs.maxWeight).toMatchObject({ weight: 225, reps: 5, date: '2025-07-20' });
@@ -121,7 +121,7 @@ describe('savePRData', () => {
 
         // Reload from the mocked Firestore (setDoc deep-clones, so this is a
         // genuine round trip, not the same in-memory object)
-        const loaded = await loadPRData();
+        const loaded = await loadPRData({ force: true });
 
         expect(loaded.exercisePRs['Bench Press'].Barbell.maxWeight).toMatchObject({
             weight: 225,
@@ -274,7 +274,7 @@ describe('rebuildPRsFromHistory', () => {
         expect(getExercisePRs('Bench Press', 'Barbell').maxWeight.weight).toBe(185);
 
         // Rebuilt data was saved — reloading from Firestore gives the same answer
-        const loaded = await loadPRData();
+        const loaded = await loadPRData({ force: true });
         expect(loaded.exercisePRs['Bench Press'].Barbell.maxWeight.weight).toBe(185);
     });
 
