@@ -10,8 +10,13 @@
 //       const { createFirestoreMock } = await import('../fixtures/firestore-mock.js');
 //       return createFirestoreMock(store);
 //   });
+//
+// Offline simulation: pass a hoisted `control` object as the second argument.
+// With `control.serverOffline = true`, getDocsFromServer rejects the way the
+// real SDK does offline (code 'unavailable'); getDocs / getDocsFromCache keep
+// answering from the store, which stands in for the device's local cache.
 
-export function createFirestoreMock(store) {
+export function createFirestoreMock(store, control = {}) {
     const pathOf = (segments) => segments.join('/');
 
     // Deep-clone on write like real Firestore serialization — callers must not
@@ -41,6 +46,37 @@ export function createFirestoreMock(store) {
         }
     };
 
+    const offlineError = () => Object.assign(
+        new Error('Failed to get documents from server. (However, these documents may exist in the local cache.)'),
+        { code: 'unavailable' },
+    );
+
+    const runQuery = (refOrQuery) => {
+        let docs = docsInCollection(refOrQuery.__path);
+        for (const c of refOrQuery.__constraints || []) {
+            if (c.__type === 'where') {
+                docs = docs.filter((d) => matchesWhere(d.data()[c.field], c.op, c.value));
+            } else if (c.__type === 'orderBy') {
+                docs.sort((a, b) => {
+                    const av = a.data()[c.field];
+                    const bv = b.data()[c.field];
+                    const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+                    return c.dir === 'desc' ? -cmp : cmp;
+                });
+            } else if (c.__type === 'limit') {
+                docs = docs.slice(0, c.n);
+            }
+        }
+        return docs;
+    };
+    const snapshotOf = (docs, fromCache) => ({
+        forEach: (cb) => docs.forEach(cb),
+        docs,
+        size: docs.length,
+        empty: docs.length === 0,
+        metadata: { fromCache },
+    });
+
     return {
         db: {},
         doc: (_db, ...segments) => ({ __path: pathOf(segments), id: segments[segments.length - 1] }),
@@ -52,28 +88,22 @@ export function createFirestoreMock(store) {
         where: (field, op, value) => ({ __type: 'where', field, op, value }),
         orderBy: (field, dir = 'asc') => ({ __type: 'orderBy', field, dir }),
         limit: (n) => ({ __type: 'limit', n }),
-        getDocs: async (refOrQuery) => {
-            let docs = docsInCollection(refOrQuery.__path);
-            for (const c of refOrQuery.__constraints || []) {
-                if (c.__type === 'where') {
-                    docs = docs.filter((d) => matchesWhere(d.data()[c.field], c.op, c.value));
-                } else if (c.__type === 'orderBy') {
-                    docs.sort((a, b) => {
-                        const av = a.data()[c.field];
-                        const bv = b.data()[c.field];
-                        const cmp = av < bv ? -1 : av > bv ? 1 : 0;
-                        return c.dir === 'desc' ? -cmp : cmp;
-                    });
-                } else if (c.__type === 'limit') {
-                    docs = docs.slice(0, c.n);
-                }
-            }
-            return { forEach: (cb) => docs.forEach(cb), docs, size: docs.length };
+        // Default-source reads behave like the real SDK: server when online,
+        // the local cache (the store) when offline.
+        getDocs: async (refOrQuery) => snapshotOf(runQuery(refOrQuery), !!control.serverOffline),
+        getDocsFromServer: async (refOrQuery) => {
+            if (control.serverOffline) throw offlineError();
+            return snapshotOf(runQuery(refOrQuery), false);
         },
+        getDocsFromCache: async (refOrQuery) => snapshotOf(runQuery(refOrQuery), true),
         getDoc: async (ref) => ({
             exists: () => store.has(ref.__path),
             data: () => store.get(ref.__path),
         }),
+        getDocFromCache: async (ref) => {
+            if (!store.has(ref.__path)) throw offlineError();
+            return { exists: () => true, data: () => store.get(ref.__path) };
+        },
         setDoc: async (ref, data) => { store.set(ref.__path, clone(data)); },
         updateDoc: async (ref, data) => {
             store.set(ref.__path, { ...(store.get(ref.__path) || {}), ...clone(data) });

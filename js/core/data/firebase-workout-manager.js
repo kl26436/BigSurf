@@ -13,9 +13,11 @@ import {
     query,
     getDocs,
     getDocsFromServer,
+    getDocsFromCache,
     orderBy,
     writeBatch,
 } from './firebase-config.js';
+import { readWithCacheFallback } from './offline.js';
 import { showNotification } from '../ui/ui-helpers.js';
 import {
     validateExerciseData,
@@ -52,6 +54,22 @@ function withTimeout(promise, ms = Config.FIREBASE_TIMEOUT_MS) {
         promise,
         new Promise((_, reject) => setTimeout(() => reject(new Error('Operation timed out')), ms)),
     ]);
+}
+
+/**
+ * Query read that survives a gym with no signal: the server when it answers
+ * within `ms`, else the device's Firestore cache (straight to the cache when
+ * the device is offline). `fromServer` uses getDocsFromServer for the
+ * primary read — the callers that must not see a stale cache (deleted docs,
+ * Admin-SDK coach writes) — and still falls back to the cache offline:
+ * slightly stale beats an empty history while the data sits on the device.
+ */
+function readDocs(q, { fromServer = false, ms = Config.FIREBASE_TIMEOUT_MS } = {}) {
+    return readWithCacheFallback(
+        () => (fromServer ? getDocsFromServer(q) : getDocs(q)),
+        () => getDocsFromCache(q),
+        { timeoutMs: ms },
+    );
 }
 
 // ===================================================================
@@ -217,7 +235,7 @@ export class FirebaseWorkoutManager {
 
         try {
             const overridesRef = collection(this.db, 'users', this.appState.currentUser.uid, 'exerciseOverrides');
-            const querySnapshot = await withTimeout(getDocs(overridesRef));
+            const querySnapshot = await readDocs(overridesRef);
 
             const overrides = [];
             querySnapshot.forEach((doc) => {
@@ -332,7 +350,7 @@ export class FirebaseWorkoutManager {
 
         try {
             const hiddenRef = collection(this.db, 'users', this.appState.currentUser.uid, 'hiddenExercises');
-            const querySnapshot = await withTimeout(getDocs(hiddenRef));
+            const querySnapshot = await readDocs(hiddenRef);
 
             const hidden = [];
             querySnapshot.forEach((doc) => {
@@ -372,7 +390,12 @@ export class FirebaseWorkoutManager {
     async getDefaultExercises() {
         try {
             const exercisesRef = collection(this.db, 'exercises');
-            const querySnapshot = await withTimeout(getDocs(exercisesRef));
+            const querySnapshot = await readDocs(exercisesRef);
+            // First-ever launch offline: the cache has no library yet. Treat
+            // that like a failed read so the bundled copy stands in.
+            if (querySnapshot.size === 0 && querySnapshot.metadata?.fromCache) {
+                throw new Error('Default exercise library not cached yet (offline)');
+            }
 
             const exercises = [];
             const seenNames = new Set(); // Track names to filter duplicates
@@ -428,7 +451,7 @@ export class FirebaseWorkoutManager {
 
         try {
             const customRef = collection(this.db, 'users', this.appState.currentUser.uid, 'customExercises');
-            const querySnapshot = await withTimeout(getDocs(customRef));
+            const querySnapshot = await readDocs(customRef);
 
             const customExercises = [];
             querySnapshot.forEach((doc) => {
@@ -570,7 +593,7 @@ export class FirebaseWorkoutManager {
         try {
             // Load from your existing 'workouts' collection
             const globalDefaultsRef = collection(this.db, 'workouts');
-            const querySnapshot = await withTimeout(getDocs(globalDefaultsRef));
+            const querySnapshot = await readDocs(globalDefaultsRef);
 
             const globalDefaults = [];
             querySnapshot.forEach((doc) => {
@@ -695,9 +718,7 @@ export class FirebaseWorkoutManager {
                 // coach writes: those happen via the Admin SDK, so the client
                 // has no pending write and plain getDocs can hand back the
                 // pre-edit templates from cache (same trap deleteTemplate hit).
-                const customSnapshot = await withTimeout(
-                    (fromServer ? getDocsFromServer : getDocs)(customTemplatesRef)
-                );
+                const customSnapshot = await readDocs(customTemplatesRef, { fromServer });
 
                 customSnapshot.forEach((doc) => {
                     const data = doc.data();
@@ -909,8 +930,10 @@ export class FirebaseWorkoutManager {
         try {
             const workoutsRef = collection(this.db, 'users', this.appState.currentUser.uid, 'workouts');
             const q = query(workoutsRef, orderBy('date', 'desc'));
-            // Use getDocsFromServer to bypass Firestore cache (ensures deleted docs don't reappear)
-            const querySnapshot = await withTimeout(getDocsFromServer(q), 15000);
+            // Server-first to bypass the Firestore cache (ensures deleted docs
+            // don't reappear). Offline or no answer in 15 s → the local cache
+            // instead of an empty history: getDocsFromServer throws offline.
+            const querySnapshot = await readDocs(q, { fromServer: true, ms: 15000 });
 
             const workouts = [];
             querySnapshot.forEach((doc) => {
@@ -1091,7 +1114,7 @@ export class FirebaseWorkoutManager {
         try {
             const equipmentRef = collection(this.db, 'users', this.appState.currentUser.uid, 'equipment');
             const q = query(equipmentRef, orderBy('lastUsed', 'desc'));
-            const querySnapshot = await withTimeout(getDocs(q));
+            const querySnapshot = await readDocs(q);
 
             const equipment = [];
             const legacyDocs = [];
@@ -1519,7 +1542,7 @@ export class FirebaseWorkoutManager {
         try {
             const locationsRef = collection(this.db, 'users', this.appState.currentUser.uid, 'locations');
             const q = query(locationsRef, orderBy('lastVisit', 'desc'));
-            const querySnapshot = await withTimeout(getDocs(q));
+            const querySnapshot = await readDocs(q);
 
             const locations = [];
             querySnapshot.forEach((doc) => {

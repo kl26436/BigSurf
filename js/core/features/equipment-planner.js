@@ -130,10 +130,12 @@ export function categorizeTemplates(templates, availableExerciseNames) {
  * Badge state for a workout card at a gym (traveler-flow.md D6: evidence per
  * workout, never a hard negative).
  *
- * - `full`     → every exercise has positive evidence: "Possible here"
- * - `partial`  → some do: "4 of 6 here"
+ * - `full`     → every exercise has positive evidence: "Everything's here"
+ * - `partial`  → some do: "4 of 6 exercises here"
  * - `unmapped` → zero positive evidence. NOT "not possible" — the gym just
- *                hasn't encountered these exercises yet: "Not mapped here yet"
+ *                hasn't seen these exercises yet: "Not done here yet"
+ *   (10/25 copy pass: "Possible here" / "Not mapped here yet" read as app
+ *   jargon — Kevin, 07-03. Plain words, same D6 rule: never a hard negative.)
  * - `null`     → no badge at all: no compatibility data, an empty template,
  *                or a gym with zero mapped equipment (F1 banner territory).
  *
@@ -147,14 +149,14 @@ export function badgeForTemplate(compatibility, gymEquipmentCount) {
         return null;
     }
     if (compatibility.available === 0) {
-        return { state: 'unmapped', label: 'Not mapped here yet' };
+        return { state: 'unmapped', label: 'Not done here yet' };
     }
     if (compatibility.missing === 0) {
-        return { state: 'full', label: 'Possible here' };
+        return { state: 'full', label: "Everything's here" };
     }
     return {
         state: 'partial',
-        label: `${compatibility.available} of ${compatibility.total} here`,
+        label: `${compatibility.available} of ${compatibility.total} exercises here`,
     };
 }
 

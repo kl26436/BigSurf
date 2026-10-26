@@ -26,8 +26,9 @@ import { describeWeekTarget } from '../features/week-targets.js';
 
 import {
     aggregateBodyPartStats, getTemplatesForDayOfWeek, aggregateExerciseStats,
-    findPRProximity, formatVolume, capitalize,
+    findPRProximity, formatVolume, capitalize, aggregateConditioning,
 } from '../features/metrics/aggregators.js';
+import { getRangeBounds } from '../features/metrics/range-filter.js';
 import { analyzeWeeklyVolume } from '../features/training-insights.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
 import { chartLine } from '../features/charts/chart-line.js';
@@ -1551,6 +1552,30 @@ function renderProgressSummary(streak, sessions, prCount) {
     `;
 }
 
+/**
+ * Conditioning line (July decision). Hidden for anyone who has never logged
+ * cardio — a pure lifter shouldn't get a nag row.
+ */
+export function renderConditioningLine(c) {
+    if (!c || !c.lastDate) return '';
+    const n = c.sessions;
+    let title = n === 0
+        ? 'No cardio in the last 7 days'
+        : `${n} ${n === 1 ? 'session' : 'sessions'} in the last 7 days`;
+    if (n > 0 && c.minutesComplete && c.minutes > 0) title += ` · ${c.minutes} min`;
+    const sub = n === 0 ? `Last cardio: ${formatRelativeDate(c.lastDate)}` : '';
+    return `
+        <div class="row-card row-card--static progress-conditioning">
+            <div class="row-card__icon progress-conditioning__icon"><i class="fas fa-heart-pulse"></i></div>
+            <div class="row-card__content">
+                <div class="row-card__title">Conditioning</div>
+                <div class="row-card__subtitle">${escapeHtml(title)}</div>
+                ${sub ? `<div class="row-card__detail">${escapeHtml(sub)}</div>` : ''}
+            </div>
+        </div>
+    `;
+}
+
 function renderVolumeTrend(series) {
     if (!series.some(p => p.y > 0)) return '';
     const maxY = Math.max(...series.map(p => p.y));
@@ -1617,6 +1642,7 @@ export async function renderProgressPage() {
         return (a.lastTrained?.daysAgo || 999) - (b.lastTrained?.daysAgo || 999);
     });
     const volumeByPart = weeklyVolumeByBodyPart(allWorkouts);
+    const conditioning = aggregateConditioning(allWorkouts, getRangeBounds('W'));
 
     container.innerHTML = `
         <div class="page-header page-header--detail">
@@ -1653,6 +1679,7 @@ export async function renderProgressPage() {
                     <span class="dash-section-head__meta">sets/wk vs target</span>
                 </div>
                 ${stats.map(s => renderBodyPartCard(s, volumeByPart)).join('')}
+                ${renderConditioningLine(conditioning)}
                 ${renderPRTable(prs)}
             </div>
         </div>

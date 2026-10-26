@@ -7,7 +7,8 @@ import { showNotification, escapeHtml, escapeAttr, formatHeight, parseHeightToCm
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { navigateTo, navigateBack } from './navigation.js';
-import { db, doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from '../data/firebase-config.js';
+import { db, doc, setDoc, getDoc } from '../data/firebase-config.js';
+import { confirmDeleteAccount } from './delete-account.js';
 import { exportWorkoutData } from '../data/data-manager.js';
 import { isManualDeloadActive, manualDeloadEnd, MANUAL_DELOAD_WEIGHT_PCT, weekOverrideOf } from '../features/session-intent.js';
 import { pickPrimaries, applyPrimaryChoice, PATTERN_LABELS } from '../features/progress-scoreboard.js';
@@ -533,8 +534,8 @@ export function renderSettings() {
                 <div class="srow srow--clickable" onclick="exportWorkoutData(window.AppState)">
                     <div class="srow-icon ic-muted"><i class="fas fa-download"></i></div>
                     <div class="srow-info">
-                        <div class="srow-name">Export workouts</div>
-                        <div class="srow-desc">Download CSV or JSON</div>
+                        <div class="srow-name">Export all data</div>
+                        <div class="srow-desc">Download everything as a JSON file</div>
                     </div>
                     <i class="fas fa-chevron-right srow-chev"></i>
                 </div>
@@ -553,13 +554,22 @@ export function renderSettings() {
                 </div>
             </div>
 
-            <!-- Danger zone (account-level actions only — Delete all data lives
-                 one more tap away on the Profile detail page to prevent mis-taps) -->
+            <!-- Danger zone. Delete account sits here, not a tap deeper, because
+                 Apple requires it to be easy to find (and the privacy policy
+                 says "Settings → Delete account"); the confirm sheet + typed
+                 DELETE step is what guards against mis-taps. -->
             <div class="group-label group-label--danger">Danger zone</div>
             <div class="group">
                 <div class="srow srow--clickable" onclick="signOutUser()">
                     <div class="srow-icon ic-danger"><i class="fas fa-sign-out-alt"></i></div>
                     <div class="srow-info"><div class="srow-name srow-name--danger">Sign out</div></div>
+                </div>
+                <div class="srow srow--clickable" onclick="confirmDeleteAccount()">
+                    <div class="srow-icon ic-danger"><i class="fas fa-user-xmark"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name srow-name--danger">Delete account</div>
+                        <div class="srow-desc">Permanently erase your account and all your data</div>
+                    </div>
                 </div>
             </div>
 
@@ -932,17 +942,6 @@ export function renderProfileDetail() {
                     <div class="srow-right">
                         <span class="srow-value">${escapeHtml(exp)}</span>
                         <i class="fas fa-chevron-right srow-chev"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="group-label group-label--danger">Danger zone</div>
-            <div class="group">
-                <div class="srow srow--clickable" onclick="confirmDeleteAllData()">
-                    <div class="srow-icon ic-danger"><i class="fas fa-trash"></i></div>
-                    <div class="srow-info">
-                        <div class="srow-name srow-name--danger">Delete all data</div>
-                        <div class="srow-desc">Permanently remove all workouts, templates, equipment, and settings</div>
                     </div>
                 </div>
             </div>
@@ -1421,100 +1420,8 @@ export async function rebuildPRsFromSettings() {
 }
 
 // ===================================================================
-// DELETE ALL DATA (Phase F §4 danger action)
+// DELETE ACCOUNT (launch blocker 11b)
 // ===================================================================
-
-// Every user-scoped Firestore subcollection known to this app. Kept here
-// (not auto-discovered) because new subcollections must be opted into the
-// wipe intentionally — losing data is cheap, leaking it isn't.
-const USER_SUBCOLLECTIONS = [
-    'workouts',
-    'workoutTemplates',
-    'equipment',
-    'locations',
-    'customExercises',
-    'exerciseOverrides',
-    'measurements',
-    'dexa',
-    'coachHistory',
-];
-// Single-doc preference paths to clear alongside the subcollections.
-const USER_PREFERENCE_DOCS = ['settings', 'favorites'];
-
-/**
- * Two-step confirm then wipe all user data. Final step signs the user out so
- * they land on the auth screen with a clean slate.
- */
-export async function confirmDeleteAllData() {
-    const first = await confirmSheet({
-        title: 'Delete all your data?',
-        message: 'Permanently removes all your workouts, equipment, locations, ' +
-            "measurements, DEXA scans, coach conversations, and settings. This can't be undone.",
-        confirmLabel: 'Delete everything',
-        cancelLabel: 'Keep my data',
-        destructive: true,
-    });
-    if (!first) return;
-
-    const typed = await promptSheet({
-        title: 'Type DELETE in all caps to confirm',
-        placeholder: 'DELETE',
-        confirmLabel: 'Delete all data',
-    });
-    if (typed !== 'DELETE') {
-        showNotification('Deletion cancelled', 'info', 2000);
-        return;
-    }
-
-    showNotification('Deleting your data…', 'info', 10000);
-    try {
-        const { deletedDocs } = await deleteAllUserData();
-        showNotification(`Deleted ${deletedDocs} records. Signing out…`, 'success', 3000);
-
-        // Sign out so the UI doesn't try to render against a wiped profile.
-        const { signOutUser } = await import('../app-initialization.js');
-        await signOutUser();
-    } catch (error) {
-        console.error('❌ Delete all data failed:', error);
-        showNotification('Delete failed — some data may remain. Try again or contact support.', 'error', 5000);
-    }
-}
-
-/**
- * Delete every user-scoped doc in Firestore. Returns total deleted count.
- * Uses batched writes (500/batch limit) to stay under Firestore caps.
- */
-async function deleteAllUserData() {
-    if (!AppState.currentUser) {
-        throw new Error('Not signed in');
-    }
-    const uid = AppState.currentUser.uid;
-    let deletedDocs = 0;
-
-    for (const subPath of USER_SUBCOLLECTIONS) {
-        const snap = await getDocs(collection(db, 'users', uid, subPath));
-        deletedDocs += await deleteDocsInBatches(snap.docs);
-    }
-
-    // Preference docs live under preferences/{settings,favorites} — best-effort
-    // delete; missing docs just resolve without error.
-    for (const prefName of USER_PREFERENCE_DOCS) {
-        try {
-            await deleteDoc(doc(db, 'users', uid, 'preferences', prefName));
-            deletedDocs++;
-        } catch (err) {
-            // Non-fatal — the doc may not exist for this user.
-            console.warn(`Could not delete preferences/${prefName}:`, err);
-        }
-    }
-
-    // Reset in-memory state so any surviving render pass sees empty data.
-    AppState.settings = null;
-    AppState.workouts = [];
-    AppState.workoutPlans = [];
-
-    return { deletedDocs };
-}
 
 // ===================================================================
 // NOTIFICATION DIAGNOSTICS
@@ -1658,21 +1565,9 @@ export async function notifDiagTest() {
     }
 }
 
-async function deleteDocsInBatches(docs) {
-    const BATCH_LIMIT = 500;
-    let total = 0;
-    for (let i = 0; i < docs.length; i += BATCH_LIMIT) {
-        const batch = writeBatch(db);
-        const slice = docs.slice(i, i + BATCH_LIMIT);
-        for (const d of slice) batch.delete(d.ref);
-        await batch.commit();
-        total += slice.length;
-    }
-    return total;
-}
-
 // Self-wire handlers rendered only from this module's own template strings
-// (cache-skew rule): the coach-memory sheet + its row in the settings page.
+// (cache-skew rule): the Delete account row, the coach-memory sheet + its row.
+window.confirmDeleteAccount = confirmDeleteAccount;
 window.openCoachMemorySheet = openCoachMemorySheet;
 window.deleteCoachFact = deleteCoachFact;
 window.closeCoachMemorySheet = closeCoachMemorySheet;

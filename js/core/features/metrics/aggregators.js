@@ -827,6 +827,53 @@ export function setRangeFunctions(getRangeBounds, getPreviousRangeBounds) {
 }
 
 // ===================================================================
+// CONDITIONING (July decision: no Cardio body-part card — weight volume
+// means nothing for cardio — just a small line on Progress)
+// ===================================================================
+
+// Name fallback for cardio the exercise database doesn't know (same terms
+// movement-patterns.js uses for its 'cardio' pattern).
+const CARDIO_NAME_RE = /treadmill|stationary bike|elliptical|rowing machine|stair ?climber|jump rope|\bcardio\b|conditioning|\brun(ning)?\b|cycling|\bski ?erg|assault|\bbike\b|sprint/i;
+
+export function isCardioExercise(name) {
+    if (!name) return false;
+    return classifyBodyPart(name) === 'cardio' || CARDIO_NAME_RE.test(name);
+}
+
+function hasLoggedSet(ex) {
+    return (ex.sets || []).some(s => s && (s.completed || s.reps || s.weight));
+}
+
+/**
+ * Sessions with cardio in the range, plus minutes where they're knowable.
+ * Cardio still logs as sets (there's no duration field), so minutes come
+ * from the workout timer and only when the whole session was cardio — a
+ * leg day with a 10-minute bike finisher has no honest cardio minutes.
+ * `minutesComplete` says whether every counted session contributed.
+ *
+ * @returns {{sessions:number, minutes:number, minutesComplete:boolean, lastDate:string|null}}
+ *          `lastDate` is the most recent cardio session ever (not range-bound).
+ */
+export function aggregateConditioning(workouts, { start, end }) {
+    let sessions = 0;
+    let seconds = 0;
+    let minutesComplete = true;
+    let lastDate = null;
+    for (const w of workouts || []) {
+        if (w.cancelledAt) continue;
+        const exercises = withResolvedNames(w).filter(hasLoggedSet);
+        const cardio = exercises.filter(ex => isCardioExercise(ex.name));
+        if (cardio.length === 0) continue;
+        if (w.date && (!lastDate || w.date > lastDate)) lastDate = w.date;
+        if (!isInRange(w.date, start, end)) continue;
+        sessions++;
+        if (cardio.length === exercises.length && w.totalDuration > 0) seconds += w.totalDuration;
+        else minutesComplete = false;
+    }
+    return { sessions, minutes: Math.round(seconds / 60), minutesComplete, lastDate };
+}
+
+// ===================================================================
 // HELPERS
 // ===================================================================
 

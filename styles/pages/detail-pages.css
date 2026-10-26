@@ -272,6 +272,13 @@
     letter-spacing: 0.05em;
     margin-top: 2px;
 }
+.progress-conditioning {
+    margin-bottom: var(--space-8);
+}
+.progress-conditioning__icon {
+    background: var(--cat-cardio-bg);
+    color: var(--cat-cardio);
+}
 .progress-card {
     background: var(--bg-card);
     border-radius: var(--radius-md);

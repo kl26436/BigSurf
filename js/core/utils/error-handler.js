@@ -3,6 +3,7 @@
 
 import { showNotification } from '../ui/ui-helpers.js';
 import { AppState } from './app-state.js';
+import { isOfflineError, isOnline as deviceOnline, onQueuedWriteRejected, markServerReachable } from '../data/offline.js';
 
 // ===================================================================
 // IN-MEMORY ERROR LOG (ring buffer)
@@ -356,19 +357,59 @@ export function initializeErrorHandler() {
         event.preventDefault();
     });
 
-    // Handle offline/online events
+    initializeConnectivityNotices();
+}
+
+// The dismiss action keeps the toast up long enough to read (a plain info
+// toast is gone in 1.5 s).
+function showOfflineNotice() {
+    showNotification("You're offline — changes will sync when you're back", 'warning', undefined,
+        { label: 'Got it', onClick: () => {} });
+}
+
+/**
+ * The offline indicator: one quiet toast when the connection drops (or the
+ * app opens without one) and one when it returns. Saves keep working in
+ * between — Firestore's persistent cache holds them (firebase-config.js).
+ */
+function initializeConnectivityNotices() {
     window.addEventListener('offline', () => {
         console.warn('⚠️ Lost internet connection');
         captureWarning('Device went offline', 'network');
-        showNotification('You are offline. Changes will sync when reconnected.', 'warning');
+        showOfflineNotice();
     });
 
     window.addEventListener('online', () => {
         captureWarning('Device came back online', 'network');
-        showNotification('Back online — syncing data…', 'success');
+        showNotification('Back online — syncing your changes', 'info');
+        markServerReachable(); // ask the server again instead of waiting out the grace period
+        // The 5-minute history cache may hold a cache-only read from while
+        // offline; drop it so the next reader sees the server again.
+        import('../data/data-manager.js')
+            .then((m) => m.clearAllWorkoutsCache())
+            .catch(() => { /* nothing cached to clear */ });
+    });
 
-        if (window.AppState?.currentUser) {
-            // Could trigger data sync here
+    // Opened at the gym with no signal: no 'offline' event fires, so say it once.
+    if (!deviceOnline()) {
+        setTimeout(showOfflineNotice, 1500);
+    }
+
+    // A write that counted as saved locally and was later refused by the
+    // server (rare: a rules violation once the device reconnects). The data
+    // isn't on the server, so say so — capped, because the error log itself
+    // writes to Firestore and must not loop on its own refusals.
+    let lateRejections = 0;
+    onQueuedWriteRejected((err) => {
+        console.error('❌ Queued write was rejected by the server:', err);
+        lateRejections += 1;
+        if (lateRejections > 3) return;
+        captureWarning('Queued write rejected after reconnect', 'offline-sync', {
+            code: err?.code || null,
+            error: String(err?.message || err),
+        });
+        if (lateRejections === 1) {
+            showNotification("A change couldn't sync — details are in the error log", 'error');
         }
     });
 }
@@ -416,7 +457,10 @@ function handleError(error, userMessage, source) {
     let message = userMessage;
     let severity = 'error';
 
-    if (error?.code === 'permission-denied') {
+    if (!deviceOnline() && isOfflineError(error)) {
+        // Offline already got its one toast; a network failure now is expected.
+        severity = 'silent';
+    } else if (error?.code === 'permission-denied') {
         message = 'Sign in again to continue.';
     } else if (error?.code === 'unavailable' || error?.message?.includes('timeout') || error?.message?.includes('timed out')) {
         message = 'Slow connection — saving will retry automatically.';

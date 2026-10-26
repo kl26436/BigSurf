@@ -1,6 +1,7 @@
 // Admin-SDK-shaped in-memory Firestore for server code (functions/*.js) —
 // collection/doc/get/set(merge)/add, where(== != >= <= > < in)/orderBy/limit, snapshot
-// .ref/.size/.empty. Docs are keyed by full path ('users/u1/workouts/w1').
+// .ref/.size/.empty, db.doc(path), db.recursiveDelete(ref). Docs are keyed by full
+// path ('users/u1/workouts/w1').
 // Every write is recorded in `writes` so a test can assert "this turn wrote
 // nothing" independently of which tools were called (AP-20d).
 
@@ -29,6 +30,7 @@ export function fakeAdminDb(seed = {}) {
     function collectionRef(path, { order = null, max = Infinity, filters = [] } = {}) {
         return {
             id: path.split('/').pop(),
+            path,
             doc: (id) => docRef(`${path}/${id ?? `auto_${++autoId}`}`),
             where: (field, op, value) => {
                 if (!OPS[op]) throw new Error(`fakeAdminDb: where op ${op} not supported`);
@@ -80,5 +82,16 @@ export function fakeAdminDb(seed = {}) {
         };
     }
 
-    return { collection: (name) => collectionRef(name), _docs: docs, writes };
+    // Admin SDK recursiveDelete: the doc (or collection) and everything nested
+    // under it. Resolves fine when nothing is there.
+    const recursiveDelete = async (ref) => {
+        for (const key of [...docs.keys()]) {
+            if (key === ref.path || key.startsWith(`${ref.path}/`)) {
+                docs.delete(key);
+                writes.push({ op: 'delete', path: key });
+            }
+        }
+    };
+
+    return { collection: (name) => collectionRef(name), doc: (path) => docRef(path), recursiveDelete, _docs: docs, writes };
 }

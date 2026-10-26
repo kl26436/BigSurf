@@ -30,19 +30,19 @@ const chestTemplate = {
 describe('badgeForTemplate', () => {
     it('returns full when every exercise is available', () => {
         const compat = checkTemplateCompatibility(legTemplate, AVAILABLE);
-        expect(badgeForTemplate(compat, 8)).toEqual({ state: 'full', label: 'Possible here' });
+        expect(badgeForTemplate(compat, 8)).toEqual({ state: 'full', label: "Everything's here" });
     });
 
     it('returns partial with positive counts only', () => {
         const compat = checkTemplateCompatibility(mixedTemplate, AVAILABLE);
-        expect(badgeForTemplate(compat, 8)).toEqual({ state: 'partial', label: '1 of 3 here' });
+        expect(badgeForTemplate(compat, 8)).toEqual({ state: 'partial', label: '1 of 3 exercises here' });
     });
 
     it('never claims impossibility — zero matches reads unmapped (D6)', () => {
         const compat = checkTemplateCompatibility(chestTemplate, AVAILABLE);
         const badge = badgeForTemplate(compat, 8);
         expect(badge.state).toBe('unmapped');
-        expect(badge.label).toBe('Not mapped here yet');
+        expect(badge.label).toBe('Not done here yet');
         expect(badge.label).not.toMatch(/not possible/i);
     });
 
@@ -61,6 +61,6 @@ describe('badgeForTemplate', () => {
             exercises: [{ name: 'Push-Up' }, { name: 'Plank' }],
         };
         const compat = checkTemplateCompatibility(bodyweight, new Set());
-        expect(badgeForTemplate(compat, 5)).toEqual({ state: 'full', label: 'Possible here' });
+        expect(badgeForTemplate(compat, 5)).toEqual({ state: 'full', label: "Everything's here" });
     });
 });

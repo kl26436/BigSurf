@@ -394,18 +394,14 @@ dialog.modal:not([open]) {
     margin-top: var(--space-32);
 }
 /* Full-screen modals (no dead space at top) */
-#add-exercise-modal,
-#template-selection-modal {
+#add-exercise-modal {
     align-items: stretch;
 }
-#add-exercise-modal > .modal-content,
-#template-selection-modal > .modal-content {
+#add-exercise-modal > .modal-content {
     max-height: 100vh; /* fallback */
     max-height: 100dvh;
     /* min-height removed (Phase 1.1) — only outermost wrapper should set viewport height */
     border-radius: 0;
-}
-#add-exercise-modal > .modal-content {
     display: flex;
     flex-direction: column;
     height: 100vh;

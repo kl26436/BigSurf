@@ -1975,9 +1975,9 @@ async function initializeWorkoutLocation() {
             const workoutManager = new FirebaseWorkoutManager(AppState);
             const savedLocations = await workoutManager.getUserLocations();
             const existingLoc = savedLocations.find((loc) => loc.name === existingSessionLocation);
-            if (existingLoc) {
-                await workoutManager.updateLocationVisit(existingLoc.id);
-            }
+            // Visit bookkeeping never holds up the start (it read-then-writes,
+            // which waits on the network on bad signal). It catches its own errors.
+            if (existingLoc) workoutManager.updateLocationVisit(existingLoc.id);
             return;
         }
 
@@ -2008,7 +2008,7 @@ async function initializeWorkoutLocation() {
                 (matches.length === 1 || matches[1].distance > Config.GPS_CONFIDENT_MATCH_METERS);
 
             if (confident) {
-                await workoutManager.updateLocationVisit(result.location.id);
+                workoutManager.updateLocationVisit(result.location.id); // not awaited — see above
             } else {
                 showGymChooserSheet(matches, workoutManager);
             }

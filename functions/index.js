@@ -28,6 +28,7 @@ const {
 const { withPromptCaching, runCoachToolLoop } = require('./coach-loop');
 const { buildWeeklyReviewRequest } = require('./weekly-review');
 const { buildReportCardRequest, reportCardDoc } = require('./report-card-request');
+const { deleteUserAccount, deleteUserData } = require('./account-deletion');
 
 // ── Model routing ────────────────────────────────────────────────────
 // Coach chat + template building + DEXA extraction use the flagship model
@@ -2163,5 +2164,57 @@ exports.extractDexaData = functions.runWith({
         if (error instanceof functions.https.HttpsError) throw error;
         console.error('❌ DEXA extraction error:', error);
         throw new functions.https.HttpsError('internal', 'Failed to extract DEXA scan data');
+    }
+});
+
+// ── Account deletion (launch blocker 11b — Apple requirement) ───────────
+// Deletes users/{uid} recursively, the user's docs in the top-level
+// uid-keyed collections, their Storage prefix, then the Auth user (last, so
+// a failure part-way leaves them able to sign in and retry). Logic and the
+// full inventory live in account-deletion.js; it's idempotent.
+//
+// Acts ONLY on context.auth.uid — any uid in `data` is ignored.
+exports.deleteAccount = functions.runWith({
+    timeoutSeconds: 300,
+    memory: '512MB',
+    maxInstances: 5,
+}).https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Sign in to delete your account');
+    }
+    const uid = context.auth.uid;
+    // The admin account owns the global catalogs and is the day-to-day test
+    // account on a project shared by dev and prod hosting — one mis-tap would
+    // erase it. Delete it from the console if that's ever really wanted.
+    if (uid === ADMIN_UID) {
+        throw new functions.https.HttpsError('failed-precondition', 'The admin account can\'t be deleted from the app');
+    }
+
+    try {
+        const result = await deleteUserAccount(uid, {
+            db,
+            auth: admin.auth(),
+            bucket: admin.storage().bucket(),
+        });
+        // Minimal record: uid + counts only, in Cloud Logging (no Firestore
+        // record — keeping one would be keeping data about a deleted user).
+        console.log(`🗑️ Account deleted uid=${uid}`, JSON.stringify(result));
+        return { success: true };
+    } catch (error) {
+        console.error(`❌ Account deletion failed uid=${uid}:`, error);
+        throw new functions.https.HttpsError('internal', 'Account deletion didn\'t finish — try again');
+    }
+});
+
+// Same wipe when the Auth user is deleted any other way (Firebase console,
+// e.g. for an emailed deletion request). After the callable it re-sweeps
+// users/{uid}, catching a debounced client write that raced the delete.
+exports.onAuthUserDeleted = functions.auth.user().onDelete(async (user) => {
+    try {
+        const result = await deleteUserData(user.uid, { db, bucket: admin.storage().bucket() });
+        console.log(`🗑️ Auth user removed — data swept uid=${user.uid}`, JSON.stringify(result));
+    } catch (error) {
+        console.error(`❌ Post-delete sweep failed uid=${user.uid}:`, error);
+        throw error; // let the trigger's retry policy (if enabled) take another pass
     }
 });
