@@ -1,38 +1,21 @@
 /* ============================================================================
    BODYWEIGHT EXERCISE COMPONENTS
-   - BW prompt modal
+   - BW prompt sheet
    - BW banner (auto-filled weight)
    - Added weight row
    - Bodyweight set table variant
    - Equipment base weight field
    ============================================================================ */
 
-/* ── BW PROMPT OVERLAY ── */
-.bw-prompt-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-modal, 500);
-    background: var(--overlay-heavy);
-    backdrop-filter: var(--backdrop-blur);
-    -webkit-backdrop-filter: var(--backdrop-blur);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    animation: fadeIn 200ms ease;
-}
-
-.bw-prompt-overlay.bw-prompt-closing {
-    animation: fadeOut 200ms ease forwards;
-}
-
+/* ── BW PROMPT SHEET ──
+   Chrome (backdrop, position above the keyboard, page lock, focus) is the
+   sheet primitive's (SH-3b, styles/components/sheet.css); the prompt keeps
+   its centred content column inside the sheet body. */
 .bw-prompt {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    padding: 28px 24px;
     max-width: 340px;
     width: 100%;
+    margin: 0 auto;
+    padding: var(--space-8) 0 var(--space-4);
     text-align: center;
 }
 

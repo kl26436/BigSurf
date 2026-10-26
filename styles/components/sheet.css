@@ -48,6 +48,10 @@
 .sheet.visible {
     transform: translateY(var(--sheet-drag, 0px));
 }
+.sheet--closing,
+.sheet-backdrop--closing {
+    pointer-events: none;
+}
 .sheet--dragging {
     transition: none;
 }

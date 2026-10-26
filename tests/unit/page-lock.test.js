@@ -19,11 +19,12 @@ describe('page lock', () => {
         scrollTo.mockClear();
     });
 
-    it('locks while an aw-sheet backdrop is visible, and restores the scroll on release', () => {
+    it('locks while a sheet backdrop is in the DOM, and restores the scroll on release', () => {
         Object.defineProperty(window, 'scrollY', { value: 420, configurable: true });
-        const backdrop = add('<div class="aw-sheet-backdrop"></div>');
-        expect(syncPageLock()).toBe(false);           // not .visible yet
-        backdrop.classList.add('visible');
+        expect(syncPageLock()).toBe(false);
+        // The primitive's backdrop locks from the moment it's appended, before
+        // the slide-in adds .visible.
+        const backdrop = add('<div class="sheet-backdrop"></div>');
         expect(syncPageLock()).toBe(true);
         expect(document.body.classList.contains('page-locked')).toBe(true);
         expect(document.body.style.getPropertyValue('--page-lock-top')).toBe('-420px');
@@ -59,7 +60,7 @@ describe('page lock', () => {
     });
 
     it('two overlays, one lock: closing one keeps the page locked', () => {
-        const a = add('<div class="aw-sheet-backdrop visible"></div>');
+        const a = add('<div class="sheet-backdrop visible"></div>');
         add('<div class="sheet-backdrop"></div>');
         expect(syncPageLock()).toBe(true);
         a.remove();

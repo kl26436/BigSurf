@@ -35,10 +35,10 @@ const MARKER_END = '<!-- shell-audit:end -->';
 // these to 0 — lower the number when you beat it, never raise it. SH-5 moves
 // them into CI.
 const BUDGETS = {
-    overlayRootsOutsideSheetCss: 13,
+    overlayRootsOutsideSheetCss: 5,
     safeAreaTopRulesOutsidePrimitives: 0, // SH-4: the inset lives in page-header.css + sheet.css (via --safe-top)
     backCloseControlsUnderTap: 4,
-    searchInputsOutsideFieldSearch: 8,
+    searchInputsOutsideFieldSearch: 5,
     bodyOverflowWrites: 0,
 };
 

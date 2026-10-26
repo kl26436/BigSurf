@@ -93,21 +93,8 @@ export function navigateTo(view) {
         .then(m => m.flushPendingTemplateEdits?.())
         .catch(() => { /* template-selection not loaded yet — no edits to flush */ });
 
-    // Tear down any orphan overlays attached to <body> before navigating away.
-    // The active-workout v2 wizard appends its bottom-sheet (#aw-sheet) and
-    // backdrop (#aw-sheet-backdrop) directly to document.body, not inside the
-    // active-workout section. Hiding the section doesn't remove them, and the
-    // backdrop is position: fixed full-screen — so it silently swallows every
-    // click on whatever view we navigate to next.
-    const orphanBackdrop = document.getElementById('aw-sheet-backdrop');
-    const orphanSheet = document.getElementById('aw-sheet');
-    if (orphanBackdrop) orphanBackdrop.remove();
-    if (orphanSheet) orphanSheet.remove();
-
-    // Same story for the plate-calculator popover and the form-video overlay —
-    // both are appended to <body> and, being position:fixed, would linger on
-    // top of the next screen until dismissed by their own close button.
-    document.getElementById('plate-calc-popover')?.remove();
+    // The form-video overlay is appended to <body> and, being position:fixed,
+    // would linger on top of the next screen until dismissed by its own close.
     document.getElementById('aw-form-video-overlay')?.remove();
     // SH-2b sheets close with the page they belong to. SH-2a — the lock is
     // derived from what's open, so removing the sheets above releases it;

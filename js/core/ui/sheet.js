@@ -22,6 +22,7 @@ let inerted = [];          // body children made inert while any sheet is open
 const KEEP_LIVE = '.sheet, .sheet-backdrop, dialog, .shell-hud, .app-toast, [class*="toast"], script, style, link';
 const SWIPE_CLOSE_PX = 60;
 const CLOSE_MS = 250;
+const BACKDROP_GUARD_MS = 300;
 
 function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -107,7 +108,14 @@ export function openSheet({
     };
     entry.handle = handle;
 
-    if (dismissible) backdrop.addEventListener('click', () => closeEntry(entry));
+    // iOS can fire a synthetic click on a freshly added fullscreen element
+    // under the finger that opened it, so the opening tap would dismiss the
+    // sheet in the same frame. Backdrop taps in the first 300 ms are ignored.
+    const openedAt = performance.now();
+    if (dismissible) backdrop.addEventListener('click', () => {
+        if (performance.now() - openedAt < BACKDROP_GUARD_MS) return;
+        closeEntry(entry);
+    });
     if (input && typeof search.onInput === 'function') {
         input.addEventListener('input', () => search.onInput(input.value, handle));
     }
@@ -202,6 +210,10 @@ function closeEntry(entry, { immediate = false, silent = false } = {}) {
     entry.unwire?.();
     entry.el.classList.remove('visible');
     entry.backdrop.classList.remove('visible');
+    // A second tap on a sheet that's sliding out must not reach handlers its
+    // onClose has already torn down.
+    entry.el.classList.add('sheet--closing');
+    entry.backdrop.classList.add('sheet-backdrop--closing');
     const remove = () => { entry.el.remove(); entry.backdrop.remove(); };
     if (immediate) remove();
     else setTimeout(remove, CLOSE_MS);

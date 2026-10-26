@@ -82,6 +82,26 @@ describe('openSheet', () => {
         expect(sheetDepth()).toBe(0);
     });
 
+    it('ignores a backdrop tap in the first 300 ms (iOS phantom click), then dismisses', () => {
+        const t0 = performance.now();
+        const now = vi.spyOn(performance, 'now').mockReturnValue(t0);
+        openSheet({ title: 'PRs' });
+        now.mockReturnValue(t0 + 100);
+        document.querySelector('.sheet-backdrop').click();
+        expect(sheetDepth()).toBe(1);
+        now.mockReturnValue(t0 + 400);
+        document.querySelector('.sheet-backdrop').click();
+        expect(sheetDepth()).toBe(0);
+        now.mockRestore();
+    });
+
+    it('a closing sheet stops taking taps while it slides out', () => {
+        const s = openSheet({ title: 'Gym' });
+        s.close();
+        expect(s.el.classList.contains('sheet--closing')).toBe(true);
+        expect(document.querySelector('.sheet-backdrop').classList.contains('sheet-backdrop--closing')).toBe(true);
+    });
+
     it('closeAllSheets (navigation) removes every sheet immediately', () => {
         openSheet({ id: 'x', title: 'X' });
         openSheet({ id: 'y', title: 'Y' });

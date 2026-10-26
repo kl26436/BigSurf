@@ -1,12 +1,15 @@
 // Bodyweight Prompt — core/features/bodyweight-prompt.js
 // Ensures the user has a fresh body-weight reading before logging
 // bodyweight exercises (pull-ups, dips, push-ups, etc.).
-// If stale or missing, shows a quick-input modal.
+// If stale or missing, shows a quick-input sheet.
 
 import { AppState } from '../utils/app-state.js';
 import { getLatestBodyWeight, saveBodyWeight } from './body-measurements.js';
 import { convertWeight } from '../ui/ui-helpers.js';
 import { BW_STALENESS_DAYS, checkBodyWeightFreshness } from '../utils/weight-calculations.js';
+import { openSheet, closeSheet } from '../ui/sheet.js';
+
+const BW_PROMPT_SHEET_ID = 'bw-prompt-sheet';
 
 /**
  * Ensure a fresh body weight is available for the current session.
@@ -39,12 +42,21 @@ export async function ensureFreshBodyWeight() {
     return showBodyWeightPrompt(freshness);
 }
 
+// The open prompt's promise — a render that re-triggers the prompt while it
+// is up (active-workout render calls ensureFreshBodyWeight) shares it instead
+// of stacking a second prompt, so every caller resolves exactly once.
+let _pendingPrompt = null;
+
 /**
- * Show a quick-input modal to capture the user's current body weight.
- * Returns a promise that resolves when the user saves or skips.
+ * Show a quick-input sheet to capture the user's current body weight.
+ * Returns a promise that resolves when the user saves or skips. SH-3b —
+ * rendered through the sheet primitive (keyboard inset, page lock, inert,
+ * focus trap); any dismissal (backdrop, Escape, swipe-down, navigation)
+ * counts as Skip, so the promise always settles.
  */
 function showBodyWeightPrompt(stale) {
-    return new Promise((resolve) => {
+    if (_pendingPrompt) return _pendingPrompt;
+    _pendingPrompt = new Promise((resolve) => {
         const displayUnit = AppState.globalUnit || 'lbs';
         const unitLabel = displayUnit === 'kg' ? 'kg' : 'lb';
         const prefillValue = stale ? stale.weight.toFixed(1) : '';
@@ -52,18 +64,34 @@ function showBodyWeightPrompt(stale) {
             ? `Last entry: ${stale.weight.toFixed(1)} ${stale.unit} · ${stale.ageInDays} days ago`
             : '';
 
-        const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay bw-prompt-overlay';
-        overlay.innerHTML = `
+        let settled = false;
+        let saving = false; // a dismissal mid-save mustn't turn the save into a skip
+        const settle = (value) => {
+            if (settled) return;
+            settled = true;
+            _pendingPrompt = null;
+            resolve(value);
+        };
+        const skip = () => {
+            // Mark as explicitly skipped so we don't re-prompt this session
+            AppState.currentSessionBodyWeightLbs = 0; // 0 = skipped (vs null = not asked)
+            settle(null);
+        };
+
+        const { el } = openSheet({
+            id: BW_PROMPT_SHEET_ID,
+            className: 'bw-prompt-sheet',
+            bodyHTML: `
             <div class="bw-prompt">
                 <div class="bw-prompt__icon"><i class="fas fa-weight"></i></div>
-                <h2 class="bw-prompt__title">What's your body weight today?</h2>
+                <h2 class="bw-prompt__title" id="bw-prompt-title">What's your body weight today?</h2>
                 <p class="bw-prompt__desc">We use this to track total volume on bodyweight exercises like pull-ups and dips.</p>
                 <div class="bw-prompt__input-card">
                     <input type="number" inputmode="decimal" step="0.1"
                            class="bw-prompt__input" id="bw-prompt-input"
                            value="${prefillValue}"
-                           placeholder="${displayUnit === 'kg' ? '83.0' : '184.0'}">
+                           placeholder="${displayUnit === 'kg' ? '83.0' : '184.0'}"
+                           aria-label="Body weight in ${unitLabel}">
                     <span class="bw-prompt__unit">${unitLabel}</span>
                 </div>
                 ${lastInfo ? `<div class="bw-prompt__hint">${lastInfo}</div>` : ''}
@@ -74,19 +102,17 @@ function showBodyWeightPrompt(stale) {
                     Skip · log without bodyweight
                 </button>
             </div>
-        `;
-
-        document.body.appendChild(overlay);
+        `,
+            // Every way out that isn't Save is a Skip.
+            onClose: () => { if (!settled && !saving) skip(); },
+        });
+        el.setAttribute('aria-labelledby', 'bw-prompt-title');
         // Focus the input
-        setTimeout(() => overlay.querySelector('#bw-prompt-input')?.focus(), 100);
+        setTimeout(() => el.querySelector('#bw-prompt-input')?.focus(), 100);
 
-        const cleanup = () => {
-            overlay.classList.add('bw-prompt-closing');
-            setTimeout(() => overlay.remove(), 200);
-        };
-
-        overlay.querySelector('#bw-prompt-save').addEventListener('click', async () => {
-            const input = overlay.querySelector('#bw-prompt-input');
+        el.querySelector('#bw-prompt-save').addEventListener('click', async () => {
+            if (saving || settled) return;
+            const input = el.querySelector('#bw-prompt-input');
             const w = parseFloat(input.value);
             if (!w || w <= 0) {
                 input.classList.add('input-error');
@@ -94,7 +120,8 @@ function showBodyWeightPrompt(stale) {
                 return;
             }
 
-            // Persist to body measurements
+            // Persist to body measurements (never throws — it notifies itself)
+            saving = true;
             await saveBodyWeight(w, displayUnit);
 
             // Convert to lbs for internal use
@@ -102,17 +129,15 @@ function showBodyWeightPrompt(stale) {
             AppState.currentSessionBodyWeight = { weight: w, unit: displayUnit, ageInDays: 0 };
             AppState.currentSessionBodyWeightLbs = weightLbs;
 
-            cleanup();
-            resolve(weightLbs);
+            settle(weightLbs);
+            closeSheet(BW_PROMPT_SHEET_ID);
         });
 
-        overlay.querySelector('#bw-prompt-skip').addEventListener('click', () => {
-            // Mark as explicitly skipped so we don't re-prompt this session
-            AppState.currentSessionBodyWeightLbs = 0; // 0 = skipped (vs null = not asked)
-            cleanup();
-            resolve(null);
+        el.querySelector('#bw-prompt-skip').addEventListener('click', () => {
+            closeSheet(BW_PROMPT_SHEET_ID); // onClose → skip
         });
     });
+    return _pendingPrompt;
 }
 
 /**

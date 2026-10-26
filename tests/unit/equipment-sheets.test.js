@@ -89,7 +89,11 @@ describe('quick-add (qa-sheet)', () => {
         await lib.openQuickAddSheet('Downtown');
         const row = sheet('qa-sheet').querySelector('.qa-row[onclick]');
         const ref = row.getAttribute('onclick').match(/'([^']+)'/)[1];
+        // Past the primitive's 300 ms open-time backdrop guard (iOS phantom click).
+        const later = performance.now() + 1000;
+        const now = vi.spyOn(performance, 'now').mockReturnValue(later);
         document.querySelector('.sheet-backdrop').click();
+        now.mockRestore();
         expect(sheetDepth()).toBe(0);
         lib.toggleQuickAddRow(ref); // no state → no-op, no throw
         expect(document.getElementById('qa-counter')?.textContent ?? '0').toBe('0');

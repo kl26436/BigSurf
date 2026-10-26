@@ -66,34 +66,6 @@
 .video-section.hidden {
     display: none !important;
 }
-/* Exercise modal specific styles */
-.exercise-modal {
-    position: fixed;
-    inset: 0;
-    background: var(--overlay-heavy);
-    backdrop-filter: var(--backdrop-blur);
-    -webkit-backdrop-filter: var(--backdrop-blur);
-    z-index: 500;
-    display: none; /* Hidden by default */
-    align-items: flex-end;
-    justify-content: center;
-}
-.exercise-modal.active {
-    display: flex;
-} /* Show when active class added */
-.exercise-modal.hidden {
-    display: none;
-}
-.exercise-modal-content {
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    width: 100%;
-    max-width: 500px; /* modal width constraint */
-    max-height: 90vh; /* fallback */
-    max-height: 90dvh;
-    overflow-y: auto;
-    overscroll-behavior: contain; /* SH-2a — never chain to the page */
-}
 /* .exercise-unit-toggle consolidated in components/modals.css */
 
 /* App section for full-page views */

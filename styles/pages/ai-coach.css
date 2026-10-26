@@ -204,7 +204,7 @@
 
 /* ── Live in-workout coach sheet (Phase 6) ─────────────────────────── */
 /* CRITICAL: the body must stay the sheet's designated shrinkable scroller
-   (base .aw-sheet__body = flex:1 + min-height:0). Any fixed min/max height
+   (base .sheet__body = flex:1 + min-height:0). Any fixed min/max height
    here breaks keyboard handling — the sheet's height cap shrinks to
    85dvh - kb-inset when the keyboard opens, and a body that can't shrink
    pushes the input bar off the bottom, clipped behind the keyboard. */
@@ -220,7 +220,14 @@
     font-size: var(--font-xs);
 }
 /* Chips + input pin BELOW the scrolling body — matching the sheet's 16px
-   side chrome — so the send box stays visible, keyboard up or down. */
+   side chrome — so the send box stays visible, keyboard up or down. They
+   ride in the primitive's footer (SH-3b): stacked, edge to edge, no rule. */
+.live-coach .sheet__footer {
+    flex-direction: column;
+    gap: 0;
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    border-top: none;
+}
 .live-coach__chips {
     display: flex;
     flex-wrap: wrap;
@@ -899,11 +906,20 @@
     0%, 100% { opacity: 1; }
     50%      { opacity: 0.4; }
 }
+/* The primitive's header (title, subtitle) plus the read-aloud toggle on
+   the right, spanning both lines. */
 .live-coach__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-8);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: var(--space-8);
+    align-items: start;
+}
+.live-coach__header > :not(.coach-tts-toggle) {
+    grid-column: 1;
+}
+.live-coach__header .coach-tts-toggle {
+    grid-column: 2;
+    grid-row: 1 / span 2;
 }
 .coach-tts-toggle {
     width: var(--tap-sm);

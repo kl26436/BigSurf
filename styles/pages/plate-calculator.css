@@ -239,40 +239,11 @@
 }
 
 /* ============================================
-   IN-MODAL POPOVER
+   PLATE SHEET (openPlateCalcPopover)
    ============================================ */
-/* Backdrop layers just under the popover (which sits above the add-exercise
-   tier); visuals come from the shared .aw-sheet-backdrop class. */
-.plate-calc-backdrop {
-    z-index: calc(var(--z-add-exercise) - 1);
-}
-.plate-calc-popover {
-    position: fixed;
-    bottom: var(--kb-inset, 0px);
-    left: 0;
-    right: 0;
-    background: var(--bg-surface);
-    border-top: 1px solid var(--border);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    padding: var(--space-16) var(--pad-page) var(--space-24);
-    z-index: var(--z-add-exercise);
-    box-shadow: var(--shadow-lg);
-    animation: slideUp var(--anim-normal) ease-out;
-}
-@keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-}
-.plate-calc-popover-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--space-12);
-}
-.plate-calc-popover-header h3 {
-    font-size: var(--font-md);
-    margin: 0;
-}
+/* Chrome (backdrop, position, keyboard inset, radius, slide-in, title) is
+   the sheet primitive's (SH-3b, styles/components/sheet.css); these rules
+   style the content only. */
 .plate-calc-popover-body {
     text-align: center;
 }

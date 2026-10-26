@@ -1,8 +1,11 @@
 // Plate Calculator — core/features/plate-calculator.js
 // Greedy algorithm for calculating plates per side of a barbell,
-// plus standalone page UI and in-modal popover.
+// plus standalone page UI and the plate sheet (openPlateCalcPopover).
 
 import { AppState } from '../utils/app-state.js';
+import { openSheet, closeSheet } from '../ui/sheet.js';
+
+const PLATE_CALC_SHEET_ID = 'plate-calc-popover';
 
 /**
  * Look up equipment doc by name from AppState._cachedEquipment.
@@ -364,23 +367,6 @@ export async function openPlateCalcPopover(exerciseIndex) {
             : (exercise.weight || 0);
     }
 
-    // Build popover content
-    const existing = document.getElementById('plate-calc-popover');
-    if (existing) existing.remove();
-    document.getElementById('plate-calc-backdrop')?.remove();
-
-    // Standard blocking backdrop (UX Phase 0): dim + blur behind the popover,
-    // tap outside to dismiss — this was the only overlay without one.
-    const backdrop = document.createElement('div');
-    backdrop.id = 'plate-calc-backdrop';
-    backdrop.className = 'aw-sheet-backdrop plate-calc-backdrop visible';
-    backdrop.onclick = () => closePlateCalcPopover();
-    document.body.appendChild(backdrop);
-
-    const popover = document.createElement('div');
-    popover.id = 'plate-calc-popover';
-    popover.className = 'plate-calc-popover';
-
     // Two-sided machines split the load per side; single-load machines (e.g. a
     // hack squat with one horn) put it all on one point. Remembered per machine
     // via equipmentDoc.plateSides; defaults to two sides.
@@ -391,12 +377,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
     const barPresets = isKg ? [0, 20, 15, 10, 7] : [0, 45, 35, 30, 25, 15];
     const equipBarLabel = equipmentDoc?.baseWeight > 0 ? ` (${equipmentDoc.name || 'equipment'})` : '';
 
-    popover.innerHTML = `
-        <div class="plate-calc-popover-header">
-            <h3>Plate calculator</h3>
-            <button class="btn-text" onclick="closePlateCalcPopover()"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="plate-calc-popover-body">
+    const bodyHTML = `
             <div class="plate-calc-popover-input-row">
                 <input type="number" id="popover-plate-target" class="form-input"
                        inputmode="decimal" value="${targetWeight || ''}" placeholder="Weight">
@@ -423,10 +404,18 @@ export async function openPlateCalcPopover(exerciseIndex) {
                     ${result.remainder > 0 ? `<div class="plate-calc-remainder">${result.remainder} ${unit} remainder</div>` : ''}
                 ` : (result?.error ? `<div class="plate-calc-error">${result.error}</div>` : '<div class="plate-calc-empty">Enter weight</div>')}
             </div>
-        </div>
     `;
 
-    document.body.appendChild(popover);
+    // SH-3b — a bottom sheet in look and behaviour, so it renders through the
+    // primitive (backdrop tap, Escape, swipe-down, keyboard inset, page lock,
+    // inert, focus restore). Re-opening replaces it in place.
+    const popover = openSheet({
+        id: PLATE_CALC_SHEET_ID,
+        title: 'Plate calculator',
+        bodyClass: 'plate-calc-popover-body',
+        bodyHTML,
+        actions: [{ label: 'Close', onClick: 'closePlateCalcPopover()' }],
+    }).el;
 
     // Mutable bar weight for recalculation
     let currentBar = barWeight;
@@ -507,7 +496,5 @@ export async function openPlateCalcPopover(exerciseIndex) {
 }
 
 export function closePlateCalcPopover() {
-    const popover = document.getElementById('plate-calc-popover');
-    if (popover) popover.remove();
-    document.getElementById('plate-calc-backdrop')?.remove();
+    closeSheet(PLATE_CALC_SHEET_ID);
 }

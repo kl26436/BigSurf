@@ -13,6 +13,7 @@ import { showNotification, escapeHtml } from '../ui/ui-helpers.js';
 import { findBestMatch } from './fuzzy-match.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
 import { getSessionGym } from './gym-session-context.js';
+import { openSheet, closeSheet, sheetById } from '../ui/sheet.js';
 
 let _lastIdentified = null; // {identified, displayName, photoDataUrl}
 
@@ -120,14 +121,15 @@ function renderMachineIdResult(useAlt = false) {
         <div class="machine-id__alt">
             Not sure — could also be <button class="btn-text" onclick="useMachineIdAltGuess()">${escapeHtml(identified.altGuess.name)}</button>
         </div>` : ''}
-        <div class="aw-sheet__actions machine-id__actions">
-            <button class="aw-sheet__action" onclick="closeMachineIdSheet()">Close</button>
-            ${!match ? `
-            <button class="aw-sheet__action primary" onclick="addIdentifiedMachine(${useAlt ? 'true' : 'false'})">
-                ${gym ? `Add to ${escapeHtml(gym)}` : 'Add to equipment'}
-            </button>` : ''}
-        </div>
     `);
+    setMachineIdActions([
+        { label: 'Close', onClick: 'closeMachineIdSheet()' },
+        ...(!match ? [{
+            label: gym ? `Add to ${escapeHtml(gym)}` : 'Add to equipment',
+            onClick: `addIdentifiedMachine(${useAlt ? 'true' : 'false'})`,
+            primary: true,
+        }] : []),
+    ]);
 }
 
 export function useMachineIdAltGuess() {
@@ -169,30 +171,19 @@ export async function addIdentifiedMachine(useAlt = false) {
 }
 
 // ── Sheet chrome ────────────────────────────────────────────────────
+// SH-3b — rendered through the sheet primitive (keyboard inset, page lock,
+// focus, Escape, swipe-down). Re-opening replaces in place; the body and
+// footer update by id as the photo is read.
+
+const MACHINE_ID_SHEET_ID = 'machine-id-sheet';
 
 function openMachineIdSheet(bodyHtml) {
-    closeMachineIdSheet(true);
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'machine-id-backdrop';
-    backdrop.onclick = () => closeMachineIdSheet();
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'machine-id-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Identify machine');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">Identify machine</div>
-        </div>
-        <div class="aw-sheet__body" id="machine-id-body">${bodyHtml}</div>
-    `;
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+    openSheet({
+        id: MACHINE_ID_SHEET_ID,
+        title: 'Identify machine',
+        bodyId: 'machine-id-body',
+        bodyHTML: bodyHtml,
+    });
 }
 
 function setMachineIdBody(html) {
@@ -200,13 +191,16 @@ function setMachineIdBody(html) {
     if (body) body.innerHTML = html;
 }
 
+function setMachineIdActions(actions) {
+    const footer = actions.map((a) => {
+        const mods = a.primary ? ' sheet__action--primary' : '';
+        return `<button type="button" class="sheet__action${mods}" onclick="${a.onClick}">${a.label}</button>`;
+    }).join('');
+    sheetById(MACHINE_ID_SHEET_ID)?.setFooter(footer);
+}
+
 export function closeMachineIdSheet(immediate = false) {
-    const backdrop = document.getElementById('machine-id-backdrop');
-    const sheet = document.getElementById('machine-id-sheet');
-    if (immediate) { backdrop?.remove(); sheet?.remove(); return; }
-    backdrop?.classList.remove('visible');
-    sheet?.classList.remove('visible');
-    setTimeout(() => { backdrop?.remove(); sheet?.remove(); }, 300);
+    closeSheet(MACHINE_ID_SHEET_ID, { immediate: immediate === true });
 }
 
 // Self-wire handlers rendered from this module's own template strings.

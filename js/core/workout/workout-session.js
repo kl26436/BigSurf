@@ -21,6 +21,7 @@ import { haptic } from '../utils/haptics.js';
 import { Config } from '../utils/config.js';
 import { cancelRestNotification } from '../utils/push-notification-manager.js';
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
+import { openSheet, closeSheet } from '../ui/sheet.js';
 import { getSessionIntent, weekOverrideOf } from '../features/session-intent.js';
 
 // ===================================================================
@@ -2045,33 +2046,14 @@ async function initializeWorkoutLocation() {
  * Bottom sheet shown when GPS matches MORE THAN ONE saved gym (overlapping
  * radii). The nearest gym is already set as the session location, so this is
  * a confirm-or-correct affordance, not a blocker — dismissing keeps nearest.
- * Self-contained DOM (mirrors the manual-link sheet pattern); the tap handler
- * hangs off window directly so no new main.js export wiring is needed.
+ * Rendered through the sheet primitive (SH-3b); the tap handlers hang off
+ * window directly so no new main.js export wiring is needed.
  */
 function showGymChooserSheet(matches, workoutManager) {
-    document.getElementById('gym-chooser-backdrop')?.remove();
-    document.getElementById('gym-chooser-sheet')?.remove();
-
     const fmtDistance = (d) => (d < 1000 ? `${Math.round(d)} m away` : `${(d / 1000).toFixed(1)} km away`);
 
-    const close = () => {
-        document.getElementById('gym-chooser-backdrop')?.remove();
-        document.getElementById('gym-chooser-sheet')?.remove();
-        delete window._bsPickDetectedGym;
-        delete window._bsGymSomewhereElse;
-    };
-
-    // "None of these" — first time at a gym that neighbors a saved one.
-    // Opens the location selector, which has the new-gym name input; the
-    // nearest saved gym stays as the fallback if the user bails out.
-    window._bsGymSomewhereElse = () => {
-        close();
-        changeWorkoutLocation();
-    };
-
-    window._bsPickDetectedGym = async (index) => {
+    const pick = async (index) => {
         const match = matches[index];
-        close();
         if (!match) return;
 
         setSessionLocation(match.name);
@@ -2088,17 +2070,27 @@ function showGymChooserSheet(matches, workoutManager) {
         }
     };
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'gym-chooser-backdrop';
-    backdrop.onclick = () => window._bsPickDetectedGym(0);
+    // Every way out runs onClose exactly once. A button marks the sheet
+    // settled first; any other dismissal (backdrop, Escape, swipe-down,
+    // navigation) keeps the nearest gym — same as the old backdrop tap.
+    let settled = false;
+    const settle = () => {
+        settled = true;
+        closeSheet('gym-chooser-sheet');
+    };
 
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'gym-chooser-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Choose your gym');
+    // "None of these" — first time at a gym that neighbors a saved one.
+    // Opens the location selector, which has the new-gym name input; the
+    // nearest saved gym stays as the fallback if the user bails out.
+    window._bsGymSomewhereElse = () => {
+        settle();
+        changeWorkoutLocation();
+    };
+
+    window._bsPickDetectedGym = (index) => {
+        settle();
+        return pick(index);
+    };
 
     const rows = matches.map((m, i) => `
         <div class="js-row ${i === 0 ? 'current' : ''}" onclick="_bsPickDetectedGym(${i})">
@@ -2110,28 +2102,28 @@ function showGymChooserSheet(matches, workoutManager) {
         </div>
     `).join('');
 
+    // subtitle is plain text — the primitive escapes it.
     const subtitle = matches.length > 1
         ? 'More than one saved gym is nearby'
-        : `${escapeHtml(matches[0].name)} is ${fmtDistance(matches[0].distance)} — right one?`;
+        : `${matches[0].name} is ${fmtDistance(matches[0].distance)} — right one?`;
 
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">Which gym?</div>
-            <div class="aw-sheet__subtitle">${subtitle}</div>
-        </div>
-        <div class="aw-sheet__body">${rows}</div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="_bsGymSomewhereElse()">Somewhere else</button>
-            <button class="aw-sheet__action primary" onclick="_bsPickDetectedGym(0)">Keep ${escapeHtml(matches[0].name)}</button>
-        </div>
-    `;
-
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => {
-        backdrop.classList.add('visible');
-        sheet.classList.add('visible');
+    openSheet({
+        id: 'gym-chooser-sheet',
+        title: 'Which gym?',
+        subtitle,
+        bodyHTML: rows,
+        actions: [
+            { label: 'Somewhere else', onClick: '_bsGymSomewhereElse()' },
+            { label: `Keep ${escapeHtml(matches[0].name)}`, onClick: '_bsPickDetectedGym(0)', primary: true },
+        ],
+        onClose: () => {
+            delete window._bsPickDetectedGym;
+            delete window._bsGymSomewhereElse;
+            if (!settled) {
+                settled = true;
+                pick(0).catch(err => console.error('❌ Error keeping nearest gym:', err));
+            }
+        },
     });
 }
 
@@ -2208,36 +2200,21 @@ async function maybeCollectSubstitutions(workout) {
 function renderSubstitutionSheet() {
     const state = _subSheetState;
     if (!state) return;
-    closeSubstitutionSheetImmediate();
-
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop visible';
-    backdrop.id = 'sub-sheet-backdrop';
-    // Dismiss = start with current selections. Never block a workout (D3).
-    backdrop.onclick = () => window._bsSubStart();
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet visible';
-    sheet.id = 'sub-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Exercises not mapped at this gym');
 
     const n = state.rows.length;
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">${n} exercise${n !== 1 ? "s aren't" : " isn't"} mapped at ${escapeHtml(state.gym)}</div>
-            <div class="aw-sheet__subtitle">Point at a machine to fix the map, or adjust today's session</div>
-        </div>
-        <div class="aw-sheet__body" id="sub-sheet-body">${renderSubstitutionRows()}</div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action primary" onclick="_bsSubStart()">Start workout</button>
-        </div>
-    `;
-
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
+    // Re-opening the same id replaces in place. Any dismissal (backdrop,
+    // Escape, swipe-down, navigation) = start with current selections —
+    // never block a workout (D3). finishSubstitutions is idempotent, so the
+    // Start button (which closes the sheet → onClose) resolves exactly once.
+    openSheet({
+        id: 'sub-sheet',
+        title: `${n} exercise${n !== 1 ? "s aren't" : " isn't"} mapped at ${state.gym}`,
+        subtitle: "Point at a machine to fix the map, or adjust today's session",
+        bodyId: 'sub-sheet-body',
+        bodyHTML: renderSubstitutionRows(),
+        actions: [{ label: 'Start workout', onClick: '_bsSubStart()', primary: true }],
+        onClose: () => finishSubstitutions(),
+    });
 }
 
 function renderSubstitutionRows() {
@@ -2279,11 +2256,6 @@ function renderSubstitutionRows() {
 function rerenderSubstitutionRows() {
     const body = document.getElementById('sub-sheet-body');
     if (body) body.innerHTML = renderSubstitutionRows();
-}
-
-function closeSubstitutionSheetImmediate() {
-    document.getElementById('sub-sheet-backdrop')?.remove();
-    document.getElementById('sub-sheet')?.remove();
 }
 
 window._bsSubSetChoice = (i, choice) => {
@@ -2349,11 +2321,16 @@ window._bsSubPickSwap = (i) => {
     });
 };
 
+// "Start workout" — closing the sheet fires its onClose, which finishes.
+// If the sheet is somehow already gone, finish directly so start never hangs.
 window._bsSubStart = () => {
+    if (!closeSheet('sub-sheet')) finishSubstitutions();
+};
+
+function finishSubstitutions() {
     const state = _subSheetState;
     if (!state) return;
     _subSheetState = null;
-    closeSubstitutionSheetImmediate();
 
     // D10 memory: remember swap/skip per gym+template+exercise so the next
     // visit pre-fills instead of re-asking. Keep/machine clear the memory
@@ -2380,7 +2357,7 @@ window._bsSubStart = () => {
         .filter(r => r.choice === 'swap' && r.swapTo)
         .map(r => [r.name, r.swapTo]));
     state.resolve(skips.size === 0 && swaps.size === 0 ? null : { skips, swaps });
-};
+}
 
 /**
  * Apply session-only choices to the CLONED workout (D5: the template doc is
@@ -2418,20 +2395,13 @@ function applySessionSubstitutions(subs) {
  * inaccurate) but the user has saved gyms: "Couldn't find you — pick your
  * gym." Tap-first, non-blocking — dismissing starts the workout with no
  * location, and "New gym" falls through to the name prompt.
- * Self-contained DOM like showGymChooserSheet; handlers hang off window so
- * no main.js export wiring is needed.
+ * Rendered through the sheet primitive like showGymChooserSheet; handlers
+ * hang off window so no main.js export wiring is needed. Every way out
+ * (button, backdrop, Escape, swipe-down) closes the sheet, and onClose
+ * drops the window handlers exactly once.
  */
 function showGymFallbackSheet(savedLocations, workoutManager) {
-    document.getElementById('gym-fallback-backdrop')?.remove();
-    document.getElementById('gym-fallback-sheet')?.remove();
-
-    const close = () => {
-        document.getElementById('gym-fallback-backdrop')?.remove();
-        document.getElementById('gym-fallback-sheet')?.remove();
-        delete window._bsPickFallbackGym;
-        delete window._bsFallbackNewGym;
-        delete window._bsFallbackSkip;
-    };
+    const close = () => closeSheet('gym-fallback-sheet');
 
     window._bsFallbackSkip = () => close();
 
@@ -2460,18 +2430,6 @@ function showGymFallbackSheet(savedLocations, workoutManager) {
         }
     };
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'gym-fallback-backdrop';
-    backdrop.onclick = () => window._bsFallbackSkip();
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'gym-fallback-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Pick your gym');
-
     // savedLocations arrive sorted by last visit (getUserLocations orderBy),
     // so the most likely gym is already on top.
     const rows = savedLocations.map((loc, i) => `
@@ -2484,24 +2442,20 @@ function showGymFallbackSheet(savedLocations, workoutManager) {
         </div>
     `).join('');
 
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">Couldn't find you</div>
-            <div class="aw-sheet__subtitle">Pick your gym — GPS isn't available</div>
-        </div>
-        <div class="aw-sheet__body">${rows}</div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="_bsFallbackSkip()">Skip</button>
-            <button class="aw-sheet__action" onclick="_bsFallbackNewGym()">New gym</button>
-        </div>
-    `;
-
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => {
-        backdrop.classList.add('visible');
-        sheet.classList.add('visible');
+    openSheet({
+        id: 'gym-fallback-sheet',
+        title: "Couldn't find you",
+        subtitle: "Pick your gym — GPS isn't available",
+        bodyHTML: rows,
+        actions: [
+            { label: 'Skip', onClick: '_bsFallbackSkip()' },
+            { label: 'New gym', onClick: '_bsFallbackNewGym()' },
+        ],
+        onClose: () => {
+            delete window._bsPickFallbackGym;
+            delete window._bsFallbackNewGym;
+            delete window._bsFallbackSkip;
+        },
     });
 }
 

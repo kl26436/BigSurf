@@ -17,10 +17,7 @@
 
 const OVERLAY_SELECTOR = [
     '.sheet-backdrop',                 // js/core/ui/sheet.js (SH-2b)
-    '.aw-sheet-backdrop.visible',      // aw-sheet family: workout, quick-add, quick-edit, plate calc, block…
     '.more-menu-overlay.visible',
-    '.bw-prompt-overlay',
-    '.dash-todays-prs-overlay',
     '.onboarding-overlay',
     '.aw-form-video-overlay',
     'dialog.modal[open]',

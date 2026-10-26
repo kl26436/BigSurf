@@ -4,6 +4,7 @@
 import { StatsTracker } from '../features/stats-tracker.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr, convertWeight } from './ui-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
+import { openSheet, closeSheet } from './sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
@@ -1420,11 +1421,14 @@ function renderTodayPRBanner(recentPRs) {
     `;
 }
 
+// Same element id the old overlay had, so any lookup by id still finds it.
+const TODAYS_PRS_SHEET_ID = 'dash-todays-prs-overlay';
+
 /**
- * Open an overlay listing every PR the user hit today, each row tappable to
+ * Open a sheet listing every PR the user hit today, each row tappable to
  * drill into that exercise's detail. Built dynamically so we don't need a
- * dedicated modal element in index.html; teardown on backdrop tap or close
- * button restores focus + removes listeners.
+ * dedicated modal element in index.html; the sheet primitive owns teardown
+ * (backdrop, Close, Escape, swipe-down) and focus restore.
  */
 export function showTodaysPRs() {
     const today = AppState.getTodayDateString();
@@ -1434,8 +1438,6 @@ export function showTodaysPRs() {
     const recentPRs = PRTracker.getRecentPRs(30) || [];
     const todays = recentPRs.filter(pr => pr.date === today);
     if (todays.length === 0) return;
-
-    document.getElementById('dash-todays-prs-overlay')?.remove();
 
     const unit = AppState.globalUnit || 'lbs';
     const rows = todays.map(pr => `
@@ -1450,50 +1452,33 @@ export function showTodaysPRs() {
         </button>
     `).join('');
 
-    const overlay = document.createElement('div');
-    overlay.id = 'dash-todays-prs-overlay';
-    overlay.className = 'dash-todays-prs-overlay';
-    overlay.innerHTML = `
-        <div class="dash-todays-prs">
-            <div class="dash-todays-prs__header">
-                <div class="dash-todays-prs__title">Today's PRs</div>
-                <button class="dash-todays-prs__close" aria-label="Close" data-close><i class="fas fa-times"></i></button>
-            </div>
-            <div class="dash-todays-prs__list">${rows}</div>
-        </div>
-    `;
-
-    const close = () => {
-        overlay.classList.remove('dash-todays-prs-overlay--show');
-        setTimeout(() => overlay.remove(), 200);
-    };
-    // iOS Safari can fire a synthetic click on a newly-appended fullscreen
-    // element positioned under the user's finger — the same tap that opened
-    // the overlay hits the backdrop-close branch and dismisses it in the
-    // same frame. Guard by refusing to close until the show class has
-    // settled (rules out both the phantom click and any bubbled remnants
-    // from the banner tap).
-    const openedAt = performance.now();
-    overlay.addEventListener('click', (e) => {
-        const backdropTap = e.target === overlay || e.target.closest('[data-close]');
-        if (backdropTap && performance.now() - openedAt < 300) return;
-        if (backdropTap) {
-            close();
-            return;
-        }
-        const row = e.target.closest('.dash-todays-prs__row');
-        if (row) {
-            const ex = row.dataset.exercise;
-            close();
-            if (ex && typeof window.showExerciseDetail === 'function') {
-                window.showExerciseDetail(ex);
-            }
-        }
+    // SH-3b — a list you tap through, so it renders through the sheet
+    // primitive (backdrop, Escape, swipe-down, page lock, inert, focus).
+    // Re-opening replaces it in place.
+    const { body } = openSheet({
+        id: TODAYS_PRS_SHEET_ID,
+        className: 'dash-todays-prs-sheet',
+        title: "Today's PRs",
+        bodyHTML: `<div class="dash-todays-prs__list">${rows}</div>`,
+        actions: [{ label: 'Close', onClick: 'closeTodaysPRs()' }],
     });
 
-    document.body.appendChild(overlay);
-    requestAnimationFrame(() => overlay.classList.add('dash-todays-prs-overlay--show'));
+    // The primitive ignores backdrop taps in the first 300 ms (iOS phantom click).
+    body.addEventListener('click', (e) => {
+        const row = e.target.closest('.dash-todays-prs__row');
+        if (!row) return;
+        const ex = row.dataset.exercise;
+        closeTodaysPRs();
+        if (ex && typeof window.showExerciseDetail === 'function') {
+            window.showExerciseDetail(ex);
+        }
+    });
 }
+
+export function closeTodaysPRs() {
+    closeSheet(TODAYS_PRS_SHEET_ID);
+}
+if (typeof window !== 'undefined') window.closeTodaysPRs = closeTodaysPRs;
 
 // Equipment is stored as "Brand [Line] — Function". On a PR row the function
 // duplicates the exercise name shown right above it (e.g. equipment "MegaMass —

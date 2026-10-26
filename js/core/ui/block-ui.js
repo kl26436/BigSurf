@@ -15,6 +15,7 @@ import { buildBlockModel, buildBlockSession } from '../features/block-view.js';
 import { buildScoreboard } from '../features/progress-scoreboard.js';
 import { weightIncrement } from '../features/progression.js';
 import { weekOverrideOf } from '../features/session-intent.js';
+import { openSheet, closeSheet } from './sheet.js';
 
 let _model = null;
 let _ctx = null;
@@ -184,16 +185,18 @@ function weekHTML(w) {
 
 // ── Session sheet: one cell in full ──────────────────────────────────
 
-export function closeBlockSession() {
-    document.getElementById('block-session-backdrop')?.remove();
-    document.getElementById('block-session-sheet')?.remove();
+// SH-3b — rendered through the sheet primitive (page lock, inert, focus,
+// Escape, swipe-down). Opening another cell replaces it in place.
+const BLOCK_SESSION_SHEET_ID = 'block-session-sheet';
+
+export function closeBlockSession({ immediate = false } = {}) {
+    closeSheet(BLOCK_SESSION_SHEET_ID, { immediate: immediate === true });
 }
 
 export function openBlockSession(weekNum, cellIdx) {
     const w = _model?.weeks?.[weekNum - 1];
     const cell = w?.cells?.[cellIdx];
     if (!cell || !_ctx) return;
-    closeBlockSession();
     const template = (_ctx.templates || []).find(t => t.id === cell.templateId);
     const rows = buildBlockSession({
         cell, template, workouts: _ctx.workouts, program: _ctx.program,
@@ -202,24 +205,15 @@ export function openBlockSession(weekNum, cellIdx) {
     const fmt = (x) => (x ? `${x.weight}${x.reps ? ` × ${x.reps}` : ''}` : '—');
     const status = { done: `Done ${cell.doneOn ? fmtDate(cell.doneOn) : ''}`, missed: 'Missed', today: 'Today', upcoming: fmtDate(cell.date) }[cell.status];
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'block-session-backdrop';
-    backdrop.onclick = () => closeBlockSession();
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'block-session-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', `${cell.name}, week ${weekNum}`);
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">${escapeHtml(cell.name)}</div>
-            <div class="aw-sheet__subtitle">Week ${weekNum} · ${escapeHtml(w.label)} · ${escapeHtml(status)}</div>
-        </div>
-        <div class="aw-sheet__body">
-            ${rows.length ? rows.map(r => `
+    const primaryAction = cell.status === 'today' || cell.status === 'upcoming' || cell.status === 'missed'
+        ? { label: `Start ${escapeHtml(cell.name)}`, onClick: `blockStartSession('${escapeAttr(cell.name)}')`, primary: true }
+        : (cell.workoutId ? { label: 'Open workout', onClick: `closeBlockSession(); viewWorkout('${escapeAttr(cell.workoutId)}')`, primary: true } : null);
+
+    openSheet({
+        id: BLOCK_SESSION_SHEET_ID,
+        title: cell.name,
+        subtitle: `Week ${weekNum} · ${w.label} · ${status}`,
+        bodyHTML: rows.length ? rows.map(r => `
                 <div class="js-row">
                     <div class="js-row__info">
                         <div class="js-row__name">${escapeHtml(r.name)}${r.primary ? ' <span class="block-session__main">Main lift</span>' : ''}</div>
@@ -229,18 +223,12 @@ export function openBlockSession(weekNum, cellIdx) {
                 <div class="empty-state-compact">
                     <p>This workout has no exercises yet</p>
                     <p class="empty-state-hint">Add some in your workouts and their targets show up here.</p>
-                </div>`}
-        </div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="closeBlockSession()">Close</button>
-            ${cell.status === 'today' || cell.status === 'upcoming' || cell.status === 'missed'
-        ? `<button class="aw-sheet__action primary" onclick="blockStartSession('${escapeAttr(cell.name)}')">Start ${escapeHtml(cell.name)}</button>`
-        : (cell.workoutId ? `<button class="aw-sheet__action primary" onclick="closeBlockSession(); viewWorkout('${escapeAttr(cell.workoutId)}')">Open workout</button>` : '')}
-        </div>
-    `;
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+                </div>`,
+        actions: [
+            { label: 'Close', onClick: 'closeBlockSession()' },
+            ...(primaryAction ? [primaryAction] : []),
+        ],
+    });
 }
 
 // ── Actions: each one tap + the coach's confirmation ─────────────────
@@ -277,7 +265,8 @@ export function blockDiscuss() {
 }
 
 export async function blockStartSession(templateName) {
-    closeBlockSession();
+    // Gone at once (as before) — the workout start takes over the screen.
+    closeBlockSession({ immediate: true });
     if (typeof window.startWorkout === 'function') await window.startWorkout(templateName);
 }
 

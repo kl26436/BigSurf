@@ -25,6 +25,9 @@ import {
 } from '../workout/workout-core.js';
 import { micButtonHtml, ttsToggleHtml, speakCoachAnswer, stopSpeaking } from './coach-voice.js';
 import { buildLiveSessionLine, buildLiveWorkoutContext } from './coach-live-context.js';
+import { openSheet, closeSheet } from '../ui/sheet.js';
+
+const LIVE_COACH_SHEET_ID = 'live-coach-sheet';
 
 // Ephemeral per-session thread (never saved to coachHistory).
 let _liveThread = [];
@@ -66,46 +69,44 @@ export function openLiveCoach() {
         _liveThreadSession = AppState.savedData.startedAt;
         _pendingProposals = new Map();
     }
-    closeLiveCoachImmediate();
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'live-coach-backdrop';
-    backdrop.onclick = closeLiveCoach;
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet live-coach';
-    sheet.id = 'live-coach-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Coach');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header live-coach__header">
-            <div>
-                <div class="aw-sheet__title">Coach</div>
-                <div class="aw-sheet__subtitle">Sees your session — answers in seconds</div>
+    // SH-3b — the primitive owns chrome, keyboard inset, page lock, focus,
+    // Escape and swipe-down. Chips + input bar ride in the footer so they
+    // stay pinned below the scrolling thread. Re-opening replaces in place
+    // (no onClose → the stream keeps going, as before). No auto-focus on
+    // the input: the sheet itself takes focus, so the keyboard stays down.
+    const handle = openSheet({
+        id: LIVE_COACH_SHEET_ID,
+        className: 'live-coach',
+        title: 'Coach',
+        subtitle: 'Sees your session — answers in seconds',
+        bodyId: 'live-coach-messages',
+        bodyClass: 'live-coach__body',
+        bodyHTML: _liveThread.length === 0 ? '<div class="live-coach__hint">Ask about your next set, a swap, or anything mid-workout.</div>' : '',
+        footerHTML: `
+            <div class="live-coach__chips">
+                ${quickChips().map(c => `<button class="chip chip--sm" onclick="liveCoachChip('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join('')}
             </div>
-            ${ttsToggleHtml()}
-        </div>
-        <div class="aw-sheet__body live-coach__body" id="live-coach-messages">
-            ${_liveThread.length === 0 ? '<div class="live-coach__hint">Ask about your next set, a swap, or anything mid-workout.</div>' : ''}
-        </div>
-        <div class="live-coach__chips">
-            ${quickChips().map(c => `<button class="chip chip--sm" onclick="liveCoachChip('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join('')}
-        </div>
-        <div class="live-coach__inputbar">
-            <input type="text" id="live-coach-input" class="field-input" placeholder="Ask your coach…" aria-label="Ask your coach"
-                   onkeydown="if(event.key==='Enter'){liveCoachSend();}">
-            ${micButtonHtml('live-coach-input')}
-            <button class="live-coach__send" onclick="liveCoachSend()" aria-label="Send">
-                <i class="fas fa-arrow-up"></i>
-            </button>
-        </div>
-    `;
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => { backdrop.classList.add('visible'); sheet.classList.add('visible'); });
+            <div class="live-coach__inputbar">
+                <input type="text" id="live-coach-input" class="field-input" placeholder="Ask your coach…" aria-label="Ask your coach"
+                       onkeydown="if(event.key==='Enter'){liveCoachSend();}">
+                ${micButtonHtml('live-coach-input')}
+                <button class="live-coach__send" onclick="liveCoachSend()" aria-label="Send">
+                    <i class="fas fa-arrow-up"></i>
+                </button>
+            </div>
+        `,
+        // Every dismissal (backdrop, Escape, swipe, Close, navigation)
+        // stops the stream and the voice — exactly once.
+        onClose: stopLiveCoach,
+    });
+    // The read-aloud toggle sits beside the title, as before.
+    const tts = ttsToggleHtml();
+    if (tts) {
+        const header = handle.el.querySelector('.sheet__header');
+        header?.classList.add('live-coach__header');
+        header?.insertAdjacentHTML('beforeend', tts);
+    }
 
     // Re-render prior turns of this session's thread.
     for (const m of _liveThread) {
@@ -186,20 +187,16 @@ export function liveCoachReadinessNote() {
 }
 
 export function closeLiveCoach() {
+    // closeSheet fires onClose (stopLiveCoach); if the sheet is already
+    // gone, still stop — closing never leaves a stream or voice running.
+    if (!closeSheet(LIVE_COACH_SHEET_ID)) stopLiveCoach();
+}
+
+function stopLiveCoach() {
     // Closing stops the stream — no "wait!". And the voice.
     stopSpeaking();
     try { _liveAbort?.abort(); } catch { /* already done */ }
     _liveAbort = null;
-    const backdrop = document.getElementById('live-coach-backdrop');
-    const sheet = document.getElementById('live-coach-sheet');
-    backdrop?.classList.remove('visible');
-    sheet?.classList.remove('visible');
-    setTimeout(closeLiveCoachImmediate, 300);
-}
-
-function closeLiveCoachImmediate() {
-    document.getElementById('live-coach-backdrop')?.remove();
-    document.getElementById('live-coach-sheet')?.remove();
 }
 
 function stripLiveContext(content) {
