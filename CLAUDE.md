@@ -94,6 +94,11 @@ js/
     │   ├── coach-live-context.js   # AP-20c: PURE live-workout snapshot (buildLiveWorkoutContext; re-exported by coach-live.js)
     │   ├── coach-guards.js         # AP-17/18: what the coach's write tools enforce (deload lock, stall/loadability, equipment, dedupe, program shape)
     │   ├── fuzzy-match.js          # Dice similarity (catalog/exercise/equipment matching) — mirrored for the coach's equipment check
+    │   ├── plain-language.js       # TP-0: the user's words — TERMS, findJargon/BANNED_UI_TERMS, formatters (effort, week kind, stuck, volume) — mirrored
+    │   ├── body-stats.js           # TP-1: 7-day bodyweight average (outlier-guarded), scan lean mass / body fat — mirrored
+    │   ├── goal-progress.js        # TP-1: goal validation, baseline from the data, rate math, status + sentence, formatGoalsContext — mirrored
+    │   ├── goals.js                # TP-1: goals/events Firestore data layer (createGoal captures the baseline)
+    │   ├── report-card.js          # TP-2: reportWeek (local Mon–Sun), buildReportCard, options, reply parse — mirrored
     │   ├── training-rules.js       # Pure volume/deload rules + RULE_THRESHOLDS (Config spreads them); training-insights wraps these
     │   ├── progression.js          # Pure double-progression + stall ladder; takes the session intent (deload never bumps)
     │   ├── session-intent.js       # getSessionIntent(): deload / peak / build for TODAY (program week > manual > legacy label); stamped on savedData.sessionIntent at start/resume
@@ -104,6 +109,8 @@ js/
     │   └── withings-integration.js # Withings OAuth + weight sync
     ├── ui/                     # UI components
     │   ├── block-ui.js             # AP-24: Block page (#block-section, route 'block') — the active program by week/day
+    │   ├── goals-ui.js             # TP-1: Goals page (#goals-section, route 'goals') + add-goal / add-date sheets
+    │   ├── report-card-ui.js       # TP-2: Sunday report card page (#reportcard-section, route 'reportcard'), recompute on open, one-tap option
     │   ├── dashboard-ui.js         # Dashboard render + renderProgressPage (#progress-section)
     │   ├── muscle-group-detail-ui.js # Level-2 drill-down from dashboard body-part cards
     │   ├── exercise-detail-ui.js   # Level-3 drill-down from muscle-group exercise list
@@ -199,6 +206,8 @@ styles/
 │   ├── app-shell.css      # App container, full-page overlay sections
 │   ├── dashboard-v2.css   # Dashboard widgets, hero chips, body-part cards, PRs
 │   ├── block.css          # Block page (AP-24)
+│   ├── goals.css          # Goals page (TP-1)
+│   ├── report-card.css    # Report card page (TP-2)
 │   ├── detail-pages.css   # Muscle-group / exercise / progress drill-down pages
 │   ├── metric-detail.css  # Metric-card drill-down pages
 │   ├── active-workout-v2.css # Active workout, set rows, rest timer, sheet body content (chrome is sheet.css)
@@ -281,6 +290,10 @@ users/{userId}/
   │   └── personalRecords      # PR store: exercisePRs keyed exercise → equipment KEY
   │                            #   (mixed: equipment doc id OR legacy name; entries carry
   │                            #   denormalized equipmentName — see pr-tracker.js)
+  ├── goals/{id}               # TP-1: type/metric/key/target/unit/direction/by/eventId/status + baseline {value,date}
+  │                            #   (measured at creation, never typed) — goal-progress.js#normalizeGoal is the shape
+  ├── events/{id}              # TP-1: name, date, kind (look|perform|other), peakWeeks, lighterBefore
+  ├── reportCards/{weekKey}    # TP-2: weekKey = the covered week's Monday; { card, narrative, chosenOption, applied }
   └── preferences/
       ├── settings             # User settings (weight unit, rest timer, weekly goal, etc.)
       └── favorites            # Favorite exercises array
@@ -437,9 +450,9 @@ For add-exercise / equipment / similar shared flows, prefer the parameterized he
 
 ### Mirrored rule modules (client ↔ functions/)
 
-Server-only (not mirrored): `functions/coach-routing.js` — model routing per turn + `coachTraces` doc builder (top-level collection, admin-only read); `functions/coach-prompts.js` — system prompts, model per tier, `buildModeRequest`; `functions/coach-loop.js` — `runCoachToolLoop`, THE tool loop (coachChatStream and the AP-20 eval both call it — change the loop there, never inline). `functions/weekly-review.js` — `buildWeeklyReviewRequest` (the review's prompt + data; index.js only sends/saves/pushes).
+Server-only (not mirrored): `functions/coach-routing.js` — model routing per turn + `coachTraces` doc builder (top-level collection, admin-only read); `functions/coach-prompts.js` — system prompts, model per tier, `buildModeRequest`; `functions/coach-loop.js` — `runCoachToolLoop`, THE tool loop (coachChatStream and the AP-20 eval both call it — change the loop there, never inline). `functions/weekly-review.js` — `buildWeeklyReviewRequest` (the review's prompt + data; index.js only sends/saves/pushes). `functions/report-card-request.js` — `buildReportCardRequest` / `reportCardDoc` (the Sunday card's data load + the one cheap model turn; index.js `sundayReportCard` / `requestReportCard` send, save, push).
 
-`functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-guards, fuzzy-match, coach-outcomes, week-targets, movement-patterns, exercise-rotation. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
+`functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-guards, fuzzy-match, coach-outcomes, week-targets, movement-patterns, exercise-rotation, plain-language, body-stats, goal-progress, report-card. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
 
 ### Touching active-workout code
 
@@ -576,6 +589,10 @@ Never just say "Nothing here" or show an icon alone.
 - **Dense data rows:** `Last: 10×135 · 3d ago` — colon form, abbreviated.
 - **Spell out units in display copy** when ambiguous: `42 min · 18 sets`, not `42m · 18 sets`. Abbreviations OK in dense data rows where context is clear.
 - **Use `Intl.RelativeTimeFormat`** when generating relative dates in code, so localization gets correct plurals.
+
+### 8b. Plain words, not jargon (TP-0)
+
+Numbers stay; jargon goes. Say **estimated max**, **effort (out of 10)**, **lighter week**, **build week / push week**, **stuck**, **main lifts**, **plan** — never e1RM, RPE, deload, block, rung, MEV/MRV, accumulate/intensify, primaries. Use the formatters in [plain-language.js](js/core/features/plain-language.js) (`effortTag`, `weekKindLabel`, `describeStuck`, `describeStrengthChange`…). Identifiers keep their names (`isDeloadTarget`, `intent.mode === 'deload'`). `npm run audit:design:strict` fails on any banned word in visible text (budget `jargonInUiStrings: 0`, [scripts/jargon-audit.js](scripts/jargon-audit.js)); a deliberate exception carries `// copy-ok: <reason>`. The same words govern every context line the coach is told to quote — the eval's `no-jargon` checks cover the answer and the context.
 
 ### 9. Terminology
 

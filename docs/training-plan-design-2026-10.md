@@ -343,6 +343,15 @@ Acceptance: from an empty Plan page, one conversation of ≤ 6 turns produces a 
 
 ---
 
+## 3b. As built — LB-1, TP-0, TP-1, TP-2 (2026-10-26)
+
+*Branch `training-plan-tp0-tp2` (merged with `launch-leftovers`). 1474 tests green, lint at the 17 baseline, design / shell / jargon audits pass. `npm run eval:coach` not run — no API key in the session and no baseline (AU-1 is still first).*
+
+- **LB-1** — the machine only decides hinge vs lumbar for a back extension (feeding equipment text into every rule mislabels: "Hammer Strength Flat" made bench a curl). A plain "Back Extension" keeps AU-13's library stamp (hip-dominant).
+- **TP-0** — `plain-language.js`; context lines, prompt contracts, verdict glossary and screens in plain words. Program weeks read as their **kind** everywhere (`weekKindLabel` — "lighter" follows the levers, the model's label only separates peak / push / build); `sessionIntent.label` is the kind, `programLabel` keeps the model's. The jargon budget scans visible text only (`scripts/jargon-audit.js`): 0. The shorthand toggle was cut.
+- **TP-1** — `settings.coachGoal` turned out to be an **enum** (cut / bulk / recomp / strength / general), not free text, so the "turn it into a goal if it has a number" offer had nothing to act on. It stays the direction: the profile line now reads `Training for:` and the Goals page shows it as the same segmented control. The offer moved to coach memory (prompt: a remembered goal with a number → offer `set_goal` once, then `forget_fact`). Tools: `list_goals`, `set_goal` (rejects non-main lifts, naming them; refuses a duplicate active goal → `update_goal`), `update_goal`, `add_event`. A4's tool retirement (`get_program` / `get_week_plan` → `get_plan`) waits for TP-3; chat tools are 28.
+- **TP-2** — built as 2a + 2b together (goals section and the `peak` option included). `swap` comes from the card itself: the accessory stuck longest at rung 3 (nine flat sessions) on the week plan, replaced by `rankRotationCandidates`. `peak` = "take the lighter week before {event}" when that week is next week. A swap is applied on the client (`applyRotation` on the plan's workout); lighter / peak write `settings.weekOverride` exactly as the coach's card does. Rollout: `settings.reportCard` (off by default; the page has "Turn on" and Settings a row) — the Monday review skips card users. `requestReportCard` builds the current week on demand (1/day, admin exempt) so dev can be checked without waiting for Sunday. The model reply is JSON `{headline, choice, why}`; an unknown choice or unparsable reply saves the card with its computed headline and `stay`.
+
 ## 4. Report card — the Sunday page, as the user reads it
 
 ```
