@@ -652,7 +652,7 @@ After meaningful changes, run the relevant subset before saying a task is comple
 | Sheets, overlays, headers, back/close buttons | `npm run audit:shell:strict` (budgets in scripts/shell-audit.js only go down) |
 | Coach prompt, tool, context or loop change | `npm run eval:coach` (needs `ANTHROPIC_API_KEY`; `EVAL_ONLY=id1,id2` to iterate) — no new regressions vs tests/coach-eval/baseline.json; then `EVAL_UPDATE_BASELINE=1` and commit the baseline. `npm run eval:coach:check` (also the pre-push hook — `npm run hooks:install`) fails while the coach is newer than the baseline |
 
-`npm run audit:design --strict` is the must-pass variant. Lint baseline: 20 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 20` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
+`npm run audit:design --strict` is the must-pass variant. Lint baseline: 17 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 17` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
 
 ## Important Notes
 
@@ -660,10 +660,10 @@ After meaningful changes, run the relevant subset before saying a task is comple
 - **Firebase SDK version**: Locked to 10.7.1
 - **CSS uses native @import**: `styles/index.css` imports modular files — no CSS bundler needed
 - **Authentication required**: Most features require signed-in user
-- **Local storage not used**: All state in memory or Firebase
+- **Local storage not used**: All state in memory or Firebase (Firestore's own IndexedDB cache is the SDK's, not app state)
 - **Mobile-first**: UI designed for phone use at the gym
 - **Modal-based UI**: Features use integrated modals, not separate pages
-- **Firebase operations use retry**: `withRetry()` in data-manager.js wraps critical saves with exponential backoff
+- **Offline-first Firestore (11a)**: `firebase-config.js` turns on the persistent IndexedDB cache (memory fallback) and exports LOCAL-FIRST `setDoc`/`updateDoc`/`deleteDoc`/`writeBatch().commit` — they resolve once the write is on the device (`'synced'`, or `'queued'` offline / after 5 s with no ack; see [offline.js](js/core/data/offline.js) `commitWrite`) and still reject real refusals. Don't wrap writes in retry loops (the SDK retries queued writes itself) and don't import write functions from the SDK directly. Reads that must survive no signal use `readWithCacheFallback` (data-manager / firebase-workout-manager `readDocs`); `getDocsFromServer` throws offline, so never call it bare. Network-only features (coach, AI tools) check `isOnline()` / `isOfflineError()` and show `NEEDS_CONNECTION_COPY`
 - **Exercise history cached**: `getLastSessionDefaults()` uses session-level Map cache; cleared on workout start/complete
 
 ## Key Technical Patterns
@@ -705,7 +705,7 @@ All shipped:
 
 ### Ongoing tech-debt notes
 
-- ESLint config has browser globals enabled now (Phase 9 cleanup); `npm run lint` reports 0 errors, 20 warnings (2026-07 sweeps cut it from 131; the rest are load-bearing destructuring omissions, unused function params, and no-useless-assignment cases needing per-site judgment). The `--max-warnings 20` ratchet in package.json blocks regressions.
+- ESLint config has browser globals enabled now (Phase 9 cleanup); `npm run lint` reports 0 errors, 17 warnings (2026-07 sweeps cut it from 131, 10/26 to 17; the rest are load-bearing destructuring omissions, unused function params, and no-useless-assignment cases needing per-site judgment). The `--max-warnings 17` ratchet in package.json blocks regressions.
 - workout-history.js's calendar uses in-memory month iteration over currentHistory (~1ms for 1000 workouts; not a real bottleneck).
 - Recent workouts list in history is paginated but not virtual-scrolled. Becomes DOM-stress past ~500 visible items.
 - `firebase-workout-manager.js#getUserWorkouts` uses `getDocsFromServer` deliberately (delete consistency); has its own un-shared cost.

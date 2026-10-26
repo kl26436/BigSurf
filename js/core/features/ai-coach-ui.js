@@ -21,6 +21,7 @@ import { scaleSessionSetTargets } from './program-session.js';
 import { weightIncrement, scaleLoadableWeight } from './progression.js';
 import { buildOutcomesContext, buildFeedbackContext, computeAdviceOutcome } from './coach-outcomes.js';
 import { micButtonHtml } from './coach-voice.js';
+import { isOnline, isOfflineError, NEEDS_CONNECTION_COPY } from '../data/offline.js';
 
 
 // Conversation history for the current chat session. Each entry is
@@ -453,6 +454,11 @@ function addChatBubble(role, html) {
     return bubble;
 }
 
+/** The coach's "no connection" bubble — every network-only coach path shows the same one. */
+function offlineBubbleHtml() {
+    return `<i class="fas fa-wifi text-muted coach-msg-icon"></i> ${escapeHtml(NEEDS_CONNECTION_COPY)}`;
+}
+
 /**
  * Call the Cloud Function and display the response as chat bubbles.
  * @param {string} question - The user's question
@@ -465,6 +471,12 @@ export async function askCoach(question) {
 
     // Add user bubble
     addChatBubble('user', escapeHtml(question.trim()));
+
+    if (!isOnline()) {
+        // Don't build the context or burn the retry on a dead connection.
+        addChatBubble('bot', offlineBubbleHtml());
+        return;
+    }
 
     // Add loading bubble
     const loadingBubble = addChatBubble('bot', `
@@ -667,6 +679,8 @@ export async function askCoach(question) {
 
         if (errorMessage === 'stream-died-after-actions') {
             errorHtml = `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Connection dropped mid-answer — anything shown above was already applied. Ask me to continue for the rest.`;
+        } else if (!isOnline() || isOfflineError(error)) {
+            errorHtml = offlineBubbleHtml();
         } else if (errorMessage.includes('resource-exhausted') || errorMessage.includes('limit') || errorMessage.includes('rate')) {
             errorHtml = `<i class="fas fa-clock text-warning coach-msg-icon"></i> Daily coach limit reached — try again tomorrow. Your dashboard insights are always available.`;
         } else if (errorMessage.includes('not-found') || errorMessage.includes('internal')) {
@@ -1642,11 +1656,16 @@ export function showPastCoachSession(sessionId) {
 let _reviewNowPending = false;
 export async function requestWeeklyReviewNow() {
     if (!AppState.currentUser || _reviewNowPending) return;
-    _reviewNowPending = true;
 
     const emptyState = document.getElementById('coach-empty-state');
     if (emptyState) emptyState.classList.add('hidden');
     addChatBubble('user', 'Give me my weekly training review.');
+    if (!isOnline()) {
+        addChatBubble('bot', offlineBubbleHtml());
+        scrollCoachChatIfNearBottom();
+        return;
+    }
+    _reviewNowPending = true;
     const loadingBubble = addChatBubble('bot', `
         <div class="coach-loading">
             <i class="fas fa-spinner fa-spin"></i>
@@ -1678,7 +1697,12 @@ export async function requestWeeklyReviewNow() {
         }
     } catch (error) {
         console.error('❌ Weekly review request failed:', error);
-        if (loadingBubble) loadingBubble.innerHTML = "Couldn't generate a review — try again.";
+        // Callables report a dropped connection as 'internal' — check the device too.
+        if (loadingBubble) {
+            loadingBubble.innerHTML = !isOnline() || isOfflineError(error)
+                ? offlineBubbleHtml()
+                : "Couldn't generate a review — try again.";
+        }
     } finally {
         _reviewNowPending = false;
     }
@@ -1837,7 +1861,10 @@ export async function generateWorkoutTemplate(focus) {
     } catch (error) {
         console.error('Template generation error:', error);
         if (loadingBubble) {
-            loadingBubble.innerHTML = `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Couldn't generate workout. ${escapeHtml(error.message || 'Try again.')}`;
+            // Not the raw error: offline, a callable just says 'internal'.
+            loadingBubble.innerHTML = !isOnline() || isOfflineError(error)
+                ? offlineBubbleHtml()
+                : `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Couldn't generate workout — try again.`;
         }
     }
 }

@@ -8,7 +8,7 @@
 import { AppState } from './core/utils/app-state.js';
 import { startApplication } from './core/app-initialization.js';
 import { confirmSheet } from './core/ui/confirm-sheet.js';
-import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal, completeOnboarding, restartOnboarding, rebuildPRsFromSettings, confirmDeleteAllData, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, selectProfileExperience, closeProfileExperiencePicker, closeProfile, editBodyWeightGoal, notifDiagEnable, notifDiagTest, editCoachInjuries, editCoachNotes } from './core/ui/settings-ui.js';
+import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal, completeOnboarding, restartOnboarding, rebuildPRsFromSettings, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, selectProfileExperience, closeProfileExperiencePicker, closeProfile, editBodyWeightGoal, notifDiagEnable, notifDiagTest, editCoachInjuries, editCoachNotes } from './core/ui/settings-ui.js';
 import { exportWorkoutData, exportDataForAI } from './core/data/data-manager.js';
 import { dismissFirstUseTip } from './core/features/first-use-tips.js';
 import { openLiveCoach } from './core/features/coach-live.js';
@@ -841,7 +841,6 @@ window.notifDiagTest = notifDiagTest;
 window.exportWorkoutData = exportWorkoutData;
 window.exportDataForAI = exportDataForAI;
 window.rebuildPRsFromSettings = rebuildPRsFromSettings;
-window.confirmDeleteAllData = confirmDeleteAllData;
 // Profile detail (§5)
 window.openProfile = openProfile;
 window.editProfileName = editProfileName;

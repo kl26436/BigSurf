@@ -26,6 +26,7 @@ import {
 import { micButtonHtml, ttsToggleHtml, speakCoachAnswer, stopSpeaking } from './coach-voice.js';
 import { buildLiveSessionLine, buildLiveWorkoutContext } from './coach-live-context.js';
 import { openSheet, closeSheet } from '../ui/sheet.js';
+import { isOnline, isOfflineError, NEEDS_CONNECTION_COPY } from '../data/offline.js';
 
 const LIVE_COACH_SHEET_ID = 'live-coach-sheet';
 
@@ -231,6 +232,11 @@ export async function liveCoachSend() {
     if (input) input.value = '';
 
     addLiveBubble('user', escapeHtml(text));
+    if (!isOnline()) {
+        // Nothing to send it to — say so now instead of after a 15 s watchdog.
+        addLiveBubble('bot', `<i class="fas fa-wifi text-muted coach-msg-icon"></i> ${escapeHtml(NEEDS_CONNECTION_COPY)}`);
+        return;
+    }
     const bubble = addLiveBubble('bot', `
         <div class="coach-loading">
             <i class="fas fa-spinner fa-spin"></i>
@@ -336,7 +342,11 @@ export async function liveCoachSend() {
         const timedOut = _liveAbort?.signal?.reason === 'timeout';
         if (e?.name === 'AbortError' && !timedOut) return;
         debugLog('live coach failed:', e);
-        if (bubble) bubble.innerHTML = `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Couldn't reach the coach — try again.`;
+        if (bubble) {
+            bubble.innerHTML = !isOnline() || isOfflineError(e)
+                ? `<i class="fas fa-wifi text-muted coach-msg-icon"></i> ${escapeHtml(NEEDS_CONNECTION_COPY)}`
+                : `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Couldn't reach the coach — try again.`;
+        }
     } finally {
         if (watchdog) clearInterval(watchdog);
         _liveAbort = null;

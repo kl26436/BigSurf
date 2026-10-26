@@ -1,7 +1,7 @@
 // Big Surf Workout Tracker - Service Worker
 // Provides basic offline functionality and faster loading
 
-const CACHE_NAME = 'big-surf-v8.13-catalog-search-geocode';
+const CACHE_NAME = 'big-surf-v8.14-offline';
 // Precache list — mirrors styles/index.css @import order. Add new CSS files here when
 // they're added to index.css, otherwise the first-paint on install misses them (cache-first
 // fetch will still pick them up on first navigation, but precaching avoids the blip).
@@ -10,8 +10,6 @@ const STATIC_ASSETS = [
   '/styles/index.css',
   '/styles/tokens.css',
   '/styles/reset.css',
-  '/styles/animations.css',
-  '/styles/utilities.css',
   '/styles/components/cards.css',
   '/styles/components/buttons.css',
   '/styles/components/forms.css',
@@ -30,16 +28,23 @@ const STATIC_ASSETS = [
   '/styles/components/fields.css',
   '/styles/components/completion-summary.css',
   '/styles/components/toast.css',
+  '/styles/components/shell-hud.css',
+  '/styles/components/sheet.css',
   '/styles/components/library-tabs.css',
   '/styles/components/gym-card.css',
   '/styles/components/quick-add-sheet.css',
+  '/styles/components/confirm-sheet.css',
+  '/styles/components/compat-badge.css',
+  '/styles/components/quick-edit-sheet.css',
   '/styles/pages/app-shell.css',
   '/styles/pages/active-workout-v2.css',
-  '/styles/pages/dashboard-v2.css',
-  '/styles/pages/detail-pages.css',
   '/styles/pages/templates.css',
   '/styles/pages/history.css',
+  '/styles/pages/edit-history.css',
+  '/styles/pages/dashboard-v2.css',
+  '/styles/pages/detail-pages.css',
   '/styles/pages/exercise-lib.css',
+  '/styles/pages/equipment-library.css',
   '/styles/pages/locations.css',
   '/styles/pages/manual-workout.css',
   '/styles/pages/settings.css',
@@ -49,6 +54,9 @@ const STATIC_ASSETS = [
   '/styles/pages/dexa.css',
   '/styles/pages/error-log.css',
   '/styles/pages/metric-detail.css',
+  '/styles/pages/block.css',
+  '/styles/animations.css',
+  '/styles/utilities.css',
   '/BigSurf.png',
   '/js/main.js',
   '/js/core/app-initialization.js',
@@ -91,92 +99,118 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Fetch strategy (offline support, launch blocker 11a):
+//   • Firebase / Google API traffic (Firestore, Auth, Functions, the hosting
+//     /__/ auth helper) is NOT intercepted. The Firestore SDK has its own
+//     offline cache and needs real network errors to know it's offline — the
+//     old handler answered failed API calls with a fake 200 JSON body.
+//   • Versioned CDN files (Firebase SDK on gstatic, Font Awesome, Chart.js,
+//     Leaflet) never change at a given URL → cache first. The old handler sent
+//     the gstatic SDK modules down the "network first, fake JSON offline"
+//     path, so the app couldn't boot without a connection.
+//   • Our own JS and the page itself → network first; the cached copy only
+//     when the network actually FAILS (offline). Deliberately no timeout: on
+//     slow-but-live signal right after a deploy, a timeout would serve some
+//     modules fresh and others from the old cache — version skew, the exact
+//     breakage of the old 1-year cache (see CLAUDE.md "Deployment"). Slow
+//     beats broken.
+//   • Other same-origin assets (CSS, images) → cache first, refreshed in the
+//     background (unchanged).
+const PASSTHROUGH_HOSTS = [
+  'firestore.googleapis.com',
+  'firebaseinstallations.googleapis.com',
+  'identitytoolkit.googleapis.com',
+  'securetoken.googleapis.com',
+  'cloudfunctions.net',
+  'run.app',
+  'firebaseio.com',
+  'googleapis.com',
+  'apis.google.com',
+  'accounts.google.com',
+];
+
+const IMMUTABLE_CDN_HOSTS = [
+  'www.gstatic.com',
+  'cdnjs.cloudflare.com',
+  'cdn.jsdelivr.net',
+  'unpkg.com',
+];
+
+function hostMatches(hostname, list) {
+  return list.some((h) => hostname === h || hostname.endsWith('.' + h));
+}
+
+function putInCache(request, response) {
+  // `request` may be a URL string (the shared '/index.html' key).
+  if (!response || !(response.ok || response.type === 'opaque')) return;
+  const copy = response.clone();
+  caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
+}
+
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  putInCache(request, response);
+  return response;
+}
+
+// cacheKey: where the copy lives — every navigation shares '/index.html'
+// (it's a single-page app) instead of one entry per URL + query string.
+async function networkFirst(request, cacheKey = request) {
+  try {
+    const response = await fetch(request);
+    putInCache(cacheKey, response);
+    return response;
+  } catch (error) {
+    const cached = await caches.match(cacheKey);
+    if (cached) return cached;
+    throw error;
+  }
+}
+
 // Fetch event - serve from cache when offline
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin) &&
-      !event.request.url.includes('cdnjs.cloudflare.com') &&
-      !event.request.url.includes('gstatic.com')) {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  const sameOrigin = url.origin === self.location.origin;
+
+  // APIs and the Firebase auth helper go straight to the network.
+  if (hostMatches(url.hostname, PASSTHROUGH_HOSTS)) return;
+  if (sameOrigin && url.pathname.startsWith('/__/')) return;
+
+  if (!sameOrigin) {
+    if (hostMatches(url.hostname, IMMUTABLE_CDN_HOSTS)) event.respondWith(cacheFirst(request));
+    return; // anything else cross-origin: browser default
+  }
+
+  // The app shell: any navigation is the single-page app's index.html.
+  if (request.mode === 'navigate') {
+    event.respondWith(networkFirst(request, '/index.html'));
     return;
   }
 
-  // Network first for Firebase API calls
-  if (event.request.url.includes('firestore.googleapis.com') ||
-      event.request.url.includes('firebase')) {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          // Return offline message for API calls
-          return new Response(
-            JSON.stringify({ error: 'offline', message: 'You are offline' }),
-            { headers: { 'Content-Type': 'application/json' } }
-          );
-        })
-    );
-    return;
-  }
-
-  // Network first for JavaScript files (always get fresh code)
-  if (event.request.url.endsWith('.js')) {
-    event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          // Cache the fresh JS file
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME)
-              .then((cache) => cache.put(event.request, responseToCache));
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // Fallback to cache if offline
-          return caches.match(event.request);
-        })
-    );
+  // Our modules: network first (fresh code), cache when offline / slow.
+  if (url.pathname.endsWith('.js')) {
+    event.respondWith(networkFirst(request));
     return;
   }
 
   // Cache first strategy for static assets (CSS, images, etc.)
   event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          // Return cached version and update cache in background
-          fetch(event.request)
-            .then((networkResponse) => {
-              if (networkResponse && networkResponse.status === 200) {
-                caches.open(CACHE_NAME)
-                  .then((cache) => cache.put(event.request, networkResponse.clone()));
-              }
-            })
-            .catch(() => {}); // Ignore fetch errors in background
-
-          return cachedResponse;
-        }
-
-        // Not in cache, fetch from network
-        return fetch(event.request)
-          .then((networkResponse) => {
-            // Cache successful GET requests
-            if (event.request.method === 'GET' &&
-                networkResponse &&
-                networkResponse.status === 200) {
-              const responseToCache = networkResponse.clone();
-              caches.open(CACHE_NAME)
-                .then((cache) => cache.put(event.request, responseToCache));
-            }
-            return networkResponse;
-          })
-          .catch((error) => {
-            console.error('❌ Fetch failed:', error);
-            // Return offline page for HTML requests
-            if (event.request.headers.get('accept').includes('text/html')) {
-              return caches.match('/index.html');
-            }
-            throw error;
-          });
-      })
+    caches.match(request).then((cachedResponse) => {
+      const network = fetch(request).then((networkResponse) => {
+        putInCache(request, networkResponse);
+        return networkResponse;
+      });
+      if (cachedResponse) {
+        network.catch(() => {}); // background refresh; offline is fine
+        return cachedResponse;
+      }
+      return network;
+    })
   );
 });
 

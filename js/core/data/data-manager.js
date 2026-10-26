@@ -16,11 +16,15 @@ import {
     deleteDoc,
     writeBatch,
     updateDoc,
+    getDocsFromCache,
+    getDocFromCache,
 } from './firebase-config.js';
+import { readWithCacheFallback } from './offline.js';
 import { showNotification, convertWeight, escapeHtml } from '../ui/ui-helpers.js';
 import { validateWorkoutData } from '../utils/validation.js';
 import { plateRelativeWeight } from '../utils/weight-calculations.js';
 import { getDateString } from '../utils/date-helpers.js';
+import { exportAllUserData } from './data-export-import.js';
 import { confidentEquipmentId } from './equipment-id-resolver.js';
 import { isRecoveryWorkout } from '../features/session-intent.js';
 import { AppState } from '../utils/app-state.js';
@@ -37,19 +41,14 @@ function withTimeout(promise, ms = Config.FIREBASE_TIMEOUT_MS) {
 }
 
 /**
- * Retry a function with exponential backoff.
- * @param {function} fn - Async function to retry
- * @param {number} maxRetries - Max retry attempts (default 2)
+ * Read from the server, or from the local Firestore cache when offline or the
+ * server doesn't answer in time (offline.js#readWithCacheFallback).
  */
-async function withRetry(fn, maxRetries = 2) {
-    for (let i = 0; i <= maxRetries; i++) {
-        try {
-            return await fn();
-        } catch (error) {
-            if (i === maxRetries) throw error;
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
-        }
-    }
+function readDocs(q) {
+    return readWithCacheFallback(() => getDocs(q), () => getDocsFromCache(q));
+}
+function readDoc(ref) {
+    return readWithCacheFallback(() => getDoc(ref), () => getDocFromCache(ref));
 }
 
 /**
@@ -216,7 +215,13 @@ async function writeWorkoutData(state) {
             lastUpdated: new Date().toISOString(),
             version: '3.0', // New schema version
         };
-        await withRetry(() => withTimeout(setDoc(docRef, savedDoc)));
+        // setDoc is firebase-config's local-first wrapper: it resolves once the
+        // write is on the device ('synced', or 'queued' offline / after a few
+        // seconds without an ack), so a gym with no signal saves quietly and
+        // syncs later. No retry loop — the SDK retries queued writes itself,
+        // and re-issuing the set just stacked duplicate writes behind a
+        // 30-second wait that ended in a false "Couldn't save" toast.
+        await setDoc(docRef, savedDoc);
 
         // A completed session (a finish, or an edit to history) changes what
         // every cached reader — dashboard, last-session prefill — should see.
@@ -419,7 +424,7 @@ export async function loadTodaysWorkout(state) {
         // This finds incomplete workouts for today
         const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
         const q = query(workoutsRef, where('date', '==', today));
-        const snapshot = await withTimeout(getDocs(q));
+        const snapshot = await readDocs(q);
 
         let incompleteWorkout = null;
 
@@ -457,7 +462,7 @@ export async function loadWorkoutsByDate(state, dateStr) {
         // Schema v3.0: Query by date field
         const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
         const q = query(workoutsRef, where('date', '==', dateStr));
-        const snapshot = await withTimeout(getDocs(q));
+        const snapshot = await readDocs(q);
 
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
@@ -504,7 +509,7 @@ export async function loadWorkoutById(state, workoutId) {
 
     try {
         const docRef = doc(db, 'users', state.currentUser.uid, 'workouts', workoutId);
-        const docSnap = await withTimeout(getDoc(docRef));
+        const docSnap = await readDoc(docRef);
 
         if (docSnap.exists()) {
             return { ...docSnap.data(), docId: docSnap.id };
@@ -533,7 +538,8 @@ export async function updateHistoricalWorkout(state, workoutId, patch) {
         throw new Error('updateHistoricalWorkout: missing user or workoutId');
     }
     const docRef = doc(db, 'users', state.currentUser.uid, 'workouts', workoutId);
-    await withRetry(() => withTimeout(updateDoc(docRef, patch)));
+    // Local-first (see saveWorkoutData) — resolves once the edit is on the device.
+    await updateDoc(docRef, patch);
     clearAllWorkoutsCache();
 }
 
@@ -630,7 +636,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
         // Query for recent workouts containing this exercise
         const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
         const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(50)); // Increased limit
-        const querySnapshot = await withTimeout(getDocs(q));
+        const querySnapshot = await readDocs(q);
 
         let lastWorkout = null;
         let lastExerciseData = null;
@@ -861,7 +867,7 @@ export async function loadWorkoutHistory(state, limitCount = 50) {
     try {
         const workoutsRef = collection(db, 'users', state.currentUser.uid, 'workouts');
         const q = query(workoutsRef, orderBy('lastUpdated', 'desc'), limit(limitCount));
-        const querySnapshot = await withTimeout(getDocs(q));
+        const querySnapshot = await readDocs(q);
 
         const workouts = [];
         querySnapshot.forEach((docSnap) => {
@@ -973,7 +979,11 @@ export async function loadAllWorkouts(state, { throwOnError = false } = {}) {
     try {
         const workoutsRef = collection(db, 'users', uid, 'workouts');
         const q = query(workoutsRef, orderBy('date', 'desc'));
-        const snapshot = await getDocs(q);
+        // Offline / bad signal → the device's cache (which already holds this
+        // device's own saves). The TTL below still applies; the 'online'
+        // listener in error-handler.js clears it on reconnect so a cache-read
+        // list isn't pinned for five minutes once the server is back.
+        const snapshot = await readDocs(q);
         const workouts = [];
         snapshot.forEach(docSnap => {
             const data = { id: docSnap.id, ...docSnap.data() };
@@ -1352,60 +1362,12 @@ export async function reassignEquipment(equipmentId, equipmentName, oldExerciseN
 }
 
 /**
- * Export all user workout data as a JSON file download.
+ * "Download my data": the full versioned JSON export (every users/{uid}
+ * collection). Lives in data-export-import.js; this name stays for the
+ * Settings row + window wiring.
  */
 export async function exportWorkoutData(state) {
-    if (!state.currentUser) {
-        showNotification('Sign in to export data', 'warning');
-        return;
-    }
-
-    try {
-        showNotification('Preparing export…', 'info', 2000);
-
-        const userId = state.currentUser.uid;
-
-        // Load all data in parallel
-        const [workoutsSnap, templatesSnap, equipmentSnap] = await Promise.all([
-            getDocs(collection(db, 'users', userId, 'workouts')),
-            getDocs(collection(db, 'users', userId, 'workoutTemplates')),
-            getDocs(collection(db, 'users', userId, 'equipment')),
-        ]);
-
-        const workouts = [];
-        workoutsSnap.forEach(d => workouts.push({ id: d.id, ...d.data() }));
-
-        const templates = [];
-        templatesSnap.forEach(d => templates.push({ id: d.id, ...d.data() }));
-
-        const equipment = [];
-        equipmentSnap.forEach(d => equipment.push({ id: d.id, ...d.data() }));
-
-        const exportData = {
-            exportDate: new Date().toISOString(),
-            version: '3.0',
-            userId: userId,
-            workouts,
-            templates,
-            equipment,
-        };
-
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const today = getDateString(new Date());
-        a.download = `bigsurf-export-${today}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        showNotification(`Exported ${workouts.length} workouts`, 'success', 2000);
-    } catch (error) {
-        console.error('❌ Export failed:', error);
-        showNotification('Export failed', 'error');
-    }
+    return exportAllUserData(state);
 }
 
 /**

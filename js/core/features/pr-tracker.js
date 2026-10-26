@@ -47,6 +47,11 @@ const PR_CUTOFF_DATE = Config.PR_CUTOFF_DATE;
  */
 
 let _rebuildingInProgress = false;
+// True once the PR store has been read (server or device cache). Until then
+// prData is an empty placeholder — recording PRs into it and saving would
+// replace the real store with this one workout's records when the write syncs
+// (an offline first launch with nothing cached yet).
+let _prDataLoaded = false;
 let prData = {
     exercisePRs: {},
     locations: {},
@@ -71,6 +76,7 @@ export async function loadPRData() {
 
         if (prDoc.exists()) {
             prData = prDoc.data();
+            _prDataLoaded = true;
             return prData;
         } else {
             prData = {
@@ -78,6 +84,7 @@ export async function loadPRData() {
                 locations: {},
                 currentLocation: null,
             };
+            _prDataLoaded = true;
             return prData;
         }
     } catch (error) {
@@ -469,6 +476,13 @@ export async function recordPR(
 export async function processWorkoutForPRs(workoutData) {
     if (!AppState.currentUser || !workoutData.exercises) {
         return;
+    }
+
+    // Never record into the empty placeholder (see _prDataLoaded). Offline with
+    // the store cached, loadPRData reads it from the device; with nothing to
+    // read, skip — a later rebuild from history catches these sets up.
+    if (!_prDataLoaded && !(await loadPRData())) {
+        return [];
     }
 
     // Get the workout date
