@@ -17,6 +17,7 @@ import {
     buildReportCard, reportWeek, optionStillValid, dayIndex, GRADE_LABELS, DEFAULT_TIME_ZONE,
 } from '../features/report-card.js';
 import { shortDate } from '../features/goal-progress.js';
+import { once } from './busy.js';
 
 let _doc = null;      // the reportCards doc on screen (card possibly recomputed)
 let _weekKey = null;  // which week to open (null = latest)
@@ -259,7 +260,12 @@ async function applySwap(p) {
     t.exercises = exercises;
 }
 
-export async function reportCardApply() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function reportCardApply() {
+    return once('report-card-apply', () => reportCardApplyNow());
+}
+
+async function reportCardApplyNow() {
     const o = _doc?.chosenOption;
     if (!o || !AppState.currentUser) return;
     try {

@@ -128,6 +128,7 @@ js/
     │   ├── back-guard.js           # SH-6: one history entry so Android back / iOS edge swipe does an in-app back
     │   ├── settings-ui.js          # Settings page, onboarding flow, profile detail
     │   ├── confirm-sheet.js        # confirmSheet()/promptSheet() — promise-based replacement for native confirm/prompt
+    │   ├── busy.js                 # once(key, fn, {button, label}) — THE double-tap guard for any handler that writes
     │   ├── sheet.js                # openSheet() — THE bottom-sheet primitive; every sheet uses it (SH-3)
     │   ├── page-lock.js            # SH-2a: page scroll lock DERIVED from what's open (OVERLAY_SELECTOR) + explicit lockPage() holds
     │   ├── template-selection.js   # Workouts page — library + dedicated editor page (#workout-editor-section)
@@ -445,7 +446,7 @@ openSheet({
 });
 ```
 
-- Re-opening the same `id` replaces the sheet in place (silently — no `onClose`), so re-render by calling `openSheet` again or `setBody`.
+- Re-opening the same `id` replaces the sheet in place (silently — no `onClose`), so re-render by calling `openSheet` again or `setBody`. (Until 2026-10-26 that path leaked `inert`: after the last close the whole app ignored taps until a reload — sheet.test.js now covers it; don't hand-roll `inert` anywhere else.)
 - Footer labels name the action (`Close`, `Keep current`, `Start workout`), never `Cancel`; dismiss buttons stay neutral (no `danger`).
 - `navigateTo()` closes every open sheet (`closeAllSheets`), firing each `onClose`.
 - The page lock ([page-lock.js](js/core/ui/page-lock.js)) is derived from the DOM: a new overlay root that isn't a `.sheet`/`dialog` must be added to its `OVERLAY_SELECTOR`, and never write `body.style.overflow`.
@@ -453,6 +454,10 @@ openSheet({
 **Pages, not sheets:** show a full-page section with `navigateTo(view)`; a flow that paints a page itself and must keep its sheets open uses `enterSection(view)` (navigation.js) so the back stack and the system-back guard see it. Backs call `navigateBack()` — never a fixed destination, never a direct `.hidden` toggle on a `SECTION_IDS` section.
 
 For add-exercise / equipment / similar shared flows, prefer the parameterized helpers (`openSharedAddExerciseSheet`, `openSharedEquipmentSheet` in [active-workout-ui.js](js/core/workout/active-workout-ui.js)) — they take an `onSelect` callback so the same sheet works from any context.
+
+### Handlers that write: one run per tap
+
+Writes are local-first and can take up to 5 s to resolve on bad signal (`commitWrite`), so a second tap during the wait runs the handler again — that's how the Goals page added a goal twice. Any handler that writes (save, create, add, apply, delete) runs through `once(key, fn, { button, label: 'Saving…' })` from [busy.js](js/core/ui/busy.js): re-entry while `key` runs is ignored, the button is disabled and says what's happening, and it's restored even on error. After a save, repaint from the state you already hold instead of reloading every collection. Older handlers with ad-hoc flags (`inFlight`, `saving`, `btn.disabled`) migrate to it as they're touched — queue row 14.
 
 ### Mirrored rule modules (client ↔ functions/)
 

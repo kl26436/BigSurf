@@ -22,7 +22,7 @@ const { applyPrimaryChoice, pickPrimaries } = require('./progress-scoreboard');
 const { buildPlanTimeline, describeCadence, cadenceOf } = require('./plan-timeline');
 const { draftNextWave, rollWindow, cadenceFromProgram, ROTATION_POLICIES } = require('./plan-roller');
 // TP-1 — goals: the same validation, baseline and status math as the Goals page.
-const { normalizeGoal, normalizeEvent, captureBaseline, goalsWithStatus, goalName, GOAL_TYPES, GOAL_STATUSES, EVENT_KINDS } = require('./goal-progress');
+const { normalizeGoal, normalizeEvent, captureBaseline, goalsWithStatus, goalName, findSameGoal, GOAL_TYPES, GOAL_STATUSES, EVENT_KINDS } = require('./goal-progress');
 const { inferRole } = require('./movement-patterns');
 const { diceSimilarity } = require('./fuzzy-match');
 const {
@@ -2088,8 +2088,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             }
             const v = normalizeGoal(draft, { today: date, mainLifts: g.mainLifts, eventIds: g.events.map(e => e.id), unit });
             if (!v.ok) return toolError('invalid_input', v.error, v.hint || null);
-            const same = g.goals.find(x => x.status === 'active' && x.type === v.goal.type && x.metric === v.goal.metric
-                && JSON.stringify(x.key || null) === JSON.stringify(v.goal.key || null));
+            const same = findSameGoal(v.goal, g.goals); // the app's rule (goal-progress.js)
             if (same) {
                 return toolError('near_duplicate', `An active goal already covers this: "${goalName(same, { events: g.events })}" (${same.id}).`, 'Use update_goal on it to change the target or date.');
             }

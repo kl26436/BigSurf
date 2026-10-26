@@ -133,6 +133,12 @@ export function normalizeEvent(input, { today } = {}) {
     };
 }
 
+/** An active goal that measures the same thing (type, metric, lift / pattern) — one per thing. */
+export function findSameGoal(goal, goals = []) {
+    const key = (g) => JSON.stringify([g.type, g.metric, g.key?.exercise?.toLowerCase?.() ?? g.key?.pattern ?? g.key ?? null]);
+    return (goals || []).find(g => g && g.status === 'active' && key(g) === key(goal)) || null;
+}
+
 // ── Measuring ───────────────────────────────────────────────────────
 
 /** Distinct training days a week, averaged over the 4 weeks ending `today`. */

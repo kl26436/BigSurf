@@ -10,11 +10,12 @@ import { escapeHtml, escapeAttr, showNotification } from './ui-helpers.js';
 import { navigateTo } from './navigation.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { confirmSheet } from './confirm-sheet.js';
+import { once } from './busy.js';
 import {
     loadGoalsWithStatus, createGoal, updateGoal, deleteGoal, createEvent, deleteEvent, mainLiftNames,
 } from '../features/goals.js';
 import {
-    goalName, measureGoal, STATUS_LABELS, shortDate, weeksUntil, normalizeGoal,
+    goalName, measureGoal, STATUS_LABELS, shortDate, weeksUntil, normalizeGoal, goalsWithStatus,
 } from '../features/goal-progress.js';
 import { PATTERN_LABELS } from '../features/progress-scoreboard.js';
 
@@ -75,6 +76,21 @@ export async function renderGoalsPage() {
         </div></div>`;
     }
 }
+
+/**
+ * Repaint from what's already loaded — after a save there's nothing new to
+ * read (the change is ours), so no second trip for a year of weigh-ins,
+ * scans and workouts. renderGoalsPage is the full load (opening the page).
+ */
+function repaint() {
+    const container = document.getElementById('goals-content');
+    if (!container || !_state) return;
+    _state.rows = goalsWithStatus(_state.goals, { ..._state.data, events: _state.events });
+    container.innerHTML = pageHTML(_state);
+}
+
+/** The primary button in a sheet's footer (for the "Saving…" state). */
+const sheetButton = (sheetId) => document.querySelector(`#${sheetId} .sheet__footer .btn-primary`);
 
 function directionHTML() {
     const current = AppState.settings?.coachGoal || null;
@@ -250,14 +266,18 @@ export async function goalSave() {
     const byEl = document.getElementById('goal-by');
     if (byEl) _draft.by = byEl.value || null;
     if (!(Number(_draft.target) > 0)) { showNotification('Add a target', 'warning'); return; }
-    const r = await createGoal({ ..._draft, unit: _state.data.unit }, _state.data, { events: _state.events });
-    if (!r.ok) {
-        showNotification(r.hint ? `${r.error} ${r.hint}` : r.error, 'warning', 4000);
-        return;
-    }
-    closeSheet(ADD_GOAL_SHEET);
-    showNotification('Goal set', 'success', 1500);
-    await renderGoalsPage();
+    // One save per tap: on gym signal the write can take seconds.
+    await once('goal-save', async () => {
+        const r = await createGoal({ ..._draft, unit: _state.data.unit }, _state.data, { events: _state.events, goals: _state.goals });
+        if (!r.ok) {
+            showNotification(r.hint ? `${r.error} ${r.hint}` : r.error, 'warning', 4000);
+            return;
+        }
+        _state.goals.push(r.goal);
+        closeSheet(ADD_GOAL_SHEET);
+        showNotification('Goal set', 'success', 1500);
+        repaint();
+    }, { button: sheetButton(ADD_GOAL_SHEET), label: 'Saving…' });
 }
 
 // ── Goal actions ────────────────────────────────────────────────────
@@ -285,10 +305,14 @@ export function openGoalActions(id) {
 
 export async function goalSetStatus(id, status) {
     closeSheet(GOAL_ACTIONS_SHEET);
-    if (await updateGoal(id, { status })) {
-        showNotification(status === 'paused' ? 'Goal paused' : status === 'met' ? 'Goal marked as met' : 'Goal back on', 'success', 1500);
-        await renderGoalsPage();
-    } else showNotification("Couldn't update the goal — try again", 'error');
+    await once(`goal-status-${id}`, async () => {
+        if (await updateGoal(id, { status })) {
+            const g = _state?.goals.find(x => x.id === id);
+            if (g) g.status = status;
+            showNotification(status === 'paused' ? 'Goal paused' : status === 'met' ? 'Goal marked as met' : 'Goal back on', 'success', 1500);
+            repaint();
+        } else showNotification("Couldn't update the goal — try again", 'error');
+    });
 }
 
 export async function goalDelete(id) {
@@ -300,10 +324,13 @@ export async function goalDelete(id) {
         confirmLabel: 'Delete goal', cancelLabel: 'Keep goal', destructive: true,
     });
     if (!ok) return;
-    if (await deleteGoal(id)) {
-        showNotification('Goal deleted', 'success', 1500);
-        await renderGoalsPage();
-    } else showNotification("Couldn't delete the goal — try again", 'error');
+    await once(`goal-delete-${id}`, async () => {
+        if (await deleteGoal(id)) {
+            if (_state) _state.goals = _state.goals.filter(x => x.id !== id);
+            showNotification('Goal deleted', 'success', 1500);
+            repaint();
+        } else showNotification("Couldn't delete the goal — try again", 'error');
+    });
 }
 
 // ── Events ──────────────────────────────────────────────────────────
@@ -341,11 +368,16 @@ export async function eventSave() {
     const date = document.getElementById('event-date')?.value || '';
     if (!name.trim()) { showNotification('Add a name', 'warning'); return; }
     if (!date) { showNotification('Pick a date', 'warning'); return; }
-    const r = await createEvent({ name, date, kind: _eventKind }, { today: AppState.getTodayDateString() });
-    if (!r.ok) { showNotification(r.error, 'warning', 3500); return; }
-    closeSheet(ADD_EVENT_SHEET);
-    showNotification(`${r.event.name} added`, 'success', 1500);
-    await renderGoalsPage();
+    await once('event-save', async () => {
+        const dup = _state?.events.find(e => e.date === date && e.name.trim().toLowerCase() === name.trim().toLowerCase());
+        if (dup) { closeSheet(ADD_EVENT_SHEET); showNotification(`${dup.name} is already on your plan`, 'info', 2000); return; }
+        const r = await createEvent({ name, date, kind: _eventKind }, { today: AppState.getTodayDateString() });
+        if (!r.ok) { showNotification(r.error, 'warning', 3500); return; }
+        if (_state) _state.events = [..._state.events, r.event].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        closeSheet(ADD_EVENT_SHEET);
+        showNotification(`${r.event.name} added`, 'success', 1500);
+        repaint();
+    }, { button: sheetButton(ADD_EVENT_SHEET), label: 'Saving…' });
 }
 
 export async function openEventActions(id) {
@@ -357,11 +389,17 @@ export async function openEventActions(id) {
         confirmLabel: 'Remove date', cancelLabel: 'Keep it', destructive: true,
     });
     if (!ok) return;
-    if (await deleteEvent(id)) {
-        for (const g of _state.goals.filter(x => x.eventId === id)) await updateGoal(g.id, { eventId: null });
-        showNotification(`${e.name} removed`, 'success', 1500);
-        await renderGoalsPage();
-    } else showNotification("Couldn't remove it — try again", 'error');
+    await once(`event-delete-${id}`, async () => {
+        if (await deleteEvent(id)) {
+            for (const g of _state.goals.filter(x => x.eventId === id)) {
+                await updateGoal(g.id, { eventId: null });
+                g.eventId = null;
+            }
+            _state.events = _state.events.filter(x => x.id !== id);
+            showNotification(`${e.name} removed`, 'success', 1500);
+            repaint();
+        } else showNotification("Couldn't remove it — try again", 'error');
+    });
 }
 
 export function goalsAskCoach() {

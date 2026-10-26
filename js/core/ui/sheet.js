@@ -28,12 +28,23 @@ function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// What the sheet layer made inert carries this attribute, so the release
+// clears exactly those — even when a sheet re-opened in place (its silent
+// close empties the stack, then the new open runs setInert(true) again and
+// used to re-capture an EMPTY list: everything was already inert, so the
+// last close un-inerted nothing and the app stayed dead to taps).
+const INERT_MARK = 'data-sheet-inert';
+
 function setInert(on) {
     if (on) {
-        inerted = [...document.body.children].filter(el => !el.matches(KEEP_LIVE) && !el.inert);
-        for (const el of inerted) el.inert = true;
+        const fresh = [...document.body.children].filter(el => !el.matches(KEEP_LIVE) && !el.inert);
+        for (const el of fresh) { el.inert = true; el.setAttribute(INERT_MARK, ''); }
+        inerted = [...new Set([...inerted, ...fresh])];
     } else {
-        for (const el of inerted) el.inert = false;
+        for (const el of new Set([...inerted, ...document.querySelectorAll(`[${INERT_MARK}]`)])) {
+            el.inert = false;
+            el.removeAttribute(INERT_MARK);
+        }
         inerted = [];
     }
 }

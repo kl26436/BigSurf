@@ -11,7 +11,7 @@ import { AppState } from '../utils/app-state.js';
 import { debugLog } from '../utils/config.js';
 import { loadAllWorkouts } from '../data/data-manager.js';
 import {
-    normalizeGoal, normalizeEvent, captureBaseline, goalsWithStatus,
+    normalizeGoal, normalizeEvent, captureBaseline, goalsWithStatus, findSameGoal, goalName,
 } from './goal-progress.js';
 import { pickPrimaries } from './progress-scoreboard.js';
 
@@ -83,10 +83,13 @@ export function mainLiftNames(data) {
  * Validate a draft, capture its baseline from the data, write it.
  * @returns {{ok: true, goal: object} | {ok: false, error: string, hint?: string}}
  */
-export async function createGoal(draft, data, { events = [] } = {}) {
+export async function createGoal(draft, data, { events = [], goals = [] } = {}) {
     if (!uid()) return { ok: false, error: 'Sign in to set goals' };
     const v = normalizeGoal(draft, { today: data.today, mainLifts: mainLiftNames(data), eventIds: events.map(e => e.id), unit: data.unit });
     if (!v.ok) return v;
+    // The same goal twice is never what anyone meant (the coach's set_goal refuses it too).
+    const same = findSameGoal(v.goal, goals);
+    if (same) return { ok: false, error: `You already have this goal (${goalName(same, { events })}) — change its target from its row instead.` };
     const { baseline, direction } = captureBaseline(v.goal, data);
     const goal = { ...v.goal, direction, baseline, createdAt: new Date().toISOString(), source: 'app' };
     const id = newId('goal');

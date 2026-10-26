@@ -19,6 +19,7 @@ import { weekOverrideOf } from '../features/session-intent.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { cloneForMyWorkouts } from '../features/plan-sessions.js';
+import { once } from './busy.js';
 
 let _tl = null;    // the timeline on screen
 let _ctx = null;   // the data it was built from
@@ -330,7 +331,12 @@ export async function blockStartSession(templateName) {
     if (typeof window.startWorkout === 'function') await window.startWorkout(templateName);
 }
 
-export async function planEnable() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function planEnable() {
+    return once('plan-enable', () => planEnableNow());
+}
+
+async function planEnableNow() {
     const { enablePlanFromProgram } = await import('../features/plan.js');
     if (await enablePlanFromProgram(_tl?.activeProgram || {})) {
         showNotification('Plan on — it keeps going on its own', 'success', 2000);
@@ -338,7 +344,12 @@ export async function planEnable() {
     } else showNotification("Couldn't turn the plan on — try again", 'error');
 }
 
-export async function planResume() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function planResume() {
+    return once('plan-resume', () => planResumeNow());
+}
+
+async function planResumeNow() {
     const { savePlan } = await import('../features/plan.js');
     if (await savePlan({ paused: false })) {
         showNotification('Plan resumed', 'success', 1500);
@@ -355,7 +366,12 @@ export async function planSetRotationPolicy(policy, btn) {
     } else showNotification("Couldn't save that — try again", 'error');
 }
 
-export async function planApplySwaps() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function planApplySwaps() {
+    return once('plan-apply-swaps', () => planApplySwapsNow());
+}
+
+async function planApplySwapsNow() {
     const program = _tl?.activeProgram;
     if (!program) return;
     try {
@@ -369,7 +385,12 @@ export async function planApplySwaps() {
     }
 }
 
-export async function planUndoRoll() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function planUndoRoll() {
+    return once('plan-undo', () => planUndoRollNow());
+}
+
+async function planUndoRollNow() {
     const program = _tl?.activeProgram;
     if (!program) return;
     const ok = await confirmSheet({
@@ -397,7 +418,12 @@ export async function planUndoRoll() {
  * TP-4 — "Save to my workouts": a copy of a plan session in the user's own
  * list (name editable). Later swaps in the plan change the plan's copy only.
  */
-export async function saveSessionToMyWorkouts(templateId) {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function saveSessionToMyWorkouts(templateId) {
+    return once(`save-copy-${templateId}`, () => saveSessionToMyWorkoutsNow(templateId));
+}
+
+async function saveSessionToMyWorkoutsNow(templateId) {
     const templates = AppState.workoutPlans || [];
     const t = templates.find(x => x.id === templateId);
     if (!t) { showNotification("Couldn't find that workout — refresh and try again", 'warning'); return; }

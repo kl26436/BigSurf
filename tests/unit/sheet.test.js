@@ -3,7 +3,7 @@
 // Escape and stacking, pinned search, setBody. Real module, jsdom DOM.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { openSheet, closeTopSheet, closeAllSheets, sheetDepth } from '../../js/core/ui/sheet.js';
+import { openSheet, closeSheet, closeTopSheet, closeAllSheets, sheetDepth } from '../../js/core/ui/sheet.js';
 import { syncPageLock, resetPageLock } from '../../js/core/ui/page-lock.js';
 
 const key = (el, k, extra = {}) => el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, ...extra }));
@@ -71,6 +71,36 @@ describe('openSheet', () => {
         key(a.el, 'Escape');
         expect(onClose).toHaveBeenCalledTimes(1);
         expect(document.querySelector('.app-container').inert).toBe(false);
+    });
+
+    it('a sheet re-opened in place (re-render by id) still releases inert when it closes', () => {
+        // The bug: the silent close emptied the stack, the new open re-captured
+        // an empty list (everything was already inert), the last close freed
+        // nothing — every tap on the page was ignored until a reload.
+        openSheet({ id: 'r', title: 'Step 1' });
+        openSheet({ id: 'r', title: 'Step 2' });
+        openSheet({ id: 'r', title: 'Step 3' });
+        expect(sheetDepth()).toBe(1);
+        expect(document.querySelector('.app-container').inert).toBe(true);
+        closeSheet('r', { immediate: true });
+        expect(document.querySelector('.app-container').inert).toBe(false);
+        expect(document.querySelector('.bottom-nav').inert).toBe(false);
+        expect(document.querySelectorAll('[data-sheet-inert]')).toHaveLength(0);
+        // and a stack opened over a re-rendered one, closed all at once
+        openSheet({ id: 'r', title: 'A' });
+        openSheet({ id: 'r', title: 'A again' });
+        openSheet({ id: 'top', title: 'Confirm' });
+        closeAllSheets();
+        expect(document.querySelector('.app-container').inert).toBe(false);
+    });
+
+    it('never un-inerts what the sheet layer didn\'t make inert', () => {
+        const nav = document.querySelector('.bottom-nav');
+        nav.inert = true; // someone else's
+        openSheet({ id: 'x', title: 'X' });
+        closeSheet('x', { immediate: true });
+        expect(nav.inert).toBe(true);
+        nav.inert = false;
     });
 
     it('non-dismissible sheets ignore Escape and the backdrop; closeTopSheet still works', () => {

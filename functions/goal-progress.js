@@ -136,6 +136,12 @@ function normalizeEvent(input, { today } = {}) {
     };
 }
 
+/** An active goal that measures the same thing (type, metric, lift / pattern) — one per thing. */
+function findSameGoal(goal, goals = []) {
+    const key = (g) => JSON.stringify([g.type, g.metric, g.key?.exercise?.toLowerCase?.() ?? g.key?.pattern ?? g.key ?? null]);
+    return (goals || []).find(g => g && g.status === 'active' && key(g) === key(goal)) || null;
+}
+
 // ── Measuring ───────────────────────────────────────────────────────
 
 /** Distinct training days a week, averaged over the 4 weeks ending `today`. */
@@ -380,4 +386,4 @@ function formatGoalsContext({ goals = [], events = [], data = {} } = {}) {
     return lines.length ? `${lines.join('\n')}\n` : '';
 }
 
-module.exports = { GOAL_TYPES, GOAL_METRICS, GOAL_STATUSES, EVENT_KINDS, LIFT_WINDOW_DAYS, ON_TRACK_SHARE, OPEN_HORIZON_WEEKS, shortDate, normalizeGoal, normalizeEvent, daysPerWeek, measureGoal, captureBaseline, toleranceOf, goalStatus, goalName, STATUS_LABELS, weeksUntil, goalsWithStatus, formatGoalsContext };
+module.exports = { GOAL_TYPES, GOAL_METRICS, GOAL_STATUSES, EVENT_KINDS, LIFT_WINDOW_DAYS, ON_TRACK_SHARE, OPEN_HORIZON_WEEKS, shortDate, normalizeGoal, normalizeEvent, findSameGoal, daysPerWeek, measureGoal, captureBaseline, toleranceOf, goalStatus, goalName, STATUS_LABELS, weeksUntil, goalsWithStatus, formatGoalsContext };
