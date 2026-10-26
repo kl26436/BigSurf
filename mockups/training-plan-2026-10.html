@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Big Surf — Training Plan, Goals & Report Card mockups (Oct 2026)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app: #05070b;
+    --bg-surface: #0d1218;
+    --bg-card: #111820;
+    --bg-card-hi: #172030;
+    --border-subtle: rgba(255,255,255,0.04);
+    --border-light: rgba(255,255,255,0.08);
+    --text-strong: #f6f9ff;
+    --text-main: #c4cad4;
+    --text-secondary: #9aa3ad;
+    --text-muted: #6b7785;
+    --primary: #1dd3b0;
+    --primary-dark: #0fa48a;
+    --primary-bg: rgba(29,211,176,0.12);
+    --primary-bg-subtle: rgba(29,211,176,0.05);
+    --primary-border: rgba(29,211,176,0.3);
+    --success: #36c46b;
+    --success-bg: rgba(54,196,107,0.12);
+    --success-border: rgba(54,196,107,0.25);
+    --warning: #f0c24b;
+    --warning-bg: rgba(240,194,75,0.12);
+    --warning-border: rgba(240,194,75,0.3);
+    --danger: #e35d6a;
+    --danger-bg: rgba(227,93,106,0.12);
+    --highlight-warm: #f7a865;
+    --highlight-warm-bg: rgba(247,168,101,0.15);
+    --cat-push: #4A90D9;
+    --cat-pull: #D94A7A;
+    --cat-legs: #7B4AD9;
+    --cat-upper: #4AD9A7;
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 20px;
+    --radius-pill: 999px;
+    --tap: 44px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+    background: #000; padding: 24px; min-height: 100vh; color: var(--text-main);
+  }
+  h1.section-title { color: var(--text-strong); font-size: 1.4rem; margin: 40px 0 8px; font-weight: 700; text-align: center; }
+  h1.section-title:first-of-type { margin-top: 0; }
+  p.section-desc { color: var(--text-secondary); font-size: 0.9rem; margin: 0 auto 24px; max-width: 880px; text-align: center; line-height: 1.5; }
+  p.section-desc code { color: var(--primary); font-size: 0.85em; }
+  .row { display: flex; justify-content: center; gap: 28px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-start; }
+  .option-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .step-label { background: var(--primary); color: #04201a; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-pill); text-transform: uppercase; letter-spacing: 0.04em; }
+  .option-label { color: var(--text-strong); font-size: 0.95rem; font-weight: 600; text-align: center; }
+  .option-sub { color: var(--text-muted); font-size: 0.75rem; text-align: center; max-width: 330px; line-height: 1.45; }
+
+  /* ---- phone frame ---- */
+  .phone { width: 340px; height: 720px; background: var(--bg-app); border-radius: 36px; border: 8px solid #1a1f26; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+  .status-bar { height: 28px; background: var(--bg-app); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; font-size: 0.7rem; color: var(--text-strong); font-weight: 600; flex-shrink: 0; }
+  .page-header { display: flex; align-items: center; gap: 8px; padding: 6px 12px 10px; flex-shrink: 0; }
+  .page-header__back { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-card); display: grid; place-items: center; color: var(--text-strong); font-size: 0.85rem; }
+  .page-header h2 { color: var(--text-strong); font-size: 1.15rem; font-weight: 700; flex: 1; }
+  .page-header .hdr-action { color: var(--primary); font-size: 0.8rem; font-weight: 600; }
+  .content { flex: 1; overflow: hidden; padding: 0 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+  .content > * { flex-shrink: 0; }
+  .bottom-nav { height: 62px; border-top: 1px solid var(--border-light); background: var(--bg-surface); display: flex; align-items: center; justify-content: space-around; padding: 0 8px 6px; flex-shrink: 0; position: relative; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 0.6rem; color: var(--text-muted); width: 56px; }
+  .nav-item i { font-size: 1rem; }
+  .nav-item.active { color: var(--primary); }
+  .nav-fab { width: 54px; height: 54px; border-radius: 50%; background: var(--primary); color: #04201a; display: grid; place-items: center; font-size: 1.3rem; margin-top: -22px; box-shadow: 0 6px 16px rgba(29,211,176,0.35); }
+
+  /* ---- shared bits ---- */
+  .card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px; }
+  .card--hi { background: var(--bg-card-hi); }
+  .card-title { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 0.65rem; font-weight: 600; border: 1px solid var(--border-light); color: var(--text-secondary); background: var(--bg-surface); white-space: nowrap; }
+  .chip--ok { color: var(--success); background: var(--success-bg); border-color: var(--success-border); }
+  .chip--warn { color: var(--warning); background: var(--warning-bg); border-color: var(--warning-border); }
+  .chip--bad { color: var(--danger); background: var(--danger-bg); border-color: rgba(227,93,106,0.3); }
+  .chip--primary { color: var(--primary); background: var(--primary-bg); border-color: var(--primary-border); }
+  .chip--muted { color: var(--text-muted); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--tap); padding: 0 16px; border-radius: var(--radius-sm); font-weight: 700; font-size: 0.85rem; }
+  .btn--primary { background: var(--primary); color: #04201a; }
+  .btn--ghost { background: var(--bg-card); color: var(--text-strong); border: 1px solid var(--border-light); }
+  .btn--sm { min-height: 34px; font-size: 0.75rem; padding: 0 12px; }
+  .muted { color: var(--text-muted); }
+  .sec { color: var(--text-secondary); }
+  .strong { color: var(--text-strong); }
+  .num { font-variant-numeric: tabular-nums; }
+  .sent { font-size: 0.78rem; line-height: 1.4; color: var(--text-main); }
+  .up { color: var(--success); } .flat { color: var(--text-muted); } .down { color: var(--danger); }
+  .row-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
+  .row-card__title { color: var(--text-strong); font-size: 0.85rem; font-weight: 600; }
+  .row-card__subtitle { color: var(--text-muted); font-size: 0.7rem; margin-top: 2px; }
+  .row-card .grow { flex: 1; min-width: 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .annot { position: absolute; background: var(--highlight-warm); color: #1a0d00; font-size: 0.62rem; font-weight: 700; padding: 3px 7px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); z-index: 5; max-width: 150px; line-height: 1.3; }
+  .annot::before { content: ''; position: absolute; left: -6px; top: 8px; border: 5px solid transparent; border-right-color: var(--highlight-warm); border-left: 0; }
+  .annot.left::before { left: auto; right: -6px; border-right: 0; border-left: 5px solid var(--highlight-warm); }
+
+  /* ---- Plan page ---- */
+  .plan-hdr { display: flex; flex-direction: column; gap: 8px; }
+  .plan-title { color: var(--text-strong); font-size: 1.2rem; font-weight: 800; }
+  .plan-sub { color: var(--text-secondary); font-size: 0.75rem; }
+  .goals-strip { display: flex; gap: 6px; overflow: hidden; }
+  .week { border-radius: var(--radius-md); border: 1px solid var(--border-subtle); background: var(--bg-card); overflow: hidden; }
+  .week--current { border-color: var(--primary-border); box-shadow: 0 0 0 1px var(--primary-bg); }
+  .week--projected { opacity: 0.62; border-style: dashed; border-color: var(--border-light); background: var(--bg-surface); }
+  .week-hd { display: flex; align-items: center; gap: 8px; padding: 9px 12px; }
+  .week-hd .wk-date { color: var(--text-strong); font-size: 0.8rem; font-weight: 700; flex: 1; }
+  .week-hd .wk-kind { font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); }
+  .kind-build { background: var(--primary-bg); color: var(--primary); }
+  .kind-push { background: rgba(74,144,217,0.18); color: #7fb3ec; }
+  .kind-lighter { background: var(--warning-bg); color: var(--warning); }
+  .kind-peak { background: var(--highlight-warm-bg); color: var(--highlight-warm); }
+  .week-hd .wk-meta { color: var(--text-muted); font-size: 0.68rem; }
+  .days { border-top: 1px solid var(--border-subtle); }
+  .day { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--border-subtle); font-size: 0.75rem; }
+  .day:first-child { border-top: 0; }
+  .day .dn { width: 30px; color: var(--text-muted); font-weight: 700; font-size: 0.68rem; }
+  .day .ses { flex: 1; min-width: 0; }
+  .day .ses b { color: var(--text-strong); font-weight: 600; display: block; font-size: 0.78rem; }
+  .day .ses span { color: var(--text-muted); font-size: 0.68rem; }
+  .day .res { font-size: 0.7rem; white-space: nowrap; }
+  .day--today { background: var(--primary-bg-subtle); }
+  .day--proj .ses b { color: var(--text-secondary); font-weight: 500; }
+  .marker { display: flex; align-items: center; gap: 8px; padding: 4px 4px; font-size: 0.7rem; }
+  .marker .ml { flex: 1; height: 1px; background: var(--border-light); }
+  .marker .mt { font-weight: 700; display: inline-flex; gap: 5px; align-items: center; }
+  .marker--goal .mt { color: var(--primary); }
+  .marker--event .mt { color: var(--highlight-warm); }
+  .projected-note { text-align: center; color: var(--text-muted); font-size: 0.66rem; padding: 2px 0 0; font-style: italic; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ---- report card ---- */
+  .rc-head { display: flex; align-items: flex-start; gap: 10px; }
+  .rc-head .rc-wk { color: var(--text-secondary); font-size: 0.72rem; }
+  .rc-head .rc-grade { margin-left: auto; }
+  .rc-headline { color: var(--text-strong); font-size: 0.95rem; font-weight: 600; line-height: 1.4; margin-top: 6px; }
+  .rc-sec { display: flex; flex-direction: column; gap: 6px; }
+  .rc-line { display: flex; align-items: baseline; gap: 8px; font-size: 0.76rem; }
+  .rc-line .nm { flex: 1; min-width: 0; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rc-line .nm small { color: var(--text-muted); font-weight: 400; }
+  .rc-line .val { color: var(--text-main); white-space: nowrap; }
+  .rc-line .delta { font-weight: 700; white-space: nowrap; min-width: 48px; text-align: right; }
+  .showed { display: flex; gap: 6px; }
+  .showed .d { flex: 1; text-align: center; border-radius: 10px; padding: 6px 2px; background: var(--bg-surface); border: 1px solid var(--border-subtle); font-size: 0.62rem; color: var(--text-muted); }
+  .showed .d b { display: block; color: var(--text-strong); font-size: 0.72rem; }
+  .showed .d.done { border-color: var(--success-border); background: var(--success-bg); }
+  .showed .d.done b { color: var(--success); }
+  .proposal { border: 1px solid var(--primary-border); background: linear-gradient(180deg, rgba(29,211,176,0.10), rgba(29,211,176,0.03)); }
+  .proposal .pt { color: var(--text-strong); font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+  .proposal .sent { color: var(--text-main); margin-bottom: 10px; }
+  .links { display: flex; justify-content: center; gap: 14px; font-size: 0.72rem; color: var(--primary); font-weight: 600; padding: 4px 0; }
+
+  /* ---- home card ---- */
+  .hero { background: linear-gradient(135deg, rgba(29,211,176,0.14), rgba(29,211,176,0.03)); border: 1px solid var(--primary-border); }
+  .hero .ht { color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+  .hero .hn { color: var(--text-strong); font-size: 1.1rem; font-weight: 800; margin: 4px 0 2px; }
+  .hero .hs { color: var(--text-secondary); font-size: 0.72rem; margin-bottom: 10px; }
+
+  /* ---- goals ---- */
+  .goal { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .goal .g1 { display: flex; align-items: center; gap: 8px; }
+  .goal .g1 .gn { color: var(--text-strong); font-weight: 700; font-size: 0.85rem; flex: 1; }
+  .goal .g2 { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--text-main); white-space: nowrap; }
+  .goal .g2 .arrow { color: var(--text-muted); }
+  .goal .g2 .by { color: var(--text-muted); font-size: 0.7rem; margin-left: auto; }
+  .bar { height: 5px; border-radius: 3px; background: var(--bg-surface); position: relative; overflow: hidden; }
+  .bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--primary); }
+  .bar > em { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text-muted); }
+  .goal .sent { font-size: 0.72rem; color: var(--text-secondary); }
+
+  /* ---- sheet ---- */
+  .sheet-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.55); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg-surface); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 8px 14px 18px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border-light); }
+  .sheet .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border-light); margin: 0 auto 4px; }
+  .sheet h3 { color: var(--text-strong); font-size: 1rem; font-weight: 700; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { color: var(--text-muted); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg .s { padding: 7px 10px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--bg-card); color: var(--text-secondary); font-size: 0.74rem; font-weight: 600; }
+  .seg .s.on { background: var(--primary-bg); color: var(--primary); border-color: var(--primary-border); }
+  .input { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 10px; padding: 10px 12px; color: var(--text-strong); font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
+  .input .u { color: var(--text-muted); font-size: 0.75rem; }
+  .baseline { display: flex; align-items: center; gap: 8px; font-size: 0.74rem; color: var(--text-secondary); background: var(--primary-bg-subtle); border: 1px dashed var(--primary-border); border-radius: 10px; padding: 8px 10px; }
+  .baseline i { color: var(--primary); }
+
+  /* ---- workouts tab ---- */
+  .group-hd { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .group-hd .gt { color: var(--text-muted); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; flex: 1; }
+  .group-hd a { color: var(--primary); font-size: 0.7rem; font-weight: 600; }
+  .menu { position: absolute; right: 18px; top: 236px; background: var(--bg-card-hi); border: 1px solid var(--border-light); border-radius: 12px; padding: 4px; width: 190px; box-shadow: 0 10px 24px rgba(0,0,0,0.6); z-index: 4; }
+  .menu div { padding: 9px 10px; font-size: 0.78rem; color: var(--text-strong); display: flex; gap: 8px; align-items: center; border-radius: 8px; }
+  .menu div.hl { background: var(--primary-bg); color: var(--primary); }
+  .menu div i { width: 14px; color: var(--text-muted); }
+  .menu div.hl i { color: var(--primary); }
+
+  /* ---- glossary panel ---- */
+  .gloss { width: 100%; max-width: 880px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; }
+  .gloss table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .gloss th { text-align: left; color: var(--text-muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 10px 14px; border-bottom: 1px solid var(--border-light); }
+  .gloss td { padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); vertical-align: top; line-height: 1.45; }
+  .gloss td.old { color: var(--text-muted); text-decoration: line-through; text-decoration-color: rgba(227,93,106,0.6); width: 38%; }
+  .gloss td.new { color: var(--text-strong); }
+  .gloss td.new small { display: block; color: var(--text-secondary); font-size: 0.72rem; margin-top: 2px; }
+  .gloss tr:last-child td { border-bottom: 0; }
+  .footer { text-align: center; color: var(--text-muted); font-size: 0.72rem; margin: 40px 0 10px; }
+</style>
+</head>
+<body>
+
+<h1 class="section-title">Training Plan, Goals &amp; Report Card — October 2026</h1>
+<p class="section-desc">Mockups for <code>docs/training-plan-design-2026-10.md</code>. Dates are set to <b>Monday Oct 26, 2026</b> (the Plan page) and <b>Sunday Oct 25</b> (the report card). Nothing on these screens says block, deload, e1RM or RPE. Orange notes are callouts, not UI.</p>
+
+<!-- ================= PLAN PAGE ================= -->
+<h1 class="section-title">1 — The Plan page (TP-3)</h1>
+<p class="section-desc">One continuous timeline. Last week collapsed, this week open, the next planned weeks with real targets, then <i>projected</i> weeks without numbers out to ~12 weeks. Goals and events sit on the timeline. The wedding pulls a lighter week forward and inserts two peak weeks — the pattern re-aligns after.</p>
+
+<div class="row">
+  <!-- A: Plan — this week -->
+  <div class="option-wrapper">
+    <span class="step-label">A · Plan — this week</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><div class="page-header__back"><i class="fas fa-chevron-left"></i></div><h2>Your plan</h2><span class="hdr-action">Goals</span></div>
+      <div class="content">
+        <div class="plan-hdr">
+          <div>
+            <div class="plan-title">Strength &amp; summer shape</div>
+            <div class="plan-sub">This week: <b class="strong">Build week 3</b> · lighter week starts Nov 2 · 4 days</div>
+          </div>
+          <div class="goals-strip">
+            <span class="chip chip--warn"><i class="fas fa-dumbbell"></i> Bench 225 · slightly behind</span>
+            <span class="chip chip--ok"><i class="fas fa-weight-scale"></i> 182 lb · on track</span>
+            <span class="chip chip--ok">4 days/wk · met</span>
+          </div>
+        </div>
+
+        <div class="week" style="opacity:.75">
+          <div class="week-hd"><span class="wk-date">Week of Oct 19</span><span class="wk-kind kind-build">Build 2</span><span class="wk-meta">4 of 4 ✓</span><i class="fas fa-chevron-down muted" style="font-size:.7rem"></i></div>
+        </div>
+
+        <div class="week week--current">
+          <div class="week-hd"><span class="wk-date">This week · Oct 26</span><span class="wk-kind kind-build">Build 3</span><span class="wk-meta">0 of 4</span></div>
+          <div class="days">
+            <div class="day day--today"><span class="dn">MON</span><div class="ses"><b>Push A</b><span>Bench press (Smith) 190 × 6 · 6 exercises</span></div><span class="btn btn--primary btn--sm">Start</span></div>
+            <div class="day"><span class="dn">TUE</span><div class="ses"><b>Pull A</b><span>High row (Newtech) 320 × 5</span></div><span class="res muted">~55 min</span></div>
+            <div class="day"><span class="dn">THU</span><div class="ses"><b>Legs A</b><span>Hack squat 250 × 6 · leg curl stays at 115</span></div><span class="res muted">~60 min</span></div>
+            <div class="day"><span class="dn">SAT</span><div class="ses"><b>Upper B</b><span>Shoulder press 165 × 8</span></div><span class="res muted">~50 min</span></div>
+          </div>
+        </div>
+
+        <div class="week">
+          <div class="week-hd"><span class="wk-date">Week of Nov 2</span><span class="wk-kind kind-lighter">Lighter week</span><span class="wk-meta">−35% · 12–15 reps</span></div>
+          <div class="days">
+            <div class="day"><span class="dn">MON</span><div class="ses"><b>Push A</b><span>Bench press (Smith) 125 × 12</span></div></div>
+            <div class="day"><span class="dn">TUE</span><div class="ses"><b>Pull A</b><span>High row (Newtech) 210 × 12</span></div></div>
+          </div>
+        </div>
+        <div class="actions">
+          <span class="btn btn--ghost btn--sm"><i class="fas fa-feather"></i> Make this week lighter</span>
+          <span class="btn btn--ghost btn--sm"><i class="fas fa-rotate"></i> Rotate an exercise</span>
+        </div>
+      </div>
+      <div class="annot" style="right:14px; top:222px;">"Build week 3" — never "week 3 of 4"</div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><i class="fas fa-house"></i>Home</div><div class="nav-item"><i class="fas fa-comment-dots"></i>Coach</div><div class="nav-fab"><i class="fas fa-plus"></i></div><div class="nav-item"><i class="fas fa-clock-rotate-left"></i>History</div><div class="nav-item"><i class="fas fa-ellipsis"></i>More</div>
+      </div>
+    </div>
+    <div class="option-label">Past collapsed · this week open · next planned week with numbers</div>
+    <div class="option-sub">Today's cell carries the same Start button as the dashboard hero. Targets are what the set rows will seed — the same <code>progressionTarget</code> call.</div>
+  </div>
+
+  <!-- B: Plan — ahead -->
+  <div class="option-wrapper">
+    <span class="step-label">B · Plan — scrolled ahead</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><div class="page-header__back"><i class="fas fa-chevron-left"></i></div><h2>Your plan</h2><span class="hdr-action">Goals</span></div>
+      <div class="content">
+        <div class="week week--projected">
+          <div class="week-hd"><span class="wk-date">Week of Nov 9</span><span class="wk-kind kind-build">Build</span><span class="wk-meta">projected</span></div>
+          <div class="days">
+            <div class="day day--proj"><span class="dn">MON</span><div class="ses"><b>Push B</b><span>Bench press (Smith) stays · incline rotates in</span></div></div>
+            <div class="day day--proj"><span class="dn">TUE</span><div class="ses"><b>Pull B</b><span>High row stays</span></div></div>
+            <div class="day day--proj"><span class="dn">THU</span><div class="ses"><b>Legs B</b><span>Hack squat stays · standing leg curl rotates in</span></div></div>
+          </div>
+        </div>
+        <div class="week week--projected">
+          <div class="week-hd"><span class="wk-date">Week of Nov 16</span><span class="wk-kind kind-build">Build</span><span class="wk-meta">projected</span></div>
+        </div>
+        <div class="week week--projected">
+          <div class="week-hd"><span class="wk-date">Week of Nov 23</span><span class="wk-kind kind-lighter">Lighter week</span><span class="wk-meta">moved up for the wedding</span></div>
+        </div>
+        <div class="week week--projected">
+          <div class="week-hd"><span class="wk-date">Week of Nov 30</span><span class="wk-kind kind-peak">Peak</span><span class="wk-meta">no new exercises</span></div>
+        </div>
+        <div class="week week--projected">
+          <div class="week-hd"><span class="wk-date">Week of Dec 7</span><span class="wk-kind kind-peak">Peak</span><span class="wk-meta">projected</span></div>
+        </div>
+        <div class="marker marker--event"><span class="ml"></span><span class="mt"><i class="fas fa-champagne-glasses"></i> Sarah's wedding · Sat Dec 13</span><span class="ml"></span></div>
+        <div class="week week--projected">
+          <div class="week-hd"><span class="wk-date">Week of Dec 14</span><span class="wk-kind kind-build">Build</span><span class="wk-meta">projected</span></div>
+        </div>
+        <div class="week week--projected">
+          <div class="week-hd"><span class="wk-date">… Week of Jan 4</span><span class="wk-kind kind-lighter">Lighter week</span><span class="wk-meta">projected</span></div>
+        </div>
+        <div class="projected-note">Projected weeks follow your pattern — numbers are set as each week arrives.</div>
+        <div class="marker marker--goal"><span class="ml"></span><span class="mt"><i class="fas fa-flag"></i> Bench 225 · Feb 14 (16 weeks)</span><span class="ml"></span></div>
+        <div class="marker marker--event"><span class="ml"></span><span class="mt"><i class="fas fa-umbrella-beach"></i> Beach trip · Jun 6 (32 weeks)</span><span class="ml"></span></div>
+        <div class="actions"><span class="btn btn--ghost btn--sm"><i class="fas fa-comment-dots"></i> Change my plan</span></div>
+      </div>
+      <div class="annot" style="right:14px; top:318px;">Event overrides the pattern: lighter → peak → peak</div>
+      <div class="annot left" style="left:14px; top:150px;">No loads on projected weeks — they'd be invented</div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><i class="fas fa-house"></i>Home</div><div class="nav-item"><i class="fas fa-comment-dots"></i>Coach</div><div class="nav-fab"><i class="fas fa-plus"></i></div><div class="nav-item"><i class="fas fa-clock-rotate-left"></i>History</div><div class="nav-item"><i class="fas fa-ellipsis"></i>More</div>
+      </div>
+    </div>
+    <div class="option-label">Projected weeks, dimmed and dashed, with goal and event markers</div>
+    <div class="option-sub">Only session names and the week kind. Where one engine wave ends and the next begins is deliberately <i>not</i> marked. "Change my plan" prefills the coach — it never sends on its own.</div>
+  </div>
+</div>
+
+<!-- ================= REPORT CARD ================= -->
+<h1 class="section-title">2 — Sunday night report card (TP-2)</h1>
+<p class="section-desc">Push at 7:30 pm Sunday → this page. Everything above the proposal box is computed in code and phrased by <code>plain-language.js</code>. The two headline sentences and the proposal's explanation are the model's — choosing from options the code pre-built and validated. One tap applies the change.</p>
+
+<div class="row">
+  <!-- C: report card top -->
+  <div class="option-wrapper">
+    <span class="step-label">C · Report card — top</span>
+    <div class="phone">
+      <div class="status-bar"><span>7:31</span><span>Sun Oct 25</span></div>
+      <div class="page-header"><div class="page-header__back"><i class="fas fa-chevron-left"></i></div><h2>Report card</h2><span class="hdr-action">Past</span></div>
+      <div class="content">
+        <div class="card card--hi">
+          <div class="rc-head"><span class="rc-wk">Week of Oct 19 – 25</span><span class="rc-grade chip chip--ok">Solid week</span></div>
+          <div class="rc-headline">You showed up all four days — three weeks running. Strength is moving on three of five main lifts; hamstrings are the one to watch.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Showed up · 4 of 4</div>
+          <div class="showed">
+            <div class="d done"><b>Mon</b>Push ✓</div><div class="d done"><b>Tue</b>Pull ✓</div><div class="d"><b>Wed</b>rest</div><div class="d done"><b>Thu</b>Legs ✓</div><div class="d"><b>Fri</b>rest</div><div class="d done"><b>Sat</b>Upper ✓</div><div class="d"><b>Sun</b>rest</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Strength · main lifts, estimated max</div>
+          <div class="rc-sec">
+            <div class="rc-line"><span class="nm">Bench press <small>Smith</small></span><span class="val num">213 lb</span><span class="delta up num">▲ 4%</span></div>
+            <div class="rc-line"><span class="nm">Hack squat</span><span class="val num">290 lb</span><span class="delta up num">▲ 2%</span></div>
+            <div class="rc-line"><span class="nm">High row <small>Newtech</small></span><span class="val num">373 lb</span><span class="delta flat">● same</span></div>
+            <div class="rc-line"><span class="nm">Shoulder press</span><span class="val num">190 lb</span><span class="delta up num">▲ 3%</span></div>
+            <div class="rc-line"><span class="nm">Seated leg curl</span><span class="val num">142 lb</span><span class="delta down num">▼ 3%</span></div>
+            <div class="sent sec" style="margin-top:4px">vs a month ago · new rep best: shoulder press 160 × 10 · leg curl is <b class="strong">stuck</b> at 115 for three sessions</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Body</div>
+          <div class="rc-line"><span class="nm">Weight <small>7-day average</small></span><span class="val num">186.4 lb</span><span class="delta up num" style="color:var(--success)">▼ 1.1</span></div>
+          <div class="sent sec" style="margin-top:4px">Last scan Sep 30: lean mass 152.3 lb (+0.8) · body fat 18.9% (−0.6)</div>
+        </div>
+      </div>
+      <div class="annot" style="right:14px; top:238px;">Headline = model's two sentences; never contradicts the numbers below</div>
+      <div class="annot" style="right:14px; top:352px;">"estimated max", not e1RM</div>
+    </div>
+    <div class="option-label">Grade · headline · showed up · strength · body</div>
+    <div class="option-sub">Grades are <i>Good / Solid / Rough</i> for now — letter grades are a one-table swap if you want them. Strength rows tap through to exercise detail.</div>
+  </div>
+
+  <!-- D: report card bottom -->
+  <div class="option-wrapper">
+    <span class="step-label">D · Report card — goals &amp; the one change</span>
+    <div class="phone">
+      <div class="status-bar"><span>7:32</span><span>Sun Oct 25</span></div>
+      <div class="page-header"><div class="page-header__back"><i class="fas fa-chevron-left"></i></div><h2>Report card</h2><span class="hdr-action">Past</span></div>
+      <div class="content">
+        <div class="card">
+          <div class="card-title">Goals</div>
+          <div class="rc-sec">
+            <div class="rc-line"><span class="nm">Bench 225 by Feb 14</span><span class="chip chip--warn">slightly behind</span></div>
+            <div class="sent sec">Gaining 1.8 lb a week on your estimated max; you need 2.1 to make the date.</div>
+            <div class="rc-line" style="margin-top:4px"><span class="nm">182 lb by the beach trip (Jun 6)</span><span class="chip chip--ok">on track</span></div>
+            <div class="sent sec">Losing 0.3 lb a week; 0.2 is enough.</div>
+            <div class="rc-line" style="margin-top:4px"><span class="nm">4 days a week</span><span class="chip chip--ok">met</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Recovery &amp; balance</div>
+          <div class="sent">Effort is creeping on seated leg curl — <span class="num">8 → 9 → 9.5</span> out of 10 at the same 115 lb. Readiness is fine.</div>
+          <div class="sent" style="margin-top:6px">Hamstrings got <span class="num">4 sets</span> — under what they need, second week running. Everything else is getting enough.</div>
+        </div>
+
+        <div class="card" style="padding:9px 12px"><div class="sent"><b class="strong">Next week:</b> Build week 3 · lighter week starts Nov 2 · wedding in 7 weeks</div></div>
+
+        <div class="card proposal">
+          <div class="pt"><i class="fas fa-rotate" style="color:var(--primary)"></i> Rotate seated leg curl → standing leg curl</div>
+          <div class="sent">You're stuck and effort is climbing. Standing leg curl hits the same muscle from a fresh angle — and you've never used that machine at your gym. Your main lifts don't change.</div>
+          <span class="btn btn--primary" style="width:100%">Rotate it</span>
+        </div>
+        <div class="links"><span>Discuss this week</span><span>Not this time</span></div>
+      </div>
+      <div class="annot" style="right:14px; top:112px;">Rate math from goal-progress.js, in English</div>
+    </div>
+    <div class="option-label">Goals · recovery · balance · next week · one proposal</div>
+    <div class="option-sub">The options the model can pick from: keep going · lighter week · rotate X · set up the next weeks (when a wave ends) · start the peak (when an event is close). It cannot invent a sixth.</div>
+  </div>
+
+  <!-- E: Home on Sunday -->
+  <div class="option-wrapper">
+    <span class="step-label">E · Home, Sunday &amp; Monday</span>
+    <div class="phone">
+      <div class="status-bar"><span>7:30</span><span>Sun Oct 25</span></div>
+      <div class="page-header" style="padding-top:10px"><h2>Good evening, Kevin</h2></div>
+      <div class="content">
+        <div class="card" style="padding:10px 12px; display:flex; align-items:center; gap:10px;">
+          <div class="dot" style="background:var(--warning)"></div>
+          <div class="grow" style="flex:1"><div class="row-card__title">Rest day</div><div class="row-card__subtitle">Push A is tomorrow · lighter week in 8 days</div></div>
+        </div>
+        <div class="card hero">
+          <div class="ht">Your week's report card is ready</div>
+          <div class="hn">Solid week <span class="chip chip--ok" style="vertical-align:middle; margin-left:4px">4 of 4</span></div>
+          <div class="hs">Strength moving on 3 of 5 main lifts. One suggestion: rotate seated leg curl.</div>
+          <span class="btn btn--primary btn--sm">Read it</span>
+        </div>
+        <div class="card">
+          <div class="card-title">Your plan</div>
+          <div class="row-card__title">Strength &amp; summer shape</div>
+          <div class="row-card__subtitle">Build week 3 starts tomorrow · lighter week Nov 2 · see every week</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Main lifts · last 4 weeks</div>
+          <div class="rc-sec">
+            <div class="rc-line"><span class="nm">Bench press <small>Smith</small></span><span class="val num">213</span><span class="delta up num">▲ 4%</span></div>
+            <div class="rc-line"><span class="nm">Hack squat</span><span class="val num">290</span><span class="delta up num">▲ 2%</span></div>
+            <div class="rc-line"><span class="nm">High row <small>Newtech</small></span><span class="val num">373</span><span class="delta flat">● same</span></div>
+            <div class="rc-line"><span class="nm">Shoulder press</span><span class="val num">190</span><span class="delta up num">▲ 3%</span></div>
+            <div class="rc-line"><span class="nm">Seated leg curl</span><span class="val num">142</span><span class="delta down num">▼ 3%</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="annot" style="right:14px; top:112px;">Appears Sun/Mon only, under For Today</div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><i class="fas fa-house"></i>Home</div><div class="nav-item"><i class="fas fa-comment-dots"></i>Coach</div><div class="nav-fab"><i class="fas fa-plus"></i></div><div class="nav-item"><i class="fas fa-clock-rotate-left"></i>History</div><div class="nav-item"><i class="fas fa-ellipsis"></i>More</div>
+      </div>
+    </div>
+    <div class="option-label">The report card surfaces on Home, below For Today</div>
+    <div class="option-sub">For Today stays the page's one primary action (AP-21 rule). The dashboard program line becomes "Your plan" and the scoreboard card loses its jargon.</div>
+  </div>
+</div>
+
+<!-- ================= GOALS ================= -->
+<h1 class="section-title">3 — Goals &amp; events (TP-1)</h1>
+<p class="section-desc">Lift, bodyweight, composition, consistency, balance — with or without a date, optionally tied to an event. The baseline is read from your data when you create the goal; you never type where you are. Status is <i>ahead / on track / behind / met</i> with the rate behind it in one sentence.</p>
+
+<div class="row">
+  <!-- F: Goals page -->
+  <div class="option-wrapper">
+    <span class="step-label">F · Goals page</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><div class="page-header__back"><i class="fas fa-chevron-left"></i></div><h2>Goals</h2><span class="hdr-action">+ Add</span></div>
+      <div class="content">
+        <div class="card goal">
+          <div class="g1"><span class="gn">Bench press 225</span><span class="chip chip--warn">slightly behind</span></div>
+          <div class="g2"><span class="num muted">started 198</span><span class="arrow">→</span><span class="num strong">213 now</span><span class="arrow">→</span><span class="num">225</span><span class="by">Feb 14</span></div>
+          <div class="bar"><i style="width:56%"></i><em style="left:62%"></em></div>
+          <div class="sent">Up 1.8 lb a week on your estimated max; you need 2.1 to make the date. A lighter week is coming — expect a dip, then a jump.</div>
+        </div>
+        <div class="card goal">
+          <div class="g1"><span class="gn">182 lb for the beach trip</span><span class="chip chip--ok">on track</span></div>
+          <div class="g2"><span class="num muted">started 191.0</span><span class="arrow">→</span><span class="num strong">186.4 now</span><span class="arrow">→</span><span class="num">182</span><span class="by">Jun 6</span></div>
+          <div class="bar"><i style="width:51%"></i><em style="left:22%"></em></div>
+          <div class="sent">Losing 0.3 lb a week on a 7-day average; 0.2 is enough. Tied to <b class="strong">Beach trip · Jun 6</b>.</div>
+        </div>
+        <div class="card goal">
+          <div class="g1"><span class="gn">Lean mass 155 lb</span><span class="chip chip--muted">next scan will tell</span></div>
+          <div class="g2"><span class="num muted">started 151.5</span><span class="arrow">→</span><span class="num strong">152.3 (scan)</span><span class="arrow">→</span><span class="num">155</span><span class="by">no date</span></div>
+          <div class="bar"><i style="width:23%"></i></div>
+          <div class="sent">Scans are the only true read. Since Sep 30 your weight is down 1.1 lb while lifts went up — a good sign.</div>
+        </div>
+        <div class="card goal">
+          <div class="g1"><span class="gn">4 days a week</span><span class="chip chip--ok">met</span></div>
+          <div class="g2"><span class="num strong">4.0 average</span><span class="by">last 4 weeks</span></div>
+          <div class="bar"><i style="width:100%; background:var(--success)"></i></div>
+        </div>
+        <div class="group-hd"><span class="gt">Events</span></div>
+        <div class="row-card"><i class="fas fa-champagne-glasses" style="color:var(--highlight-warm)"></i><div class="grow"><div class="row-card__title">Sarah's wedding</div><div class="row-card__subtitle">Sat Dec 13 · look your best · 7 weeks</div></div></div>
+        <div class="row-card"><i class="fas fa-umbrella-beach" style="color:var(--highlight-warm)"></i><div class="grow"><div class="row-card__title">Beach trip</div><div class="row-card__subtitle">Jun 6 · look your best · 32 weeks</div></div></div>
+      </div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><i class="fas fa-house"></i>Home</div><div class="nav-item"><i class="fas fa-comment-dots"></i>Coach</div><div class="nav-fab"><i class="fas fa-plus"></i></div><div class="nav-item"><i class="fas fa-clock-rotate-left"></i>History</div><div class="nav-item"><i class="fas fa-ellipsis"></i>More</div>
+      </div>
+    </div>
+    <div class="option-label">Started → now → target, a pace tick, one sentence</div>
+    <div class="option-sub">The tick on each bar is where you'd need to be today to be exactly on pace. The sentence is the same string the report card and the coach use (<code>goal-progress.js</code>), so the three never disagree.</div>
+  </div>
+
+  <!-- G: Add goal sheet -->
+  <div class="option-wrapper">
+    <span class="step-label">G · Add a goal</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><div class="page-header__back"><i class="fas fa-chevron-left"></i></div><h2>Goals</h2></div>
+      <div class="content"></div>
+      <div class="sheet-backdrop"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <h3>New goal</h3>
+        <div class="field"><label>What kind</label><div class="seg"><span class="s on">Lift</span><span class="s">Bodyweight</span><span class="s">Body comp</span><span class="s">Days a week</span><span class="s">Balance</span></div></div>
+        <div class="field"><label>Which lift</label><div class="seg"><span class="s on">Bench press · Smith</span><span class="s">Hack squat</span><span class="s">High row</span><span class="s">Shoulder press</span><span class="s">Leg curl</span></div></div>
+        <div class="baseline"><i class="fas fa-circle-info"></i><span>Your estimated max right now is <b class="strong num">213 lb</b> (best of the last 4 weeks). That's your starting point.</span></div>
+        <div class="field"><label>Target · estimated max</label><div class="input"><span class="num">225</span><span class="u">lb</span></div></div>
+        <div class="field"><label>By when <span style="text-transform:none; letter-spacing:0; font-weight:400">(optional)</span></label><div class="input"><span>Feb 14, 2027</span><i class="fas fa-calendar u"></i></div></div>
+        <div class="field"><label>For an event <span style="text-transform:none; letter-spacing:0; font-weight:400">(optional)</span></label><div class="seg"><span class="s">Sarah's wedding</span><span class="s">Beach trip</span><span class="s">+ New event</span></div></div>
+        <div class="sent sec">Needs about <b class="strong">+2.1 lb a week</b> to land on time. Doable — you've averaged +2.3 over the last two months.</div>
+        <span class="btn btn--primary" style="width:100%">Add goal</span>
+      </div>
+      <div class="annot" style="right:14px; top:262px;">Baseline is computed, never typed</div>
+    </div>
+    <div class="option-label">Type → thing → target → date → event</div>
+    <div class="option-sub">Lifts come from your main lifts (exercise + machine, per AU-12). The feasibility line uses your actual rate so a goal is never set blind. The same flow runs inside the coach via <code>set_goal</code>.</div>
+  </div>
+</div>
+
+<!-- ================= WORKOUTS TAB ================= -->
+<h1 class="section-title">4 — Workouts tab: your plan vs your list (TP-4)</h1>
+<p class="section-desc">Plan-owned sessions live under "Your plan" at the top — this week's sessions, one tap to start. Your hand-built workouts keep the list below, uncluttered. "Save to my workouts" copies a plan session into your list; the plan's copy keeps rotating, your copy doesn't.</p>
+
+<div class="row">
+  <!-- H: workouts tab -->
+  <div class="option-wrapper">
+    <span class="step-label">H · Workouts (green button)</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header" style="padding-top:10px"><h2>Workouts</h2><span class="hdr-action">Edit</span></div>
+      <div class="content">
+        <div class="group-hd"><span class="gt">Your plan · this week</span><a>See the plan ›</a></div>
+        <div class="row-card" style="border-color:var(--primary-border)"><div class="dot" style="background:var(--cat-push)"></div><div class="grow"><div class="row-card__title">Push A <span class="chip chip--primary" style="margin-left:4px">Today</span></div><div class="row-card__subtitle">6 exercises · Bench press (Smith) 190 × 6 · ~55 min</div></div><span class="btn btn--primary btn--sm">Start</span></div>
+        <div class="row-card"><div class="dot" style="background:var(--cat-pull)"></div><div class="grow"><div class="row-card__title">Pull A</div><div class="row-card__subtitle">Tue · 6 exercises · last done Oct 20</div></div><i class="fas fa-ellipsis-vertical muted"></i></div>
+        <div class="row-card"><div class="dot" style="background:var(--cat-legs)"></div><div class="grow"><div class="row-card__title">Legs A</div><div class="row-card__subtitle">Thu · 7 exercises · last done Oct 22</div></div><i class="fas fa-ellipsis-vertical muted"></i></div>
+        <div class="row-card"><div class="dot" style="background:var(--cat-upper)"></div><div class="grow"><div class="row-card__title">Upper B</div><div class="row-card__subtitle">Sat · 6 exercises · last done Oct 24</div></div><i class="fas fa-ellipsis-vertical muted"></i></div>
+
+        <div class="group-hd"><span class="gt">My workouts</span><a>Filter</a></div>
+        <div class="row-card"><div class="dot" style="background:var(--cat-push)"></div><div class="grow"><div class="row-card__title">Push — Strength (heavy top set)</div><div class="row-card__subtitle">6 exercises · last done Sep 15</div></div></div>
+        <div class="row-card"><div class="dot" style="background:var(--cat-legs)"></div><div class="grow"><div class="row-card__title">Legs A (saved) <span class="chip chip--muted" style="margin-left:4px"><i class="fas fa-bookmark"></i> from plan</span></div><div class="row-card__subtitle">7 exercises · saved Oct 12</div></div></div>
+        <div class="row-card"><div class="dot" style="background:var(--cat-upper)"></div><div class="grow"><div class="row-card__title">Hotel dumbbell day</div><div class="row-card__subtitle">5 exercises · last done Aug 2</div></div></div>
+        <div class="row-card"><div class="dot" style="background:var(--cat-pull)"></div><div class="grow"><div class="row-card__title">Pull — Width</div><div class="row-card__subtitle">6 exercises · last done Sep 10</div></div></div>
+        <div class="row-card" style="opacity:.5"><div class="grow"><div class="row-card__subtitle">Archived (9) ›</div></div></div>
+      </div>
+      <div class="menu">
+        <div><i class="fas fa-play"></i> Start now</div>
+        <div><i class="fas fa-eye"></i> See this week's targets</div>
+        <div class="hl"><i class="fas fa-bookmark"></i> Save to my workouts</div>
+        <div><i class="fas fa-rotate"></i> Rotate an exercise…</div>
+      </div>
+      <div class="annot left" style="left:14px; top:300px;">⋮ on a plan session</div>
+      <div class="bottom-nav">
+        <div class="nav-item"><i class="fas fa-house"></i>Home</div><div class="nav-item"><i class="fas fa-comment-dots"></i>Coach</div><div class="nav-fab" style="background:var(--primary-dark)"><i class="fas fa-plus"></i></div><div class="nav-item"><i class="fas fa-clock-rotate-left"></i>History</div><div class="nav-item"><i class="fas fa-ellipsis"></i>More</div>
+      </div>
+    </div>
+    <div class="option-label">"Your plan · this week" on top, "My workouts" below</div>
+    <div class="option-sub">Replaces today's single "Your block" row (<code>renderBlockLink</code>). The main list filters <code>!archived && !planOwned</code>. A saved copy is a normal core template with a small "from plan" chip.</div>
+  </div>
+</div>
+
+<!-- ================= PLAIN LANGUAGE ================= -->
+<h1 class="section-title">5 — Plain language sweep (TP-0)</h1>
+<p class="section-desc">Numbers stay. Acronyms and gym-science jargon go. One table in <code>plain-language.js</code> that every surface <i>and</i> the coach read from, with a design-audit budget so it can't creep back. Optional Settings toggle shows the shorthand in parentheses for anyone learning the terms.</p>
+
+<div class="row">
+  <div class="gloss">
+    <table>
+      <thead><tr><th>Today's copy</th><th>Proposed copy</th></tr></thead>
+      <tbody>
+        <tr><td class="old">Smith Bench e1RM 213 (▲ 4%)</td><td class="new">Bench press (Smith): estimated max 213 lb, up 4% from a month ago<small>"estimated max" — what you could probably lift once, worked out from your sets</small></td></tr>
+        <tr><td class="old">Rate your heaviest set (RPE 6–10)</td><td class="new">How hard was your heaviest set? Effort 6–10 out of 10</td></tr>
+        <tr><td class="old">Week 6 of 6 — Deload (−35%)</td><td class="new">Lighter week · 35% lighter, 12–15 reps<small>never "week N of M" — the plan is continuous</small></td></tr>
+        <tr><td class="old">Chest: 12 sets (MEV 8 · MRV 22)</td><td class="new">Chest: 12 sets this week — enough<small>under → "under what it needs" · over → "more than it can use"</small></td></tr>
+        <tr><td class="old">Stall rung 2 — back-off −10%</td><td class="new">Stuck at 115 for three sessions — backing off 10% to reset</td></tr>
+        <tr><td class="old">Accumulate · Intensify · Peak</td><td class="new">Build week · Push week · Peak</td></tr>
+        <tr><td class="old">Fatigue: RPE 7.5→8.5→9 at 185 over 3 sessions</td><td class="new">Effort is creeping on bench — 7.5 → 8.5 → 9 out of 10 at the same 185 lb</td></tr>
+        <tr><td class="old">Primaries · hypertrophy block · periodization</td><td class="new">Main lifts · muscle-building weeks · your plan's pattern</td></tr>
+        <tr><td class="old">View block · Your block · Plan next block</td><td class="new">See the plan · Your plan · Change my plan</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer">Big Surf · mockups/training-plan-2026-10.html · companion to docs/training-plan-design-2026-10.md</div>
+</body>
+</html>
