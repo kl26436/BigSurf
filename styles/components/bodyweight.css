@@ -94,10 +94,11 @@
 .bw-prompt__skip {
     background: transparent;
     border: none;
-    color: var(--text-muted);
-    font-size: 0.78rem;
-    font-weight: 500;
-    padding: 8px;
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    min-height: var(--tap);
+    padding: 8px 16px;
     cursor: pointer;
 }
 

@@ -240,10 +240,11 @@ export function sheetById(id) {
 }
 
 /** Close the topmost sheet (Escape, back gesture). */
-export function closeTopSheet() {
+export function closeTopSheet({ dismissOnly = false } = {}) {
     const top = stack[stack.length - 1];
-    if (top) closeEntry(top);
-    return !!top;
+    if (!top || (dismissOnly && !top.dismissible)) return false;
+    closeEntry(top);
+    return true;
 }
 
 /** Close every sheet now — navigation teardown. */

@@ -102,6 +102,16 @@ describe('openSheet', () => {
         expect(document.querySelector('.sheet-backdrop').classList.contains('sheet-backdrop--closing')).toBe(true);
     });
 
+    it('system back (closeTopSheet dismissOnly) leaves a non-dismissible sheet up', () => {
+        openSheet({ title: 'Body weight', dismissible: false });
+        expect(closeTopSheet({ dismissOnly: true })).toBe(false);
+        expect(sheetDepth()).toBe(1);
+        closeTopSheet();
+        openSheet({ title: 'Gym' });
+        expect(closeTopSheet({ dismissOnly: true })).toBe(true);
+        expect(sheetDepth()).toBe(0);
+    });
+
     it('closeAllSheets (navigation) removes every sheet immediately', () => {
         openSheet({ id: 'x', title: 'X' });
         openSheet({ id: 'y', title: 'Y' });

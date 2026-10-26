@@ -51,8 +51,8 @@ let _pendingPrompt = null;
  * Show a quick-input sheet to capture the user's current body weight.
  * Returns a promise that resolves when the user saves or skips. SH-3b —
  * rendered through the sheet primitive (keyboard inset, page lock, inert,
- * focus trap); any dismissal (backdrop, Escape, swipe-down, navigation)
- * counts as Skip, so the promise always settles.
+ * focus trap). Only Save or Skip close it; navigating away counts as Skip,
+ * so the promise always settles.
  */
 function showBodyWeightPrompt(stale) {
     if (_pendingPrompt) return _pendingPrompt;
@@ -81,6 +81,10 @@ function showBodyWeightPrompt(stale) {
         const { el } = openSheet({
             id: BW_PROMPT_SHEET_ID,
             className: 'bw-prompt-sheet',
+            // Skipping drops bodyweight volume for the whole session, so it
+            // takes the Skip button — a stray backdrop tap, swipe or system
+            // back must not do it (the old overlay had no backdrop dismiss).
+            dismissible: false,
             bodyHTML: `
             <div class="bw-prompt">
                 <div class="bw-prompt__icon"><i class="fas fa-weight"></i></div>
@@ -103,7 +107,7 @@ function showBodyWeightPrompt(stale) {
                 </button>
             </div>
         `,
-            // Every way out that isn't Save is a Skip.
+            // Every way out that isn't Save (Skip, navigation) is a Skip.
             onClose: () => { if (!settled && !saving) skip(); },
         });
         el.setAttribute('aria-labelledby', 'bw-prompt-title');

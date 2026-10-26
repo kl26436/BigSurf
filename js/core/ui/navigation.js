@@ -854,7 +854,8 @@ function goBackInApp() {
         }
         return;
     }
-    if (sheetDepth() > 0) { closeTopSheet(); return; }
+    // A non-dismissible sheet (BW prompt, a save in flight) only closes from its own buttons.
+    if (sheetDepth() > 0) { closeTopSheet({ dismissOnly: true }); return; }
     if (moreMenuOpen()) { closeMoreMenu(); return; }
     // Leaving the live workout goes through its own confirm, like its ← button.
     if (getCurrentView() === 'active-workout' && typeof window.awConfirmExit === 'function') {
