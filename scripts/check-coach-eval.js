@@ -24,6 +24,7 @@ const COACH_FILES = [
     'functions/coach-prompts.js', 'functions/coach-loop.js', 'functions/coach-tools.js',
     'functions/coach-routing.js', 'functions/coach-guards.js', 'functions/coach-rules.js',
     'functions/weekly-review.js', 'functions/report-card-request.js', 'js/core/features/report-card.js',
+    'functions/plan-roll.js', 'js/core/features/plan-timeline.js', 'js/core/features/plan-roller.js',
     'js/core/features/coach-context-builder.js', 'js/core/features/coach-context.js',
     'js/core/features/coach-live-context.js', 'js/core/features/coach-rules.js',
     'js/core/features/plain-language.js', 'js/core/features/goal-progress.js', 'js/core/features/body-stats.js',

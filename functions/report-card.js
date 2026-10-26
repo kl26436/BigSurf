@@ -25,10 +25,11 @@ const { rankRotationCandidates } = require('./exercise-rotation');
 const { weekKindLabel, describeStrengthChange, describeStuck, pctChange, findJargon } = require('./plain-language');
 const { goalsWithStatus, shortDate, weeksUntil } = require('./goal-progress');
 const { weightAverage, scanLeanMass, scanBodyFatPct, scansAsOf, shiftDate } = require('./body-stats');
+const { rollUndoable } = require('./plan-roller');
 
 const DEFAULT_TIME_ZONE = 'America/Chicago';
 const REPORT_CARD_VERSION = 1;
-const OPTION_KINDS = ['stay', 'lighter-week', 'swap', 'peak'];
+const OPTION_KINDS = ['stay', 'lighter-week', 'swap', 'peak', 'rotate-accessories'];
 const GRADE_LABELS = { good: 'Good week', solid: 'Solid week', rough: 'Rough week' };
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -241,8 +242,34 @@ function swapCandidateOf({ done, templates, weekPlan, unit, rotation }) {
     };
 }
 
-function optionsOf({ recovery, upcoming, swap }) {
+/**
+ * TP-3 — the plan rolled its next weeks this week (auto-roll): what was set,
+ * the swaps it applied (rotationPolicy 'auto') or has waiting ('ask').
+ */
+function rolledSection(program, week, done) {
+    if (!program || program.createdVia !== 'auto-roll' || !program.rolledAt || program.rolledAt.slice(0, 10) < week.from) return null;
+    const weeks = Math.max(1, Number(program.weeks) || 1);
+    const lighter = (program.weekTargets || []).find(isDeloadTarget);
+    const lighterDate = lighter ? shiftDate(program.startDate, (lighter.week - 1) * 7) : null;
+    const applied = (program.rotationsApplied || []).flatMap(r => r.swaps.map(s => ({ ...s, workout: r.name })));
+    const pending = (program.pendingRotations || []).flatMap(r => r.swaps.map(s => ({ ...s, workout: r.name })));
+    let sentence = `Your plan continues — the next ${words(weeks)} weeks are set from ${shortDate(program.startDate)}: same sessions${lighterDate ? `, lighter week ${shortDate(lighterDate)}` : ''}.`;
+    if (applied.length) sentence += ` Here's what changed: ${applied.map(s => `${s.from} → ${s.to}`).join(', ')}.`;
+    return {
+        programId: program.id || null, startDate: program.startDate, weeks, lighterDate,
+        applied, pending, undoable: rollUndoable(program, done), sentence,
+    };
+}
+
+function optionsOf({ recovery, upcoming, swap, rolled }) {
     const out = [{ kind: 'stay', label: 'Keep going as planned' }];
+    if (rolled?.pending?.length) {
+        const n = rolled.pending.length;
+        out.push({
+            kind: 'rotate-accessories', label: `Rotate ${words(n)} accessor${n === 1 ? 'y' : 'ies'}`,
+            payload: { programId: rolled.programId, swaps: rolled.pending, reason: rolled.pending.map(s => `${s.from} → ${s.to} (${s.reason})`).join('; ') },
+        });
+    }
     const nextLighter = upcoming.nextWeekKind === 'Lighter week';
     const why = recovery.lighterWeekDue
         ? (recovery.hardWeeks >= 3 && !recovery.effortCreeping.length ? `${recovery.hardWeeks} hard weeks in a row` : 'effort is climbing on your main lifts')
@@ -317,14 +344,15 @@ function buildReportCard({
     const balance = balanceSection(sb);
     const upcoming = upcomingSection({ program, settings, events, week, asOf });
     const swap = swapCandidateOf({ done, templates, weekPlan, unit: u, rotation });
-    const options = optionsOf({ recovery, upcoming, swap });
+    const rolled = rolledSection(program, week, done);
+    const options = optionsOf({ recovery, upcoming, swap: rolled?.pending?.length ? null : swap, rolled });
     const grade = gradeOf(showedUp, goalRows);
     return {
         version: REPORT_CARD_VERSION,
         weekKey: week.weekKey, from: week.from, to: week.to, asOf, unit: u, builtAt,
         headline: headlineOf(showedUp, strength),
         grade, gradeLabel: GRADE_LABELS[grade],
-        showedUp, strength, body, goals: goalRows, recovery, balance, upcoming, options,
+        showedUp, strength, body, goals: goalRows, recovery, balance, upcoming, rolled, options,
     };
 }
 
@@ -343,6 +371,7 @@ function cardForModel(card) {
         recovery: card.recovery.sentence,
         balance: card.balance.sentence,
         nextWeek: card.upcoming.sentence,
+        ...(card.rolled ? { planContinues: card.rolled.sentence } : {}),
         options: card.options.map(o => ({ kind: o.kind, label: o.label, ...(o.payload?.reason ? { reason: o.payload.reason } : {}) })),
     };
 }
@@ -351,7 +380,8 @@ function cardForModel(card) {
 function optionStillValid(chosen, card) {
     if (!chosen?.kind) return false;
     return (card?.options || []).some(o => o.kind === chosen.kind
-        && (o.kind !== 'swap' || (o.payload?.from === chosen.payload?.from && o.payload?.to === chosen.payload?.to)));
+        && (o.kind !== 'swap' || (o.payload?.from === chosen.payload?.from && o.payload?.to === chosen.payload?.to))
+        && (o.kind !== 'rotate-accessories' || o.payload?.programId === chosen.payload?.programId));
 }
 
 /**
@@ -388,7 +418,7 @@ function cardNumbers(card) {
 /** Jargon anywhere on the card's own sentences (tests keep this at zero). */
 function cardJargon(card) {
     const m = cardForModel(card);
-    return findJargon([m.headline, m.showedUp, ...m.strength, m.body, ...m.goals, m.recovery, m.balance, m.nextWeek, ...m.options.map(o => `${o.label} ${o.reason || ''}`)].join('\n'));
+    return findJargon([m.headline, m.showedUp, ...m.strength, m.body, ...m.goals, m.recovery, m.balance, m.nextWeek, m.planContinues || '', ...m.options.map(o => `${o.label} ${o.reason || ''}`)].join('\n'));
 }
 
 module.exports = { DEFAULT_TIME_ZONE, REPORT_CARD_VERSION, OPTION_KINDS, GRADE_LABELS, localDate, dayIndex, reportWeek, buildReportCard, cardForModel, optionStillValid, parseReportCardReply, numbersIn, cardNumbers, cardJargon };

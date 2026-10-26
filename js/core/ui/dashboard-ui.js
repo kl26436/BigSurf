@@ -561,7 +561,7 @@ function renderProgramCompleteBanner(allWorkouts = []) {
             <div class="dash-program-done__head">
                 <i class="fas fa-flag-checkered dash-program-done__icon"></i>
                 <div class="dash-program-done__txt">
-                    <div class="dash-program-done__title">Program complete</div>
+                    <div class="dash-program-done__title">These weeks are done</div>
                     <div class="dash-program-done__meta">${escapeHtml(done.name)} · ${done.weeks} weeks in the books</div>
                 </div>
                 <button class="dash-program-done__dismiss" onclick="dismissProgramComplete('${escapeAttr(done.id)}')" aria-label="Dismiss">
@@ -864,7 +864,7 @@ function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByT
             <div class="dash-today-hero__program">
                 <div class="dash-today-hero__program-head">
                     <i class="fas fa-flag-checkered"></i>
-                    <div class="dash-today-hero__program-txt"><b>${escapeHtml(label)} week</b> — ${escapeHtml(desc)} · applied for you</div>
+                    <div class="dash-today-hero__program-txt"><b>${escapeHtml(label)}</b> — ${escapeHtml(desc)} · applied for you</div>
                 </div>
                 <div class="dash-today-hero__program-actions">
                     <button class="dash-today-hero__program-apply" onclick="applyProgramWeekAndStart('${startArg}')">

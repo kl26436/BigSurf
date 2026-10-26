@@ -186,6 +186,7 @@ function pageHTML(d, past) {
             ${section('Recovery', c.recovery.sentence)}
             ${section('Balance', c.balance.sentence)}
             ${section('Next week', c.upcoming.sentence)}
+            ${c.rolled ? section('Your plan', c.rolled.sentence, '<button class="chip chip--sm" onclick="openBlockPage()"><i class="fas fa-calendar-week"></i> See the plan</button>') : ''}
             ${proposalHTML(d)}
             <div class="rc-links">
                 <button class="chip chip--sm" onclick="reportCardDiscuss()"><i class="fas fa-robot"></i> Discuss this week</button>
@@ -195,13 +196,14 @@ function pageHTML(d, past) {
         </div>`;
 }
 
-const BUTTON = { stay: 'Keep going', 'lighter-week': 'Make next week lighter', swap: 'Rotate it', peak: 'Make it lighter' };
+const BUTTON = { stay: 'Keep going', 'lighter-week': 'Make next week lighter', swap: 'Rotate it', peak: 'Make it lighter', 'rotate-accessories': 'Rotate them' };
 
 function proposalHTML(d) {
     const o = d.chosenOption || d.card.options[0];
     const applied = d.applied?.kind === o.kind;
     const why = d.fallbackNote || o.why || o.payload?.reason || '';
-    const swapLine = o.kind === 'swap' && o.payload ? `${o.payload.from} → ${o.payload.to} (${o.payload.equipment})` : '';
+    const swapLine = o.kind === 'swap' && o.payload ? `${o.payload.from} → ${o.payload.to} (${o.payload.equipment})`
+        : o.kind === 'rotate-accessories' && o.payload ? o.payload.swaps.map(x => `${x.from} → ${x.to}`).join(' · ') : '';
     return `
         <div class="hero-card rc-proposal" id="rc-proposal">
             <div class="rc-proposal__title">${escapeHtml(o.label)}</div>
@@ -271,9 +273,15 @@ export async function reportCardApply() {
             if (AppState.settings?.manualDeload) updateSetting('manualDeload', null);
         } else if (o.kind === 'swap') {
             await applySwap(o.payload);
+        } else if (o.kind === 'rotate-accessories') {
+            // TP-3 — the rolled wave's waiting swaps, the same write the Plan page makes.
+            const { loadPrograms, applyPendingRotations } = await import('../features/plan.js');
+            const program = (await loadPrograms()).find(p => p.id === o.payload?.programId);
+            if (!program?.pendingRotations?.length) throw new Error('those swaps were already handled');
+            await applyPendingRotations(program);
         }
         await markApplied(o.kind);
-        showNotification(o.kind === 'stay' ? 'Next week stays as planned' : o.kind === 'swap' ? `${o.payload.to} is in` : 'Next week is lighter', 'success', 2000);
+        showNotification(o.kind === 'stay' ? 'Next week stays as planned' : o.kind === 'swap' ? `${o.payload.to} is in` : o.kind === 'rotate-accessories' ? 'Swapped in for the next few weeks' : 'Next week is lighter', 'success', 2000);
         const el = document.getElementById('rc-proposal');
         if (el) el.outerHTML = proposalHTML(_doc);
     } catch (e) {

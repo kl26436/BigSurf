@@ -554,10 +554,18 @@ export async function askCoach(question) {
         // TP-1 — goals + events with their measured status (the same
         // sentences the Goals page shows). Non-fatal.
         let goalsBlock = '';
+        let planBlock = '';
         try {
             const [{ loadGoalsWithStatus }, { formatGoalsContext }] = await Promise.all([import('./goals.js'), import('./goal-progress.js')]);
             const g = await loadGoalsWithStatus();
             goalsBlock = formatGoalsContext({ goals: g.goals, events: g.events, data: g.data });
+            // TP-3 / A2 — the plan line: split, cadence, this week's kind, the next lighter week.
+            try {
+                const [{ loadPlan, loadPrograms }, { buildPlanTimeline, formatPlanContext }] = await Promise.all([import('./plan.js'), import('./plan-timeline.js')]);
+                const [plan, programs] = await Promise.all([loadPlan(), loadPrograms()]);
+                const timeline = buildPlanTimeline({ plan, weekPlan: AppState._weekPlan || null, programs, templates: g.data.templates, workouts: g.data.workouts, goals: g.goals, events: g.events, measurements: g.data.measurements, dexa: g.data.dexa, override: weekOverrideOf(AppState.settings), today: g.data.today, unit: g.data.unit });
+                planBlock = formatPlanContext({ plan, weekPlan: AppState._weekPlan || null, templates: g.data.templates, timeline, goalsRows: g.rows, events: g.events, today: g.data.today });
+            } catch (planErr) { debugLog('coach: plan line unavailable', planErr); }
             // TP-2 — the last Sunday report card: its headline and its one proposal.
             const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
             const rc = await getDocs(query(collection(db, 'users', AppState.currentUser.uid, 'reportCards'), orderBy('weekKey', 'desc'), limit(1)));
@@ -600,6 +608,7 @@ export async function askCoach(question) {
             threadsBlock,
             feedbackBlock,
             goalsBlock,
+            planBlock,
         });
         if (Config.DEBUG_MODE) {
             const size = Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, (v || '').length]));
@@ -912,6 +921,21 @@ function handleCoachActionCard(card, streamingBubble) {
                 <span class="coach-receipt-tag">Applied</span>
             </div>
         `);
+    } else if (card.kind === 'plan_set') {
+        // TP-3 — the plan's standing shape changed (cadence, pause, swaps, split).
+        addChatBubble('bot', `
+            <div class="coach-action-card coach-action-card--receipt" onclick="openBlockPage()">
+                <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-calendar-week"></i></div>
+                <div class="coach-action-card__body">
+                    <div class="coach-action-card__title">${escapeHtml(card.name || 'Plan updated')}</div>
+                    <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 140))}</div>
+                </div>
+                <span class="coach-receipt-tag">Applied</span>
+                <i class="fas fa-chevron-right coach-action-card__chev"></i>
+            </div>
+        `);
+        AppState._weekPlan = undefined;
+        AppState._activeProgram = undefined;
     } else if (card.kind === 'goal_set' || card.kind === 'event_added') {
         // TP-1 — a goal or a date landed; the Goals page has it.
         const icon = card.kind === 'goal_set' ? 'fa-bullseye' : 'fa-calendar-day';

@@ -30,6 +30,10 @@ const MIRRORS = [
     ['js/core/features/goal-progress.js', 'functions/goal-progress.js'],
     // TP-2 — the Sunday report card: built server-side, recomputed on the page.
     ['js/core/features/report-card.js', 'functions/report-card.js'],
+    // TP-3 — the plan timeline and the roller run server-side (Sunday auto-roll, plan tools).
+    ['js/core/features/block-view.js', 'functions/block-view.js'],
+    ['js/core/features/plan-timeline.js', 'functions/plan-timeline.js'],
+    ['js/core/features/plan-roller.js', 'functions/plan-roller.js'],
 ];
 
 describe('functions/ mirrors of pure client modules', () => {

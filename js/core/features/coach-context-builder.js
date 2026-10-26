@@ -185,7 +185,7 @@ export function buildChatContext({
     today, workouts = [], templates = [], weekPlan = null, program = null, intent = null,
     currentLocation = null, settings = {}, unit = 'lbs', exerciseDatabase = [], thresholds = RULE_THRESHOLDS,
     manualDeload = null, prList = [], equipment = [], healthSummary = '',
-    outcomesBlock = '', threadsBlock = '', feedbackBlock = '', goalsBlock = '',
+    outcomesBlock = '', threadsBlock = '', feedbackBlock = '', goalsBlock = '', planBlock = '',
 } = {}) {
     const programBlock = program ? buildProgramContext(program, today) : '';
     const todayLine = buildTodayContext({ today, weekPlan, templates, workouts, program, intent, currentLocation });
@@ -202,6 +202,8 @@ export function buildChatContext({
 
     const sections = {
         today: todayLine,
+        // TP-3 / A2 — the plan in the user's words (plan-timeline.js#formatPlanContext).
+        plan: planBlock,
         program: programBlock,
         intent: intentBlock,
         verdicts: verdictsBlock,

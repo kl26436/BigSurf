@@ -15,6 +15,7 @@ import { buildLiveWorkoutContext } from '../../../js/core/features/coach-live-co
 import { buildExerciseSessions, progressionTarget, weightIncrement } from '../../../js/core/features/progression.js';
 import { getSessionIntent, weekOverrideOf } from '../../../js/core/features/session-intent.js';
 import { formatGoalsContext } from '../../../js/core/features/goal-progress.js';
+import { buildPlanTimeline, formatPlanContext } from '../../../js/core/features/plan-timeline.js';
 import EXERCISES from '../../../functions/data/exercises.json';
 
 export const UID = 'u_eval';
@@ -202,6 +203,7 @@ export function seedDocs(user, { live = null } = {}) {
     if (user.program) docs[`${U}/programs/${user.program.id || 'program_eval'}`] = { ...user.program };
     // TP-1 — goals, events, weigh-ins and scans when a scenario has them.
     for (const g of user.goals || []) docs[`${U}/goals/${g.id}`] = { ...g };
+    if (user.plan) docs[`${U}/plan/current`] = { ...user.plan };
     for (const e of user.events || []) docs[`${U}/events/${e.id}`] = { ...e };
     for (const m of user.measurements || []) docs[`${U}/measurements/${m.id || `${m.date}_m`}`] = { ...m };
     for (const d of user.dexa || []) docs[`${U}/dexa/${d.id || `scan_${d.date}`}`] = { ...d };
@@ -247,6 +249,10 @@ export function chatMessages(user, question) {
         program: user.program, intent, currentLocation: GYM, settings: user.settings, unit: user.unit,
         exerciseDatabase: EXERCISES, manualDeload: weekOverrideOf(user.settings), prList: prList(user),
         equipment: user.equipment,
+        planBlock: user.plan ? formatPlanContext({
+            plan: user.plan, weekPlan: user.weekPlan, templates: user.templates, today: user.today, events: user.events || [],
+            timeline: buildPlanTimeline({ plan: user.plan, weekPlan: user.weekPlan, programs: user.program ? [user.program] : [], templates: user.templates, workouts: user.workouts, today: user.today, unit: user.unit }),
+        }) : '',
         goalsBlock: formatGoalsContext({
             goals: user.goals || [], events: user.events || [],
             data: { workouts: user.workouts, templates: user.templates, measurements: user.measurements || [], dexa: user.dexa || [], today: user.today },

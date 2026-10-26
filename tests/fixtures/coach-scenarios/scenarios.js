@@ -386,6 +386,20 @@ export function buildScenarios() {
         });
     }
 
+    // 25 — TP-3: the wave ends tonight; the plan rolls the next weeks and the
+    // card offers the accessory swaps it has waiting (rotationPolicy 'ask').
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        user.program = programOn('2026-10-25', { weeks: 4, deloadWeek: 4 });
+        user.plan = { name: 'My plan', cadence: { buildWeeks: 3, lighterWeek: true }, horizonWeeks: 12, rotationPolicy: 'ask' };
+        list.push({
+            id: 'reportcard-wave-ending', title: 'Sunday card — the wave ends, the plan rolls, swaps are waiting',
+            mode: 'reportcard', question: 'Sunday report card', user,
+            expect: { kind: 'question', maxWords: 90, choice: 'rotate-accessories' },
+        });
+    }
+
     return list;
 }
 

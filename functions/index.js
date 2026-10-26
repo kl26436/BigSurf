@@ -29,6 +29,7 @@ const { withPromptCaching, runCoachToolLoop } = require('./coach-loop');
 const { buildWeeklyReviewRequest } = require('./weekly-review');
 const { buildReportCardRequest, reportCardDoc } = require('./report-card-request');
 const { deleteUserAccount, deleteUserData } = require('./account-deletion');
+const { rollPlanForUser } = require('./plan-roll');
 
 // ── Model routing ────────────────────────────────────────────────────
 // Coach chat + template building + DEXA extraction use the flagship model
@@ -1790,7 +1791,16 @@ exports.sundayReportCard = functions.runWith({
     if (!apiKey) { console.error('❌ sundayReportCard: no API key'); return null; }
     const userRefs = await db.collection('users').listDocuments();
     let built = 0;
+    let rolled = 0;
     for (const userRef of userRefs) {
+        // TP-3 — the plan continues first (a wave ending tonight rolls to
+        // tomorrow), so the card reads the new wave. Independent of the card.
+        try {
+            const roll = await rollPlanForUser(userRef);
+            if (roll.status === 'rolled') rolled++;
+        } catch (rollErr) {
+            console.error(`❌ plan roll failed for ${userRef.id}:`, rollErr);
+        }
         try {
             const r = await generateReportCardForUser(userRef, apiKey);
             if (r.status === 'ok') built++;
@@ -1798,7 +1808,7 @@ exports.sundayReportCard = functions.runWith({
             console.error(`❌ sundayReportCard failed for ${userRef.id}:`, userErr);
         }
     }
-    console.log(`✅ sundayReportCard: ${built} card(s) built`);
+    console.log(`✅ sundayReportCard: ${rolled} plan(s) rolled, ${built} card(s) built`);
     return null;
 });
 

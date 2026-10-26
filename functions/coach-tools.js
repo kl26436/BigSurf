@@ -18,6 +18,9 @@ const { computeVerdicts, buildBlockRetrospective } = require('./coach-rules');
 const { getSessionIntent, weekOverrideOf } = require('./session-intent');
 const { rankRotationCandidates } = require('./exercise-rotation');
 const { applyPrimaryChoice, pickPrimaries } = require('./progress-scoreboard');
+// TP-3 — the plan: timeline, roller, the same data load the Sunday roll uses.
+const { buildPlanTimeline, describeCadence, cadenceOf } = require('./plan-timeline');
+const { draftNextWave, rollWindow, cadenceFromProgram, ROTATION_POLICIES } = require('./plan-roller');
 // TP-1 — goals: the same validation, baseline and status math as the Goals page.
 const { normalizeGoal, normalizeEvent, captureBaseline, goalsWithStatus, goalName, GOAL_TYPES, GOAL_STATUSES, EVENT_KINDS } = require('./goal-progress');
 const { inferRole } = require('./movement-patterns');
@@ -142,11 +145,6 @@ const TOOL_DEFINITIONS = [
             },
             required: ['name', 'exercises'],
         },
-    },
-    {
-        name: 'get_program',
-        description: "The user's active multi-week program (goal, length, week targets, split) with the CURRENT week derived from its start date. Call before any programming/periodization discussion.",
-        input_schema: { type: 'object', properties: {} },
     },
     {
         name: 'create_program',
@@ -362,9 +360,39 @@ const TOOL_DEFINITIONS = [
         },
     },
     {
-        name: 'get_week_plan',
-        description: "The user's weekly schedule: which saved workout is planned for each day, plus rest days, plus `today` (date + weekday in the user's timezone) and `todayPlanned` (today's planned workout, rest, or open). Call before discussing scheduling or 'what should I do today/this week'.",
+        name: 'get_plan',
+        description: "The user's plan: the split by day, the cadence (build weeks then a lighter one), this week's kind, the next lighter week, the next 6 weeks' kinds, goals with status, events, the current wave's dates and any accessory swaps waiting, plus today/tomorrow's planned session. Call before answering \"what should I do today / this week / next few weeks\".",
         input_schema: { type: 'object', properties: {} },
+    },
+    {
+        name: 'update_plan',
+        description: "Change the plan's standing shape — cadence ({buildWeeks 1-8, lighterWeek}), how far ahead it fills in (horizonWeeks 4-26), minutes per session, rotationPolicy ('ask' = offer accessory swaps on the Sunday card · 'auto' = apply them when the next weeks roll), paused (true stops it continuing on its own), the plan's name, or the split (day → saved workout id | 'rest' | null; same rules as set_week_plan). Consent rule applies.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                cadence: { type: 'object', properties: { buildWeeks: { type: 'integer', minimum: 1, maximum: 8 }, lighterWeek: { type: 'boolean' } } },
+                horizonWeeks: { type: 'integer', minimum: 4, maximum: 26 },
+                sessionMinutes: { type: 'integer', minimum: 15, maximum: 180 },
+                rotationPolicy: { type: 'string', enum: ['ask', 'auto'] },
+                paused: { type: 'boolean' },
+                name: { type: 'string' },
+                split: SPLIT_SCHEMA,
+            },
+        },
+    },
+    {
+        name: 'draft_next_wave',
+        description: "Look-up: the next few weeks exactly as the app would roll them (same sessions, week kinds with events applied, levers, the accessory swaps the engine suggests, a plain-words rationale). Edit it with overrides, then pass the result to create_program (name, weeks, startDate, weekTargets, split, rationale) when the user agrees — never compose a program from scratch when this draft fits.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                startDate: { type: 'string', description: 'YYYY-MM-DD; default = when the next wave is due' },
+                buildWeeks: { type: 'integer', minimum: 1, maximum: 8 },
+                lighterWeek: { type: 'boolean' },
+                rotate: { type: 'boolean', description: 'false = no accessory swaps' },
+                skipSwaps: { type: 'array', items: { type: 'string' }, description: 'Exercises to keep (no swap)' },
+            },
+        },
     },
     {
         name: 'set_week_plan',
@@ -1061,6 +1089,13 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
         return ctxPromise;
     };
 
+    // TP-3 — what the plan tools read (the Sunday roll's own loader).
+    let planPromise = null;
+    const loadPlanCtx = () => {
+        if (!planPromise) planPromise = require('./plan-roll').loadPlanData(userDoc(), { today: date });
+        return planPromise;
+    };
+
     // TP-1 — what goal math reads: the guard context plus goals, events,
     // weigh-ins and scans (read once per turn).
     let goalPromise = null;
@@ -1505,6 +1540,18 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 createdAt: nowIso,
                 lastUpdated: nowIso,
             });
+            // TP-3 — the plan doc: this program's shape is the standing cadence,
+            // so the plan continues after it ends (auto-roll). Never fatal.
+            try {
+                const planRef = userDoc().collection('plan').doc('current');
+                const planSnap = await planRef.get();
+                await planRef.set({
+                    ...(planSnap.exists ? {} : { name: 'My plan', horizonWeeks: 12, rotationPolicy: 'ask', createdAt: nowIso, createdVia: 'create_program' }),
+                    cadence: cadenceFromProgram({ weeks, weekTargets }), paused: false, lastUpdated: nowIso,
+                }, { merge: true });
+            } catch (planErr) {
+                console.error('❌ plan doc upsert failed (program still created):', planErr);
+            }
             // CP-4 — variety engine: rotate the accessories on the split's
             // templates at block creation. Runs AFTER the program write so a
             // rotation failure never costs the program; the card and the undo
@@ -1875,6 +1922,107 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             return {
                 result: { primaries: chosen, workoutsUpdated: updatedNames },
                 actionCard: { kind: 'primaries_set', name: 'Main lifts set', summary: chosen.join(' · ') },
+            };
+        },
+
+        // ── TP-3: the plan ─────────────────────────────────────────────
+        async get_plan() {
+            const d = await loadPlanCtx();
+            const tl = buildPlanTimeline({ ...d, override: weekOverrideOf(d.settings) });
+            const active = tl.activeProgram;
+            const wp = await this.get_week_plan();
+            return {
+                result: {
+                    exists: !!d.plan,
+                    name: d.plan?.name || null,
+                    cadence: cadenceOf(d.plan), cadenceText: describeCadence(cadenceOf(d.plan)),
+                    paused: d.plan?.paused === true, rotationPolicy: d.plan?.rotationPolicy || 'ask',
+                    horizonWeeks: d.plan?.horizonWeeks || 12, sessionMinutes: d.plan?.sessionMinutes || null,
+                    split: wp.days || null, restDays: wp.restDays || [], today: wp.today || null, todayPlanned: wp.todayPlanned || null,
+                    thisWeek: tl.header.thisWeek, nextLighterWeek: tl.header.nextLighter,
+                    next6Weeks: tl.weeks.filter(w => w.weekStart > date).slice(0, 6).map(w => ({ weekStart: w.weekStart, kind: w.label, projected: !!w.projected, markers: w.markers.map(m => m.label) })),
+                    goals: tl.goalsStrip, events: d.events.filter(e => e.date > date).map(e => ({ id: e.id, name: e.name, date: e.date })),
+                    currentWave: active ? {
+                        startDate: active.startDate, weeks: active.weeks, rolled: active.createdVia === 'auto-roll',
+                        pendingSwaps: (active.pendingRotations || []).flatMap(r => r.swaps.map(x => `${x.from} → ${x.to} (${r.name})`)),
+                    } : null,
+                    ...(d.plan ? {} : { note: 'No plan doc yet — it is created with the first program (create_program) or update_plan.' }),
+                },
+            };
+        },
+
+        async update_plan(input) {
+            const patch = {};
+            const i = input || {};
+            if (i.cadence !== undefined) {
+                const b = i.cadence?.buildWeeks;
+                if (b !== undefined && !(Number.isInteger(b) && b >= 1 && b <= 8)) return toolError('invalid_input', `cadence.buildWeeks is a whole number 1-8 (got ${JSON.stringify(b)})`);
+                const d0 = await loadPlanCtx();
+                patch.cadence = { ...cadenceOf(d0.plan), ...(b !== undefined ? { buildWeeks: b } : {}), ...(typeof i.cadence?.lighterWeek === 'boolean' ? { lighterWeek: i.cadence.lighterWeek } : {}) };
+            }
+            if (i.horizonWeeks !== undefined) {
+                if (!(Number.isInteger(i.horizonWeeks) && i.horizonWeeks >= 4 && i.horizonWeeks <= 26)) return toolError('invalid_input', `horizonWeeks is 4-26 (got ${JSON.stringify(i.horizonWeeks)})`);
+                patch.horizonWeeks = i.horizonWeeks;
+            }
+            if (i.sessionMinutes !== undefined) {
+                if (!(Number.isInteger(i.sessionMinutes) && i.sessionMinutes >= 15 && i.sessionMinutes <= 180)) return toolError('invalid_input', `sessionMinutes is 15-180 (got ${JSON.stringify(i.sessionMinutes)})`);
+                patch.sessionMinutes = i.sessionMinutes;
+            }
+            if (i.rotationPolicy !== undefined) {
+                if (!ROTATION_POLICIES.includes(i.rotationPolicy)) return toolError('invalid_input', `rotationPolicy must be one of ${ROTATION_POLICIES.join(', ')}`);
+                patch.rotationPolicy = i.rotationPolicy;
+            }
+            if (i.paused !== undefined) {
+                if (typeof i.paused !== 'boolean') return toolError('invalid_input', 'paused must be true or false');
+                patch.paused = i.paused;
+            }
+            if (i.name !== undefined) patch.name = clip(i.name, 40) || 'My plan';
+            let splitSummary = null;
+            if (i.split !== undefined) {
+                const out = await this.set_week_plan({ days: i.split });
+                if (out.error) return toolError('invalid_input', `split: ${errorText(out.error)}`);
+                splitSummary = out.result.summary;
+            }
+            if (!Object.keys(patch).length && !splitSummary) return toolError('invalid_input', 'Nothing to change — pass cadence, horizonWeeks, sessionMinutes, rotationPolicy, paused, name or split.');
+            const nowIso = new Date().toISOString();
+            if (Object.keys(patch).length) {
+                const ref = userDoc().collection('plan').doc('current');
+                const snap = await ref.get();
+                await ref.set({ ...(snap.exists ? {} : { name: 'My plan', cadence: { buildWeeks: 3, lighterWeek: true }, horizonWeeks: 12, rotationPolicy: 'ask', createdAt: nowIso, createdVia: 'coach' }), ...patch, lastUpdated: nowIso }, { merge: true });
+            }
+            planPromise = null;
+            const d = await loadPlanCtx();
+            const summary = [describeCadence(cadenceOf(d.plan)), d.plan?.paused ? 'paused' : null, d.plan?.rotationPolicy === 'auto' ? 'swaps applied automatically' : null, splitSummary].filter(Boolean).join(' · ');
+            return {
+                result: { changed: [...Object.keys(patch), ...(splitSummary ? ['split'] : [])], plan: { cadence: cadenceOf(d.plan), paused: d.plan?.paused === true, rotationPolicy: d.plan?.rotationPolicy || 'ask' } },
+                actionCard: { kind: 'plan_set', name: 'Plan updated', summary },
+            };
+        },
+
+        async draft_next_wave(input) {
+            const d = await loadPlanCtx();
+            const i = input || {};
+            if (i.startDate !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(i.startDate))) return toolError('invalid_input', `startDate must be YYYY-MM-DD (got ${JSON.stringify(i.startDate)})`);
+            const w = rollWindow({ plan: d.plan || {}, programs: d.programs, today: date });
+            const start = i.startDate || w.start;
+            const draft = draftNextWave({
+                ...d, start, plan: d.plan || {},
+                overrides: {
+                    cadence: { ...(i.buildWeeks !== undefined ? { buildWeeks: i.buildWeeks } : {}), ...(typeof i.lighterWeek === 'boolean' ? { lighterWeek: i.lighterWeek } : {}) },
+                    rotate: i.rotate, skipSwaps: Array.isArray(i.skipSwaps) ? i.skipSwaps : [],
+                },
+            });
+            if (!draft) return toolError('not_found', 'No split to continue — the week plan has no sessions.', 'Set the week plan first (update_plan with split).');
+            return {
+                result: {
+                    due: w.due, dueReason: w.reason,
+                    draft: {
+                        name: draft.name, weeks: draft.weeks, startDate: draft.startDate, endDate: draft.endDate,
+                        weekTargets: draft.weekTargets, split: draft.split, rationale: draft.rationale,
+                        swaps: draft.rotations.flatMap(r => r.swaps.map(x => ({ workout: r.name, from: x.from, to: x.to, equipment: x.equipment, reason: x.reason }))),
+                    },
+                    note: 'To apply: create_program with name, weeks, startDate, weekTargets, split, rationale (add rotateAccessories:true to apply the swaps).',
+                },
             };
         },
 

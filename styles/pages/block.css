@@ -106,3 +106,54 @@
     font-size: var(--font-2xs);
     font-weight: 700;
 }
+
+/* ── Plan page (TP-3): one continuous timeline ──────────────────────── */
+.plan-goals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+}
+.plan-notice__title {
+    font-size: var(--font-md);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.plan-notice__text {
+    margin-top: var(--space-6);
+    font-size: var(--font-sm);
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+.plan-notice__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-8);
+    margin-top: var(--space-12);
+}
+.plan-policy .segmented {
+    width: 100%;
+}
+.plan-past > summary {
+    cursor: pointer;
+    min-height: var(--tap-sm);
+    display: flex;
+    align-items: center;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--primary);
+}
+.plan-past[open] > summary {
+    margin-bottom: var(--space-8);
+}
+.plan-markers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+    margin-bottom: var(--space-6);
+}
+.plan-week--projected .dash-section-head h3,
+.plan-week--projected .row-card__title {
+    color: var(--text-muted);
+}
+.block-cell--projected .block-cell__icon { background: var(--bg-card-hover); color: var(--text-muted); font-size: var(--font-2xs); }

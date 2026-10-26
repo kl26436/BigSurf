@@ -15,6 +15,7 @@ export const WRITE_TOOLS = new Set([
     'create_workout_template', 'update_workout_template', 'replace_day', 'archive_template',
     'create_program', 'adjust_program', 'set_week_plan', 'set_primary_lifts',
     'set_goal', 'update_goal', 'add_event', // TP-1
+    'update_plan', // TP-3
 ]);
 // Bookkeeping writes a question may make: advice log, memory, override audit.
 const BOOKKEEPING_PATH = /\/(coachAdvice|coachMemory|coachOverrides|coachTraces)\b|preferences\/coachMemory/;

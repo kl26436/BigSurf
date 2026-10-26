@@ -15,6 +15,7 @@ import * as equipmentPlanner from '../features/equipment-planner.js';
 import { getTemplatesForDayOfWeek } from '../features/metrics/aggregators.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 import { deriveProgramWeek } from '../features/week-targets.js';
+import { weekKindLabel } from '../features/plain-language.js';
 
 // ===================================================================
 // TEMPLATE SELECTION STATE
@@ -391,12 +392,14 @@ function renderBlockLink(container) {
     if (!program) return;
     const { week } = deriveProgramWeek(program, AppState.getTodayDateString());
     const weeks = program.weeks || 0;
-    const when = week > weeks ? 'Finished' : week >= 1 ? `Week ${week} of ${weeks}` : 'Starts soon';
+    const { target } = deriveProgramWeek(program, AppState.getTodayDateString());
+    // TP-3 — the week's kind, never "week 2 of 4" (the waves are scaffolding).
+    const when = week > weeks ? 'These weeks are done' : week >= 1 ? weekKindLabel(target) : 'Starts soon';
     container.insertAdjacentHTML('afterbegin', `
         <button type="button" class="row-card ws-block-link" onclick="openBlockPage()">
             <span class="row-card__icon"><i class="fas fa-calendar-week"></i></span>
             <span class="row-card__content">
-                <span class="row-card__title">${escapeHtml(program.name || 'Your plan')}</span>
+                <span class="row-card__title">Your plan</span>
                 <span class="row-card__subtitle">${when} · see every week and day</span>
             </span>
             <i class="fas fa-chevron-right row-card__action"></i>

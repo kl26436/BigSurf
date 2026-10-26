@@ -14,6 +14,7 @@ import { buildGraderRequest, parseGrade } from './grader.js';
 import { buildWeeklyReviewRequest } from '../../functions/weekly-review.js';
 import reportCardRequest from '../../functions/report-card-request.js';
 import { parseReportCardReply } from '../../functions/report-card.js';
+import planRoll from '../../functions/plan-roll.js';
 
 const API = 'https://api.anthropic.com/v1/messages';
 
@@ -94,7 +95,11 @@ async function runReportCard(scenario, { callRound, model = null }) {
     const db = fakeAdminDb(seedDocs(user));
     const t0 = Date.now();
     const now = new Date(`${user.today}T19:30:00-05:00`);
+    // TP-3 — the Sunday job rolls the plan before it builds the card.
+    await planRoll.rollPlanForUser(db.collection('users').doc(UID), { now });
     const built = await reportCardRequest.buildReportCardRequest(db.collection('users').doc(UID), { force: true, now });
+    // The roll is the job's write, not the model's: count only what follows.
+    const writesBefore = db.writes.length;
     const base = { id: scenario.id, mode: 'reportcard', route: { tier: 'reportcard', reason: 'Sunday report card' }, toolCalls: [], proposals: [], actionCards: [], events: [], rounds: 0 };
     if (built.status) return { ...base, model: null, messages: [{ role: 'user', content: '' }], contextChars: 0, text: '', writes: db.writes, usage: {}, ms: 0, error: `card skipped: ${built.status}` };
     const request = model ? { ...built.request, model } : built.request;
@@ -112,7 +117,7 @@ async function runReportCard(scenario, { callRound, model = null }) {
     return {
         ...base, model: request.model, messages: request.messages, contextChars: request.messages[0].content.length,
         text: [reply.narrative, reply.why].filter(Boolean).join(' '), raw, card: built.card, chosen: reply.chosen, fallback: reply.fallback,
-        writes: db.writes, rounds: 1, stopReason: null, usage, ms: Date.now() - t0, error,
+        writes: db.writes.slice(writesBefore), rounds: 1, stopReason: null, usage, ms: Date.now() - t0, error,
     };
 }
 

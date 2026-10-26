@@ -56,6 +56,7 @@ const VIEW_ALIASES = {
     'workout-editor': 'workout-editor-section',
     equipment: 'equipment-library-section', location: 'location-management-section',
     exercises: 'exercise-manager-section',
+    plan: 'block-section', // TP-3 — the Plan page lives in the old Block section
 };
 function sectionOf(view) {
     if (!view) return null;
@@ -231,6 +232,7 @@ function routeToView(view) {
             showProgressView();
             break;
 
+        case 'plan':   // TP-3 — the Plan page ('block' stays an alias for old links)
         case 'block':
             showBlockView();
             break;

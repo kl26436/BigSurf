@@ -51,6 +51,7 @@ export const EXPORT_COLLECTIONS = [
     'goals',                // TP-1
     'events',               // TP-1
     'reportCards',          // TP-2 — the Sunday report cards
+    'plan',                 // TP-3 — plan/current (cadence, horizon, policy)
     'stats',
     'preferences',
     'coachHistory',

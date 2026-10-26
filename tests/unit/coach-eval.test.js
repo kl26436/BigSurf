@@ -243,7 +243,7 @@ describe('TP-0 — the no-jargon checks', () => {
 
 describe('TP-2 / A6 — the report card eval mode', () => {
     it('each report-card fixture offers the option its scenario expects (a failure is the model, not the fixture)', async () => {
-        for (const id of ['reportcard-good-week', 'reportcard-effort-creeping']) {
+        for (const id of ['reportcard-good-week', 'reportcard-effort-creeping', 'reportcard-wave-ending']) {
             const s = byId[id];
             const run = await runScenario(s, { callRound: scripted([say(`{"headline":"A week.","choice":"${s.expect.choice}","why":"The card says so."}`)]).callRound });
             expect(run.error, id).toBeNull();
