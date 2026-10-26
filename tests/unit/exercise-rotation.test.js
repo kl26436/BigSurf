@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { selectRotation, applyRotation } from '../../js/core/features/exercise-rotation.js';
+import { selectRotation, applyRotation, rankRotationCandidates } from '../../js/core/features/exercise-rotation.js';
 import { inferRole } from '../../js/core/features/movement-patterns.js';
 
 const library = JSON.parse(readFileSync('data/exercises.json', 'utf8'));
@@ -92,6 +92,23 @@ describe('selectRotation', () => {
         const a = selectRotation({ exercises: pushDay, equipment: floor, location: GYM, lookup });
         const b = selectRotation({ exercises: [...pushDay], equipment: [...floor].reverse(), location: GYM, lookup });
         expect(a).toEqual(b);
+    });
+});
+
+describe('rankRotationCandidates — LB-1 the machine decides a back extension', () => {
+    const fortyFive = { ...eq('Arsenal Strength Alpha — 45 Degree Back Extension', ['Back Extension'], '2026-07-03'), function: '45 Degree Back Extension' };
+    const lumbar = { ...eq('Nautilus Lower Back', ['Back Extension'], null), function: 'Lower Back' };
+
+    it('the 45° bench is a hip-dominant candidate; the seated lumbar machine is not', () => {
+        const out = rankRotationCandidates({ pattern: 'hip-dominant', equipment: [fortyFive, lumbar, ...floor], location: GYM, lookup });
+        expect(out.candidates.map(c => c.equipment)).toContain(fortyFive.name);
+        expect(out.candidates.map(c => c.equipment)).not.toContain(lumbar.name);
+        expect(out.candidates.find(c => c.equipment === fortyFive.name)).toMatchObject({ name: 'Back Extension', pattern: 'hip-dominant' });
+    });
+
+    it('…and the lumbar machine is where trunk-ext lives', () => {
+        const out = rankRotationCandidates({ pattern: 'trunk-ext', equipment: [fortyFive, lumbar], location: GYM, lookup });
+        expect(out.candidates.map(c => c.equipment)).toEqual([lumbar.name]);
     });
 });
 

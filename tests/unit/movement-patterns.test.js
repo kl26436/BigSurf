@@ -23,6 +23,67 @@ describe('built-in library patterns', () => {
             .filter(r => r.stamped !== r.inferred);
         expect(disagreements).toEqual([]);
     });
+
+    it('name alone agrees too (LB-1) — custom rows and workout records carry no tags', () => {
+        const disagreements = library
+            .map(ex => ({ name: ex.name, stamped: ex.pattern, inferred: inferPattern({ name: ex.name }) }))
+            .filter(r => r.stamped !== r.inferred);
+        expect(disagreements).toEqual([]);
+    });
+});
+
+describe('inferPattern — LB-1 equipment-aware + the null rules', () => {
+    it('the 45° bench makes Back Extension Machine a hinge; a seated lumbar machine keeps it trunk-ext', () => {
+        expect(inferPattern({ name: 'Back Extension Machine' }, { equipment: 'Arsenal Strength Alpha — 45 Degree Back Extension' })).toBe('hip-dominant');
+        expect(inferPattern({ name: 'Back Extension Machine' }, { equipment: 'Nautilus Lower Back' })).toBe('trunk-ext');
+        // An equipment doc works as the hint too (function + name).
+        expect(inferPattern({ name: 'Back Extension' }, { equipment: { name: 'Roman chair', function: '' } })).toBe('hip-dominant');
+        expect(inferPattern({ name: 'Back Extension' }, { equipment: { name: 'Nautilus Nitro', function: 'Lumbar Extension' } })).toBe('trunk-ext');
+        // No equipment: AU-13's default (and the library stamp) — a hinge.
+        expect(inferPattern({ name: 'Back Extension Machine' })).toBe('hip-dominant');
+    });
+
+    it('equipment never relabels a name that already decides', () => {
+        // Explicitly hinge-named stays hinge on any machine.
+        expect(inferPattern({ name: '45° Back Extension' }, { equipment: 'Nautilus Lower Back' })).toBe('hip-dominant');
+        // A mis-linked machine can't turn a row into a hinge.
+        expect(inferPattern({ name: 'Seated Row Machine' }, { equipment: '45 Degree Back Extension' })).toBe('horizontal-pull');
+        // Brand words don't go through the rules ("Hammer" is a curl keyword).
+        expect(inferPattern({ name: 'Bench Press' }, { equipment: 'Hammer Strength Flat' })).toBe('horizontal-push');
+        // An explicit pattern still wins over everything.
+        expect(inferPattern({ name: 'Back Extension Machine', pattern: 'trunk-ext' }, { equipment: '45 Degree Back Extension' })).toBe('trunk-ext');
+    });
+
+    it('a name no rule knows defers to hinge / lumbar equipment, and stays null otherwise', () => {
+        expect(inferPattern({ name: 'Superman' }, { equipment: 'GHD' })).toBe('hip-dominant');
+        expect(inferPattern({ name: 'Mystery Machine 3000' }, { equipment: 'Hammer Strength Flat' })).toBeNull();
+    });
+
+    it('shrugs are their own pattern, above the pulls, and not spine', () => {
+        expect(PATTERNS).toContain('shrug');
+        expect(inferPattern({ name: 'Shoulder Shrug' })).toBe('shrug');
+        expect(inferPattern({ name: 'Barbell Shrug' })).toBe('shrug');
+        expect(inferPattern({ name: 'Row Machine Shrug' })).toBe('shrug');
+        expect(inferRole({ name: 'Shoulder Shrug' }, 0)).toBe('accessory');
+    });
+
+    it('adductor / abductor machines resolve', () => {
+        expect(inferPattern({ name: 'Adductor Machine' })).toBe('adduction');
+        expect(inferPattern({ name: 'Abductor Machine' })).toBe('abduction');
+        expect(inferPattern({ name: 'Hip Abduction Machine' })).toBe('abduction');
+        expect(inferPattern({ name: 'Inner Thigh' })).toBe('adduction');
+    });
+
+    it('incline / decline / dumbbell presses are horizontal push; shoulder presses stay vertical; angle words need "press"', () => {
+        expect(inferPattern({ name: 'Incline Dumbbell Press' })).toBe('horizontal-push');
+        expect(inferPattern({ name: 'Decline Dumbbell Press' })).toBe('horizontal-push');
+        expect(inferPattern({ name: 'DB Press' })).toBe('horizontal-push');
+        expect(inferPattern({ name: 'Shoulder Press' })).toBe('vertical-push');
+        expect(inferPattern({ name: 'Incline Shoulder Press' })).toBe('vertical-push');
+        expect(inferPattern({ name: 'Incline Dumbbell Curl' })).toBe('elbow-flex');
+        expect(inferPattern({ name: 'Decline Crunch' })).toBe('trunk-flex');
+        expect(inferPattern({ name: 'Incline Leg Press' })).toBe('knee-dominant');
+    });
 });
 
 describe('inferPattern', () => {
@@ -40,7 +101,10 @@ describe('inferPattern', () => {
             'Rogers Power Squat Pro': 'knee-dominant',
             'Hack Squat': 'knee-dominant',
             'Kneeling Leg Curl': 'knee-flexion',
-            'Reverse Glute-Ham': 'knee-flexion',
+            // LB-1 — the Rogers reverse glute-ham is a hip extension (hinge);
+            // a plain glute-ham raise stays a leg curl.
+            'Reverse Glute-Ham': 'hip-dominant',
+            'Glute Ham Raise': 'knee-flexion',
             'Rogers Hip Press': 'hip-dominant',
             'Hip Thrust': 'hip-dominant',
             'gym80 Abdominal Flexor': 'trunk-flex',
@@ -92,6 +156,15 @@ describe('patternsForEquipment', () => {
     it('resolves through mapped exerciseTypes first (library lookup, then name inference)', () => {
         expect(patternsForEquipment({ exerciseTypes: ['Lat Pulldown', 'Cable Straight Arm Pulldown'] }, lookup)).toEqual(['vertical-pull']);
         expect(patternsForEquipment({ exerciseTypes: ['Peck Back'] }, lookup)).toEqual(['rear-delt']);
+    });
+
+    it('the doc is the equipment hint for each mapped name (LB-1)', () => {
+        const fortyFive = { name: 'Arsenal Strength Alpha — 45 Degree Back Extension', function: '45 Degree Back Extension', exerciseTypes: ['Back Extension'] };
+        const lumbar = { name: 'Nautilus Lower Back', function: 'Lower Back', exerciseTypes: ['Back Extension'] };
+        expect(patternsForEquipment(fortyFive)).toEqual(['hip-dominant']);
+        expect(patternsForEquipment(lumbar)).toEqual(['trunk-ext']);
+        // No mapping at all: the machine's own text says 45° back extension.
+        expect(patternsForEquipment({ name: fortyFive.name, function: fortyFive.function })).toEqual(['hip-dominant']);
     });
 
     it('falls back to the machine function/name when nothing is mapped, and to [] when even that fails', () => {

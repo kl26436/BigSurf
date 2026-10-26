@@ -64,7 +64,8 @@ function patternCandidates({ pattern, atGym, lookup, skipEquipment = () => false
         // The exercise this machine trains in THIS pattern.
         const exName = (doc.exerciseTypes || []).find(n => {
             const ex = (lookup && lookup(n)) || { name: n };
-            return inferPattern(ex) === pattern;
+            // LB-1 — same hint patternsForEquipment used: the machine itself.
+            return inferPattern(ex, { equipment: doc }) === pattern;
         }) || (inferPattern({ name: [doc.function, doc.name].filter(Boolean).join(' ') }) === pattern ? doc.name : null);
         if (!exName) continue;
         if (skipName(exName.toLowerCase())) continue;
@@ -136,7 +137,7 @@ function rankRotationCandidates({ exercise = null, pattern = null, equipment = [
 function selectRotation({ exercises = [], equipment = [], location = null, lookup } = {}) {
     const rows = exercises.map(r => enrich(r, lookup));
     const roles = rows.map((r, i) => inferRole(r, i));
-    const patterns = rows.map(r => inferPattern(r));
+    const patterns = rows.map(r => inferPattern(r, { equipment: r.equipment }));
 
     const atGym = (equipment || []).filter(doc => {
         if (!doc || !doc.name) return false;
