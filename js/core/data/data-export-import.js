@@ -52,6 +52,7 @@ export const EXPORT_COLLECTIONS = [
     'events',               // TP-1
     'reportCards',          // TP-2 — the Sunday report cards
     'plan',                 // TP-3 — plan/current (cadence, horizon, policy)
+    'meta',                 // TP-6 j — meta/sync: when the server last wrote (coach, Sunday roll)
     'stats',
     'preferences',
     'coachHistory',

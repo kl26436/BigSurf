@@ -208,7 +208,9 @@ export function buildPlanTimeline({
     if (current) {
         const i = weeks.indexOf(current);
         runIndex = 1;
-        for (let k = i - 1; k >= 0 && weeks[k].kind === current.kind; k--) runIndex++;
+        // A new wave starts its own count (TP-6 h: five build weeks of the old
+        // wave + week 1 of the new one read "Build week 6").
+        for (let k = i - 1; k >= 0 && weeks[k].kind === current.kind && weeks[k].programId === current.programId; k--) runIndex++;
     }
     const nextLighter = weeks.find(w => w.weekStart > today && w.kind === 'lighter') || null;
     const nextEvent = (events || []).filter(e => e?.date && e.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0] || null;

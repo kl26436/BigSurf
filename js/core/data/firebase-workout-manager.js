@@ -723,6 +723,10 @@ export class FirebaseWorkoutManager {
                 // has no pending write and plain getDocs can hand back the
                 // pre-edit templates from cache (same trap deleteTemplate hit).
                 const customSnapshot = await readDocs(customTemplatesRef, { fromServer });
+                // TP-6 j — did this reach the server? A cache fallback can't
+                // know about a coach (Admin SDK) write; server-sync re-asks.
+                this.lastTemplatesFromServer = customSnapshot.metadata ? customSnapshot.metadata.fromCache === false : true;
+                if (this.lastTemplatesFromServer) this.appState._templatesServerAt = new Date().toISOString();
 
                 customSnapshot.forEach((doc) => {
                     const data = doc.data();

@@ -1005,19 +1005,13 @@ function handleCoachActionCard(card, streamingBubble) {
     }
     scrollCoachChatIfNearBottom();
 
-    // Fire-and-forget refresh so the Workouts tab reflects the change.
-    (async () => {
-        try {
-            const mgr = new FirebaseWorkoutManager(AppState);
-            // fromServer: the write happened via the Admin SDK, so a cached
-            // read can return the pre-edit templates — the cards would then
-            // repaint stale and the coach's change looks like it didn't take.
-            AppState.workoutPlans = await mgr.getUserWorkoutTemplates({ fromServer: true });
-            const sel = await import('../ui/template-selection.js');
-            sel.clearSelectorCache?.();
-            sel.acceptCoachTemplateRefresh?.();
-        } catch (e) { debugLog('coach: workoutPlans refresh failed', e); }
-    })();
+    // Fire-and-forget: the write happened via the Admin SDK, so every cached
+    // copy (workouts, week plan, program) is stale. One path for every card
+    // kind (TP-6 j) — and if the re-read falls back to the device cache on
+    // bad signal, the next screen that opens asks the server again.
+    import('../data/server-sync.js')
+        .then(({ refreshAfterServerWrite }) => refreshAfterServerWrite('coach-card'))
+        .catch((e) => debugLog('coach: refresh after write failed', e));
 }
 
 // ===================================================================

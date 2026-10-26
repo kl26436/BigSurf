@@ -90,6 +90,8 @@ async function rollPlanForUser(userRef, { now = new Date() } = {}) {
     const id = `program_${now.getTime()}`;
     await userRef.collection('programs').doc(id).set(rolledProgramDoc(draft, { id, nowIso, priorTemplates }));
     await userRef.collection('plan').doc('current').set({ lastRolledFor: draft.startDate, lastRolledAt: nowIso }, { merge: true });
+    // TP-6 j — the app listens here and drops its cached plan/workouts.
+    await userRef.collection('meta').doc('sync').set({ serverWriteAt: nowIso, serverWriteBy: 'plan-roll' }, { merge: true });
     // TP-4 — plan sessions no week uses any more stay for history, archived.
     const archived = planTemplatesToArchive({
         // From the new wave's first day: the old wave ends tonight, so it no longer counts.

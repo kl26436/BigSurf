@@ -452,6 +452,7 @@ export async function signOutUser() {
         manualSignOut = true;
         // PF-3 — the next account's first dashboard paint shows the skeleton, not ours.
         document.getElementById('dashboard-content')?.removeAttribute('data-rendered');
+        import('./data/server-sync.js').then(({ stopWatchingServerWrites }) => stopWatchingServerWrites()).catch(() => {});
 
         // Hide all content sections
         const sections = [
@@ -671,6 +672,8 @@ export function setupAuthenticationListener() {
                     // push (the callable's cold start no longer blocks launch).
                     runLoginMaintenance(user.uid).catch((err) => console.error('❌ Login maintenance failed (non-fatal):', err));
                     startNotificationsInBackground();
+                    // TP-6 j — coach / Sunday-roll writes reach this phone.
+                    import('./data/server-sync.js').then(({ watchServerWrites }) => watchServerWrites(user.uid)).catch(() => {});
 
                     // Process pending Withings OAuth callback + auto-sync on load
                     try {

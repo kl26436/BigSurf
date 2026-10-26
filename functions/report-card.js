@@ -232,7 +232,7 @@ function swapCandidateOf({ done, templates, weekPlan, unit, rotation }) {
     }
     if (!best) return null;
     const exclude = best.t.exercises.map(e => e?.machine || e?.name).filter(Boolean);
-    const ranked = rankRotationCandidates({ exercise: best.name, equipment: rotation.equipment || [], location: rotation.location || null, lookup: rotation.lookup, exclude, limit: 1 });
+    const ranked = rankRotationCandidates({ exercise: best.name, equipment: rotation.equipment || [], location: rotation.location || null, lookup: rotation.lookup, exclude, limit: 1, slot: best.t.exercises[best.index], history: rotation.history || [] });
     const c = ranked.candidates[0];
     if (!c) return null;
     return {

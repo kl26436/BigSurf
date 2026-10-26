@@ -11,7 +11,7 @@
 import { db, doc, getDoc, setDoc, deleteDoc, getDocs, collection } from '../data/firebase-config.js';
 import { AppState } from '../utils/app-state.js';
 import { cadenceFromProgram, rollUndoable } from './plan-roller.js';
-import { applyRotation } from './exercise-rotation.js';
+import { applyRotation, resolveSwaps, waitingSwaps } from './exercise-rotation.js';
 
 const uid = () => AppState.currentUser?.uid || null;
 const planRef = () => doc(db, 'users', uid(), 'plan', 'current');
@@ -65,16 +65,24 @@ const lookupFromState = () => {
 };
 
 /**
- * Apply a rolled wave's waiting swaps (rotationPolicy 'ask' — the user said
- * yes on the card or the Plan page). A swap whose row changed since the roll
- * is skipped, never forced. Keeps the prior lists on the program for undo.
+ * Apply the plan's waiting swaps — a rolled wave's (rotationPolicy 'ask') and
+ * any "what's new" swap the workouts don't have yet (TP-6 f: a coach-made plan
+ * could describe swaps it never wrote). The user said yes on the card or the
+ * Plan page. A swap whose row changed since is skipped, never forced. Keeps
+ * the prior lists on the program for undo.
  * @returns {Promise<{applied: number, skipped: number}>}
  */
 export async function applyPendingRotations(program) {
-    const pending = program?.pendingRotations || [];
-    if (!uid() || !pending.length) return { applied: 0, skipped: 0 };
     const templates = AppState.workoutPlans || AppState.templates || [];
     const lookup = lookupFromState();
+    const fromPlan = waitingSwaps({ ...program, pendingRotations: [] }, templates);
+    const resolved = resolveSwaps({
+        templates: templates.filter(t => fromPlan.some(w => w.templateId === t.id)),
+        swaps: fromPlan.map(w => ({ templateId: w.templateId, from: w.from, to: w.to, why: w.why })),
+        lookup, equipment: AppState._cachedEquipment || [],
+    }).rotations;
+    const pending = [...(program?.pendingRotations || []), ...resolved];
+    if (!uid() || !pending.length) return { applied: 0, skipped: 0 };
     const today = AppState.getTodayDateString();
     const priorTemplates = [...(program.priorTemplates || [])];
     let applied = 0;
@@ -93,8 +101,11 @@ export async function applyPendingRotations(program) {
         applied += ok.length;
         done.push({ ...r, swaps: ok });
     }
+    const madeKeys = new Set(done.flatMap(r => r.swaps.map(s => `${s.from}|${s.to}`.toLowerCase())));
+    const changed = program.rationale?.changed?.map(c => (c.from && madeKeys.has(`${c.from}|${c.to}`.toLowerCase()) ? { ...c, state: 'applied' } : c));
     await setDoc(doc(db, 'users', uid(), 'programs', program.id), {
         pendingRotations: [], rotationsApplied: [...(program.rotationsApplied || []), ...done], priorTemplates,
+        ...(changed ? { rationale: { ...program.rationale, changed } } : {}),
         lastUpdated: new Date().toISOString(),
     }, { merge: true });
     return { applied, skipped };

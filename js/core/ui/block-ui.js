@@ -15,6 +15,7 @@ import { debugLog } from '../utils/config.js';
 import { buildBlockSession } from '../features/block-view.js';
 import { buildPlanTimeline } from '../features/plan-timeline.js';
 import { rollUndoable } from '../features/plan-roller.js';
+import { waitingSwaps } from '../features/exercise-rotation.js';
 import { weekOverrideOf } from '../features/session-intent.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
@@ -38,6 +39,12 @@ async function loadContext() {
     const [{ loadPlan, loadPrograms }, { loadGoalData, loadGoals, loadEvents }] = await Promise.all([
         import('../features/plan.js'), import('../features/goals.js'),
     ]);
+    // TP-6 j — a coach edit whose re-read missed the server: ask again first.
+    // Never fatal: the page renders from what's in memory.
+    try {
+        const { ensureFreshAfterServerWrite } = await import('../data/server-sync.js');
+        await ensureFreshAfterServerWrite();
+    } catch (e) { debugLog('plan: server re-read skipped', e); }
     if (AppState._weekPlan === undefined) {
         try {
             const { loadWeekPlan } = await import('../features/week-plan.js');
@@ -125,10 +132,12 @@ function noticeHTML(tl, ctx) {
                 <div class="plan-notice__actions"><button class="btn btn-primary btn-sm" onclick="planResume()">Resume</button></div>
             </div>`;
     }
+    // TP-6 f — swaps waiting on ANY program (a rolled wave's, or ones a
+    // coach-made plan describes but the workouts don't have yet).
+    const pending = waitingSwaps(active, ctx.templates);
     if (active?.createdVia === 'auto-roll') {
         const lighter = tl.weeks.find(w => w.programId === active.id && w.kind === 'lighter');
         const undoable = rollUndoable(active, ctx.workouts);
-        const pending = (active.pendingRotations || []).flatMap(r => r.swaps.map(s => ({ ...s, workout: r.name })));
         const applied = (active.rotationsApplied || []).flatMap(r => r.swaps);
         return `
             <div class="hero-card plan-notice">
@@ -141,10 +150,25 @@ function noticeHTML(tl, ctx) {
                 </div>
             </div>`;
     }
+    if (pending.length) {
+        return `
+            <div class="hero-card plan-notice">
+                <div class="plan-notice__title">${pending.length} swap${pending.length === 1 ? '' : 's'} waiting</div>
+                <div class="plan-notice__text">Your plan lists ${escapeHtml(pending.map(s => `${s.to} in place of ${s.from}`).join(', '))} — your workouts don't have ${pending.length === 1 ? 'it' : 'them'} yet.</div>
+                <div class="plan-notice__actions"><button class="btn btn-primary btn-sm" onclick="planApplySwaps()">Make ${pending.length === 1 ? 'this swap' : 'these swaps'}</button></div>
+            </div>`;
+    }
     return '';
 }
 
-function rationaleHTML(r) {
+/** TP-6 m — a "what's new" row says whether it happened. */
+function changedState(x, waiting) {
+    if (x.state === 'not-applied') return 'not made';
+    if (x.from && waiting.some(w => w.from.toLowerCase() === x.from.toLowerCase() && w.to.toLowerCase() === String(x.to).toLowerCase())) return 'waiting';
+    return '';
+}
+
+function rationaleHTML(r, waiting = []) {
     if (!r?.block) return '';
     const list = (items, render) => `<ul class="block-rationale__list">${items.map(render).join('')}</ul>`;
     return `
@@ -153,7 +177,10 @@ function rationaleHTML(r) {
             ${r.fixed?.length ? `<details class="block-rationale__more"><summary>What stays the same and why (${r.fixed.length})</summary>
                 ${list(r.fixed, x => `<li><b>${escapeHtml(x.name)}</b>${x.why ? ` — ${escapeHtml(x.why)}` : ''}</li>`)}</details>` : ''}
             ${r.changed?.length ? `<details class="block-rationale__more"><summary>What's new and why (${r.changed.length})</summary>
-                ${list(r.changed, x => `<li>${x.from ? `${escapeHtml(x.from)} → ` : ''}<b>${escapeHtml(x.to)}</b>${x.why ? ` — ${escapeHtml(x.why)}` : ''}</li>`)}</details>` : ''}
+                ${list(r.changed, x => {
+                    const st = changedState(x, waiting);
+                    return `<li>${x.from ? `${escapeHtml(x.from)} → ` : ''}<b>${escapeHtml(x.to)}</b>${x.why ? ` — ${escapeHtml(x.why)}` : ''}${st ? ` <span class="chip chip--sm">${st}</span>` : ''}</li>`;
+                })}</details>` : ''}
             ${r.watch?.length ? `<details class="block-rationale__more"><summary>What we're watching</summary>
                 ${list(r.watch, x => `<li>${escapeHtml(x)}</li>`)}</details>` : ''}
         </div>`;
@@ -178,7 +205,7 @@ function planHTML(tl, ctx) {
                 ${tl.goalsStrip.length ? `<div class="plan-goals">${tl.goalsStrip.map(g => `<button class="chip chip--sm" onclick="openGoalsPage()">${escapeHtml(g.name)}${g.statusLabel ? ` <span class="goal-pill ${PILL[g.status] || ''}">${escapeHtml(g.statusLabel)}</span>` : ''}</button>`).join('')}</div>` : ''}
             </div>
             ${noticeHTML(tl, ctx)}
-            ${rationaleHTML(tl.activeProgram?.rationale)}
+            ${rationaleHTML(tl.activeProgram?.rationale, waitingSwaps(tl.activeProgram, ctx.templates))}
             <div class="block-actions">
                 <button class="chip chip--sm" onclick="blockAdjustWeek()"><i class="fas fa-feather"></i> Make this week lighter</button>
                 <button class="chip chip--sm" onclick="blockSwapAccessory()"><i class="fas fa-arrow-right-arrow-left"></i> Rotate an exercise</button>
@@ -464,4 +491,9 @@ if (typeof window !== 'undefined') {
     window.planApplySwaps = planApplySwaps;
     window.planUndoRoll = planUndoRoll;
     window.saveSessionToMyWorkouts = saveSessionToMyWorkouts;
+    // TP-6 j — a coach / Sunday-roll write landed while the Plan page is up.
+    window.addEventListener('bigsurf:data-changed', (e) => {
+        const section = document.getElementById('block-section');
+        if (e.detail?.what === 'plan' && section && !section.classList.contains('hidden')) renderBlockPage();
+    });
 }

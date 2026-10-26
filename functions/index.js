@@ -1365,6 +1365,17 @@ exports.coachChatStream = onRequest({
             trace: traceState,
         });
 
+        // TP-6 j — a coach write happened through the Admin SDK, so the app's
+        // cached workouts / plan don't know. The app listens to this doc and
+        // re-reads from the server (the action card does too, but on gym
+        // signal that read can fall back to the stale device cache).
+        if (actionCards.length) {
+            try {
+                await db.collection('users').doc(userId).collection('meta').doc('sync')
+                    .set({ serverWriteAt: new Date().toISOString(), serverWriteBy: 'coach' }, { merge: true });
+            } catch (e) { console.error('❌ sync stamp failed (non-fatal):', e); }
+        }
+
         // History — same doc shape the callable writes.
         // Live threads are ephemeral session talk — not saved to coachHistory.
         await writeCoachTrace({ ...traceState, usage, responseText: fullText });

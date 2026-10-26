@@ -12,7 +12,7 @@ const {
 } = require('./movement-patterns');
 // (inferRole is required below with the AP-23 helpers.)
 const { normalizeWeekTarget, isDeloadTarget } = require('./week-targets');
-const { selectRotation, applyRotation } = require('./exercise-rotation');
+const { selectRotation, applyRotation, resolveSwaps, rotationHistory } = require('./exercise-rotation');
 const { convertToUnit } = require('./coach-outcomes');
 const { computeVerdicts, buildBlockRetrospective } = require('./coach-rules');
 const { getSessionIntent, weekOverrideOf } = require('./session-intent');
@@ -175,9 +175,18 @@ const TOOL_DEFINITIONS = [
                     },
                     required: ['block'],
                 },
+                swaps: {
+                    type: 'array',
+                    description: "The accessory swaps the user agreed to — pass draft_next_wave's draft.swaps (or the ones they kept). Written into the workouts with the program. Every swap in rationale.changed is applied too; main lifts never swap.",
+                    items: {
+                        type: 'object',
+                        properties: { workout: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' }, equipment: { type: 'string' }, reason: { type: 'string' } },
+                        required: ['from', 'to'],
+                    },
+                },
                 rotateAccessories: {
                     type: 'boolean',
-                    description: "true = rotate every ACCESSORY exercise on the split's templates to the stalest same-pattern machine at the user's current gym (never-used first). Primaries and secondaries are never touched. Use when the user wants variety or a fresh block; the card lists every swap and undo restores the templates.",
+                    description: "true = also rotate every OTHER accessory on the split's templates to the stalest same-pattern machine at the user's current gym (never what that slot just moved off). Primaries and secondaries are never touched. The result's rotations.applied is what was written; the card lists every swap and undo restores the templates.",
                 },
             },
             required: ['name', 'goal', 'weeks', 'startDate', 'split'],
@@ -1560,18 +1569,31 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             } catch (planErr) {
                 console.error('❌ plan doc upsert failed (program still created):', planErr);
             }
-            // CP-4 — variety engine: rotate the accessories on the split's
-            // templates at block creation. Runs AFTER the program write so a
-            // rotation failure never costs the program; the card and the undo
-            // payload carry every swap so one consent still covers the block.
+            // Rotations (CP-4 + TP-6 f). Three sources, one write, AFTER the
+            // program write so a rotation failure never costs the program:
+            //  - input.swaps: the ones the user agreed to (draft_next_wave's
+            //    draft.swaps) — applied as named;
+            //  - rationale.changed: the plan's own "what's new". The user
+            //    talked the plan through — that's consent — and the Plan page
+            //    must never list a swap the workouts don't have (10/26: the
+            //    rationale said Reverse Pec Deck, Pull day still had Face Pulls);
+            //  - rotateAccessories: the engine fills every other accessory slot.
+            // The card and the undo payload carry every swap, so one consent
+            // still covers the whole thing.
             let rotation = null;
+            let notApplied = [];
             const priorTemplates = [];
-            if (input.rotateAccessories === true) {
+            const agreed = [
+                ...(Array.isArray(input.swaps) ? input.swaps.filter(x => x && typeof x === 'object').slice(0, 20) : []),
+                ...((rationale?.changed || []).filter(c => c.from).map(c => ({ from: c.from, to: c.to, why: c.why }))),
+            ];
+            if (input.rotateAccessories === true || agreed.length) {
                 try {
-                    const [equipSnap, customSnap, woSnap] = await Promise.all([
+                    const [equipSnap, customSnap, woSnap, progSnap] = await Promise.all([
                         userDoc().collection('equipment').get(),
                         userDoc().collection('customExercises').get(),
                         userDoc().collection('workouts').orderBy('date', 'desc').limit(30).get(),
+                        userDoc().collection('programs').get(),
                     ]);
                     const equipment = equipSnap.docs.map(d => d.data()).filter(e => e && e.name);
                     const byName = new Map(
@@ -1587,23 +1609,51 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                         if (loc) { location = loc; break; }
                     }
                     const today = nowIso.slice(0, 10);
+                    // TP-6 l — the engine never rotates a slot straight back.
+                    const history = rotationHistory(progSnap.docs.map(d => ({ id: d.id, ...d.data() })));
                     const templateIds = [...new Set(Object.values(planOut.result.plan.days || {}).filter(v => v && v !== 'rest'))];
-                    rotation = [];
+                    const templates = [];
                     for (const tid of templateIds) {
                         const tref = userDoc().collection('workoutTemplates').doc(tid);
                         const tsnap = await tref.get();
                         if (!tsnap.exists) continue;
                         const t = tsnap.data();
-                        const exercises = Array.isArray(t.exercises) ? t.exercises : [];
-                        const { swaps } = selectRotation({ exercises, equipment, location, lookup });
+                        templates.push({ id: tid, ref: tref, name: t.name || tid, exercises: Array.isArray(t.exercises) ? t.exercises : [] });
+                    }
+                    const resolved = resolveSwaps({ templates, swaps: agreed, lookup, equipment, location });
+                    notApplied = resolved.unresolved;
+                    const agreedBy = new Map(resolved.rotations.map(r => [r.templateId, r.swaps]));
+                    rotation = [];
+                    for (const t of templates) {
+                        let swaps = agreedBy.get(t.id) || [];
+                        if (input.rotateAccessories === true) {
+                            const taken = new Set(swaps.map(x => x.to.toLowerCase()));
+                            const engine = selectRotation({ exercises: t.exercises, equipment, location, lookup, history, today }).swaps
+                                .filter(x => !swaps.some(y => y.index === x.index) && !taken.has(x.to.toLowerCase()));
+                            swaps = [...swaps, ...engine];
+                        }
                         if (!swaps.length) continue;
-                        priorTemplates.push({ templateId: tid, exercises });
-                        await tref.set({ exercises: applyRotation(exercises, swaps, { lookup, today }), lastUpdated: nowIso }, { merge: true });
+                        priorTemplates.push({ templateId: t.id, exercises: t.exercises });
+                        await t.ref.set({ exercises: applyRotation(t.exercises, swaps, { lookup, today }), lastUpdated: nowIso }, { merge: true });
                         rotation.push({
-                            templateId: tid, name: t.name || tid,
-                            swaps: swaps.map(s => ({ from: s.from, to: s.to, equipment: s.equipment, reason: s.reason })),
+                            templateId: t.id, name: t.name,
+                            swaps: swaps.map(x => ({ index: x.index, from: x.from, to: x.to, equipment: x.equipment || null, reason: x.reason })),
                         });
                     }
+                    // The program remembers what it applied (the next wave's
+                    // engine reads it) and its "what's new" says only what's true.
+                    const applied = rotation.flatMap(r => r.swaps.map(x => ({ ...x, workout: r.name })));
+                    const why = new Map((rationale?.changed || []).filter(c => c.from).map(c => [`${c.from}|${c.to}`.toLowerCase(), c.why]));
+                    const changed = [
+                        ...applied.map(x => ({ from: x.from, to: x.to, why: why.get(`${x.from}|${x.to}`.toLowerCase()) || x.reason || '', state: 'applied' })),
+                        ...(rationale?.changed || []).filter(c => !c.from).map(c => ({ ...c, state: 'note' })),
+                        ...notApplied.map(x => ({ from: x.from, to: x.to, why: x.reason, state: 'not-applied' })),
+                    ];
+                    await userDoc().collection('programs').doc(id).set({
+                        rotationsApplied: rotation, pendingRotations: [],
+                        ...(rationale ? { rationale: { ...rationale, changed } } : {}),
+                        lastUpdated: nowIso,
+                    }, { merge: true });
                 } catch (e) {
                     console.error('❌ accessory rotation failed (program still created):', e);
                     rotation = null;
@@ -1618,8 +1668,16 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             return {
                 result: {
                     programId: id, name, weeks, weekPlan: planOut.result.summary,
-                    ...(rotation ? { rotation, rotatedCount } : {}),
-                    ...(input.rotateAccessories === true && !rotation ? { rotation: 'failed — templates unchanged' } : {}),
+                    // TP-6 g — applied vs not: the model may only call a swap
+                    // done when it's in `applied`.
+                    ...(rotation ? {
+                        rotations: {
+                            applied: rotation.flatMap(r => r.swaps.map(x => ({ workout: r.name, from: x.from, to: x.to, equipment: x.equipment || 'pick the machine at the gym' }))),
+                            notApplied,
+                        },
+                        rotatedCount,
+                    } : {}),
+                    ...((input.rotateAccessories === true || agreed.length) && !rotation ? { rotations: { applied: [], notApplied: agreed.map(x => ({ from: x.from, to: x.to, reason: 'the swap step failed — workouts unchanged' })) } } : {}),
                     ...(warnings.length ? { warnings } : {}),
                 },
                 actionCard: {
@@ -1888,9 +1946,13 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const exKey = String(input.exercise || '').trim().toLowerCase();
             const sameDay = active.filter(t => t.exercises.some(e => String(e.machine || e.name || '').toLowerCase() === exKey));
             const exclude = sameDay.flatMap(t => t.exercises.map(e => e.machine || e.name)).filter(Boolean);
+            // TP-6 l — the slot's own swap history: never offer back what it just moved off.
+            const slot = sameDay.flatMap(t => t.exercises).find(e => String(e.machine || e.name || '').toLowerCase() === exKey) || null;
+            const progSnap = await userDoc().collection('programs').get();
             const ranked = rankRotationCandidates({
                 exercise: input.exercise || null, pattern: input.pattern || null,
                 equipment: ctx.equipment, location, lookup, exclude, limit: intIn(input.limit, 1, 10, 5),
+                slot, history: rotationHistory(progSnap.docs.map(d => d.data())), today: date,
             });
             const held = [];
             const seen = new Set();
@@ -1908,6 +1970,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 pattern: ranked.pattern,
                 ...(ranked.role === 'primary' && input.exercise ? { warning: `${input.exercise} reads as a primary — rotating it resets its scoreboard trend.` } : {}),
                 candidates: ranked.candidates,
+                ...(ranked.excluded?.length ? { excluded: ranked.excluded } : {}),
                 heldPrimaries: held.slice(0, 8),
                 ...(ranked.candidates.length ? {} : { note: location ? `No other ${ranked.pattern || 'same-pattern'} machine at ${location}.` : 'No same-pattern alternative in the library.' }),
             };
@@ -2054,7 +2117,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                         weekTargets: draft.weekTargets, split: draft.split, rationale: draft.rationale,
                         swaps: draft.rotations.flatMap(r => r.swaps.map(x => ({ workout: r.name, from: x.from, to: x.to, equipment: x.equipment, reason: x.reason }))),
                     },
-                    note: 'To apply: create_program with name, weeks, startDate, weekTargets, split, rationale (add rotateAccessories:true to apply the swaps).',
+                    note: 'To apply: create_program with name, weeks, startDate, weekTargets, split, rationale, and swaps = the draft.swaps the user kept (they are written into the workouts). Swaps are only done once create_program returns them in rotations.applied.',
                 },
             };
         },

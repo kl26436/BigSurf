@@ -467,6 +467,38 @@ export function buildScenarios() {
         });
     }
 
+    // 30 — TP-6 f/g: "apply those recommendations" → the swaps are written
+    // with the plan, and the answer only calls done what was applied.
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        user.program = programOn('2026-10-25', { weeks: 4, deloadWeek: 4 });
+        user.plan = { name: 'My plan', cadence: { buildWeeks: 3, lighterWeek: true }, horizonWeeks: 12, rotationPolicy: 'ask' };
+        list.push({
+            id: 'plan-apply-swaps', title: 'Set up the next weeks with fresh accessories → swaps written, none claimed falsely',
+            mode: 'chat', user,
+            question: 'Set up my next few weeks — same sessions, but swap in fresh accessories where it makes sense. Go ahead and apply it.',
+            expect: { kind: 'action', maxWords: 650, mustCall: ['create_program'], swapsTruthful: true },
+        });
+    }
+
+    // 31 — TP-6 k: "it's not showing" → look it up before apologizing.
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        list.push({
+            id: 'change-not-showing', title: '"The change isn\'t showing" → check with a look-up, don\'t confess',
+            mode: 'chat', user,
+            question: "You said you added Back Extension Machine to Leg day but I don't see it on my phone.",
+            expect: {
+                kind: 'question', maxWords: 160,
+                mustCallAny: ['list_templates', 'get_plan'],
+                mustMention: ['Back Extension'],
+                mustNotMention: ["(I never|I didn't (actually )?(write|add|save|make)|that's on me)"],
+            },
+        });
+    }
+
     return list;
 }
 

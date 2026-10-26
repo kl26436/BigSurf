@@ -244,6 +244,7 @@ export function formatVerdictsContext(v) {
         const d = v.deload;
         let s = `not due (${d.consecutiveHardWeeks} hard week${d.consecutiveHardWeeks === 1 ? '' : 's'} running)`;
         if (d.inRecoveryWeek) s = 'in a lighter week now';
+        else if (d.justHadLighterWeek) s = 'not due — last week was lighter';
         else if (d.needed && d.source === 'fatigue') s = `DUE a week early — ${d.reasons[0]}`;
         else if (d.needed) s = `DUE — ${d.consecutiveHardWeeks} hard weeks in a row`;
         // AP-22 — the leading signals behind (or short of) the call.

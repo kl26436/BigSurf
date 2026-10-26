@@ -294,10 +294,14 @@ async function ensureSelectorContext() {
     // Firestore, but this list rendered a session-old AppState.workoutPlans —
     // showing pre-rename names and archived rows. Refetch when older than 30s
     // (coach action cards and pull-to-refresh still invalidate immediately).
-    if (AppState.currentUser && Date.now() - _selectorFreshAt > 30000) {
+    if (AppState.currentUser && (AppState._templatesStale || Date.now() - _selectorFreshAt > 30000)) {
         try {
             const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
-            AppState.workoutPlans = await new FirebaseWorkoutManager(AppState).getUserWorkoutTemplates();
+            // TP-6 j — after a server write the device cache is the old copy:
+            // only a server answer clears the stale flag.
+            const mgr = new FirebaseWorkoutManager(AppState);
+            AppState.workoutPlans = await mgr.getUserWorkoutTemplates({ fromServer: !!AppState._templatesStale });
+            if (mgr.lastTemplatesFromServer) AppState._templatesStale = false;
             _selectorFreshAt = Date.now();
         } catch { /* offline — render what we have */ }
     }

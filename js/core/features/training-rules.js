@@ -305,7 +305,10 @@ export function checkDeloadNeeded(workouts, thresholds = RULE_THRESHOLDS, { toda
     // Sort weeks newest first
     const sortedWeeks = Object.entries(weekMap)
         .sort((a, b) => b[0].localeCompare(a[0]))
-        .map(([, wk]) => wk);
+        .map(([key, wk]) => ({ ...wk, key }));
+    // TP-6 i — "in a lighter week now" means THIS week. On a Monday with
+    // nothing logged yet the newest week with data is last week's.
+    const thisWeekKey = today ? getISOWeekKey(today) : null;
 
     const isRecoveryWeek = (i) => {
         const wk = sortedWeeks[i];
@@ -325,7 +328,7 @@ export function checkDeloadNeeded(workouts, thresholds = RULE_THRESHOLDS, { toda
     let inRecoveryWeek = false;
     for (let i = 0; i < sortedWeeks.length; i++) {
         if (isRecoveryWeek(i)) {
-            if (i === 0) inRecoveryWeek = true;
+            if (i === 0 && (!thisWeekKey || sortedWeeks[0].key === thisWeekKey)) inRecoveryWeek = true;
             break;
         }
         if (sortedWeeks[i].days.size >= t.DELOAD_DAYS_PER_WEEK) {
@@ -335,6 +338,8 @@ export function checkDeloadNeeded(workouts, thresholds = RULE_THRESHOLDS, { toda
         }
     }
 
+    const justHadLighterWeek = !inRecoveryWeek && sortedWeeks.length > 0 && !!thisWeekKey
+        && sortedWeeks[0].key !== thisWeekKey && isRecoveryWeek(0);
     const byWeeks = consecutiveHardWeeks >= t.DELOAD_CONSECUTIVE_WEEKS;
     const reasons = [];
     if (byWeeks) reasons.push(`${consecutiveHardWeeks} hard weeks in a row`);
@@ -357,6 +362,7 @@ export function checkDeloadNeeded(workouts, thresholds = RULE_THRESHOLDS, { toda
         source: needed ? (early ? 'fatigue' : 'weeks') : null,
         consecutiveHardWeeks,
         inRecoveryWeek,
+        justHadLighterWeek,
         reasons,
         fatigue,
         fatiguedMain: fatiguedMain.map(f => f.exercise),

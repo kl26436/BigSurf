@@ -43,6 +43,62 @@ function staleness(doc) {
     return doc.lastUsed ? String(doc.lastUsed).slice(0, 10) : '';
 }
 
+// TP-6 l — a swap made within this many days still counts as "just moved
+// off it": the slot never rotates straight back (Face Pulls → Pec Deck →
+// Face Pulls is a round trip, not variety). About two waves.
+const ROTATION_MEMORY_DAYS = 84;
+
+function daysBetween(a, b) {
+    return Math.round((new Date(`${String(b).slice(0, 10)}T12:00:00`) - new Date(`${String(a).slice(0, 10)}T12:00:00`)) / 86400000);
+}
+
+/**
+ * Every applied swap on these programs, oldest first: [{from, to, when, templateId}].
+ * `when` is the program's start (the swap took effect then).
+ */
+function rotationHistory(programs = []) {
+    const out = [];
+    for (const p of programs || []) {
+        if (!p || p.state === 'undone') continue;
+        const when = String(p.startDate || p.createdAt || '').slice(0, 10) || null;
+        for (const r of p.rotationsApplied || []) {
+            for (const sw of r?.swaps || []) {
+                if (sw?.from && sw?.to) out.push({ from: sw.from, to: sw.to, when, templateId: r.templateId || null });
+            }
+        }
+    }
+    return out.sort((a, b) => String(a.when || '').localeCompare(String(b.when || '')));
+}
+
+/**
+ * TP-6 l — what this slot was recently rotated away from: the row's own
+ * `rotatedFrom` (stamped by applyRotation) plus, through past swaps, whatever
+ * led to it. Without `today` every remembered swap counts.
+ * @returns {Array<{name:string, when:string|null}>}
+ */
+function rotatedOutOf(row, { history = [], today = null } = {}) {
+    const current = nameOf(row).toLowerCase();
+    const recent = (when) => !when || !today || daysBetween(when, today) <= ROTATION_MEMORY_DAYS;
+    const out = new Map();
+    if (row?.rotatedFrom && recent(row.rotatedAt)) out.set(String(row.rotatedFrom).toLowerCase(), { name: row.rotatedFrom, when: row.rotatedAt || null });
+    const chain = new Set([current, ...out.keys()]);
+    for (let grew = true; grew;) {
+        grew = false;
+        for (const h of history || []) {
+            if (!h?.from || !h?.to || !recent(h.when)) continue;
+            const to = String(h.to).toLowerCase();
+            const from = String(h.from).toLowerCase();
+            if (chain.has(to) && !chain.has(from)) {
+                chain.add(from);
+                out.set(from, { name: h.from, when: h.when || null });
+                grew = true;
+            }
+        }
+    }
+    out.delete(current);
+    return [...out.values()];
+}
+
 function reasonFor(doc) {
     if (!doc.lastUsed) return 'never used';
     const d = String(doc.lastUsed).slice(0, 10);
@@ -102,11 +158,14 @@ function atGymOf(equipment, location) {
  * @returns {{pattern:string|null, role:string|null, candidates:Array<{name:string, equipment:string,
  *   pattern:string, reason:string, lastUsed:string|null}>}}
  */
-function rankRotationCandidates({ exercise = null, pattern = null, equipment = [], location = null, lookup, exclude = [], limit = 5 } = {}) {
-    const row = exercise ? enrich({ name: exercise }, lookup) : null;
+function rankRotationCandidates({ exercise = null, pattern = null, equipment = [], location = null, lookup, exclude = [], limit = 5, slot = null, history = [], today = null } = {}) {
+    const row = exercise ? enrich({ ...(slot || {}), name: exercise }, lookup) : null;
     const p = pattern || (row ? inferPattern(row) : null);
-    if (!p) return { pattern: null, role: row ? inferRole(row, 0) : null, candidates: [] };
-    const skip = new Set([...(exclude || []), ...(exercise ? [exercise] : [])].map(n => String(n).toLowerCase()));
+    // TP-6 l — never offer back what this slot just moved off.
+    const back = row ? rotatedOutOf({ ...(slot || {}), name: exercise }, { history, today }) : [];
+    const excluded = back.map(b => ({ name: b.name, reason: b.when ? `swapped out ${String(b.when).slice(0, 7)}` : 'swapped out recently' }));
+    if (!p) return { pattern: null, role: row ? inferRole(row, 0) : null, candidates: [], excluded };
+    const skip = new Set([...(exclude || []), ...(exercise ? [exercise] : []), ...back.map(b => b.name)].map(n => String(n).toLowerCase()));
     const ranked = patternCandidates({ pattern: p, atGym: atGymOf(equipment, location), lookup, skipName: (k) => skip.has(k) });
     const seen = new Set();
     const candidates = [];
@@ -120,7 +179,7 @@ function rankRotationCandidates({ exercise = null, pattern = null, equipment = [
         });
         if (candidates.length >= limit) break;
     }
-    return { pattern: p, role: row ? inferRole(row, 0) : null, candidates };
+    return { pattern: p, role: row ? inferRole(row, 0) : null, candidates, excluded };
 }
 
 /**
@@ -131,10 +190,12 @@ function rankRotationCandidates({ exercise = null, pattern = null, equipment = [
  * @param {Array}  args.equipment - equipment docs [{ name, exerciseTypes[], locations[], lastUsed, function }]
  * @param {string|null} [args.location] - gym name; null = all equipment
  * @param {(name:string)=>object|undefined} [args.lookup] - exercise-by-name resolver (library)
+ * @param {Array} [args.history] - rotationHistory(programs): past swaps, so a slot never rotates straight back
+ * @param {string|null} [args.today] - ages the history (ROTATION_MEMORY_DAYS)
  * @returns {{ swaps: Array<{index:number, from:string, to:string, equipment:string, pattern:string, reason:string}>,
  *             held: Array<{index:number, name:string, role:string, reason:string}> }}
  */
-function selectRotation({ exercises = [], equipment = [], location = null, lookup } = {}) {
+function selectRotation({ exercises = [], equipment = [], location = null, lookup, history = [], today = null } = {}) {
     const rows = exercises.map(r => enrich(r, lookup));
     const roles = rows.map((r, i) => inferRole(r, i));
     const patterns = rows.map(r => inferPattern(r, { equipment: r.equipment }));
@@ -170,10 +231,11 @@ function selectRotation({ exercises = [], equipment = [], location = null, looku
             return;
         }
         const currentEquip = (row.equipment || '').toLowerCase();
+        const back = new Set(rotatedOutOf(exercises[index], { history, today }).map(b => b.name.toLowerCase()));
         const candidates = patternCandidates({
             pattern, atGym, lookup,
             skipEquipment: (key) => key === currentEquip || reservedEquipment.has(key) || takenEquipment.has(key),
-            skipName: (exKey) => exKey === row.name.toLowerCase() || templateNames.has(exKey) || takenNames.has(exKey),
+            skipName: (exKey) => exKey === row.name.toLowerCase() || templateNames.has(exKey) || takenNames.has(exKey) || back.has(exKey),
         });
         const pick = candidates[0];
         if (!pick) {
@@ -208,7 +270,9 @@ function applyRotation(exercises = [], swaps = [], { lookup, today = null } = {}
         delete next.equipmentId;
         if ('machine' in next || !('name' in next)) next.machine = s.to; else next.name = s.to;
         if ('name' in next && 'machine' in next) next.name = s.to;
-        next.equipment = s.equipment;
+        // TP-6 f — a swap agreed in conversation may name no machine: plan
+        // the movement, pick the machine at the gym.
+        if (s.equipment) next.equipment = s.equipment; else delete next.equipment;
         if (lib.bodyPart) next.bodyPart = lib.bodyPart;
         if (lib.equipmentType) next.equipmentType = lib.equipmentType;
         if (row.pattern || lib.pattern) next.pattern = row.pattern || lib.pattern;
@@ -218,4 +282,81 @@ function applyRotation(exercises = [], swaps = [], { lookup, today = null } = {}
     });
 }
 
-module.exports = { rankRotationCandidates, selectRotation, applyRotation };
+/**
+ * TP-6 f — the swaps a planning conversation agreed to ({workout|templateId,
+ * from, to, equipment?}), resolved onto the plan's templates in the
+ * selectRotation shape so applyRotation can write them. Main lifts never
+ * move (same rule as selectRotation); a swap that names no row in the plan's
+ * workouts comes back in `unresolved` with the reason.
+ * @param {object} args
+ * @param {Array} args.templates - the plan's workouts [{ id, name, exercises[] }]
+ * @param {Array} args.swaps
+ * @returns {{ rotations: Array<{templateId:string, name:string, swaps:Array}>, unresolved: Array<{from:string, to:string, reason:string}> }}
+ */
+function resolveSwaps({ templates = [], swaps = [], lookup, equipment = [], location = null } = {}) {
+    const byTemplate = new Map();
+    const unresolved = [];
+    const lc = (x) => String(x || '').trim().toLowerCase();
+    for (const sw of swaps || []) {
+        if (!sw?.from || !sw?.to) { unresolved.push({ from: sw?.from || '', to: sw?.to || '', reason: 'needs both from and to' }); continue; }
+        const named = (templates || []).filter(t => (sw.templateId && t.id === sw.templateId) || (sw.workout && lc(t.name) === lc(sw.workout)));
+        const pool = [...named, ...(templates || []).filter(t => !named.includes(t))];
+        let hit = null;
+        for (const t of pool) {
+            const rows = Array.isArray(t.exercises) ? t.exercises : [];
+            const index = rows.findIndex(r => lc(nameOf(r)) === lc(sw.from));
+            if (index >= 0) { hit = { t, index, row: rows[index] }; break; }
+        }
+        if (!hit) { unresolved.push({ from: sw.from, to: sw.to, reason: "isn't in the plan's workouts" }); continue; }
+        const role = inferRole(enrich(hit.row, lookup), hit.index);
+        if (!ROTATABLE_ROLES.has(role)) { unresolved.push({ from: sw.from, to: sw.to, reason: 'main lift — stays so your strength numbers stay comparable' }); continue; }
+        if (lc(nameOf(hit.row)) === lc(sw.to)) continue;
+        const entry = byTemplate.get(hit.t.id) || { templateId: hit.t.id, name: hit.t.name || hit.t.id, swaps: [] };
+        if (entry.swaps.some(x => x.index === hit.index)) continue;
+        const machine = sw.equipment
+            || rankRotationCandidates({ exercise: nameOf(hit.row), equipment, location, lookup, limit: 50 }).candidates.find(c => lc(c.name) === lc(sw.to))?.equipment
+            || null;
+        entry.swaps.push({ index: hit.index, from: nameOf(hit.row), to: String(sw.to).trim(), equipment: machine, reason: sw.reason || sw.why || 'agreed in the plan' });
+        byTemplate.set(hit.t.id, entry);
+    }
+    return { rotations: [...byTemplate.values()], unresolved };
+}
+
+/**
+ * TP-6 f/m — swaps the plan lists that the workouts don't have yet: the
+ * program's pendingRotations plus any "what's new" swap whose `from` is still
+ * on a plan workout and whose `to` isn't (a coach-made plan before 10/26 could
+ * describe swaps it never wrote). Swaps marked not-applied stay out — the
+ * reason is already on the page.
+ * @returns {Array<{from:string, to:string, why:string, templateId:string|null, workout:string|null}>}
+ */
+function waitingSwaps(program, templates = []) {
+    if (!program) return [];
+    const lc = (x) => String(x || '').trim().toLowerCase();
+    const ids = new Set(Object.values(program.split || {}).filter(v => v && v !== 'rest'));
+    const pool = (templates || []).filter(t => Array.isArray(t?.exercises) && (!ids.size || ids.has(t.id)));
+    const rowsOf = (t) => t.exercises.map(r => lc(nameOf(r)));
+    const out = [];
+    const seen = new Set();
+    for (const r of program.pendingRotations || []) {
+        for (const sw of r?.swaps || []) {
+            const key = `${lc(sw.from)}|${lc(sw.to)}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push({ from: sw.from, to: sw.to, why: sw.reason || '', templateId: r.templateId || null, workout: r.name || null });
+        }
+    }
+    for (const c of program.rationale?.changed || []) {
+        if (!c?.from || !c?.to || c.state === 'not-applied' || c.state === 'applied') continue;
+        const key = `${lc(c.from)}|${lc(c.to)}`;
+        if (seen.has(key)) continue;
+        const holder = pool.find(t => rowsOf(t).includes(lc(c.from)));
+        const done = pool.some(t => rowsOf(t).includes(lc(c.to)));
+        if (!holder || done) continue;
+        seen.add(key);
+        out.push({ from: c.from, to: c.to, why: c.why || '', templateId: holder.id, workout: holder.name || null });
+    }
+    return out;
+}
+
+module.exports = { ROTATION_MEMORY_DAYS, rotationHistory, rotatedOutOf, rankRotationCandidates, selectRotation, applyRotation, resolveSwaps, waitingSwaps };

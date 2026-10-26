@@ -22,7 +22,7 @@ import { addDays } from './block-view.js';
 import { projectKinds, programRuns, cadenceOf, describeCadence, mondayOf, DAY_KEYS } from './plan-timeline.js';
 import { normalizeWeekTarget, isDeloadTarget } from './week-targets.js';
 import { weekKindOf } from './plain-language.js';
-import { selectRotation } from './exercise-rotation.js';
+import { selectRotation, rotationHistory } from './exercise-rotation.js';
 import { pickPrimaries } from './progress-scoreboard.js';
 import { goalsWithStatus, shortDate } from './goal-progress.js';
 
@@ -116,10 +116,11 @@ export function draftNextWave({
     const rotations = [];
     if (rotation?.lookup && !kinds.includes('peak') && overrides.rotate !== false) {
         const byId = new Map((templates || []).map(t => [t.id, t]));
+        const history = rotationHistory(live); // TP-6 l — never straight back
         for (const id of sessionIds) {
             const t = byId.get(id);
             if (!t || !Array.isArray(t.exercises)) continue;
-            const { swaps } = selectRotation({ exercises: t.exercises, equipment: rotation.equipment || [], location: rotation.location || null, lookup: rotation.lookup });
+            const { swaps } = selectRotation({ exercises: t.exercises, equipment: rotation.equipment || [], location: rotation.location || null, lookup: rotation.lookup, history, today });
             const keep = (overrides.skipSwaps || []).map(s => String(s).toLowerCase());
             const chosen = swaps.filter(s => !keep.includes(String(s.from).toLowerCase()));
             if (chosen.length) rotations.push({ templateId: id, name: t.name || id, swaps: chosen.map(s => ({ index: s.index, from: s.from, to: s.to, equipment: s.equipment, reason: s.reason })) });

@@ -214,6 +214,26 @@ export function runChecks(scenario, run) {
         check('program-shape', pass, detail.join('; '));
     }
 
+    // TP-6 g — a swap is done only when create_program applied it: every
+    // "what's new" swap is applied or reported not-applied, and the answer
+    // never calls a not-applied swap done.
+    if (expect.swapsTruthful) {
+        const c = calls.find(x => x.name === 'create_program' && !x.isError);
+        const rot = c?.output?.rotations || { applied: [], notApplied: [] };
+        const lc = (x) => String(x || '').toLowerCase();
+        const accounted = new Set([...(rot.applied || []), ...(rot.notApplied || [])].map(x => `${lc(x.from)}|${lc(x.to)}`));
+        const listed = (c?.input?.rationale?.changed || []).filter(x => x?.from);
+        const lost = listed.filter(x => !accounted.has(`${lc(x.from)}|${lc(x.to)}`)).map(x => `${x.from} → ${x.to}`);
+        const claimed = (rot.notApplied || []).filter(x => {
+            const i = lc(text).indexOf(lc(x.to));
+            if (i < 0) return false;
+            const near = lc(text).slice(Math.max(0, i - 80), i + 80);
+            return /\b(swapped|switched|replaced|done|applied|made)\b/.test(near) && !/(not|n't|waiting|couldn)/.test(near);
+        }).map(x => x.to);
+        check('swaps-truthful', !!c && !lost.length && !claimed.length,
+            !c ? 'no create_program' : [lost.length ? `lost: ${lost.join(', ')}` : '', claimed.length ? `called done: ${claimed.join(', ')}` : ''].filter(Boolean).join('; ') || `${(rot.applied || []).length} applied`);
+    }
+
     if (expect.askOrBuild) {
         const { tool, check: ok } = expect.askOrBuild;
         const c = calls.find(x => x.name === tool && !x.isError);

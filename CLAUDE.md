@@ -46,6 +46,7 @@ js/
     │   ├── firebase-workout-manager.js  # Templates, exercises, equipment, locations
     │   ├── data-manager.js         # Workout save/load, export, equipment reassignment
     │   ├── session-cache.js        # PF-2: makeSessionCache() — TTL + single-flight + generation guard for repeated reads
+    │   ├── server-sync.js          # TP-6 j: listens to users/{uid}/meta/sync; refreshAfterServerWrite() after coach / Sunday-roll writes
     │   ├── data-export-import.js   # CSV export, JSON export/import
     │   ├── exercise-library.js     # Exercise database with favorites
     │   ├── equipment-catalog.js    # Equipment catalog seed data
@@ -300,6 +301,7 @@ users/{userId}/
   │                            #   (measured at creation, never typed) — goal-progress.js#normalizeGoal is the shape
   ├── events/{id}              # TP-1: name, date, kind (look|perform|other), peakWeeks, lighterBefore
   ├── reportCards/{weekKey}    # TP-2: weekKey = the covered week's Monday; { card, narrative, chosenOption, applied }
+  ├── meta/sync                # TP-6 j: { serverWriteAt, serverWriteBy } — stamped after any server write the phone must re-read
   ├── plan/current             # TP-3: cadence {buildWeeks, lighterWeek}, horizonWeeks, sessionMinutes, rotationPolicy
   │                            #   ('ask'|'auto'), paused, name — NOT the split (that stays in preferences/weekPlan)
   └── preferences/
@@ -459,6 +461,12 @@ For add-exercise / equipment / similar shared flows, prefer the parameterized he
 ### Handlers that write: one run per tap
 
 Writes are local-first and can take up to 5 s to resolve on bad signal (`commitWrite`), so a second tap during the wait runs the handler again — that's how the Goals page added a goal twice. Any handler that writes (save, create, add, apply, delete) runs through `once(key, fn, { button, label: 'Saving…' })` from [busy.js](js/core/ui/busy.js): re-entry while `key` runs is ignored, the button is disabled and says what's happening, and it's restored even on error. After a save, repaint from the state you already hold instead of reloading every collection. Older handlers with ad-hoc flags (`inFlight`, `saving`, `btn.disabled`) migrate to it as they're touched — queue row 14.
+
+### Server writes the phone must see (TP-6 j)
+
+The coach's tools and the Sunday roll write through the Admin SDK, so the phone's cached workouts / week plan / program don't know. Any new server-side write path the user should see must stamp `users/{uid}/meta/sync` (`serverWriteAt`, `serverWriteBy`); the client's `server-sync.js` re-reads. A client re-read after a server write uses `refreshAfterServerWrite()` — never a bare `getUserWorkoutTemplates()` (a cache fallback there is the stale copy; `lastTemplatesFromServer` / `AppState._templatesStale` track it).
+
+**Swaps are written, not described (TP-6 f/l).** A plan's "what's new" must match the workouts: `create_program` applies `swaps` + `rationale.changed` via `resolveSwaps`; the rotation engine never proposes what a slot just moved off (`rotatedOutOf`, `ROTATION_MEMORY_DAYS`).
 
 ### Mirrored rule modules (client ↔ functions/)
 
