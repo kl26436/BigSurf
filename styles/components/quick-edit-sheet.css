@@ -1,7 +1,8 @@
 /* ============================================================================
    EQUIPMENT QUICK-EDIT SHEET (Tier 3 Phase 7 / F5)
    Rename + exercise-link chips + gym-tag chips without the full-page form.
-   Sheet chrome comes from .aw-sheet; these are the sheet's internals.
+   Chrome is the sheet primitive (#qe-sheet, js/core/ui/sheet.js — SH-3b);
+   these are the sheet's internals.
    ============================================================================ */
 
 .qe-field {

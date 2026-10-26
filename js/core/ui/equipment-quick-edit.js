@@ -14,6 +14,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { openSheet, closeSheet } from './sheet.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
 import { catalogLinkCandidate } from '../data/catalog-search.js';
@@ -70,39 +71,24 @@ export async function openEquipmentQuickEdit(equipmentName, { contextExercise = 
     renderSheet();
 }
 
+// SH-3b — chrome from the sheet primitive (js/core/ui/sheet.js): keyboard
+// inset, page lock, inert, focus, Escape, swipe-down, stacking over the
+// active-workout sheet it's opened from. The body is unchanged.
 function renderSheet() {
-    closeImmediate();
     if (!state) return;
-
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'qe-sheet-backdrop';
-    backdrop.onclick = () => closeEquipmentQuickEdit();
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'qe-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Edit equipment');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">Edit equipment</div>
-            <div class="aw-sheet__subtitle">${escapeHtml(state.original.name || '')}</div>
-        </div>
-        <div class="aw-sheet__body" id="qe-sheet-body">${renderBody()}</div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="qeOpenFullDetails()">Full details</button>
-            <button class="aw-sheet__action primary" onclick="qeSave()">Save</button>
-        </div>
-    `;
-
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => {
-        backdrop.classList.add('visible');
-        sheet.classList.add('visible');
+    openSheet({
+        id: 'qe-sheet',
+        title: 'Edit equipment',
+        subtitle: state.original.name || '',
+        bodyId: 'qe-sheet-body',
+        bodyHTML: renderBody(),
+        actions: [
+            { label: 'Full details', onClick: 'qeOpenFullDetails()' },
+            { label: 'Save', onClick: 'qeSave()', primary: true },
+        ],
+        // Every dismiss (backdrop, Escape, swipe, Save, Full details) ends the
+        // edit; the save paths copy the state before closing.
+        onClose: () => { state = null; },
     });
 }
 
@@ -220,17 +206,8 @@ function rerenderBody() {
     if (body) body.innerHTML = renderBody();
 }
 
-function closeImmediate() {
-    document.getElementById('qe-sheet-backdrop')?.remove();
-    document.getElementById('qe-sheet')?.remove();
-}
-
 export function closeEquipmentQuickEdit() {
-    const backdrop = document.getElementById('qe-sheet-backdrop');
-    const sheet = document.getElementById('qe-sheet');
-    backdrop?.classList.remove('visible');
-    sheet?.classList.remove('visible');
-    setTimeout(closeImmediate, 300);
+    closeSheet('qe-sheet'); // onClose clears state
     state = null;
 }
 

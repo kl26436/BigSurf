@@ -1,9 +1,12 @@
 /* ==========================================================================
    Quick-add sheet — bulk-tag catalog machines to a gym while walking the floor.
 
-   Reuses the .aw-sheet visual shell (handle, animation, max-height) and adds
-   the unique pieces: search field at top, body-part chip strip, multi-select
-   check rows, and a sticky action bar with a live counter pill.
+   Chrome (handle, header, pinned search, footer, keyboard inset) is the sheet
+   primitive (#qa-sheet, js/core/ui/sheet.js — SH-3b). These are the sheet's
+   internals: body-part chip strip, result count, multi-select check rows, and
+   the live counter pill on the Add button. The manual-link picker (#mlp-sheet)
+   and the gym picker (#gp-sheet) reuse the rows. .qa-sheet__search is now only
+   the Catalog tab's in-page search.
    ========================================================================== */
 
 .qa-sheet__search {
@@ -45,12 +48,18 @@
 
 .qa-sheet__bp-chips {
     position: sticky;
-    top: 56px; /* aligns under the search input */
+    top: 0; /* the search is pinned above the body, so the chips stick to its top */
     background: var(--bg-surface);
     padding: var(--space-6) 0;
     z-index: 1;
     border-bottom: 1px solid var(--border-subtle);
     margin-bottom: var(--space-8);
+}
+
+/* In the sheets the count is its own line under the chips / above the rows. */
+#qa-sheet .qa-sheet__result-count,
+#mlp-sheet .qa-sheet__result-count {
+    padding: 0 0 var(--space-4);
 }
 
 .qa-sheet__group-header {

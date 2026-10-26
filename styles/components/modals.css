@@ -685,9 +685,6 @@ dialog.modal:not([open]) {
 .equip-search-bar.hidden {
     display: none;
 }
-.equip-assign-search {
-    margin-bottom: var(--space-12);
-}
 
 /* Body part group header — sticky */
 .equip-group-header {

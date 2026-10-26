@@ -1127,6 +1127,19 @@
     font-size: var(--font-xs);
 }
 
+/* Assign-exercise sheet (SH-3b) — the detail page's "+ Assign" list, now a
+   sheet. Group headers run edge to edge on the sheet surface; the search
+   filter hides rows / whole groups with the hidden attribute. */
+#equip-assign-sheet .equip-group-header {
+    margin: 0 calc(-1 * var(--space-16));
+    background: var(--bg-surface);
+}
+.equip-assign-group[hidden],
+.equip-assign-empty[hidden],
+#equip-assign-sheet .equip-detail-ex-row[hidden] {
+    display: none;
+}
+
 
 /* ── Machine photo ID (Phase 8) ── */
 .page-header__actions {
@@ -1176,7 +1189,6 @@
     font-size: var(--font-xs);
     color: var(--text-muted);
 }
-.machine-id__actions { margin-top: var(--space-12); }
 .machine-id__error {
     text-align: center;
     padding: var(--space-16);

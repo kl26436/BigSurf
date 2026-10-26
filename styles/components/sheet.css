@@ -118,7 +118,7 @@
     max-height: calc(100vh - var(--kb-inset, 0px) - var(--safe-top) - 8px); /* fallback */
     max-height: calc(100dvh - var(--kb-inset, 0px) - var(--safe-top) - 8px);
 }
-.kb-open .sheet:has(.field-search input:focus) .sheet__footer,
+.kb-open .sheet:not(.sheet--keep-footer):has(.field-search input:focus) .sheet__footer,
 .kb-open .sheet:has(.field-search input:focus) .sheet__subtitle,
 .kb-open .sheet:has(.field-search input:focus) .sheet__handle {
     display: none;

@@ -51,7 +51,7 @@ function focusables(root) {
 export function openSheet({
     id, title = '', titleHTML = '', titleColor = null, subtitle = '', bodyHTML = '', footerHTML = '', actions = null,
     search = null, size = 'auto', dismissible = true, onClose = null,
-    className = '', bodyId = '', bodyClass = '',
+    className = '', bodyId = '', bodyClass = '', keepFooter = false,
 } = {}) {
     // Re-opening an id that's already up (a sheet re-rendering itself, as
     // the aw-sheets do) replaces it in place: no second stack entry, no
@@ -65,7 +65,9 @@ export function openSheet({
     const backdrop = document.createElement('div');
     backdrop.className = `sheet-backdrop${depth > 1 ? ' sheet-backdrop--stacked' : ''}`;
     const el = document.createElement('div');
-    el.className = `sheet sheet--${size}${className ? ` ${className}` : ''}`;
+    // keepFooter: a multi-select sheet whose footer button carries the
+    // selection (quick-add) stays reachable while its search has focus.
+    el.className = `sheet sheet--${size}${keepFooter ? ' sheet--keep-footer' : ''}${className ? ` ${className}` : ''}`;
     el.tabIndex = -1;
     if (id) el.id = id;
     el.setAttribute('role', 'dialog');

@@ -4,6 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displayWeight } from './ui-helpers.js';
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
+import { openSheet, closeSheet } from './sheet.js';
 import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, writeBatch } from '../data/firebase-config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { clearAllWorkoutsCache } from '../data/data-manager.js';
@@ -588,39 +589,25 @@ export function openManualLinkPicker(orphanName) {
     renderManualLinkSheet();
 }
 
+// SH-3b — chrome from the sheet primitive (js/core/ui/sheet.js); the search
+// is pinned above the list, so typing re-renders only the rows.
 function renderManualLinkSheet() {
-    closeManualLinkSheetImmediate();
     if (!manualLinkState) return;
-
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'mlp-sheet-backdrop';
-    backdrop.onclick = () => closeManualLinkPicker();
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'mlp-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">Link to existing</div>
-            <div class="aw-sheet__subtitle">Map "${escapeHtml(manualLinkState.orphanName)}" to a machine in your library</div>
-        </div>
-        <div class="aw-sheet__body" id="mlp-sheet-body">${renderManualLinkBody()}</div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="closeManualLinkPicker()">Cancel</button>
-        </div>
-    `;
-
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => {
-        backdrop.classList.add('visible');
-        sheet.classList.add('visible');
-        const input = document.getElementById('mlp-search-input');
-        if (input) input.focus();
+    openSheet({
+        id: 'mlp-sheet',
+        title: 'Link to existing',
+        subtitle: `Map "${manualLinkState.orphanName}" to a machine in your library`,
+        size: 'tall',
+        bodyId: 'mlp-sheet-body',
+        bodyHTML: renderManualLinkBody(),
+        search: {
+            placeholder: 'Search your library…',
+            value: manualLinkState.search,
+            onInput: (value) => setManualLinkSearch(value),
+        },
+        actions: [{ label: 'Close', onClick: 'closeManualLinkPicker()' }],
+        // Every dismiss (Close, backdrop, Escape, swipe) ends the session.
+        onClose: () => { manualLinkState = null; },
     });
 }
 
@@ -646,19 +633,10 @@ function renderManualLinkBody() {
         return sb - sa;
     });
 
-    const searchHTML = `
-        <div class="qa-sheet__search">
-            <input type="text" id="mlp-search-input"
-                   class="qa-sheet__search-input"
-                   placeholder="Search your library…"
-                   value="${escapeAttr(manualLinkState.search)}"
-                   oninput="setManualLinkSearch(this.value)">
-            <span class="qa-sheet__result-count">${filtered.length} result${filtered.length !== 1 ? 's' : ''}</span>
-        </div>
-    `;
+    const countHTML = `<div class="qa-sheet__result-count">${filtered.length} result${filtered.length !== 1 ? 's' : ''}</div>`;
 
     if (filtered.length === 0) {
-        return searchHTML + `<div class="qa-sheet__empty">No matches in your library.</div>`;
+        return countHTML + `<div class="qa-sheet__empty">No matches in your library.</div>`;
     }
 
     const rowsHTML = filtered.map((eq) => {
@@ -683,27 +661,14 @@ function renderManualLinkBody() {
         `;
     }).join('');
 
-    return searchHTML + rowsHTML;
+    return countHTML + rowsHTML;
 }
 
 export function setManualLinkSearch(term) {
     if (!manualLinkState) return;
     manualLinkState.search = term;
     const body = document.getElementById('mlp-sheet-body');
-    if (!body) return;
-    const focused = document.activeElement;
-    const isSearchFocused = focused?.id === 'mlp-search-input';
-    const caret = isSearchFocused ? focused.selectionStart : null;
-    body.innerHTML = renderManualLinkBody();
-    if (isSearchFocused) {
-        const input = document.getElementById('mlp-search-input');
-        if (input) {
-            input.focus();
-            if (caret !== null) {
-                try { input.setSelectionRange(caret, caret); } catch { /* ignore */ }
-            }
-        }
-    }
+    if (body) body.innerHTML = renderManualLinkBody();
 }
 
 /**
@@ -719,19 +684,8 @@ export async function selectManualLinkTarget(equipmentId) {
 }
 
 export function closeManualLinkPicker() {
-    const backdrop = document.getElementById('mlp-sheet-backdrop');
-    const sheet = document.getElementById('mlp-sheet');
-    if (backdrop) backdrop.classList.remove('visible');
-    if (sheet) sheet.classList.remove('visible');
-    setTimeout(() => closeManualLinkSheetImmediate(), 300);
+    closeSheet('mlp-sheet'); // onClose clears manualLinkState
     manualLinkState = null;
-}
-
-function closeManualLinkSheetImmediate() {
-    const backdrop = document.getElementById('mlp-sheet-backdrop');
-    const sheet = document.getElementById('mlp-sheet');
-    if (backdrop) backdrop.remove();
-    if (sheet) sheet.remove();
 }
 
 /**
@@ -1509,50 +1463,36 @@ function filterQuickAddCatalog() {
 }
 
 /**
- * Build and mount the Quick-add sheet DOM. Reuses the `.aw-sheet` CSS shell
- * for visual consistency with the active workout sheets.
+ * Mount the Quick-add sheet through the sheet primitive (SH-3b). The search
+ * is the primitive's pinned field (outside the scrolling body), so typing
+ * re-renders only the chips + results, never the input.
  */
 function renderQuickAddSheet() {
-    // Cleanup any previous instance
-    closeQuickAddSheetImmediate();
     if (!quickAddState) return;
-
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'qa-sheet-backdrop';
-    backdrop.onclick = () => closeQuickAddSheet();
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'qa-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-labelledby', 'qa-sheet-title');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title" id="qa-sheet-title">Add equipment</div>
-            <div class="aw-sheet__subtitle">at ${escapeHtml(quickAddState.gymName)}</div>
-        </div>
-        <div class="aw-sheet__body" id="qa-sheet-body">${renderQuickAddBody()}</div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="closeQuickAddSheet()">Cancel</button>
-            <button class="aw-sheet__action primary" id="qa-add-btn" onclick="commitQuickAdd()" disabled>
+    openSheet({
+        id: 'qa-sheet',
+        keepFooter: true, // the Add button carries the selection count
+        title: 'Add equipment',
+        subtitle: `at ${quickAddState.gymName}`,
+        size: 'tall',
+        bodyId: 'qa-sheet-body',
+        bodyHTML: renderQuickAddBody(),
+        // The old sheet focused the search on open so the keyboard rose at once.
+        search: {
+            placeholder: 'Search catalog…',
+            value: quickAddState.search,
+            onInput: (value) => setQuickAddSearch(value),
+        },
+        footerHTML: `
+            <button type="button" class="sheet__action" onclick="closeQuickAddSheet()">Close</button>
+            <button type="button" class="sheet__action sheet__action--primary" id="qa-add-btn" onclick="commitQuickAdd()" disabled>
                 <span class="qa-sheet__action-counter" id="qa-counter">0</span>
                 <span id="qa-add-label">Add to gym</span>
             </button>
-        </div>
-    `;
-
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-
-    requestAnimationFrame(() => {
-        backdrop.classList.add('visible');
-        sheet.classList.add('visible');
-        // Auto-focus the search so the keyboard rises immediately
-        const input = document.getElementById('qa-search-input');
-        if (input) input.focus();
+        `,
+        // Every dismiss (Close, backdrop, Escape, swipe) ends the session.
+        // Commit paths read what they need from the state before closing.
+        onClose: () => { quickAddState = null; },
     });
 }
 
@@ -1561,7 +1501,7 @@ function renderQuickAddSheet() {
  * avoid recreating the whole sheet (preserves animation + scroll position).
  */
 function renderQuickAddBody() {
-    const { search, bpFilter, selected, alreadyTagged } = quickAddState;
+    const { bpFilter, selected, alreadyTagged } = quickAddState;
     const grouped = filterQuickAddCatalog();
     const totalResults = [...grouped.values()].reduce((s, list) => s + list.length, 0);
 
@@ -1578,16 +1518,7 @@ function renderQuickAddBody() {
         </div>
     `;
 
-    const searchHTML = `
-        <div class="qa-sheet__search">
-            <input type="text" id="qa-search-input"
-                   class="qa-sheet__search-input"
-                   placeholder="Search catalog…"
-                   value="${escapeAttr(search)}"
-                   oninput="setQuickAddSearch(this.value)">
-            <span class="qa-sheet__result-count">${totalResults} result${totalResults !== 1 ? 's' : ''}</span>
-        </div>
-    `;
+    const countHTML = `<div class="qa-sheet__result-count">${totalResults} result${totalResults !== 1 ? 's' : ''}</div>`;
 
     let resultsHTML;
     if (totalResults === 0) {
@@ -1629,7 +1560,7 @@ function renderQuickAddBody() {
         </div>`
         : `<button class="qa-custom__open" onclick="toggleQuickAddCustom()"><i class="fas fa-plus"></i> Can't find it? Add custom equipment</button>`;
 
-    return searchHTML + chipsHTML + resultsHTML + customHTML;
+    return chipsHTML + countHTML + resultsHTML + customHTML;
 }
 
 /**
@@ -1773,24 +1704,10 @@ export async function commitQuickAddCustom() {
 }
 
 function rerenderQuickAddBody() {
+    // The search lives outside the body now, so its focus and caret survive
+    // this re-render on their own.
     const body = document.getElementById('qa-sheet-body');
-    if (!body) return;
-    // Preserve focus + cursor on the search input across re-renders
-    const focused = document.activeElement;
-    const isSearchFocused = focused?.id === 'qa-search-input';
-    const caret = isSearchFocused ? focused.selectionStart : null;
-
-    body.innerHTML = renderQuickAddBody();
-
-    if (isSearchFocused) {
-        const input = document.getElementById('qa-search-input');
-        if (input) {
-            input.focus();
-            if (caret !== null) {
-                try { input.setSelectionRange(caret, caret); } catch { /* ignore */ }
-            }
-        }
-    }
+    if (body) body.innerHTML = renderQuickAddBody();
 }
 
 function updateQuickAddActionBar() {
@@ -1801,7 +1718,7 @@ function updateQuickAddActionBar() {
     const count = quickAddState?.selected.size || 0;
     counter.textContent = String(count);
     btn.disabled = count === 0;
-    label.textContent = count === 0 ? 'Add to gym' : `Add to ${escapeHtml(quickAddState.gymName)}`;
+    label.textContent = count === 0 ? 'Add to gym' : `Add to ${quickAddState.gymName}`;
 }
 
 /**
@@ -1862,19 +1779,8 @@ export async function commitQuickAdd() {
  * Dismiss the Quick-add sheet without saving.
  */
 export function closeQuickAddSheet() {
-    const backdrop = document.getElementById('qa-sheet-backdrop');
-    const sheet = document.getElementById('qa-sheet');
-    if (backdrop) backdrop.classList.remove('visible');
-    if (sheet) sheet.classList.remove('visible');
-    setTimeout(() => closeQuickAddSheetImmediate(), 300);
+    closeSheet('qa-sheet'); // onClose clears quickAddState
     quickAddState = null;
-}
-
-function closeQuickAddSheetImmediate() {
-    const backdrop = document.getElementById('qa-sheet-backdrop');
-    const sheet = document.getElementById('qa-sheet');
-    if (backdrop) backdrop.remove();
-    if (sheet) sheet.remove();
 }
 
 /**
@@ -2091,8 +1997,9 @@ async function commitCopyFromGym(sourceGym, targetGym) {
 }
 
 export function openGymPickerSheet({ title, subtitle, gyms, currentGym, onSelect }) {
+    // Re-opening replaces an open picker in place (no onClose), so setting
+    // the callback first is safe.
     gymPickerOnSelect = onSelect;
-    closeGymPickerSheetImmediate();
 
     // Sort: current gym first if known, then alphabetical
     const sorted = [...gyms].sort((a, b) => {
@@ -2115,33 +2022,13 @@ export function openGymPickerSheet({ title, subtitle, gyms, currentGym, onSelect
         `;
     }).join('');
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = 'gp-sheet-backdrop';
-    backdrop.onclick = () => closeGymPickerSheet();
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = 'gp-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">${escapeHtml(title || 'Pick a gym')}</div>
-            ${subtitle ? `<div class="aw-sheet__subtitle">${escapeHtml(subtitle)}</div>` : ''}
-        </div>
-        <div class="aw-sheet__body">${rowsHTML}</div>
-        <div class="aw-sheet__actions">
-            <button class="aw-sheet__action" onclick="closeGymPickerSheet()">Cancel</button>
-        </div>
-    `;
-
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => {
-        backdrop.classList.add('visible');
-        sheet.classList.add('visible');
+    openSheet({
+        id: 'gp-sheet',
+        title: title || 'Pick a gym',
+        subtitle: subtitle || '',
+        bodyHTML: rowsHTML,
+        actions: [{ label: 'Close', onClick: 'closeGymPickerSheet()' }],
+        onClose: () => { gymPickerOnSelect = null; },
     });
 }
 
@@ -2152,19 +2039,8 @@ export function commitGymPick(gymName) {
 }
 
 export function closeGymPickerSheet() {
-    const backdrop = document.getElementById('gp-sheet-backdrop');
-    const sheet = document.getElementById('gp-sheet');
-    if (backdrop) backdrop.classList.remove('visible');
-    if (sheet) sheet.classList.remove('visible');
-    setTimeout(() => closeGymPickerSheetImmediate(), 300);
+    closeSheet('gp-sheet'); // onClose clears gymPickerOnSelect
     gymPickerOnSelect = null;
-}
-
-function closeGymPickerSheetImmediate() {
-    const backdrop = document.getElementById('gp-sheet-backdrop');
-    const sheet = document.getElementById('gp-sheet');
-    if (backdrop) backdrop.remove();
-    if (sheet) sheet.remove();
 }
 
 /**
@@ -3385,8 +3261,9 @@ export function openEquipmentIdentitySheet(equipmentId) {
         title: 'Edit equipment',
         subtitle: 'Identity — everything else stays on the page',
         body: `<div id="equip-identity-body">${renderIdentitySheetBody(equipment)}</div>`,
-        actions: `<button class="aw-sheet__action primary" onclick="closeEquipmentIdentitySheet(true, '${escapeAttr(equipmentId)}')">Done</button>`,
-        onBackdrop: () => closeEquipmentIdentitySheet(true, equipmentId),
+        actions: [{ label: 'Done', onClick: `closeEquipmentIdentitySheet(true, '${escapeAttr(equipmentId)}')`, primary: true }],
+        // Done, backdrop, Escape and swipe all land back on a fresh detail page.
+        onDismiss: () => openEquipmentDetail(equipmentId),
     });
 }
 
@@ -3410,8 +3287,9 @@ export function identitySheetPickField(equipmentId, field) {
 }
 
 export function closeEquipmentIdentitySheet(refresh, equipmentId) {
-    dismissEquipSheet('equip-identity');
-    if (refresh && equipmentId) openEquipmentDetail(equipmentId);
+    // refresh=false (a field picker takes over) skips the detail re-render.
+    const closed = dismissEquipSheet('equip-identity', { silent: !refresh });
+    if (!closed && refresh && equipmentId) openEquipmentDetail(equipmentId);
 }
 
 // ── Base-weight sheet ──
@@ -3438,14 +3316,15 @@ export function openEquipmentBaseWeightSheet(equipmentId) {
             </div>
             <div class="equip-base-weight-hint">Shown in the plate calculator and added on top of plate weight.</div>
         `,
-        actions: `<button class="aw-sheet__action primary" onclick="closeEquipmentBaseWeightSheet('${escapeAttr(equipmentId)}')">Done</button>`,
-        onBackdrop: () => closeEquipmentBaseWeightSheet(equipmentId),
+        actions: [{ label: 'Done', onClick: `closeEquipmentBaseWeightSheet('${escapeAttr(equipmentId)}')`, primary: true }],
+        onDismiss: () => openEquipmentDetail(equipmentId),
     });
 }
 
 export function closeEquipmentBaseWeightSheet(equipmentId) {
-    dismissEquipSheet('equip-bw');
-    if (equipmentId) openEquipmentDetail(equipmentId);
+    // The sheet's onDismiss re-renders the detail page.
+    const closed = dismissEquipSheet('equip-bw');
+    if (!closed && equipmentId) openEquipmentDetail(equipmentId);
 }
 
 // ── Used-for sheet — Remove / edit form video / open video ──
@@ -3469,72 +3348,60 @@ export function openEquipmentExerciseSheet(equipmentId, exerciseName) {
             ${effective ? `<button class="equip-sheet-row" onclick="awShowFormVideo('${escapeAttr(effective)}', '${escapeAttr(exerciseName)}')"><i class="fas fa-circle-play"></i> Play form video</button>` : ''}
             <button class="equip-sheet-row equip-sheet-row--danger" onclick="removeExerciseFromEquipSheet('${escapeAttr(equipmentId)}', '${escapeAttr(exerciseName)}')"><i class="fas fa-trash"></i> Remove from this equipment</button>
         `,
-        actions: `<button class="aw-sheet__action primary" onclick="closeEquipmentExerciseSheet('${escapeAttr(equipmentId)}')">Done</button>`,
-        onBackdrop: () => closeEquipmentExerciseSheet(equipmentId),
+        actions: [{ label: 'Done', onClick: `closeEquipmentExerciseSheet('${escapeAttr(equipmentId)}')`, primary: true }],
+        onDismiss: () => openEquipmentDetail(equipmentId),
     });
 }
 
 export function removeExerciseFromEquipSheet(equipmentId, exerciseName) {
     // Close the sheet first; unassignExercise runs its own confirm and then
-    // re-renders the detail page.
-    dismissEquipSheet('equip-uf');
+    // re-renders the detail page — so no re-render on this dismiss.
+    dismissEquipSheet('equip-uf', { silent: true });
     unassignExercise(equipmentId, exerciseName);
 }
 
 export function closeEquipmentExerciseSheet(equipmentId) {
-    dismissEquipSheet('equip-uf');
-    if (equipmentId) openEquipmentDetail(equipmentId);
+    // The sheet's onDismiss re-renders the detail page.
+    const closed = dismissEquipSheet('equip-uf');
+    if (!closed && equipmentId) openEquipmentDetail(equipmentId);
 }
 
-// ── Shared aw-sheet mount/dismiss for the equipment-detail sheets ──
+// ── Shared mount/dismiss for the equipment-detail sheets (SH-3b) ──
+// Chrome, backdrop, Escape, swipe, focus and the page lock come from the
+// sheet primitive. `onDismiss` is what EVERY close does (Done, backdrop,
+// Escape, swipe) — a silent dismiss skips it, for the paths that hand off to
+// something else (a field picker, the remove confirm).
 
-function mountEquipSheet(idBase, { title, subtitle, body, actions, onBackdrop }) {
-    // Never stack two detail sheets. Hard-remove any existing one synchronously
-    // (not the animated dismiss) so a re-open can't collide ids with a sheet
-    // still mid-exit — getElementById would otherwise target the wrong node.
-    ['equip-identity', 'equip-bw', 'equip-uf'].forEach(base => {
-        document.getElementById(`${base}-backdrop`)?.remove();
-        document.getElementById(`${base}-sheet`)?.remove();
-    });
+const EQUIP_SHEET_BASES = ['equip-identity', 'equip-bw', 'equip-uf', 'equip-assign'];
+const equipSheetDismiss = new Map(); // sheet id → onDismiss
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'aw-sheet-backdrop';
-    backdrop.id = `${idBase}-backdrop`;
-    backdrop.onclick = onBackdrop || (() => dismissEquipSheet(idBase));
-
-    const sheet = document.createElement('div');
-    sheet.className = 'aw-sheet';
-    sheet.id = `${idBase}-sheet`;
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.innerHTML = `
-        <div class="aw-sheet__handle"></div>
-        <div class="aw-sheet__header">
-            <div class="aw-sheet__title">${escapeHtml(title)}</div>
-            ${subtitle ? `<div class="aw-sheet__subtitle">${escapeHtml(subtitle)}</div>` : ''}
-        </div>
-        <div class="aw-sheet__body">${body}</div>
-        <div class="aw-sheet__actions">${actions}</div>
-    `;
-
-    document.body.appendChild(backdrop);
-    document.body.appendChild(sheet);
-    requestAnimationFrame(() => {
-        backdrop.classList.add('visible');
-        sheet.classList.add('visible');
+function mountEquipSheet(idBase, { title, subtitle, body, actions, onDismiss = null, search = null, size = 'auto', bodyId = '' }) {
+    // Never stack two detail sheets: drop any other one now, without its
+    // onDismiss (the new sheet takes over). The same id re-renders in place.
+    for (const base of EQUIP_SHEET_BASES) {
+        if (base === idBase) continue;
+        equipSheetDismiss.delete(`${base}-sheet`);
+        closeSheet(`${base}-sheet`, { immediate: true });
+    }
+    const id = `${idBase}-sheet`;
+    equipSheetDismiss.set(id, onDismiss);
+    return openSheet({
+        id, title, subtitle: subtitle || '', size, bodyId, search,
+        bodyHTML: body,
+        actions,
+        onClose: () => {
+            const cb = equipSheetDismiss.get(id);
+            equipSheetDismiss.delete(id);
+            if (typeof cb === 'function') cb();
+        },
     });
 }
 
-function dismissEquipSheet(idBase) {
-    const backdrop = document.getElementById(`${idBase}-backdrop`);
-    const sheet = document.getElementById(`${idBase}-sheet`);
-    if (!backdrop && !sheet) return;
-    if (backdrop) backdrop.classList.remove('visible');
-    if (sheet) sheet.classList.remove('visible');
-    setTimeout(() => {
-        if (backdrop) backdrop.remove();
-        if (sheet) sheet.remove();
-    }, 300);
+/** Close a detail sheet; `silent` skips its onDismiss. Returns whether one was open. */
+function dismissEquipSheet(idBase, { silent = false } = {}) {
+    const id = `${idBase}-sheet`;
+    if (silent) equipSheetDismiss.delete(id);
+    return closeSheet(id);
 }
 
 export function backToEquipmentList() {
@@ -3621,46 +3488,61 @@ export function assignExerciseToEquipment(equipmentId) {
         groups.get(group).push(ex);
     });
 
-    const container = document.getElementById('equipment-library-content');
-    if (!container) return;
-
     let listHTML = '';
     for (const [group, items] of groups) {
+        listHTML += `<div class="equip-assign-group">`;
         listHTML += `<div class="equip-group-header"><div class="equip-group-header__left"><span>${escapeHtml(group)}</span></div><span class="equip-group-header__count">${items.length}</span></div>`;
         listHTML += items.map(ex => `
-            <div class="equip-detail-ex-row" onclick="confirmAssignExercise('${escapeAttr(ex.name)}')">
+            <div class="equip-detail-ex-row" role="button" tabindex="0" onclick="confirmAssignExercise('${escapeAttr(ex.name)}')">
                 <div class="equip-detail-ex-row__name">${escapeHtml(ex.name)}</div>
-                <div class="row-card__action"><i class="fas fa-plus"></i></div>
+                <div class="row-card__action"><i class="fas fa-plus" aria-hidden="true"></i></div>
             </div>
         `).join('');
+        listHTML += `</div>`;
     }
 
-    container.innerHTML = `
-        <div class="equip-detail-page">
-            <div class="equip-detail-header">
-                <button class="btn-icon" onclick="openEquipmentDetail('${escapeAttr(equipmentId)}')" aria-label="Back">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <h3>Assign Exercise</h3>
-            </div>
-            <div class="equip-lib-search equip-assign-search">
-                <i class="fas fa-search"></i>
-                <input type="text" placeholder="Search exercises…" oninput="filterAssignList(this.value)">
-            </div>
-            <div id="assign-exercise-list">
-                ${exercises.length === 0 ? '<div class="empty-state-compact"><p>All exercises already assigned</p></div>' : listHTML}
-            </div>
-        </div>
-    `;
+    // SH-3b — a sheet over the detail page (like identity / base weight /
+    // used for), not a full-page swap: the page stays put underneath.
+    mountEquipSheet('equip-assign', {
+        title: 'Assign exercise',
+        subtitle: equipment?.name || '',
+        size: 'tall',
+        bodyId: 'assign-exercise-list',
+        search: exercises.length === 0 ? null : {
+            placeholder: 'Search exercises…',
+            autofocus: false,
+            onInput: (value) => filterAssignList(value),
+        },
+        body: exercises.length === 0
+            ? '<div class="empty-state-compact"><p>Every exercise is already assigned</p></div>'
+            : `${listHTML}<div class="empty-state-compact equip-assign-empty" hidden><p>No exercises match</p></div>`,
+        actions: [{ label: 'Close', onClick: 'closeAssignExerciseSheet()' }],
+        onDismiss: () => { assigningToEquipmentId = null; },
+    });
+}
+
+export function closeAssignExerciseSheet() {
+    dismissEquipSheet('equip-assign'); // onDismiss clears assigningToEquipmentId
 }
 
 export function filterAssignList(term) {
-    const items = document.querySelectorAll('#assign-exercise-list .equip-lib-item');
-    const lower = term.toLowerCase();
-    items.forEach(item => {
-        const name = item.querySelector('.row-card__title')?.textContent.toLowerCase() || '';
-        item.style.display = name.includes(lower) ? '' : 'none';
+    const lower = (term || '').trim().toLowerCase();
+    const list = document.getElementById('assign-exercise-list');
+    if (!list) return;
+    let shown = 0;
+    list.querySelectorAll('.equip-assign-group').forEach(group => {
+        let groupShown = 0;
+        group.querySelectorAll('.equip-detail-ex-row').forEach(row => {
+            const name = row.querySelector('.equip-detail-ex-row__name')?.textContent.toLowerCase() || '';
+            const match = !lower || name.includes(lower);
+            row.hidden = !match;
+            if (match) groupShown++;
+        });
+        group.hidden = groupShown === 0;
+        shown += groupShown;
     });
+    const empty = list.querySelector('.equip-assign-empty');
+    if (empty) empty.hidden = shown > 0;
 }
 
 export async function confirmAssignExercise(exerciseName) {
@@ -3682,6 +3564,7 @@ export async function confirmAssignExercise(exerciseName) {
 
         showNotification(`Assigned "${exerciseName}"`, 'success', 1500);
         assigningToEquipmentId = null;
+        dismissEquipSheet('equip-assign', { silent: true });
         openEquipmentDetail(equipmentId);
     } catch (error) {
         console.error('Error assigning exercise:', error);
@@ -4665,6 +4548,7 @@ window.closeEquipmentBaseWeightSheet = closeEquipmentBaseWeightSheet;
 window.openEquipmentExerciseSheet = openEquipmentExerciseSheet;
 window.closeEquipmentExerciseSheet = closeEquipmentExerciseSheet;
 window.removeExerciseFromEquipSheet = removeExerciseFromEquipSheet;
+window.closeAssignExerciseSheet = closeAssignExerciseSheet;
 window.addGymPrompt = addGymPrompt;
 // CP-7 discovery handlers — referenced only from this module's templates.
 window.discoveryOpenUnmapped = discoveryOpenUnmapped;
