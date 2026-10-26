@@ -158,6 +158,22 @@ const rows = [
     row('Blocking backdrops missing blur',   metrics.bareBackdrops,        BUDGETS.bareBackdrops),
 ];
 
+// SH-5 — the shell budgets (scripts/shell-audit.js) ride the same gate, so
+// `audit:design:strict` fails when anyone adds a second sheet/header/inset.
+// Budgets live in shell-audit.js and only go down as SH-3/SH-4 land.
+const shell = require('./shell-audit.js');
+const shellCounts = shell.buildInventory(shell.loadRepo()).counts;
+const SHELL_LABELS = {
+    overlayRootsOutsideSheetCss: 'Shell: overlay roots outside sheet.css',
+    safeAreaTopRulesOutsidePrimitives: 'Shell: safe-area-top copies',
+    backCloseControlsUnderTap: 'Shell: back/close under 44px',
+    searchInputsOutsideFieldSearch: 'Shell: search outside .field-search',
+    bodyOverflowWrites: 'Shell: body.style.overflow writes',
+};
+for (const [key, label] of Object.entries(SHELL_LABELS)) {
+    rows.push(row(label.padEnd(34), shellCounts[key], shell.BUDGETS[key]));
+}
+
 console.log('\n  ── Big Surf design-system audit ───────────────────────────');
 rows.forEach((r) => console.log(r.line));
 console.log('  ───────────────────────────────────────────────────────────\n');

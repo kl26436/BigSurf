@@ -494,6 +494,8 @@ These rules are canonical for all new CSS and JS that renders markup. When in do
 3. **One chip/pill pattern.** Use `.chip` / `.chip--sm` / category variants in [components/chips.css](styles/components/chips.css). Don't create `aw-sheet__chip`, `filter-pill`, `onb-chip`, etc. for the same shape.
 4. **One search field.** Use `.field-search` (optional `.field-search--sticky`) from [components/fields.css](styles/components/fields.css). The `history-search-input-wrapper` / `exercise-search-wrapper` / `aw-sheet__search` patterns have all been migrated.
 
+4b. **One shell (SH-5).** New bottom sheet → `openSheet()` ([sheet.js](js/core/ui/sheet.js)). New page header → `.page-header`. Never write `env(safe-area-inset-top)` (use `var(--safe-top)`), a new `position: fixed; bottom: 0` overlay root, or `body.style.overflow` outside the primitives (`sheet.css`, `page-header.css`, `tokens.css`, `page-lock.js`). `npm run audit:design:strict` now includes the shell budgets from [shell-audit.js](scripts/shell-audit.js); they only go down. Before a prod promote, run [docs/ux-shell-checklist.md](docs/ux-shell-checklist.md) on the phone.
+
 ### Token rules (what to never hard-code)
 
 5. **No raw color literals in page/component CSS.** `pages/*.css` and `components/*.css` (other than `tokens.css`) must use `var(--*)` for color. For tints not in tokens, add a token to [styles/tokens.css](styles/tokens.css) — don't inline the RGBA.

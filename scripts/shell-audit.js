@@ -681,6 +681,7 @@ function main(argv) {
 
 module.exports = {
     BUDGETS,
+    loadRepo,
     stripCssComments,
     parseCssRules,
     parseDecls,
