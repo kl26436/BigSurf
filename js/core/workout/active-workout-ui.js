@@ -1753,7 +1753,7 @@ export function removeExerciseAt(idx) {
 
 /**
  * Replace an exercise mid-workout (Tier 3 Phase 3 / F3). Gym-aware: when a
- * session gym is set, the shared add-exercise sheet leads with a "Possible at
+ * session gym is set, the shared add-exercise sheet leads with a "Done at
  * [gym]" section (same body part first) fed by the planner's mapped-exercise
  * data — the most useful moment for that data. D8: same sheet, one extra
  * section, not a new picker. Falls back to the plain sheet with no gym.
@@ -3664,7 +3664,7 @@ export function openSharedAddExerciseSheet({ targetWorkoutLabel, alreadyAdded, o
         alreadyAdded: addedSet,
         onSelect,
         onCreateRequested: typeof onCreateRequested === 'function' ? onCreateRequested : null,
-        // F3: optional leading "Possible at [gym]" group — {gym, exercises[]}
+        // F3: optional leading "Done at [gym]" group — {gym, exercises[]}
         gymSection: gymSection || null,
     };
     renderSharedAddExerciseSheet();
@@ -3735,13 +3735,13 @@ function renderSharedAddListBody() {
         </div>`;
     };
 
-    // F3: leading "Possible at [gym]" group (same rows, one extra section —
+    // F3: leading "Done at [gym]" group (same rows, one extra section —
     // D8). Hidden while searching/filtering so results stay tight.
     let gymHtml = '';
     if (ctx.gymSection && !_sharedAddSearch && _sharedAddFilter === 'All'
         && ctx.gymSection.exercises?.length > 0) {
         gymHtml = `
-            <div class="aw-add-ex-group-title">Possible at ${escapeHtml(ctx.gymSection.gym)}</div>
+            <div class="aw-add-ex-group-title">Done at ${escapeHtml(ctx.gymSection.gym)}</div>
             ${ctx.gymSection.exercises.map(renderRow).join('')}
             <div class="aw-add-ex-group-title">All exercises</div>
         `;

@@ -357,7 +357,7 @@ async function renderWorkoutSelectorUI() {
         filtered = activeTemplates.filter(t => effectiveTemplateCategory(t) === activeSelectorCategory);
     }
 
-    // "Possible here" pill: keep workouts with positive evidence at this gym
+    // "Works here" pill: keep workouts with positive evidence at this gym
     // (full or partial — partial starts fine with substitutions; D3).
     if (possibleHereFilter && gymContext?.gym && gymContext.equipmentCount > 0) {
         filtered = filtered.filter(t => {
@@ -446,11 +446,11 @@ function renderCategoryPills(container, categories) {
         `;
     }).join('');
 
-    // "Possible here" filter pill — only when badges are live at a gym.
+    // "Works here" filter pill — only when badges are live at a gym.
     const possiblePill = (gymContext?.gym && gymContext.equipmentCount > 0)
         ? `<button class="category-pill category-pill--possible ${possibleHereFilter ? 'active' : ''}"
                    data-category="__possible-here__" aria-pressed="${possibleHereFilter}">
-               <i class="fas fa-check-circle"></i> Possible here
+               <i class="fas fa-check-circle"></i> Works here
            </button>`
         : '';
 

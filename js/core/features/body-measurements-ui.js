@@ -286,7 +286,17 @@ export async function saveBodyWeightEntry() {
     // Height lives on the user profile, not the measurements record. Read it
     // now but only write-through AFTER the entry itself saves — otherwise a
     // failed save leaves a half-committed height behind. Blank leaves it as-is.
-    const heightRaw = document.getElementById('bm-height-input')?.value?.trim() || '';
+    const heightInput = document.getElementById('bm-height-input');
+    const heightRaw = heightInput?.value?.trim() || '';
+    // A height we can't read used to be dropped silently after the entry
+    // saved. Check it up front instead, so nothing saves until it's fixed.
+    const heightCm = heightRaw ? parseHeightToCm(heightRaw, unit) : null;
+    if (heightRaw && heightCm == null) {
+        const example = unit === 'kg' ? '178' : '5\'10"';
+        showNotification(`Couldn't read that height — try ${example}`, 'warning');
+        heightInput?.focus();
+        return;
+    }
 
     const extra = { bodyFat, muscleMass };
     if (Object.keys(measurements).length > 0) extra.measurements = measurements;
@@ -294,12 +304,9 @@ export async function saveBodyWeightEntry() {
 
     const result = await saveBodyWeight(weight, unit, extra);
     if (result) {
-        if (heightRaw) {
-            const cm = parseHeightToCm(heightRaw, unit);
-            if (cm != null) {
-                const { updateSetting } = await import('../ui/settings-ui.js');
-                updateSetting('profileHeightCm', cm);
-            }
+        if (heightCm != null) {
+            const { updateSetting } = await import('../ui/settings-ui.js');
+            updateSetting('profileHeightCm', heightCm);
         }
         closeWeightEntryModal();
     }
