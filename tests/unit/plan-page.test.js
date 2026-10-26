@@ -11,6 +11,8 @@ const h = vi.hoisted(() => ({
     saved: [],
     promptSheet: vi.fn(),
     refresh: vi.fn(),
+    savePlan: vi.fn(async () => true),
+    swapInTemplate: vi.fn(async () => ({ prior: [], entry: { at: 'x' } })),
     AppState: {
         settings: {}, globalUnit: 'lbs', _weekPlan: { days: { mon: 'push', thu: 'legs' } },
         getTodayDateString: () => '2026-10-08',
@@ -25,16 +27,27 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({
     showNotification: vi.fn(),
 }));
 vi.mock('../../js/core/ui/navigation.js', () => ({ navigateTo: vi.fn() }));
-vi.mock('../../js/core/ui/sheet.js', () => ({ openSheet: vi.fn(), closeSheet: vi.fn() }));
+vi.mock('../../js/core/ui/sheet.js', () => ({
+    openSheet: vi.fn((o) => {
+        let el = document.getElementById(o.id);
+        if (!el) { el = document.createElement('div'); el.id = o.id; document.body.appendChild(el); }
+        el.innerHTML = o.bodyHTML || '';
+        return { el };
+    }),
+    closeSheet: vi.fn((id) => document.getElementById(id)?.remove()),
+}));
 vi.mock('../../js/core/ui/confirm-sheet.js', () => ({ confirmSheet: vi.fn(), promptSheet: h.promptSheet }));
 vi.mock('../../js/core/data/firebase-workout-manager.js', () => ({ FirebaseWorkoutManager: class { async saveWorkoutTemplate(t) { h.saved.push(t); } } }));
 vi.mock('../../js/core/ui/template-selection.js', () => ({ acceptCoachTemplateRefresh: h.refresh }));
 vi.mock('../../js/core/features/plan.js', () => ({
     loadPlan: async () => h.plan,
     loadPrograms: async () => h.programs,
+    savePlan: h.savePlan,
+    swapInTemplate: h.swapInTemplate,
+    undoSwapInTemplate: vi.fn(async () => true),
 }));
 const set = (weight, reps) => ({ weight, reps, originalUnit: 'lbs', type: 'working', completed: true });
-const push = { id: 'push', name: 'Push', exercises: [{ machine: 'Bench Press', role: 'primary', defaultReps: 6 }] };
+const push = { id: 'push', name: 'Push', exercises: [{ machine: 'Bench Press', role: 'primary', defaultReps: 6 }, { machine: 'Cable Fly', defaultReps: 12, rotatedFrom: 'Pec Deck', rotatedAt: '2026-09-15' }] };
 const legs = { id: 'legs', name: 'Legs', exercises: [{ machine: 'Hack Squat', role: 'primary', defaultReps: 8 }] };
 vi.mock('../../js/core/features/goals.js', () => ({
     loadGoalData: async () => ({
@@ -45,7 +58,8 @@ vi.mock('../../js/core/features/goals.js', () => ({
     loadEvents: async () => [{ id: 'e1', name: 'Trip', date: '2026-12-19', peakWeeks: 2 }],
 }));
 
-const { renderBlockPage, saveSessionToMyWorkouts } = await import('../../js/core/ui/block-ui.js');
+const { renderBlockPage, saveSessionToMyWorkouts, openPlanSettings, planSettingPick, savePlanSettings, openRotateSheet, rotatePick, rotateApply } = await import('../../js/core/ui/block-ui.js');
+const { showNotification } = await import('../../js/core/ui/ui-helpers.js');
 
 const wave = {
     id: 'p1', name: 'Strength block III', startDate: '2026-09-28', weeks: 4, active: true, split: { mon: 'push', thu: 'legs' },
@@ -125,5 +139,53 @@ describe('Plan page', () => {
         h.promptSheet.mockResolvedValueOnce(null); // cancelled
         await saveSessionToMyWorkouts('push_a');
         expect(h.saved).toHaveLength(1);
+    });
+
+    it('TP-6 d: this week comes first, earlier weeks fold below, three actions, settings behind the gear', async () => {
+        await renderBlockPage();
+        const root = document.getElementById('block-content');
+        const firstWeek = root.querySelector('.block-week');
+        const past = root.querySelector('.plan-past');
+        expect(firstWeek.compareDocumentPosition(past) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(root.querySelector('[onclick="openPlanSettings()"]')).not.toBeNull();
+        expect([...root.querySelectorAll('.block-actions .chip')].map(b => b.textContent.trim())).toEqual(['Lighter week', 'Rotate an exercise', 'Change my plan']);
+        expect(text()).not.toMatch(/\bwaves?\b/i);
+        expect(text()).toContain('Why this plan');
+    });
+
+    it('TP-6 a: the swap choice is a setting with a date, not a button that does nothing', async () => {
+        await renderBlockPage();
+        openPlanSettings();
+        const sheet = document.getElementById('plan-settings-sheet');
+        expect(sheet.textContent).toContain('Ask me first');
+        expect(sheet.textContent).toContain('Main lifts never swap');
+        planSettingPick('rotationPolicy', 'auto', null);
+        h.savePlan.mockClear();
+        showNotification.mockClear();
+        await savePlanSettings();
+        expect(h.savePlan).toHaveBeenCalledWith({ rotationPolicy: 'auto' });
+        expect(showNotification.mock.calls[0][0]).toMatch(/^Got it — swaps happen when the next weeks are set up on /);
+    });
+
+    it('TP-6 b: rotate in a few taps — main lifts locked, candidates from the gear, the swap written once', async () => {
+        h.AppState._cachedEquipment = [{ name: 'Pec Deck Machine', exerciseTypes: ['Pec Deck'], locations: [], lastUsed: null }, { name: 'Cable Crossover Station', exerciseTypes: ['Cable Crossover'], locations: [], lastUsed: null }];
+        h.AppState.workoutPlans = [push, legs];
+        await renderBlockPage();
+        await openRotateSheet();
+        const sheet = () => document.getElementById('plan-rotate-sheet').textContent.replace(/\s+/g, ' ');
+        expect(sheet()).toContain('Bench Press');
+        expect(sheet()).toContain('Stays — your strength numbers depend on it');
+        expect(sheet()).toContain('Cable Fly');
+        await rotatePick('push', 1);
+        // Pec Deck is what this slot just moved off — never offered back
+        expect(sheet()).toContain('Cable Crossover');
+        expect(sheet()).not.toMatch(/Pec Deck Machine ·/);
+        expect(sheet()).toContain('Left out: Pec Deck');
+        h.swapInTemplate.mockClear();
+        await rotateApply(0);
+        expect(h.swapInTemplate).toHaveBeenCalledTimes(1);
+        expect(h.swapInTemplate.mock.calls[0][0]).toBe('push');
+        expect(h.swapInTemplate.mock.calls[0][1]).toMatchObject({ index: 1, from: 'Cable Fly', to: 'Cable Crossover' });
+        expect(showNotification.mock.calls.at(-1)[3]?.label).toBe('Undo');
     });
 });

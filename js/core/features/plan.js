@@ -12,6 +12,23 @@ import { db, doc, getDoc, setDoc, deleteDoc, getDocs, collection } from '../data
 import { AppState } from '../utils/app-state.js';
 import { cadenceFromProgram, rollUndoable } from './plan-roller.js';
 import { applyRotation, resolveSwaps, waitingSwaps } from './exercise-rotation.js';
+import { makeSessionCache } from '../data/session-cache.js';
+
+// TP-6 c — Home's "Your plan" card reads the plan doc, the waves and the dates
+// on every dashboard paint: once per session, cleared by every plan write
+// here and by server writes (server-sync.js). The Plan page reads fresh.
+const _summary = makeSessionCache();
+export function clearPlanCache() { _summary.clear(); }
+
+/** { plan, programs, events } for the Home card — session-cached. */
+export async function loadPlanSummary() {
+    if (!uid()) return { plan: null, programs: [], events: [] };
+    return _summary.get('summary', uid(), async () => {
+        const { loadEvents } = await import('./goals.js');
+        const [plan, programs, events] = await Promise.all([loadPlan(), loadPrograms(), loadEvents()]);
+        return { plan, programs, events };
+    });
+}
 
 const uid = () => AppState.currentUser?.uid || null;
 const planRef = () => doc(db, 'users', uid(), 'plan', 'current');
@@ -31,6 +48,7 @@ export async function savePlan(patch) {
     if (!uid()) return false;
     try {
         await setDoc(planRef(), { ...patch, lastUpdated: new Date().toISOString() }, { merge: true });
+        clearPlanCache();
         return true;
     } catch (e) {
         console.error('❌ Failed to save plan:', e);
@@ -108,6 +126,7 @@ export async function applyPendingRotations(program) {
         ...(changed ? { rationale: { ...program.rationale, changed } } : {}),
         lastUpdated: new Date().toISOString(),
     }, { merge: true });
+    clearPlanCache();
     return { applied, skipped };
 }
 
@@ -131,7 +150,47 @@ export async function undoRoll(program, workouts = []) {
     if (program.rolledFrom) {
         await setDoc(doc(db, 'users', uid(), 'programs', program.rolledFrom), { active: true, state: 'active', lastUpdated: nowIso }, { merge: true });
     }
-    await savePlan({ paused: true, pausedAt: nowIso, pausedBy: 'undo-roll' });
+    await savePlan({ paused: true, pausedAt: nowIso, pausedBy: 'undo-roll' }); // clears the summary cache
     AppState._activeProgram = undefined;
     return { ok: true };
+}
+
+/**
+ * TP-6 b — one accessory swapped from the Plan page's rotate sheet (no coach
+ * turn). Same writer as the waiting swaps (applyRotation), recorded on the
+ * program's rotationsApplied so the engine never offers the slot straight
+ * back. Returns what undo needs, or null.
+ */
+export async function swapInTemplate(templateId, swap, program = null) {
+    const t = (AppState.workoutPlans || []).find(x => x.id === templateId);
+    if (!uid() || !t || !Array.isArray(t.exercises)) return null;
+    const prior = t.exercises;
+    const nowIso = new Date().toISOString();
+    const exercises = applyRotation(prior, [swap], { lookup: lookupFromState(), today: AppState.getTodayDateString() });
+    await setDoc(doc(db, 'users', uid(), 'workoutTemplates', templateId), { exercises, lastUpdated: nowIso }, { merge: true });
+    t.exercises = exercises;
+    const entry = { templateId, name: t.name || templateId, swaps: [{ ...swap }], at: nowIso, by: 'plan-page' };
+    if (program?.id) {
+        const applied = [...(program.rotationsApplied || []), entry];
+        await setDoc(doc(db, 'users', uid(), 'programs', program.id), { rotationsApplied: applied, lastUpdated: nowIso }, { merge: true });
+        program.rotationsApplied = applied;
+    }
+    clearPlanCache();
+    return { prior, entry };
+}
+
+/** Undo a swapInTemplate: the old rows back, the record removed. */
+export async function undoSwapInTemplate(templateId, done, program = null) {
+    const t = (AppState.workoutPlans || []).find(x => x.id === templateId);
+    if (!uid() || !done?.prior) return false;
+    const nowIso = new Date().toISOString();
+    await setDoc(doc(db, 'users', uid(), 'workoutTemplates', templateId), { exercises: done.prior, lastUpdated: nowIso }, { merge: true });
+    if (t) t.exercises = done.prior;
+    if (program?.id) {
+        const applied = (program.rotationsApplied || []).filter(r => r.at !== done.entry?.at);
+        await setDoc(doc(db, 'users', uid(), 'programs', program.id), { rotationsApplied: applied, lastUpdated: nowIso }, { merge: true });
+        program.rotationsApplied = applied;
+    }
+    clearPlanCache();
+    return true;
 }

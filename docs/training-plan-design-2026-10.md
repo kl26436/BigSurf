@@ -505,6 +505,14 @@ Everything above the box is code. The two sentences under the date and the three
 
 **e. The "Turn it on" notice** (plan missing for a pre-TP-3 program): keep, but say what it does in the user's terms: "Keep this going: when these weeks end, the next ones are set up for you — same sessions, a lighter week every fourth. You can undo any week until you log a workout in it."
 
+**Built 2026-10-26 (8.2 a–e, m, n):**
+- **a** — gear in the Plan page header → *Plan settings* sheet (`openPlanSettings`): name, training days (→ week plan sheet), minutes, lighter week (every 3rd/4th/5th/never), how far ahead, swaps *Ask me first / Swap them for me* with the main-lifts line, keep going / paused. Saving the swap choice toasts the date (`header.nextRoll`). The inline switch is gone.
+- **b** — *Rotate an exercise* opens a rules-only sheet (`openRotateSheet`): this week's sessions, main lifts locked, accessories with "since … · N sessions"; tap → top 3 from `rankRotationCandidates` (with the "left out: you just moved off it" line) → `swapInTemplate` (plan.js; recorded on the program's `rotationsApplied`) → undo toast. Also from a swap button on each accessory in the session sheet. "Ask the coach instead" keeps the prefill path. *Not yet:* the report card's "Pick a different one" entry.
+- **c** — Home's program line is now the plan line: `planSummaryLine(header)` (plan-timeline.js, the Plan page's own header) — "My plan · Build week 3 / lighter week starts Nov 2 · Trip in 5 weeks · 2 swaps waiting · next weeks set up …", tap → Plan page; read through a session-cached `loadPlanSummary()` cleared by every plan write and server write. The "these weeks are done" banner never shows with a plan; without one it offers *Keep my plan going*. The active workout's header says the week's kind, not "week N of M". `wave` is banned. *Not yet:* the one-time report-card nudge.
+- **d/e** — page order: header → notice only when there's something to do (turn on, paused, swaps waiting, an undoable roll) → this week → next → projected → *Earlier weeks* folded → *Why this plan* → three actions (Lighter week · Rotate an exercise · Change my plan). New "Keep it going" / "Turn on your plan" copy.
+- **m** — the editor's chip reads "was Pec Deck · Sep 15" and disappears after `ROTATION_MEMORY_DAYS`.
+- **n** — Workouts tab: workouts on the split appear only in the plan group; the rest split into recent (used or made in 90 days) and a folded *Older (n)* (`groupMyWorkouts`); *One-off* / *From your plan* chips; the history-based "Suggested for Monday" row hides when the plan already has today's session.
+
 ### 8.3 Tests & acceptance
 
 - `block-view`/`plan-timeline` tests: `nextRollDate` in the header; Home card text == Plan page header text for the same fixture.

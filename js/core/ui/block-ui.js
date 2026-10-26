@@ -15,7 +15,9 @@ import { debugLog } from '../utils/config.js';
 import { buildBlockSession } from '../features/block-view.js';
 import { buildPlanTimeline } from '../features/plan-timeline.js';
 import { rollUndoable } from '../features/plan-roller.js';
-import { waitingSwaps } from '../features/exercise-rotation.js';
+import { waitingSwaps, rankRotationCandidates, rotationHistory } from '../features/exercise-rotation.js';
+import { inferRole } from '../features/movement-patterns.js';
+import { planWeekSessions } from '../features/plan-sessions.js';
 import { weekOverrideOf } from '../features/session-intent.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
@@ -80,7 +82,7 @@ export async function renderBlockPage() {
     }
 }
 
-function headerHTML(title, subtitle) {
+function headerHTML(title, subtitle, { settings = false } = {}) {
     return `
         <div class="page-header page-header--detail">
             <button class="page-header__back" onclick="navigateBack()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
@@ -90,6 +92,7 @@ function headerHTML(title, subtitle) {
                     ${subtitle ? `<div class="d-subtitle">${escapeHtml(subtitle)}</div>` : ''}
                 </div>
             </div>
+            ${settings ? '<button class="page-header__icon-btn" onclick="openPlanSettings()" aria-label="Plan settings"><i class="fas fa-gear" aria-hidden="true"></i></button>' : ''}
         </div>`;
 }
 
@@ -114,14 +117,16 @@ function noticeHTML(tl, ctx) {
         return `
             <div class="hero-card plan-notice">
                 <div class="plan-notice__title">Keep it going</div>
-                <div class="plan-notice__text">When these weeks end, the next ones roll on their own: same sessions, with a lighter week in place. You can undo a roll until you log a workout in it.</div>
+                <div class="plan-notice__text">When these weeks end, the next ones are set up for you — same sessions, a lighter week every fourth. You can undo any week until you log a workout in it.</div>
                 <div class="plan-notice__actions"><button class="btn btn-primary btn-sm" onclick="planEnable()">Turn it on</button></div>
             </div>`;
     }
     if (!ctx.plan) {
         return `
             <div class="hero-card plan-notice">
-                <div class="plan-notice__text">These weeks are a projection from your week plan. Plan them with the coach and they fill in with targets.</div>
+                <div class="plan-notice__title">Turn on your plan</div>
+                <div class="plan-notice__text">Your week plan repeats as it is. Turn on your plan and the weeks fill in with targets — three build weeks, then a lighter one.</div>
+                <div class="plan-notice__actions"><button class="btn btn-primary btn-sm" onclick="planEnable()">Turn it on</button></div>
             </div>`;
     }
     if (ctx.plan.paused) {
@@ -135,7 +140,7 @@ function noticeHTML(tl, ctx) {
     // TP-6 f — swaps waiting on ANY program (a rolled wave's, or ones a
     // coach-made plan describes but the workouts don't have yet).
     const pending = waitingSwaps(active, ctx.templates);
-    if (active?.createdVia === 'auto-roll') {
+    if (active?.createdVia === 'auto-roll' && (pending.length || rollUndoable(active, ctx.workouts))) {
         const lighter = tl.weeks.find(w => w.programId === active.id && w.kind === 'lighter');
         const undoable = rollUndoable(active, ctx.workouts);
         const applied = (active.rotationsApplied || []).flatMap(r => r.swaps);
@@ -196,33 +201,26 @@ function planHTML(tl, ctx) {
     ].filter(Boolean);
     const past = tl.weeks.map((w, i) => ({ w, i })).filter(x => x.w.state === 'past');
     const rest = tl.weeks.map((w, i) => ({ w, i })).filter(x => x.w.state !== 'past');
-    const policy = ctx.plan?.rotationPolicy === 'auto' ? 'auto' : 'ask';
+    const why = rationaleHTML(tl.activeProgram?.rationale, waitingSwaps(tl.activeProgram, ctx.templates));
+    // TP-6 d — what the user came to see (this week) comes first; settings
+    // live behind the gear, the explanation behind "Why this plan".
     return `
-        ${headerHTML(h.name, sub)}
+        ${headerHTML(h.name, sub, { settings: !!ctx.plan })}
         <div class="d-content block-page">
-            <div class="hero-card block-hero">
+            ${meta.length || tl.goalsStrip.length ? `
+            <div class="block-hero">
                 ${meta.length ? `<div class="block-hero__meta">${meta.map(escapeHtml).join(' · ')}</div>` : ''}
                 ${tl.goalsStrip.length ? `<div class="plan-goals">${tl.goalsStrip.map(g => `<button class="chip chip--sm" onclick="openGoalsPage()">${escapeHtml(g.name)}${g.statusLabel ? ` <span class="goal-pill ${PILL[g.status] || ''}">${escapeHtml(g.statusLabel)}</span>` : ''}</button>`).join('')}</div>` : ''}
-            </div>
-            ${noticeHTML(tl, ctx)}
-            ${rationaleHTML(tl.activeProgram?.rationale, waitingSwaps(tl.activeProgram, ctx.templates))}
-            <div class="block-actions">
-                <button class="chip chip--sm" onclick="blockAdjustWeek()"><i class="fas fa-feather"></i> Make this week lighter</button>
-                <button class="chip chip--sm" onclick="blockSwapAccessory()"><i class="fas fa-arrow-right-arrow-left"></i> Rotate an exercise</button>
-                <button class="chip chip--sm" onclick="blockDiscuss()"><i class="fas fa-robot"></i> Change my plan</button>
-                <button class="chip chip--sm" onclick="openGoalsPage()"><i class="fas fa-bullseye"></i> Goals</button>
-                <button class="chip chip--sm" onclick="openWeekPlanSheet()"><i class="fas fa-calendar-week"></i> Week plan</button>
-            </div>
-            ${ctx.plan ? `
-            <div class="plan-policy">
-                <div class="field-label">Between waves, accessory swaps</div>
-                <div class="segmented">
-                    <button class="${policy === 'ask' ? 'active' : ''}" onclick="planSetRotationPolicy('ask', this)">Ask me</button>
-                    <button class="${policy === 'auto' ? 'active' : ''}" onclick="planSetRotationPolicy('auto', this)">Do it</button>
-                </div>
             </div>` : ''}
-            ${past.length ? `<details class="plan-past"><summary>Earlier weeks (${past.length})</summary>${past.map(x => weekHTML(x.w, x.i)).join('')}</details>` : ''}
+            ${noticeHTML(tl, ctx)}
             ${rest.map(x => weekHTML(x.w, x.i)).join('')}
+            ${past.length ? `<details class="plan-past"><summary>Earlier weeks (${past.length})</summary>${past.map(x => weekHTML(x.w, x.i)).join('')}</details>` : ''}
+            ${why ? `<details class="block-rationale__more plan-why"><summary>Why this plan</summary>${why}</details>` : ''}
+            <div class="block-actions">
+                <button class="chip chip--sm" onclick="blockAdjustWeek()"><i class="fas fa-feather" aria-hidden="true"></i> Lighter week</button>
+                <button class="chip chip--sm" onclick="openRotateSheet()"><i class="fas fa-arrow-right-arrow-left" aria-hidden="true"></i> Rotate an exercise</button>
+                <button class="chip chip--sm" onclick="blockDiscuss()"><i class="fas fa-comment" aria-hidden="true"></i> Change my plan</button>
+            </div>
         </div>`;
 }
 
@@ -288,6 +286,12 @@ export function openBlockSession(weekIdx, cellIdx) {
     const rows = w.projected
         ? (template?.exercises || []).map(ex => ({ name: ex.machine || ex.name, sets: Number(ex.sets) || 3, primary: ex.role === 'primary', target: null, logged: null })).filter(r => r.name)
         : buildBlockSession({ cell, template, workouts: _ctx.workouts, program, override: _ctx.override, unit: _ctx.unit, plates: plates(_ctx.unit) });
+    // TP-6 b — accessories swap from here in one tap (not on a session already done).
+    const swapIndex = (name) => {
+        if (!template || cell.status === 'done' || w.state === 'past') return -1;
+        const i = (template.exercises || []).findIndex(ex => (ex.machine || ex.name) === name);
+        return i >= 0 && inferRole(template.exercises[i], i) !== 'primary' ? i : -1;
+    };
     const fmt = (x) => (x ? `${x.weight}${x.reps ? ` × ${x.reps}` : ''}` : '—');
     const status = { done: `Done ${cell.doneOn ? fmtDate(cell.doneOn) : ''}`, missed: 'Missed', today: 'Today', upcoming: fmtDate(cell.date), projected: `${fmtDate(cell.date)} · projected` }[cell.status];
     const startable = ['today', 'upcoming', 'missed', 'projected'].includes(cell.status);
@@ -305,6 +309,7 @@ export function openBlockSession(weekIdx, cellIdx) {
                         <div class="js-row__name">${escapeHtml(r.name)}${r.primary ? ' <span class="block-session__main">Main lift</span>' : ''}</div>
                         <div class="js-row__meta">${r.sets} sets${w.projected ? ' · targets fill in when these weeks are set' : ` · target ${escapeHtml(fmt(r.target))} ${escapeHtml(_ctx.unit)}`}${r.logged ? ` · logged ${escapeHtml(fmt(r.logged))}` : ''}</div>
                     </div>
+                    ${swapIndex(r.name) >= 0 ? `<button class="btn btn-secondary btn-sm" onclick="closeBlockSession({ immediate: true }); openRotateSheet('${escapeAttr(template.id)}', ${swapIndex(r.name)})" aria-label="${escapeAttr(`Swap ${r.name}`)}"><i class="fas fa-arrow-right-arrow-left" aria-hidden="true"></i></button>` : ''}
                 </div>`).join('') : `
                 <div class="empty-state-compact">
                     <p>This workout has no exercises yet</p>
@@ -339,8 +344,10 @@ export function blockAdjustWeek() {
         : 'Make this week lighter — I want it a bit easier.');
 }
 
-export function blockSwapAccessory() {
-    askCoachSeeded('Rotate an accessory in my plan — show me the best candidates for something I\'ve been doing too long, and keep my main lifts.');
+export function blockSwapAccessory(exercise = null) {
+    askCoachSeeded(exercise
+        ? `Swap ${exercise} in my plan for something that trains the same thing — show me the best candidates and keep my main lifts.`
+        : 'Rotate an accessory in my plan — show me the best candidates for something I\'ve been doing too long, and keep my main lifts.');
 }
 
 export function blockPlanNext() {
@@ -384,13 +391,265 @@ async function planResumeNow() {
     } else showNotification("Couldn't resume the plan — try again", 'error');
 }
 
-export async function planSetRotationPolicy(policy, btn) {
+// ── Plan settings (TP-6 a) ───────────────────────────────────────────
+// Every field update_plan takes, without the coach. The swap choice is a
+// setting with a date, not an action: nothing happens on tap.
+
+const PLAN_SETTINGS_ID = 'plan-settings-sheet';
+let _draft = null;
+
+const SETTING_OPTIONS = {
+    sessionMinutes: [[45, '45 min'], [60, '60 min'], [75, '75 min'], [90, '90 min']],
+    lighter: [[2, 'Every 3rd week'], [3, 'Every 4th week'], [4, 'Every 5th week'], [0, 'Never']],
+    horizonWeeks: [[4, '1 month'], [8, '2 months'], [12, '3 months'], [26, '6 months']],
+    rotationPolicy: [['ask', 'Ask me first'], ['auto', 'Swap them for me']],
+    paused: [[false, 'Keep going'], [true, 'Paused']],
+};
+
+function segmentedHTML(key) {
+    return `<div class="segmented" role="group">${SETTING_OPTIONS[key].map(([v, label]) => `
+        <button class="${_draft[key] === v ? 'active' : ''}" onclick="planSettingPick('${key}', ${JSON.stringify(v).replace(/"/g, "'")}, this)">${escapeHtml(label)}</button>`).join('')}</div>`;
+}
+
+function trainingDaysText() {
+    const days = _ctx?.weekPlan?.days || {};
+    const names = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+    const on = Object.keys(names).filter(d => days[d] && days[d] !== 'rest').map(d => names[d]);
+    return on.length ? on.join(' · ') : 'Not set';
+}
+
+function planSettingsBody() {
+    return `
+        <div class="plan-settings">
+            <label class="field-label" for="plan-set-name">Name</label>
+            <input id="plan-set-name" class="form-input" value="${escapeAttr(_draft.name)}" maxlength="60">
+            <button class="row-card plan-settings__row" onclick="closePlanSettings(); openWeekPlanSheet()">
+                <span class="row-card__content"><span class="row-card__title">Training days</span><span class="row-card__subtitle">${escapeHtml(trainingDaysText())}</span></span>
+                <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
+            </button>
+            <div class="field-label">Minutes per session</div>
+            ${segmentedHTML('sessionMinutes')}
+            <div class="field-label">Lighter week</div>
+            ${segmentedHTML('lighter')}
+            <div class="field-label">How far ahead to fill in</div>
+            ${segmentedHTML('horizonWeeks')}
+            <div class="field-label">When the next weeks are set up, accessory swaps</div>
+            ${segmentedHTML('rotationPolicy')}
+            <p class="plan-settings__hint">Main lifts never swap. Accessories swap when you've been on one a long time.</p>
+            <div class="field-label">Plan</div>
+            ${segmentedHTML('paused')}
+        </div>`;
+}
+
+export function openPlanSettings() {
+    const p = _ctx?.plan;
+    if (!p) return;
+    const cad = p.cadence || {};
+    _draft = {
+        name: p.name || 'My plan',
+        sessionMinutes: Number(p.sessionMinutes) || null,
+        lighter: cad.lighterWeek === false ? 0 : (Number(cad.buildWeeks) || 3),
+        horizonWeeks: Number(p.horizonWeeks) || 12,
+        rotationPolicy: p.rotationPolicy === 'auto' ? 'auto' : 'ask',
+        paused: p.paused === true,
+    };
+    openSheet({
+        id: PLAN_SETTINGS_ID,
+        title: 'Plan settings',
+        bodyHTML: planSettingsBody(),
+        actions: [
+            { label: 'Close', onClick: 'closePlanSettings()' },
+            { label: 'Save changes', onClick: 'savePlanSettings()', primary: true },
+        ],
+    });
+}
+
+export function closePlanSettings() {
+    closeSheet(PLAN_SETTINGS_ID);
+}
+
+export function planSettingPick(key, value, btn) {
+    if (!_draft || !(key in SETTING_OPTIONS)) return;
+    _draft[key] = value;
+    btn?.parentElement?.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+}
+
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function savePlanSettings() {
+    return once('plan-settings-save', () => savePlanSettingsNow(), { button: document.querySelector(`#${PLAN_SETTINGS_ID} .btn-primary`), label: 'Saving…' });
+}
+
+async function savePlanSettingsNow() {
+    const p = _ctx?.plan;
+    if (!p || !_draft) return;
+    const name = (document.getElementById('plan-set-name')?.value || '').trim().slice(0, 60) || 'My plan';
+    const cadence = _draft.lighter === 0
+        ? { buildWeeks: Number(p.cadence?.buildWeeks) || 3, lighterWeek: false }
+        : { buildWeeks: _draft.lighter, lighterWeek: true };
+    const patch = {};
+    if (name !== (p.name || 'My plan')) patch.name = name;
+    if (_draft.sessionMinutes && _draft.sessionMinutes !== Number(p.sessionMinutes)) patch.sessionMinutes = _draft.sessionMinutes;
+    if (cadence.buildWeeks !== Number(p.cadence?.buildWeeks || 3) || cadence.lighterWeek !== (p.cadence?.lighterWeek !== false)) patch.cadence = cadence;
+    if (_draft.horizonWeeks !== (Number(p.horizonWeeks) || 12)) patch.horizonWeeks = _draft.horizonWeeks;
+    const policyChanged = _draft.rotationPolicy !== (p.rotationPolicy === 'auto' ? 'auto' : 'ask');
+    if (policyChanged) patch.rotationPolicy = _draft.rotationPolicy;
+    if (_draft.paused !== (p.paused === true)) Object.assign(patch, _draft.paused ? { paused: true, pausedAt: new Date().toISOString(), pausedBy: 'plan-settings' } : { paused: false });
+    if (!Object.keys(patch).length) { closePlanSettings(); return; }
     const { savePlan } = await import('../features/plan.js');
-    if (await savePlan({ rotationPolicy: policy === 'auto' ? 'auto' : 'ask' })) {
-        btn?.parentElement?.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-        btn?.classList.add('active');
-        if (_ctx?.plan) _ctx.plan.rotationPolicy = policy;
-    } else showNotification("Couldn't save that — try again", 'error');
+    if (!(await savePlan(patch))) { showNotification("Couldn't save your plan — try again", 'error'); return; }
+    // The swap choice takes effect at the next set-up, so say when.
+    const roll = _tl?.header?.nextRoll;
+    const msg = !policyChanged ? 'Plan saved'
+        : _draft.rotationPolicy === 'auto'
+            ? `Got it — swaps happen when the next weeks are set up${roll ? ` on ${fmtDate(roll)}` : ''}`
+            : 'Got it — swaps will be offered on your Sunday card';
+    showNotification(msg, 'success', 2500);
+    closePlanSettings();
+    await renderBlockPage();
+}
+
+// ── Rotate an exercise (TP-6 b) — rules only, no coach turn ──────────
+
+const ROTATE_SHEET_ID = 'plan-rotate-sheet';
+let _rotate = null; // { templateId, index, candidates }
+
+const lc = (x) => String(x || '').trim().toLowerCase();
+const nameOfRow = (ex) => ex?.machine || ex?.name || '';
+
+/** How long an exercise has been on: since its swap-in (or first log) and how many sessions. */
+function tenure(row) {
+    const n = lc(nameOfRow(row));
+    const since = row?.rotatedAt ? String(row.rotatedAt).slice(0, 10) : null;
+    const dates = (_ctx?.workouts || []).filter(wo => (!since || wo.date >= since) && [
+        ...Object.values(wo.exerciseNames || {}),
+        ...Object.values(wo.exercises || {}).map(e => e?.name),
+    ].some(x => lc(x) === n)).map(wo => wo.date).sort();
+    const from = since || dates[0] || null;
+    return [from ? `since ${fmtDate(from)}` : 'not logged yet', dates.length ? `${dates.length} session${dates.length === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ');
+}
+
+function rotateListBody() {
+    const sessions = planWeekSessions({ weekPlan: _ctx?.weekPlan || null, templates: _ctx?.templates || [], workouts: _ctx?.workouts || [], today: _ctx?.today });
+    const seen = new Set();
+    const groups = sessions.filter(x => !seen.has(x.template.id) && seen.add(x.template.id)).map((x) => {
+        const t = x.template;
+        const rows = (t.exercises || []).map((ex, i) => {
+            const name = nameOfRow(ex);
+            if (!name) return '';
+            if (inferRole(ex, i) === 'primary') {
+                return `<div class="js-row js-row--locked"><div class="js-row__info"><div class="js-row__name"><i class="fas fa-lock" aria-hidden="true"></i> ${escapeHtml(name)}</div><div class="js-row__meta">Stays — your strength numbers depend on it</div></div></div>`;
+            }
+            return `<button class="js-row" onclick="rotatePick('${escapeAttr(t.id)}', ${i})"><div class="js-row__info"><div class="js-row__name">${escapeHtml(name)}</div><div class="js-row__meta">${escapeHtml(tenure(ex))}</div></div><i class="fas fa-chevron-right" aria-hidden="true"></i></button>`;
+        }).join('');
+        return `<div class="field-label">${escapeHtml(x.dayLabel)} · ${escapeHtml(t.name || t.id)}</div>${rows}`;
+    }).join('');
+    return groups || `
+        <div class="empty-state-compact">
+            <p>No sessions this week</p>
+            <p class="empty-state-hint">Set your training days in Plan settings and their exercises show up here.</p>
+        </div>`;
+}
+
+export async function openRotateSheet(templateId = null, index = null) {
+    if (!_ctx) return;
+    _rotate = null;
+    openSheet({
+        id: ROTATE_SHEET_ID,
+        title: 'Rotate an exercise',
+        subtitle: 'Pick an accessory to swap',
+        bodyHTML: rotateListBody(),
+        actions: [
+            { label: 'Close', onClick: 'closeRotateSheet()' },
+            { label: 'Ask the coach instead', onClick: 'closeRotateSheet(); blockSwapAccessory()' },
+        ],
+    });
+    if (templateId != null && index != null) await rotatePick(templateId, index);
+}
+
+export function closeRotateSheet() {
+    closeSheet(ROTATE_SHEET_ID);
+}
+
+export function rotateBack() {
+    _rotate = null;
+    openRotateSheet();
+}
+
+async function equipmentNow() {
+    if (Array.isArray(AppState._cachedEquipment) && AppState._cachedEquipment.length) return AppState._cachedEquipment;
+    try {
+        const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
+        return (await new FirebaseWorkoutManager(AppState).getUserEquipment()) || [];
+    } catch { return []; }
+}
+
+export async function rotatePick(templateId, index) {
+    const t = (_ctx?.templates || []).find(x => x.id === templateId);
+    const row = t?.exercises?.[index];
+    if (!row) return;
+    const name = nameOfRow(row);
+    const byName = new Map((AppState.exerciseDatabase || []).filter(e => e?.name).map(e => [lc(e.name), e]));
+    const ranked = rankRotationCandidates({
+        exercise: name, slot: row, equipment: await equipmentNow(), location: null,
+        lookup: (n) => byName.get(lc(n)), exclude: (t.exercises || []).map(nameOfRow).filter(Boolean),
+        history: rotationHistory(_ctx.programs || []), today: _ctx.today, limit: 3,
+    });
+    _rotate = { templateId, index, candidates: ranked.candidates };
+    const rows = ranked.candidates.map((c, i) => `
+        <button class="js-row" onclick="rotateApply(${i})">
+            <div class="js-row__info"><div class="js-row__name">${escapeHtml(c.name)}</div><div class="js-row__meta">${escapeHtml(c.equipment)} · ${escapeHtml(c.reason)}</div></div>
+            <i class="fas fa-arrow-right-arrow-left" aria-hidden="true"></i>
+        </button>`).join('');
+    const left = (ranked.excluded || []).map(x => `${x.name} (${x.reason})`).join(', ');
+    const body = `
+        <div class="field-label">Replace ${escapeHtml(name)} with</div>
+        ${rows || `<div class="empty-state-compact"><p>Nothing else in your equipment trains this</p><p class="empty-state-hint">Ask the coach — it can suggest one and you pick the machine at the gym.</p></div>`}
+        ${left ? `<p class="plan-settings__hint">Left out: ${escapeHtml(left)} — you just moved off ${(ranked.excluded || []).length === 1 ? 'it' : 'them'}.</p>` : ''}
+        <button class="btn btn-secondary btn-sm" onclick="rotateBack()">Back to the list</button>`;
+    const sheet = document.getElementById(ROTATE_SHEET_ID);
+    if (!sheet) return;
+    openSheet({
+        id: ROTATE_SHEET_ID,
+        title: 'Rotate an exercise',
+        subtitle: `${t.name || ''} · ${tenure(row)}`,
+        bodyHTML: body,
+        actions: [
+            { label: 'Close', onClick: 'closeRotateSheet()' },
+            { label: 'Ask the coach instead', onClick: `closeRotateSheet(); blockSwapAccessory('${escapeAttr(name)}')` },
+        ],
+    });
+}
+
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function rotateApply(i) {
+    return once('plan-rotate', () => rotateApplyNow(i));
+}
+
+async function rotateApplyNow(i) {
+    const c = _rotate?.candidates?.[i];
+    const t = (_ctx?.templates || []).find(x => x.id === _rotate?.templateId);
+    const row = t?.exercises?.[_rotate.index];
+    if (!c || !row) return;
+    const swap = { index: _rotate.index, from: nameOfRow(row), to: c.name, equipment: c.equipment, reason: c.reason };
+    try {
+        const { swapInTemplate, undoSwapInTemplate } = await import('../features/plan.js');
+        const program = _tl?.activeProgram || null;
+        const done = await swapInTemplate(t.id, swap, program);
+        if (!done) { showNotification("Couldn't swap it — try again", 'error'); return; }
+        closeRotateSheet();
+        showNotification(`${swap.to} in place of ${swap.from}`, 'success', null, {
+            label: 'Undo',
+            onClick: async () => {
+                await undoSwapInTemplate(t.id, done, program);
+                showNotification(`${swap.from} is back`, 'success', 1500);
+                await renderBlockPage();
+            },
+        });
+        await renderBlockPage();
+    } catch (e) {
+        console.error('❌ Rotate failed:', e);
+        showNotification("Couldn't swap it — try again", 'error');
+    }
 }
 
 /** Single-flight (busy.js): a second tap while this runs is ignored. */
@@ -487,7 +746,15 @@ if (typeof window !== 'undefined') {
     window.blockStartSession = blockStartSession;
     window.planEnable = planEnable;
     window.planResume = planResume;
-    window.planSetRotationPolicy = planSetRotationPolicy;
+    window.openPlanSettings = openPlanSettings;
+    window.closePlanSettings = closePlanSettings;
+    window.planSettingPick = planSettingPick;
+    window.savePlanSettings = savePlanSettings;
+    window.openRotateSheet = openRotateSheet;
+    window.closeRotateSheet = closeRotateSheet;
+    window.rotatePick = rotatePick;
+    window.rotateBack = rotateBack;
+    window.rotateApply = rotateApply;
     window.planApplySwaps = planApplySwaps;
     window.planUndoRoll = planUndoRoll;
     window.saveSessionToMyWorkouts = saveSessionToMyWorkouts;

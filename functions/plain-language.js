@@ -42,6 +42,7 @@ const BANNED = [
     ['rung', /\brungs?\b/gi],
     ['deload', /\bdeload(?:s|ed|ing)?\b/gi],
     ['block', /\bblocks?\b/gi],
+    ['wave', /\bwaves?\b/gi],
     ['accumulate', /\baccumulat(?:e|es|ed|ing|ion)\b/gi],
     ['intensify', /\bintensif(?:y|ies|ied|ying|ication)\b/gi],
     ['hypertrophy', /\bhypertrophy\b/gi],

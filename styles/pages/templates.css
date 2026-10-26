@@ -1304,6 +1304,20 @@
     cursor: pointer;
 }
 
+/* TP-6 n — workouts not used in 90 days, collapsed under the list */
+.ws-older > summary {
+    cursor: pointer;
+    min-height: var(--tap-sm);
+    display: flex;
+    align-items: center;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--primary);
+}
+.ws-older[open] > summary {
+    margin-bottom: var(--space-8);
+}
+
 /* TP-4 — "Your plan" group atop the Workouts list: this week's plan sessions. */
 .ws-plan-group {
     display: flex;

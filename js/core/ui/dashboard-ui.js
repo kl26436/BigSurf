@@ -3,6 +3,7 @@
 
 import { StatsTracker } from '../features/stats-tracker.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr, convertWeight } from './ui-helpers.js';
+import { once } from './busy.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
@@ -20,7 +21,7 @@ import { satisfiedDays, todayCard, weekDates, loadWeekPlan } from '../features/w
 import {
     loadActiveProgram, programSessionForToday, programSessionMeta,
     programNoticeForToday, programCompletionForToday,
-    programHeartbeat, programBlockStats, trailingWeekLight,
+    programBlockStats, trailingWeekLight,
 } from '../features/program-session.js';
 import { describeWeekTarget } from '../features/week-targets.js';
 
@@ -111,11 +112,13 @@ async function renderDashboard() {
         // week plan, program), so a warm return makes no network trip at all.
         // Streaks, weekly stats and insights all derive from the one workouts
         // list (the 9/29 fix).
-        const [allWorkouts, bwData, dexaHistory, reportEntryHTML] = await Promise.all([
+        const [allWorkouts, bwData, dexaHistory, reportEntryHTML, planSummary] = await Promise.all([
             loadAllWorkouts(AppState),
             loadBodyWeightData(),
             import('../features/dexa-scan.js').then(m => m.loadDexaHistory(2)).catch(() => []),
             reportCardEntry(),
+            // TP-6 c — the "Your plan" card (plan doc, waves, dates; session-cached).
+            import('../features/plan.js').then(m => m.loadPlanSummary()).catch(() => null),
             PRTracker.loadPRData(),
             // Week plan (5.5): hydrate once per session (null = none set).
             AppState._weekPlan === undefined ? loadWeekPlan().catch(() => null) : Promise.resolve(),
@@ -124,6 +127,7 @@ async function renderDashboard() {
         ]);
         perfMark('dashboard:data');
         if (seq !== _dashRenderSeq) return;
+        _planCard = await planCardModel(planSummary, allWorkouts);
         const [streaks, weeklyStats, insightsData] = await Promise.all([
             StreakTracker.calculateStreaks(allWorkouts),
             StatsTracker.getWeeklyStats(allWorkouts),
@@ -542,11 +546,12 @@ function getBwDeltaDirectionClass(delta) {
 // FOR TODAY
 // ===================================================================
 
-// Program-end landing: finishing a block is a milestone — the dashboard says
-// so (gold, like a PR) and offers the next block one tap away, instead of
-// the program quietly expiring as LLM-context-only text. Leads with real
-// numbers from the block, not just "the clock ran out".
+// Program-end landing: finishing these weeks is a milestone — the dashboard
+// says so (gold, like a PR), leading with real numbers. TP-6 c: with a plan
+// the next weeks roll on their own, so this never shows; without one it
+// offers to turn the plan on (the same thing the Plan page's notice does).
 function renderProgramCompleteBanner(allWorkouts = []) {
+    if (_planHasDoc) return '';
     const program = AppState._activeProgram;
     const today = AppState.getTodayDateString();
     const done = program ? programCompletionForToday(program, today) : null;
@@ -576,30 +581,61 @@ function renderProgramCompleteBanner(allWorkouts = []) {
                 </button>
             </div>
             ${statLine}
-            <button class="dash-program-done__cta" onclick="planNextBlock()">Plan the next few weeks</button>
+            <div class="dash-program-done__meta">Turn on your plan so the next weeks are set up on their own.</div>
+            <button class="dash-program-done__cta" onclick="dashEnablePlan()">Keep my plan going</button>
         </div>
     `;
 }
 
-// Persistent, quiet "you're mid-block" line under the hero — proof the program
-// is running on every week (baseline included), so a freshly-started block
-// isn't invisible until its first adjustment week. Deliberately understated:
-// a muted footer row, not a highlighted card. Taps into the program detail
-// sheet (the block, the schedule, a coach handoff). Mutually exclusive with
-// the completion banner (heartbeat is null once finished).
+// TP-6 c — "Your plan" under the hero: the same timeline header the Plan
+// page shows (so the two can't disagree) — the week's kind, never "week N of
+// M"; the next lighter week, the next date, swaps waiting, when the next
+// weeks get set up. Quiet footer weight, not a card. Taps into the Plan page.
+let _planCard = null;   // { title, meta } — planSummaryLine
+let _planHasDoc = false;
+
+async function planCardModel(summary, allWorkouts) {
+    _planHasDoc = !!summary?.plan;
+    if (!summary || (!summary.plan && !(summary.programs || []).length)) return null;
+    try {
+        const [{ buildPlanTimeline, planSummaryLine }, { waitingSwaps }] = await Promise.all([
+            import('../features/plan-timeline.js'), import('../features/exercise-rotation.js'),
+        ]);
+        const templates = AppState.workoutPlans || [];
+        const tl = buildPlanTimeline({
+            plan: summary.plan, weekPlan: AppState._weekPlan || null, programs: summary.programs || [],
+            templates, workouts: allWorkouts || [], events: summary.events || [], today: AppState.getTodayDateString(),
+        });
+        if (!summary.plan && !tl.header.thisWeek) return null;
+        return planSummaryLine(tl.header, { hasPlan: !!summary.plan, waiting: waitingSwaps(tl.activeProgram, templates).length });
+    } catch (e) {
+        debugLog('dashboard: plan card failed', e);
+        return null;
+    }
+}
+
 function renderProgramHeartbeat() {
-    const beat = AppState._activeProgram
-        ? programHeartbeat(AppState._activeProgram, AppState.getTodayDateString())
-        : null;
-    if (!beat) return '';
+    const t = _planCard;
+    if (!t) return '';
     return `
-        <div class="dash-program-line" onclick="openProgramDetailSheet()" role="button" tabindex="0"
-            aria-label="${escapeAttr(beat.name)}, week ${beat.week} of ${beat.weeks} — open program">
-            <i class="fas fa-flag-checkered dash-program-line__icon"></i>
-            <span class="dash-program-line__txt">${escapeHtml(beat.name)} · week ${beat.week} of ${beat.weeks}</span>
-            <i class="fas fa-chevron-right dash-program-line__chev"></i>
+        <div class="dash-program-line" onclick="openBlockPage()" role="button" tabindex="0"
+            aria-label="${escapeAttr(`${t.title}${t.meta ? `. ${t.meta}` : ''} — open your plan`)}">
+            <i class="fas fa-calendar-week dash-program-line__icon" aria-hidden="true"></i>
+            <span class="dash-program-line__txt">${escapeHtml(t.title)}${t.meta ? `<span class="dash-program-line__meta">${escapeHtml(t.meta)}</span>` : ''}</span>
+            <i class="fas fa-chevron-right dash-program-line__chev" aria-hidden="true"></i>
         </div>
     `;
+}
+
+/** TP-6 c — "these weeks are done" without a plan: turn it on, right here. */
+export function dashEnablePlan() {
+    return once('plan-enable', async () => {
+        const { enablePlanFromProgram } = await import('../features/plan.js');
+        if (await enablePlanFromProgram(AppState._activeProgram || {})) {
+            showNotification('Plan on — the next weeks are set up on their own', 'success', 2000);
+            await renderDashboard();
+        } else showNotification("Couldn't turn the plan on — try again", 'error');
+    });
 }
 
 function renderForToday(allWorkouts) {
@@ -1480,6 +1516,7 @@ export function closeTodaysPRs() {
     closeSheet(TODAYS_PRS_SHEET_ID);
 }
 if (typeof window !== 'undefined') window.closeTodaysPRs = closeTodaysPRs;
+if (typeof window !== 'undefined') window.dashEnablePlan = dashEnablePlan;
 
 // Equipment is stored as "Brand [Line] — Function". On a PR row the function
 // duplicates the exercise name shown right above it (e.g. equipment "MegaMass —
@@ -1799,6 +1836,7 @@ import('../utils/pull-to-refresh.js').then(({ registerPullToRefresh }) => {
         async () => {
             AppState._weekPlan = undefined;
             AppState._activeProgram = undefined;
+            await import('../features/plan.js').then(m => m.clearPlanCache()).catch(() => {});
             const { clearAllWorkoutsCache } = await import('../data/data-manager.js');
             clearAllWorkoutsCache();
             await renderDashboard();

@@ -16,7 +16,8 @@ import { getTemplatesForDayOfWeek } from '../features/metrics/aggregators.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
 import { deriveProgramWeek } from '../features/week-targets.js';
 import { weekKindLabel } from '../features/plain-language.js';
-import { splitTemplatesForList, planWeekSessions } from '../features/plan-sessions.js';
+import { splitTemplatesForList, planWeekSessions, groupMyWorkouts } from '../features/plan-sessions.js';
+import { ROTATION_MEMORY_DAYS } from '../features/exercise-rotation.js';
 
 // ===================================================================
 // TEMPLATE SELECTION STATE
@@ -376,8 +377,26 @@ async function renderWorkoutSelectorUI() {
     // Sort: most recently used first, then alphabetical
     filtered = sortTemplatesByRecency(filtered);
 
-    // Render template rows (archived group appended when not category-filtered)
-    renderTemplateRows(listContainer, filtered, activeSelectorCategory !== null, archivedTemplates);
+    // TP-6 n — a workout on the split is already in the plan group up top
+    // (with Start): list it once. Unfiltered, the rest splits into recent and
+    // a collapsed "Older" so 19 rows don't bury the four you use.
+    const planShown = !!(AppState._activeProgram || allTemplates.some(t => t.planOwned && !t.archived));
+    const splitIds = planShown ? Object.values(AppState._weekPlan?.days || {}).filter(v => v && v !== 'rest') : [];
+    let older = [];
+    if (activeSelectorCategory === null && !possibleHereFilter) {
+        const g = groupMyWorkouts(filtered, {
+            splitIds,
+            lastUsed: t => getLastWorkoutDate(t._name) || (String(t.createdAt || t.lastUpdated || '').slice(0, 10) || null),
+            today: AppState.getTodayDateString(),
+        });
+        filtered = g.recent;
+        older = g.older;
+    } else {
+        filtered = filtered.filter(t => !splitIds.includes(t.id));
+    }
+
+    // Render template rows (older + archived groups appended when not category-filtered)
+    renderTemplateRows(listContainer, filtered, activeSelectorCategory !== null, archivedTemplates, older);
     renderPlanGroup(listContainer, allTemplates);
 
     // Set up delegation for clicks
@@ -549,7 +568,7 @@ function formatTimeAgo(dateStr) {
     return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
 }
 
-function renderTemplateRows(container, templates, isFiltered, archivedTemplates = []) {
+function renderTemplateRows(container, templates, isFiltered, archivedTemplates = [], olderTemplates = []) {
     // Category filter with no matches — simple message (archived group not shown
     // while a filter is active).
     if (templates.length === 0 && isFiltered) {
@@ -563,7 +582,7 @@ function renderTemplateRows(container, templates, isFiltered, archivedTemplates 
     }
 
     // Truly empty — no active AND no archived workouts. New-user two-door state.
-    if (templates.length === 0 && archivedTemplates.length === 0) {
+    if (templates.length === 0 && archivedTemplates.length === 0 && olderTemplates.length === 0) {
         container.innerHTML = `
             <div class="template-empty-state">
                 <div class="template-empty-state__icon"><i class="fas fa-dumbbell"></i></div>
@@ -618,6 +637,7 @@ function renderTemplateRows(container, templates, isFiltered, archivedTemplates 
         + ordered.map(t => isNestedVariation(t)
             ? `<div class="template-row--variation">${renderSingleTemplateRow(t)}</div>`
             : renderSingleTemplateRow(t)).join('')
+        + (olderTemplates.length ? `<details class="ws-older"><summary>Older (${olderTemplates.length})</summary>${olderTemplates.map(t => renderSingleTemplateRow(t)).join('')}</details>` : '')
         + (isFiltered ? '' : renderArchivedGroup(archivedTemplates));
 
     // Pre-filled notes textareas start at their content height, not one row.
@@ -869,6 +889,10 @@ function renderGymContextHeader() {
  */
 function renderSuggestedForToday(templates, isFiltered) {
     if (isFiltered || !cachedWorkoutHistory || cachedWorkoutHistory.length === 0) return '';
+    // TP-6 n — with a plan, today's session leads the plan group already.
+    const todayKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
+    const planToday = AppState._weekPlan?.days?.[todayKey];
+    if (planToday && planToday !== 'rest' && AppState._activeProgram) return '';
     const dow = new Date().getDay();
     const ranked = getTemplatesForDayOfWeek(
         templates.map(t => ({ ...t, name: t._name })),
@@ -920,7 +944,7 @@ function renderSingleTemplateRow(template) {
         <div class="row-card template-row" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}" data-action="openWorkoutEditor">
             <div class="template-row__dot" style="--dot-color: ${color};"></div>
             <div class="row-card__content">
-                <div class="row-card__title">${escapeHtml(templateName)}</div>
+                <div class="row-card__title">${escapeHtml(templateName)}${template.kind === 'oneOff' ? ' <span class="chip chip--sm">One-off</span>' : ''}${template.savedFromPlan ? ' <span class="chip chip--sm">From your plan</span>' : ''}</div>
                 <div class="row-card__subtitle template-row__summary">${renderTemplateSummary(template)}</div>
                 <div class="row-card__subtitle template-row__last">${escapeHtml(lastDone)}</div>
                 ${renderCompatBadge(templateId)}
@@ -1277,8 +1301,12 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
 
     // CP-4 — a rotated accessory says what it replaced (informational; the
     // equipment picker and remove button stay the edit affordances).
-    const rotatedChip = ex.rotatedFrom
-        ? ` <span class="chip chip--sm te-row__rotated" title="Rotated in for these weeks"><i class="fas fa-rotate" aria-hidden="true"></i> was ${escapeHtml(ex.rotatedFrom)}</span>`
+    // TP-6 m — "was Pec Deck · Sep 15": dated, and gone once the swap is old
+    // news (the same window the rotation engine remembers it for).
+    const rotatedOn = ex.rotatedAt ? String(ex.rotatedAt).slice(0, 10) : null;
+    const rotatedFresh = !rotatedOn || (Date.now() - new Date(`${rotatedOn}T12:00:00`).getTime()) / 86400000 <= ROTATION_MEMORY_DAYS;
+    const rotatedChip = ex.rotatedFrom && rotatedFresh
+        ? ` <span class="chip chip--sm te-row__rotated" title="Swapped in for these weeks"><i class="fas fa-rotate" aria-hidden="true"></i> was ${escapeHtml(ex.rotatedFrom)}${rotatedOn ? ` · ${escapeHtml(new Date(`${rotatedOn}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}` : ''}</span>`
         : '';
     const summary = (equipment
         ? `${sets} × ${reps} · ${escapeHtml(equipment)}`

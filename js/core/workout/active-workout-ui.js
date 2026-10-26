@@ -28,6 +28,8 @@ import { composeEquipmentName } from '../utils/equipment-name.js';
 import { suggestMachinesForExercise } from '../features/exercise-machine-matcher.js';
 import { getEquipmentAtLocation, getExercisesAtLocation } from '../features/equipment-planner.js';
 import { programHeartbeat } from '../features/program-session.js';
+import { deriveProgramWeek } from '../features/week-targets.js';
+import { weekKindLabel } from '../features/plain-language.js';
 
 // ===================================================================
 // STATE
@@ -219,17 +221,19 @@ function renderWorkoutHeader() {
     const location = AppState.savedData?.location;
     const locName = typeof location === 'object' ? location?.name : location;
 
-    // Program presence (5.7.2): the same quiet week-N-of-M signal the
-    // dashboard heartbeat shows, folded into the existing meta line. Renders
-    // nothing without an active program.
+    // Program presence (5.7.2), folded into the existing meta line: the
+    // week's kind ("Build week", "Lighter week"), never "week N of M" (TP-6 c).
+    // Renders nothing without an active program.
     let programMeta = '';
     try {
-        const hb = programHeartbeat(AppState._activeProgram, AppState.getTodayDateString());
-        if (hb) programMeta = ` · week ${hb.week} of ${hb.weeks}`;
+        const program = AppState._activeProgram;
+        if (programHeartbeat(program, AppState.getTodayDateString())) {
+            programMeta = ` · ${weekKindLabel(deriveProgramWeek(program, AppState.getTodayDateString()).target).toLowerCase()}`;
+        }
     } catch { /* no program, no line */ }
-    // AP-6: say what kind of session this is, so "week 6 of 6" never sits
-    // above a card that disagrees with it.
-    const intentMeta = AppState.savedData?.sessionIntent?.mode === 'deload' ? ' · deload' : '';
+    // AP-6: say what kind of session this is, so the line never sits above a
+    // card that disagrees with it.
+    const intentMeta = AppState.savedData?.sessionIntent?.mode === 'deload' && !/lighter/.test(programMeta) ? ' · lighter week' : '';
 
     return `
         <div class="page-header page-header--workout">

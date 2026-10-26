@@ -114,7 +114,8 @@ js/
     │   ├── training-insights.js    # Rules engine for dashboard insights (no API)
     │   └── withings-integration.js # Withings OAuth + weight sync
     ├── ui/                     # UI components
-    │   ├── block-ui.js             # TP-3: the Plan page (#block-section, route 'plan', alias 'block') — one continuous timeline
+    │   ├── block-ui.js             # TP-3: the Plan page (#block-section, route 'plan', alias 'block') — one continuous timeline;
+    │   │                           #   TP-6: Plan settings sheet (gear), Rotate sheet (rules-only swaps + undo)
     │   ├── goals-ui.js             # TP-1: Goals page (#goals-section, route 'goals') + add-goal / add-date sheets
     │   ├── report-card-ui.js       # TP-2: Sunday report card page (#reportcard-section, route 'reportcard'), recompute on open, one-tap option
     │   ├── dashboard-ui.js         # Dashboard render + renderProgressPage (#progress-section)
@@ -465,6 +466,8 @@ Writes are local-first and can take up to 5 s to resolve on bad signal (`commitW
 ### Server writes the phone must see (TP-6 j)
 
 The coach's tools and the Sunday roll write through the Admin SDK, so the phone's cached workouts / week plan / program don't know. Any new server-side write path the user should see must stamp `users/{uid}/meta/sync` (`serverWriteAt`, `serverWriteBy`); the client's `server-sync.js` re-reads. A client re-read after a server write uses `refreshAfterServerWrite()` — never a bare `getUserWorkoutTemplates()` (a cache fallback there is the stale copy; `lastTemplatesFromServer` / `AppState._templatesStale` track it).
+
+**Home and the Plan page read one header (TP-6 c).** Home's plan line is `planSummaryLine(buildPlanTimeline(...).header)` over `loadPlanSummary()` (plan.js, session-cached; `clearPlanCache()` after any plan write). Never render "week N of M" — say the week's kind.
 
 **Swaps are written, not described (TP-6 f/l).** A plan's "what's new" must match the workouts: `create_program` applies `swaps` + `rationale.changed` via `resolveSwaps`; the rotation engine never proposes what a slot just moved off (`rotatedOutOf`, `ROTATION_MEMORY_DAYS`).
 

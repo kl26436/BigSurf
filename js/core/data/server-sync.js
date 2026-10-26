@@ -27,6 +27,7 @@ export function refreshAfterServerWrite(why = 'server') {
     _refreshing = (async () => {
         AppState._weekPlan = undefined;
         AppState._activeProgram = undefined;
+        try { (await import('../features/plan.js')).clearPlanCache(); } catch { /* not loaded */ }
         let fresh = false;
         try {
             const { FirebaseWorkoutManager } = await import('./firebase-workout-manager.js');

@@ -46,7 +46,7 @@ function cadenceOf(plan) {
 function describeCadence(cadence) {
     const c = cadence || DEFAULT_CADENCE;
     const n = NUMBER_WORDS[c.buildWeeks] || String(c.buildWeeks);
-    return c.lighterWeek ? `${n} build week${c.buildWeeks === 1 ? '' : 's'} then a lighter one` : `${n}-week waves, no lighter week`;
+    return c.lighterWeek ? `${n} build week${c.buildWeeks === 1 ? '' : 's'} then a lighter one` : 'build weeks only, no lighter week';
 }
 
 /** The kind of the i-th week (0-based) of a wave: build… (last one push), then lighter. */
@@ -218,6 +218,11 @@ function buildPlanTimeline({
     const nextLighter = weeks.find(w => w.weekStart > today && w.kind === 'lighter') || null;
     const nextEvent = (events || []).filter(e => e?.date && e.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0] || null;
     const active = runs.find(r => r.start <= today && r.end >= today)?.program || null;
+    // TP-6 a/c — when the next weeks get set up: the day after the last wave
+    // (or next Monday), rolled the Sunday before. Same rule as rollWindow.
+    const lastRun = runs.length ? runs[runs.length - 1] : null;
+    const chain = lastRun ? addDays(lastRun.end, 1) : null;
+    const nextWeeksFrom = plan && plan.paused !== true ? (chain && chain >= today ? chain : addDays(mondayOf(today), 7)) : null;
     return {
         weeks,
         horizonEnd,
@@ -230,6 +235,8 @@ function buildPlanTimeline({
             thisWeek: current ? `${current.label}${current.kind === 'build' || current.kind === 'push' ? ` ${runIndex}` : ''}` : null,
             thisWeekKind: current?.kind || null,
             nextLighter: nextLighter ? nextLighter.weekStart : null,
+            nextWeeksFrom,
+            nextRoll: nextWeeksFrom ? addDays(nextWeeksFrom, -1) : null,
             nextEvent: nextEvent ? { name: nextEvent.name, date: nextEvent.date, weeks: Math.max(0, Math.floor(Math.round((new Date(`${nextEvent.date}T12:00:00`) - new Date(`${today}T12:00:00`)) / 86400000) / 7)) } : null,
             through: monthOf(horizonEnd),
         },
@@ -251,7 +258,7 @@ function formatPlanContext({ plan = null, weekPlan = null, templates = [], timel
         parts.push(describeCadence(cadenceOf(plan)));
         if (plan.paused) parts.push('paused — it does not continue on its own');
         else if (timeline) parts.push(`through ${timeline.header.through}`);
-        if (plan.rotationPolicy === 'auto') parts.push('accessories rotate automatically between waves');
+        if (plan.rotationPolicy === 'auto') parts.push('accessory swaps happen automatically when the next weeks are set up');
         if (plan.sessionMinutes) parts.push(`${plan.sessionMinutes} min sessions`);
         const fixed = Object.entries(plan.fixed || {}).filter(([d, v]) => DAY_LABELS[d] && v?.mustInclude?.length);
         if (fixed.length) parts.push(`fixed: ${fixed.map(([d, v]) => `${DAY_LABELS[d]} ${v.mustInclude.join(' + ')}`).join(', ')}`);
@@ -265,4 +272,25 @@ function formatPlanContext({ plan = null, weekPlan = null, templates = [], timel
     return `Your plan: ${parts.join(' · ')}\n`;
 }
 
-module.exports = { DAY_KEYS, DEFAULT_CADENCE, DEFAULT_HORIZON_WEEKS, MAX_PAST_WEEKS, KIND_LABELS, mondayOf, cadenceOf, describeCadence, cadenceKind, projectKinds, programRuns, buildPlanTimeline, formatPlanContext };
+/**
+ * TP-6 c — the plan in one line for Home, from the SAME header the Plan page
+ * renders (so the two can't disagree): "My plan · Build week 3" over
+ * "lighter week starts Nov 2 · Trip in 5 weeks · 2 swaps waiting".
+ * @param {object} header - buildPlanTimeline().header
+ * @param {{hasPlan?: boolean, waiting?: number}} [opts]
+ * @returns {{title: string, meta: string}}
+ */
+function planSummaryLine(header, { hasPlan = true, waiting = 0 } = {}) {
+    const h = header || {};
+    const meta = [
+        h.paused ? 'paused' : null,
+        h.nextLighter ? `lighter week starts ${shortDate(h.nextLighter)}` : null,
+        h.nextEvent ? `${h.nextEvent.name} in ${h.nextEvent.weeks} week${h.nextEvent.weeks === 1 ? '' : 's'}` : null,
+        waiting ? `${waiting} swap${waiting === 1 ? '' : 's'} waiting` : null,
+        hasPlan && !h.paused && !h.nextLighter && h.nextRoll ? `next weeks set up ${shortDate(h.nextRoll)}` : null,
+        !hasPlan ? 'turn it on to keep it going' : null,
+    ].filter(Boolean);
+    return { title: [h.name, h.thisWeek].filter(Boolean).join(' · '), meta: meta.join(' · ') };
+}
+
+module.exports = { DAY_KEYS, DEFAULT_CADENCE, DEFAULT_HORIZON_WEEKS, MAX_PAST_WEEKS, KIND_LABELS, mondayOf, cadenceOf, describeCadence, cadenceKind, projectKinds, programRuns, buildPlanTimeline, formatPlanContext, planSummaryLine };

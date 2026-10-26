@@ -108,4 +108,25 @@ function formatPlanSessionsContext({ templates = [], weekPlan = null, today }) {
     return `Plan sessions (built for the plan; the user's own list stays separate — "save to my workouts" copies one there): ${names.join(', ')}\n`;
 }
 
-module.exports = { PLAN_ID, isPlanOwned, splitTemplatesForList, planWeekSessions, cloneForMyWorkouts, planTemplatesToArchive, formatPlanSessionsContext };
+/**
+ * TP-6 n — the user's own list under the plan group: nothing already on the
+ * split (it's up top with Start), the rest as recent (used — or made — in the
+ * last `recentDays`) and older (collapsed). Input order is kept.
+ * @param {Array} templates
+ * @param {{splitIds?: string[], lastUsed?: (t:object)=>string|null, today: string, recentDays?: number}} opts
+ * @returns {{recent: Array, older: Array}}
+ */
+function groupMyWorkouts(templates = [], { splitIds = [], lastUsed = () => null, today, recentDays = 90 } = {}) {
+    const onSplit = new Set(splitIds || []);
+    const cutoff = addDays(today, -recentDays);
+    const recent = [];
+    const older = [];
+    for (const t of templates || []) {
+        if (onSplit.has(t.id)) continue;
+        const d = lastUsed(t);
+        (d && d >= cutoff ? recent : older).push(t);
+    }
+    return { recent, older };
+}
+
+module.exports = { PLAN_ID, isPlanOwned, splitTemplatesForList, planWeekSessions, cloneForMyWorkouts, planTemplatesToArchive, formatPlanSessionsContext, groupMyWorkouts };

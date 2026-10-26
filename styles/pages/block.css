@@ -131,8 +131,34 @@
     gap: var(--space-8);
     margin-top: var(--space-12);
 }
-.plan-policy .segmented {
+/* TP-6 a — Plan settings sheet */
+.plan-settings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+.plan-settings .segmented {
     width: 100%;
+}
+.plan-settings__row {
+    margin-top: var(--space-6);
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+}
+.plan-settings__hint {
+    margin: 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+/* TP-6 d — the explanation sits behind one row at the bottom */
+.plan-why {
+    margin-top: var(--space-12);
+}
+/* TP-6 b — a main lift in the rotate sheet: shown, not tappable */
+.js-row--locked .js-row__name {
+    color: var(--text-muted);
 }
 .plan-past > summary {
     cursor: pointer;

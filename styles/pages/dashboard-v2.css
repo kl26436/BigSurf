@@ -582,6 +582,13 @@
     white-space: nowrap;
 }
 .dash-program-line__chev { color: var(--text-muted); font-size: var(--font-2xs); flex-shrink: 0; }
+/* TP-6 c — "lighter week starts Nov 2 · 2 swaps waiting" under the plan line */
+.dash-program-line__meta {
+    display: block;
+    font-weight: 400;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 /* Program-complete banner — the block finishing is a milestone (gold, like a
    PR), with the next block one tap away. */
