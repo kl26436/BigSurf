@@ -261,7 +261,7 @@ function renderWorkoutMenu() {
                 <i class="fas fa-plus"></i> Add exercise
             </button>
             <button class="aw-ex-menu__item" onclick="awCloseMenus(); awToggleSessionDeload();">
-                <i class="fas fa-feather"></i> ${isDeload ? 'Back to a normal session' : 'Make this a deload session'}
+                <i class="fas fa-feather"></i> ${isDeload ? 'Back to a normal session' : 'Make this a lighter session'}
             </button>
             <button class="aw-ex-menu__item" onclick="saveActiveWorkoutAsTemplate(); awCloseMenus();">
                 <i class="fas fa-bookmark"></i> Save as template
@@ -1190,8 +1190,8 @@ function buildSetRows(exercise, idx, savedEx, unit, baseWeight = 0) {
         const showRpe = !!AppState.settings?.trackRpe && set.completed && (si === rpeSetIdx || set.rpe != null);
         const rpeRow = showRpe
             ? `<div class="aw-rpe-row">
-                <span class="aw-rpe-row__label">RPE${exercise._rpeTarget ? ` · aim ${exercise._rpeTarget}` : ''}</span>
-                ${[6, 7, 8, 9, 10].map(v => `<button class="aw-rpe-chip${set.rpe === v ? ' active' : ''}" onclick="awSetRpe(${idx}, ${si}, ${v})" aria-label="RPE ${v}">${v}</button>`).join('')}
+                <span class="aw-rpe-row__label">Effort${exercise._rpeTarget ? ` · aim ${exercise._rpeTarget}` : ''}</span>
+                ${[6, 7, 8, 9, 10].map(v => `<button class="aw-rpe-chip${set.rpe === v ? ' active' : ''}" onclick="awSetRpe(${idx}, ${si}, ${v})" aria-label="Effort ${v} of 10">${v}</button>`).join('')}
             </div>`
             : '';
 
@@ -1219,7 +1219,7 @@ function buildSetRows(exercise, idx, savedEx, unit, baseWeight = 0) {
         const suggestMarker = suggestBump
             ? '<span class="aw-set-row__suggest" aria-label="Suggested progression — heavier than last time" title="Suggested — you hit your reps last time">↑</span>'
             : lighter
-                ? `<span class="aw-set-row__suggest aw-set-row__suggest--lighter" aria-label="${set._adjusted === 'deload' ? 'Deload — lighter than last time' : 'Back-off — lighter than last time'}" title="${set._adjusted === 'deload' ? 'Deload — lighter than last time' : 'Back-off — drop and rebuild'}">↓</span>`
+                ? `<span class="aw-set-row__suggest aw-set-row__suggest--lighter" aria-label="${set._adjusted === 'deload' ? 'Lighter week — lighter than last time' : 'Back-off — lighter than last time'}" title="${set._adjusted === 'deload' ? 'Lighter week — lighter than last time' : 'Back-off — drop and rebuild'}">↓</span>`
                 : '';
 
         return `
@@ -4621,12 +4621,12 @@ export async function awToggleSessionDeload() {
     if (wasDeload) {
         AppState.savedData.sessionIntent = {
             mode: 'build', weightPct: null, setDelta: null, repRange: null, rpeTarget: null,
-            label: null, week: null, weeks: null, source: 'none', reason: 'Deload turned off for this session',
+            label: null, week: null, weeks: null, source: 'none', reason: 'Lighter session turned off',
         };
-        if (/deload|recovery/i.test(AppState.savedData.sessionLabel || '')) delete AppState.savedData.sessionLabel;
+        if (/deload|recovery|light(?:er)? (?:week|session)/i.test(AppState.savedData.sessionLabel || '')) delete AppState.savedData.sessionLabel;
     } else {
         AppState.savedData.sessionIntent = sessionOnlyDeloadIntent();
-        AppState.savedData.sessionLabel = 'Deload';
+        AppState.savedData.sessionLabel = 'Lighter session';
     }
     haptic('tap');
     await loadAutofillForAllExercises({ trigger: 'intent', reseed: true });
@@ -4634,7 +4634,7 @@ export async function awToggleSessionDeload() {
     debouncedSaveWorkoutData(AppState);
     showNotification(wasDeload
         ? 'Back to a normal session'
-        : `Deload session — open sets are ${Math.abs(MANUAL_DELOAD_WEIGHT_PCT)}% lighter`, 'success', 2500);
+        : `Lighter session — open sets are ${Math.abs(MANUAL_DELOAD_WEIGHT_PCT)}% lighter`, 'success', 2500);
 }
 
 export function getCurrentExerciseIdx() { return currentExerciseIdx; }

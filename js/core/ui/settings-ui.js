@@ -59,6 +59,8 @@ const DEFAULT_SETTINGS = {
     coachInjuries: null,  // free text — safety-critical, the coach must program around it
     coachNotes: null,     // free text — schedule constraints, preferences
     weeklyCoachReview: true, // Monday digest push + review doc (server checks this)
+    reportCard: false,       // TP-2 — Sunday 19:30 report card instead of the Monday digest (server checks this)
+    timeZone: null,          // TP-2 — IANA zone for the Sunday schedule; null = America/Chicago
     liveCoachTts: false, // live coach reads answers aloud (Phase 10)
 
     // Profile (user can override Firebase auth displayName; other fields are opt-in)
@@ -190,10 +192,10 @@ function manualDeloadRowHTML(s) {
                 <div class="srow">
                     <div class="srow-icon ic-primary"><i class="fas fa-feather"></i></div>
                     <div class="srow-info">
-                        <div class="srow-name">Deload week</div>
+                        <div class="srow-name">Lighter week</div>
                         <div class="srow-desc" id="manual-deload-desc">${escapeHtml(manualDeloadDesc(override, on))}</div>
                     </div>
-                    <button class="toggle ${on ? 'on' : ''}" onclick="toggleManualDeload(this)" aria-label="Deload week" aria-pressed="${on}"></button>
+                    <button class="toggle ${on ? 'on' : ''}" onclick="toggleManualDeload(this)" aria-label="Lighter week" aria-pressed="${on}"></button>
                 </div>`;
 }
 
@@ -221,7 +223,7 @@ export function toggleManualDeload(btn) {
     btn?.setAttribute('aria-pressed', String(turnOn));
     const desc = document.getElementById('manual-deload-desc');
     if (desc) desc.textContent = manualDeloadDesc(value, turnOn);
-    showNotification(turnOn ? 'Deload week on — workouts you start this week begin lighter' : 'Deload week off', 'success', 2500);
+    showNotification(turnOn ? 'Lighter week on — workouts you start this week begin lighter' : 'Lighter week off', 'success', 2500);
 }
 
 /**
@@ -369,8 +371,8 @@ export function renderSettings() {
                 <div class="srow">
                     <div class="srow-icon ic-primary"><i class="fas fa-gauge-high"></i></div>
                     <div class="srow-info">
-                        <div class="srow-name">Track RPE</div>
-                        <div class="srow-desc">Rate your heaviest set (6–10) on each exercise</div>
+                        <div class="srow-name">Track effort</div>
+                        <div class="srow-desc">Rate how hard your heaviest set felt (6–10) on each exercise</div>
                     </div>
                     ${toggleBtn('trackRpe', s.trackRpe)}
                 </div>
@@ -380,6 +382,14 @@ export function renderSettings() {
                     <div class="srow-info">
                         <div class="srow-name">Main lifts</div>
                         <div class="srow-desc">${escapeHtml(primaryLiftsDesc())}</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
+                <div class="srow srow--clickable" onclick="openGoalsPage()">
+                    <div class="srow-icon ic-primary"><i class="fas fa-bullseye"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Goals</div>
+                        <div class="srow-desc">Lifts, body weight, days a week — and the dates you're training for</div>
                     </div>
                     <i class="fas fa-chevron-right srow-chev"></i>
                 </div>
@@ -440,6 +450,14 @@ export function renderSettings() {
                         <div class="srow-desc">A short Monday digest of your training week</div>
                     </div>
                     ${toggleBtn('weeklyCoachReview', s.weeklyCoachReview !== false)}
+                </div>
+                <div class="srow srow--clickable" onclick="openReportCard()">
+                    <div class="srow-icon ic-primary"><i class="fas fa-clipboard-check"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Sunday report card</div>
+                        <div class="srow-desc">${s.reportCard === true ? 'On — your week in one page, Sunday 7:30 pm' : 'Your week in one page, Sunday night — instead of the Monday review'}</div>
+                    </div>
+                    <i class="fas fa-chevron-right srow-chev"></i>
                 </div>
                 <div class="srow srow--clickable" onclick="settingsProgramRowTap()">
                     <div class="srow-icon ic-primary"><i class="fas fa-flag-checkered"></i></div>
@@ -1241,7 +1259,7 @@ export async function openWeekPlanSheet() {
             ${!AppState._activeProgram ? `
                 <div class="week-plan-editor__coach" onclick="startProgramChat()" role="button" tabindex="0">
                     <i class="fas fa-flag-checkered"></i>
-                    <span>Want blocks and deloads planned too? Ask the coach for a program</span>
+                    <span>Want the weeks planned too, lighter weeks included? Ask the coach for a plan</span>
                 </div>` : ''}
         `,
         actions: [

@@ -50,7 +50,7 @@ describe('weekTargetEffects / isDeloadTarget', () => {
 describe('describeWeekTarget', () => {
     it('renders every lever in a fixed order and nothing for a baseline week', () => {
         expect(describeWeekTarget({ week: 6, label: 'deload', weightPct: -35, setDelta: -2, repRange: [12, 15], rpeTarget: 6 }))
-            .toBe('-35% weight · -2 sets · 12–15 reps · RPE 6');
+            .toBe('-35% weight · -2 sets · 12–15 reps · effort 6/10');
         expect(describeWeekTarget({ week: 2, label: 'heavy', weightPct: 5 })).toBe('+5% weight');
         expect(describeWeekTarget({ week: 2, label: 'v', setDelta: 1 })).toBe('+1 set');
         expect(describeWeekTarget({ week: 1, label: 'base' })).toBe('');

@@ -16,6 +16,7 @@ import {
 } from './coach-context.js';
 import { summarizeWeekPlan, satisfiedDays, weekDates, DAY_KEYS } from './week-plan.js';
 import { computeVerdicts, formatVerdictsContext } from './coach-rules.js';
+import { describeVolumeLandmarks, effortTag } from './plain-language.js';
 
 /**
  * Exercises with `name` resolved from the workout-level `exerciseNames` map
@@ -71,7 +72,7 @@ export function buildTrainingContext({
         today, days: 28, mev: t.VOLUME_MEV, mrv: t.VOLUME_MRV,
     });
     if (volume.length > 0) {
-        summary += `Weekly volume (avg working sets/muscle/week over the last ${volWeeks} week${volWeeks === 1 ? '' : 's'}; MEV ${t.VOLUME_MEV}, MRV ${t.VOLUME_MRV}):\n`;
+        summary += `Weekly volume (avg working sets/muscle/week over the last ${volWeeks} week${volWeeks === 1 ? '' : 's'}; ${describeVolumeLandmarks({ mev: t.VOLUME_MEV, mrv: t.VOLUME_MRV })}):\n`;
         volume.forEach(v => {
             summary += `${v.bodyPart}: ${v.avgWeeklySets} sets/week (${v.status})\n`;
         });
@@ -140,7 +141,7 @@ export function buildTrainingContext({
                     .filter(s => s.completed !== false && (s.reps || s.weight))
                     .map(s => {
                         const wt = s.weight ? convertWeight(s.weight, s.originalUnit || unit, unit) : 0;
-                        return `${s.reps || '?'}×${wt || 'BW'}${s.rpe ? ` @RPE ${s.rpe}` : ''}${setTypeMarker(s)}`;
+                        return `${s.reps || '?'}×${wt || 'BW'}${s.rpe ? ` (${effortTag(s.rpe)})` : ''}${setTypeMarker(s)}`;
                     })
                     .join(', ');
                 const notes = ex.notes ? ` — note: "${ex.notes}"` : '';
@@ -184,11 +185,11 @@ export function buildChatContext({
     today, workouts = [], templates = [], weekPlan = null, program = null, intent = null,
     currentLocation = null, settings = {}, unit = 'lbs', exerciseDatabase = [], thresholds = RULE_THRESHOLDS,
     manualDeload = null, prList = [], equipment = [], healthSummary = '',
-    outcomesBlock = '', threadsBlock = '', feedbackBlock = '',
+    outcomesBlock = '', threadsBlock = '', feedbackBlock = '', goalsBlock = '',
 } = {}) {
     const programBlock = program ? buildProgramContext(program, today) : '';
     const todayLine = buildTodayContext({ today, weekPlan, templates, workouts, program, intent, currentLocation });
-    const intentBlock = programBlock.includes('DELOAD WEEK') ? '' : buildSessionIntentContext(intent);
+    const intentBlock = programBlock.includes('LIGHTER WEEK') ? '' : buildSessionIntentContext(intent);
 
     let verdictsBlock = '';
     try {
@@ -204,6 +205,8 @@ export function buildChatContext({
         program: programBlock,
         intent: intentBlock,
         verdicts: verdictsBlock,
+        // TP-1 — goals are facts to quote, like the verdicts (goal-progress.js#formatGoalsContext).
+        goals: goalsBlock,
         training: buildTrainingContext({
             workouts, settings, unit, exerciseDatabase, today, templates, weekPlan,
             equipment, prList, healthSummary, thresholds,

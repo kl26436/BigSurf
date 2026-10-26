@@ -42,10 +42,10 @@ describe('scenario fixtures (AP-20b)', () => {
     });
 
     it('the chat context carries what each scenario is about', async () => {
-        expect(await contextOf('stall-rung-1')).toMatch(/Flat Barbell Bench Press.*stall rung 1/);
-        expect(await contextOf('deload-go-heavier')).toMatch(/DELOAD/);
+        expect(await contextOf('stall-rung-1')).toMatch(/Flat Barbell Bench Press.*stuck at/);
+        expect(await contextOf('deload-go-heavier')).toMatch(/LIGHTER WEEK/);
         expect(await contextOf('rest-day')).toMatch(/rest/i);
-        expect(await contextOf('fatigue-rpe')).toContain('fatigue: RPE 7.5→8.5→9 at 185 over 3 sessions');
+        expect(await contextOf('fatigue-rpe')).toContain('fatigue: effort 7.5→8.5→9 of 10 at 185 over 3 sessions');
         expect(await contextOf('injury-push-day')).toContain('Injuries / limitations: Left shoulder impingement');
         const kg = await contextOf('kg-user');
         expect(kg).toContain('Unit: kg');
@@ -180,7 +180,7 @@ describe('audit additions (AU-2, AU-4)', () => {
 
     it("the specimen: last block week is a deload, and today's push is in the context", async () => {
         const ctx = await contextOf('specimen-session-review');
-        expect(ctx).toMatch(/DELOAD/);
+        expect(ctx).toMatch(/LIGHTER WEEK/);
         expect(ctx).toMatch(/2026-10-23 · Push day[\s\S]*Flat Barbell Bench Press \[Flat Bench\]: 3×185/);
     });
 
@@ -219,5 +219,48 @@ describe('audit additions (AU-2, AU-4)', () => {
         expect(verdictQuoted('Hold steady and chase a rep.', { action: 'chase-rep', weight: 185 }).pass).toBe(false);
         expect(verdictQuoted('Go up to 195 next time.', { action: 'bump', weight: 195 }).pass).toBe(true);
         expect(verdictQuoted('Swap it for the T-bar row.', { action: 'rotate', weight: 185 }).pass).toBe(true);
+    });
+});
+
+describe('TP-0 — the no-jargon checks', () => {
+    it('every scenario context is jargon-free as built (a leak is fixed at its source)', async () => {
+        for (const s of SCENARIOS.filter(x => x.mode !== 'weekly')) {
+            const run = await runScenario(s, { callRound: scripted([say('Hold 185 for 8 — chase a rep.')]).callRound });
+            const c = runChecks(s, run).find(x => x.id === 'no-jargon-context');
+            expect(c, s.id).toMatchObject({ pass: true });
+        }
+    });
+
+    it('flags jargon in the answer, unless the user used the term first', async () => {
+        const s = byId['stall-rung-1'];
+        const run = await runScenario(s, { callRound: scripted([say('Your e1RM is flat — deload next week.')]).callRound });
+        expect(runChecks(s, run).find(c => c.id === 'no-jargon')).toMatchObject({ pass: false, detail: 'e1RM, deload' });
+        const asked = { ...s, question: 'What does e1RM mean?' };
+        const run2 = await runScenario(asked, { callRound: scripted([say('e1RM is your estimated max — what you could lift once.')]).callRound });
+        expect(runChecks(asked, run2).find(c => c.id === 'no-jargon')).toMatchObject({ pass: true });
+    });
+});
+
+describe('TP-2 / A6 — the report card eval mode', () => {
+    it('each report-card fixture offers the option its scenario expects (a failure is the model, not the fixture)', async () => {
+        for (const id of ['reportcard-good-week', 'reportcard-effort-creeping']) {
+            const s = byId[id];
+            const run = await runScenario(s, { callRound: scripted([say(`{"headline":"A week.","choice":"${s.expect.choice}","why":"The card says so."}`)]).callRound });
+            expect(run.error, id).toBeNull();
+            expect(run.card.options.map(o => o.kind), id).toContain(s.expect.choice);
+            const checks = runChecks(s, run);
+            expect(checks.filter(c => !c.pass).map(c => c.id), id).toEqual([]);
+        }
+    });
+
+    it('flags an invented number and an option the card never offered', async () => {
+        const s = byId['reportcard-good-week'];
+        const run = await runScenario(s, { callRound: scripted([say('{"headline":"Bench is up 1234 lbs this week.","choice":"next-wave","why":"x"}')]).callRound });
+        const failed = runChecks(s, run).filter(c => !c.pass).map(c => c.id);
+        expect(failed).toEqual(expect.arrayContaining(['chosen-option-valid', 'numbers-match-card']));
+        // A valid but wrong pick: the tired week must not "stay".
+        const t = byId['reportcard-effort-creeping'];
+        const run2 = await runScenario(t, { callRound: scripted([say('{"headline":"A week.","choice":"stay","why":"Fine."}')]).callRound });
+        expect(runChecks(t, run2).find(c => c.id === 'chosen-option-expected')).toMatchObject({ pass: false });
     });
 });

@@ -176,7 +176,7 @@ export function validateTemplate(template) {
             return { valid: false, error: `Rep range for ${ex.machine || ex.name || 'an exercise'} must be [low, high] within 1–50` };
         }
         if (ex.rpeTarget != null && normalizeRpeTarget(ex.rpeTarget) == null) {
-            return { valid: false, error: `RPE target for ${ex.machine || ex.name || 'an exercise'} must be between 6 and 10` };
+            return { valid: false, error: `Effort target for ${ex.machine || ex.name || 'an exercise'} must be between 6 and 10` };
         }
         if (ex.role != null && !ROLES.includes(ex.role)) return { valid: false, error: `Unknown role "${ex.role}"` };
         if (ex.pattern != null && !PATTERNS.includes(ex.pattern)) return { valid: false, error: `Unknown pattern "${ex.pattern}"` };

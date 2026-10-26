@@ -23,9 +23,10 @@ const BASELINE = 'tests/coach-eval/baseline.json';
 const COACH_FILES = [
     'functions/coach-prompts.js', 'functions/coach-loop.js', 'functions/coach-tools.js',
     'functions/coach-routing.js', 'functions/coach-guards.js', 'functions/coach-rules.js',
-    'functions/weekly-review.js',
+    'functions/weekly-review.js', 'functions/report-card-request.js', 'js/core/features/report-card.js',
     'js/core/features/coach-context-builder.js', 'js/core/features/coach-context.js',
     'js/core/features/coach-live-context.js', 'js/core/features/coach-rules.js',
+    'js/core/features/plain-language.js', 'js/core/features/goal-progress.js', 'js/core/features/body-stats.js',
 ];
 
 const git = (cmd) => execSync(`git ${cmd}`, { cwd: ROOT, encoding: 'utf8' }).trim();

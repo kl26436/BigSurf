@@ -20,6 +20,7 @@ import { deriveProgramWeek } from './coach-context.js';
 import { debouncedSaveWorkoutData, loadAllWorkouts } from '../data/data-manager.js';
 import { weightIncrement, scaleLoadableWeight } from './progression.js';
 import { weekTargetEffects, describeWeekTarget } from './week-targets.js';
+import { weekKindLabel } from './plain-language.js';
 import { governSetDelta } from './volume-governor.js';
 import { analyzeWeeklyVolume, getISOWeekKey } from './training-insights.js';
 
@@ -70,7 +71,7 @@ export function programSessionForToday(program, today) {
     const fx = weekTargetEffects(target);
     if (!fx.changesSession) return null;
     return {
-        label: target.label,
+        label: weekKindLabel(target), // TP-0: the week's kind, not the model's label
         weightPct: fx.weightPct,
         setDelta: fx.setDelta,
         repRange: fx.repRange,
@@ -83,7 +84,7 @@ export function programSessionForToday(program, today) {
 /** "Heavy · +5% weight · +1 set · from your program" hero meta line. */
 export function programSessionMeta(session) {
     if (!session) return '';
-    return `${session.label} · ${describeWeekTarget(session)} · week ${session.week} of your program`;
+    return `${session.label} · ${describeWeekTarget(session)} · week ${session.week} of your plan`;
 }
 
 /**
@@ -100,7 +101,7 @@ export function programNoticeForToday(program, today) {
     const fx = weekTargetEffects(target);
     if (!fx.changesSession) return null;
     return {
-        label: target.label,
+        label: weekKindLabel(target), // TP-0: the week's kind, not the model's label
         weightPct: fx.weightPct, setDelta: fx.setDelta, repRange: fx.repRange, rpeTarget: fx.rpeTarget,
         week, weeks: program.weeks || 1,
     };
@@ -352,7 +353,7 @@ async function startWithAdjustment(templateName, program, adj) {
     const parts = [describeWeekTarget(adj)];
     if (skippedBw && adj.weightPct) parts.push('bodyweight moves unchanged');
     const held = [...new Set(clamped.map(c => c.bodyPart.toLowerCase()))];
-    if (held.length) parts.push(`${held.join(', ')} at MRV — no extra set`);
+    if (held.length) parts.push(`${held.join(', ')} at the most sets a muscle can recover from — no extra set`);
     showNotification(`${adj.label} week — ${parts.join(' · ')}`, 'success');
 }
 
@@ -428,7 +429,7 @@ export async function dismissProgramComplete(programId) {
  */
 export function planNextBlock() {
     import('./ai-coach-ui.js').then(m => {
-        m.showAICoach({ prefill: 'My program just wrapped up — how did it go, and what should the next block be? Propose it.' }); // AU-14: prefill, never send
+        m.showAICoach({ prefill: 'My plan\'s weeks just wrapped up — how did they go, and what should the next few weeks be? Propose it.' }); // AU-14: prefill, never send
     }).catch(e => debugLog('plan next block failed:', e));
 }
 

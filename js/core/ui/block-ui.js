@@ -70,8 +70,8 @@ export async function renderBlockPage() {
         container.innerHTML = _model ? blockHTML(_model) : emptyHTML(scoreboard);
     } catch (e) {
         console.error('❌ Block page failed:', e);
-        container.innerHTML = `${headerHTML('Your block', '')}<div class="d-content"><div class="empty-state">
-            <div class="empty-state-title">Couldn't load your block</div>
+        container.innerHTML = `${headerHTML('Your plan', '')}<div class="d-content"><div class="empty-state">
+            <div class="empty-state-title">Couldn't load your plan</div>
             <div class="empty-state-description">Check your connection and try again.</div>
         </div></div>`;
     }
@@ -92,13 +92,13 @@ function headerHTML(title, subtitle) {
 
 function emptyHTML(scoreboard) {
     return `
-        ${headerHTML('Your block', '')}
+        ${headerHTML('Your plan', '')}
         <div class="d-content block-page">
             <div class="empty-state">
                 <div class="empty-state-icon"><i class="fas fa-flag-checkered"></i></div>
-                <div class="empty-state-title">No block planned</div>
+                <div class="empty-state-title">No plan yet</div>
                 <div class="empty-state-description">${scoreboard?.headline ? `${escapeHtml(scoreboard.headline)}. ` : ''}Plan 4–6 weeks with the coach and every week, day and target shows up here.</div>
-                <button class="btn btn-primary" onclick="startProgramChat()">Plan a block with the coach</button>
+                <button class="btn btn-primary" onclick="startProgramChat()">Plan it with the coach</button>
             </div>
         </div>`;
 }
@@ -118,7 +118,7 @@ function blockHTML(m) {
             <div class="block-actions">
                 <button class="chip chip--sm" onclick="blockAdjustWeek()"><i class="fas fa-feather"></i> Adjust this week</button>
                 <button class="chip chip--sm" onclick="blockSwapAccessory()"><i class="fas fa-arrow-right-arrow-left"></i> Swap an accessory</button>
-                ${m.planNextVisible ? '<button class="chip chip--sm" onclick="blockPlanNext()"><i class="fas fa-forward"></i> Plan next block</button>' : ''}
+                ${m.planNextVisible ? '<button class="chip chip--sm" onclick="blockPlanNext()"><i class="fas fa-forward"></i> Plan the next few weeks</button>' : ''}
                 <button class="chip chip--sm" onclick="blockDiscuss()"><i class="fas fa-robot"></i> Discuss</button>
                 <button class="chip chip--sm" onclick="openWeekPlanSheet()"><i class="fas fa-calendar-week"></i> Week plan</button>
             </div>
@@ -247,21 +247,21 @@ function askCoachSeeded(question) {
 export function blockAdjustWeek() {
     const h = _model?.header;
     askCoachSeeded(h
-        ? `Adjust this week of my block (week ${h.week} of ${h.weeks}, ${h.weekLabel}) — I want it a bit lighter. Propose the week adjustment.`
+        ? `Adjust this week of my plan (week ${h.week} of ${h.weeks}, ${h.weekLabel}) — I want it a bit lighter. Propose the week adjustment.`
         : 'Adjust this week — I want it a bit lighter.');
 }
 
 export function blockSwapAccessory() {
-    askCoachSeeded('Swap an accessory in my block — show me the best candidates for something I\'ve been doing too long, and keep my main lifts.');
+    askCoachSeeded('Swap an accessory in my plan — show me the best candidates for something I\'ve been doing too long, and keep my main lifts.');
 }
 
 export function blockPlanNext() {
-    askCoachSeeded('Plan my next block — start with how this one went (get_verdicts scope block), then propose the next one.');
+    askCoachSeeded('Plan my next few weeks — start with how these went, then propose what comes next.');
 }
 
 export function blockDiscuss() {
     const h = _model?.header;
-    askCoachSeeded(h ? `Let's talk about my block — I'm in week ${h.week} of ${h.weeks} (${h.weekLabel}).` : "Let's talk about my training plan.");
+    askCoachSeeded(h ? `Let's talk about my plan — I'm in week ${h.week} of ${h.weeks} (${h.weekLabel}).` : "Let's talk about my training plan.");
 }
 
 export async function blockStartSession(templateName) {

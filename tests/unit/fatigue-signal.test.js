@@ -46,7 +46,7 @@ describe('fatigueState', () => {
     it('rising RPE at constant load → fatigued', () => {
         const f = fatigueState(sessionsOf(creeping));
         expect(f).toMatchObject({ fatigued: true, load: 185, rpeTrend: [7.5, 8.5, 9], repsTrend: [8, 8, 8] });
-        expect(f.reason).toBe('RPE 7.5→8.5→9 at 185 over 3 sessions');
+        expect(f.reason).toBe('effort 7.5→8.5→9 of 10 at 185 over 3 sessions');
     });
 
     it('rising RPE with rising load is progress, not fatigue', () => {
@@ -68,7 +68,7 @@ describe('fatigueState', () => {
             wo('2026-10-01', [set(185, 8, 8)]), wo('2026-10-08', [set(195, 5, 9)]),
             wo('2026-10-15', [set(195, 5, 9)]), wo('2026-10-22', [set(185, 8, 9.5)]),
         ]));
-        expect(f).toMatchObject({ fatigued: true, reason: 'RPE 9.5 at 185, was RPE 8 on 2026-10-01' });
+        expect(f).toMatchObject({ fatigued: true, reason: 'effort 9.5/10 at 185, was 8/10 on 2026-10-01' });
     });
 
     it('a deload session in the window is excluded (via buildExerciseSessions)', () => {
@@ -84,7 +84,7 @@ describe('progressionTarget acts on fatigue (phase 2)', () => {
     it('a fatigued rung-1 stall skips to the back-off rung', () => {
         const t = progressionTarget(sessionsOf(creeping), 'lbs', 8, 5);
         expect(t).toMatchObject({ action: 'back-off', rung: 2, early: true, backOff: true, weight: back, fatigued: true });
-        expect(t.fatigueReason).toBe('RPE 7.5→8.5→9 at 185 over 3 sessions');
+        expect(t.fatigueReason).toBe('effort 7.5→8.5→9 of 10 at 185 over 3 sessions');
         const nudge = computeOverloadNudge(sessionsOf(creeping), 'lbs', 8, 5);
         expect(nudge).toContain('Effort is climbing at 185 lbs');
         expect(nudge).toContain(`drop to ${back}`);
@@ -145,8 +145,8 @@ describe('checkDeloadNeeded reasons', () => {
         const d = checkDeloadNeeded(creeping, undefined, { today: TODAY });
         expect(d.needed).toBe(false);
         expect(d.source).toBeNull();
-        expect(d.fatigue).toEqual([{ exercise: 'Smith Bench', reason: 'RPE 7.5→8.5→9 at 185 over 3 sessions', load: 185 }]);
-        expect(d.reasons).toContain('effort rising on Smith Bench: RPE 7.5→8.5→9 at 185 over 3 sessions');
+        expect(d.fatigue).toEqual([{ exercise: 'Smith Bench', reason: 'effort 7.5→8.5→9 of 10 at 185 over 3 sessions', load: 185 }]);
+        expect(d.reasons).toContain('Smith Bench: effort 7.5→8.5→9 of 10 at 185 over 3 sessions');
     });
 
     it('lists low readiness', () => {
@@ -200,11 +200,11 @@ describe('fatigue in the verdicts and the scoreboard', () => {
     it('the verdict is the fatigued target, and says why', () => {
         const v = computeVerdicts({ workouts: creeping, templates, weekPlan: { days: { sat: 'push' } }, today: TODAY });
         const e = v.exercises[0];
-        expect(e).toMatchObject({ action: 'back-off', early: true, fatigue: 'RPE 7.5→8.5→9 at 185 over 3 sessions' });
+        expect(e).toMatchObject({ action: 'back-off', early: true, fatigue: 'effort 7.5→8.5→9 of 10 at 185 over 3 sessions' });
         const text = formatVerdictsContext(v);
-        expect(text).toContain('stall rung 2 a rung early — effort rising');
-        expect(text).toContain('· fatigue: RPE 7.5→8.5→9 at 185 over 3 sessions (already in the target');
-        expect(text).toContain('early fatigue signs: effort rising on Smith Bench');
+        expect(text).toContain('backing off early because effort is rising');
+        expect(text).toContain('· fatigue: effort 7.5→8.5→9 of 10 at 185 over 3 sessions (already in the target');
+        expect(text).toContain('early fatigue signs: Smith Bench: effort 7.5→8.5→9 of 10');
     });
 
     it('readiness line in the verdicts block', () => {
@@ -215,6 +215,6 @@ describe('fatigue in the verdicts and the scoreboard', () => {
 
     it('scoreboard primary carries the fatigue reason (dashboard "Effort ↑" chip)', () => {
         const sb = buildScoreboard({ workouts: creeping, templates, today: TODAY });
-        expect(sb.primaries[0].fatigue).toBe('RPE 7.5→8.5→9 at 185 over 3 sessions');
+        expect(sb.primaries[0].fatigue).toBe('effort 7.5→8.5→9 of 10 at 185 over 3 sessions');
     });
 });

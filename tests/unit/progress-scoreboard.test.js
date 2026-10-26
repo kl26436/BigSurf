@@ -177,6 +177,30 @@ describe('buildScoreboard — patterns and headline', () => {
         expect(squat.lastTrained).toBe('2026-10-23');
     });
 
+    it('LB-1: Back Extension Machine on the 45° bench counts toward Hinge; on a lumbar machine it does not; shrugs are never spine', () => {
+        const onMachine = (date, name, equipment, n) => {
+            const w = wo(date, [{ name, sets: Array.from({ length: n }, () => set(45, 12)) }]);
+            w.exercises.exercise_0.equipment = equipment;
+            return w;
+        };
+        const sb = buildScoreboard({
+            workouts: [
+                onMachine('2026-10-23', 'Back Extension Machine', 'Arsenal Strength Alpha — 45 Degree Back Extension', 3),
+                onMachine('2026-10-23', 'Shoulder Shrug', 'Arsenal Reloaded — Multi Flex', 4),
+            ],
+            today: TODAY,
+        });
+        const hinge = sb.patterns.find(p => p.pattern === 'hip-dominant');
+        expect(hinge).toMatchObject({ label: 'Hinge', setsThisWeek: 3, status: 'under' });
+        expect(sb.patterns.map(p => p.pattern)).not.toContain('shrug');
+
+        const lumbar = buildScoreboard({
+            workouts: [onMachine('2026-10-23', 'Back Extension Machine', 'Nautilus Lower Back', 3)],
+            today: TODAY,
+        });
+        expect(lumbar.patterns.find(p => p.pattern === 'hip-dominant').setsThisWeek).toBe(0);
+    });
+
     it('two-weeks-under needs history that reaches back two weeks', () => {
         const newAccount = buildScoreboard({ workouts: [wo('2026-10-22', [{ name: 'Squat', sets: [set(200, 5)] }])], today: TODAY });
         expect(newAccount.patterns.find(p => p.pattern === 'hip-dominant').weeksUnder).toBe(1);
@@ -230,8 +254,8 @@ describe('buildScoreboard — patterns and headline', () => {
             templates: tagged('Bench Press'), today: TODAY,
         });
         const text = formatScoreboardContext(sb);
-        expect(text).toContain(`Bench Press: e1RM ${epley1RM(215, 5)} lbs, up`);
-        expect(text).toMatch(/Movement patterns, sets in the last 7 days \(target 8 \/ MRV 22\)/);
+        expect(text).toContain(`Bench Press: estimated max ${epley1RM(215, 5)} lbs, up`);
+        expect(text).toMatch(/Movement patterns, sets in the last 7 days \(target 8; more than 22 is more than it can use\)/);
     });
 });
 

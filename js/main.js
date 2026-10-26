@@ -437,6 +437,10 @@ import { showDashboard } from './core/ui/dashboard-ui.js';
 // AP-24 — the Block page self-wires its handlers (openBlockPage is rendered
 // from the dashboard, the coach's program card and the program heartbeat).
 import { openBlockPage } from './core/ui/block-ui.js';
+// TP-1 — the Goals page self-wires its handlers the same way.
+import { openGoalsPage } from './core/ui/goals-ui.js';
+// TP-2 — the report card page self-wires the same way.
+import { openReportCard } from './core/ui/report-card-ui.js';
 
 // Stats tab removed — drill-downs now live in dashboard v2
 
@@ -897,6 +901,8 @@ window.sendCoachMessage = sendCoachMessage;
 window.askCoach = askCoach;
 window.startProgramChat = startProgramChat;
 window.openBlockPage = openBlockPage;
+window.openGoalsPage = openGoalsPage;
+window.openReportCard = openReportCard;
 window.resetCoachUI = resetCoachUI;
 window.showPastCoachSession = showPastCoachSession;
 window.showWorkoutBuilder = showWorkoutBuilder;

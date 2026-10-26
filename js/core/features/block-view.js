@@ -10,6 +10,7 @@
 import { getSessionIntent, isManualDeloadActive, manualDeloadEnd } from './session-intent.js';
 import { buildExerciseSessions, progressionTarget, weightIncrement } from './progression.js';
 import { deriveProgramWeek, describeWeekTarget, isDeloadTarget } from './week-targets.js';
+import { weekKindLabel } from './plain-language.js';
 import { inferRole } from './movement-patterns.js';
 import { convertToUnit } from './coach-outcomes.js';
 
@@ -155,7 +156,7 @@ export function buildBlockModel({
         const ovActive = override && [0, 1, 2, 3, 4, 5, 6].some(i => isManualDeloadActive(override, addDays(wStart, i)));
         weekRows.push({
             week: w,
-            label: target?.label || 'Baseline',
+            label: weekKindLabel(target),
             levers: target ? describeWeekTarget(target) : '',
             isDeload: !!(target && isDeloadTarget(target)),
             start: wStart,
@@ -180,7 +181,7 @@ export function buildBlockModel({
             goal: program.goal || null,
             week: currentWeek,
             weeks,
-            weekLabel: cur?.label || 'Baseline',
+            weekLabel: weekKindLabel(cur),
             finished,
             startDate: start,
             endDate,

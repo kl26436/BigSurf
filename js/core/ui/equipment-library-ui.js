@@ -2476,7 +2476,7 @@ function renderDiscoveryBlock() {
                     <div class="eq-discover__icon"><i class="fas fa-map"></i></div>
                     <div>
                         <div class="eq-discover__title">${unmapped.length} machine${unmapped.length === 1 ? ' isn\'t' : 's aren\'t'} mapped yet</div>
-                        <div class="eq-discover__sub">No picker can see ${unmapped.length === 1 ? 'it' : 'them'}, and ${unmapped.length === 1 ? 'it' : 'they'} can't rotate into a block. Tap one to map it.</div>
+                        <div class="eq-discover__sub">No picker can see ${unmapped.length === 1 ? 'it' : 'them'}, and ${unmapped.length === 1 ? 'it' : 'they'} can't rotate into your plan. Tap one to map it.</div>
                     </div>
                 </div>
                 <div class="eq-discover__list">${rows}${more}</div>

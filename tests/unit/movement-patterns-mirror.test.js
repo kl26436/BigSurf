@@ -23,6 +23,13 @@ const MIRRORS = [
     // AP-17 / AP-18 — the guards the write tools enforce.
     ['js/core/features/fuzzy-match.js', 'functions/fuzzy-match.js'],
     ['js/core/features/coach-guards.js', 'functions/coach-guards.js'],
+    // TP-0 — the plain-language glossary every context line and the report card use.
+    ['js/core/features/plain-language.js', 'functions/plain-language.js'],
+    // TP-1 — goals: bodyweight math + goal progress, server-side for set_goal / list_goals / the report card.
+    ['js/core/features/body-stats.js', 'functions/body-stats.js'],
+    ['js/core/features/goal-progress.js', 'functions/goal-progress.js'],
+    // TP-2 — the Sunday report card: built server-side, recomputed on the page.
+    ['js/core/features/report-card.js', 'functions/report-card.js'],
 ];
 
 describe('functions/ mirrors of pure client modules', () => {

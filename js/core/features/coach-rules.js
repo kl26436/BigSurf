@@ -24,6 +24,7 @@ import { buildScoreboard, formatScoreboardContext, pickPrimaries, bestE1rmBetwee
 import { inferRole } from './movement-patterns.js';
 import { deriveProgramWeek } from './week-targets.js';
 import { fatigueSignals, shiftDay } from './training-rules.js';
+import { describeVolumeLandmarks, weekKindLabel } from './plain-language.js';
 
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 /** Enough to cover today plus the rest of the week's plan, small enough to stay a short block. */
@@ -213,13 +214,15 @@ export function verdictLine(v, unit) {
             return v.fatigue
                 ? `hold ${wr(v.weight, v.reps)} — reps earned a bump but effort is climbing, own it first (${lastStr})`
                 : `hold ${wr(v.weight, v.reps)} — went up last session, own it first (${lastStr})`;
+        // TP-0 — the stall ladder in the user's words (stuck → chase a rep →
+        // back off → rotate); the model quotes these lines verbatim.
         case 'chase-rep':
             return v.rung
-                ? `stall rung 1 (${v.stallRun} sessions at ${v.weight}) — hold ${v.weight} ${unit}, chase ${v.reps} reps`
+                ? `stuck at ${v.weight} ${unit} for ${v.stallRun} sessions — hold ${v.weight} ${unit}, chase ${v.reps} reps`
                 : `hold ${v.weight} ${unit}, chase ${v.reps} reps (${lastStr})`;
-        case 'back-off': return `stall rung 2${v.early ? ' a rung early — effort rising' : ''} (${v.stallRun} sessions flat) — back off to ${wr(v.weight, v.reps)} for two sessions, then rebuild`;
-        case 'rotate': return `stall rung 3 (${v.stallRun} sessions flat at ${v.weight}) — rotate to a similar movement this block`;
-        case 'deload': return `deload — ${wr(v.weight, v.reps)}, two reps in the tank (${lastStr})`;
+        case 'back-off': return `stuck for ${v.stallRun} sessions${v.early ? ', backing off early because effort is rising' : ''} — back off to ${wr(v.weight, v.reps)} for two sessions, then rebuild`;
+        case 'rotate': return `stuck at ${v.weight} ${unit} for ${v.stallRun} sessions — time to rotate to a similar movement`;
+        case 'deload': return `lighter week — ${wr(v.weight, v.reps)}, two reps in the tank (${lastStr})`;
         case 'start': return `hold ${wr(v.weight, v.reps)} — not enough history for a call yet`;
         case 'reacquaint': return `no recent data (${lastStr}, ${v.staleDays} days ago) — start at ${wr(v.weight, v.reps)}, don't bump`;
         default: return 'no logged history — start conservative';
@@ -240,13 +243,13 @@ export function formatVerdictsContext(v) {
     if (v.deload) {
         const d = v.deload;
         let s = `not due (${d.consecutiveHardWeeks} hard week${d.consecutiveHardWeeks === 1 ? '' : 's'} running)`;
-        if (d.inRecoveryWeek) s = 'in a recovery week now';
+        if (d.inRecoveryWeek) s = 'in a lighter week now';
         else if (d.needed && d.source === 'fatigue') s = `DUE a week early — ${d.reasons[0]}`;
         else if (d.needed) s = `DUE — ${d.consecutiveHardWeeks} hard weeks in a row`;
         // AP-22 — the leading signals behind (or short of) the call.
         const early = (d.reasons || []).filter(r => !/hard weeks/.test(r));
         if (early.length) s += `; early fatigue signs: ${early.join('; ')}`;
-        lines.push(`Deload check: ${s}`);
+        lines.push(`Lighter-week check: ${s}`);
     }
     if (v.readiness?.of) {
         const r = v.readiness;
@@ -267,14 +270,14 @@ export function formatVerdictsContext(v) {
             lines.push(`- ${e.name}${on} (${e.template}${e.today ? ', today' : ''}): ${verdictLine(e, v.unit)}${fatigue}${mixed}${skipped}${light}`);
         }
     }
-    if (v.landmarks) lines.push(`Volume landmarks: MEV ${v.landmarks.mev} · MRV ${v.landmarks.mrv} working sets per muscle per week`);
+    if (v.landmarks) lines.push(`${describeVolumeLandmarks(v.landmarks)} (working sets per muscle per week)`);
     if (v.volume?.length) {
         const mrv = v.volume[0].mrv;
         const vol = v.volume.map((x) => {
             if (x.status === 'over') return `${x.bodyPart} ${x.sets} (OVER by ${-x.headroom})`;
             return `${x.bodyPart} ${x.sets} (${x.headroom} left)`;
         });
-        lines.push(`Volume this week so far vs MRV ${mrv}: ${vol.join(' · ')}`);
+        lines.push(`Sets this week so far, against the ${mrv} a muscle can recover from: ${vol.join(' · ')}`);
     }
     const sb = formatScoreboardContext(v.scoreboard);
     if (!v.exercises?.length && !v.volume?.length && !v.deload && !sb) return '';
@@ -340,6 +343,7 @@ export function buildBlockRetrospective({ program, workouts = [], templates = []
         weekRows.push({
             week: w,
             label: target?.label || 'baseline',
+            kind: weekKindLabel(target),
             planned,
             trained,
             complete: wEnd === wEndFull,
@@ -387,17 +391,17 @@ export function buildBlockRetrospective({ program, workouts = [], templates = []
 /** The retrospective as context text. */
 export function formatBlockRetrospective(r) {
     if (!r) return '';
-    const lines = [`Block retrospective — "${r.program.name}" (${r.program.weeks} weeks from ${r.program.startDate}${r.finished ? ', finished' : `, through week ${r.throughWeek}`}): ${r.daysTrained} of ~${r.daysPlanned} planned days trained`];
+    const lines = [`How these weeks went — "${r.program.name}" (${r.program.weeks} weeks from ${r.program.startDate}${r.finished ? ', finished' : `, through week ${r.throughWeek}`}): ${r.daysTrained} of ~${r.daysPlanned} planned days trained`];
     for (const p of r.primaries) {
         const move = p.delta == null ? 'not enough data' : `${p.e1rmStart} → ${p.e1rmEnd} ${r.unit} (${p.delta > 0 ? '+' : ''}${p.delta}, ${p.deltaPct > 0 ? '+' : ''}${p.deltaPct}%)`;
-        lines.push(`- ${p.name}: e1RM ${move}`);
+        lines.push(`- ${p.name}: estimated max ${move}`);
     }
     for (const w of r.weeks) {
         const bits = [`${w.trained}/${w.planned} days`];
         if (w.fatigue.length) bits.push(`fatigue: ${w.fatigue.join(', ')}`);
         if (w.patternsUnder.length) bits.push(`under: ${w.patternsUnder.join(', ').toLowerCase()}`);
-        lines.push(`- Week ${w.week} (${w.label}): ${bits.join(' · ')}`);
+        lines.push(`- Week ${w.week} (${w.kind}): ${bits.join(' · ')}`);
     }
-    if (r.accessories.neverUsed.length) lines.push(`Accessories on the split never done this block: ${r.accessories.neverUsed.join(', ')}`);
+    if (r.accessories.neverUsed.length) lines.push(`Accessories on the split never done in these weeks: ${r.accessories.neverUsed.join(', ')}`);
     return `${lines.join('\n')}\n`;
 }

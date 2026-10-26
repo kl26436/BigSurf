@@ -108,7 +108,7 @@ export function detectPlateaus(workouts, minSessions = Config.PLATEAU_MIN_SESSIO
             ? `Hold ${W} ${unit} and chase ${R + 1} reps`
             : stall.rung === 2
                 ? `Drop to ${scaleLoadableWeight(W, 0.9, inc)} ${unit} for two sessions, then rebuild`
-                : 'Swap in a similar movement this block';
+                : 'Swap in a similar movement for the next few weeks';
         plateaus.push({ exercise: exerciseName, weight: W, sessions: stall.run, rung: stall.rung, equipment, suggestion });
     }
     plateaus.sort((x, y) => y.sessions - x.sessions);
@@ -279,8 +279,8 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase, { 
             severity: 'warning',
             icon: 'fa-bed',
             message: deload.source === 'fatigue'
-                ? `Effort is climbing ${deload.fatiguedMain?.length >= 2 ? `on ${deload.fatiguedMain.slice(0, 2).join(' and ')}` : 'and readiness is low'} — take the deload a week early.`
-                : `You've trained hard for ${deload.consecutiveHardWeeks} weeks straight. Consider a deload week — reduce volume 40-50%.`,
+                ? `Effort is climbing ${deload.fatiguedMain?.length >= 2 ? `on ${deload.fatiguedMain.slice(0, 2).join(' and ')}` : 'and readiness is low'} — take the lighter week a week early.`
+                : `You've trained hard for ${deload.consecutiveHardWeeks} weeks straight. Consider a lighter week — cut volume 40–50%.`,
         });
     }
 
@@ -294,7 +294,7 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase, { 
                 type: 'fatigue',
                 severity: 'warning',
                 icon: 'fa-gauge-high',
-                message: `Effort creeping on ${f.exercise} at ${f.load} ${currentDisplayUnit()} — consider pulling the deload forward.`,
+                message: `Effort creeping on ${f.exercise} at ${f.load} ${currentDisplayUnit()} — consider pulling the lighter week forward.`,
                 exerciseName: f.exercise,
             });
         } else if (deload.readinessLow) {
@@ -302,7 +302,7 @@ export function getTopInsights(recentWorkouts, allWorkouts, exerciseDatabase, { 
                 type: 'readiness',
                 severity: 'warning',
                 icon: 'fa-battery-quarter',
-                message: 'Readiness has been low across recent check-ins — go lighter today or pull the deload forward.',
+                message: 'Readiness has been low across recent check-ins — go lighter today or pull the lighter week forward.',
             });
         }
     }
@@ -383,7 +383,7 @@ export function getTopInsight(recentWorkouts, allWorkouts, exerciseDatabase, opt
 
     // Rewrite messages to be actionable (suggestion, not observation)
     const actionableMessages = {
-        'deload': `Take a deload week — you've trained hard for ${insight.message.match(/(\d+) weeks/)?.[1] || 'several'} weeks straight. Cut volume 40-50%.`,
+        'deload': `Take a lighter week — you've trained hard for ${insight.message.match(/(\d+) weeks/)?.[1] || 'several'} weeks straight. Cut volume 40–50%.`,
         'volume-high': `Ease up on ${insight.message.match(/^(.+?) volume/)?.[1] || 'that muscle group'} this week to aid recovery.`,
         'volume-low': insight.message, // Already has recommendation text
         'plateau': `${insight.suggestion || 'Hold the weight and chase a rep'} on ${insight.exerciseName || 'that exercise'} — it's been flat for ${insight.sessions || 'a few'} sessions.`,

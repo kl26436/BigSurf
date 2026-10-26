@@ -33,6 +33,9 @@ const BUDGETS = {
     rawHexNamedInComponents: 0,
     duplicateClassDefs: 5,
     bareBackdrops: 0,
+    // TP-0b — jargon (e1RM, RPE, deload, block…) in user-visible strings
+    // (scripts/jargon-audit.js reads visible text only). Stays at 0.
+    jargonInUiStrings: 0,
 };
 
 const STRICT = process.argv.includes('--strict');
@@ -137,6 +140,10 @@ for (const [cls, files] of classByFile) {
 }
 metrics.duplicateClassDefs = duplicates.length;
 
+// --- Jargon in user-visible strings (TP-0b) ----------------------------------
+const jargonHits = require('./jargon-audit.js').scanRepo(ROOT);
+metrics.jargonInUiStrings = jargonHits.length;
+
 // --- Report ------------------------------------------------------------------
 
 function row(label, value, budget) {
@@ -156,6 +163,7 @@ const rows = [
     row('Raw hex/named in components/+util', metrics.rawHexNamedInComponents, BUDGETS.rawHexNamedInComponents),
     row('Duplicate class defs (cross-file)', metrics.duplicateClassDefs,   BUDGETS.duplicateClassDefs),
     row('Blocking backdrops missing blur',   metrics.bareBackdrops,        BUDGETS.bareBackdrops),
+    row('Jargon in user-visible strings',    metrics.jargonInUiStrings,    BUDGETS.jargonInUiStrings),
 ];
 
 // SH-5 — the shell budgets (scripts/shell-audit.js) ride the same gate, so
@@ -177,6 +185,12 @@ for (const [key, label] of Object.entries(SHELL_LABELS)) {
 console.log('\n  ── Big Surf design-system audit ───────────────────────────');
 rows.forEach((r) => console.log(r.line));
 console.log('  ───────────────────────────────────────────────────────────\n');
+
+if (jargonHits.length > 0) {
+    console.log('  Jargon in user-visible strings (use plain-language.js words, or mark // copy-ok: <reason>):');
+    jargonHits.forEach((h) => console.log(`    ${h.file}:${h.line}  ${h.match}`));
+    console.log('');
+}
 
 if (bareBackdrops.length > 0) {
     console.log('  Blocking backdrops missing backdrop-filter:');

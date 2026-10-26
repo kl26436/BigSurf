@@ -131,7 +131,7 @@ export function renderExerciseDetail(exerciseName) {
             </div>
 
             <div class="d-pill-row">
-                <div class="d-pill">Est. 1RM <strong>${Math.round(s.est1RM)} ${s.displayUnit || 'lb'}</strong>${est1RMDelta}</div>
+                <div class="d-pill">Est. max <strong>${Math.round(s.est1RM)} ${s.displayUnit || 'lb'}</strong>${est1RMDelta}</div>
                 <div class="d-pill">Volume <strong>${formatVolume(s.totalVolume)} ${s.displayUnit || 'lb'}</strong></div>
             </div>
 
@@ -156,7 +156,7 @@ export function renderExerciseDetail(exerciseName) {
                                 <div class="d-best-weight">${Math.round(set.totalWeight)} ${s.displayUnit || 'lb'} × ${set.reps}</div>
                                 ${meta ? `<div class="d-best-meta">${meta}</div>` : ''}
                             </div>
-                            <div class="d-best-1rm">~${Math.round(set.est1RM)} 1RM</div>
+                            <div class="d-best-1rm">~${Math.round(set.est1RM)} est. max</div>
                         </div>
                         `;
                     }).join('')}

@@ -7,11 +7,14 @@
 
 import { inferPattern } from '../../functions/movement-patterns.js';
 import { weightIncrement } from '../../js/core/features/progression.js';
+import { findJargon, jargonTermsIn } from '../../js/core/features/plain-language.js';
+import { cardNumbers, numbersIn } from '../../js/core/features/report-card.js';
 
 /** Tools that change the user's workouts, program or plan. */
 export const WRITE_TOOLS = new Set([
     'create_workout_template', 'update_workout_template', 'replace_day', 'archive_template',
     'create_program', 'adjust_program', 'set_week_plan', 'set_primary_lifts',
+    'set_goal', 'update_goal', 'add_event', // TP-1
 ]);
 // Bookkeeping writes a question may make: advice log, memory, override audit.
 const BOOKKEEPING_PATH = /\/(coachAdvice|coachMemory|coachOverrides|coachTraces)\b|preferences\/coachMemory/;
@@ -115,6 +118,28 @@ export function runChecks(scenario, run) {
         if (prescribes) check('log-advice', called.has('log_advice'), called.has('log_advice') ? '' : 'prescribed a number without log_advice');
     }
 
+    // TP-0 — the user's words, not ours. A term the user's own message used
+    // may come back (with an explanation); the context the model was handed
+    // gets no exemption — a leak there is fixed at its source, not in the answer.
+    const said = findJargon(text, { allow: jargonTermsIn(scenario.question || '') });
+    check('no-jargon', !said.length, said.map(j => j.match).join(', ') || 'ok');
+    // Quoted spans are names the user chose ("Strength block III") — theirs, not ours.
+    const ctx = contextTextOf(run, scenario.question).replace(/"[^"\n]{1,80}"/g, '""');
+    if (ctx) {
+        const leaked = findJargon(ctx);
+        check('no-jargon-context', !leaked.length, leaked.map(j => `${j.match} (…${ctx.slice(Math.max(0, j.index - 30), j.index + 20).replace(/\s+/g, ' ')}…)`).slice(0, 5).join('; ') || 'ok');
+    }
+
+    // TP-2 / A6 — the report card: the model picks, it doesn't compose.
+    if (run.mode === 'reportcard' && run.card) {
+        const kinds = run.card.options.map(o => o.kind);
+        check('chosen-option-valid', !run.fallback && kinds.includes(run.chosen?.kind), run.fallback || `${run.chosen?.kind} of ${kinds.join('/')}`);
+        if (expect.choice) check('chosen-option-expected', run.chosen?.kind === expect.choice, `${run.chosen?.kind} (want ${expect.choice})`);
+        const known = cardNumbers(run.card);
+        const invented = numbersIn(text).filter(n => !known.has(n) && !(Number.isInteger(n) && n <= 10));
+        check('numbers-match-card', !invented.length, invented.join(', ') || 'ok');
+    }
+
     // ── scenario-specific ────────────────────────────────────────────
     if (expect.route) check('route', run.route?.tier === expect.route, `tier ${run.route?.tier}`);
 
@@ -180,6 +205,17 @@ export function verdictQuoted(text, rule) {
     const weightOk = rule.action === 'rotate' || rule.weight == null || new RegExp(`\\b${rule.weight}\\b`).test(t);
     const actionOk = (words[rule.action] || /\w/).test(t);
     return { pass: weightOk && actionOk, detail: `${rule.action} ${rule.weight ?? ''}`.trim() + (weightOk ? '' : ' — weight not stated') + (actionOk ? '' : ' — action not stated') };
+}
+
+/**
+ * The training context the model was handed on the first turn, minus the
+ * user's own question (their words are theirs to choose).
+ */
+export function contextTextOf(run, question = '') {
+    const first = run?.messages?.[0]?.content;
+    const text = typeof first === 'string' ? first
+        : Array.isArray(first) ? first.map(b => b?.text || '').join('\n') : '';
+    return question ? text.split(question).join('') : text;
 }
 
 /** One line per scenario for the report. */

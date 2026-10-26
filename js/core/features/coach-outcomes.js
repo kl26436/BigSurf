@@ -130,7 +130,7 @@ export function computeAdviceOutcome(advice, workouts, today, { unit = 'lbs' } =
                 const after = maxWeightIn(workouts, advice.exercise, when, after4wEnd, u);
                 if (before && after) liftLine = `; ${advice.exercise} ${before}→${after} ${u} in the 4 weeks after`;
             }
-            return `${when} — suggested deload${advice.exercise ? ` for ${advice.exercise}` : ''}; volume ${pct >= 0 ? '+' : ''}${pct}% that week${liftLine}.`;
+            return `${when} — suggested a lighter week${advice.exercise ? ` for ${advice.exercise}` : ''}; volume ${pct >= 0 ? '+' : ''}${pct}% that week${liftLine}.`;
         }
         case 'exercise_swap': {
             const swapTo = advice.targetValue || advice.detail;

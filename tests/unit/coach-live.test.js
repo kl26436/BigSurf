@@ -88,15 +88,15 @@ describe('buildLiveWorkoutContext', () => {
 
     it('AP-9: a deload intent adds ONE Session line with the levers and the cap', () => {
         const ctx = buildLiveWorkoutContext({ ...state(), sessionIntent: deloadIntent });
-        expect(ctx).toContain('Session: Deload week, week 6 of 6 (-35% weight · 12–15 reps) — propose_next_target must not exceed the targets already on the set rows.');
+        expect(ctx).toContain('Session: Lighter week, week 6 of 6 (-35% weight · 12–15 reps) — propose_next_target must not exceed the targets already on the set rows.');
         expect((ctx.match(/^Session:/gm) || []).length).toBe(1);
     });
 
     it('AP-9: a manual deload reads as a session, peak gets its own line, build gets none', () => {
         expect(buildLiveSessionLine({ ...deloadIntent, source: 'manual', week: null, weeks: null, repRange: null, weightPct: -30 }))
-            .toBe('Session: Deload session (-30% weight) — propose_next_target must not exceed the targets already on the set rows.');
+            .toBe('Session: Lighter session (-30% weight) — propose_next_target must not exceed the targets already on the set rows.');
         expect(buildLiveSessionLine({ mode: 'peak', weightPct: 5, rpeTarget: 9, week: 5, weeks: 6, source: 'program' }))
-            .toContain('Session: Peak week, week 5 of 6 (+5% weight · RPE 9)');
+            .toContain('Session: Peak week, week 5 of 6 (+5% weight · effort 9/10)');
         expect(buildLiveSessionLine({ mode: 'build', source: 'none' })).toBe('');
         expect(buildLiveWorkoutContext(state())).not.toContain('Session:');
     });
@@ -115,9 +115,9 @@ describe('buildLiveWorkoutContext', () => {
         const ctx = buildLiveWorkoutContext({ ...s, injuries: 'left shoulder' });
         expect(ctx).toContain('Workout: Push Day · Deload · 23 min elapsed');
         expect(ctx).toContain('Injuries / limitations: left shoulder');
-        expect(ctx).toContain('8×145 @RPE 9');
+        expect(ctx).toContain('8×145 (effort 9/10)');
         expect(ctx).toContain('last: 8×225 (3d ago)');
-        expect(ctx).toContain('rule: chase-rep (stall rung 1) → 145×9 lbs');
+        expect(ctx).toContain('rule: chase a rep (stuck) → 145×9 lbs');
     });
 });
 

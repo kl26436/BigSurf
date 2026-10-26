@@ -360,6 +360,32 @@ export function buildScenarios() {
         });
     }
 
+    // 23 / 24 — TP-2 / A6: the Sunday report card (its own request; the model
+    // writes two sentences and picks one of the card's options).
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        list.push({
+            id: 'reportcard-good-week', title: 'Sunday card — a clean three-for-three week → stay',
+            mode: 'reportcard', question: 'Sunday report card', user,
+            expect: { kind: 'question', maxWords: 90, choice: 'stay' },
+        });
+    }
+    {
+        const user = baseUser({ today: '2026-10-25', settings: { trackRpe: true } });
+        const rpe = (i) => [null, null, null, null, 7.5, 8.5, 9.5][i];
+        user.workouts = pplHistory({
+            today: '2026-10-25',
+            lifts: { 'Flat Barbell Bench Press': benchFlat(4, 8, rpe) },
+            extra: (date) => (date >= '2026-10-12' ? { readiness: { score: 2 } } : {}),
+        });
+        list.push({
+            id: 'reportcard-effort-creeping', title: 'Sunday card — effort climbing, readiness low → lighter week',
+            mode: 'reportcard', question: 'Sunday report card', user,
+            expect: { kind: 'question', maxWords: 90, choice: 'lighter-week' },
+        });
+    }
+
     return list;
 }
 

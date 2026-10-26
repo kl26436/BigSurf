@@ -32,15 +32,15 @@ describe('CP-3 — week targets beyond weightPct', () => {
     });
 
     it('a volume-only week pre-builds in auto-confirm and notices in propose (Bug 8)', () => {
-        expect(programSessionForToday(richProgram(), '2026-09-29')).toMatchObject({ label: 'accumulate', setDelta: 1, weightPct: null, week: 2 });
-        expect(programNoticeForToday(richProgram('propose'), '2026-09-29')).toMatchObject({ label: 'accumulate', setDelta: 1, week: 2, weeks: 6 });
+        expect(programSessionForToday(richProgram(), '2026-09-29')).toMatchObject({ label: 'Build week', setDelta: 1, weightPct: null, week: 2 });
+        expect(programNoticeForToday(richProgram('propose'), '2026-09-29')).toMatchObject({ label: 'Build week', setDelta: 1, week: 2, weeks: 6 });
         expect(programSessionForToday(richProgram(), '2026-10-06')).toMatchObject({ repRange: [8, 10], rpeTarget: 8, week: 3 });
     });
 
     it('meta line describes every lever in one honest string', () => {
         const s = programSessionForToday(richProgram(), '2026-10-26');
-        expect(programSessionMeta(s)).toBe('deload · -35% weight · -2 sets · 12–15 reps · RPE 6 · week 6 of your program');
-        expect(programSessionMeta(programSessionForToday(richProgram(), '2026-09-29'))).toBe('accumulate · +1 set · week 2 of your program');
+        expect(programSessionMeta(s)).toBe('Lighter week · -35% weight · -2 sets · 12–15 reps · effort 6/10 · week 6 of your plan');
+        expect(programSessionMeta(programSessionForToday(richProgram(), '2026-09-29'))).toBe('Build week · +1 set · week 2 of your plan');
     });
 
     it('applySetDeltaToExercise adds copies of the last row and trims uncompleted rows from the end', () => {
@@ -90,10 +90,10 @@ describe('programSessionForToday', () => {
     it('pre-builds only in auto_confirm weeks that change the session', () => {
         // Week 2 (heavy, +5%) → session.
         expect(programSessionForToday(program(), '2026-07-07'))
-            .toMatchObject({ label: 'Heavy', weightPct: 5, week: 2 });
+            .toMatchObject({ label: 'Push week', weightPct: 5, week: 2 });
         // Week 4 (deload) → session.
         expect(programSessionForToday(program(), '2026-07-21'))
-            .toMatchObject({ label: 'Deload', weightPct: -40, week: 4 });
+            .toMatchObject({ label: 'Lighter week', weightPct: -40, week: 4 });
     });
 
     it('propose-only trust never pre-builds — cards stay the only path', () => {
@@ -115,8 +115,8 @@ describe('programSessionForToday', () => {
 
 describe('programSessionMeta', () => {
     it('reads as one honest meta line', () => {
-        const meta = programSessionMeta({ label: 'Deload', weightPct: -40, week: 4 });
-        expect(meta).toBe('Deload · -40% weight · week 4 of your program');
+        const meta = programSessionMeta({ label: 'Lighter week', weightPct: -40, week: 4 });
+        expect(meta).toBe('Lighter week · -40% weight · week 4 of your plan');
         expect(programSessionMeta(null)).toBe('');
     });
 });
@@ -126,9 +126,9 @@ describe('programNoticeForToday', () => {
         // The whole point: propose-only users get the notice auto_confirm
         // users get as a pre-built session.
         expect(programNoticeForToday(program({ trustLevel: 'propose' }), '2026-07-21'))
-            .toMatchObject({ label: 'Deload', weightPct: -40, week: 4, weeks: 4 });
+            .toMatchObject({ label: 'Lighter week', weightPct: -40, week: 4, weeks: 4 });
         expect(programNoticeForToday(program(), '2026-07-07'))
-            .toMatchObject({ label: 'Heavy', weightPct: 5, week: 2 });
+            .toMatchObject({ label: 'Push week', weightPct: 5, week: 2 });
     });
 
     it('stays silent on baseline weeks and outside the program', () => {

@@ -136,9 +136,9 @@ describe('formatVerdictsContext', () => {
         const text = formatVerdictsContext(computeVerdicts({ workouts, templates: [push], weekPlan: { days: { sat: 'push' } }, today: TODAY }));
         expect(text).toMatch(/^Rules verdicts \(computed by the app/);
         expect(text).toContain("don't override them");
-        expect(text).toContain('Deload check: not due');
+        expect(text).toContain('Lighter-week check: not due');
         expect(text).toContain('- Bench Press (Push day, today): bump → 205×8 lbs (last 200×8 lbs on 2026-10-21 hit the target)');
-        expect(text).toContain('Volume this week so far vs MRV 22: Chest 1 (21 left)');
+        expect(text).toContain('Sets this week so far, against the 22 a muscle can recover from: Chest 1 (21 left)');
         expect(text).toContain('Progress scoreboard');
     });
 
@@ -160,9 +160,9 @@ describe('formatVerdictsContext', () => {
 describe('verdictLine', () => {
     it('names every action in words', () => {
         expect(verdictLine({ action: 'back-off', weight: 180, reps: 8, stallRun: 6 }, 'lbs'))
-            .toBe('stall rung 2 (6 sessions flat) — back off to 180×8 lbs for two sessions, then rebuild');
+            .toBe('stuck for 6 sessions — back off to 180×8 lbs for two sessions, then rebuild');
         expect(verdictLine({ action: 'rotate', weight: 200, stallRun: 9 }, 'kg'))
-            .toBe('stall rung 3 (9 sessions flat at 200) — rotate to a similar movement this block');
+            .toBe('stuck at 200 kg for 9 sessions — time to rotate to a similar movement');
         expect(verdictLine({ action: 'no-history' }, 'lbs')).toBe('no logged history — start conservative');
     });
 });

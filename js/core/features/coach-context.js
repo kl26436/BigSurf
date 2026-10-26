@@ -4,6 +4,7 @@
 // unit-testable without mocking the UI import graph.
 
 import { describeWeekTarget, isDeloadTarget, deriveProgramWeek } from './week-targets.js';
+import { weekKindLabel } from './plain-language.js';
 import { DAY_KEYS, DAY_LABELS, satisfiedDays, todayCard } from './week-plan.js';
 
 // deriveProgramWeek moved to week-targets.js (mirrored to functions/) —
@@ -28,7 +29,8 @@ export function buildProfileContext(settings = {}) {
         general: 'general fitness',
     };
     if (settings.coachGoal && goalLabels[settings.coachGoal]) {
-        lines.push(`Goal: ${goalLabels[settings.coachGoal]}`);
+        // TP-1 — the direction; measurable goals are the `Goals:` lines.
+        lines.push(`Training for: ${goalLabels[settings.coachGoal]}`);
     }
     if (settings.profileExperience) {
         lines.push(`Experience: ${settings.profileExperience}`);
@@ -129,19 +131,19 @@ export function buildProgramContext(program, today) {
     if (!program?.startDate) return '';
     const { week, target, finished } = deriveProgramWeek(program, today);
     if (finished) {
-        return `Program: "${program.name}" (${program.weeks} weeks, ${program.goal}) FINISHED — only propose a next block if the user asks.\n`;
+        return `Plan: "${program.name}" (${program.weeks} weeks, ${program.goal}) FINISHED — only propose the next few weeks if the user asks.\n`;
     }
     const desc = target ? describeWeekTarget(target) : '';
     const targetStr = target
-        ? ` — this week: ${target.label}${desc ? ` (${desc})` : ''}${target.note ? `, ${target.note}` : ''}`
+        ? ` — this week: ${weekKindLabel(target)}${desc ? ` (${desc})` : ''}${target.note ? `, ${target.note}` : ''}`
         : '';
     // AP-9 — the week line alone ("this week: deload (-35%)") read as
     // background; the model still applied the "hit reps → push weight"
     // doctrine. A deload week gets an explicit directive.
     const deload = target && isDeloadTarget(target)
-        ? 'DELOAD WEEK: do NOT prescribe heavier loads this week; hold or reduce. Session targets are already set by the app.\n'
+        ? 'LIGHTER WEEK: do NOT prescribe heavier loads this week; hold or reduce. Session targets are already set by the app.\n'
         : '';
-    return `Active program: "${program.name}" (${program.goal}) — week ${week} of ${program.weeks}${targetStr}. Session-shaped asks should honor this via propose_session_adjustments; trust level is propose-only (cards, never silent writes).\n${deload}`;
+    return `Active plan: "${program.name}" (${program.goal}) — week ${week} of ${program.weeks}${targetStr}. Session-shaped asks should honor this via propose_session_adjustments; trust level is propose-only (cards, never silent writes).\n${deload}`;
 }
 
 /**
@@ -154,10 +156,10 @@ export function buildProgramContext(program, today) {
 export function buildSessionIntentContext(intent) {
     if (intent?.mode !== 'deload') return '';
     const desc = describeWeekTarget(intent);
-    let src = 'labelled deload';
-    if (intent.source === 'program') src = intent.week ? `program week ${intent.week}${intent.weeks ? ` of ${intent.weeks}` : ''}` : 'program deload';
-    else if (intent.source === 'manual') src = 'manual deload';
-    return `Current session: DELOAD (${src}${desc ? ` · ${desc}` : ''}) — do NOT prescribe heavier loads for this session; hold or reduce. Session targets are already set by the app.\n`;
+    let src = 'session labelled light';
+    if (intent.source === 'program') src = intent.week ? `plan week ${intent.week}${intent.weeks ? ` of ${intent.weeks}` : ''}` : 'the plan';
+    else if (intent.source === 'manual') src = 'set by the user';
+    return `Current session: LIGHTER (${src}${desc ? ` · ${desc}` : ''}) — do NOT prescribe heavier loads for this session; hold or reduce. Session targets are already set by the app.\n`;
 }
 
 const gymName = (loc) => (loc && typeof loc === 'object' ? loc.name : loc) || '';
@@ -210,14 +212,14 @@ export function buildTodayContext({
     if (program?.startDate) {
         const { week, target, finished } = deriveProgramWeek(program, today);
         if (finished) {
-            parts.push(`program "${program.name}" finished`);
+            parts.push(`plan "${program.name}" finished`);
         } else {
             const desc = target ? describeWeekTarget(target) : '';
-            parts.push(`program week ${week} of ${program.weeks}${target ? ` — ${target.label}${desc ? ` (${desc})` : ''}` : ' — baseline'}`);
+            parts.push(`plan week ${week} of ${program.weeks} — ${weekKindLabel(target)}${desc ? ` (${desc})` : ''}`);
             if (target && isDeloadTarget(target)) deload = true;
         }
     }
-    if (deload) parts.push('DELOAD');
+    if (deload) parts.push('LIGHTER WEEK');
 
     let gym = gymName(currentLocation);
     if (!gym) {
@@ -265,8 +267,8 @@ export function contextRefreshReason({ turns, contextAt, wroteSinceContext = fal
  */
 export function contextTurn(context, question, reason = 'first') {
     let lead = 'Here is my recent training data:';
-    if (reason === 'write') lead = '(Fresh training data — the app changed since the last block; use this one instead of any earlier block.)';
-    else if (reason === 'stale') lead = '(Fresh training data — this conversation is over a day old; use this one instead of any earlier block.)';
+    if (reason === 'write') lead = '(Fresh training data — the app changed since the last one; use this instead of any earlier training data.)';
+    else if (reason === 'stale') lead = '(Fresh training data — this conversation is over a day old; use this instead of any earlier training data.)';
     return `${lead}\n\n${context}\n\nQuestion: ${question}`;
 }
 

@@ -21,6 +21,8 @@ const SECTION_IDS = [
     'exercise-detail-section',
     'progress-section',
     'block-section',
+    'goals-section',               // TP-1
+    'reportcard-section',          // TP-2
     'composition-detail-section',
     'exercise-manager-section',
     'edit-exercise-section',       // SH-6 — the exercise library's edit page
@@ -233,6 +235,14 @@ function routeToView(view) {
             showBlockView();
             break;
 
+        case 'goals':
+            showGoalsView();
+            break;
+
+        case 'reportcard':
+            showReportCardView();
+            break;
+
         case 'composition-detail':
             showCompositionDetailView();
             break;
@@ -442,6 +452,26 @@ async function showBlockView() {
     updateBottomNavActive('dashboard');
     const { renderBlockPage } = await import('./block-ui.js');
     await renderBlockPage();
+}
+
+// TP-1 — goals, their status, the dates the plan aims at.
+async function showGoalsView() {
+    const section = document.getElementById('goals-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('dashboard');
+    const { renderGoalsPage } = await import('./goals-ui.js');
+    await renderGoalsPage();
+}
+
+// TP-2 — the Sunday report card.
+async function showReportCardView() {
+    const section = document.getElementById('reportcard-section');
+    if (section) section.classList.remove('hidden');
+    setBottomNavVisible(true);
+    updateBottomNavActive('dashboard');
+    const { renderReportCardPage } = await import('./report-card-ui.js');
+    await renderReportCardPage();
 }
 
 // Entry point for onclick handlers (window-bound in main.js).

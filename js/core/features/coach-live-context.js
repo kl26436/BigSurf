@@ -8,6 +8,7 @@
 import { getEquipmentAtLocation } from './equipment-planner.js';
 import { weightIncrement } from './progression.js';
 import { describeWeekTarget } from './week-targets.js';
+import { describeAction, effortTag } from './plain-language.js';
 import { convertToUnit } from './coach-outcomes.js';
 
 /**
@@ -21,7 +22,7 @@ export function buildLiveSessionLine(intent) {
     const scope = intent.source === 'program' ? 'week' : 'session';
     const where = intent.source === 'program' && intent.week
         ? `, week ${intent.week}${intent.weeks ? ` of ${intent.weeks}` : ''}` : '';
-    const head = `${intent.mode === 'deload' ? 'Deload' : 'Peak'} ${scope}${where}${desc ? ` (${desc})` : ''}`;
+    const head = `${intent.mode === 'deload' ? 'Lighter' : 'Peak'} ${scope}${where}${desc ? ` (${desc})` : ''}`;
     const rule = intent.mode === 'deload'
         ? 'propose_next_target must not exceed the targets already on the set rows.'
         : 'heavier top sets are planned — propose loadable weights at or near the set-row targets, never beyond them.';
@@ -42,9 +43,9 @@ function lastTopSet(sets, unit) {
 /** The rules engine's verdict for an exercise (AP-15d): "rule: bump → 230×8". */
 function progressionVerdict(prog, unit) {
     if (!prog?.action) return '';
-    const rung = prog.rung ? ` (stall rung ${prog.rung})` : '';
+    const rung = prog.rung ? ` (stuck${prog.stallRun ? ` ${prog.stallRun} sessions` : ''})` : '';
     const target = prog.weight ? ` → ${prog.weight}${prog.reps ? `×${prog.reps}` : ''} ${unit}` : '';
-    return `rule: ${prog.action}${rung}${target}`;
+    return `rule: ${describeAction(prog.action)}${rung}${target}`;
 }
 
 /**
@@ -85,7 +86,7 @@ export function buildLiveWorkoutContext({
         const name = ex.machine || ex.name || 'Exercise';
         const saved = savedData.exercises?.[`exercise_${idx}`] || {};
         const done = (saved.sets || []).filter(s => s.completed && (s.reps || s.weight));
-        const doneStr = done.map(s => `${s.reps || '?'}×${s.weight || 'BW'}${s.rpe ? ` @RPE ${s.rpe}` : ''}${s.type && s.type !== 'working' ? ` (${s.type})` : ''}`).join(', ');
+        const doneStr = done.map(s => `${s.reps || '?'}×${s.weight || 'BW'}${s.rpe ? ` (${effortTag(s.rpe)})` : ''}${s.type && s.type !== 'working' ? ` (${s.type})` : ''}`).join(', ');
         const planned = ex.sets || 3;
         const isCurrent = !currentMarked && done.length < planned && !saved.completed;
         if (isCurrent) currentMarked = true;

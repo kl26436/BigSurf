@@ -295,10 +295,10 @@ async function renderStrengthDetail(container, range) {
             range,
             hero: `
                 <div class="detail-hero__num">${formatNumber(totalCurrent)}<span class="detail-hero__unit">${userWeightUnit()} combined</span></div>
-                <div class="md-hero-meta">Estimated 1RM · Epley formula</div>
+                <div class="md-hero-meta">Estimated max · worked out from your sets</div>
             `,
             chart: '<div class="md-chart-placeholder">Per-lift trends below</div>',
-            insight: totalCurrent > 0 ? `Your combined estimated 1RM across the big 4 lifts is <strong>${formatNumber(totalCurrent)} ${userWeightUnit()}</strong>.` : '',
+            insight: totalCurrent > 0 ? `Your combined estimated max across the big 4 lifts is <strong>${formatNumber(totalCurrent)} ${userWeightUnit()}</strong>.` : '',
             breakdown: liftRows || mdEmptyRange('No compound lift data in this range.', range),
         });
     } catch (error) {

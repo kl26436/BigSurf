@@ -19,6 +19,7 @@ import { isRecoveryWorkout } from './session-intent.js';
 import { buildExerciseSessions, stallState, fatigueState, sameMachine } from './progression.js';
 import { convertToUnit } from './coach-outcomes.js';
 import { RULE_THRESHOLDS, shiftDay } from './training-rules.js';
+import { describeStuck } from './plain-language.js';
 
 export const SCOREBOARD_WINDOW_DAYS = 28;
 
@@ -34,6 +35,8 @@ export const PATTERN_LABELS = {
     'vertical-push': 'Vertical push',
     'horizontal-pull': 'Horizontal pull',
     'vertical-pull': 'Vertical pull',
+    // LB-1 — labelled for display only; not in SPINE_PATTERNS, so never coverage.
+    'shrug': 'Shrug',
 };
 
 /** Epley is unreliable past ~12 reps — those sets don't estimate a max. */
@@ -104,7 +107,7 @@ export function pickPrimaries({ templates = [], workouts = [], today = null } = 
             const name = ex.machine || ex.name;
             if (!name || tagged.has(norm(name))) continue;
             tagged.set(norm(name), {
-                name, pattern: inferPattern({ ...ex, name }), source: 'tagged',
+                name, pattern: inferPattern({ ...ex, name }, { equipment: ex.equipment }), source: 'tagged',
                 ...(ex.equipment ? { equipment: ex.equipment } : {}), ...(ex.equipmentId ? { equipmentId: ex.equipmentId } : {}),
             });
         }
@@ -116,7 +119,8 @@ export function pickPrimaries({ templates = [], workouts = [], today = null } = 
     for (const w of workouts || []) {
         if (!usable(w, today) || (from && w.date < from) || isRecoveryWorkout(w)) continue;
         eachExercise(w, (name, ex) => {
-            const pattern = inferPattern({ name });
+            // LB-1 — the machine decides a back extension (45° = hinge).
+            const pattern = inferPattern({ name }, { equipment: ex.equipment });
             if (!SPINE_PATTERNS.includes(pattern)) return;
             // Index 0 asks "is this a compound?" — a pec deck is horizontal
             // push too, but it isn't where strength is measured.
@@ -257,7 +261,8 @@ function patternRows(workouts, today, target, mrv) {
         if (rec && in0) rec0 = true;
         if (rec && in1) rec1 = true;
         eachExercise(w, (name, ex) => {
-            const row = rows.get(inferPattern({ name }));
+            // LB-1 — equipment-aware: Back Extension on the 45° bench is Hinge.
+            const row = rows.get(inferPattern({ name }, { equipment: ex.equipment }));
             if (!row) return;
             const n = countableSets(ex);
             if (!n) return;
@@ -301,7 +306,7 @@ function chooseHeadline(primaries, patterns, unit, target) {
     if (down) {
         return {
             kind: 'down',
-            text: `${down.name} is down two 4-week windows running — e1RM ${down.e1rmPrev2} → ${down.e1rmPrev} → ${down.e1rmNow} ${unit}`,
+            text: `${down.name} is down two 4-week windows running — estimated max ${down.e1rmPrev2} → ${down.e1rmPrev} → ${down.e1rmNow} ${unit}`,
         };
     }
     const gap = patterns.filter(p => p.weeksUnder >= 2).sort((a, b) => a.setsThisWeek - b.setsThisWeek)[0];
@@ -408,17 +413,17 @@ export function describePrimary(p, unit) {
     const parts = [];
     if (TREND_WORDS[p.trend]) {
         const sign = p.delta > 0 ? '+' : '';
-        parts.push(`e1RM ${p.e1rmNow} ${unit}, ${TREND_WORDS[p.trend]} ${sign}${p.delta} vs ${p.e1rmPrev} the 4 weeks before`);
+        parts.push(`estimated max ${p.e1rmNow} ${unit}, ${TREND_WORDS[p.trend]} ${sign}${p.delta} vs ${p.e1rmPrev} the 4 weeks before`);
     } else if (p.trend === 'new') {
-        parts.push(`e1RM ${p.e1rmNow} ${unit}, no earlier window to compare`);
+        parts.push(`estimated max ${p.e1rmNow} ${unit}, no earlier window to compare`);
     } else if (p.trend === 'idle') {
-        parts.push(`not trained in the last 4 weeks (was e1RM ${p.e1rmPrev} ${unit})`);
+        parts.push(`not trained in the last 4 weeks (estimated max was ${p.e1rmPrev} ${unit})`);
     } else {
         parts.push('no estimable sets (1–12 reps with a load)');
     }
     if (p.repPR) parts.push(`rep PR ${p.repPR.weight}×${p.repPR.reps} (was ×${p.repPR.prevReps}) on ${p.repPR.date}`);
-    if (p.rung > 0) parts.push(`stall rung ${p.rung}`);
-    if (p.fatigue) parts.push(`effort rising: ${p.fatigue}`);
+    if (p.rung > 0) parts.push(describeStuck({ rung: p.rung }));
+    if (p.fatigue) parts.push(p.fatigue);
     return `${p.name}${p.equipment ? ` on ${p.equipment}` : ''}: ${parts.join(' · ')}`;
 }
 
@@ -428,15 +433,15 @@ export function describePrimary(p, unit) {
  */
 export function formatScoreboardContext(sb) {
     if (!sb || (!sb.primaries.length && !sb.patterns.some(p => p.setsThisWeek || p.setsLastWeek))) return '';
-    const lines = [`Progress scoreboard (best estimated 1RM per 4-week window, deload sessions excluded — the dashboard card shows these exact numbers; quote them, don't re-derive): ${sb.headline || 'no trend yet'}`];
+    const lines = [`Progress scoreboard (best estimated max per 4-week window, lighter sessions excluded — the dashboard card shows these exact numbers; quote them, don't re-derive): ${sb.headline || 'no trend yet'}`];
     for (const p of sb.primaries) lines.push(`- ${describePrimary(p, sb.unit)}`);
     const target = sb.patterns[0]?.target ?? RULE_THRESHOLDS.PATTERN_TARGET_SETS;
     const mrv = sb.patterns[0]?.mrv ?? RULE_THRESHOLDS.VOLUME_MRV;
     const pat = sb.patterns.map((p) => {
-        let s = p.status === 'recovery' ? 'deload week' : p.status;
+        let s = p.status === 'recovery' ? 'lighter week' : p.status;
         if (p.weeksUnder >= 2) s += ' (2 weeks)';
         return `${p.label.toLowerCase()} ${p.setsThisWeek} ${s}`;
     });
-    lines.push(`Movement patterns, sets in the last 7 days (target ${target} / MRV ${mrv}): ${pat.join(' · ')}`);
+    lines.push(`Movement patterns, sets in the last 7 days (target ${target}; more than ${mrv} is more than it can use): ${pat.join(' · ')}`);
     return `${lines.join('\n')}\n`;
 }

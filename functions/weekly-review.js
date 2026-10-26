@@ -10,6 +10,7 @@ const { computeUserVerdicts } = require('./coach-tools');
 const { buildOutcomesContext, convertToUnit } = require('./coach-outcomes');
 const { formatVerdictsContext } = require('./coach-rules');
 const { describeWeekTarget, isDeloadTarget } = require('./week-targets');
+const { effortTag, weekKindLabel } = require('./plain-language');
 const { DIGEST_MODEL, WEEKLY_REVIEW_SYSTEM } = require('./coach-prompts');
 
 /**
@@ -37,6 +38,8 @@ async function buildWeeklyReviewRequest(userRef, { db, force = false, now = new 
         console.log(`weeklyCoachReview settings read skipped for ${userRef.id}:`, settingsErr.message);
     }
     if (!force && settings.weeklyCoachReview === false) return { status: 'opted_out' };
+    // TP-2 — Sunday report card users get the card instead of the Monday review.
+    if (!force && settings.reportCard === true) return { status: 'report_card_user' };
     const unit = settings.weightUnit === 'kg' ? 'kg' : 'lbs';
     const profileParts = [];
     if (settings.coachGoal) profileParts.push(`goal: ${settings.coachGoal}`);
@@ -99,14 +102,14 @@ async function buildWeeklyReviewRequest(userRef, { db, force = false, now = new 
             const prog = progSnap.docs[0].data();
             const week = Math.floor(Math.round((new Date(now) - new Date(`${prog.startDate}T12:00:00`)) / 86400000) / 7) + 1;
             if (week > (prog.weeks || 1)) {
-                programLine = `Program: "${prog.name}" (${prog.weeks} weeks, ${prog.goal}) FINISHED — acknowledge the block is done and invite planning the next one.\n\n`;
+                programLine = `Program: "${prog.name}" (${prog.weeks} weeks, ${prog.goal}) FINISHED — acknowledge those weeks are done and invite planning the next few.\n\n`;
             } else if (week >= 1) {
                 const target = (prog.weekTargets || []).find(t => t.week === week);
                 const next = (prog.weekTargets || []).find(t => t.week === week + 1);
                 const desc = target ? describeWeekTarget(target) : '';
                 programLine = `Program: "${prog.name}" (${prog.goal}) — week ${week} of ${prog.weeks}`
-                    + (target ? ` — this week: ${target.label}${desc ? ` (${desc})` : ''}` : '')
-                    + (next ? `; next week: ${next.label}` : '')
+                    + (target ? ` — this week: ${weekKindLabel(target)}${desc ? ` (${desc})` : ''}` : '')
+                    + (next ? `; next week: ${weekKindLabel(next)}` : '')
                     + '.\n'
                     + (target && isDeloadTarget(target) ? 'DELOAD WEEK: lighter numbers this week are the plan, not a regression; do not push weight.\n' : '')
                     + '\n';
@@ -200,7 +203,7 @@ async function buildWeeklyReviewRequest(userRef, { db, force = false, now = new 
             if (!name || !ex.sets?.length) continue;
             const sets = ex.sets
                 .filter(s => s.type !== 'warmup' && (s.reps || s.weight))
-                .map(s => `${s.reps || '?'}×${s.weight ? convertToUnit(s.weight, s.originalUnit === 'kg' ? 'kg' : 'lbs', unit) : 'BW'}${s.rpe ? ` @RPE ${s.rpe}` : ''}`).join(', ');
+                .map(s => `${s.reps || '?'}×${s.weight ? convertToUnit(s.weight, s.originalUnit === 'kg' ? 'kg' : 'lbs', unit) : 'BW'}${s.rpe ? ` (${effortTag(s.rpe)})` : ''}`).join(', ');
             if (sets) lines.push(`  ${name}${ex.equipment ? ` [${ex.equipment}]` : ''}: ${sets} ${unit}${ex.notes ? ` — "${ex.notes}"` : ''}`);
         }
     }

@@ -15,8 +15,9 @@
 // server's rules verdicts (coach-rules.js) need the same intent.
 
 import { weekTargetEffects, isDeloadTarget, describeWeekTarget, deriveProgramWeek } from './week-targets.js';
+import { weekKindLabel } from './plain-language.js';
 
-const RECOVERY_LABEL = /deload|recovery/i;
+const RECOVERY_LABEL = /deload|recovery|light(?:er)? (?:week|session)/i;
 /**
  * AU-10(a) — a note saying the session was light ("Dead load week",
  * "deload", "recovery", "light day"). Kevin's 2026-10 block: the week was
@@ -78,7 +79,7 @@ function overrideIntent(o) {
     const labelled = typeof o.label === 'string' && o.label.trim() ? o.label.trim() : null;
     const deload = (pct != null && pct < 0) || (setDelta != null && setDelta < 0 && pct == null) || (labelled && RECOVERY_LABEL.test(labelled));
     let label = labelled;
-    if (!label) label = deload ? (pct != null && pct > -20 ? 'Lighter week' : 'Deload') : 'Adjusted week';
+    if (!label) label = deload ? 'Lighter week' : 'Adjusted week';
     return {
         ...baseIntent(),
         mode: deload ? 'deload' : (pct != null && pct > 0 ? 'peak' : 'build'),
@@ -120,9 +121,11 @@ export function getSessionIntent({ program = null, today, manualDeload = null, s
                 return {
                     mode: deload ? 'deload' : (peak ? 'peak' : 'build'),
                     weightPct: fx.weightPct, setDelta: fx.setDelta, repRange: fx.repRange, rpeTarget: fx.rpeTarget,
-                    label: target.label, week, weeks: program.weeks || 1,
+                    // TP-0 — the user sees the week's kind, not the model's label
+                    // ("accumulate", "Deload"); the label stays for reference.
+                    label: weekKindLabel(target), programLabel: target.label || null, week, weeks: program.weeks || 1,
                     source: 'program',
-                    reason: `Week ${week} of ${program.name || 'your program'}: ${target.label}${desc ? ` (${desc})` : ''}`,
+                    reason: `Week ${week} of ${program.name ? `"${program.name}"` : 'your plan'}: ${weekKindLabel(target)}${desc ? ` (${desc})` : ''}`,
                 };
             }
         }
@@ -139,8 +142,8 @@ export function getSessionIntent({ program = null, today, manualDeload = null, s
 export function sessionOnlyDeloadIntent() {
     return {
         ...baseIntent(),
-        mode: 'deload', weightPct: MANUAL_DELOAD_WEIGHT_PCT, label: 'Deload', source: 'manual',
-        reason: 'This session marked as a deload',
+        mode: 'deload', weightPct: MANUAL_DELOAD_WEIGHT_PCT, label: 'Lighter session', source: 'manual',
+        reason: 'This session marked as lighter',
     };
 }
 
@@ -162,5 +165,5 @@ export function isRecoveryWorkout(w) {
 export function describeIntent(intent) {
     if (!intent || intent.mode === 'build' || intent.mode === 'freestyle') return '';
     const levers = describeWeekTarget(intent);
-    return [intent.label || (intent.mode === 'deload' ? 'Deload' : 'Heavy'), levers].filter(Boolean).join(' · ');
+    return [intent.label || (intent.mode === 'deload' ? 'Lighter week' : 'Heavy'), levers].filter(Boolean).join(' · ');
 }

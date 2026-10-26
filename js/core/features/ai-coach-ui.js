@@ -53,7 +53,7 @@ let _coachWroteSinceContext = false;
 // The program door prompt — shared by the coach landing fallback card and
 // the external entry points (dashboard starter row, Settings program row,
 // week-plan sheet cross-sell).
-const PROGRAM_STARTER_PROMPT = 'Build me a 4-week program from my workouts — pick the split, set week-by-week intensity, and end with a deload.';
+const PROGRAM_STARTER_PROMPT = 'Build me a 4-week plan from my workouts — pick the split, set how each week differs, and end with a lighter week.';
 
 function getContextualPrompts() {
     const workouts = AppState.workouts || [];
@@ -70,7 +70,7 @@ function getContextualPrompts() {
                     icon: 'fa-chart-line',
                     iconClass: '',
                     text: `My ${name} has stalled at ${p.weight} ${AppState.globalUnit || 'lbs'} across ${p.sessions} sessions. Analyze my recent data and suggest strategies to break through.`,
-                    html: `Why has my <strong>${escapeHtml(name.toLowerCase())}</strong> stalled? Suggest a deload.`,
+                    html: `Why has my <strong>${escapeHtml(name.toLowerCase())}</strong> stalled? Should I back off or take a lighter week?`,
                 });
             }
         } catch (e) { debugLog('coach prompts: plateau check failed', e); }
@@ -104,15 +104,15 @@ function getContextualPrompts() {
                 prompts.push({
                     icon: 'fa-running',
                     iconClass: 'coach-prompt-card__icon--core',
-                    text: `My effort is climbing at the same weights (${deload.reasons[0]}). Should I take the deload a week early? Plan it for me.`,
-                    html: `Take the <strong>deload a week early</strong>? Effort is climbing.`,
+                    text: `My effort is climbing at the same weights (${deload.reasons[0]}). Should I take the lighter week a week early? Plan it for me.`,
+                    html: `Take the <strong>lighter week a week early</strong>? Effort is climbing.`,
                 });
             } else if (deload?.needed) {
                 prompts.push({
                     icon: 'fa-running',
                     iconClass: 'coach-prompt-card__icon--core',
-                    text: `I've trained hard for ${deload.consecutiveHardWeeks} consecutive weeks. Plan a deload week for me.`,
-                    html: `Plan a <strong>deload week</strong> — I've gone hard ${deload.consecutiveHardWeeks} weeks straight.`,
+                    text: `I've trained hard for ${deload.consecutiveHardWeeks} consecutive weeks. Plan a lighter week for me.`,
+                    html: `Plan a <strong>lighter week</strong> — I've gone hard ${deload.consecutiveHardWeeks} weeks straight.`,
                 });
             }
         } catch (e) { debugLog('coach prompts: deload check failed', e); }
@@ -127,7 +127,7 @@ function getContextualPrompts() {
             icon: 'fa-flag-checkered',
             iconClass: '',
             text: PROGRAM_STARTER_PROMPT,
-            html: `Plan a <strong>4-week program</strong> with a deload at the end.`,
+            html: `Plan a <strong>4-week plan</strong> with a lighter week at the end.`,
         }] : []),
         {
             icon: 'fa-calendar-alt',
@@ -150,8 +150,8 @@ function getContextualPrompts() {
         {
             icon: 'fa-running',
             iconClass: 'coach-prompt-card__icon--core',
-            text: "Help me plan a deload week. I am feeling beat up and need recovery.",
-            html: `Help me deload — I'm feeling beat up.`,
+            text: "Help me plan a lighter week. I'm feeling beat up and need recovery.",
+            html: `Help me take it lighter — I'm feeling beat up.`,
         },
     ];
 
@@ -539,6 +539,23 @@ export async function askCoach(question) {
             if (!progSnap.empty) program = progSnap.docs[0].data();
         } catch (e) { debugLog('coach: outcomes/program unavailable', e); }
 
+        // TP-1 — goals + events with their measured status (the same
+        // sentences the Goals page shows). Non-fatal.
+        let goalsBlock = '';
+        try {
+            const [{ loadGoalsWithStatus }, { formatGoalsContext }] = await Promise.all([import('./goals.js'), import('./goal-progress.js')]);
+            const g = await loadGoalsWithStatus();
+            goalsBlock = formatGoalsContext({ goals: g.goals, events: g.events, data: g.data });
+            // TP-2 — the last Sunday report card: its headline and its one proposal.
+            const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
+            const rc = await getDocs(query(collection(db, 'users', AppState.currentUser.uid, 'reportCards'), orderBy('weekKey', 'desc'), limit(1)));
+            if (!rc.empty) {
+                const r = rc.docs[0].data();
+                const o = r.chosenOption;
+                goalsBlock += `Last report card (week of ${r.weekKey}): ${r.narrative || r.card?.headline || ''}${o ? ` Proposed: ${o.label}${r.applied?.kind === o.kind ? ' (applied)' : ''}.` : ''} (get_report_card has the whole card)\n`;
+            }
+        } catch (e) { debugLog('coach: goals unavailable', e); }
+
         // AP-15b — the Today line needs the week plan; hydrate it if the
         // dashboard hasn't (undefined = never fetched, null = none set).
         if (AppState._weekPlan === undefined) {
@@ -570,6 +587,7 @@ export async function askCoach(question) {
             outcomesBlock,
             threadsBlock,
             feedbackBlock,
+            goalsBlock,
         });
         if (Config.DEBUG_MODE) {
             const size = Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, (v || '').length]));
@@ -833,14 +851,14 @@ function handleCoachActionCard(card, streamingBubble) {
                     <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-flag-checkered"></i></div>
                     <div class="coach-action-card__body">
                         <div class="coach-program-card__title">${escapeHtml(p.name || 'Program set')}</div>
-                        <div class="coach-program-card__meta">${p.weeks} weeks${throughStr} · ${escapeHtml(p.goal || '')}${p.deloadWeek ? ` · deload lands week ${p.deloadWeek}` : ''}</div>
+                        <div class="coach-program-card__meta">${p.weeks} weeks${throughStr} · ${escapeHtml(p.goal || '')}${p.deloadWeek ? ` · lighter week is week ${p.deloadWeek}` : ''}</div>
                     </div>
                     <span class="coach-receipt-tag">Applied</span>
                 </div>
                 <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 140))}</div>
                 ${rotationHtml}
                 <div class="coach-action-card__actions">
-                    <button class="live-proposal__apply" onclick="openBlockPage()">View block</button>
+                    <button class="live-proposal__apply" onclick="openBlockPage()">View plan</button>
                     <button class="live-proposal__dismiss" onclick="openWeekPlanSheet()">Week plan</button>
                     ${card.undo?.newProgramId ? `<button class="live-proposal__dismiss" onclick="undoProgramCreate('${id}')">Undo</button>` : ''}
                 </div>
@@ -878,6 +896,20 @@ function handleCoachActionCard(card, streamingBubble) {
                     <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 110))}</div>
                 </div>
                 <span class="coach-receipt-tag">Applied</span>
+            </div>
+        `);
+    } else if (card.kind === 'goal_set' || card.kind === 'event_added') {
+        // TP-1 — a goal or a date landed; the Goals page has it.
+        const icon = card.kind === 'goal_set' ? 'fa-bullseye' : 'fa-calendar-day';
+        addChatBubble('bot', `
+            <div class="coach-action-card coach-action-card--receipt" onclick="openGoalsPage()">
+                <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas ${icon}"></i></div>
+                <div class="coach-action-card__body">
+                    <div class="coach-action-card__title">${escapeHtml(card.name || (card.kind === 'goal_set' ? 'Goal set' : 'Date added'))}</div>
+                    <div class="coach-action-card__desc">${escapeHtml(truncate(card.summary || '', 140))}</div>
+                </div>
+                <span class="coach-receipt-tag">Applied</span>
+                <i class="fas fa-chevron-right coach-action-card__chev"></i>
             </div>
         `);
     } else if (card.kind === 'template_replaced') {
@@ -1168,7 +1200,7 @@ function renderWeekAdjustmentCard(proposal, streamingBubble) {
             <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-feather"></i></div>
             <div class="coach-action-card__body">
                 <div class="coach-action-card__title">${escapeHtml(proposal.label || 'Adjusted week')} — ${escapeHtml(weekAdjLevers(proposal))}</div>
-                <div class="coach-action-card__desc">${sessions.length ? escapeHtml(sessions.join(' · ')) : 'Every session you start'}${through ? ` · through ${escapeHtml(through)}` : ''}${proposal.extendBlock ? ' · your block moves back a week' : ''}${proposal.why ? ` · ${escapeHtml(proposal.why)}` : ''}</div>
+                <div class="coach-action-card__desc">${sessions.length ? escapeHtml(sessions.join(' · ')) : 'Every session you start'}${through ? ` · through ${escapeHtml(through)}` : ''}${proposal.extendBlock ? ' · your plan moves back a week' : ''}${proposal.why ? ` · ${escapeHtml(proposal.why)}` : ''}</div>
                 <div class="coach-action-card__actions">
                     <button class="live-proposal__apply" onclick="applyWeekAdjustment('${id}')">Make it so</button>
                     <button class="live-proposal__dismiss" onclick="dismissWeekAdjustment('${id}')">Dismiss</button>

@@ -214,11 +214,11 @@ describe('TOOL_DEFINITIONS', () => {
     it('exposes exactly the coach-tab tool set with valid schemas', () => {
         const names = TOOL_DEFINITIONS.map(t => t.name).sort();
         expect(names).toEqual([
-            'adjust_program', 'archive_template', 'create_program',
+            'add_event', 'adjust_program', 'archive_template', 'create_program',
             'create_workout_template', 'forget_fact', 'get_exercise_history',
-            'get_program', 'get_prs', 'get_rotation_candidates', 'get_verdicts', 'get_week_plan', 'get_workouts', 'list_equipment', 'list_exercises', 'list_templates',
+            'get_program', 'get_prs', 'get_report_card', 'get_rotation_candidates', 'get_verdicts', 'get_week_plan', 'get_workouts', 'list_equipment', 'list_exercises', 'list_goals', 'list_templates',
             'log_advice', 'propose_session_adjustments', 'propose_week_adjustment', 'remember_fact', 'replace_day',
-            'set_primary_lifts', 'set_week_plan', 'update_workout_template',
+            'set_goal', 'set_primary_lifts', 'set_week_plan', 'update_goal', 'update_workout_template',
         ]);
         for (const t of TOOL_DEFINITIONS) {
             expect(t.description.length).toBeGreaterThan(20);

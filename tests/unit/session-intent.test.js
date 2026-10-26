@@ -30,7 +30,7 @@ describe('getSessionIntent — program', () => {
         const i = getSessionIntent({ program, today: '2026-10-26' });
         expect(i).toMatchObject({
             mode: 'deload', weightPct: -35, setDelta: -2, repRange: [12, 15], rpeTarget: 6,
-            label: 'Deload', week: 6, weeks: 6, source: 'program',
+            label: 'Lighter week', programLabel: 'Deload', week: 6, weeks: 6, source: 'program',
         });
         expect(i.reason).toContain('Week 6');
     });
@@ -83,7 +83,7 @@ describe('getSessionIntent — manual and legacy', () => {
         expect(lighter.reason).toBe('Lighter week through 2026-10-26 — last week was hard');
         expect(getSessionIntent({ today: '2026-10-23', manualDeload: { from: '2026-10-20', weeks: 1, setDelta: 1 } }))
             .toMatchObject({ mode: 'build', setDelta: 1, weightPct: null, label: 'Adjusted week' });
-        expect(getSessionIntent({ today: '2026-10-23', manualDeload: { from: '2026-10-20', weeks: 1, weightPct: -30 } }).label).toBe('Deload');
+        expect(getSessionIntent({ today: '2026-10-23', manualDeload: { from: '2026-10-20', weeks: 1, weightPct: -30 } }).label).toBe('Lighter week');
     });
 
     it('weekOverrideOf reads the new field, falling back to the AP-10 one', async () => {
@@ -119,11 +119,11 @@ describe('isRecoveryWorkout / describeIntent / sessionOnlyDeloadIntent', () => {
     });
 
     it('describes only non-build sessions', () => {
-        expect(describeIntent(getSessionIntent({ program, today: '2026-10-26' }))).toBe('Deload · -35% weight · -2 sets · 12–15 reps · RPE 6');
+        expect(describeIntent(getSessionIntent({ program, today: '2026-10-26' }))).toBe('Lighter week · -35% weight · -2 sets · 12–15 reps · effort 6/10');
         expect(describeIntent(getSessionIntent({ today: '2026-10-23' }))).toBe('');
     });
 
     it('session-only deload is a manual deload at the default cut', () => {
-        expect(sessionOnlyDeloadIntent()).toMatchObject({ mode: 'deload', source: 'manual', weightPct: MANUAL_DELOAD_WEIGHT_PCT, label: 'Deload' });
+        expect(sessionOnlyDeloadIntent()).toMatchObject({ mode: 'deload', source: 'manual', weightPct: MANUAL_DELOAD_WEIGHT_PCT, label: 'Lighter session' });
     });
 });

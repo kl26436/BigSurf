@@ -14,6 +14,7 @@ import { contextTurn } from '../../../js/core/features/coach-context.js';
 import { buildLiveWorkoutContext } from '../../../js/core/features/coach-live-context.js';
 import { buildExerciseSessions, progressionTarget, weightIncrement } from '../../../js/core/features/progression.js';
 import { getSessionIntent, weekOverrideOf } from '../../../js/core/features/session-intent.js';
+import { formatGoalsContext } from '../../../js/core/features/goal-progress.js';
 import EXERCISES from '../../../functions/data/exercises.json';
 
 export const UID = 'u_eval';
@@ -199,6 +200,11 @@ export function seedDocs(user, { live = null } = {}) {
     for (const l of user.locations) docs[`${U}/locations/${l.id}`] = { ...l };
     for (const w of user.workouts) docs[`${U}/workouts/${w.id}`] = { ...w };
     if (user.program) docs[`${U}/programs/${user.program.id || 'program_eval'}`] = { ...user.program };
+    // TP-1 — goals, events, weigh-ins and scans when a scenario has them.
+    for (const g of user.goals || []) docs[`${U}/goals/${g.id}`] = { ...g };
+    for (const e of user.events || []) docs[`${U}/events/${e.id}`] = { ...e };
+    for (const m of user.measurements || []) docs[`${U}/measurements/${m.id || `${m.date}_m`}`] = { ...m };
+    for (const d of user.dexa || []) docs[`${U}/dexa/${d.id || `scan_${d.date}`}`] = { ...d };
     if (live) docs[`${U}/workouts/${live.doc.id}`] = live.doc;
     return docs;
 }
@@ -241,6 +247,10 @@ export function chatMessages(user, question) {
         program: user.program, intent, currentLocation: GYM, settings: user.settings, unit: user.unit,
         exerciseDatabase: EXERCISES, manualDeload: weekOverrideOf(user.settings), prList: prList(user),
         equipment: user.equipment,
+        goalsBlock: formatGoalsContext({
+            goals: user.goals || [], events: user.events || [],
+            data: { workouts: user.workouts, templates: user.templates, measurements: user.measurements || [], dexa: user.dexa || [], today: user.today },
+        }),
     });
     return [{ role: 'user', content: contextTurn(context, question, 'first') }];
 }

@@ -120,7 +120,7 @@ function deriveProgramWeek(program, today) {
 
 /**
  * One human line for a target's levers: "-35% weight · -2 sets · 12–15 reps
- * · RPE 6". Empty string for a baseline week. Shared by the coach context,
+ * · effort 6/10" (TP-0: plain words — never "RPE" on a screen or in the coach's context). Empty string for a baseline week. Shared by the coach context,
  * the weekly review, the hero meta line and the program detail sheet so the
  * same week never reads differently in two places.
  */
@@ -130,7 +130,7 @@ function describeWeekTarget(target) {
     if (fx.weightPct != null) parts.push(`${fx.weightPct > 0 ? '+' : ''}${fx.weightPct}% weight`);
     if (fx.setDelta != null) parts.push(`${fx.setDelta > 0 ? '+' : ''}${fx.setDelta} set${Math.abs(fx.setDelta) === 1 ? '' : 's'}`);
     if (fx.repRange) parts.push(`${fx.repRange[0]}–${fx.repRange[1]} reps`);
-    if (fx.rpeTarget != null) parts.push(`RPE ${fx.rpeTarget}`);
+    if (fx.rpeTarget != null) parts.push(`effort ${fx.rpeTarget}/10`);
     return parts.join(' · ');
 }
 

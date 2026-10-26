@@ -852,7 +852,7 @@ export function getWorkoutHistory(appState) {
                                 <tr class="wh-detail-table__set-row">
                                     <td>Set ${index + 1}</td>
                                     <td>${set.reps || '-'}</td>
-                                    <td>${set.weight ? (() => { const dw = displayWeight(set.weight, set.originalUnit || 'lbs', appState.globalUnit || 'lbs'); return dw.value + ' ' + dw.label; })() : '-'}${set.rpe ? ` <span class="wh-rpe">RPE ${set.rpe}</span>` : ''}</td>
+                                    <td>${set.weight ? (() => { const dw = displayWeight(set.weight, set.originalUnit || 'lbs', appState.globalUnit || 'lbs'); return dw.value + ' ' + dw.label; })() : '-'}${set.rpe ? ` <span class="wh-rpe">effort ${set.rpe}/10</span>` : ''}</td>
                                 </tr>`;
                             }
                         });

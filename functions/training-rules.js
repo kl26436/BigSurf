@@ -342,7 +342,7 @@ function checkDeloadNeeded(workouts, thresholds = RULE_THRESHOLDS, { today = nul
     const reasons = [];
     if (byWeeks) reasons.push(`${consecutiveHardWeeks} hard weeks in a row`);
     const fatigue = inRecoveryWeek ? [] : fatigueSignals(workouts, { today, unit, inc, minSessions: t.PLATEAU_MIN_SESSIONS });
-    for (const f of fatigue) reasons.push(`effort rising on ${f.exercise}: ${f.reason}`);
+    for (const f of fatigue) reasons.push(`${f.exercise}: ${f.reason}`);
     const ready = readinessState(workouts, { today, days: t.READINESS_WINDOW_DAYS, lowCount: t.READINESS_LOW_COUNT });
     const readinessLow = ready.readinessLow && !inRecoveryWeek;
     if (readinessLow) reasons.push(`readiness ≤2/5 on ${ready.low} of ${ready.of} check-ins in the last ${t.READINESS_WINDOW_DAYS} days`);

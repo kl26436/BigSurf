@@ -396,7 +396,7 @@ function renderBlockLink(container) {
         <button type="button" class="row-card ws-block-link" onclick="openBlockPage()">
             <span class="row-card__icon"><i class="fas fa-calendar-week"></i></span>
             <span class="row-card__content">
-                <span class="row-card__title">${escapeHtml(program.name || 'Your block')}</span>
+                <span class="row-card__title">${escapeHtml(program.name || 'Your plan')}</span>
                 <span class="row-card__subtitle">${when} · see every week and day</span>
             </span>
             <i class="fas fa-chevron-right row-card__action"></i>
@@ -1241,7 +1241,7 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
     // CP-4 — a rotated accessory says what it replaced (informational; the
     // equipment picker and remove button stay the edit affordances).
     const rotatedChip = ex.rotatedFrom
-        ? ` <span class="chip chip--sm te-row__rotated" title="Rotated in this block"><i class="fas fa-rotate" aria-hidden="true"></i> was ${escapeHtml(ex.rotatedFrom)}</span>`
+        ? ` <span class="chip chip--sm te-row__rotated" title="Rotated in for these weeks"><i class="fas fa-rotate" aria-hidden="true"></i> was ${escapeHtml(ex.rotatedFrom)}</span>`
         : '';
     const summary = (equipment
         ? `${sets} × ${reps} · ${escapeHtml(equipment)}`

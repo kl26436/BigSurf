@@ -39,7 +39,7 @@ describe('buildBlockModel', () => {
 
     it('header: current week, its label, days trained vs planned', () => {
         expect(model().header).toMatchObject({
-            name: 'Strength block', week: 3, weeks: 4, weekLabel: 'intensify', finished: false,
+            name: 'Strength block', week: 3, weeks: 4, weekLabel: 'Push week', finished: false,
             endDate: '2026-11-01', daysTrained: 4, daysPlanned: 6,
         });
         expect(model().rationale.block).toBe('Strength, 4 weeks, deload week 4');

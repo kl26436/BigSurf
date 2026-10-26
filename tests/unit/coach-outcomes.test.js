@@ -103,7 +103,7 @@ describe('computeAdviceOutcome — deload', () => {
             wo('2026-06-30', 'Bench Press', [195]),
         ];
         const line = computeAdviceOutcome(advice, workouts, TODAY);
-        expect(line).toContain('suggested deload for Bench Press');
+        expect(line).toContain('suggested a lighter week for Bench Press');
         expect(line).toContain('volume -67% that week');
         expect(line).toContain('185→195 lbs in the 4 weeks after');
     });

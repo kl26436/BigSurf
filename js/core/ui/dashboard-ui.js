@@ -193,6 +193,7 @@ async function renderDashboard() {
                 ${renderActiveWorkoutPill()}
                 ${renderProgramCompleteBanner(allWorkouts)}
                 ${renderForToday(allWorkouts)}
+                ${await reportCardEntry()}
                 ${renderTodayPRBanner(recentPRs)}
                 ${renderScoreboardCard(allWorkouts)}
                 ${renderThisWeekCard(allWorkouts, recentPRs, todaysPRKeys, topInsight)}
@@ -290,7 +291,7 @@ function renderMetaStrip(streak, weekDone, weekGoal, isDeload = false, weekPace 
     ).join('');
 
     const streakHtml = isDeload
-        ? `<span class="dash-strip__streak"><i class="fas fa-battery-half"></i> Deload week</span>`
+        ? `<span class="dash-strip__streak"><i class="fas fa-battery-half"></i> Lighter week</span>`
         : (streak > 0 ? `<span class="dash-strip__streak"><i class="fas fa-fire"></i> ${streak} day streak</span>` : '');
 
     // Ahead-of-last-week pace reads as a win; behind stays silent — a lighter
@@ -567,7 +568,7 @@ function renderProgramCompleteBanner(allWorkouts = []) {
                 </button>
             </div>
             ${statLine}
-            <button class="dash-program-done__cta" onclick="planNextBlock()">Plan the next block</button>
+            <button class="dash-program-done__cta" onclick="planNextBlock()">Plan the next few weeks</button>
         </div>
     `;
 }
@@ -1144,7 +1145,7 @@ function renderScoreboardCard(allWorkouts) {
             : '';
         const chips = [
             p.repPR ? `<span class="vol-chip vol-chip--pr" aria-label="Rep PR ${p.repPR.weight} by ${p.repPR.reps}">Rep PR ${p.repPR.weight}×${p.repPR.reps}</span>` : '',
-            p.rung > 0 ? `<span class="vol-chip vol-chip--rung" aria-label="Stalled, rung ${p.rung}">Stall ${p.rung}</span>` : '',
+            p.rung > 0 ? `<span class="vol-chip vol-chip--rung" aria-label="Stuck — ${p.rung === 1 ? 'chase one more rep' : p.rung === 2 ? 'backing off to reset' : 'time to rotate'}">Stuck</span>` : '',
             // AP-22 — effort climbing at the same load: a leading fatigue sign.
             p.fatigue ? `<span class="vol-chip vol-chip--rung" aria-label="${escapeAttr(`Effort rising: ${p.fatigue}`)}">Effort ↑</span>` : '',
         ].join('');
@@ -1170,7 +1171,7 @@ function renderScoreboardCard(allWorkouts) {
         <div class="dash-week-card">
             <div class="sb-card__headline sb-card__headline--${sb.headlineKind}">
                 ${escapeHtml(sb.headline)}
-                <span class="sb-card__sub">Best estimated 1RM, last 4 weeks vs the 4 before</span>
+                <span class="sb-card__sub">Best estimated max, last 4 weeks vs the 4 before</span>
             </div>
             ${rows}
             <div class="sb-patterns" aria-label="Sets per movement pattern, last 7 days">${patterns}</div>
@@ -1630,6 +1631,22 @@ export async function renderProgressPage() {
         <div class="d-content">
             <div class="progress-page">
                 ${renderProgressSummary(streakDays, totalSessions, prs.length)}
+                <div class="row-card" onclick="openGoalsPage()">
+                    <div class="row-card__icon"><i class="fas fa-bullseye"></i></div>
+                    <div class="row-card__content">
+                        <div class="row-card__title">Goals</div>
+                        <div class="row-card__subtitle">Where you are against each one</div>
+                    </div>
+                    <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
+                </div>
+                <div class="row-card" onclick="openReportCard()">
+                    <div class="row-card__icon"><i class="fas fa-clipboard-check"></i></div>
+                    <div class="row-card__content">
+                        <div class="row-card__title">Report card</div>
+                        <div class="row-card__subtitle">Your week in one page, every Sunday night</div>
+                    </div>
+                    <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
+                </div>
                 ${renderVolumeTrend(series)}
                 <div class="dash-section-head dash-section-head--tight">
                     <h3>Training balance</h3>
@@ -1640,6 +1657,16 @@ export async function renderProgressPage() {
             </div>
         </div>
     `;
+}
+
+/** TP-2 — Sunday / Monday: this week's report card, one row under For Today. */
+async function reportCardEntry() {
+    try {
+        const { reportCardEntryHTML } = await import('./report-card-ui.js');
+        return await reportCardEntryHTML();
+    } catch {
+        return '';
+    }
 }
 
 // ===================================================================

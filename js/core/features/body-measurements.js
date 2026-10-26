@@ -22,19 +22,9 @@ import { getDateString } from '../utils/date-helpers.js';
 // PURE FUNCTIONS (also used by tests)
 // ===================================================================
 
-/**
- * Calculate 7-day moving average for body weight entries.
- * @param {Array<{date: string, weight: number}>} entries - Sorted by date ascending
- * @returns {Array<{date: string, weight: number}>} Moving average at each point
- */
-export function calculate7DayAverage(entries) {
-    if (!entries || entries.length === 0) return [];
-    return entries.map((entry, i) => {
-        const window = entries.slice(Math.max(0, i - 6), i + 1);
-        const avg = window.reduce((sum, e) => sum + e.weight, 0) / window.length;
-        return { date: entry.date, weight: Math.round(avg * 10) / 10 };
-    });
-}
+// TP-1 — moved to body-stats.js (pure + mirrored, so goals and the report
+// card can use it server-side); re-exported so callers don't change.
+export { calculate7DayAverage } from './body-stats.js';
 
 /**
  * Convert a measurement entry to a different unit without mutating original.

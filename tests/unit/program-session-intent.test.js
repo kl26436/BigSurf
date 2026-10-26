@@ -58,7 +58,7 @@ describe('hero start in a deload week', () => {
         await applyProgramWeekAndStart('Push');
         const rows = AppState.savedData.exercises.exercise_0.sets;
         expect(rows.map(r => r.weight)).toEqual([125, 125]);
-        expect(AppState.savedData.sessionLabel).toBe('Deload');
+        expect(AppState.savedData.sessionLabel).toBe('Lighter week');
     });
 
     it('still scales when the session has no deload intent (legacy path)', async () => {

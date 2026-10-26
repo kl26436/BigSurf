@@ -23,7 +23,7 @@ const TIPS = {
     },
     'coach-programs': {
         target: '.coach-hero__icon',
-        text: 'The coach can build multi-week programs — splits, intensity, deloads. Just ask.',
+        text: 'The coach can build a multi-week plan — splits, how each week differs, lighter weeks. Just ask.',
         position: 'below',
     },
 };

@@ -194,14 +194,14 @@ describe('deriveProgramWeek / buildProgramContext (Phase 9)', () => {
     it('context line carries week-of + target; finished programs say so', () => {
         const ctx = buildProgramContext(program, '2026-07-07');
         expect(ctx).toContain('week 2 of 4');
-        expect(ctx).toContain('heavy (+5% weight)');
+        expect(ctx).toContain('Push week (+5% weight)');
         expect(buildProgramContext(program, '2026-08-10')).toContain('FINISHED');
         expect(buildProgramContext(null, '2026-07-07')).toBe('');
     });
 
     it('CP-3: the context line carries set / rep / RPE levers, not just weightPct', () => {
         const shaped = { ...program, weekTargets: [{ week: 2, label: 'intensify', setDelta: 2, repRange: [6, 8], rpeTarget: 9 }] };
-        expect(buildProgramContext(shaped, '2026-07-07')).toContain('intensify (+2 sets · 6–8 reps · RPE 9)');
+        expect(buildProgramContext(shaped, '2026-07-07')).toContain('Push week (+2 sets · 6–8 reps · effort 9/10)');
     });
 });
 
@@ -214,29 +214,29 @@ describe('AP-9 — the coach learns the deload', () => {
         ],
     };
 
-    it('buildProgramContext emits the DELOAD WEEK directive in a deload week', () => {
+    it('buildProgramContext emits the LIGHTER WEEK directive in a deload week', () => {
         const ctx = buildProgramContext(program, '2026-08-05'); // week 6
         expect(ctx).toContain('week 6 of 6');
-        expect(ctx).toContain('DELOAD WEEK: do NOT prescribe heavier loads this week; hold or reduce. Session targets are already set by the app.');
+        expect(ctx).toContain('LIGHTER WEEK: do NOT prescribe heavier loads this week; hold or reduce. Session targets are already set by the app.');
     });
 
     it('a volume-only deload (negative setDelta) counts too', () => {
         const volOnly = { ...program, weekTargets: [{ week: 6, label: 'Back-off', setDelta: -2 }] };
-        expect(buildProgramContext(volOnly, '2026-08-05')).toContain('DELOAD WEEK');
+        expect(buildProgramContext(volOnly, '2026-08-05')).toContain('LIGHTER WEEK');
     });
 
     it('no directive in a build week or a baseline week', () => {
-        expect(buildProgramContext(program, '2026-07-07')).not.toContain('DELOAD'); // week 2, +1 set
-        expect(buildProgramContext(program, '2026-07-14')).not.toContain('DELOAD'); // week 3, baseline
+        expect(buildProgramContext(program, '2026-07-07')).not.toContain('LIGHTER'); // week 2, +1 set
+        expect(buildProgramContext(program, '2026-07-14')).not.toContain('LIGHTER'); // week 3, baseline
     });
 
     it('buildSessionIntentContext: one line for a deload intent from any source', () => {
         const manual = buildSessionIntentContext({ mode: 'deload', weightPct: -30, setDelta: null, repRange: null, rpeTarget: null, source: 'manual' });
-        expect(manual).toBe('Current session: DELOAD (manual deload · -30% weight) — do NOT prescribe heavier loads for this session; hold or reduce. Session targets are already set by the app.\n');
+        expect(manual).toBe('Current session: LIGHTER (set by the user · -30% weight) — do NOT prescribe heavier loads for this session; hold or reduce. Session targets are already set by the app.\n');
         const prog = buildSessionIntentContext({ mode: 'deload', weightPct: -35, repRange: [12, 15], week: 6, weeks: 6, source: 'program' });
-        expect(prog).toContain('program week 6 of 6 · -35% weight · 12–15 reps');
+        expect(prog).toContain('plan week 6 of 6 · -35% weight · 12–15 reps');
         const label = buildSessionIntentContext({ mode: 'deload', weightPct: null, source: 'label' });
-        expect(label).toContain('Current session: DELOAD (labelled deload)');
+        expect(label).toContain('Current session: LIGHTER (session labelled light)');
     });
 
     it("buildSessionIntentContext: '' for build / peak / freestyle / missing", () => {
@@ -279,19 +279,19 @@ describe('AP-15b — buildTodayContext', () => {
             weekTargets: [{ week: 4, label: 'Deload', weightPct: -35 }],
         };
         const line = buildTodayContext({ today: '2026-07-08', weekPlan: plan, templates, program });
-        expect(line).toContain('program week 4 of 4 — Deload (-35% weight)');
-        expect(line).toContain('· DELOAD');
+        expect(line).toContain('plan week 4 of 4 — Lighter week (-35% weight)');
+        expect(line).toContain('· LIGHTER WEEK');
         const baseline = buildTodayContext({ today: '2026-06-16', program });
-        expect(baseline).toContain('program week 1 of 4 — baseline');
-        expect(baseline).not.toContain('DELOAD');
+        expect(baseline).toContain('plan week 1 of 4 — Build week');
+        expect(baseline).not.toContain('LIGHTER');
     });
 
-    it('an in-progress deload intent flags DELOAD with no program; current location wins', () => {
+    it('an in-progress deload intent flags LIGHTER WEEK with no program; current location wins', () => {
         const line = buildTodayContext({
             today: '2026-07-08', intent: { mode: 'deload', source: 'manual' },
             currentLocation: { name: 'Hotel Gym' }, workouts: [done('2026-07-06', 'push', 'Iron Temple')],
         });
-        expect(line).toContain('DELOAD');
+        expect(line).toContain('LIGHTER WEEK');
         expect(line).toContain('gym: Hotel Gym');
         expect(line).not.toContain('Iron Temple');
     });

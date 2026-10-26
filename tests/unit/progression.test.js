@@ -151,7 +151,7 @@ describe('deload intent', () => {
             weight: scaleLoadableWeight(190, 0.65, 10), reps: 12, bumped: false, stalled: false, action: 'deload', deload: true,
         });
         expect(computeOverloadNudge(s, 'lbs', 10, 10, deload))
-            .toBe(`Deload week — ${scaleLoadableWeight(190, 0.65, 10)} lbs for 12, two reps in the tank`);
+            .toBe(`Lighter week — ${scaleLoadableWeight(190, 0.65, 10)} lbs for 12, two reps in the tank`);
     });
 
     it('skips the stall ladder on a flat run', () => {
@@ -166,7 +166,7 @@ describe('deload intent', () => {
     it('without a percentage it holds the weight', () => {
         const label = { mode: 'deload', weightPct: null };
         expect(deloadTarget(190, 8, 10, label, 10)).toEqual({ weight: 190, reps: 10 });
-        expect(deloadNudgeText(190, 8, 10, label, 'lbs', 10)).toBe('Deload week — hold 190 lbs, stop two reps short');
+        expect(deloadNudgeText(190, 8, 10, label, 'lbs', 10)).toBe('Lighter week — hold 190 lbs, stop two reps short');
     });
 
     it('peak and build intents leave the matrix alone', () => {

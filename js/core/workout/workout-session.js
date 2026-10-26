@@ -93,7 +93,7 @@ async function stampSessionIntent({ freestyle = false } = {}) {
         });
         AppState.savedData.sessionIntent = intent;
         if (intent.mode === 'deload') {
-            if (!AppState.savedData.sessionLabel) AppState.savedData.sessionLabel = intent.label || 'Deload';
+            if (!AppState.savedData.sessionLabel) AppState.savedData.sessionLabel = intent.label || 'Lighter week';
             if (intent.source === 'program' && program?.id && !AppState.savedData.basedOn) AppState.savedData.basedOn = program.id;
         }
     } catch (e) {

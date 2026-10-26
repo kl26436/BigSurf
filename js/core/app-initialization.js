@@ -660,7 +660,15 @@ export function setupAuthenticationListener() {
                     // auth + dashboard so the coach page has data to render.
                     try {
                         const params = new URLSearchParams(window.location.search);
-                        if (params.get('open') === 'weekly-review') {
+                        if (params.get('open') === 'report-card') {
+                            const week = params.get('week');
+                            params.delete('open');
+                            params.delete('week');
+                            const qs = params.toString();
+                            window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
+                            const { openReportCard } = await import('./ui/report-card-ui.js');
+                            openReportCard(week);
+                        } else if (params.get('open') === 'weekly-review') {
                             params.delete('open');
                             const qs = params.toString();
                             window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
@@ -1303,6 +1311,9 @@ function registerServiceWorker() {
             const url = String(event.data?.url || '');
             if (event.data?.type === 'notification-click' && url.includes('open=weekly-review')) {
                 import('./features/ai-coach-ui.js').then((m) => m.openLatestWeeklyReview?.());
+            } else if (event.data?.type === 'notification-click' && url.includes('open=report-card')) {
+                const week = (url.match(/week=(\d{4}-\d{2}-\d{2})/) || [])[1] || null;
+                import('./ui/report-card-ui.js').then((m) => m.openReportCard?.(week));
             }
         });
         window.addEventListener('load', () => {

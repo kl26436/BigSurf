@@ -27,6 +27,7 @@ const {
 } = require('./coach-prompts');
 const { withPromptCaching, runCoachToolLoop } = require('./coach-loop');
 const { buildWeeklyReviewRequest } = require('./weekly-review');
+const { buildReportCardRequest, reportCardDoc } = require('./report-card-request');
 
 // ── Model routing ────────────────────────────────────────────────────
 // Coach chat + template building + DEXA extraction use the flagship model
@@ -1713,6 +1714,115 @@ exports.requestWeeklyReview = functions.runWith({
     if (result.status === 'ok') {
         await limitRef.set({ weeklyReview: { manualDate: todayKey } }, { merge: true });
     }
+    return result;
+});
+
+/**
+ * Sunday report card (TP-2) — the card is built in code (report-card.js);
+ * one cheap DIGEST_MODEL turn writes two sentences and picks one of the
+ * card's pre-validated options. Saved to reportCards/{weekKey}; push opens
+ * /?open=report-card&week=<weekKey>.
+ *
+ * @returns {Promise<{status: string, weekKey?: string}>}
+ */
+async function generateReportCardForUser(userRef, apiKey, { force = false, sendPush = true, now = new Date() } = {}) {
+    const built = await buildReportCardRequest(userRef, { force, now });
+    if (built.status) return { status: built.status };
+    let text = '';
+    let usage = null;
+    try {
+        const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+            body: JSON.stringify(built.request),
+        });
+        if (upstream.ok) {
+            const resp = await upstream.json();
+            text = resp.content?.find(b => b.type === 'text')?.text || '';
+            usage = resp.usage || null;
+        } else {
+            console.error(`❌ reportCard API error for ${userRef.id}:`, upstream.status);
+        }
+    } catch (apiErr) {
+        console.error(`❌ reportCard API call failed for ${userRef.id}:`, apiErr.message);
+    }
+    // The card stands on its own: a failed model turn saves it with the
+    // computed headline and "Keep going as planned".
+    const docData = reportCardDoc(built.card, text, { model: built.request.model, usage });
+    await userRef.collection('reportCards').doc(built.week.weekKey).set(docData);
+
+    if (sendPush) {
+        try {
+            const subSnap = await userRef.collection('push_subscriptions').doc('current').get();
+            const sub = subSnap.exists ? subSnap.data().subscription : null;
+            if (sub) {
+                ensureVapidConfigured();
+                await webpush.sendNotification(sub, JSON.stringify({
+                    title: 'Big Surf',
+                    body: "Your week's report card is ready",
+                    icon: '/BigSurf.png',
+                    badge: '/BigSurf.png',
+                    tag: 'report-card',
+                    data: { url: `/?open=report-card&week=${built.week.weekKey}` },
+                }));
+            }
+        } catch (pushErr) {
+            console.log(`reportCard push skipped for ${userRef.id}:`, pushErr.message);
+        }
+    }
+    return { status: 'ok', weekKey: built.week.weekKey };
+}
+
+/**
+ * Sunday 19:30 Chicago (TP-2). Only users with settings.reportCard (rollout
+ * flag) — everyone else keeps the Monday review until the page is on prod.
+ * Guards: skip zero-workout weeks, one card per weekKey (retry-safe),
+ * maxInstances 1.
+ */
+exports.sundayReportCard = functions.runWith({
+    secrets: [anthropicApiKey, vapidPrivateKey],
+    timeoutSeconds: 540,
+    memory: '512MB',
+    maxInstances: 1,
+}).pubsub.schedule('every sunday 19:30').timeZone('America/Chicago').onRun(async () => {
+    const apiKey = anthropicApiKey.value();
+    if (!apiKey) { console.error('❌ sundayReportCard: no API key'); return null; }
+    const userRefs = await db.collection('users').listDocuments();
+    let built = 0;
+    for (const userRef of userRefs) {
+        try {
+            const r = await generateReportCardForUser(userRef, apiKey);
+            if (r.status === 'ok') built++;
+        } catch (userErr) {
+            console.error(`❌ sundayReportCard failed for ${userRef.id}:`, userErr);
+        }
+    }
+    console.log(`✅ sundayReportCard: ${built} card(s) built`);
+    return null;
+});
+
+/**
+ * On-demand report card — "Build this week's card" on the page. Rebuilds the
+ * current week for the signed-in user (no push). One a day; admin exempt.
+ */
+exports.requestReportCard = functions.runWith({
+    secrets: [anthropicApiKey],
+    timeoutSeconds: 120,
+    memory: '512MB',
+    maxInstances: 2,
+}).https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Sign in to get a report card');
+    const apiKey = anthropicApiKey.value();
+    if (!apiKey) throw new functions.https.HttpsError('failed-precondition', 'Coach unavailable');
+    const userRef = db.collection('users').doc(context.auth.uid);
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const limitRef = userRef.collection('preferences').doc('aiRateLimits');
+    if (context.auth.uid !== ADMIN_UID) {
+        const limitSnap = await limitRef.get();
+        if (limitSnap.exists && limitSnap.data().reportCard?.manualDate === todayKey) return { status: 'rate_limited' };
+    }
+    const result = await generateReportCardForUser(userRef, apiKey, { force: true, sendPush: false });
+    if (result.status === 'ok') await limitRef.set({ reportCard: { manualDate: todayKey } }, { merge: true });
     return result;
 });
 

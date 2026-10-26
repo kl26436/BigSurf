@@ -17,7 +17,9 @@ const { convertToUnit } = require('./coach-outcomes');
 const { computeVerdicts, buildBlockRetrospective } = require('./coach-rules');
 const { getSessionIntent, weekOverrideOf } = require('./session-intent');
 const { rankRotationCandidates } = require('./exercise-rotation');
-const { applyPrimaryChoice } = require('./progress-scoreboard');
+const { applyPrimaryChoice, pickPrimaries } = require('./progress-scoreboard');
+// TP-1 — goals: the same validation, baseline and status math as the Goals page.
+const { normalizeGoal, normalizeEvent, captureBaseline, goalsWithStatus, goalName, GOAL_TYPES, GOAL_STATUSES, EVENT_KINDS } = require('./goal-progress');
 const { inferRole } = require('./movement-patterns');
 const { diceSimilarity } = require('./fuzzy-match');
 const {
@@ -276,6 +278,62 @@ const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'list_goals',
+        description: "The user's goals (lift, body weight, composition, days a week, a movement) with each one's measured status sentence, plus their dated events. The Goals lines in the first message carry the same sentences — call this to drill in or to get ids for update_goal.",
+        input_schema: { type: 'object', properties: {} },
+    },
+    {
+        name: 'set_goal',
+        description: "Create one measurable goal. The app measures the starting point from the data — never ask the user where they are. Lift goals must name a main lift (the error lists them). Consent rule applies. Not for vague intentions — those stay in conversation.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                type: { type: 'string', enum: ['lift', 'bodyweight', 'composition', 'consistency', 'balance'] },
+                metric: { type: 'string', enum: ['estimatedMax', 'weight', 'leanMass', 'bodyFatPct', 'daysPerWeek', 'patternSets'], description: 'Only needed for composition (leanMass | bodyFatPct); the rest follow the type.' },
+                exercise: { type: 'string', description: 'lift goals: the main lift' },
+                pattern: { type: 'string', enum: PATTERNS, description: 'balance goals: the movement pattern' },
+                target: { type: 'number', description: "Estimated max / weight / lean mass in the user's unit; body fat in %; days a week 1–7; weekly sets 1–40" },
+                by: { type: ['string', 'null'], description: 'YYYY-MM-DD, after today; null = open-ended' },
+                eventId: { type: 'string', description: 'The event this goal is for (from list_goals / add_event)' },
+                name: { type: 'string', description: 'Optional short label' },
+            },
+            required: ['type', 'target'],
+        },
+    },
+    {
+        name: 'update_goal',
+        description: "Change one goal's target, date, label or status (active | paused | met | missed). Get the id from list_goals or the Goals lines. Consent rule applies.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                goalId: { type: 'string' },
+                target: { type: 'number' },
+                by: { type: ['string', 'null'] },
+                status: { type: 'string', enum: ['active', 'paused', 'met', 'missed'] },
+                name: { type: 'string' },
+            },
+            required: ['goalId'],
+        },
+    },
+    {
+        name: 'get_report_card',
+        description: "A Sunday report card (the week in one page: showed up, strength, body, goals, recovery, balance, next week) and the one change it proposed. Default: the latest. Quote its sentences — they're computed by the app.",
+        input_schema: { type: 'object', properties: { weekKey: { type: 'string', description: "The week's Monday, YYYY-MM-DD" } } },
+    },
+    {
+        name: 'add_event',
+        description: "Add a date the user is training toward (wedding, trip, meet). The plan lightens the week before and holds steady through it. Consent rule applies.",
+        input_schema: {
+            type: 'object',
+            properties: {
+                name: { type: 'string' },
+                date: { type: 'string', description: 'YYYY-MM-DD, after today' },
+                kind: { type: 'string', enum: ['look', 'perform', 'other'] },
+            },
+            required: ['name', 'date'],
+        },
+    },
+    {
         name: 'get_workouts',
         description: "Whole logged sessions by date: one day ({date}) or a range ({from, to}), newest first, max 14 — exercises with every set (weights in the user's unit, RPE), session label, gym, readiness and notes. Use for 'what did I do last Tuesday?' or comparing to the same week last block; the context only carries the last 12 sessions.",
         input_schema: {
@@ -330,7 +388,7 @@ const TOOL_DEFINITIONS = [
     },
     {
         name: 'remember_fact',
-        description: 'Store one short durable fact about the user (injury, goal, schedule, equipment quirk, preference) in coach memory. Never store measurements the app already tracks (weights, body weight, PRs).',
+        description: 'Store one short durable fact about the user (injury, schedule quirk, equipment quirk, preference) in coach memory. Goals and dated events are NOT facts — they go through set_goal / add_event. Never store measurements the app already tracks (weights, body weight, PRs).',
         input_schema: {
             type: 'object',
             properties: {
@@ -1001,6 +1059,33 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             })();
         }
         return ctxPromise;
+    };
+
+    // TP-1 — what goal math reads: the guard context plus goals, events,
+    // weigh-ins and scans (read once per turn).
+    let goalPromise = null;
+    const loadGoalCtx = () => {
+        if (!goalPromise) {
+            goalPromise = (async () => {
+                const ctx = await loadCtx();
+                const [gSnap, eSnap, mSnap, dSnap] = await Promise.all([
+                    userDoc().collection('goals').get(),
+                    userDoc().collection('events').get(),
+                    userDoc().collection('measurements').orderBy('date', 'desc').limit(365).get(),
+                    userDoc().collection('dexa').orderBy('date', 'desc').limit(50).get(),
+                ]);
+                const goals = gSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const events = eSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+                const data = {
+                    workouts: ctx.workouts, templates: ctx.templates,
+                    measurements: mSnap.docs.map(d => d.data()), dexa: dSnap.docs.map(d => d.data()),
+                    today: date, plates: ctx.plates,
+                };
+                const mainLifts = pickPrimaries({ templates: ctx.templates.filter(t => !t.archived), workouts: ctx.workouts, today: date }).map(p => p.name);
+                return { goals, events, data, mainLifts, settings: ctx.settings, rows: goalsWithStatus(goals, { ...data, events }) };
+            })();
+        }
+        return goalPromise;
     };
 
     /**
@@ -1790,6 +1875,124 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             return {
                 result: { primaries: chosen, workoutsUpdated: updatedNames },
                 actionCard: { kind: 'primaries_set', name: 'Main lifts set', summary: chosen.join(' · ') },
+            };
+        },
+
+        // ── TP-1: goals + events ──────────────────────────────────────
+        async list_goals() {
+            const g = await loadGoalCtx();
+            return {
+                result: {
+                    trainingFor: g.settings.coachGoal || null,
+                    goals: g.rows.map(r => ({
+                        id: r.goal.id, name: goalName(r.goal, { events: g.events }), type: r.goal.type, target: r.goal.target, unit: r.goal.unit,
+                        by: r.goal.by || null, storedStatus: r.goal.status, status: r.status, now: r.now ?? null,
+                        baseline: r.goal.baseline || null, eventId: r.goal.eventId || null, sentence: r.sentence,
+                    })),
+                    events: g.events.map(e => ({ id: e.id, name: e.name, date: e.date, kind: e.kind, past: e.date <= date })),
+                    mainLifts: g.mainLifts,
+                },
+            };
+        },
+
+        async set_goal(input) {
+            const g = await loadGoalCtx();
+            const draft = {
+                type: input?.type, metric: input?.metric, target: input?.target, by: input?.by ?? null,
+                eventId: input?.eventId || null, name: input?.name, unit,
+                key: input?.type === 'lift' ? { exercise: input?.exercise } : input?.type === 'balance' ? { pattern: input?.pattern } : undefined,
+            };
+            if (draft.type === 'lift' && !g.mainLifts.length) {
+                return toolError('invalid_input', 'No main lifts are set yet — lift goals track main lifts.', 'Ask which lifts they care about and set_primary_lifts first.');
+            }
+            const v = normalizeGoal(draft, { today: date, mainLifts: g.mainLifts, eventIds: g.events.map(e => e.id), unit });
+            if (!v.ok) return toolError('invalid_input', v.error, v.hint || null);
+            const same = g.goals.find(x => x.status === 'active' && x.type === v.goal.type && x.metric === v.goal.metric
+                && JSON.stringify(x.key || null) === JSON.stringify(v.goal.key || null));
+            if (same) {
+                return toolError('near_duplicate', `An active goal already covers this: "${goalName(same, { events: g.events })}" (${same.id}).`, 'Use update_goal on it to change the target or date.');
+            }
+            const { baseline, direction } = captureBaseline(v.goal, g.data);
+            const goal = { ...v.goal, direction, baseline, createdAt: new Date().toISOString(), source: source === 'live' ? 'live' : 'chat' };
+            const id = `goal_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            await userDoc().collection('goals').doc(id).set(goal);
+            const [row] = goalsWithStatus([{ id, ...goal }], { ...g.data, events: g.events });
+            return {
+                result: { goalId: id, name: goalName(goal, { events: g.events }), baseline, status: row.status, sentence: row.sentence },
+                actionCard: { kind: 'goal_set', name: goalName(goal, { events: g.events }), summary: row.sentence },
+            };
+        },
+
+        async update_goal(input) {
+            const id = String(input?.goalId || '').trim();
+            if (!id) return toolError('invalid_input', 'goalId is required', 'Call list_goals for the ids.');
+            const g = await loadGoalCtx();
+            const cur = g.goals.find(x => x.id === id);
+            if (!cur) return toolError('not_found', `No goal ${id}.`, 'Call list_goals for the ids.');
+            const patch = {};
+            if (input.target !== undefined) {
+                const t = Number(input.target);
+                if (!Number.isFinite(t) || t <= 0) return toolError('invalid_input', `target must be a positive number (got ${JSON.stringify(input.target)})`);
+                patch.target = Math.round(t * 100) / 100;
+            }
+            if (input.by !== undefined) {
+                if (input.by !== null && !/^\d{4}-\d{2}-\d{2}$/.test(String(input.by))) return toolError('invalid_input', `by must be YYYY-MM-DD or null (got ${JSON.stringify(input.by)})`);
+                if (input.by && input.by <= date) return toolError('invalid_input', `by must be after today (${date})`);
+                patch.by = input.by || null;
+            }
+            if (input.status !== undefined) {
+                if (!GOAL_STATUSES.includes(input.status)) return toolError('invalid_input', `status must be one of ${GOAL_STATUSES.join(', ')}`);
+                patch.status = input.status;
+            }
+            if (input.name !== undefined) patch.name = clip(input.name, 60) || null;
+            if (!Object.keys(patch).length) return toolError('invalid_input', 'Nothing to change — pass target, by, status or name.');
+            patch.updatedAt = new Date().toISOString();
+            await userDoc().collection('goals').doc(id).set(patch, { merge: true });
+            const next = { ...cur, ...patch };
+            const [row] = goalsWithStatus([next], { ...g.data, events: g.events });
+            return {
+                result: { goalId: id, changed: Object.keys(patch).filter(k => k !== 'updatedAt'), status: row.status, sentence: row.sentence },
+                actionCard: { kind: 'goal_set', name: `${goalName(next, { events: g.events })} — updated`, summary: row.sentence },
+            };
+        },
+
+        async get_report_card(input) {
+            const key = input?.weekKey ? String(input.weekKey) : null;
+            if (key && !/^\d{4}-\d{2}-\d{2}$/.test(key)) return toolError('invalid_input', `weekKey must be YYYY-MM-DD (got ${JSON.stringify(input.weekKey)})`);
+            let snap;
+            if (key) {
+                const d = await userDoc().collection('reportCards').doc(key).get();
+                snap = d.exists ? d : null;
+            } else {
+                const q = await userDoc().collection('reportCards').orderBy('weekKey', 'desc').limit(1).get();
+                snap = q.empty ? null : q.docs[0];
+            }
+            if (!snap) return toolError('not_found', key ? `No report card for the week of ${key}.` : 'No report cards yet.', 'The first one arrives Sunday night once the user turns it on.');
+            const r = snap.data();
+            const c = r.card || {};
+            return {
+                result: {
+                    weekKey: r.weekKey || c.weekKey, grade: c.gradeLabel || null, narrative: r.narrative || c.headline || null,
+                    showedUp: c.showedUp?.sentence || null, strength: (c.strength || []).map(x => x.sentence), body: c.body?.sentence || null,
+                    goals: (c.goals || []).map(g => g.sentence), recovery: c.recovery?.sentence || null, balance: c.balance?.sentence || null,
+                    nextWeek: c.upcoming?.sentence || null,
+                    proposed: r.chosenOption ? { kind: r.chosenOption.kind, label: r.chosenOption.label, why: r.chosenOption.why || null } : null,
+                    applied: r.applied?.kind || null,
+                },
+            };
+        },
+
+        async add_event(input) {
+            const v = normalizeEvent(input || {}, { today: date });
+            if (!v.ok) return toolError('invalid_input', v.error);
+            const g = await loadGoalCtx();
+            const dup = g.events.find(e => e.date === v.event.date && e.name.toLowerCase() === v.event.name.toLowerCase());
+            if (dup) return toolError('near_duplicate', `${dup.name} on ${dup.date} is already there (${dup.id}).`);
+            const id = `event_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            await userDoc().collection('events').doc(id).set({ ...v.event, createdAt: new Date().toISOString(), source: 'chat' });
+            return {
+                result: { eventId: id, ...v.event },
+                actionCard: { kind: 'event_added', name: v.event.name, summary: `${v.event.date} · ${v.event.kind === 'look' ? 'look my best' : v.event.kind}` },
             };
         },
 

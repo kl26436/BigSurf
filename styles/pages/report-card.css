@@ -1,0 +1,105 @@
+/* ===========================================
+   REPORT CARD (TP-2) — the Sunday-night week in one page.
+   Rows reuse .row-card / .hero-card; labels .field-label; the grade pill
+   and the section text are the only report-card shapes.
+   =========================================== */
+
+.rc-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding-bottom: var(--nav-clearance);
+}
+
+.rc-hero__top {
+    display: flex;
+    justify-content: flex-end;
+}
+.rc-hero__narrative {
+    margin-top: var(--space-8);
+    font-size: var(--font-md);
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--text-strong);
+}
+
+.rc-grade {
+    padding: var(--space-2) var(--space-8);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    background: var(--bg-card-hi);
+    color: var(--text-muted);
+}
+.rc-grade--good {
+    background: var(--success-bg);
+    color: var(--success);
+}
+.rc-grade--solid {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+.rc-grade--rough {
+    background: var(--warning-bg);
+    color: var(--warning);
+}
+
+.rc-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    padding: var(--pad-card-y) var(--pad-card-x);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+}
+.rc-section .field-label {
+    margin-bottom: 0;
+}
+.rc-section .chip {
+    align-self: flex-start;
+}
+.rc-section__text,
+.rc-line {
+    font-size: var(--font-sm);
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+.rc-line--muted {
+    color: var(--text-muted);
+}
+.rc-days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+}
+
+.rc-proposal {
+    border: 1px solid var(--primary-border);
+}
+.rc-proposal__title {
+    font-size: var(--font-md);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.rc-proposal__detail {
+    margin-top: var(--space-4);
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+.rc-proposal__why {
+    margin-top: var(--space-6);
+    font-size: var(--font-sm);
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+.rc-proposal__actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-12);
+}
+
+.rc-links {
+    display: flex;
+    gap: var(--space-8);
+}

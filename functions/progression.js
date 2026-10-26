@@ -225,7 +225,7 @@ function deloadNudgeText(W, R, rt, intent, displayUnit, inc) {
     const repsStr = t.reps ? ` for ${t.reps}` : '';
     // A coach/user override says what it is ("Lighter week"); a program or
     // legacy deload keeps the classic wording.
-    const head = intent?.source === 'manual' && intent.label && !/^deload$/i.test(intent.label) ? intent.label : 'Deload week';
+    const head = intent?.source === 'manual' && intent.label && !/^deload$/i.test(intent.label) ? intent.label : 'Lighter week';
     return t.weight !== W
         ? `${head} — ${t.weight} ${displayUnit}${repsStr}, two reps in the tank`
         : `${head} — hold ${W} ${displayUnit}, stop two reps short`;
@@ -295,7 +295,7 @@ function fatigueState(sessions, { minSessions = 3, rpeRise = 1, inc = 5 } = {}) 
         const repsHeld = (latest.topReps || 0) <= (oldest.topReps || 0);
         if (sameLoad && repsHeld && latest.topRpe - oldest.topRpe >= rpeRise) {
             out.fatigued = true;
-            out.reason = `RPE ${rpeTrend.join('→')} at ${latest.topWeight} over ${minSessions} sessions`;
+            out.reason = `effort ${rpeTrend.join('→')} of 10 at ${latest.topWeight} over ${minSessions} sessions`;
             return out;
         }
     }
@@ -304,7 +304,7 @@ function fatigueState(sessions, { minSessions = 3, rpeRise = 1, inc = 5 } = {}) 
             s.topRpe != null && s.topRpe <= 8 && Math.abs(s.topWeight - latest.topWeight) < 0.05);
         if (easier) {
             out.fatigued = true;
-            out.reason = `RPE ${latest.topRpe} at ${latest.topWeight}, was RPE ${easier.topRpe} on ${easier.date}`;
+            out.reason = `effort ${latest.topRpe}/10 at ${latest.topWeight}, was ${easier.topRpe}/10 on ${easier.date}`;
         }
     }
     return out;
@@ -367,7 +367,7 @@ function computeOverloadNudge(sessions, displayUnit, repTarget, increment, inten
             const back = scaleLoadableWeight(W, BACK_OFF_FACTOR, inc);
             return `${stall.run} sessions at ${W} ${displayUnit} — drop to ${back} for two sessions, then back at it`;
         }
-        return `${W} ${displayUnit} has had its run (${stall.run} sessions flat) — swap in a similar movement this block`;
+        return `${W} ${displayUnit} has had its run (${stall.run} sessions flat) — swap in a similar movement for the next few weeks`;
     }
     // 2) Double progression — hit the rep target, time to add weight.
     if (rt && R >= rt) {
