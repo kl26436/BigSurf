@@ -317,12 +317,12 @@ async function ensureSelectorContext() {
     // Load workout history for recency sorting + "usually" derivation (cached).
     if (!cachedWorkoutHistory && AppState.currentUser) {
         try {
-            const { db, collection, query, orderBy, limit, getDocs } = await import('../data/firebase-config.js');
-            const ref = collection(db, `users/${AppState.currentUser.uid}/workouts`);
-            const q = query(ref, orderBy('completedAt', 'desc'), limit(50));
-            const snapshot = await getDocs(q);
-            cachedWorkoutHistory = [];
-            snapshot.forEach(doc => cachedWorkoutHistory.push(doc.data()));
+            // The app's shared history (session-cached, from the device first):
+            // "last done" and the 90-day "Older" fold need more than the last
+            // 50 sessions — at five a week that was only ten weeks.
+            const { loadAllWorkouts } = await import('../data/data-manager.js');
+            cachedWorkoutHistory = [...(await loadAllWorkouts(AppState))]
+                .sort((a, b) => String(b.completedAt || b.date || '').localeCompare(String(a.completedAt || a.date || '')));
         } catch {
             cachedWorkoutHistory = [];
         }
@@ -377,22 +377,19 @@ async function renderWorkoutSelectorUI() {
     // Sort: most recently used first, then alphabetical
     filtered = sortTemplatesByRecency(filtered);
 
-    // TP-6 n — a workout on the split is already in the plan group up top
-    // (with Start): list it once. Unfiltered, the rest splits into recent and
-    // a collapsed "Older" so 19 rows don't bury the four you use.
-    const planShown = !!(AppState._activeProgram || allTemplates.some(t => t.planOwned && !t.archived));
-    const splitIds = planShown ? Object.values(AppState._weekPlan?.days || {}).filter(v => v && v !== 'rest') : [];
+    // TP-6 n — this list is the user's own workouts, ALL of them, whether or
+    // not the plan schedules them (10/27: hiding the ones on the split buried
+    // the workouts he actually uses under plan sessions). Workouts built FOR
+    // the plan stay on the Plan page (splitTemplatesForList). Unfiltered, the
+    // ones not done in 90 days fold under "Older".
     let older = [];
     if (activeSelectorCategory === null && !possibleHereFilter) {
         const g = groupMyWorkouts(filtered, {
-            splitIds,
-            lastUsed: t => getLastWorkoutDate(t._name) || (String(t.createdAt || t.lastUpdated || '').slice(0, 10) || null),
+            lastUsed: t => getLastWorkoutDate(t._name, t._id) || (String(t.createdAt || t.lastUpdated || '').slice(0, 10) || null),
             today: AppState.getTodayDateString(),
         });
         filtered = g.recent;
         older = g.older;
-    } else {
-        filtered = filtered.filter(t => !splitIds.includes(t.id));
     }
 
     // Render template rows (older + archived groups appended when not category-filtered)
@@ -427,7 +424,10 @@ function renderPlanGroup(container, allTemplates) {
         // TP-3 — the week's kind, never "week 2 of 4" (the waves are scaffolding).
         when = week > weeks ? 'These weeks are done' : week >= 1 ? `${weekKindLabel(target)} · see every week and day` : 'Starts soon';
     }
-    const sessions = planWeekSessions({ weekPlan: AppState._weekPlan || null, templates: allTemplates, workouts: AppState.workouts || [], today });
+    // 10/27 — the plan stays off this page: one row to the Plan page, plus
+    // today's session (one tap to start) when the plan has one and it isn't done.
+    const sessions = planWeekSessions({ weekPlan: AppState._weekPlan || null, templates: allTemplates, workouts: AppState.workouts || [], today })
+        .filter(x => x.isToday && !x.done);
     const rows = sessions.map((x) => {
         const name = x.template.name || x.template.id;
         const status = x.done ? 'Done' : x.isToday ? 'Today' : x.date < today ? 'Missed' : '';
@@ -536,8 +536,8 @@ function renderCategoryPills(container, categories) {
 
 function sortTemplatesByRecency(templates) {
     return [...templates].sort((a, b) => {
-        const aDate = getLastWorkoutDate(a._name);
-        const bDate = getLastWorkoutDate(b._name);
+        const aDate = getLastWorkoutDate(a._name, a._id);
+        const bDate = getLastWorkoutDate(b._name, b._id);
         if (aDate && bDate) return bDate.localeCompare(aDate);
         if (aDate) return -1;
         if (bDate) return 1;
@@ -545,13 +545,18 @@ function sortTemplatesByRecency(templates) {
     });
 }
 
-function getLastWorkoutForTemplate(templateName) {
+function getLastWorkoutForTemplate(templateName, templateId = null) {
     if (!cachedWorkoutHistory) return null;
-    return cachedWorkoutHistory.find(w => w.workoutType === templateName && w.completedAt) || null;
+    // By the saved id first (survives renames), else the name, ignoring case.
+    const key = String(templateName || '').trim().toLowerCase();
+    return cachedWorkoutHistory.find(w => w.completedAt && !w.cancelledAt && (
+        (templateId && w.templateId === templateId)
+        || String(w.workoutType || '').trim().toLowerCase() === key
+    )) || null;
 }
 
-function getLastWorkoutDate(templateName) {
-    const last = getLastWorkoutForTemplate(templateName);
+function getLastWorkoutDate(templateName, templateId = null) {
+    const last = getLastWorkoutForTemplate(templateName, templateId);
     return last?.date || null;
 }
 
@@ -935,7 +940,7 @@ function renderSingleTemplateRow(template) {
     // accordion — category chip + "Usually [day]" + exercise count + ~duration
     // (line 1, via renderTemplateSummary) and last-done (line 2). Tapping the
     // row opens the editor page; the play button starts now.
-    const lastWorkout = getLastWorkoutForTemplate(templateName);
+    const lastWorkout = getLastWorkoutForTemplate(templateName, templateId);
     const lastDone = lastWorkout?.date
         ? `Last done ${formatTimeAgo(lastWorkout.date).toLowerCase()}`
         : 'Not done yet';
@@ -1064,7 +1069,7 @@ function renderWorkoutEditorPage(template) {
 
     // Archive suggestion (Phase 7): a workout untouched for 60+ days is clutter —
     // offer to tuck it away. Only when it has been done at least once.
-    const lastW = getLastWorkoutForTemplate(templateName);
+    const lastW = getLastWorkoutForTemplate(templateName, templateId);
     let archiveSuggestion = '';
     if (!isArchived && lastW?.date) {
         const days = Math.floor((Date.now() - new Date(lastW.date + 'T00:00:00').getTime()) / 86400000);
