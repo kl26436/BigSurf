@@ -219,6 +219,24 @@ for (const [key, label] of Object.entries(SHELL_LABELS)) {
     rows.push(row(label.padEnd(34), shellCounts[key], shell.BUDGETS[key]));
 }
 
+// UD-6 — the UX-consistency budgets (scripts/ux-audit.js): rows, heads,
+// backs, routes, formatters, words. Same gate; budgets only go down.
+const ux = require('./ux-audit.js');
+const uxCounts = ux.audit(ROOT).counts;
+const UX_LABELS = {
+    rowClassesOutsideCardsCss: 'UX: row classes outside cards.css',
+    sectionHeadClasses: 'UX: section-head classes',
+    eyebrowLetterSpacingValues: 'UX: eyebrow letter-spacings',
+    sectionHiddenByHand: 'UX: sections hidden by hand',
+    sectionsWithoutRoute: 'UX: sections without a route',
+    relativeTimeImplementations: 'UX: "… ago" implementations',
+    hardcodedUnitLiterals: 'UX: hard-coded unit literals',
+    uxWordHits: 'UX: words (location, program…)',
+};
+for (const [key, label] of Object.entries(UX_LABELS)) {
+    rows.push(row(label.padEnd(34), uxCounts[key], ux.BUDGETS[key]));
+}
+
 console.log('\n  ── Big Surf design-system audit ───────────────────────────');
 rows.forEach((r) => console.log(r.line));
 console.log('  ───────────────────────────────────────────────────────────\n');

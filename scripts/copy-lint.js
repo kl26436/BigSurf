@@ -230,7 +230,7 @@ function lintRepo(root = ROOT) {
     return hits;
 }
 
-module.exports = { lintSource, lintRepo, titleCaseHits };
+module.exports = { lintSource, lintRepo, titleCaseHits, htmlVisibleLines };
 
 if (require.main === module) {
     const hits = lintRepo();
