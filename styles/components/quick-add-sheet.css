@@ -42,7 +42,7 @@
     font-size: var(--font-2xs);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     color: var(--text-very-muted);
 }
 .qa-sheet__group-name {

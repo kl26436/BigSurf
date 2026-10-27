@@ -162,7 +162,6 @@ dialog[open] > .modal-content {
    height is computed unreliably on iOS first paint (content is injected
    async, before which the body can end up with no scrollable height until a
    later reflow). Both header patterns used under .pinned-header get this. */
-.content-section.pinned-header > .section-header-row,
 .content-section.pinned-header > .page-header {
     flex-shrink: 0;
 }

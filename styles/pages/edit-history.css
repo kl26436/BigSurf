@@ -248,7 +248,7 @@
     font-weight: 700;
     text-transform: uppercase;
     cursor: pointer;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 
 .weh-set__type--working { background: var(--primary-bg); color: var(--primary); }
@@ -478,7 +478,7 @@
     font-size: var(--font-sm);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-eyebrow);
     cursor: pointer;
     padding: var(--space-4) var(--space-8);
 }

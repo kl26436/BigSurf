@@ -81,7 +81,7 @@ function renderDexaSummary(scan, prev) {
             </div>
         </div>
 
-        <div class="d-sec-head">Summary${prev ? ` <span class="d-sec-head__meta">vs ${formatDateShort(prev.date)}</span>` : ''}</div>
+        <div class="sec-head sec-head--inset"><h3>Summary${prev ? ` <span class="sec-head__meta">vs ${formatDateShort(prev.date)}</span>` : ''}</h3></div>
         <div class="comp-stats-grid">
             ${renderStatCard('Body fat', fatPct, '%', prev ? Math.round(prev.totalBodyFat || 0) : null, true)}
             ${renderStatCard('Lean mass', Math.round(leanMass * 10) / 10, mass, prev?.totalLeanMass || prev?.leanMass, false)}
@@ -157,7 +157,7 @@ function renderRegionalBars(scan) {
     const isBalanced = balancePct < 3;
 
     return `
-        <div class="d-sec-head">Regional lean mass</div>
+        <div class="sec-head sec-head--inset"><h3>Regional lean mass</h3></div>
         <div class="stat-card comp-boxed">
             <div class="regional-bars">
                 ${renderBarRow('Trunk', trunk, maxVal, 'var(--cat-push)', scanUnit(scan))}
@@ -191,7 +191,7 @@ function renderVisceralFat(scan) {
     const statusClass = vat < 1.0 ? 'comp-vat--good' : vat < 2.0 ? 'comp-vat--warn' : 'comp-vat--bad';
 
     return `
-        <div class="d-sec-head">Visceral fat</div>
+        <div class="sec-head sec-head--inset"><h3>Visceral fat</h3></div>
         <div class="stat-card comp-boxed">
             <div class="vat-row">
                 <div class="vat-info">
@@ -206,7 +206,7 @@ function renderVisceralFat(scan) {
 function renderBodyWeightSection(entries, unit) {
     if (!entries || entries.length === 0) {
         return `
-            <div class="d-sec-head">Body weight</div>
+            <div class="sec-head sec-head--inset"><h3>Body weight</h3></div>
             <div class="stat-card comp-boxed comp-bw-empty">
                 <div class="comp-bw-empty__msg">No weight entries yet</div>
                 <button class="dash-template-play comp-bw-empty__btn" onclick="showWeightEntryModal()">
@@ -231,7 +231,7 @@ function renderBodyWeightSection(entries, unit) {
     const points = converted.map((w, i) => ({ x: i, y: w }));
 
     return `
-        <div class="d-sec-head">Body weight</div>
+        <div class="sec-head sec-head--inset"><h3>Body weight</h3></div>
         <div class="stat-card comp-boxed comp-boxed--clickable" onclick="openMetricDetail('body-weight')">
             <div class="comp-bw-head">
                 <div class="stat-val">${latestW.toFixed(1)}<span class="stat-unit">${unitLabel(unit)}</span></div>

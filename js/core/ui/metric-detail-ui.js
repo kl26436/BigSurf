@@ -132,7 +132,7 @@ function renderDetailLayout({ title, tag, range, hero, chart, insight, breakdown
             <div class="detail-hero">${hero}</div>
             <div class="detail-chart">${chart}</div>
             ${insight ? `<div class="detail-insight"><i class="fas fa-lightbulb"></i><div>${insight}</div></div>` : ''}
-            <div class="detail-breakdown-head">
+            <div class="sec-head">
                 <h3>Breakdown</h3>
                 ${breakdownAction || ''}
             </div>

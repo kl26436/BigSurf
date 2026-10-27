@@ -197,7 +197,7 @@
 .aw-rest-timer__label {
     font-size: var(--font-2xs);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-eyebrow);
     font-weight: 700;
     opacity: 0.7;
 }
@@ -496,7 +496,7 @@
     font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     font-weight: 700;
     text-align: center;
 }
@@ -600,7 +600,7 @@
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 .aw-rpe-chip {
     min-width: 34px;
@@ -834,7 +834,7 @@
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     padding: 10px 4px 4px;
     border-bottom: 1px solid var(--border-subtle);
     margin-bottom: 2px;
@@ -844,7 +844,7 @@
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     padding: 10px 4px 4px;
     border-bottom: 1px solid var(--border-subtle);
     margin-bottom: 2px;
@@ -896,7 +896,7 @@
     font-size: var(--font-2xs);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 .js-row__icon {
     width: 32px; height: 32px;
@@ -1192,7 +1192,7 @@
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 /* Phase 4 — already-added rows are visually muted and not tappable. */
 .aw-add-ex-row--added {
@@ -1204,7 +1204,7 @@
     color: var(--primary);
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 /* "Create [name]" row appears when search has no matches and the caller
    provided onCreateRequested. */

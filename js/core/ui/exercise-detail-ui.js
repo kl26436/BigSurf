@@ -141,7 +141,7 @@ export function renderExerciseDetail(exerciseName) {
             ${renderTrendCard(s, color, activeMachine, equipCounts)}
 
             ${s.topSets.length > 0 ? `
-                <div class="d-sec-head">Best sets${activeMachine ? ` — ${escapeHtml(activeMachine)}` : ''}</div>
+                <div class="sec-head sec-head--inset"><h3>Best sets${activeMachine ? ` — ${escapeHtml(activeMachine)}` : ''}</h3></div>
                 <div class="d-best-table">
                     ${s.topSets.map((set, i) => {
                         // Meta line: date + gym + machine (only what we have).
@@ -175,7 +175,7 @@ export function renderExerciseDetail(exerciseName) {
                     }</button>`
                     : '';
                 return `
-                    <div class="d-sec-head">${expanded ? 'All' : 'Recent'} sessions ${activeMachine ? '' : '<span class="d-sec-head__meta">equipment shown</span>'}</div>
+                    <div class="sec-head sec-head--inset"><h3>${expanded ? 'All' : 'Recent'} sessions ${activeMachine ? '' : '<span class="sec-head__meta">equipment shown</span>'}</h3></div>
                     ${shown.map(sess => renderSessionRow(sess, activeMachine)).join('')}
                     ${overflowBtn}
                 `;

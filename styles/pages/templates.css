@@ -85,11 +85,6 @@
    =========================================== */
 /* Workout Selector Page */
 /* Padding handled by .content-section-body */
-.section-subtitle {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    margin-top: var(--space-2);
-}
 
 /* ── Search bar ── */
 .template-search-bar {
@@ -300,7 +295,7 @@
     font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 .te-details__chips {
     display: flex;
@@ -315,14 +310,6 @@
     font-size: var(--font-2xs);
     color: var(--text-muted);
     margin-top: 2px;
-}
-.template-editor__section-label {
-    font-size: var(--font-2xs, 10px);
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: var(--space-8);
 }
 /* ──────────────────────────────────────────────────────────
    Phase 3 — rich exercise rows (.te-row)
@@ -469,7 +456,7 @@
     font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     margin-bottom: 3px;
 }
 .te-stepper__controls {
@@ -588,35 +575,6 @@
     width: 100%;
 }
 
-/* Header row above the exercise list with an inline "+" button so the
-   add affordance is visible above the fold even with long lists. */
-.template-editor__section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-8);
-    margin-bottom: var(--space-8);
-}
-.template-editor__section-header .template-editor__section-label {
-    margin-bottom: 0;
-}
-.template-editor__section-add {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--primary-bg);
-    color: var(--primary);
-    border: 1px solid var(--primary-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: var(--font-xs);
-    flex-shrink: 0;
-}
-.template-editor__section-add:active {
-    transform: scale(0.94);
-}
 .template-editor__add-btn:active {
     background: var(--primary-bg);
 }
@@ -790,7 +748,7 @@
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 .qs-memory__list {
     margin-top: 2px;

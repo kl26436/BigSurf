@@ -58,7 +58,7 @@
     color: var(--text-on-accent);
     font-size: var(--font-2xs);
     font-weight: 800;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-eyebrow);
     text-transform: uppercase;
     vertical-align: 2px;
 }
@@ -169,7 +169,7 @@
     font-size: var(--font-2xs);
     font-weight: 700;
     color: var(--text-very-muted);
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     text-transform: uppercase;
     margin-top: var(--space-2);
 }
@@ -253,36 +253,6 @@
     color: var(--primary);
 }
 
-.gym-detail__group-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    padding: var(--space-8) var(--pad-page-compact);
-    background: var(--bg-surface);
-    color: var(--text-muted);
-    font-size: var(--font-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
-    position: sticky;
-    top: 0;
-    z-index: 1;
-}
-.gym-detail__group-header i {
-    font-size: var(--font-2xs);
-    color: var(--text-very-muted);
-}
-.gym-detail__group-name {
-    flex: 1;
-}
-.gym-detail__group-count {
-    font-size: var(--font-2xs);
-    font-weight: 600;
-    color: var(--text-very-muted);
-    font-variant-numeric: tabular-nums;
-}
 
 /* ==========================================================================
    Machine-detail stat grid + tag row (Pocket Inventory restyle).
@@ -303,7 +273,7 @@
     font-size: var(--font-2xs);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     color: var(--text-very-muted);
 }
 .detail-stat-grid__value {

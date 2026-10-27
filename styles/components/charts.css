@@ -50,7 +50,7 @@
     font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     font-weight: 700;
     margin-bottom: var(--space-8);
 }

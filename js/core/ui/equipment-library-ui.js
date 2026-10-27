@@ -1014,10 +1014,10 @@ function renderGymDetail(container) {
         const config = BODY_PART_CONFIG[bp] || BODY_PART_CONFIG['Multi-Use'];
         const rows = grouped.get(bp).map(renderGymDetailRow).join('');
         return `
-            <div class="gym-detail__group-header">
+            <div class="group-label group-label--band">
                 <i class="${config.icon}"></i>
-                <span class="gym-detail__group-name">${escapeHtml(bp)}</span>
-                <span class="gym-detail__group-count">${grouped.get(bp).length}</span>
+                <span class="group-label__name">${escapeHtml(bp)}</span>
+                <span class="group-label__count">${grouped.get(bp).length}</span>
             </div>
             ${rows}
         `;
@@ -2722,10 +2722,10 @@ function renderCatalogSearchResults(catalog, term) {
                 `;
             }).join('');
             return `
-                <div class="gym-detail__group-header">
+                <div class="group-label group-label--band">
                     <i class="${config.icon}"></i>
-                    <span class="gym-detail__group-name">${escapeHtml(bp)}</span>
-                    <span class="gym-detail__group-count">${items.length}</span>
+                    <span class="group-label__name">${escapeHtml(bp)}</span>
+                    <span class="group-label__count">${items.length}</span>
                 </div>
                 ${rowsHTML}
             `;
@@ -2927,12 +2927,12 @@ function renderBodyPartView(filtered) {
         const config = BODY_PART_CONFIG[bodyPart];
 
         html += `
-            <div class="equip-group-header">
-                <div class="equip-group-header__left">
+            <div class="group-label group-label--band">
+                <div class="group-label__name">
                     <i class="${config.icon}"></i>
                     <span>${bodyPart}</span>
                 </div>
-                <span class="equip-group-header__count">${exerciseNames.length} exercise${exerciseNames.length !== 1 ? 's' : ''} · ${totalEquipment} machine${totalEquipment !== 1 ? 's' : ''}</span>
+                <span class="group-label__count">${exerciseNames.length} exercise${exerciseNames.length !== 1 ? 's' : ''} · ${totalEquipment} machine${totalEquipment !== 1 ? 's' : ''}</span>
             </div>
         `;
 
@@ -2975,12 +2975,12 @@ function renderBodyPartView(filtered) {
     const unlinked = filtered.filter(eq => !eq.exerciseTypes || eq.exerciseTypes.length === 0);
     if (unlinked.length > 0) {
         html += `
-            <div class="equip-group-header">
-                <div class="equip-group-header__left">
+            <div class="group-label group-label--band">
+                <div class="group-label__name">
                     <i class="fas fa-unlink"></i>
                     <span>Unlinked</span>
                 </div>
-                <span class="equip-group-header__count">${unlinked.length} machine${unlinked.length !== 1 ? 's' : ''}</span>
+                <span class="group-label__count">${unlinked.length} machine${unlinked.length !== 1 ? 's' : ''}</span>
             </div>
         `;
         for (const equip of unlinked) {
@@ -3560,7 +3560,7 @@ export function assignExerciseToEquipment(equipmentId) {
     let listHTML = '';
     for (const [group, items] of groups) {
         listHTML += `<div class="equip-assign-group">`;
-        listHTML += `<div class="equip-group-header"><div class="equip-group-header__left"><span>${escapeHtml(group)}</span></div><span class="equip-group-header__count">${items.length}</span></div>`;
+        listHTML += `<div class="group-label group-label--band"><div class="group-label__name"><span>${escapeHtml(group)}</span></div><span class="group-label__count">${items.length}</span></div>`;
         listHTML += items.map(ex => `
             <div class="equip-detail-ex-row" role="button" tabindex="0" onclick="confirmAssignExercise('${escapeAttr(ex.name)}')">
                 <div class="equip-detail-ex-row__name">${escapeHtml(ex.name)}</div>

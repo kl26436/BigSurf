@@ -281,6 +281,8 @@
     /* Status-bar inset, defined once (SH-4) — use var(--safe-top), never env() in pages. */
     --safe-top: env(safe-area-inset-top, 0px);
     --tap-sm: 36px;
+    /* UD-3 — the one letter-spacing for uppercase labels (eyebrows, group labels, badges). */
+    --tracking-eyebrow: 0.06em;
     --input-height: 44px;
     --input-padding: 12px 16px;
     --bg-input: var(--bg-surface);

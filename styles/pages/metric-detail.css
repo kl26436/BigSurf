@@ -78,19 +78,6 @@
 }
 .detail-insight strong { color: var(--text-strong); }
 
-/* Breakdown section */
-.detail-breakdown-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: var(--space-20) 0 var(--space-10);
-    padding: 0 2px;
-}
-.detail-breakdown-head h3 {
-    font-size: var(--font-base);
-    font-weight: 700;
-    color: var(--text-strong);
-}
 /* Trailing action button next to the Breakdown heading (e.g. "Log entry"). */
 .detail-breakdown-action {
     background: var(--primary-bg);

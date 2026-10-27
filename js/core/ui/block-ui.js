@@ -281,9 +281,9 @@ function weekHTML(w, idx) {
     const state = w.state === 'current' ? ' block-week--current' : w.state === 'past' ? ' block-week--past' : w.projected ? ' plan-week--projected' : '';
     return `
         <section class="block-week${state}" aria-label="${escapeAttr(`${w.label}, week of ${fmtDate(w.weekStart)}`)}">
-            <div class="dash-section-head">
+            <div class="sec-head sec-head--compact">
                 <h3>${escapeHtml(w.label)}${w.state === 'current' ? ' <span class="block-week__now">This week</span>' : ''}</h3>
-                <span class="dash-section-head__meta">${escapeHtml(meta)}</span>
+                <span class="sec-head__meta">${escapeHtml(meta)}</span>
             </div>
             ${w.markers.length || switchesThisWeek(w) ? `<div class="plan-markers">${w.markers.map(m => `<span class="chip chip--sm"><i class="fas ${{ event: 'fa-calendar-day', travel: 'fa-plane', goal: 'fa-bullseye' }[m.type] || 'fa-calendar-day'}" aria-hidden="true"></i> ${escapeHtml(m.label)}</span>`).join('')}${switchesThisWeek(w) ? '<span class="chip chip--sm"><i class="fas fa-rotate" aria-hidden="true"></i> Accessories switch</span>' : ''}</div>` : ''}
             ${w.override ? `<div class="block-week__override"><i class="fas fa-feather"></i> ${escapeHtml(w.override.label)}${w.override.levers ? ` · ${escapeHtml(w.override.levers)}` : ''}${w.override.reason ? ` — ${escapeHtml(w.override.reason)}` : ''}</div>` : ''}

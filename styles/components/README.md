@@ -9,7 +9,6 @@
 | A list item with `[icon][title/subtitle][trailing]` | `.row-card` (+ modifier) | [cards.css](cards.css) |
 | A one-prominent-card-per-metric hero | `.hero-card` | [cards.css](cards.css) |
 | A section header inside a full-page view (back arrow + title + action) | `.page-header` + `.page-header__back` / `__title` / `__save` | [page-header.css](page-header.css) |
-| A legacy pinned header using `<h2 class="section-title">` | `.section-header-row` + `.section-title` | [page-header.css](page-header.css) |
 | A section label between fields in a form | `.sec-head` (+ optional `.count` / `.sec-head__action`) | [page-header.css](page-header.css) |
 | A horizontal chip/pill selector | `.chip` (+ `.chip.active`, `.chip.cat-push` / `.cat-pull` / …) | [chips.css](chips.css) |
 | A search input with icon | `.field-search` (+ optional `.field-search--sticky` for modals) | [fields.css](fields.css) |
@@ -34,7 +33,7 @@
 These patterns have been consolidated — don't create new classes for them:
 
 - **Rows**: not `.recent-workout-item`-style compound classes; use `.row-card` + modifier
-- **Section headers**: not `.stats-section-header` / `.dash-section-head` / `.section-header` (all deleted); use the canonical patterns above
+- **Section headers**: `.sec-head` (`h3` + optional `.sec-head__meta` / link / `.sec-head__action`; `--compact` on Home and the Plan page, `--inset` on edge-to-edge drill-downs) or `.group-label` (grouped settings; `--band` for a sticky list group). Not `.stats-section-header` / `.dash-section-head` / `.d-sec-head` / `.section-header` (all deleted).
 - **Search inputs**: not `.history-search-input-wrapper` / `.exercise-search-wrapper` / `.aw-sheet__search` (all migrated); use `.field-search`
 - **Save button**: not `.btn-save` (migrated); use `.page-header__save`
 - **Back button**: not `.btn-back` / `.back-btn` (migrated); use `.page-header__back`

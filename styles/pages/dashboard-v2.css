@@ -81,43 +81,10 @@
 .dash-skel--strip { height: 56px; }
 .dash-skel--row   { height: 48px; }
 
-/* Inline meta next to section titles (e.g., "This week") */
-.dash-section-head__meta {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-}
-/* Tight variant for stacked section heads */
-.dash-section-head--tight { margin-top: 4px; }
 
 /* Body-part cell icon tints (e.g., trophy beside hero-lift max) */
 .bp-cell__icon--gold { color: var(--badge-gold); }
 
-/* ===== SECTION HEADER ===== */
-/* Extra top margin is the V3 sectional rhythm: with the page's 12px item gap
-   this yields ~28px before each section — sections finally read as sections. */
-.dash-section-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: var(--space-16) 2px var(--space-4);
-}
-.dash-section-head h3 {
-    font-size: var(--font-sm);
-    font-weight: 700;
-    color: var(--text-strong);
-}
-.dash-section-head a {
-    font-size: var(--font-xs);
-    color: var(--primary);
-    font-weight: 600;
-    cursor: pointer;
-    /* Real thumb target despite the small type (tokens --tap = 44px) */
-    min-height: var(--tap);
-    display: inline-flex;
-    align-items: center;
-    padding: 0 var(--space-4);
-    margin: calc(var(--space-12) * -1) 0;
-}
 /* ── Alternative list under the hero (V3): quiet divider rows, no card
    chrome, no play circles — the hero must be the only card in For Today. ── */
 .dash-alt-list { margin-bottom: var(--space-8); }
@@ -212,7 +179,7 @@
     font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     margin-bottom: 2px;
     display: flex;
     align-items: center;
@@ -303,7 +270,7 @@
     background: var(--primary-bg);
     color: var(--primary);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 .bw-card-value {
     font-size: var(--font-2xl);
@@ -357,7 +324,7 @@
     border-radius: var(--radius-pill);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-eyebrow);
     margin-left: 6px;
 }
 .dash-template-play {
@@ -675,7 +642,7 @@
     padding: 2px 7px;
     border-radius: var(--radius-pill);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-eyebrow);
     margin-left: 6px;
 }
 .vol-badge--low  { background: var(--warning-bg-subtle); color: var(--warning-moderate); border: 1px solid var(--warning-border); }

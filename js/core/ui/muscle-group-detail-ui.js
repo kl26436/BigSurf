@@ -99,13 +99,13 @@ export function renderMuscleGroupDetail(bodyPart) {
             ` : ''}
 
             ${exercises.length > 0 ? `
-                <div class="d-sec-head">Exercises · ${rangeLabel(range)}</div>
+                <div class="sec-head sec-head--inset"><h3>Exercises · ${rangeLabel(range)}</h3></div>
                 ${exercises.map(ex => renderExerciseRow(ex, bodyPart)).join('')}
             ` : ''}
             `}
 
             ${prs.length > 0 ? `
-                <div class="d-sec-head">${capitalize(bodyPart)} PRs</div>
+                <div class="sec-head sec-head--inset"><h3>${capitalize(bodyPart)} PRs</h3></div>
                 ${prs.slice(0, 5).map(renderPRRow).join('')}
             ` : ''}
         </div>

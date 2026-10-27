@@ -760,7 +760,7 @@
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     margin-bottom: var(--space-8);
 }
 .quick-add-chips {
@@ -919,7 +919,7 @@
     font-weight: 700;
     color: var(--text-strong);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--tracking-eyebrow);
     padding: var(--space-16) 0 var(--space-8);
     margin: 0;
     border-bottom: 1px solid var(--border-subtle);

@@ -312,7 +312,7 @@
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 .add-field__input {
     padding: var(--input-padding);
@@ -871,7 +871,7 @@
     font-size: var(--font-xs);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     color: var(--text-muted);
     padding-left: var(--space-4);
 }
@@ -1030,7 +1030,7 @@
 /* Assign-exercise sheet (SH-3b) — the detail page's "+ Assign" list, now a
    sheet. Group headers run edge to edge on the sheet surface; the search
    filter hides rows / whole groups with the hidden attribute. */
-#equip-assign-sheet .equip-group-header {
+#equip-assign-sheet .group-label--band {
     margin: 0 calc(-1 * var(--space-16));
     background: var(--bg-surface);
 }

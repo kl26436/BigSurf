@@ -249,7 +249,7 @@
     font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 .bm-weight-card__last-val {
     font-size: var(--font-xs);

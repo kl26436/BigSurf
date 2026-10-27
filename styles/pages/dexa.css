@@ -69,7 +69,7 @@
     font-size: var(--font-xs);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--tracking-eyebrow);
 }
 
 .dexa-imbalance-hint {
@@ -344,7 +344,7 @@
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--tracking-eyebrow);
     margin-bottom: var(--space-8);
 }
 

@@ -1111,7 +1111,7 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
     `);
 
     return `
-        <div class="dash-section-head"><h3>This week</h3><a onclick="showProgressPage()">Progress →</a></div>
+        <div class="sec-head sec-head--compact"><h3>This week</h3><a onclick="showProgressPage()">Progress →</a></div>
         <div class="dash-week-card">${rows.join('')}</div>
         ${coachChip}
     `;
@@ -1155,7 +1155,7 @@ function renderScoreboardCard(allWorkouts) {
     }
 
     const head = `
-        <div class="dash-section-head">
+        <div class="sec-head sec-head--compact">
             <h3>Main lifts</h3>
             <a onclick="openPrimaryLiftsSheet()">Edit</a>
         </div>`;
@@ -1386,7 +1386,7 @@ function renderBodyCard(bwData, dexaHistory = []) {
     // With a weight logged, the card tap opens the weight-first detail page;
     // the composition line and the Details link still open the composition page.
     return `
-        <div class="dash-section-head"><h3>Body</h3><a onclick="showCompositionDetail()">Details →</a></div>
+        <div class="sec-head sec-head--compact"><h3>Body</h3><a onclick="showCompositionDetail()">Details →</a></div>
         <div class="dash-body-card" onclick="${hasBw ? "openMetricDetail('body-weight')" : 'showCompositionDetail()'}" role="button" tabindex="0">
             ${weightHtml}
             ${compHtml}
@@ -1396,7 +1396,7 @@ function renderBodyCard(bwData, dexaHistory = []) {
 
 function renderConnectPrompt() {
     return `
-        <div class="dash-section-head">
+        <div class="sec-head sec-head--compact">
             <h3>Body</h3>
         </div>
         <div class="connect-card" onclick="showCompositionDetail()">
@@ -1602,9 +1602,9 @@ function renderVolumeTrend(series) {
     if (!series.some(p => p.y > 0)) return '';
     const maxY = Math.max(...series.map(p => p.y));
     return `
-        <div class="dash-section-head dash-section-head--tight">
+        <div class="sec-head sec-head--compact sec-head--tight">
             <h3>Weekly volume</h3>
-            <span class="dash-section-head__meta">Last ${series.length} weeks</span>
+            <span class="sec-head__meta">Last ${series.length} weeks</span>
         </div>
         <div class="progress-card">
             <div class="progress-chart">${chartLine({
@@ -1619,12 +1619,12 @@ function renderVolumeTrend(series) {
 function renderPRTable(prs) {
     if (!prs || prs.length === 0) {
         return `
-            <div class="dash-section-head dash-section-head--tight"><h3>Personal records</h3></div>
+            <div class="sec-head sec-head--compact sec-head--tight"><h3>Personal records</h3></div>
             <div class="progress-empty">No PRs yet. Beat a previous set and it'll show up here.</div>
         `;
     }
     return `
-        <div class="dash-section-head dash-section-head--tight"><h3>Personal records</h3></div>
+        <div class="sec-head sec-head--compact sec-head--tight"><h3>Personal records</h3></div>
         ${prs.map(pr => `
             <div class="row-card pr-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')">
                 <div class="pr-badge"><i class="fas fa-trophy"></i></div>
@@ -1696,9 +1696,9 @@ export async function renderProgressPage() {
                     <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
                 </div>
                 ${renderVolumeTrend(series)}
-                <div class="dash-section-head dash-section-head--tight">
+                <div class="sec-head sec-head--compact sec-head--tight">
                     <h3>Training balance</h3>
-                    <span class="dash-section-head__meta">sets/wk vs target</span>
+                    <span class="sec-head__meta">sets/wk vs target</span>
                 </div>
                 ${stats.map(s => renderBodyPartCard(s, volumeByPart)).join('')}
                 ${renderConditioningLine(conditioning)}

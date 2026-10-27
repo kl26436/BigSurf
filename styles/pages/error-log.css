@@ -106,7 +106,7 @@
 .error-severity-tag {
     font-size: var(--font-2xs);
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--tracking-eyebrow);
     padding: 1px var(--space-6);
     border-radius: var(--radius-xs);
     text-transform: uppercase;

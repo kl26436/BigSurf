@@ -13,7 +13,7 @@
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-eyebrow);
     margin-bottom: var(--space-6);
 }
 .qe-field__input {

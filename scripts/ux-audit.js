@@ -25,9 +25,9 @@ const BUDGETS = {
     rowClassesOutsideCardsCss: 0,
     // Classes that render a section head. Target: .dash-section-head + .sec-head
     // (titled heads) and .group-label (grouped settings).
-    sectionHeadClasses: 9,
+    sectionHeadClasses: 2,
     // Distinct letter-spacing values on uppercase rules (the eyebrow).
-    eyebrowLetterSpacingValues: 7,
+    eyebrowLetterSpacingValues: 1,
     // Closers that hide a page section by hand instead of navigateBack().
     sectionHiddenByHand: 2,
     // Sections in navigation.js SECTION_IDS with no routeToView case.
@@ -50,7 +50,7 @@ const ROW_NAME = /^[a-z][\w-]*(?:-row|__row|-item|__item|-entry)$/;
 // component names"). A new list row is a .row-card — don't add it here.
 const NOT_LIST_ROWS = new Set([
     // layout / form / control rows
-    'stepper-row', 'section-header-row', 'equip-filter-row', 'library-exercise-header-row',
+    'stepper-row', 'equip-filter-row', 'library-exercise-header-row',
     'loc-map-card__info-row', 'plate-calc-popover-input-row', 'popover-bar-row', 'legend-item',
     'comp-donut-row', 'vat-row', 'bm-row', 'week-plan-editor__row', 'equip-base-weight-row',
     'aw-rpe-row', 'aw-new-equip__base-row', 'bs-sub-row',

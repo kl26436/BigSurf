@@ -268,7 +268,7 @@
     border: 1px solid var(--border-subtle);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: var(--tracking-eyebrow);
 }
 .notif-status--ok { color: var(--success); border-color: var(--success); }
 .notif-status--warn { color: var(--warn); border-color: var(--warn); }

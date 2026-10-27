@@ -1,6 +1,6 @@
 /* ===========================================
    BLOCK PAGE (AP-24) — the active program by week and day
-   Rows reuse .row-card; section heads reuse .dash-section-head; the
+   Rows reuse .row-card; section heads reuse .sec-head; the
    rationale strip and week chrome are the only block-specific shapes.
    =========================================== */
 
@@ -79,7 +79,7 @@
     font-weight: 700;
     vertical-align: middle;
 }
-.block-week--current .dash-section-head h3 { color: var(--primary); }
+.block-week--current .sec-head h3 { color: var(--primary); }
 .block-week--past .row-card { opacity: 0.85; }
 .block-week__override {
     margin-bottom: var(--space-6);
@@ -178,7 +178,7 @@
     gap: var(--space-6);
     margin-bottom: var(--space-6);
 }
-.plan-week--projected .dash-section-head h3,
+.plan-week--projected .sec-head h3,
 .plan-week--projected .row-card__title {
     color: var(--text-muted);
 }

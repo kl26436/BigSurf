@@ -407,7 +407,7 @@
     font-weight: 700;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--tracking-eyebrow);
     padding: var(--space-12) var(--space-8) var(--space-8);
     margin: 0;
 }

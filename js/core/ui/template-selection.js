@@ -1079,18 +1079,11 @@ function renderWorkoutEditorPage(template) {
                 ${renderTemplateDetailsBody(template)}
             </div>
 
-            <div class="template-editor__section-header">
-                <span class="template-editor__section-label">Exercises</span>
-                <button class="template-editor__section-add"
-                        data-action="addTemplateExercise"
-                        data-template-id="${escapeAttr(templateId)}"
-                        data-is-default="${template._isDefault}"
-                        aria-label="Add exercise">
-                    <i class="fas fa-plus"></i>
-                </button>
+            <div class="sec-head">
+                <h3>Exercises</h3>
             </div>
             <div class="template-editor__exercise-list">
-                ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet — tap + above to add one</div>'}
+                ${exerciseListHtml || '<div class="template-editor__empty">No exercises yet — add the first one below</div>'}
             </div>
             ${unmappedNote}
             <button class="template-editor__add-btn" data-action="addTemplateExercise" data-template-id="${escapeAttr(templateId)}" data-is-default="${template._isDefault}">

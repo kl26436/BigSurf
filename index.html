@@ -319,13 +319,16 @@
 
                 <!-- Workout Selector -->
                 <section id="workout-selector" class="content-section pinned-header hidden">
-                    <div class="section-header-row">
-                        <div>
-                            <h2 class="section-title">Workouts</h2>
-                            <p class="section-subtitle">Tap a row to edit, play to start</p>
+                    <!-- UD-3 — the standard page header (a tab root: no back). -->
+                    <div class="page-header">
+                        <div class="page-header__left">
+                            <div class="page-header__title-group">
+                                <div class="page-header__title">Workouts</div>
+                                <div class="page-header__subtitle">Tap a row to edit, play to start</div>
+                            </div>
                         </div>
-                        <button class="btn btn-primary" onclick="createNewTemplate()">
-                            <i class="fas fa-plus"></i> New
+                        <button class="page-header__save" onclick="createNewTemplate()">
+                            <i class="fas fa-plus"></i> New workout
                         </button>
                     </div>
 

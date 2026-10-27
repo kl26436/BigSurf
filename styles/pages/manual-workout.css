@@ -117,7 +117,7 @@
     font-size: var(--font-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-eyebrow);
     font-weight: 600;
 }
 .manual-sets-grid__head > div:nth-child(2),
