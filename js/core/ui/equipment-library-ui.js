@@ -2,10 +2,10 @@
 // Gym-centric equipment management page
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displayWeight, formatSet, unitLabel } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, displayWeight, formatSet, unitLabel } from './ui-helpers.js';
 import { formatRelative } from '../utils/date-helpers.js';
-import { confirmSheet, promptSheet } from './confirm-sheet.js';
-import { openSheet, closeSheet } from './sheet.js';
+import { confirmSheet } from './confirm-sheet.js';
+import { openSheet, closeSheet, sheetById } from './sheet.js';
 import { navigateBack } from './navigation.js';
 import { db, doc, updateDoc, arrayUnion, arrayRemove, deleteField, writeBatch } from '../data/firebase-config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
@@ -23,7 +23,7 @@ import { findBestMatch } from '../features/fuzzy-match.js';
 import { suggestExercisesForMachine } from '../features/machine-exercise-matcher.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
 import { catalogPatternFor } from '../data/equipment-catalog-helpers.js';
-import { suggestedBaseWeight } from '../data/equipment-create.js';
+import { suggestedBaseWeight, planInlineEquipment } from '../data/equipment-create.js';
 import { resolveLocationId } from '../data/location-id-resolver.js';
 import { normalizeEquipName } from '../data/equipment-id-resolver.js';
 import { unmappedEquipment, lineGaps, branchScouting } from '../features/equipment-discovery.js';
@@ -869,7 +869,8 @@ function renderEquipmentLibrary() {
     restoreLibraryHeader();
 
     // Pocket Inventory IA: compact tabs across the top, content per tab.
-    const tabsHTML = renderCompactTabs();
+    // UD-5 — gym-first: where you are comes before the tabs.
+    const tabsHTML = renderGymContextRow() + renderCompactTabs();
     let tabBody;
     if (currentTab === 'gyms') {
         tabBody = renderMyGymsTab();
@@ -904,9 +905,6 @@ function restoreLibraryHeader() {
         <div class="page-header__actions">
             <button class="page-header__save page-header__save--icon" onclick="openMachineIdCamera()" aria-label="Identify a machine by photo" title="Identify by photo">
                 <i class="fas fa-camera"></i>
-            </button>
-            <button class="page-header__save" onclick="showAddEquipmentFlow()" aria-label="Add equipment">
-                <i class="fas fa-plus"></i> Add equipment
             </button>
         </div>
     `;
@@ -2101,8 +2099,8 @@ function renderCompactTabs() {
     const totalCatalog = catalog.reduce((sum, b) => sum + (b.lines || []).reduce((s, l) => s + (l.machines?.length || 0), 0), 0);
 
     const tabs = [
-        { id: 'gyms',    label: 'My gyms', count: allLocations.length },
-        { id: 'library', label: 'Library', count: allEquipment.length },
+        { id: 'gyms',    label: 'Gyms', count: allLocations.length },
+        { id: 'library', label: 'All machines', count: allEquipment.length },
         { id: 'catalog', label: 'Catalog', count: formatCount(totalCatalog) },
     ];
     return `
@@ -2117,6 +2115,36 @@ function renderCompactTabs() {
             `).join('')}
         </div>
     `;
+}
+
+/**
+ * UD-5 — the gym you're at, one tap from its machines; without a session gym
+ * the row says so and points at Gyms (where the one add-gym flow lives).
+ */
+function renderGymContextRow() {
+    const gym = getSessionGym();
+    if (!gym) {
+        return `
+            <div class="row-card equip-gym-context" onclick="setEquipmentTab('gyms')" role="button" tabindex="0">
+                <div class="row-card__icon"><i class="fas fa-location-dot" aria-hidden="true"></i></div>
+                <div class="row-card__content">
+                    <div class="row-card__title">Not at a gym yet</div>
+                    <div class="row-card__subtitle">Pick one, or it's picked up when you start a workout there</div>
+                </div>
+                <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
+            </div>`;
+    }
+    const loc = allLocations.find((l) => l.name === gym);
+    const here = allEquipment.filter((e) => (e.locations || []).includes(gym)).length;
+    return `
+        <div class="row-card equip-gym-context" onclick="openGymDetail(${loc?.id ? `'${escapeAttr(loc.id)}'` : 'null'}, '${escapeAttr(gym)}')" role="button" tabindex="0">
+            <div class="row-card__icon"><i class="fas fa-location-dot" aria-hidden="true"></i></div>
+            <div class="row-card__content">
+                <div class="row-card__title">At ${escapeHtml(gym)}</div>
+                <div class="row-card__subtitle">${here} machine${here === 1 ? '' : 's'} here</div>
+            </div>
+            <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
+        </div>`;
 }
 
 /**
@@ -2141,7 +2169,7 @@ function renderMyGymsTab() {
         { value: stats.length, label: 'Gyms' },
         { value: allEquipment.length, label: 'Machines' },
         { value: brandSet.size, label: 'Brands' },
-        { value: unlinked.length, label: 'Orphans', warning: unlinked.length > 0 },
+        { value: unlinked.length, label: 'From history', warning: unlinked.length > 0 },
     ];
     const stripHTML = `
         <div class="stat-strip">
@@ -2205,27 +2233,10 @@ export function addGymPrompt(...args) {
     return once('gym-add-prompt', () => addGymPromptNow(...args));
 }
 
+// UD-5 — one add-gym flow (GPS, address or map → name) for every door; the
+// name-only prompt that lived here made gyms without a pin.
 async function addGymPromptNow() {
-    const name = await promptSheet({
-        title: 'Add a gym',
-        placeholder: "e.g. Gold's Gym Downtown",
-        confirmLabel: 'Add gym',
-    });
-    const trimmed = (name || '').trim();
-    if (!trimmed) return;
-    if (allLocations.some((l) => l.name?.toLowerCase() === trimmed.toLowerCase())) {
-        showNotification(`${trimmed} is already saved`, 'info');
-        return;
-    }
-    try {
-        const newLoc = await getManager().saveLocation({ name: trimmed });
-        if (newLoc) allLocations.push(newLoc);
-        showNotification(`${trimmed} added`, 'success');
-        openEquipmentLibrary(); // re-render My gyms with the new card
-    } catch (err) {
-        console.error('Add gym failed:', err);
-        showNotification("Couldn't add gym — try again", 'error');
-    }
+    if (typeof window.detectAndAddLocation === 'function') await window.detectAndAddLocation();
 }
 
 /**
@@ -2432,9 +2443,6 @@ function renderLibraryTab() {
     // are gated on having locations.
     const filterHTML = `
         <div class="equip-filter-row">
-            <button class="btn-icon btn-icon--filled" onclick="toggleEquipmentSearch()" aria-label="Search">
-                <i class="fas fa-search"></i>
-            </button>
             ${locations.length > 0 ? `
             <div class="equip-location-pills">
                 <button class="chip chip--sm ${!currentLocationFilter ? 'active' : ''}"
@@ -2448,10 +2456,10 @@ function renderLibraryTab() {
     `;
 
     const searchHTML = `
-        <div class="equip-search-bar ${currentSearchTerm ? '' : 'hidden'}" id="equip-search-bar">
+        <div class="equip-search-bar" id="equip-search-bar">
             <div class="field-search equip-search-bar__field ${currentSearchTerm ? 'field-search--with-clear' : ''}">
                 <i class="fas fa-search" aria-hidden="true"></i>
-                <input type="text" placeholder="Search equipment, brand, line, exercises…"
+                <input type="search" aria-label="Find or add a machine" placeholder="Find or add a machine…"
                        value="${escapeAttr(currentSearchTerm)}"
                        oninput="filterEquipmentBySearch(this.value)"
                        onfocus="setTimeout(() => this.scrollIntoView({ block: 'start' }), 200)">
@@ -2462,21 +2470,15 @@ function renderLibraryTab() {
 
     let listHTML;
     if (filtered.length === 0) {
-        listHTML = currentSearchTerm ? `
-            <div class="empty-state-compact">
-                <i class="fas fa-wrench"></i>
-                <p>No matches found</p>
-                <p class="empty-state-hint">Try a different brand, line, or exercise name.</p>
-            </div>
-        ` : `
+        listHTML = currentSearchTerm ? searchAddRowHTML() : `
             <div class="empty-state-compact">
                 <i class="fas fa-wrench"></i>
                 <p>No equipment yet</p>
-                <p class="empty-state-hint">Equipment gets saved as you use it in workouts — or add it from the Catalog tab.</p>
+                <p class="empty-state-hint">Machines are saved as you log sets on them — or type one above to add it.</p>
             </div>
         `;
     } else {
-        listHTML = renderBodyPartView(filtered);
+        listHTML = searchAddRowHTML() + renderBodyPartView(filtered);
     }
 
     // CP-7 discovery block — only on the unfiltered list; a search or gym
@@ -2892,15 +2894,15 @@ function renderEquipmentLibraryList() {
 
     let html;
     if (filtered.length === 0) {
-        html = `
+        html = currentSearchTerm ? searchAddRowHTML() : `
             <div class="empty-state-compact">
                 <i class="fas fa-wrench"></i>
-                <p>${currentSearchTerm ? 'No matches found' : 'No equipment found'}</p>
-                <p class="empty-state-hint">Equipment is auto-saved when you use it in a workout</p>
+                <p>No machines yet</p>
+                <p class="empty-state-hint">Machines are saved as you log sets on them — or type one above to add it.</p>
             </div>
         `;
     } else {
-        html = renderBodyPartView(filtered);
+        html = searchAddRowHTML() + renderBodyPartView(filtered);
     }
 
     wrap.innerHTML = html;
@@ -3014,15 +3016,54 @@ function renderBodyPartView(filtered) {
 /**
  * Toggle search bar visibility
  */
-export function toggleEquipmentSearch() {
-    const bar = document.getElementById('equip-search-bar');
-    if (bar) {
-        bar.classList.toggle('hidden');
-        if (!bar.classList.contains('hidden')) {
-            bar.querySelector('input')?.focus();
-        }
-    }
+/** The add plan for what's typed in the search (the workout picker's planner). */
+function planSearchAdd() {
+    return planInlineEquipment({
+        query: currentSearchTerm,
+        gymName: getSessionGym(),
+        unit: AppState.globalUnit || 'lbs',
+        owned: allEquipment,
+        catalog: getCatalogSync(),
+        createdVia: 'equipment-search',
+    });
 }
+
+/**
+ * UD-5 — the search IS the add: when what's typed isn't a machine you have,
+ * the first row offers to add it (at the gym you're at). Identity details
+ * (brand / line / function) are refined on the machine's page afterwards.
+ */
+function searchAddRowHTML() {
+    if ((currentSearchTerm || '').trim().length < 2) return '';
+    const plan = planSearchAdd();
+    if (plan.action !== 'create') return '';
+    const gym = getSessionGym();
+    return `
+        <div class="row-card equip-search-add" onclick="addMachineFromSearch()" role="button" tabindex="0">
+            <div class="row-card__icon"><i class="fas fa-plus" aria-hidden="true"></i></div>
+            <div class="row-card__content">
+                <div class="row-card__title">Add “${escapeHtml(plan.doc.name)}”${gym ? ` at ${escapeHtml(gym)}` : ''}</div>
+                <div class="row-card__subtitle">${escapeHtml(plan.doc.equipmentType || 'Machine')}${plan.similar ? ` · you have ${escapeHtml(plan.similar.equipment?.name || 'a similar one')}` : ''}</div>
+            </div>
+        </div>`;
+}
+
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function addMachineFromSearch() {
+    return once('equipment-search-add', async () => {
+        const plan = planSearchAdd();
+        if (plan.action === 'invalid') { showNotification(plan.error, 'warning'); return; }
+        if (plan.action === 'use-existing') { await openEquipmentDetail(plan.existing.id); return; }
+        const eq = await getManager().getOrCreateEquipment(plan.doc.name, { ...plan.doc, knownEquipment: allEquipment });
+        if (!eq) { showNotification("Couldn't add that machine — try again", 'error'); return; }
+        if (!allEquipment.some((e) => e.id === eq.id)) allEquipment.push(eq);
+        currentSearchTerm = '';
+        const gym = getSessionGym();
+        showNotification(`${eq.name} added${gym ? ` at ${gym}` : ''}`, 'success', 2000);
+        await openEquipmentDetail(eq.id);
+    });
+}
+if (typeof window !== 'undefined') window.addMachineFromSearch = addMachineFromSearch;
 
 /**
  * Toggle exercise expand/collapse in the hierarchy
@@ -3893,7 +3934,6 @@ function openFieldPicker(equipmentId, field, mode = 'edit') {
     fieldPickerState.searchTerm = '';
     fieldPickerState.customMode = false;
     renderFieldPicker();
-    openModal('function-picker-modal');
 }
 
 /**
@@ -3972,11 +4012,11 @@ function computeFieldPickerScope() {
     };
 }
 
-function renderFieldPicker() {
-    const modal = document.getElementById('function-picker-modal');
-    const content = modal?.querySelector('.modal-content');
-    if (!modal || !content) return;
+// UD-5 — the brand / line / function picker is an openSheet (it was the last
+// dialog.modal on this page). Re-renders replace the body in place.
+const FIELD_PICKER_ID = 'field-picker';
 
+function renderFieldPicker() {
     const { equipmentId, field, searchTerm, customMode } = fieldPickerState;
     const { options, currentValue, title, scopeLabel, scopeHint, placeholder } = computeFieldPickerScope();
 
@@ -4015,15 +4055,8 @@ function renderFieldPicker() {
             </button>
         `;
 
-    content.innerHTML = `
+    const bodyHTML = `
         <div class="function-picker">
-            <div class="function-picker__header">
-                <h3 class="function-picker__title">${escapeHtml(title)}</h3>
-                <div class="function-picker__scope">${escapeHtml(scopeLabel)}</div>
-                <button class="close-btn" aria-label="Close" onclick="closeFieldPicker()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
             ${scopeHint ? `<div class="function-picker__hint">${escapeHtml(scopeHint)}</div>` : ''}
             <div class="field-search function-picker__field">
                 <i class="fas fa-search" aria-hidden="true"></i>
@@ -4035,6 +4068,9 @@ function renderFieldPicker() {
             ${customHTML}
         </div>
     `;
+    const open = sheetById(FIELD_PICKER_ID);
+    if (open) open.setBody(bodyHTML);
+    else openSheet({ id: FIELD_PICKER_ID, title, subtitle: scopeLabel, bodyHTML, size: 'full' });
 
     if (customMode) {
         setTimeout(() => {
@@ -4123,7 +4159,7 @@ export async function selectFieldValue(equipmentId, field, value) {
                 if (parents.type) addFlowState.type = parents.type;
             }
         }
-        closeModal('function-picker-modal');
+        closeSheet(FIELD_PICKER_ID, { immediate: true });
         renderAddFlow();
         return;
     }
@@ -4166,7 +4202,7 @@ export async function selectFieldValue(equipmentId, field, value) {
         const eq = allEquipment.find(e => e.id === equipmentId);
         if (eq) Object.assign(eq, update);
 
-        closeModal('function-picker-modal');
+        closeSheet(FIELD_PICKER_ID, { immediate: true });
         openEquipmentDetail(equipmentId);
     } catch (err) {
         console.error(`Error saving ${field}:`, err);
@@ -4175,7 +4211,7 @@ export async function selectFieldValue(equipmentId, field, value) {
 }
 
 export function closeFieldPicker() {
-    closeModal('function-picker-modal');
+    closeSheet(FIELD_PICKER_ID);
 }
 
 function addFlowGeneratedName() {

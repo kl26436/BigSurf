@@ -720,33 +720,10 @@
     flex-shrink: 0;
 }
 
+/* Body of the brand / line / function sheet (openSheet owns height + chrome). */
 .function-picker {
     display: flex;
     flex-direction: column;
-    max-height: 80vh; /* fallback */
-    max-height: 80dvh;
-    min-height: 50vh; /* fallback */
-    min-height: 50dvh;
-}
-.function-picker__header {
-    position: relative;
-    padding: var(--space-16) var(--space-16) var(--space-12);
-    border-bottom: 1px solid var(--border);
-}
-.function-picker__title {
-    margin: 0;
-    font-size: var(--font-lg);
-    color: var(--text-strong);
-}
-.function-picker__scope {
-    margin-top: var(--space-4);
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-}
-.function-picker__header .close-btn {
-    position: absolute;
-    top: var(--space-12);
-    right: var(--space-12);
 }
 .function-picker__hint {
     padding: var(--space-8) var(--space-16);
@@ -1171,3 +1148,15 @@
 }
 .machine-id__error i { font-size: var(--font-2xl); margin-bottom: var(--space-8); }
 .machine-id__progress { justify-content: center; padding: var(--space-16); }
+
+/* UD-5 — gym context row above the tabs, and the search's "Add …" row. */
+.equip-gym-context {
+    margin-bottom: var(--space-12);
+}
+.equip-search-add {
+    margin-bottom: var(--space-12);
+    border-style: dashed;
+}
+.equip-search-add .row-card__title {
+    color: var(--primary);
+}

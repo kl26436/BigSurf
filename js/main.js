@@ -17,7 +17,7 @@ import { openMachineIdCamera } from './core/features/machine-id.js';
 import {
     openEquipmentLibrary, openEquipmentDetail, backToEquipmentList,
     filterEquipmentByLocation, filterEquipmentBySearch,
-    toggleEquipmentSearch, toggleEquipmentExercise,
+    toggleEquipmentExercise,
     assignExerciseToEquipment, filterAssignList, confirmAssignExercise, unassignExercise,
     saveEquipmentExerciseVideoFromLib, deleteEquipmentFromLibrary,
     saveEquipmentNotes, showAddEquipmentFlow, confirmAddEquipment,
@@ -922,7 +922,6 @@ window.openEquipmentDetail = openEquipmentDetail;
 window.backToEquipmentList = backToEquipmentList;
 window.filterEquipmentByLocation = filterEquipmentByLocation;
 window.filterEquipmentBySearch = filterEquipmentBySearch;
-window.toggleEquipmentSearch = toggleEquipmentSearch;
 window.toggleEquipmentExercise = toggleEquipmentExercise;
 window.assignExerciseToEquipment = assignExerciseToEquipment;
 window.filterAssignList = filterAssignList;
