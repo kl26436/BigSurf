@@ -245,3 +245,17 @@ CLAUDE.md: add **DS-1b (what a row promises)** and the **formatter rule** ("neve
 **Order:** UD-6's budgets first at today's counts (you can't see drift without them — same as DS-5 and SH-5), then UD-2 (the surface you use daily; smallest), UD-1 (one evening, unblocks the newest pages), UD-4 (formatters touch every page, so do them before the row pass restyles the same lines), UD-3, UD-5. Then the persona re-review (Marcus + Sam, test account only) with the §2 acceptance lines as the brief.
 
 **How to use with Claude Code / Copilot:** paste a UD-n block plus its §0 rows as the task; the mock-up section is the visual spec; the acceptance lines are the merge check. UD-3's migration list and UD-4's formatter call sites are mechanical, grep-verifiable fan-out tasks; UD-1 and UD-2 touch product decisions (B options) and are yours.
+
+---
+
+## 7. As built (2026-10-27, branch `ux-deep-dive`, on dev)
+
+| Phase | State | What landed | Still open |
+|---|---|---|---|
+| UD-6 | partly | `scripts/ux-audit.js` budgets in `audit:design:strict` (rows 53→50, heads 10→9, hidden-by-hand 7→2, no-route 1→0, "… ago" 13→4, words 93→3); CLAUDE.md DS-1b, §8c formatter table, word table; checklist 9–10; B16, B17; toggles labelled; dead weight-history page, metric-card-base + 3 metric renderers, resume banner deleted | `exercise-ui.js` / `rest-timer.js` (exports still have callers — needs a careful pass), Chart.js script tag + `renderBodyWeightChart`, `.set-chip__rpe`, B20 |
+| UD-2 | ✅ | "+" pill, "All"-sheet Add/Finish, picker-row ⋯, Remove button gone; swipe-left removes a set with Undo + one-time tip; lb\|kg segmented 36 px; footer inset; rest buttons 36 px; one cancel sentence (`CANCEL_WORKOUT_MESSAGE`); B1–B4 | phone check of the swipe |
+| UD-1 | ✅ (A) | `more-menu.js`; Plan / Goals / Report card / Log weight / Body & scans / Gyms doors; error log under Settings; B8, B10, B11, B15 | option B (Plan tab) is a product call |
+| UD-4 | ✅ (A + formatters) | routed `workout-detail`; Edit · Repeat footer, ⋯ Save as workout / Delete; `formatSet` / `unitLabel` / `formatDateShort` / `formatRelative` / `formatDuration` at ~90 sites; B5, B6, B9, B19 | option B (edit a set in place) |
+| UD-3 | partly | DS-1b written; B18 (dead rows deleted, weigh-in rows static, report-card chevrons, Goals event row, Profile presses); one `.field-input`; duplicate header Saves removed; B7 | the row/head migration list in §2 UD-3 |
+| UD-5 | partly (B) | Gyms page: rows open the gym's page (B12), "Add a gym" row, "Pin it here"; read-only catalog + explicit Add (B14); one header restore (B13); word table | option A (gym-first Equipment, search-to-add, function-picker dialog, name-only add-gym prompt) |
+
